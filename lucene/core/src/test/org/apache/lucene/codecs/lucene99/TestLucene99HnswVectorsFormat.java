@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99.vectors.graph;
+package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
@@ -51,6 +51,6 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene99HnswVectorsFormat("Lucene99HnswVectorsFormat", 20, 100, 1, new SameThreadExecutorService()));
+        () -> new Lucene99HnswVectorsFormat(20, 100, 1, new SameThreadExecutorService()));
   }
 }

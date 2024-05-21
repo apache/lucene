@@ -20,7 +20,6 @@ import java.util.Objects;
 import org.apache.lucene.codecs.*;
 import org.apache.lucene.codecs.lucene90.*;
 import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
-import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;

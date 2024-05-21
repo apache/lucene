@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99.vectors.storage;
+package org.apache.lucene.codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene99.vectors.storage.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.codecs.lucene99.vectors.storage.Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
-import static org.apache.lucene.codecs.lucene99.vectors.storage.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval;
+import static org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
 
@@ -839,13 +839,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
   }
 
-  public static class FloatVectorWrapper extends FloatVectorValues {
+  static class FloatVectorWrapper extends FloatVectorValues {
     private final List<float[]> vectorList;
     private final float[] copy;
     private final boolean normalize;
     protected int curDoc = -1;
 
-    public FloatVectorWrapper(List<float[]> vectorList, boolean normalize) {
+    FloatVectorWrapper(List<float[]> vectorList, boolean normalize) {
       this.vectorList = vectorList;
       this.copy = new float[vectorList.get(0).length];
       this.normalize = normalize;

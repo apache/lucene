@@ -55,7 +55,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
     }
   }
 
-  protected final String name;
+  private final String name;
 
   /** Sole constructor */
   protected KnnVectorsFormat(String name) {

@@ -15,11 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99.vectors.graph;
+package org.apache.lucene.codecs.lucene99;
 
-import org.apache.lucene.codecs.lucene99.vectors.storage.Lucene99ScalarQuantizedVectorsFormat;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_MAX_CONN;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Lucene 9.9 vector format, which encodes numeric vector values into an associated graph connecting
@@ -29,20 +42,32 @@ import java.util.concurrent.ExecutorService;
  *
  * @lucene.experimental
  */
-public class Lucene99HnswScalarQuantizedVectorsFormat extends Lucene99HnswVectorsFormat {
+public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
   public static final String NAME = "Lucene99HnswScalarQuantizedVectorsFormat";
-  
+
   /**
-   * to motivate
+   * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
+   * {@link Lucene99HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
-  public static final int DEFAULT_QUANTIZATION_BITS = 7;
+  private final int maxConn;
 
+  /**
+   * The number of candidate neighbors to track while searching the graph for each newly inserted
+   * node. Defaults to {@link Lucene99HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph}
+   * for details.
+   */
+  private final int beamWidth;
 
+  /** The format for storing, reading, merging vectors on disk */
+  private final FlatVectorsFormat flatVectorsFormat;
+
+  private final int numMergeWorkers;
+  private final TaskExecutor mergeExec;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswScalarQuantizedVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, DEFAULT_QUANTIZATION_BITS, true, null, null);
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, 7, true, null, null);
   }
 
   /**
@@ -52,7 +77,7 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends Lucene99HnswVector
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, DEFAULT_QUANTIZATION_BITS, true, null, null);
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, 7, true, null, null);
   }
 
   /**
@@ -80,11 +105,58 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends Lucene99HnswVector
       boolean compress,
       Float confidenceInterval,
       ExecutorService mergeExec) {
-    super(NAME, maxConn, beamWidth, numMergeWorkers, mergeExec);
-    super.flatVectorsFormat =
+    super(NAME);
+    if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
+      throw new IllegalArgumentException(
+          "maxConn must be positive and less than or equal to "
+              + MAXIMUM_MAX_CONN
+              + "; maxConn="
+              + maxConn);
+    }
+    if (beamWidth <= 0 || beamWidth > MAXIMUM_BEAM_WIDTH) {
+      throw new IllegalArgumentException(
+          "beamWidth must be positive and less than or equal to "
+              + MAXIMUM_BEAM_WIDTH
+              + "; beamWidth="
+              + beamWidth);
+    }
+    this.maxConn = maxConn;
+    this.beamWidth = beamWidth;
+    if (numMergeWorkers == 1 && mergeExec != null) {
+      throw new IllegalArgumentException(
+          "No executor service is needed as we'll use single thread to merge");
+    }
+    this.numMergeWorkers = numMergeWorkers;
+    if (mergeExec != null) {
+      this.mergeExec = new TaskExecutor(mergeExec);
+    } else {
+      this.mergeExec = null;
+    }
+    this.flatVectorsFormat =
         new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, compress);
   }
-  
+
+  @Override
+  public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene99HnswVectorsWriter(
+        state,
+        maxConn,
+        beamWidth,
+        flatVectorsFormat.fieldsWriter(state),
+        numMergeWorkers,
+        mergeExec);
+  }
+
+  @Override
+  public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new Lucene99HnswVectorsReader(state, flatVectorsFormat.fieldsReader(state));
+  }
+
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return 1024;
+  }
+
   @Override
   public String toString() {
     return "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn="

@@ -64,8 +64,6 @@ module org.apache.lucene.core {
 
   exports org.apache.lucene.util.quantization;
   exports org.apache.lucene.codecs.hnsw;
-  exports org.apache.lucene.codecs.lucene99.vectors.storage;
-  exports org.apache.lucene.codecs.lucene99.vectors.graph;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
@@ -74,8 +72,8 @@ module org.apache.lucene.core {
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
-      org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat,
-      org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswScalarQuantizedVectorsFormat;
+      org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat,
+      org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with

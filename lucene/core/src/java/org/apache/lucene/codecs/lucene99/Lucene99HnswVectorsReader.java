@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99.vectors.graph;
+package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 

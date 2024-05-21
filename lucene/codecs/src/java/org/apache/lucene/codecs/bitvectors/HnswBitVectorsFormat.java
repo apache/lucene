@@ -17,11 +17,11 @@
 
 package org.apache.lucene.codecs.bitvectors;
 
-import static org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
-import static org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
-import static org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
-import static org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat.MAXIMUM_BEAM_WIDTH;
-import static org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat.MAXIMUM_MAX_CONN;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_MAX_CONN;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -30,10 +30,10 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
-import org.apache.lucene.codecs.lucene99.vectors.storage.Lucene99FlatVectorsFormat;
-import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;

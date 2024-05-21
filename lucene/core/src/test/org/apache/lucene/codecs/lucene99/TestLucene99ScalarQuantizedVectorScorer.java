@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99.vectors.storage;
+package org.apache.lucene.codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene99.vectors.storage.OffHeapQuantizedByteVectorValues.compressBytes;
+import static org.apache.lucene.codecs.lucene99.OffHeapQuantizedByteVectorValues.compressBytes;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -27,10 +27,6 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
-import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswScalarQuantizedVectorsFormat;
-import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

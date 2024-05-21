@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99.vectors.storage;
+package org.apache.lucene.codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsReader.readSimilarityFunction;
-import static org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsReader.readVectorEncoding;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
 import java.util.HashMap;
