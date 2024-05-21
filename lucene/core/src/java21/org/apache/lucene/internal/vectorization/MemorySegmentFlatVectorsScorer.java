@@ -31,7 +31,7 @@ public class MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
 
   private final FlatVectorsScorer delegate;
 
-  public MemorySegmentFlatVectorsScorer(FlatVectorsScorer delegate) {
+  private MemorySegmentFlatVectorsScorer(FlatVectorsScorer delegate) {
     this.delegate = delegate;
   }
 
