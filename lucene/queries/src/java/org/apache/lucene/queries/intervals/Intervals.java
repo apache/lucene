@@ -503,6 +503,15 @@ public final class Intervals {
   }
 
   /**
+   * Returns a source that produces no intervals
+   *
+   * @param reason A reason string that will appear in the toString output of this source
+   */
+  public static IntervalsSource noIntervals(String reason) {
+    return new NoMatchIntervalsSource(reason);
+  }
+
+  /**
    * Returns intervals that correspond to tokens from a {@link TokenStream} returned for {@code
    * text} by applying the provided {@link Analyzer} as if {@code text} was the content of the given
    * {@code field}. The intervals can be ordered or unordered and can have optional gaps inside.
