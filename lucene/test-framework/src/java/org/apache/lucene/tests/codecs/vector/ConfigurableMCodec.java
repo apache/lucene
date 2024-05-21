@@ -18,7 +18,7 @@ package org.apache.lucene.tests.codecs.vector;
 
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat;
 import org.apache.lucene.tests.util.TestUtil;
 
 /**

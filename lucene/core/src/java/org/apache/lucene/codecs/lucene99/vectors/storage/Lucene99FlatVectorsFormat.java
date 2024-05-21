@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.codecs.lucene99.vectors.storage;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
