@@ -48,57 +48,14 @@ public class TestIntIntHashMap extends LuceneTestCase {
   protected int key9 = cast(9), k9 = key9;
 
   /** Convert to target type from an integer used to test stuff. */
-  public int cast(Integer v) {
-    return v.intValue();
-  }
-
-  public int[] asArray(int... ints) {
-    int[] values = (new int[ints.length]);
-    for (int i = 0; i < ints.length; i++) values[i] = ints[i];
-    return values;
+  public int cast(int v) {
+    return v;
   }
 
   /** Create a new array of a given type and copy the arguments to this array. */
   /*  */
   public final int[] newArray(int... elements) {
-    return newArray0(elements);
-  }
-
-  /*  */
-  private final int[] newArray0(int... elements) {
     return elements;
-  }
-
-  public int[] newArray(int v0) {
-    return this.newArray0(v0);
-  }
-
-  public int[] newArray(int v0, int v1) {
-    return this.newArray0(v0, v1);
-  }
-
-  public int[] newArray(int v0, int v1, int v2) {
-    return this.newArray0(v0, v1, v2);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3) {
-    return this.newArray0(v0, v1, v2, v3);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5, int v6) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5, v6);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4) {
-    return this.newArray0(v0, v1, v2, v3, v4);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5, v6, v7);
   }
 
   public static int randomIntBetween(int min, int max) {
