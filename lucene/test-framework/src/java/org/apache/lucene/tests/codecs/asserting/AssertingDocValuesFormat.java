@@ -76,11 +76,15 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
 
       int docID;
       int lastDocID = -1;
+      long lastValue = 0;
       while ((docID = values.nextDoc()) != NO_MORE_DOCS) {
         assert docID >= 0 && docID < maxDoc;
         assert docID > lastDocID;
+        if (values.hasSingleValue() && lastDocID != -1) {
+          assert lastValue == values.longValue();
+        }
         lastDocID = docID;
-        values.longValue();
+        lastValue = values.longValue();
       }
 
       in.addNumericField(field, valuesProducer);
@@ -145,13 +149,13 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
       SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
 
       int lastDocID = -1;
+      long lastValue = 0;
       while (true) {
         int docID = values.nextDoc();
         if (docID == NO_MORE_DOCS) {
           break;
         }
         assert values.docID() > lastDocID;
-        lastDocID = values.docID();
         int count = values.docValueCount();
         assert count > 0;
         long previous = Long.MIN_VALUE;
@@ -159,7 +163,12 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
           long nextValue = values.nextValue();
           assert nextValue >= previous;
           previous = nextValue;
+          if (values.hasSingleValue() && lastDocID != -1) {
+            assert lastValue == nextValue;
+          }
+          lastValue = nextValue;
         }
+        lastDocID = values.docID();
       }
       in.addSortedNumericField(field, valuesProducer);
     }

@@ -183,10 +183,11 @@ public final class IndexedDISI extends DocIdSetIterator {
    *     {@link #DEFAULT_DENSE_RANK_POWER} is 9: Every 512 docIDs. This should be stored in meta and
    *     used when creating an instance of IndexedDISI.
    * @throws IOException if there was an error writing to out.
-   * @return the number of jump-table entries following the blocks, -1 for no entries. This should
-   *     be stored in meta and used when creating an instance of IndexedDISI.
+   * @return array[0] is the number of jump-table entries following the blocks, -1 for no entries.
+   *     This should be stored in meta and used when creating an instance of IndexedDISI. array[1]
+   *     is the doc count of it
    */
-  public static short writeBitSet(DocIdSetIterator it, IndexOutput out, byte denseRankPower)
+  public static int[] writeBitSetInternal(DocIdSetIterator it, IndexOutput out, byte denseRankPower)
       throws IOException {
     final long origo = out.getFilePointer(); // All jumps are relative to the origo
     if ((denseRankPower < 7 || denseRankPower > 15) && denseRankPower != -1) {
@@ -250,7 +251,14 @@ public final class IndexedDISI extends DocIdSetIterator {
     buffer.set(DocIdSetIterator.NO_MORE_DOCS & 0xFFFF);
     flush(DocIdSetIterator.NO_MORE_DOCS >>> 16, buffer, 1, denseRankPower, out);
     // offset+index jump-table stored at the end
-    return flushBlockJumps(jumps, lastBlock + 1, out);
+    short blockCount = flushBlockJumps(jumps, lastBlock + 1, out);
+    return new int[] {blockCount, totalCardinality};
+  }
+
+  public static short writeBitSet(DocIdSetIterator it, IndexOutput out, byte denseRankPower)
+      throws IOException {
+    int[] result = writeBitSetInternal(it, out, denseRankPower);
+    return (short) result[0];
   }
 
   // Adds entries to the offset & index jump-table for blocks
