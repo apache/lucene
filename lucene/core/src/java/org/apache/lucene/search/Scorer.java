@@ -30,6 +30,8 @@ public abstract class Scorer extends Scorable {
   /** the Scorer's parent Weight */
   protected final Weight weight;
 
+  private boolean isMatchAll;
+
   /**
    * Constructs a Scorer
    *
@@ -98,4 +100,14 @@ public abstract class Scorer extends Scorable {
    * {@link #advanceShallow(int) shallow-advanced} to included and {@code upTo} included.
    */
   public abstract float getMaxScore(int upTo) throws IOException;
+
+  /** Set whether we can match all docs in this scored segment. */
+  public void setMatchAll(boolean isMatchAll) {
+    this.isMatchAll = isMatchAll;
+  }
+
+  /** Return true if we matched all docs in this scored segment. */
+  public boolean isMatchAll() {
+    return isMatchAll;
+  }
 }

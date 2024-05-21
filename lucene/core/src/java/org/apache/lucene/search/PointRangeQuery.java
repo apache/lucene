@@ -347,8 +347,11 @@ public abstract class PointRangeQuery extends Query {
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) {
-              return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+              ConstantScoreScorer constantScoreScorer =
+                  new ConstantScoreScorer(
+                      weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+              constantScoreScorer.setMatchAll(true);
+              return constantScoreScorer;
             }
 
             @Override
