@@ -180,7 +180,7 @@
  *       of files, recording dimensionally indexed fields, to enable fast numeric range filtering
  *       and large numeric values like BigInteger and BigDecimal (1D) and geographic shape
  *       intersection (2D, 3D).
- *   <li>{@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat Vector values}. The
+ *   <li>{@link org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat Vector values}. The
  *       vector format stores numeric vectors in a format optimized for random access and
  *       computation, supporting high-dimensional nearest-neighbor search.
  * </ul>
@@ -310,7 +310,7 @@
  * <td>Holds indexed points</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat Vector values}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat Vector values}</td>
  * <td>.vec, .vem, .veq, vex</td>
  * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data,
  * <code>.vem</code> the vector metadata, <code>.veq</code> the quantized vector data, and <code>.vex</code> the

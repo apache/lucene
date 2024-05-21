@@ -23,12 +23,12 @@ import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer;
-import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
-import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsWriter;
+import org.apache.lucene.codecs.lucene99.vectors.storage.Lucene99FlatVectorsFormat;
+import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.vectors.graph.Lucene99HnswVectorsWriter;
+import org.apache.lucene.codecs.lucene99.vectors.storage.Lucene99ScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.vectors.storage.Lucene99ScalarQuantizedVectorsWriter;
 import org.apache.lucene.index.SegmentWriteState;
 
 class Lucene99RWHnswScalarQuantizationVectorsFormat
