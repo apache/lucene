@@ -348,6 +348,8 @@ Optimizations
 
 * GITHUB#13392: Replace Map<Long, Object> by primitive LongObjectHashMap. (Bruno Roustant)
 
+* GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
+
 Bug Fixes
 ---------------------
 

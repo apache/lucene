@@ -15,27 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.codecs.hnsw;
 
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
-/** Default provider returning scalar implementations. */
-final class DefaultVectorizationProvider extends VectorizationProvider {
+/**
+ * Utilities for {@link FlatVectorsScorer}.
+ *
+ * @lucene.experimental
+ */
+public final class FlatVectorScorerUtil {
 
-  private final VectorUtilSupport vectorUtilSupport;
+  private static final VectorizationProvider IMPL = VectorizationProvider.getInstance();
 
-  DefaultVectorizationProvider() {
-    vectorUtilSupport = new DefaultVectorUtilSupport();
-  }
+  private FlatVectorScorerUtil() {}
 
-  @Override
-  public VectorUtilSupport getVectorUtilSupport() {
-    return vectorUtilSupport;
-  }
-
-  @Override
-  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
-    return DefaultFlatVectorScorer.INSTANCE;
+  /**
+   * Returns a FlatVectorsScorer that supports the Lucene99 format. Scorers retrieved through this
+   * method may be optimized on certain platforms. Otherwise, a DefaultFlatVectorScorer is returned.
+   */
+  public static FlatVectorsScorer getLucene99FlatVectorsScorer() {
+    return IMPL.getLucene99FlatVectorsScorer();
   }
 }
