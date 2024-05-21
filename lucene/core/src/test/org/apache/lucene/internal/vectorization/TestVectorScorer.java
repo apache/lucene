@@ -46,6 +46,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.junit.BeforeClass;
@@ -254,7 +255,7 @@ public class TestVectorScorer extends LuceneTestCase {
               List.<Callable<Optional<Throwable>>>of(
                   new AssertingScoreCallable(scorer.copy().scorer(0), 1, expectedScore1),
                   new AssertingScoreCallable(scorer.copy().scorer(2), 3, expectedScore2));
-          var executor = Executors.newFixedThreadPool(2);
+          var executor = Executors.newFixedThreadPool(2, new NamedThreadFactory("copiesThreads"));
           var results = executor.invokeAll(tasks);
           executor.shutdown();
           assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
