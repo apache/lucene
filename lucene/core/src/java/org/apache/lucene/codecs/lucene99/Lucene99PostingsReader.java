@@ -143,31 +143,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     }
   }
 
-  /** Read values that have been written using variable-length encoding instead of bit-packing. */
-  static void readVIntBlock(
-      IndexInput docIn,
-      long[] docBuffer,
-      long[] freqBuffer,
-      int num,
-      boolean indexHasFreq,
-      boolean decodeFreq)
-      throws IOException {
-    docIn.readGroupVInts(docBuffer, num);
-    if (indexHasFreq && decodeFreq) {
-      for (int i = 0; i < num; ++i) {
-        freqBuffer[i] = docBuffer[i] & 0x01;
-        docBuffer[i] >>= 1;
-        if (freqBuffer[i] == 0) {
-          freqBuffer[i] = docIn.readVInt();
-        }
-      }
-    } else if (indexHasFreq) {
-      for (int i = 0; i < num; ++i) {
-        docBuffer[i] >>= 1;
-      }
-    }
-  }
-
   static void prefixSum(long[] buffer, int count, long base) {
     buffer[0] += base;
     for (int i = 1; i < count; ++i) {
@@ -480,7 +455,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         blockUpto++;
       } else {
         // Read vInts:
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -783,7 +758,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         docBuffer[1] = NO_MORE_DOCS;
         blockUpto++;
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -1179,7 +1154,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         }
         blockUpto += BLOCK_SIZE;
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs, true);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -1388,7 +1363,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
       }
@@ -1779,7 +1754,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
               false; // freq block will be loaded lazily when necessary, we don't load it here
         }
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
       }

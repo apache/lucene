@@ -295,6 +295,9 @@ Improvements
 
 * GITHUB#13362: Add sub query explanations to DisjunctionMaxQuery, if the overall query didn't match. (Tim Grein)
 
+* GITHUB#13385: Add Intervals.noIntervals() method to produce an empty IntervalsSource.
+  (Aniketh Jain, Uwe Schindler, Alan Woodward))
+
 Optimizations
 ---------------------
 
@@ -341,6 +344,8 @@ Optimizations
 
 * GITHUB#13327: Reduce memory usage of field maps in FieldInfos and BlockTree TermsReader. (Bruno Roustant, David Smiley)
 
+* GITHUB#13368: Replace Map<Integer, Object> by primitive IntObjectHashMap. (Bruno Roustant)
+
 * GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
 
 Bug Fixes
@@ -376,6 +381,8 @@ Bug Fixes
 
 * GITHUB#13374: Fix bug in SQ when just a single vector present in a segment (Chris Hegarty)
 
+* GITHUB#13376: Fix integer overflow exception in postings encoding as group-varint. (Zhang Chao, Guo Feng)
+
 Build
 ---------------------
 
@@ -387,6 +394,7 @@ Other
 * GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
 
 * GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
+
 
 ======================== Lucene 9.10.0 =======================
 
