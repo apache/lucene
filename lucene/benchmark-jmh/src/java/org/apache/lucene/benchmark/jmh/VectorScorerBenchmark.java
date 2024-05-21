@@ -74,7 +74,7 @@ public class VectorScorerBenchmark {
     in = dir.openInput("vector.data", IOContext.DEFAULT);
     vectorValues = vectorValues(size, 2, in, DOT_PRODUCT);
     scorer =
-        FlatVectorScorerUtil.getFlatVectorScorer()
+        FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
             .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
             .scorer(0);
   }

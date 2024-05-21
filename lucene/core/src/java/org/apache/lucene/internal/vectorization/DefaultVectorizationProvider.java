@@ -35,7 +35,7 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public FlatVectorsScorer getFlatVectorScorer() {
+  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
     return DefaultFlatVectorScorer.INSTANCE;
   }
 }

@@ -24,14 +24,14 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
-public class MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
+public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
 
-  public static final MemorySegmentFlatVectorsScorer INSTANCE =
-      new MemorySegmentFlatVectorsScorer(DefaultFlatVectorScorer.INSTANCE);
+  public static final Lucene99MemorySegmentFlatVectorsScorer INSTANCE =
+      new Lucene99MemorySegmentFlatVectorsScorer(DefaultFlatVectorScorer.INSTANCE);
 
   private final FlatVectorsScorer delegate;
 
-  private MemorySegmentFlatVectorsScorer(FlatVectorsScorer delegate) {
+  private Lucene99MemorySegmentFlatVectorsScorer(FlatVectorsScorer delegate) {
     this.delegate = delegate;
   }
 

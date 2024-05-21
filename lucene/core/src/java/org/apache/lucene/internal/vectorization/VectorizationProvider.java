@@ -92,7 +92,8 @@ public abstract class VectorizationProvider {
    */
   public abstract VectorUtilSupport getVectorUtilSupport();
 
-  public abstract FlatVectorsScorer getFlatVectorScorer();
+  /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
+  public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
 
   // *** Lookup mechanism: ***
 

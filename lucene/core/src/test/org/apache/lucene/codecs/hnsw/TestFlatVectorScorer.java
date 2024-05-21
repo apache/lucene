@@ -64,7 +64,7 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         List.of(
             DefaultFlatVectorScorer.INSTANCE,
             new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
-            FlatVectorScorerUtil.getFlatVectorScorer());
+            FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
     var dirs =
         List.<ThrowingSupplier<Directory>>of(
             TestFlatVectorScorer::newDirectory,
@@ -80,7 +80,7 @@ public class TestFlatVectorScorer extends LuceneTestCase {
   }
 
   public void testDefaultOrMemSegScorer() {
-    var scorer = FlatVectorScorerUtil.getFlatVectorScorer();
+    var scorer = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
     assertThat(
         scorer.toString(),
         is(oneOf("DefaultFlatVectorScorer()", "MemorySegmentFlatVectorsScorer()")));
