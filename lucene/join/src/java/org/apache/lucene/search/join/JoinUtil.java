@@ -177,26 +177,11 @@ public final class JoinUtil {
             }
           };
     } else if (scoreMode == ScoreMode.Total) {
-      scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              aggregatedScores.indexInsert(index, key, score);
-            } else {
-              float currentScore = aggregatedScores.indexGet(index);
-              aggregatedScores.indexReplace(index, currentScore + score);
-            }
-          };
+      scoreAggregator = aggregatedScores::addTo;
     } else if (scoreMode == ScoreMode.Avg) {
       scoreAggregator =
           (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              aggregatedScores.indexInsert(index, key, score);
-            } else {
-              float currentScore = aggregatedScores.indexGet(index);
-              aggregatedScores.indexReplace(index, currentScore + score);
-            }
+            aggregatedScores.addTo(key, score);
             occurrences.addTo(key, 1);
           };
     } else {
