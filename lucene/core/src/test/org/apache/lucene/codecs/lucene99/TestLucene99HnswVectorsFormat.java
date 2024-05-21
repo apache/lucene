@@ -45,7 +45,7 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     String expectedPattern =
         "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
-    var memSegScorer = format(Locale.ROOT, expectedPattern, "MemorySegmentFlatVectorsScorer");
+    var memSegScorer = format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
     assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
   }
 

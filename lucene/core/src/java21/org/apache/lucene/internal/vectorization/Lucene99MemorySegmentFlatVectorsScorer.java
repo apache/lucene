@@ -88,6 +88,6 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   @Override
   public String toString() {
-    return "MemorySegmentFlatVectorsScorer()";
+    return "Lucene99MemorySegmentFlatVectorsScorer()";
   }
 }

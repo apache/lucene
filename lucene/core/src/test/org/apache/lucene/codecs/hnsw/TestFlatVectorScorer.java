@@ -83,7 +83,7 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     var scorer = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
     assertThat(
         scorer.toString(),
-        is(oneOf("DefaultFlatVectorScorer()", "MemorySegmentFlatVectorsScorer()")));
+        is(oneOf("DefaultFlatVectorScorer()", "Lucene99MemorySegmentFlatVectorsScorer()")));
   }
 
   // Tests that the creation of another scorer does not disturb previous scorers
