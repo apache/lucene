@@ -67,7 +67,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       scorers[i].advanceShallow(windowMin);
     }
 
-    float maxWindowScore = 0;
+    double maxWindowScore = 0;
     for (int i = 0; i < scorers.length; ++i) {
       float maxClauseScore = scorers[i].getMaxScore(windowMax);
       sumOfOtherClauses[i] = maxClauseScore;
@@ -76,7 +76,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     for (int i = sumOfOtherClauses.length - 2; i >= 0; --i) {
       sumOfOtherClauses[i] += sumOfOtherClauses[i + 1];
     }
-    return maxWindowScore;
+    return (float) maxWindowScore;
   }
 
   @Override
