@@ -27,8 +27,15 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.IntStream;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
@@ -40,6 +47,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.junit.BeforeClass;
 
 public class TestVectorScorer extends LuceneTestCase {
@@ -173,19 +181,20 @@ public class TestVectorScorer extends LuceneTestCase {
   public void testRandomSlice() throws IOException {
     int dims = randomIntBetween(1, 4096);
     long maxChunkSize = randomLongBetween(32, 128);
-    int size = randomIntBetween(1, 129);
-    testRandomSliceImpl(dims, maxChunkSize, size, BYTE_ARRAY_RANDOM_FUNC);
+    int initialOffset = randomIntBetween(1, 129);
+    testRandomSliceImpl(dims, maxChunkSize, initialOffset, BYTE_ARRAY_RANDOM_FUNC);
   }
 
+  // Tests with a slice that has a non-zero initial offset
   void testRandomSliceImpl(
-      int dims, long maxChunkSize, int initialPadding, Function<Integer, byte[]> byteArraySupplier)
+      int dims, long maxChunkSize, int initialOffset, Function<Integer, byte[]> byteArraySupplier)
       throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testRandomSliceImpl"), maxChunkSize)) {
       final int size = randomIntBetween(2, 100);
       final byte[][] vectors = new byte[size][];
       String fileName = "baz-" + dims;
       try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
-        byte[] ba = new byte[initialPadding];
+        byte[] ba = new byte[initialOffset];
         out.writeBytes(ba, 0, ba.length);
         for (int i = 0; i < size; i++) {
           var vec = byteArraySupplier.apply(dims);
@@ -195,7 +204,7 @@ public class TestVectorScorer extends LuceneTestCase {
       }
 
       try (var outter = dir.openInput(fileName, IOContext.DEFAULT);
-          var in = outter.slice("slice", initialPadding, outter.length() - initialPadding)) {
+          var in = outter.slice("slice", initialOffset, outter.length() - initialOffset)) {
         for (int times = 0; times < TIMES; times++) {
           for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
             var vectorValues = vectorValues(dims, size, in, sim);
@@ -216,6 +225,70 @@ public class TestVectorScorer extends LuceneTestCase {
           }
         }
       }
+    }
+  }
+
+  // Tests that copies in threads do not interfere with each other
+  public void testCopiesAcrossThreads() throws Exception {
+    final long maxChunkSize = 32;
+    final int dims = 34; // dimensions that are larger than the chunk size, to force fallback
+    byte[] vec1 = new byte[dims];
+    byte[] vec2 = new byte[dims];
+    IntStream.range(0, dims).forEach(i -> vec1[i] = 1);
+    IntStream.range(0, dims).forEach(i -> vec2[i] = 2);
+    try (Directory dir = new MMapDirectory(createTempDir("testRace"), maxChunkSize)) {
+      String fileName = "biz-" + dims;
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        byte[] bytes = concat(vec1, vec1, vec2, vec2);
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+          var vectorValues = vectorValues(dims, 4, in, sim);
+          var scoreSupplier = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
+          var expectedScore1 = scoreSupplier.scorer(0).score(1);
+          var expectedScore2 = scoreSupplier.scorer(2).score(3);
+
+          var scorer = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
+          var tasks =
+              List.<Callable<Optional<Throwable>>>of(
+                  new AssertingScoreCallable(scorer.copy().scorer(0), 1, expectedScore1),
+                  new AssertingScoreCallable(scorer.copy().scorer(2), 3, expectedScore2));
+          var executor = Executors.newFixedThreadPool(2);
+          var results = executor.invokeAll(tasks);
+          executor.shutdown();
+          assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+          assertEquals(results.stream().filter(Predicate.not(Future::isDone)).count(), 0L);
+          for (var res : results) {
+            assertTrue("Unexpected exception" + res.get(), res.get().isEmpty());
+          }
+        }
+      }
+    }
+  }
+
+  // A callable that scores the given ord and scorer and asserts the expected result.
+  static class AssertingScoreCallable implements Callable<Optional<Throwable>> {
+    final RandomVectorScorer scorer;
+    final int ord;
+    final float expectedScore;
+
+    AssertingScoreCallable(RandomVectorScorer scorer, int ord, float expectedScore) {
+      this.scorer = scorer;
+      this.ord = ord;
+      this.expectedScore = expectedScore;
+    }
+
+    @Override
+    public Optional<Throwable> call() throws Exception {
+      try {
+        for (int i = 0; i < 100; i++) {
+          assertEquals(scorer.score(ord), expectedScore, DELTA);
+        }
+      } catch (Throwable t) {
+        return Optional.of(t);
+      }
+      return Optional.empty();
     }
   }
 
