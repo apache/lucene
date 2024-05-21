@@ -32,6 +32,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.hppc.LongHashSet;
 
 /**
  * Tracks the stream of {@link FrozenBufferedUpdates}. When DocumentsWriterPerThread flushes, its
@@ -323,7 +324,7 @@ final class BufferedUpdatesStream implements Accountable {
      * This lets us track the "holes" in the current frontier of applying del gens; once the holes
      * are filled in we can advance completedDelGen.
      */
-    private final Set<Long> finishedDelGens = new HashSet<>();
+    private final LongHashSet finishedDelGens = new LongHashSet();
 
     private final InfoStream infoStream;
 

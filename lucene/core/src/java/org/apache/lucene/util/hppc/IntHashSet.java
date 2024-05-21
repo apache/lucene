@@ -20,6 +20,7 @@ package org.apache.lucene.util.hppc;
 import static org.apache.lucene.util.hppc.HashContainers.*;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -98,6 +99,12 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
     addAll(set);
   }
 
+  /** New instance copying elements from another collection. */
+  public IntHashSet(Collection<Integer> collection) {
+    this(collection.size());
+    addAll(collection);
+  }
+
   public boolean add(int key) {
     if (((key) == 0)) {
       assert ((keys[mask + 1]) == 0);
@@ -155,6 +162,16 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
     int count = 0;
     for (IntCursor cursor : iterable) {
       if (add(cursor.value)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  public int addAll(Collection<Integer> collection) {
+    int count = 0;
+    for (int element : collection) {
+      if (add(element)) {
         count++;
       }
     }
