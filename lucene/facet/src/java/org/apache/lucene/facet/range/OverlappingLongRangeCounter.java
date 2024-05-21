@@ -244,17 +244,17 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     endsMap.put(Long.MAX_VALUE, 2);
 
     for (LongRange range : ranges) {
-      int cur = endsMap.get(range.min);
-      if (cur == 0) {
-        endsMap.put(range.min, 1);
+      int index = endsMap.indexOf(range.min);
+      if (index < 0) {
+        endsMap.indexInsert(index, range.min, 1);
       } else {
-        endsMap.put(range.min, cur | 1);
+        endsMap.indexReplace(index, endsMap.indexGet(index) | 1);
       }
-      cur = endsMap.get(range.max);
-      if (cur == 0) {
-        endsMap.put(range.max, 2);
+      index = endsMap.indexOf(range.max);
+      if (index < 0) {
+        endsMap.indexInsert(index, range.max, 2);
       } else {
-        endsMap.put(range.max, cur | 2);
+        endsMap.indexReplace(index, endsMap.indexGet(index) | 2);
       }
     }
 
