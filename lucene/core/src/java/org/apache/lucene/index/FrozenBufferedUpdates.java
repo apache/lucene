@@ -475,6 +475,8 @@ final class FrozenBufferedUpdates {
       BytesRef delTerm;
       TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, true);
       while ((delTerm = iter.next()) != null) {
+        // TODO: We need docCount to judge whether match all.
+        // TODO: We can break loop, when already fully deleted. (same to delete by query)
         final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
         if (iterator != null) {
           int docID;
