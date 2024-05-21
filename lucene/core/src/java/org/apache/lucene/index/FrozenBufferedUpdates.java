@@ -412,7 +412,6 @@ final class FrozenBufferedUpdates {
             // deleted count?
             // TODO: We just Implemented isMatchAll for PointRangeQuery, Does TermRangeQuery needs
             // this?
-            // TODO: Check whether applyTermDeletes needs this.
             if (scorer.isMatchAll()) {
               delCount += segState.rld.deleteAll();
               assert segState.rld.isFullyDeleted();
@@ -475,10 +474,10 @@ final class FrozenBufferedUpdates {
       BytesRef delTerm;
       TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, true);
       while ((delTerm = iter.next()) != null) {
-        // TODO: Maybe we need postings' docCount to judge whether match all.
         final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
         if (iterator != null) {
           int docID;
+          // One term matches all docs is unusual.
           while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
             // NOTE: there is no limit check on the docID
             // when deleting by Term (unlike by Query)
