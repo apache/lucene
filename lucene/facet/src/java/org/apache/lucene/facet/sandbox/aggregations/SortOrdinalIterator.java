@@ -16,9 +16,8 @@ public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
     private final OrdToComparable<T> ordToComparable;
     private final OrdinalIterator sourceOrds;
     private final int topN;
-    private TopComparableQueue<T> queue;
-    private boolean queueIsReady = false;
-
+    private int[] result;
+    private int currentIndex;
     /** TODO */
     public SortOrdinalIterator(OrdinalIterator sourceOrds,
                                OrdToComparable<T> ordToComparable,
@@ -28,8 +27,8 @@ public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
         this.topN = topN;
     }
 
-    private void fillQueue() throws IOException {
-        assert queueIsReady == false;
+    private void getTopN() throws IOException {
+        assert result == null;
         // TODO: current taxonomy implementations limit queue size by taxo reader size too, but this
         //  probably doesn't make sense for large enough taxonomy indexes?
         //  e.g. TopOrdAndIntQueue q = new TopComparableQueue(Math.min(taxoReader.getSize(), topN));
@@ -37,26 +36,31 @@ public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
         //  to some Lucene classes already, and there must be good reason to do it?
         //  Note that getAllChildren doesn't use queues, so this is not the reason we are limiting by taxonomy size.
         // TODO: create queue lazily - skip if first nextOrd is NO_MORE_ORDS
-        this.queue = new TopComparableQueue<>(topN);
+        TopComparableQueue<T> queue = new TopComparableQueue<>(topN);
         T reuse = null;
         for (int nextOrdinal = sourceOrds.nextOrd(); nextOrdinal != NO_MORE_ORDS;) {
             reuse = ordToComparable.getComparable(nextOrdinal, reuse);
             reuse = queue.insertWithOverflow(reuse);
             nextOrdinal = sourceOrds.nextOrd();
         }
-        queueIsReady = true;
+        // Now we need to read from the queue as well as the queue gives the least element, not the top.
+        result = new int[queue.size()];
+        for(int i = result.length - 1; i >=0; i--) {
+            result[i] = queue.pop().getOrd();
+        }
+        currentIndex = 0;
     }
 
     @Override
     public int nextOrd() throws IOException {
-        if (queueIsReady == false) {
-            fillQueue();
+        if (result == null) {
+            getTopN();
         }
-        T res = queue.pop();
-        if (res == null) {
+        assert result != null;
+        if (currentIndex >= result.length) {
             return NO_MORE_ORDS;
         }
-        return res.getOrd();
+        return result[currentIndex++];
     }
 
     /** Keeps highest results, first by largest int value, then tie-break by smallest ord. */

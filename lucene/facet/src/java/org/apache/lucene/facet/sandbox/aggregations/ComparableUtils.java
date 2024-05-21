@@ -28,9 +28,9 @@ public class ComparableUtils {
 
         @Override
         public int compareTo(IntOrdComparable o) {
-            int cmp = Integer.compare(o.rank, this.rank);
+            int cmp = Integer.compare(rank, o.rank);
             if (cmp == 0) {
-                cmp = Integer.compare(ord, o.ord);
+                cmp = Integer.compare(o.ord, ord);
             }
             return cmp;
         }
@@ -62,9 +62,9 @@ public class ComparableUtils {
 
         @Override
         public int compareTo(LongIntOrdComparable o) {
-            int cmp = Long.compare(o.primaryRank, primaryRank);
+            int cmp = Long.compare(primaryRank, o.primaryRank);
             if (cmp == 0) {
-                cmp = Integer.compare(o.secondaryRank, secondaryRank);
+                cmp = Integer.compare(secondaryRank, o.secondaryRank);
                 if (cmp == 0) {
                     cmp = Integer.compare(o.ord, ord);
                 }

@@ -31,11 +31,13 @@ public class TaxonomyOrdLabels implements OrdToLabels {
 
     @Override
     public int getOrd(FacetLabel label) throws IOException {
+        assert INVALID_ORD == TaxonomyReader.INVALID_ORDINAL;
         return taxoReader.getOrdinal(label);
     }
 
     @Override
     public int[] getOrds(FacetLabel[] labels) throws IOException {
+        assert INVALID_ORD == TaxonomyReader.INVALID_ORDINAL;
         return taxoReader.getBulkOrdinals(labels);
     }
 }

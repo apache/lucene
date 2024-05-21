@@ -4,6 +4,7 @@ package org.apache.lucene.facet.sandbox.taxonomy;
 import com.carrotsearch.hppc.IntSet;
 import org.apache.lucene.facet.sandbox.abstracts.FacetCutter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafCutter;
+import org.apache.lucene.facet.sandbox.abstracts.OrdToLabels;
 import org.apache.lucene.index.LeafReaderContext;
 
 import java.io.IOException;
@@ -28,6 +29,11 @@ public final class SetFilterFacetCutter implements FacetCutter {
         this.candidateOrds = candidateOrds;
         this.maxCandidateOrd = maxCandidateOrd;
         this.minCandidateOrd = minCandidateOrd;
+        // Some guardrails to avoid inefficient use of this FacetCutter.
+        assert candidateOrds.isEmpty() == false; // TODO: Should we allow empty candidate set edge case?
+        assert candidateOrds.contains(OrdToLabels.INVALID_ORD) == false;
+        assert minCandidateOrd >= 0 && minCandidateOrd < Integer.MAX_VALUE; // TODO: Should we allow empty candidate set edge case?
+        assert maxCandidateOrd >= 0 && maxCandidateOrd < Integer.MAX_VALUE;
     }
 
     @Override
@@ -57,12 +63,14 @@ public final class SetFilterFacetCutter implements FacetCutter {
 
         @Override
         public int nextOrd() throws IOException {
-            for(int nextDelegateOrd = delegate.nextOrd();nextDelegateOrd != NO_MORE_ORDS; ) {
+            for(int nextDelegateOrd = delegate.nextOrd(); nextDelegateOrd != NO_MORE_ORDS; ) {
                 if (nextDelegateOrd > maxCandidateOrd) {
                     return NO_MORE_ORDS;
                 } else if (nextDelegateOrd >= minCandidateOrd && candidateOrds.contains(nextDelegateOrd)) {
                     return nextDelegateOrd;
                 }
+                // TODO: hmm, why don't we do it in the for loop?? Compiler does move it to the for loop I think.
+                nextDelegateOrd = delegate.nextOrd();
             }
             return NO_MORE_ORDS;
         }

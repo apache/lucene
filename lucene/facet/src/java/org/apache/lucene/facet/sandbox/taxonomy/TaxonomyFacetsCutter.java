@@ -10,6 +10,7 @@ import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 
@@ -72,7 +73,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
     @Override
     public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
-        SortedNumericDocValues multiValued = FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
+        SortedNumericDocValues multiValued = DocValues.getSortedNumeric(context.reader(), indexFieldName);
         if (multiValued == null) {
             return null; // TODO: oh not not null!
         }

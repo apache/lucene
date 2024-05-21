@@ -12,7 +12,12 @@ import java.io.IOException;
  */
 public interface OrdToLabels {
 
-    /** get label of one ord */
+    /** Ordinal to return if facet label doesn't exist in {@link #getOrd(FacetLabel)}
+     * and {@link #getOrds(FacetLabel[])} */
+    int INVALID_ORD = -1;
+
+    /** get label of one ord
+     * TODO: what do we return when ordinal is not valid? */
     FacetLabel getLabel(int ordinal) throws IOException;
 
     /**
