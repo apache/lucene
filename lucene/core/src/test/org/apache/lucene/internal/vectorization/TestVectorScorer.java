@@ -46,6 +46,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -71,7 +72,7 @@ public class TestVectorScorer extends LuceneTestCase {
   }
 
   public void testSimpleScorerSmallChunkSize() throws IOException {
-    long maxChunkSize = random().nextLong(4, 16);
+    long maxChunkSize = TestUtil.nextLong(random(), 4, 16);
     testSimpleScorer(maxChunkSize);
   }
 
@@ -315,8 +316,8 @@ public class TestVectorScorer extends LuceneTestCase {
             int ord1 = randomIntBetween(0, size - 1);
             int ord2 = size - 1;
             for (var ords : List.of(List.of(ord1, ord2), List.of(ord2, ord1))) {
-              int idx0 = ords.getFirst();
-              int idx1 = ords.getLast();
+              int idx0 = ords.get(0);
+              int idx1 = ords.get(1);
 
               // getRandomVectorScorerSupplier
               var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);

@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
+
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
@@ -26,7 +31,7 @@ import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
-abstract sealed class Lucene99MemorySegmentByteVectorScorer
+abstract class Lucene99MemorySegmentByteVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer {
 
   final int vectorByteSize;
@@ -44,17 +49,22 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
       RandomAccessVectorValues values,
       byte[] queryVector) {
     input = FilterIndexInput.unwrapOnlyTest(input);
-    if (!(input instanceof MemorySegmentAccessInput msInput)) {
+    if (!(input instanceof MemorySegmentAccessInput)) {
       return Optional.empty();
     }
+    MemorySegmentAccessInput msInput = (MemorySegmentAccessInput) input;
     checkInvariants(values.size(), values.getVectorByteLength(), input);
-    return switch (type) {
-      case COSINE -> Optional.of(new CosineScorer(msInput, values, queryVector));
-      case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector));
-      case EUCLIDEAN -> Optional.of(new EuclideanScorer(msInput, values, queryVector));
-      case MAXIMUM_INNER_PRODUCT -> Optional.of(
-          new MaxInnerProductScorer(msInput, values, queryVector));
-    };
+    if (type == COSINE) {
+      return Optional.of(new CosineScorer(msInput, values, queryVector));
+    } else if (type == DOT_PRODUCT) {
+      return Optional.of(new DotProductScorer(msInput, values, queryVector));
+    } else if (type == EUCLIDEAN) {
+      return Optional.of(new EuclideanScorer(msInput, values, queryVector));
+    } else if (type == MAXIMUM_INNER_PRODUCT) {
+      return Optional.of(new MaxInnerProductScorer(msInput, values, queryVector));
+    } else {
+      throw new IllegalArgumentException("unknown type: " + type);
+    }
   }
 
   Lucene99MemorySegmentByteVectorScorer(
