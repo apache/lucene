@@ -16,11 +16,15 @@
  */
 package org.apache.lucene.codecs.lucene99;
 
+import static java.lang.String.format;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
@@ -222,9 +226,12 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 10, 20, 1, (byte) 4, false, 0.9f, null);
           }
         };
-    String expectedString =
-        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=ScalarQuantizedVectorScorer(nonQuantizedDelegate=DefaultFlatVectorScorer()), rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=DefaultFlatVectorScorer())))";
-    assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
+    String expectedPattern =
+        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=ScalarQuantizedVectorScorer(nonQuantizedDelegate=DefaultFlatVectorScorer()), rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
+    var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
+    var memSegScorer =
+        format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
+    assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
   }
 
   public void testLimits() {

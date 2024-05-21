@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.store;
 
 import java.io.IOException;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -25,6 +26,11 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * opening an input throws exception
  */
 class SlowOpeningMockIndexInputWrapper extends MockIndexInputWrapper {
+
+  static {
+    TestSecrets.getFilterInputIndexAccess()
+        .addTestFilterType(SlowOpeningMockIndexInputWrapper.class);
+  }
 
   public SlowOpeningMockIndexInputWrapper(
       MockDirectoryWrapper dir, String name, IndexInput delegate) throws IOException {
