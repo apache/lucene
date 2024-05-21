@@ -31,10 +31,10 @@ public final class FlatVectorScorerUtil {
   private FlatVectorScorerUtil() {}
 
   /**
-   * Creates a new flat vector scorer. Scorers created through this factory method may be optimized
-   * on certain platforms. Otherwise, a DefaultFlatVectorScorer is returned.
+   * Gets a flat vector scorer. Scorers retrieved through this method may be optimized on certain
+   * platforms. Otherwise, a DefaultFlatVectorScorer is returned.
    */
-  public static FlatVectorsScorer newFlatVectorScorer() {
+  public static FlatVectorsScorer getFlatVectorScorer() {
     return IMPL.getFlatVectorScorer();
   }
 }
