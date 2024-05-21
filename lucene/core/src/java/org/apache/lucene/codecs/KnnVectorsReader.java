@@ -19,17 +19,34 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.Bits;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable {
+
+  /**
+   * SIMILAIRTY_FUNCTION_MAP containing hardcoded mapping for ordinal to vectorSimilarityFunction
+   * name
+   */
+  public static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP = new HashMap<>();
+
+  static {
+    SIMILARITY_FUNCTIONS_MAP.put(0, "EUC");
+    SIMILARITY_FUNCTIONS_MAP.put(1, "DOTP");
+    SIMILARITY_FUNCTIONS_MAP.put(2, "COS");
+    SIMILARITY_FUNCTIONS_MAP.put(3, "MIP");
+  }
 
   /** Sole constructor */
   protected KnnVectorsReader() {}
@@ -122,5 +139,19 @@ public abstract class KnnVectorsReader implements Closeable {
    */
   public KnnVectorsReader getMergeInstance() {
     return this;
+  }
+
+  /**
+   * * Returns VectorSimilarityFunction for given DataInput
+   *
+   * @param input DataInput containing index info
+   */
+  public static VectorSimilarityFunction readSimilarityFunction(DataInput input)
+      throws IOException {
+    int i = input.readInt();
+    if (i < 0 || i >= SIMILARITY_FUNCTIONS_MAP.size()) {
+      throw new IllegalArgumentException("invalid distance function: " + i);
+    }
+    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get(i));
   }
 }

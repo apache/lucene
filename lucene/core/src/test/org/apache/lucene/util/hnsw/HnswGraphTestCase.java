@@ -21,7 +21,6 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.tests.util.RamUsageTester.ramUsed;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -52,6 +52,8 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -283,8 +285,15 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     int M = random().nextInt(10) + 5;
     int beamWidth = random().nextInt(10) + 10;
+    var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
+    List<String> similarityFunctionsName = new ArrayList<>();
+    for (var function : similarityFunctions) {
+      similarityFunctionsName.add(function.getName());
+    }
+
     VectorSimilarityFunction similarityFunction =
-        RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+        VectorSimilarityFunction.forName(
+            similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
     long seed = random().nextLong();
     HnswGraphBuilder.randSeed = seed;
     IndexWriterConfig iwc =
@@ -459,7 +468,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   @SuppressWarnings("unchecked")
   public void testAknnDiverse() throws IOException {
     int nDoc = 100;
-    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    similarityFunction = new DotProductVectorSimilarityFunction();
     RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 100, random().nextInt());
@@ -493,7 +502,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   public void testSearchWithAcceptOrds() throws IOException {
     int nDoc = 100;
     RandomAccessVectorValues vectors = circularVectorValues(nDoc);
-    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    similarityFunction = new DotProductVectorSimilarityFunction();
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
@@ -518,7 +527,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   public void testSearchWithSelectiveAcceptOrds() throws IOException {
     int nDoc = 100;
     RandomAccessVectorValues vectors = circularVectorValues(nDoc);
-    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    similarityFunction = new DotProductVectorSimilarityFunction();
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
@@ -709,7 +718,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   @SuppressWarnings("unchecked")
   public void testVisitedLimit() throws IOException {
     int nDoc = 500;
-    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    similarityFunction = new DotProductVectorSimilarityFunction();
     RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
@@ -744,7 +753,15 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int dim = randomIntBetween(100, 1024);
     int M = randomIntBetween(4, 96);
 
-    similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+    var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
+    List<String> similarityFunctionsName = new ArrayList<>();
+    for (var function : similarityFunctions) {
+      similarityFunctionsName.add(function.getName());
+    }
+
+    similarityFunction =
+        VectorSimilarityFunction.forName(
+            similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
     RandomAccessVectorValues vectors = vectorValues(size, dim);
 
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
@@ -759,7 +776,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   @SuppressWarnings("unchecked")
   public void testDiversity() throws IOException {
-    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    similarityFunction = new DotProductVectorSimilarityFunction();
     // Some carefully checked test cases with simple 2d vectors on the unit circle:
     float[][] values = {
       unitVector2d(0.5),
@@ -812,7 +829,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   public void testDiversityFallback() throws IOException {
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = new EuclideanVectorSimilarityFunction();
     // Some test cases can't be exercised in two dimensions;
     // in particular if a new neighbor displaces an existing neighbor
     // by being closer to the target, yet none of the existing neighbors is closer to the new vector
@@ -846,7 +863,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   public void testDiversity3d() throws IOException {
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = new EuclideanVectorSimilarityFunction();
     // test the case when a neighbor *becomes* non-diverse when a newer better neighbor arrives
     float[][] values = {
       {0, 0, 0},

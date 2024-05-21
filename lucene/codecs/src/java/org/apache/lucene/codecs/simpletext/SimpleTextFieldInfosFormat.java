@@ -219,7 +219,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   }
 
   public VectorSimilarityFunction distanceFunction(String scoreFunction) {
-    return VectorSimilarityFunction.valueOf(scoreFunction);
+    return VectorSimilarityFunction.forName(scoreFunction);
   }
 
   private String readString(int offset, BytesRefBuilder scratch) {
@@ -319,7 +319,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, VECTOR_SIMILARITY);
-        SimpleTextUtil.write(out, fi.getVectorSimilarityFunction().name(), scratch);
+        SimpleTextUtil.write(out, fi.getVectorSimilarityFunction().getName(), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, SOFT_DELETES);

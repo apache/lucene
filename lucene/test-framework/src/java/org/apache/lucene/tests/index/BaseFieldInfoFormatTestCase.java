@@ -18,11 +18,14 @@ package org.apache.lucene.tests.index;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.ServiceLoader;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
@@ -30,6 +33,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
@@ -328,6 +332,17 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
   }
 
+  private VectorSimilarityFunction randomSimilarity() {
+
+    var expectedFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
+    List<String> expectedFunctionsName = new ArrayList<>();
+    for (var function : expectedFunctions) {
+      expectedFunctionsName.add(function.getName());
+    }
+    return VectorSimilarityFunction.forName(
+        expectedFunctionsName.get(random().nextInt(expectedFunctionsName.size())));
+  }
+
   private IndexableFieldType randomFieldType(Random r, String fieldName) {
     FieldType type = new FieldType();
 
@@ -362,8 +377,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     if (r.nextBoolean() && getVectorsMaxDimensions(fieldName) > 0) {
       int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
-      VectorSimilarityFunction similarityFunction =
-          RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
+      VectorSimilarityFunction similarityFunction = randomSimilarity();
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
       type.setVectorAttributes(dimension, encoding, similarityFunction);
     }
@@ -436,7 +450,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         0,
         VectorEncoding.FLOAT32,
-        VectorSimilarityFunction.EUCLIDEAN,
+        new EuclideanVectorSimilarityFunction(),
         false,
         false);
   }

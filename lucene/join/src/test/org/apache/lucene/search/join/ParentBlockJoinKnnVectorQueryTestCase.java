@@ -35,7 +35,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -347,7 +346,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
   abstract Field getKnnVectorField(String name, float[] vector);
 
   abstract Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction);
+      String name, float[] vector, String vectorSimilarityFunctionName);
 
   private void assertMatches(IndexSearcher searcher, Query q, int expectedMatches)
       throws IOException {

@@ -86,7 +86,7 @@ public abstract class VectorSimilarityFunction extends ValueSource {
 
   @Override
   public String description() {
-    return similarityFunction.name()
+    return similarityFunction.getName()
         + "("
         + vector1.description()
         + ", "

@@ -24,9 +24,9 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.queries.function.valuesource.ByteKnnVectorFieldSource;
 import org.apache.lucene.queries.function.valuesource.ByteVectorSimilarityFunction;
 import org.apache.lucene.queries.function.valuesource.ConstKnnByteVectorValueSource;
@@ -54,6 +54,9 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   static Analyzer analyzer;
   static IndexReader reader;
   static IndexSearcher searcher;
+
+  static EuclideanVectorSimilarityFunction euclideanVectorSimilarityFunction =
+      new EuclideanVectorSimilarityFunction();
   static final List<String> documents = List.of("1", "2");
 
   @BeforeClass
@@ -114,7 +117,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v2 = new ConstKnnFloatValueSource(new float[] {5, 4, 1});
     assertHits(
         new FunctionQuery(
-            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new FloatVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2)),
         new float[] {0.04f, 0.04f});
   }
 
@@ -124,7 +127,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v2 = new ConstKnnByteVectorValueSource(new byte[] {2, 5, 6});
     assertHits(
         new FunctionQuery(
-            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new ByteVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2)),
         new float[] {0.05f, 0.05f});
   }
 
@@ -134,7 +137,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v2 = new FloatKnnVectorFieldSource("knnFloatField2");
     assertHits(
         new FunctionQuery(
-            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new FloatVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2)),
         new float[] {0.049776014f, 0.049776014f});
   }
 
@@ -144,7 +147,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v2 = new ByteKnnVectorFieldSource("knnByteField2");
     assertHits(
         new FunctionQuery(
-            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new ByteVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2)),
         new float[] {0.1f, 0.1f});
   }
 
@@ -155,7 +158,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v2 = new FloatKnnVectorFieldSource("knnFloatField1");
     assertHits(
         new FunctionQuery(
-            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new FloatVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2)),
         new float[] {0.5f, 0.5f});
   }
 
@@ -166,7 +169,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v2 = new ByteKnnVectorFieldSource("knnByteField1");
     assertHits(
         new FunctionQuery(
-            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new ByteVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2)),
         new float[] {0.5f, 0.5f});
   }
 
@@ -176,7 +179,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v2 = new FloatKnnVectorFieldSource("knnFloatField3");
     assertHits(
         new FunctionQuery(
-            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new FloatVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2)),
         new float[] {0.5f, 0.f});
   }
 
@@ -186,7 +189,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v2 = new ByteKnnVectorFieldSource("knnByteField3");
     assertHits(
         new FunctionQuery(
-            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new ByteVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2)),
         new float[] {0.5f, 0.f});
   }
 
@@ -195,7 +198,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     ValueSource v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 3, 4});
     ValueSource v2 = new ByteKnnVectorFieldSource("knnByteField1");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
-        new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new ByteVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2);
     assertThrows(
         AssertionError.class,
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
@@ -203,7 +206,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     v1 = new ConstKnnFloatValueSource(new float[] {1.f, 2.f});
     v2 = new FloatKnnVectorFieldSource("knnFloatField1");
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
-        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new FloatVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2);
     assertThrows(
         AssertionError.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
@@ -214,7 +217,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     var v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 3});
     ValueSource v2 = new ByteKnnVectorFieldSource("knnByteField1");
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
-        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new FloatVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2);
     assertThrows(
         UnsupportedOperationException.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
@@ -222,7 +225,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 3});
     v2 = new FloatKnnVectorFieldSource("knnFloatField1");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
-        new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new ByteVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2);
     assertThrows(
         UnsupportedOperationException.class,
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
@@ -233,7 +236,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     ValueSource v1 = new ByteKnnVectorFieldSource("knnByteField1");
     ValueSource v2 = new ByteKnnVectorFieldSource("knnFloatField2");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
-        new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new ByteVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2);
 
     assertThrows(
         IllegalStateException.class,
@@ -242,7 +245,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     v1 = new FloatKnnVectorFieldSource("knnByteField1");
     v2 = new FloatKnnVectorFieldSource("knnFloatField2");
     FloatVectorSimilarityFunction floatVectorSimilarityFunction =
-        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new FloatVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2);
 
     assertThrows(
         IllegalStateException.class,
@@ -250,7 +253,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
 
     v1 = new FloatKnnVectorFieldSource("id");
     FloatVectorSimilarityFunction idVectorSimilarityFunction =
-        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new FloatVectorSimilarityFunction(euclideanVectorSimilarityFunction, v1, v2);
 
     assertThrows(
         IllegalStateException.class,

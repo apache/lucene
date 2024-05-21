@@ -100,7 +100,8 @@ import org.apache.lucene.util.SmallFloat;
  * Where <i>V(q)</i> &middot; <i>V(d)</i> is the <a
  * href="http://en.wikipedia.org/wiki/Dot_product">dot product</a> of the weighted vectors, and
  * <i>|V(q)|</i> and <i>|V(d)|</i> are their <a
- * href="http://en.wikipedia.org/wiki/Euclidean_norm#Euclidean_norm">Euclidean norms</a>.
+ * href="http://en.wikipedia.org/wiki/Euclidean_norm#Euclidean_norm">EuclideanVectorSimilarityFunction
+ * norms</a>.
  *
  * <p>Note: the above equation can be viewed as the dot product of the normalized weighted vectors,
  * in the sense that dividing <i>V(q)</i> by its euclidean norm is normalizing it to a unit vector.
@@ -185,11 +186,12 @@ import org.apache.lucene.util.SmallFloat;
  * <ul>
  *   <li><i>Query-boost</i> for the query (actually for each query term) is known when search
  *       starts.
- *   <li>Query Euclidean norm <i>|V(q)|</i> can be computed when search starts, as it is independent
- *       of the document being scored. From search optimization perspective, it is a valid question
- *       why bother to normalize the query at all, because all scored documents will be multiplied
- *       by the same <i>|V(q)|</i>, and hence documents ranks (their order by score) will not be
- *       affected by this normalization. There are two good reasons to keep this normalization:
+ *   <li>Query EuclideanVectorSimilarityFunction norm <i>|V(q)|</i> can be computed when search
+ *       starts, as it is independent of the document being scored. From search optimization
+ *       perspective, it is a valid question why bother to normalize the query at all, because all
+ *       scored documents will be multiplied by the same <i>|V(q)|</i>, and hence documents ranks
+ *       (their order by score) will not be affected by this normalization. There are two good
+ *       reasons to keep this normalization:
  *       <ul>
  *         <li>Recall that <a href="http://en.wikipedia.org/wiki/Cosine_similarity">Cosine
  *             Similarity</a> can be used find how similar two documents are. One can use Lucene for

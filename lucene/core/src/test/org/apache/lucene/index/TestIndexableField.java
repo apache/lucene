@@ -122,7 +122,7 @@ public class TestIndexableField extends LuceneTestCase {
 
           @Override
           public VectorSimilarityFunction vectorSimilarityFunction() {
-            return VectorSimilarityFunction.EUCLIDEAN;
+            return new EuclideanVectorSimilarityFunction();
           }
 
           @Override

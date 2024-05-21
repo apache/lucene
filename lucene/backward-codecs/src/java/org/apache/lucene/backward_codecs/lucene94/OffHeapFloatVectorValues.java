@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene94;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.index.CosineVectorSimilarityFunction;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -268,7 +269,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
   private static class EmptyOffHeapVectorValues extends OffHeapFloatVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, null, VectorSimilarityFunction.COSINE, 0);
+      super(dimension, 0, null, new CosineVectorSimilarityFunction(), 0);
     }
 
     private int doc = -1;

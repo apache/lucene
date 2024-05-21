@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
@@ -80,8 +81,15 @@ public class TestKnnGraph extends LuceneTestCase {
       M = random().nextInt(256) + 3;
     }
 
-    int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
-    similarityFunction = VectorSimilarityFunction.values()[similarity];
+    var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
+    List<String> similarityFunctionsName = new ArrayList<>();
+    for (var function : similarityFunctions) {
+      similarityFunctionsName.add(function.getName());
+    }
+
+    similarityFunction =
+        VectorSimilarityFunction.forName(
+            similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
     vectorEncoding = randomVectorEncoding();
     boolean quantized = randomBoolean();
     codec =
@@ -144,7 +152,7 @@ public class TestKnnGraph extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
-      if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+      if (similarityFunction.getName().equals("DOTP")) {
         VectorUtil.l2normalize(values[0]);
       }
       if (vectorEncoding == VectorEncoding.BYTE) {
@@ -242,7 +250,7 @@ public class TestKnnGraph extends LuceneTestCase {
   /** Verify that searching does something reasonable */
   public void testSearch() throws Exception {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = new EuclideanVectorSimilarityFunction();
     IndexWriterConfig config = newIndexWriterConfig();
     config.setCodec(float32Codec);
     try (Directory dir = newDirectory();
@@ -298,7 +306,7 @@ public class TestKnnGraph extends LuceneTestCase {
   }
 
   public void testMultiThreadedSearch() throws Exception {
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = new EuclideanVectorSimilarityFunction();
     IndexWriterConfig config = newIndexWriterConfig();
     config.setCodec(float32Codec);
     Directory dir = newDirectory();

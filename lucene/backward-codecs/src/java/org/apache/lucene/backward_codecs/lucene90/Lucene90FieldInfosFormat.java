@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -31,12 +32,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.*;
 
 /**
  * Lucene 9.0 Field Infos format.
@@ -103,15 +99,26 @@ import org.apache.lucene.store.IndexOutput;
  *   <li>VectorSimilarityFunction: a byte containing distance function used for similarity
  *       calculation.
  *       <ul>
- *         <li>0: EUCLIDEAN distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
- *         <li>1: DOT_PRODUCT similarity. ({@link VectorSimilarityFunction#DOT_PRODUCT})
- *         <li>2: COSINE similarity. ({@link VectorSimilarityFunction#COSINE})
+ *         <li>0: EUCLIDEAN distance. ({@link
+ *             org.apache.lucene.index.EuclideanVectorSimilarityFunction})
+ *         <li>1: DOT_PRODUCT similarity. ({@link
+ *             org.apache.lucene.index.DotProductVectorSimilarityFunction})
+ *         <li>2: COSINE similarity. ({@link
+ *             org.apache.lucene.index.CosineVectorSimilarityFunction})
  *       </ul>
  * </ul>
  *
  * @lucene.experimental
  */
 public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
+
+  private static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP = new HashMap<>();
+
+  static {
+    SIMILARITY_FUNCTIONS_MAP.put(0, "EUC");
+    SIMILARITY_FUNCTIONS_MAP.put(1, "DOTP");
+    SIMILARITY_FUNCTIONS_MAP.put(2, "COS");
+  }
 
   /** Sole constructor. */
   public Lucene90FieldInfosFormat() {}
@@ -174,7 +181,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
             pointNumBytes = 0;
           }
           final int vectorDimension = input.readVInt();
-          final VectorSimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
+          final VectorSimilarityFunction vectorDistFunc = getDistFunc(input);
 
           try {
             infos[i] =
@@ -257,11 +264,20 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    if (b < 0 || b >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException("invalid distance function: " + b, input);
+  //  private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws
+  // IOException {
+  //    if (b < 0 || b >= VectorSimilarityFunction.values().length) {
+  //      throw new CorruptIndexException("invalid distance function: " + b, input);
+  //    }
+  //    return VectorSimilarityFunction.values()[b];
+  //  }
+
+  public static VectorSimilarityFunction getDistFunc(DataInput input) throws IOException {
+    int i = input.readInt();
+    if (i < 0 || i >= SIMILARITY_FUNCTIONS_MAP.size()) {
+      throw new IllegalArgumentException("invalid distance function: " + i);
     }
-    return VectorSimilarityFunction.values()[b];
+    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get(i));
   }
 
   static {
@@ -350,7 +366,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
           output.writeVInt(fi.getPointNumBytes());
         }
         output.writeVInt(fi.getVectorDimension());
-        output.writeByte((byte) fi.getVectorSimilarityFunction().ordinal());
+        output.writeByte((byte) fi.getVectorSimilarityFunction().getOrdinal());
       }
       CodecUtil.writeFooter(output);
     }

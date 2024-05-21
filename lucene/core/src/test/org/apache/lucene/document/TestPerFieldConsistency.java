@@ -25,7 +25,10 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLong;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.ServiceLoader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
@@ -88,8 +91,15 @@ public class TestPerFieldConsistency extends LuceneTestCase {
   }
 
   private static Field randomKnnVectorField(Random random, String fieldName) {
+    var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
+    List<String> similarityFunctionsName = new ArrayList<>();
+    for (var function : similarityFunctions) {
+      similarityFunctionsName.add(function.getName());
+    }
+
     VectorSimilarityFunction similarityFunction =
-        RandomPicks.randomFrom(random, VectorSimilarityFunction.values());
+        VectorSimilarityFunction.forName(
+            similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
     float[] values = new float[randomIntBetween(1, 10)];
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();

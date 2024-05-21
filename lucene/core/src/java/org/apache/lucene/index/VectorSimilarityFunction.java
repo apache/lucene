@@ -16,104 +16,58 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.VectorUtil.cosine;
-import static org.apache.lucene.util.VectorUtil.dotProduct;
-import static org.apache.lucene.util.VectorUtil.dotProductScore;
-import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
-import static org.apache.lucene.util.VectorUtil.squareDistance;
+import org.apache.lucene.util.NamedSPILoader;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
  * vector. This is a label describing the method used during indexing and searching of the vectors
  * in order to determine the nearest neighbors.
  */
-public enum VectorSimilarityFunction {
+public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSPI {
 
-  /** Euclidean distance */
-  EUCLIDEAN {
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return 1 / (1 + squareDistance(v1, v2));
+  private static class Holder {
+    private static final NamedSPILoader<VectorSimilarityFunction> LOADER =
+        new NamedSPILoader<>(VectorSimilarityFunction.class);
+
+    static NamedSPILoader<VectorSimilarityFunction> getLoader() {
+      if (LOADER == null) {
+        throw new IllegalStateException(
+            "You tried to lookup a SortFieldProvider by name before all SortFieldProviders could be initialized. "
+                + "This likely happens if you call SortFieldProvider#forName from a SortFieldProviders's ctor.");
+      }
+      return LOADER;
     }
+  }
 
-    @Override
-    public float compare(byte[] v1, byte[] v2) {
-      return 1 / (1f + squareDistance(v1, v2));
-    }
-  },
+  private final String name;
+  private final int ordinal;
 
-  /**
-   * Dot product. NOTE: this similarity is intended as an optimized way to perform cosine
-   * similarity. In order to use it, all vectors must be normalized, including both document and
-   * query vectors. Using dot product with vectors that are not normalized can result in errors or
-   * poor search results. Floating point vectors must be normalized to be of unit length, while byte
-   * vectors should simply all have the same norm.
-   */
-  DOT_PRODUCT {
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return Math.max((1 + dotProduct(v1, v2)) / 2, 0);
-    }
+  /** Construct onbject with function name and ordinal value */
+  protected VectorSimilarityFunction(String name, int ordinal) {
+    NamedSPILoader.checkServiceName(name);
+    this.name = name;
+    this.ordinal = ordinal;
+  }
 
-    @Override
-    public float compare(byte[] v1, byte[] v2) {
-      return dotProductScore(v1, v2);
-    }
-  },
+  /** Get name of VectorSimilarityFunction used by the object */
+  @Override
+  public String getName() {
+    return name;
+  }
 
-  /**
-   * Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize all
-   * vectors to unit length, and instead use {@link VectorSimilarityFunction#DOT_PRODUCT}. You
-   * should only use this function if you need to preserve the original vectors and cannot normalize
-   * them in advance. The similarity score is normalised to assure it is positive.
-   */
-  COSINE {
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return Math.max((1 + cosine(v1, v2)) / 2, 0);
-    }
+  /** Get ordinal of VectorSimilarityFunction used by the object */
+  public int getOrdinal() {
+    return ordinal;
+  }
 
-    @Override
-    public float compare(byte[] v1, byte[] v2) {
-      return (1 + cosine(v1, v2)) / 2;
-    }
-  },
-
-  /**
-   * Maximum inner product. This is like {@link VectorSimilarityFunction#DOT_PRODUCT}, but does not
-   * require normalization of the inputs. Should be used when the embedding vectors store useful
-   * information within the vector magnitude
-   */
-  MAXIMUM_INNER_PRODUCT {
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return scaleMaxInnerProductScore(dotProduct(v1, v2));
-    }
-
-    @Override
-    public float compare(byte[] v1, byte[] v2) {
-      return scaleMaxInnerProductScore(dotProduct(v1, v2));
-    }
-  };
-
-  /**
-   * Calculates a similarity score between the two vectors with a specified function. Higher
-   * similarity scores correspond to closer vectors.
-   *
-   * @param v1 a vector
-   * @param v2 another vector, of the same dimension
-   * @return the value of the similarity function applied to the two vectors
-   */
+  /** Compares two float vector */
   public abstract float compare(float[] v1, float[] v2);
 
-  /**
-   * Calculates a similarity score between the two vectors with a specified function. Higher
-   * similarity scores correspond to closer vectors. Each (signed) byte represents a vector
-   * dimension.
-   *
-   * @param v1 a vector
-   * @param v2 another vector, of the same dimension
-   * @return the value of the similarity function applied to the two vectors
-   */
+  /** Compares two byte vector */
   public abstract float compare(byte[] v1, byte[] v2);
+
+  /** look up for VectorSimilarityFunction using name */
+  public static VectorSimilarityFunction forName(String name) {
+    return Holder.getLoader().lookup(name);
+  }
 }

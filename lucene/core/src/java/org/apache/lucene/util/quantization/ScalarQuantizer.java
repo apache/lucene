@@ -117,7 +117,7 @@ public class ScalarQuantizer {
     for (int i = 0; i < src.length; i++) {
       correction += quantizeFloat(src[i], dest, i);
     }
-    if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
+    if (similarityFunction.getName().equals("EUC")) {
       return 0;
     }
     return correction;
@@ -159,7 +159,7 @@ public class ScalarQuantizer {
       byte[] quantizedVector,
       ScalarQuantizer oldQuantizer,
       VectorSimilarityFunction similarityFunction) {
-    if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
+    if (similarityFunction.getName().equals("EUC")) {
       return 0f;
     }
     float correctiveOffset = 0f;

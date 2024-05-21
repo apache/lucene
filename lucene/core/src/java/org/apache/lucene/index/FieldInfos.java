@@ -605,7 +605,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   0,
                   VectorEncoding.FLOAT32,
-                  VectorSimilarityFunction.EUCLIDEAN,
+                  new EuclideanVectorSimilarityFunction(),
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)),
                   (parentFieldName != null && parentFieldName.equals(fieldName)));
           addOrGet(fi);
@@ -689,7 +689,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           0,
           VectorEncoding.FLOAT32,
-          VectorSimilarityFunction.EUCLIDEAN,
+          new EuclideanVectorSimilarityFunction(),
           isSoftDeletesField,
           isParentField);
     }

@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 
 import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
@@ -85,8 +86,9 @@ public class KnnByteVectorField extends Field {
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
-   * be constant-length.
+   * some vector similarities (like {@link
+   * org.apache.lucene.index.DotProductVectorSimilarityFunction}) require values to be
+   * constant-length.
    *
    * @param name field name
    * @param vector value
@@ -111,7 +113,7 @@ public class KnnByteVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnByteVectorField(String name, byte[] vector) {
-    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
+    this(name, vector, new EuclideanVectorSimilarityFunction());
   }
 
   /**

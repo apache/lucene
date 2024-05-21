@@ -17,8 +17,6 @@
 
 package org.apache.lucene.search.join;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,9 +51,9 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
   }
 
   @Override
-  Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction) {
-    return new KnnByteVectorField(name, fromFloat(vector), vectorSimilarityFunction);
+  Field getKnnVectorField(String name, float[] vector, String vectorSimilarityFunctionName) {
+    return new KnnByteVectorField(
+        name, fromFloat(vector), VectorSimilarityFunction.forName(vectorSimilarityFunctionName));
   }
 
   public void testVectorEncodingMismatch() throws IOException {
@@ -65,7 +63,7 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
               d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         List<Document> toAdd = new ArrayList<>();
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 1}, COSINE));
+        doc.add(getKnnVectorField("field", new float[] {1, 1}, "COS"));
         toAdd.add(doc);
         toAdd.add(makeParent(new int[] {1}));
         w.addDocuments(toAdd);

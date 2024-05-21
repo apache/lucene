@@ -1235,17 +1235,17 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
         sb.append("K");
         sb.append(String.format(Locale.ENGLISH, "%04d", f.getVectorDimension()));
         sb.append("/");
-        switch (f.getVectorSimilarity()) {
-          case COSINE:
+        switch (f.getVectorSimilarity().getName()) {
+          case "COS":
             sb.append("cos");
             break;
-          case DOT_PRODUCT:
+          case "DOTP":
             sb.append("dot");
             break;
-          case EUCLIDEAN:
+          case "EUC":
             sb.append("euc");
             break;
-          case MAXIMUM_INNER_PRODUCT:
+          case "MIP":
             sb.append("mip");
             break;
           default:

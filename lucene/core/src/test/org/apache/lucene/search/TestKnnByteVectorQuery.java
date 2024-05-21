@@ -19,11 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.QueryTimeout;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
 
@@ -57,7 +53,8 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
-    return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
+    return new KnnByteVectorField(
+        name, floatToBytes(vector), new EuclideanVectorSimilarityFunction());
   }
 
   private static byte[] floatToBytes(float[] query) {

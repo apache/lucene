@@ -30,12 +30,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -50,7 +45,7 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final int DOC_COUNT = 30;
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
-      KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+      KnnFloatVectorField.createFieldType(3, new CosineVectorSimilarityFunction());
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   public TestInt8HnswBackwardsCompatibility(Version version, String pattern) {

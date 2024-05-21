@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.util.Random;
+import java.util.ServiceLoader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -123,7 +124,8 @@ public class TestVectorUtil extends LuceneTestCase {
       v1[i] = 0.888888f;
       v2[i] = -0.777777f;
     }
-    for (VectorSimilarityFunction vectorSimilarityFunction : VectorSimilarityFunction.values()) {
+    for (VectorSimilarityFunction vectorSimilarityFunction :
+        ServiceLoader.load(VectorSimilarityFunction.class)) {
       float v = vectorSimilarityFunction.compare(v1, v2);
       assertTrue(vectorSimilarityFunction + " expected >=0 got:" + v, v >= 0);
     }

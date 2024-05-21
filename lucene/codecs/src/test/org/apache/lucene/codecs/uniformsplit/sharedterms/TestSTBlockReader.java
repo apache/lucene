@@ -34,15 +34,7 @@ import org.apache.lucene.codecs.uniformsplit.FSTDictionary;
 import org.apache.lucene.codecs.uniformsplit.FieldMetadata;
 import org.apache.lucene.codecs.uniformsplit.IndexDictionary;
 import org.apache.lucene.codecs.uniformsplit.TermBytes;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.*;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
@@ -205,7 +197,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         0,
         0,
         VectorEncoding.FLOAT32,
-        VectorSimilarityFunction.EUCLIDEAN,
+        new EuclideanVectorSimilarityFunction(),
         false,
         false);
   }

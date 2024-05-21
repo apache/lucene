@@ -1437,7 +1437,8 @@ final class IndexingChain implements Accountable {
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
-    private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    private VectorSimilarityFunction vectorSimilarityFunction =
+        new EuclideanVectorSimilarityFunction();
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1525,7 +1526,10 @@ final class IndexingChain implements Accountable {
         this.vectorDimension = dimension;
       } else {
         assertSame("vector encoding", vectorEncoding, encoding);
-        assertSame("vector similarity function", vectorSimilarityFunction, similarityFunction);
+        assertSame(
+            "vector similarity function",
+            vectorSimilarityFunction.getOrdinal(),
+            similarityFunction.getOrdinal());
         assertSame("vector dimension", vectorDimension, dimension);
       }
     }
@@ -1541,7 +1545,7 @@ final class IndexingChain implements Accountable {
       pointNumBytes = 0;
       vectorDimension = 0;
       vectorEncoding = VectorEncoding.FLOAT32;
-      vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+      vectorSimilarityFunction = new EuclideanVectorSimilarityFunction();
     }
 
     void assertSameSchema(FieldInfo fi) {
@@ -1550,7 +1554,9 @@ final class IndexingChain implements Accountable {
       assertSame("store term vector", fi.hasVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
       assertSame(
-          "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
+          "vector similarity function",
+          fi.getVectorSimilarityFunction().getOrdinal(),
+          vectorSimilarityFunction.getOrdinal());
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);

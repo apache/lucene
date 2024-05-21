@@ -97,16 +97,17 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       VectorSimilarityFunction sim,
       float constMultiplier,
       RandomAccessQuantizedByteVectorValues values) {
-    return switch (sim) {
-      case EUCLIDEAN -> new Euclidean(values, constMultiplier, targetBytes);
-      case COSINE, DOT_PRODUCT -> dotProductFactory(
+    return switch (sim.getName()) {
+      case "EUC" -> new Euclidean(values, constMultiplier, targetBytes);
+      case "COS", "DOTP" -> dotProductFactory(
           targetBytes, offsetCorrection, constMultiplier, values, f -> Math.max((1 + f) / 2, 0));
-      case MAXIMUM_INNER_PRODUCT -> dotProductFactory(
+      case "MIP" -> dotProductFactory(
           targetBytes,
           offsetCorrection,
           constMultiplier,
           values,
           VectorUtil::scaleMaxInnerProductScore);
+      default -> throw new IllegalStateException("Unexpected value: " + sim.getName());
     };
   }
 

@@ -29,11 +29,11 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
@@ -52,14 +52,15 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
 
   @Override
   protected void addRandomFields(Document doc) {
-    doc.add(new KnnByteVectorField("v2", randomVector8(30), VectorSimilarityFunction.DOT_PRODUCT));
+    doc.add(
+        new KnnByteVectorField("v2", randomVector8(30), new DotProductVectorSimilarityFunction()));
   }
 
   public void testFloatVectorFails() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
       IllegalArgumentException e =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
       e.getMessage().contains("HnswBitVectorsFormat only supports BYTE encoding");
@@ -80,7 +81,7 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
       int id = 0;
       for (byte[] vector : vectors) {
         Document doc = new Document();
-        doc.add(new KnnByteVectorField("v1", vector, VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(new KnnByteVectorField("v1", vector, new DotProductVectorSimilarityFunction()));
         doc.add(new StringField("id", Integer.toString(id++), Field.Store.YES));
         w.addDocument(doc);
       }

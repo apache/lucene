@@ -36,19 +36,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.LogDocMergePolicy;
-import org.apache.lucene.index.MultiBits;
-import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.BasicStats;
@@ -286,8 +274,8 @@ public class TestBlockJoin extends LuceneTestCase {
     assertEquals("parent1", childDoc.get("my_parent_id"));
     assertEquals(
         topDocs.scoreDocs[0].score,
-        VectorSimilarityFunction.EUCLIDEAN.compare(
-            new float[] {4f, 4f, 4f}, new float[] {3f, 3f, 3f}),
+        new EuclideanVectorSimilarityFunction()
+            .compare(new float[] {4f, 4f, 4f}, new float[] {3f, 3f, 3f}),
         1e-7);
     childDoc = s.storedFields().document(topDocs.scoreDocs[1].doc);
     assertEquals("parent2", childDoc.get("my_parent_id"));

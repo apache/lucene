@@ -19,23 +19,17 @@ package org.apache.lucene.codecs.lucene99;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.ServiceLoader;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.CodecReader;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
@@ -97,7 +91,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                         }))) {
       for (float[] vector : vectors) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(new KnnFloatVectorField("f", vector, new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
         w.commit();
       }
@@ -119,7 +113,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
-    boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
+    boolean normalize = similarityFunction.getName().equals("COS");
     int dim = random().nextInt(64) + 1;
     if (dim % 2 == 1) {
       dim++;
@@ -265,9 +259,11 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   // Ensures that all expected vector similarity functions are translatable
   // in the format.
   public void testVectorSimilarityFuncs() {
-    // This does not necessarily have to be all similarity functions, but
-    // differences should be considered carefully.
-    var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).toList();
-    assertEquals(Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS, expectedValues);
+    var expectedFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
+    List<String> expectedFunctionsName = new ArrayList<>();
+    for (var function : expectedFunctions) {
+      expectedFunctionsName.add(function.getName());
+    }
+    assertEquals(Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS_MAP.values(), expectedFunctionsName);
   }
 }

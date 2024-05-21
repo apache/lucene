@@ -211,7 +211,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
       int[] docIds)
       throws IOException {
     meta.writeInt(field.number);
-    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeInt(field.getVectorSimilarityFunction().getOrdinal());
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
     meta.writeVLong(indexDataOffset);

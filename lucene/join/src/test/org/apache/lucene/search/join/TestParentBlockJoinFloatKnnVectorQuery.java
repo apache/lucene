@@ -17,8 +17,6 @@
 
 package org.apache.lucene.search.join;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +52,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
               d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         List<Document> toAdd = new ArrayList<>();
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 1}, COSINE));
+        doc.add(getKnnVectorField("field", new float[] {1, 1}, "COS"));
         toAdd.add(doc);
         toAdd.add(makeParent(new int[] {1}));
         w.addDocuments(toAdd);
@@ -78,7 +76,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         for (int j = 1; j <= 5; j++) {
           List<Document> toAdd = new ArrayList<>();
           Document doc = new Document();
-          doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
+          doc.add(getKnnVectorField("field", new float[] {j, j * j}, "COS"));
           doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
           toAdd.add(doc);
           toAdd.add(makeParent(new int[] {j}));
@@ -116,8 +114,8 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
   }
 
   @Override
-  Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction) {
-    return new KnnFloatVectorField(name, vector, vectorSimilarityFunction);
+  Field getKnnVectorField(String name, float[] vector, String vectorSimilarityFunctionName) {
+    return new KnnFloatVectorField(
+        name, vector, VectorSimilarityFunction.forName(vectorSimilarityFunctionName));
   }
 }

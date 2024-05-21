@@ -16,10 +16,6 @@
  */
 package org.apache.lucene.codecs.hnsw;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
-import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
-import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 import static org.hamcrest.Matchers.equalTo;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
@@ -29,10 +25,12 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -88,8 +86,10 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0, vec1, vec2), 0, vec0.length * 3);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = byteVectorValues(4, 3, in, EUCLIDEAN);
-        var ss = flatVectorsScorer.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
+        var vectorValues = byteVectorValues(4, 3, in, "EUC");
+        var ss =
+            flatVectorsScorer.getRandomVectorScorerSupplier(
+                new EuclideanVectorSimilarityFunction(), vectorValues);
 
         var scorerAgainstOrd0 = ss.scorer(0);
         var firstScore = scorerAgainstOrd0.score(1);
@@ -114,8 +114,10 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0, vec1, vec2), 0, vec0.length * Float.BYTES * 3);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = floatVectorValues(4, 3, in, EUCLIDEAN);
-        var ss = flatVectorsScorer.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
+        var vectorValues = floatVectorValues(4, 3, in, "EUC");
+        var ss =
+            flatVectorsScorer.getRandomVectorScorerSupplier(
+                new EuclideanVectorSimilarityFunction(), vectorValues);
 
         var scorerAgainstOrd0 = ss.scorer(0);
         var firstScore = scorerAgainstOrd0.score(1);
@@ -136,8 +138,8 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(vec0, 0, vec0.length);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
-          var vectorValues = byteVectorValues(4, 1, in, sim);
+        for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
+          var vectorValues = byteVectorValues(4, 1, in, sim.getName());
           expectThrows(
               IllegalArgumentException.class,
               () -> flatVectorsScorer.getRandomVectorScorer(sim, vectorValues, new byte[5]));
@@ -154,8 +156,8 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0), 0, vec0.length * Float.BYTES);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
-          var vectorValues = floatVectorValues(4, 1, in, sim);
+        for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
+          var vectorValues = floatVectorValues(4, 1, in, sim.getName());
           expectThrows(
               IllegalArgumentException.class,
               () -> flatVectorsScorer.getRandomVectorScorer(sim, vectorValues, new float[5]));
@@ -164,21 +166,26 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     }
   }
 
-  RandomAccessVectorValues byteVectorValues(
-      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
+  RandomAccessVectorValues byteVectorValues(int dims, int size, IndexInput in, String sim)
+      throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("byteValues", 0, in.length()), dims, flatVectorsScorer, sim);
+        dims,
+        size,
+        in.slice("byteValues", 0, in.length()),
+        dims,
+        flatVectorsScorer,
+        VectorSimilarityFunction.forName(sim));
   }
 
-  RandomAccessVectorValues floatVectorValues(
-      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
+  RandomAccessVectorValues floatVectorValues(int dims, int size, IndexInput in, String sim)
+      throws IOException {
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
         dims,
         size,
         in.slice("floatValues", 0, in.length()),
         dims * Float.BYTES,
         flatVectorsScorer,
-        sim);
+        VectorSimilarityFunction.forName(sim));
   }
 
   /** Concatenates float arrays as byte[]. */

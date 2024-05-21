@@ -21,7 +21,10 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.ServiceLoader;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -37,6 +40,8 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -97,7 +102,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     float[] v = new float[1];
     KnnFloatVectorField field = new KnnFloatVectorField("f", v);
     assertEquals(1, field.fieldType().vectorDimension());
-    assertEquals(VectorSimilarityFunction.EUCLIDEAN, field.fieldType().vectorSimilarityFunction());
+    assertEquals("EUC", field.fieldType().vectorSimilarityFunction().getName());
     assertSame(v, field.vectorValue());
   }
 
@@ -125,11 +130,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
       w.addDocument(doc);
 
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField("f", new float[6], VectorSimilarityFunction.DOT_PRODUCT));
+      doc2.add(
+          new KnnFloatVectorField("f", new float[6], new DotProductVectorSimilarityFunction()));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -142,12 +148,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
       w.addDocument(doc);
       w.commit();
 
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField("f", new float[6], VectorSimilarityFunction.DOT_PRODUCT));
+      doc2.add(
+          new KnnFloatVectorField("f", new float[6], new DotProductVectorSimilarityFunction()));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -162,11 +169,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
       w.addDocument(doc);
 
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
+      doc2.add(new KnnFloatVectorField("f", new float[4], new EuclideanVectorSimilarityFunction()));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -179,12 +186,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
       w.addDocument(doc);
       w.commit();
 
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
+      doc2.add(new KnnFloatVectorField("f", new float[4], new EuclideanVectorSimilarityFunction()));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
@@ -198,13 +205,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new KnnFloatVectorField("f", new float[2], VectorSimilarityFunction.DOT_PRODUCT));
+        doc2.add(
+            new KnnFloatVectorField("f", new float[2], new DotProductVectorSimilarityFunction()));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -219,13 +228,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
 
       try (IndexWriter w2 = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc2 = new Document();
-        doc2.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
+        doc2.add(
+            new KnnFloatVectorField("f", new float[4], new EuclideanVectorSimilarityFunction()));
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
@@ -239,7 +250,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   public void testAddIndexesDirectory0() throws Exception {
     String fieldName = "field";
     Document doc = new Document();
-    doc.add(new KnnFloatVectorField(fieldName, new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+    doc.add(
+        new KnnFloatVectorField(fieldName, new float[4], new DotProductVectorSimilarityFunction()));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -268,7 +280,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         w.addDocument(doc);
       }
       doc.add(
-          new KnnFloatVectorField(fieldName, new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+          new KnnFloatVectorField(
+              fieldName, new float[4], new DotProductVectorSimilarityFunction()));
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         w2.addDocument(doc);
         w2.addIndexes(dir);
@@ -288,7 +301,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     String fieldName = "field";
     float[] vector = new float[2];
     Document doc = new Document();
-    doc.add(new KnnFloatVectorField(fieldName, vector, VectorSimilarityFunction.DOT_PRODUCT));
+    doc.add(new KnnFloatVectorField(fieldName, vector, new DotProductVectorSimilarityFunction()));
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -320,12 +333,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[6], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[6], new DotProductVectorSimilarityFunction()));
         w2.addDocument(doc);
         IllegalArgumentException expected =
             expectThrows(
@@ -343,12 +358,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new EuclideanVectorSimilarityFunction()));
         w2.addDocument(doc);
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addIndexes(dir));
@@ -365,12 +382,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[6], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[6], new DotProductVectorSimilarityFunction()));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -391,12 +410,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new EuclideanVectorSimilarityFunction()));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -417,12 +438,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[6], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[6], new DotProductVectorSimilarityFunction()));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -441,12 +464,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         Directory dir2 = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       try (IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.EUCLIDEAN));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new EuclideanVectorSimilarityFunction()));
         w2.addDocument(doc);
         try (DirectoryReader r = DirectoryReader.open(dir)) {
           IllegalArgumentException expected =
@@ -464,8 +489,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
-      doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
+      doc.add(new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
       assertEquals(
@@ -482,14 +507,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           new KnnFloatVectorField(
               "f",
               new float[getVectorsMaxDimensions("f") + 1],
-              VectorSimilarityFunction.DOT_PRODUCT));
+              new DotProductVectorSimilarityFunction()));
       Exception exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
       assertTrue(
           exc.getMessage()
               .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
 
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField("f", new float[2], VectorSimilarityFunction.DOT_PRODUCT));
+      doc2.add(
+          new KnnFloatVectorField("f", new float[2], new DotProductVectorSimilarityFunction()));
       w.addDocument(doc2);
 
       Document doc3 = new Document();
@@ -497,7 +523,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           new KnnFloatVectorField(
               "f",
               new float[getVectorsMaxDimensions("f") + 1],
-              VectorSimilarityFunction.DOT_PRODUCT));
+              new DotProductVectorSimilarityFunction()));
       exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc3));
       assertTrue(
           exc.getMessage()
@@ -512,7 +538,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           new KnnFloatVectorField(
               "f",
               new float[getVectorsMaxDimensions("f") + 1],
-              VectorSimilarityFunction.DOT_PRODUCT));
+              new DotProductVectorSimilarityFunction()));
       exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc4));
       assertTrue(
           exc.getMessage()
@@ -530,11 +556,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               () ->
                   doc.add(
                       new KnnFloatVectorField(
-                          "f", new float[0], VectorSimilarityFunction.EUCLIDEAN)));
+                          "f", new float[0], new EuclideanVectorSimilarityFunction())));
       assertEquals("cannot index an empty vector", e.getMessage());
 
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField("f", new float[2], VectorSimilarityFunction.EUCLIDEAN));
+      doc2.add(new KnnFloatVectorField("f", new float[2], new EuclideanVectorSimilarityFunction()));
       w.addDocument(doc2);
     }
   }
@@ -544,14 +570,16 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       IndexWriterConfig iwc = newIndexWriterConfig();
       iwc.setCodec(Codec.forName("SimpleText"));
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
         w.forceMerge(1);
       }
@@ -565,12 +593,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", new float[4], VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(
+            new KnnFloatVectorField("f", new float[4], new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
         w.forceMerge(1);
       }
@@ -579,7 +609,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   public void testInvalidKnnVectorFieldUsage() {
     KnnFloatVectorField field =
-        new KnnFloatVectorField("field", new float[2], VectorSimilarityFunction.EUCLIDEAN);
+        new KnnFloatVectorField("field", new float[2], new EuclideanVectorSimilarityFunction());
 
     expectThrows(IllegalArgumentException.class, () -> field.setIntValue(14));
 
@@ -595,7 +625,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       doc.add(new StringField("id", "0", Field.Store.NO));
       doc.add(
           new KnnFloatVectorField(
-              "v", new float[] {2, 3, 5, 6}, VectorSimilarityFunction.DOT_PRODUCT));
+              "v", new float[] {2, 3, 5, 6}, new DotProductVectorSimilarityFunction()));
       w.addDocument(doc);
       w.addDocument(new Document());
       w.commit();
@@ -629,14 +659,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       doc.add(new StringField("id", "0", Field.Store.NO));
       doc.add(
           new KnnFloatVectorField(
-              "v0", new float[] {2, 3, 5, 6}, VectorSimilarityFunction.DOT_PRODUCT));
+              "v0", new float[] {2, 3, 5, 6}, new DotProductVectorSimilarityFunction()));
       w.addDocument(doc);
       w.commit();
 
       doc = new Document();
       doc.add(
           new KnnFloatVectorField(
-              "v1", new float[] {2, 3, 5, 6}, VectorSimilarityFunction.DOT_PRODUCT));
+              "v1", new float[] {2, 3, 5, 6}, new DotProductVectorSimilarityFunction()));
       w.addDocument(doc);
       w.forceMerge(1);
     }
@@ -839,8 +869,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   protected VectorSimilarityFunction randomSimilarity() {
-    return VectorSimilarityFunction.values()[
-        random().nextInt(VectorSimilarityFunction.values().length)];
+    var expectedFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
+    List<String> expectedFunctionsName = new ArrayList<>();
+    for (var function : expectedFunctions) {
+      expectedFunctionsName.add(function.getName());
+    }
+    return VectorSimilarityFunction.forName(
+        expectedFunctionsName.get(random().nextInt(expectedFunctionsName.size())));
   }
 
   /**
@@ -865,15 +900,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                     .setMaxBufferedDocs(3)
                     .setRAMBufferSizeMB(-1))) {
       Document doc1 = new Document();
-      doc1.add(new KnnFloatVectorField(fieldName, v, VectorSimilarityFunction.EUCLIDEAN));
+      doc1.add(new KnnFloatVectorField(fieldName, v, new EuclideanVectorSimilarityFunction()));
       v[0] = 1;
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField(fieldName, v, VectorSimilarityFunction.EUCLIDEAN));
+      doc2.add(new KnnFloatVectorField(fieldName, v, new EuclideanVectorSimilarityFunction()));
       iw.addDocument(doc1);
       iw.addDocument(doc2);
       v[0] = 2;
       Document doc3 = new Document();
-      doc3.add(new KnnFloatVectorField(fieldName, v, VectorSimilarityFunction.EUCLIDEAN));
+      doc3.add(new KnnFloatVectorField(fieldName, v, new EuclideanVectorSimilarityFunction()));
       iw.addDocument(doc3);
       iw.forceMerge(1);
       try (IndexReader reader = DirectoryReader.open(iw)) {
@@ -954,17 +989,17 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
       Document doc = new Document();
       float[] v = new float[] {1, 2};
-      doc.add(new KnnFloatVectorField("field1", v, VectorSimilarityFunction.EUCLIDEAN));
+      doc.add(new KnnFloatVectorField("field1", v, new EuclideanVectorSimilarityFunction()));
       doc.add(
           new KnnFloatVectorField(
-              "field2", new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
+              "field2", new float[] {1, 2, 3, 4}, new EuclideanVectorSimilarityFunction()));
       iw.addDocument(doc);
       v[0] = 2;
       iw.addDocument(doc);
       doc = new Document();
       doc.add(
           new KnnFloatVectorField(
-              "field3", new float[] {1, 2, 3, 4}, VectorSimilarityFunction.DOT_PRODUCT));
+              "field3", new float[] {1, 2, 3, 4}, new DotProductVectorSimilarityFunction()));
       iw.addDocument(doc);
       iw.forceMerge(1);
       try (IndexReader reader = DirectoryReader.open(iw)) {
@@ -1177,7 +1212,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         } else {
           value = null;
         }
-        add(iw, fieldName, i, value, VectorSimilarityFunction.EUCLIDEAN);
+        add(iw, fieldName, i, value, new EuclideanVectorSimilarityFunction());
       }
       iw.forceMerge(1);
 
@@ -1245,7 +1280,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           value = null;
         }
         id2value[id] = value;
-        add(iw, fieldName, id, value, VectorSimilarityFunction.EUCLIDEAN);
+        add(iw, fieldName, id, value, new EuclideanVectorSimilarityFunction());
       }
       try (IndexReader reader = DirectoryReader.open(iw)) {
         for (LeafReaderContext ctx : reader.leaves()) {
@@ -1318,7 +1353,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   private void add(IndexWriter iw, String field, int id, int sortKey, byte[] vector)
       throws IOException {
-    add(iw, field, id, sortKey, vector, VectorSimilarityFunction.EUCLIDEAN);
+    add(iw, field, id, sortKey, vector, new EuclideanVectorSimilarityFunction());
   }
 
   private void add(
@@ -1342,7 +1377,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   private void add(IndexWriter iw, String field, int id, int sortkey, float[] vector)
       throws IOException {
-    add(iw, field, id, sortkey, vector, VectorSimilarityFunction.EUCLIDEAN);
+    add(iw, field, id, sortkey, vector, new EuclideanVectorSimilarityFunction());
   }
 
   private void add(
@@ -1401,12 +1436,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         Document doc = new Document();
         doc.add(
             new KnnFloatVectorField(
-                "v1", randomNormalizedVector(4), VectorSimilarityFunction.EUCLIDEAN));
+                "v1", randomNormalizedVector(4), new EuclideanVectorSimilarityFunction()));
         w.addDocument(doc);
 
         doc.add(
             new KnnFloatVectorField(
-                "v2", randomNormalizedVector(4), VectorSimilarityFunction.EUCLIDEAN));
+                "v2", randomNormalizedVector(4), new EuclideanVectorSimilarityFunction()));
         w.addDocument(doc);
       }
 
@@ -1424,16 +1459,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       // Make sure CheckIndex in fact declares that it is testing vectors!
       assertTrue(output.toString(UTF_8).contains("test: vectors..."));
     }
-  }
-
-  public void testSimilarityFunctionIdentifiers() {
-    // make sure we don't accidentally mess up similarity function identifiers by re-ordering their
-    // enumerators
-    assertEquals(0, VectorSimilarityFunction.EUCLIDEAN.ordinal());
-    assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
-    assertEquals(2, VectorSimilarityFunction.COSINE.ordinal());
-    assertEquals(3, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.ordinal());
-    assertEquals(4, VectorSimilarityFunction.values().length);
   }
 
   public void testVectorEncodingOrdinals() {
@@ -1455,7 +1480,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           if (random().nextInt(4) == 3) {
             doc.add(
                 new KnnFloatVectorField(
-                    fieldName, new float[4], VectorSimilarityFunction.EUCLIDEAN));
+                    fieldName, new float[4], new EuclideanVectorSimilarityFunction()));
           }
           w.addDocument(doc);
         }

@@ -333,7 +333,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
-    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeInt(field.getVectorSimilarityFunction().getOrdinal());
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
     meta.writeVInt(field.getVectorDimension());
@@ -766,7 +766,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.confidenceInterval = confidenceInterval;
       this.bits = bits;
       this.fieldInfo = fieldInfo;
-      this.normalize = fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE;
+      this.normalize = fieldInfo.getVectorSimilarityFunction().getName().equals("COS");
       this.floatVectors = new ArrayList<>();
       this.infoStream = infoStream;
       this.docsWithField = new DocsWithFieldSet();
@@ -1045,7 +1045,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.quantizer = quantizer;
       this.quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+      if (vectorSimilarityFunction.getName().equals("COS")) {
         this.normalizedVector = new float[values.dimension()];
       } else {
         this.normalizedVector = null;
@@ -1101,7 +1101,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     private void quantize() throws IOException {
-      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+      if (vectorSimilarityFunction.getName().equals("COS")) {
         System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
         VectorUtil.l2normalize(normalizedVector);
         offsetValue =
