@@ -54,6 +54,7 @@ import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.compress.LZ4;
+import org.apache.lucene.util.packed.BlockWriter;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 import org.apache.lucene.util.packed.DirectWriter;
 
@@ -280,9 +281,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     } else {
       if (uniqueValues != null
           && uniqueValues.size() > 1
-          && DirectWriter.unsignedBitsRequired(uniqueValues.size() - 1)
-              < DirectWriter.unsignedBitsRequired((max - min) / gcd)) {
-        numBitsPerValue = DirectWriter.unsignedBitsRequired(uniqueValues.size() - 1);
+          && BlockWriter.unsignedBitsRequired(uniqueValues.size() - 1)
+              < BlockWriter.unsignedBitsRequired((max - min) / gcd)) {
+        numBitsPerValue = BlockWriter.unsignedBitsRequired(uniqueValues.size() - 1);
         final Long[] sortedUniqueValues = uniqueValues.toArray(new Long[0]);
         Arrays.sort(sortedUniqueValues);
         meta.writeInt(sortedUniqueValues.length); // tablesize
@@ -304,11 +305,11 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           numBitsPerValue = 0xFF;
           meta.writeInt(-2 - NUMERIC_BLOCK_SHIFT); // tablesize
         } else {
-          numBitsPerValue = DirectWriter.unsignedBitsRequired((max - min) / gcd);
+          numBitsPerValue = BlockWriter.unsignedBitsRequired((max - min) / gcd);
           if (gcd == 1
               && min > 0
-              && DirectWriter.unsignedBitsRequired(max)
-                  == DirectWriter.unsignedBitsRequired(max - min)) {
+              && BlockWriter.unsignedBitsRequired(max)
+                  == BlockWriter.unsignedBitsRequired(max - min)) {
             min = 0;
           }
           meta.writeInt(-1); // tablesize
@@ -341,7 +342,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       long gcd,
       Map<Long, Integer> encode)
       throws IOException {
-    DirectWriter writer = DirectWriter.getInstance(data, numValues, numBitsPerValue);
+    BlockWriter writer = new BlockWriter(data, numBitsPerValue);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       for (int i = 0, count = values.docValueCount(); i < count; ++i) {
         long v = values.nextValue();
