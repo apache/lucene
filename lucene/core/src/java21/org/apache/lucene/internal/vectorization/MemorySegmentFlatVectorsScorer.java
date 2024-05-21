@@ -17,6 +17,7 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -24,6 +25,9 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 public class MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
+
+  public static final MemorySegmentFlatVectorsScorer INSTANCE =
+      new MemorySegmentFlatVectorsScorer(DefaultFlatVectorScorer.INSTANCE);
 
   private final FlatVectorsScorer delegate;
 

@@ -21,7 +21,6 @@ import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -78,6 +77,6 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public FlatVectorsScorer getFlatVectorScorer() {
-    return new MemorySegmentFlatVectorsScorer(DefaultFlatVectorScorer.INSTANCE);
+    return MemorySegmentFlatVectorsScorer.INSTANCE;
   }
 }
