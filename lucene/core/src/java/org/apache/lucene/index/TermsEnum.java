@@ -71,9 +71,9 @@ public abstract class TermsEnum implements BytesRefIterator {
    *
    * <p><b>NOTE</b>: The terms enum is unpositioned after calling this method.
    *
-   * <p><b>NOTE</b>: It is not necessary to call this method before calling {@link
+   * <p><b>NOTE</b>: It is not necessary to call {@link #prepareSeekExact} before calling {@link
    * #seekExact(BytesRef, TermState)}. {@link TermsEnum} implementations are expected to implement
-   * this method in an I/O-free fashion.
+   * {@link #seekExact(BytesRef, TermState)} in an I/O-free fashion.
    */
   public abstract void prepareSeekExact(BytesRef text) throws IOException;
 

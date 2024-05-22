@@ -322,15 +322,14 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     // TODO: should we try to reuse the current state of this terms enum when applicable?
     BytesRefFSTEnum<BytesRef> indexEnum = new BytesRefFSTEnum<>(fr.index);
     InputOutput<BytesRef> output = indexEnum.seekFloor(target);
-    if (output != null) { // should never be null since we already checked against fr.getMin()?
-      final long code =
-          fr.readVLongOutput(
-              new ByteArrayDataInput(
-                  output.output.bytes, output.output.offset, output.output.length));
-      final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
-      initIndexInput();
-      in.prefetch(fpSeek, 1); // TODO: could we know the length of the block?
-    }
+    assert output != null; // never null since we already checked against fr.getMin()
+    final long code =
+        fr.readVLongOutput(
+            new ByteArrayDataInput(
+                output.output.bytes, output.output.offset, output.output.length));
+    final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
+    initIndexInput();
+    in.prefetch(fpSeek, 1); // TODO: could we know the length of the block?
   }
 
   @Override
