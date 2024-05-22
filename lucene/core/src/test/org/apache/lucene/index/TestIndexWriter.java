@@ -226,49 +226,6 @@ public class TestIndexWriter extends LuceneTestCase {
     dir.close();
   }
 
-  public void testDeleteByTerms() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter writer =
-        new IndexWriter(
-            dir,
-            new IndexWriterConfig(new MockAnalyzer(random()))
-                .setMergePolicy(NoMergePolicy.INSTANCE));
-
-    Document doc;
-    for (int i = 0; i < 10; i++) {
-      doc = new Document();
-      doc.add(new KeywordField("content", i + "", Field.Store.NO));
-      writer.addDocument(doc);
-    }
-    writer.flush();
-
-    for (int i = 10; i < 20; i++) {
-      doc = new Document();
-      doc.add(new KeywordField("content", i + "", Field.Store.NO));
-      writer.addDocument(doc);
-    }
-    writer.flush();
-
-    for (int i = 20; i < 30; i++) {
-      doc = new Document();
-      doc.add(new KeywordField("content", i + "", Field.Store.NO));
-      writer.addDocument(doc);
-    }
-    writer.flush();
-    writer.deleteDocuments(new Term("content", "10"));
-
-    DirectoryReader reader = DirectoryReader.open(writer);
-    IndexSearcher searcher = newSearcher(reader);
-    assertEquals(
-        0, searcher.search(LongPoint.newRangeQuery("content", 10, 19), 100).totalHits.value);
-    assertEquals(
-        20, searcher.search(LongPoint.newRangeQuery("content", 0, 30), 100).totalHits.value);
-
-    reader.close();
-    writer.close();
-    dir.close();
-  }
-
   static void addDoc(IndexWriter writer) throws IOException {
     Document doc = new Document();
     doc.add(newTextField("content", "aaa", Field.Store.NO));

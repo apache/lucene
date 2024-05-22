@@ -477,7 +477,8 @@ final class FrozenBufferedUpdates {
         final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
         if (iterator != null) {
           int docID;
-          // One term matches all docs is unusual.
+          // It is unusual that one term matches all docs, so it is worthless to implement delete
+          // all.
           while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
             // NOTE: there is no limit check on the docID
             // when deleting by Term (unlike by Query)
