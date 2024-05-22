@@ -14,14 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
-apply plugin: 'java-library'
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
 
-description = 'Index-time and Query-time joins for normalized content'
+public class TestKnnByteVectorQueryMMap extends TestKnnByteVectorQuery {
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleImplementation 'com.carrotsearch:hppc'
-
-  moduleTestImplementation project(':lucene:test-framework')
+  @Override
+  protected BaseDirectoryWrapper newDirectoryForTest() {
+    try {
+      return new MockDirectoryWrapper(
+          random(), new MMapDirectory(createTempDir("TestKnnByteVectorQueryMMap")));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
 }

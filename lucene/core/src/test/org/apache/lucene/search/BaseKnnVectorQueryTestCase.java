@@ -50,6 +50,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
@@ -76,6 +77,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       String name, float[] vector, VectorSimilarityFunction similarityFunction);
 
   abstract Field getKnnVectorField(String name, float[] vector);
+
+  /**
+   * Creates a new directory. Subclasses can override to test different directory implementations.
+   */
+  protected BaseDirectoryWrapper newDirectoryForTest() {
+    return LuceneTestCase.newDirectory(random());
+  }
 
   public void testEquals() {
     AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
@@ -308,7 +316,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testScoreCosine() throws IOException {
-    try (Directory d = newDirectory()) {
+    try (Directory d = newDirectoryForTest()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
@@ -383,7 +391,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testExplain() throws IOException {
-    try (Directory d = newDirectory()) {
+    try (Directory d = newDirectoryForTest()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 0; j < 5; j++) {
           Document doc = new Document();
@@ -410,7 +418,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testExplainMultipleSegments() throws IOException {
-    try (Directory d = newDirectory()) {
+    try (Directory d = newDirectoryForTest()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 0; j < 5; j++) {
           Document doc = new Document();
@@ -443,7 +451,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
      * number of top K documents, but no more than K documents in total (otherwise we might occasionally
      * randomly fail to find one).
      */
-    try (Directory d = newDirectory()) {
+    try (Directory d = newDirectoryForTest()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         int r = 0;
         for (int i = 0; i < 5; i++) {
@@ -479,7 +487,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     int dimension = atLeast(5);
     int numIters = atLeast(10);
     boolean everyDocHasAVector = random().nextBoolean();
-    try (Directory d = newDirectory()) {
+    try (Directory d = newDirectoryForTest()) {
       RandomIndexWriter w = new RandomIndexWriter(random(), d);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
@@ -518,7 +526,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     int numDocs = 1000;
     int dimension = atLeast(5);
     int numIters = atLeast(10);
-    try (Directory d = newDirectory()) {
+    try (Directory d = newDirectoryForTest()) {
       // Always use the default kNN format to have predictable behavior around when it hits
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
@@ -604,7 +612,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   public void testFilterWithSameScore() throws IOException {
     int numDocs = 100;
     int dimension = atLeast(5);
-    try (Directory d = newDirectory()) {
+    try (Directory d = newDirectoryForTest()) {
       // Always use the default kNN format to have predictable behavior around when it hits
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
@@ -644,7 +652,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testDeletes() throws IOException {
-    try (Directory dir = newDirectory();
+    try (Directory dir = newDirectoryForTest();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       final int numDocs = atLeast(100);
       final int dim = 30;
@@ -688,7 +696,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testAllDeletes() throws IOException {
-    try (Directory dir = newDirectory();
+    try (Directory dir = newDirectoryForTest();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       final int numDocs = atLeast(100);
       final int dim = 30;
@@ -717,7 +725,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
    */
   public void testNoLiveDocsReader() throws IOException {
     IndexWriterConfig iwc = newIndexWriterConfig();
-    try (Directory dir = newDirectory();
+    try (Directory dir = newDirectoryForTest();
         IndexWriter w = new IndexWriter(dir, iwc)) {
       final int numDocs = 10;
       final int dim = 30;
@@ -745,7 +753,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
    */
   public void testBitSetQuery() throws IOException {
     IndexWriterConfig iwc = newIndexWriterConfig();
-    try (Directory dir = newDirectory();
+    try (Directory dir = newDirectoryForTest();
         IndexWriter w = new IndexWriter(dir, iwc)) {
       final int numDocs = 100;
       final int dim = 30;
@@ -853,7 +861,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   Directory getIndexStore(
       String field, VectorSimilarityFunction vectorSimilarityFunction, float[]... contents)
       throws IOException {
-    Directory indexStore = newDirectory();
+    Directory indexStore = newDirectoryForTest();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
@@ -886,7 +894,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
    * preserving the order of the added documents.
    */
   private Directory getStableIndexStore(String field, float[]... contents) throws IOException {
-    Directory indexStore = newDirectory();
+    Directory indexStore = newDirectoryForTest();
     try (IndexWriter writer = new IndexWriter(indexStore, new IndexWriterConfig())) {
       for (int i = 0; i < contents.length; ++i) {
         Document doc = new Document();
@@ -1031,7 +1039,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testSameFieldDifferentFormats() throws IOException {
-    try (Directory directory = newDirectory()) {
+    try (Directory directory = newDirectoryForTest()) {
       MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
       IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
       KnnVectorsFormat format1 = randomVectorFormat(VectorEncoding.FLOAT32);

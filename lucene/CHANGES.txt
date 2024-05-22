@@ -295,6 +295,9 @@ Improvements
 
 * GITHUB#13362: Add sub query explanations to DisjunctionMaxQuery, if the overall query didn't match. (Tim Grein)
 
+* GITHUB#13385: Add Intervals.noIntervals() method to produce an empty IntervalsSource.
+  (Aniketh Jain, Uwe Schindler, Alan Woodward))
+
 Optimizations
 ---------------------
 
@@ -343,6 +346,10 @@ Optimizations
 
 * GITHUB#13368: Replace Map<Integer, Object> by primitive IntObjectHashMap. (Bruno Roustant)
 
+* GITHUB#13392: Replace Map<Long, Object> by primitive LongObjectHashMap. (Bruno Roustant)
+
+* GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
+
 Bug Fixes
 ---------------------
 
@@ -389,6 +396,7 @@ Other
 * GITHUB#13068: Replace numerous `brToString(BytesRef)` copies with a `ToStringUtils` method (Dmitry Cherniachenko)
 
 * GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
+
 
 ======================== Lucene 9.10.0 =======================
 

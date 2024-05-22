@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.GroupVIntUtil;
 
 /**
@@ -35,7 +36,8 @@ import org.apache.lucene.util.GroupVIntUtil;
  * chunkSizePower</code>).
  */
 @SuppressWarnings("preview")
-abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
+abstract class MemorySegmentIndexInput extends IndexInput
+    implements RandomAccessInput, MemorySegmentAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -57,6 +59,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   MemorySegment
       curSegment; // redundant for speed: segments[curSegmentIndex], also marker if closed!
   long curPosition; // relative to curSegment, not globally
+  int consecutivePrefetchHitCount;
 
   public static MemorySegmentIndexInput newInstance(
       String resourceDescription,
@@ -314,13 +317,22 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
   @Override
   public void prefetch(long offset, long length) throws IOException {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+
     ensureOpen();
 
     Objects.checkFromIndexSize(offset, length, length());
 
-    if (NATIVE_ACCESS.isEmpty()) {
+    if (BitUtil.isZeroOrPowerOfTwo(consecutivePrefetchHitCount++) == false) {
+      // We've had enough consecutive hits on the page cache that this number is neither zero nor a
+      // power of two. There is a good chance that a good chunk of this index input is cached in
+      // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
+      // on the next power of two of the counter.
       return;
     }
+
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
 
     try {
@@ -344,7 +356,11 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       }
 
       final MemorySegment prefetchSlice = segment.asSlice(offset, length);
-      nativeAccess.madviseWillNeed(prefetchSlice);
+      if (prefetchSlice.isLoaded() == false) {
+        // We have a cache miss on at least one page, let's reset the counter.
+        consecutivePrefetchHitCount = 0;
+        nativeAccess.madviseWillNeed(prefetchSlice);
+      }
     } catch (
         @SuppressWarnings("unused")
         IndexOutOfBoundsException e) {
@@ -547,6 +563,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
+  static boolean checkIndex(long index, long length) {
+    return index >= 0 && index < length;
+  }
+
   @Override
   public final void close() throws IOException {
     if (curSegment == null) {
@@ -658,6 +678,16 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         throw alreadyClosed(e);
       }
     }
+
+    @Override
+    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+      try {
+        Objects.checkIndex(pos + len, this.length + 1);
+        return curSegment.asSlice(pos, len);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "segmentSliceOrNull", pos);
+      }
+    }
   }
 
   /** This class adds offset support to MemorySegmentIndexInput, which is needed for slices. */
@@ -721,6 +751,20 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     @Override
     public long readLong(long pos) throws IOException {
       return super.readLong(pos + offset);
+    }
+
+    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+      if (pos + len > length) {
+        throw handlePositionalIOOBE(null, "segmentSliceOrNull", pos);
+      }
+      pos = pos + offset;
+      final int si = (int) (pos >> chunkSizePower);
+      final MemorySegment seg = segments[si];
+      final long segOffset = pos & chunkSizeMask;
+      if (checkIndex(segOffset + len, seg.byteSize() + 1)) {
+        return seg.asSlice(segOffset, len);
+      }
+      return null;
     }
 
     @Override

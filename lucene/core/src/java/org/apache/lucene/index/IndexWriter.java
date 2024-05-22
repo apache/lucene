@@ -90,6 +90,8 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.hppc.LongObjectHashMap;
+import org.apache.lucene.util.hppc.ObjectCursor;
 
 /**
  * An <code>IndexWriter</code> creates and maintains an index.
@@ -4379,7 +4381,7 @@ public class IndexWriter
     final ReadersAndUpdates mergedDeletesAndUpdates = getPooledInstance(merge.info, true);
     int numDeletesBefore = mergedDeletesAndUpdates.getDelCount();
     // field -> delGen -> dv field updates
-    Map<String, Map<Long, DocValuesFieldUpdates>> mappedDVUpdates = new HashMap<>();
+    Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates = new HashMap<>();
 
     boolean anyDVUpdates = false;
 
@@ -4412,9 +4414,9 @@ public class IndexWriter
 
         String field = ent.getKey();
 
-        Map<Long, DocValuesFieldUpdates> mappedField = mappedDVUpdates.get(field);
+        LongObjectHashMap<DocValuesFieldUpdates> mappedField = mappedDVUpdates.get(field);
         if (mappedField == null) {
-          mappedField = new HashMap<>();
+          mappedField = new LongObjectHashMap<>();
           mappedDVUpdates.put(field, mappedField);
         }
 
@@ -4470,10 +4472,10 @@ public class IndexWriter
 
     if (anyDVUpdates) {
       // Persist the merged DV updates onto the RAU for the merged segment:
-      for (Map<Long, DocValuesFieldUpdates> d : mappedDVUpdates.values()) {
-        for (DocValuesFieldUpdates updates : d.values()) {
-          updates.finish();
-          mergedDeletesAndUpdates.addDVUpdate(updates);
+      for (LongObjectHashMap<DocValuesFieldUpdates> d : mappedDVUpdates.values()) {
+        for (ObjectCursor<DocValuesFieldUpdates> updates : d.values()) {
+          updates.value.finish();
+          mergedDeletesAndUpdates.addDVUpdate(updates.value);
         }
       }
     }
