@@ -16,11 +16,6 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
-import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
-import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
-
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -29,6 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -95,7 +91,7 @@ public class TestVectorScorer extends LuceneTestCase {
           out.writeBytes(bytes, 0, bytes.length);
         }
         try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+          for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
             var vectorValues = vectorValues(dims, 2, in, sim);
             for (var ords : List.of(List.of(0, 1), List.of(1, 0))) {
               int idx0 = ords.get(0);
@@ -153,7 +149,7 @@ public class TestVectorScorer extends LuceneTestCase {
 
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
         for (int times = 0; times < TIMES; times++) {
-          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+          for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
             var vectorValues = vectorValues(dims, size, in, sim);
             int idx0 = randomIntBetween(0, size - 1);
             int idx1 = randomIntBetween(0, size - 1); // may be the same as idx0 - which is ok.
@@ -207,7 +203,7 @@ public class TestVectorScorer extends LuceneTestCase {
       try (var outter = dir.openInput(fileName, IOContext.DEFAULT);
           var in = outter.slice("slice", initialOffset, outter.length() - initialOffset)) {
         for (int times = 0; times < TIMES; times++) {
-          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+          for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
             var vectorValues = vectorValues(dims, size, in, sim);
             int idx0 = randomIntBetween(0, size - 1);
             int idx1 = randomIntBetween(0, size - 1); // may be the same as idx0 - which is ok.
@@ -244,7 +240,7 @@ public class TestVectorScorer extends LuceneTestCase {
         out.writeBytes(bytes, 0, bytes.length);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+        for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
           var vectorValues = vectorValues(dims, 4, in, sim);
           var scoreSupplier = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
           var expectedScore1 = scoreSupplier.scorer(0).score(1);
@@ -310,7 +306,7 @@ public class TestVectorScorer extends LuceneTestCase {
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
         assert in.length() > Integer.MAX_VALUE;
         for (int times = 0; times < TIMES; times++) {
-          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+          for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
             var vectorValues = vectorValues(dims, size, in, sim);
             int ord1 = randomIntBetween(0, size - 1);
             int ord2 = size - 1;

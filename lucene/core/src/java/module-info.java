@@ -80,6 +80,11 @@ module org.apache.lucene.core {
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,
       org.apache.lucene.search.SortedSetSortField.Provider;
+  provides org.apache.lucene.index.VectorSimilarityFunction with
+      org.apache.lucene.index.DotProductVectorSimilarityFunction,
+      org.apache.lucene.index.EuclideanVectorSimilarityFunction,
+      org.apache.lucene.index.CosineVectorSimilarityFunction,
+      org.apache.lucene.index.MaximumInnerProductVectorSimilarityFunction;
 
   uses org.apache.lucene.analysis.CharFilterFactory;
   uses org.apache.lucene.analysis.TokenFilterFactory;
@@ -89,4 +94,5 @@ module org.apache.lucene.core {
   uses org.apache.lucene.codecs.KnnVectorsFormat;
   uses org.apache.lucene.codecs.PostingsFormat;
   uses org.apache.lucene.index.SortFieldProvider;
+  uses org.apache.lucene.index.VectorSimilarityFunction;
 }

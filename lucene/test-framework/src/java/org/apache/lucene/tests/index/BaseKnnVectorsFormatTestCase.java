@@ -387,7 +387,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   IllegalArgumentException.class,
                   () -> w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)}));
           assertEquals(
-              "cannot change field \"f\" from vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOT_PRODUCT "
+              "cannot change field \"f\" from vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOTP "
                   + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP",
               expected.getMessage());
         }

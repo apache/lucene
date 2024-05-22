@@ -31,16 +31,17 @@ public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSP
 
     static NamedSPILoader<VectorSimilarityFunction> getLoader() {
       if (LOADER == null) {
-        throw new IllegalStateException(
-            "You tried to lookup a SortFieldProvider by name before all SortFieldProviders could be initialized. "
-                + "This likely happens if you call SortFieldProvider#forName from a SortFieldProviders's ctor.");
+        throw new IllegalStateException();
       }
       return LOADER;
     }
   }
 
-  private final String name;
-  private final int ordinal;
+  /** Holds name of Vector Similarity Function */
+  public final String name;
+
+  /** Holds integer value of Vector Similarity Function to be used for reading and writing index */
+  public final int ordinal;
 
   /** Construct object with function name and ordinal value */
   protected VectorSimilarityFunction(String name, int ordinal) {

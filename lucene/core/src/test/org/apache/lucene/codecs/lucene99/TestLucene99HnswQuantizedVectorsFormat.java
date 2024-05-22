@@ -23,8 +23,8 @@ import static org.hamcrest.Matchers.oneOf;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.Locale;
+import java.util.ServiceLoader;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -279,6 +279,8 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     for (var function : expectedFunctions) {
       expectedFunctionsName.add(function.getName());
     }
-    assertEquals(Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS_MAP.values(), expectedFunctionsName);
+    assertTrue(
+        expectedFunctionsName.containsAll(
+            Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS_MAP.values()));
   }
 }

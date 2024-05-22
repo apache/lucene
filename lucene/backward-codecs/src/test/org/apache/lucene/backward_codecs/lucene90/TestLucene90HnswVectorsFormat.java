@@ -23,6 +23,7 @@ import static org.apache.lucene.backward_codecs.lucene90.Lucene90HnswVectorsForm
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 
 public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
@@ -72,5 +73,12 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   @Override
   public void testByteVectorScorerIteration() {
     // unimplemented
+  }
+
+  @Override
+  protected VectorSimilarityFunction randomSimilarity() {
+    String[] vectorSimilairtyFunctionNames = new String[] {"COSINE", "EUCLIDEAN", "DOTP"};
+    return VectorSimilarityFunction.forName(
+        vectorSimilairtyFunctionNames[random().nextInt(vectorSimilairtyFunctionNames.length)]);
   }
 }

@@ -1459,6 +1459,12 @@ final class IndexingChain implements Accountable {
       }
     }
 
+    private void assertSame(String label, String expected, String given) {
+      if (!expected.equals(given)) {
+        raiseNotSame(label, expected, given);
+      }
+    }
+
     private <T extends Enum<?>> void assertSame(String label, T expected, T given) {
       if (expected != given) {
         raiseNotSame(label, expected, given);
@@ -1555,8 +1561,8 @@ final class IndexingChain implements Accountable {
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
       assertSame(
           "vector similarity function",
-          fi.getVectorSimilarityFunction().getOrdinal(),
-          vectorSimilarityFunction.getOrdinal());
+          fi.getVectorSimilarityFunction().getName(),
+          vectorSimilarityFunction.getName());
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);

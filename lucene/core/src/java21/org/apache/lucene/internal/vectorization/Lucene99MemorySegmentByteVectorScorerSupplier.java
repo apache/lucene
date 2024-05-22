@@ -47,11 +47,12 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
       return Optional.empty();
     }
     checkInvariants(values.size(), values.getVectorByteLength(), input);
-    return switch (type) {
-      case COSINE -> Optional.of(new CosineSupplier(msInput, values));
-      case DOT_PRODUCT -> Optional.of(new DotProductSupplier(msInput, values));
-      case EUCLIDEAN -> Optional.of(new EuclideanSupplier(msInput, values));
-      case MAXIMUM_INNER_PRODUCT -> Optional.of(new MaxInnerProductSupplier(msInput, values));
+    return switch (type.getName()) {
+      case "COSINE" -> Optional.of(new CosineSupplier(msInput, values));
+      case "DOTP" -> Optional.of(new DotProductSupplier(msInput, values));
+      case "EUCLIDEAN" -> Optional.of(new EuclideanSupplier(msInput, values));
+      case "MIP" -> Optional.of(new MaxInnerProductSupplier(msInput, values));
+      default -> throw new IllegalStateException("Unexpected value: " + type.getName());
     };
   }
 

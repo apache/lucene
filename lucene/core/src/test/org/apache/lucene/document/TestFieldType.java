@@ -18,9 +18,13 @@ package org.apache.lucene.document;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** simple testcases for concrete impl of IndexableFieldType */
@@ -94,6 +98,14 @@ public class TestFieldType extends LuceneTestCase {
       return random().nextBoolean();
     } else if (clazz == int.class) {
       return 1 + random().nextInt(100);
+    } else if (clazz == VectorSimilarityFunction.class) {
+      var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
+      List<String> similarityFunctionsName = new ArrayList<>();
+      for (var function : similarityFunctions) {
+        similarityFunctionsName.add(function.getName());
+      }
+      return VectorSimilarityFunction.forName(
+          similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
     }
     throw new AssertionError("Don't know how to generate a " + clazz);
   }
