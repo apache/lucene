@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
 
@@ -90,6 +91,9 @@ public abstract class VectorizationProvider {
    * VectorUtil}.
    */
   public abstract VectorUtilSupport getVectorUtilSupport();
+
+  /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
+  public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
 
   // *** Lookup mechanism: ***
 
@@ -177,7 +181,10 @@ public abstract class VectorizationProvider {
   }
 
   // add all possible callers here as FQCN:
-  private static final Set<String> VALID_CALLERS = Set.of("org.apache.lucene.util.VectorUtil");
+  private static final Set<String> VALID_CALLERS =
+      Set.of(
+          "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
+          "org.apache.lucene.util.VectorUtil");
 
   private static void ensureCaller() {
     final boolean validCaller =
