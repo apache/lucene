@@ -98,8 +98,8 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       float constMultiplier,
       RandomAccessQuantizedByteVectorValues values) {
     return switch (sim.getName()) {
-      case "EUC" -> new Euclidean(values, constMultiplier, targetBytes);
-      case "COS", "DOTP" -> dotProductFactory(
+      case "EUCLIDEAN" -> new Euclidean(values, constMultiplier, targetBytes);
+      case "COSINE", "DOTP" -> dotProductFactory(
           targetBytes, offsetCorrection, constMultiplier, values, f -> Math.max((1 + f) / 2, 0));
       case "MIP" -> dotProductFactory(
           targetBytes,

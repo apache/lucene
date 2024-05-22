@@ -20,7 +20,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {

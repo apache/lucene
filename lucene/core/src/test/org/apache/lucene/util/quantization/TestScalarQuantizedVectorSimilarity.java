@@ -68,7 +68,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
           ScalarQuantizer.fromVectors(
               floatVectorValues, confidenceInterval, floats.length, (byte) 7);
       byte[][] quantized = new byte[floats.length][];
-      float[] offsets = quantizeVectors(scalarQuantizer, floats, quantized, "EUC");
+      float[] offsets = quantizeVectors(scalarQuantizer, floats, quantized, "EUCLIDEAN");
       float[] query = ArrayUtil.copyOfSubArray(floats[0], 0, dims);
       ScalarQuantizedVectorSimilarity quantizedSimilarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
@@ -76,7 +76,14 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
               scalarQuantizer.getConstantMultiplier(),
               scalarQuantizer.getBits());
       assertQuantizedScores(
-          floats, quantized, offsets, query, error, "EUC", quantizedSimilarity, scalarQuantizer);
+          floats,
+          quantized,
+          offsets,
+          query,
+          error,
+          "EUCLIDEAN",
+          quantizedSimilarity,
+          scalarQuantizer);
     }
   }
 
@@ -93,7 +100,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
           ScalarQuantizer.fromVectors(
               floatVectorValues, confidenceInterval, floats.length, (byte) 7);
       byte[][] quantized = new byte[floats.length][];
-      float[] offsets = quantizeVectorsNormalized(scalarQuantizer, floats, quantized, "COS");
+      float[] offsets = quantizeVectorsNormalized(scalarQuantizer, floats, quantized, "COSINE");
       float[] query = ArrayUtil.copyOfSubArray(floats[0], 0, dims);
       VectorUtil.l2normalize(query);
       ScalarQuantizedVectorSimilarity quantizedSimilarity =
@@ -102,7 +109,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
               scalarQuantizer.getConstantMultiplier(),
               scalarQuantizer.getBits());
       assertQuantizedScores(
-          floats, quantized, offsets, query, error, "COS", quantizedSimilarity, scalarQuantizer);
+          floats, quantized, offsets, query, error, "COSINE", quantizedSimilarity, scalarQuantizer);
     }
   }
 

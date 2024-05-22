@@ -32,7 +32,12 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.store.*;
+import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 
 /**
  * Lucene 9.0 Field Infos format.
@@ -115,9 +120,9 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
   private static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP = new HashMap<>();
 
   static {
-    SIMILARITY_FUNCTIONS_MAP.put(0, "EUC");
+    SIMILARITY_FUNCTIONS_MAP.put(0, "EUCLIDEAN");
     SIMILARITY_FUNCTIONS_MAP.put(1, "DOTP");
-    SIMILARITY_FUNCTIONS_MAP.put(2, "COS");
+    SIMILARITY_FUNCTIONS_MAP.put(2, "COSINE");
   }
 
   /** Sole constructor. */
@@ -181,7 +186,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
             pointNumBytes = 0;
           }
           final int vectorDimension = input.readVInt();
-          final VectorSimilarityFunction vectorDistFunc = getDistFunc(input);
+          final VectorSimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
 
           try {
             infos[i] =
@@ -264,20 +269,12 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  //  private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws
-  // IOException {
-  //    if (b < 0 || b >= VectorSimilarityFunction.values().length) {
-  //      throw new CorruptIndexException("invalid distance function: " + b, input);
-  //    }
-  //    return VectorSimilarityFunction.values()[b];
-  //  }
-
-  public static VectorSimilarityFunction getDistFunc(DataInput input) throws IOException {
-    int i = input.readInt();
-    if (i < 0 || i >= SIMILARITY_FUNCTIONS_MAP.size()) {
-      throw new IllegalArgumentException("invalid distance function: " + i);
+  /** Returns VectorSimilarityFunction from index input and ordinal value */
+  public static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
+    if ((int) b < 0 || (int) b >= SIMILARITY_FUNCTIONS_MAP.size()) {
+      throw new CorruptIndexException("invalid distance function: " + (int) b, input);
     }
-    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get(i));
+    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get((int) b));
   }
 
   static {

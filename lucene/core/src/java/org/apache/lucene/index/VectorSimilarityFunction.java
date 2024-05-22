@@ -42,7 +42,7 @@ public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSP
   private final String name;
   private final int ordinal;
 
-  /** Construct onbject with function name and ordinal value */
+  /** Construct object with function name and ordinal value */
   protected VectorSimilarityFunction(String name, int ordinal) {
     NamedSPILoader.checkServiceName(name);
     this.name = name;

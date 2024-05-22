@@ -766,7 +766,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.confidenceInterval = confidenceInterval;
       this.bits = bits;
       this.fieldInfo = fieldInfo;
-      this.normalize = fieldInfo.getVectorSimilarityFunction().getName().equals("COS");
+      this.normalize = fieldInfo.getVectorSimilarityFunction().getName().equals("COSINE");
       this.floatVectors = new ArrayList<>();
       this.infoStream = infoStream;
       this.docsWithField = new DocsWithFieldSet();
@@ -1045,7 +1045,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.quantizer = quantizer;
       this.quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      if (vectorSimilarityFunction.getName().equals("COS")) {
+      if (vectorSimilarityFunction.getName().equals("COSINE")) {
         this.normalizedVector = new float[values.dimension()];
       } else {
         this.normalizedVector = null;
@@ -1101,7 +1101,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     private void quantize() throws IOException {
-      if (vectorSimilarityFunction.getName().equals("COS")) {
+      if (vectorSimilarityFunction.getName().equals("COSINE")) {
         System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
         VectorUtil.l2normalize(normalizedVector);
         offsetValue =

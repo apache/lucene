@@ -52,7 +52,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
               d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         List<Document> toAdd = new ArrayList<>();
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 1}, "COS"));
+        doc.add(getKnnVectorField("field", new float[] {1, 1}, "COSINE"));
         toAdd.add(doc);
         toAdd.add(makeParent(new int[] {1}));
         w.addDocuments(toAdd);
@@ -76,7 +76,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         for (int j = 1; j <= 5; j++) {
           List<Document> toAdd = new ArrayList<>();
           Document doc = new Document();
-          doc.add(getKnnVectorField("field", new float[] {j, j * j}, "COS"));
+          doc.add(getKnnVectorField("field", new float[] {j, j * j}, "COSINE"));
           doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
           toAdd.add(doc);
           toAdd.add(makeParent(new int[] {j}));

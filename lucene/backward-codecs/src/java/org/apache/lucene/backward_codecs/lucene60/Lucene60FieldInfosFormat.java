@@ -122,6 +122,9 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
   static final byte STORE_PAYLOADS = 0x4;
   static final byte SOFT_DELETES_FIELD = 0x8;
 
+  static final EuclideanVectorSimilarityFunction euclideanVectorSimilarityFunction =
+      new EuclideanVectorSimilarityFunction();
+
   /** Sole constructor. */
   public Lucene60FieldInfosFormat() {}
 
@@ -216,7 +219,7 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
                 pointNumBytes,
                 0,
                 VectorEncoding.FLOAT32,
-                new EuclideanVectorSimilarityFunction(),
+                euclideanVectorSimilarityFunction,
                 isSoftDeletesField,
                 false);
       } catch (IllegalStateException e) {

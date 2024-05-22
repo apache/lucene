@@ -26,9 +26,9 @@ import static org.apache.lucene.util.VectorUtil.squareDistance;
  */
 public class EuclideanVectorSimilarityFunction extends VectorSimilarityFunction {
 
-  /** Construct onbject with function name and ordinal value */
+  /** Construct object with function name and ordinal value */
   public EuclideanVectorSimilarityFunction() {
-    super("EUC", 0);
+    super("EUCLIDEAN", 0);
   }
 
   @Override

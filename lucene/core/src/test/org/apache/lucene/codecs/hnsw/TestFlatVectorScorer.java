@@ -86,7 +86,7 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0, vec1, vec2), 0, vec0.length * 3);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = byteVectorValues(4, 3, in, "EUC");
+        var vectorValues = byteVectorValues(4, 3, in, "EUCLIDEAN");
         var ss =
             flatVectorsScorer.getRandomVectorScorerSupplier(
                 new EuclideanVectorSimilarityFunction(), vectorValues);
@@ -114,7 +114,7 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0, vec1, vec2), 0, vec0.length * Float.BYTES * 3);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        var vectorValues = floatVectorValues(4, 3, in, "EUC");
+        var vectorValues = floatVectorValues(4, 3, in, "EUCLIDEAN");
         var ss =
             flatVectorsScorer.getRandomVectorScorerSupplier(
                 new EuclideanVectorSimilarityFunction(), vectorValues);

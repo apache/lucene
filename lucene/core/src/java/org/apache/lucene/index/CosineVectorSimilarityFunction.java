@@ -29,9 +29,9 @@ import static org.apache.lucene.util.VectorUtil.cosine;
 @Deprecated
 public class CosineVectorSimilarityFunction extends VectorSimilarityFunction {
 
-  /** Construct onbject with function name and ordinal value */
+  /** Construct object with function name and ordinal value */
   public CosineVectorSimilarityFunction() {
-    super("COS", 2);
+    super("COSINE", 2);
   }
 
   @Override

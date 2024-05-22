@@ -42,9 +42,9 @@ public abstract class KnnVectorsReader implements Closeable {
   public static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP = new HashMap<>();
 
   static {
-    SIMILARITY_FUNCTIONS_MAP.put(0, "EUC");
+    SIMILARITY_FUNCTIONS_MAP.put(0, "EUCLIDEAN");
     SIMILARITY_FUNCTIONS_MAP.put(1, "DOTP");
-    SIMILARITY_FUNCTIONS_MAP.put(2, "COS");
+    SIMILARITY_FUNCTIONS_MAP.put(2, "COSINE");
     SIMILARITY_FUNCTIONS_MAP.put(3, "MIP");
   }
 

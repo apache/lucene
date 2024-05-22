@@ -57,6 +57,9 @@ public class KnnFloatVectorField extends Field {
     return type;
   }
 
+  private static final EuclideanVectorSimilarityFunction euclideanVectorSimilarityFunction =
+      new EuclideanVectorSimilarityFunction();
+
   /**
    * A convenience method for creating a vector field type.
    *
@@ -114,7 +117,7 @@ public class KnnFloatVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnFloatVectorField(String name, float[] vector) {
-    this(name, vector, new EuclideanVectorSimilarityFunction());
+    this(name, vector, euclideanVectorSimilarityFunction);
   }
 
   /**

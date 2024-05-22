@@ -28,7 +28,7 @@ import static org.apache.lucene.util.VectorUtil.dotProductScore;
  */
 public class DotProductVectorSimilarityFunction extends VectorSimilarityFunction {
 
-  /** Construct onbject with function name and ordinal value */
+  /** Construct object with function name and ordinal value */
   public DotProductVectorSimilarityFunction() {
     super("DOTP", 1);
   }

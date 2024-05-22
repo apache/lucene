@@ -63,7 +63,7 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
               d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
         List<Document> toAdd = new ArrayList<>();
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 1}, "COS"));
+        doc.add(getKnnVectorField("field", new float[] {1, 1}, "COSINE"));
         toAdd.add(doc);
         toAdd.add(makeParent(new int[] {1}));
         w.addDocuments(toAdd);

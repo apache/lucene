@@ -1236,13 +1236,13 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
         sb.append(String.format(Locale.ENGLISH, "%04d", f.getVectorDimension()));
         sb.append("/");
         switch (f.getVectorSimilarity().getName()) {
-          case "COS":
+          case "COSINE":
             sb.append("cos");
             break;
           case "DOTP":
             sb.append("dot");
             break;
-          case "EUC":
+          case "EUCLIDEAN":
             sb.append("euc");
             break;
           case "MIP":

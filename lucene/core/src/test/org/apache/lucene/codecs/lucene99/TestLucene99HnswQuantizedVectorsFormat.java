@@ -29,7 +29,15 @@ import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
@@ -113,7 +121,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
-    boolean normalize = similarityFunction.getName().equals("COS");
+    boolean normalize = similarityFunction.getName().equals("COSINE");
     int dim = random().nextInt(64) + 1;
     if (dim % 2 == 1) {
       dim++;

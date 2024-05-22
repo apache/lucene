@@ -371,7 +371,7 @@ public final class FieldInfo {
       int vd2,
       VectorEncoding ve2,
       VectorSimilarityFunction vsf2) {
-    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2) {
+    if (vd1 != vd2 || !(vsf1.getName().equals(vsf2.getName())) || ve1 != ve2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -380,13 +380,13 @@ public final class FieldInfo {
               + ", vector encoding="
               + ve1
               + ", vector similarity function="
-              + vsf1
+              + vsf1.getName()
               + " to inconsistent vector dimension="
               + vd2
               + ", vector encoding="
               + ve2
               + ", vector similarity function="
-              + vsf2);
+              + vsf2.getName());
     }
   }
 

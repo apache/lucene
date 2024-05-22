@@ -39,6 +39,9 @@ import org.apache.lucene.search.Query;
  */
 public class KnnByteVectorField extends Field {
 
+  private static final EuclideanVectorSimilarityFunction euclideanVectorSimilarityFunction =
+      new EuclideanVectorSimilarityFunction();
+
   private static FieldType createType(byte[] v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
@@ -113,7 +116,7 @@ public class KnnByteVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnByteVectorField(String name, byte[] vector) {
-    this(name, vector, new EuclideanVectorSimilarityFunction());
+    this(name, vector, euclideanVectorSimilarityFunction);
   }
 
   /**

@@ -32,7 +32,16 @@ import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MaximumInnerProductVectorSimilarityFunction;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -251,7 +260,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
   }
 
   public void testSingleVectorPerSegmentCosine() throws IOException {
-    testSingleVectorPerSegment("COS");
+    testSingleVectorPerSegment("COSINE");
   }
 
   public void testSingleVectorPerSegmentDot() throws IOException {
@@ -259,7 +268,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
   }
 
   public void testSingleVectorPerSegmentEuclidean() throws IOException {
-    testSingleVectorPerSegment("EUC");
+    testSingleVectorPerSegment("EUCLIDEAN");
   }
 
   public void testSingleVectorPerSegmentMIP() throws IOException {

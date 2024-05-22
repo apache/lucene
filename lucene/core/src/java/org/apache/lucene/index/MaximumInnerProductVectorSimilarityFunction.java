@@ -27,7 +27,7 @@ import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
  */
 public class MaximumInnerProductVectorSimilarityFunction extends VectorSimilarityFunction {
 
-  /** Construct onbject with function name and ordinal value */
+  /** Construct object with function name and ordinal value */
   public MaximumInnerProductVectorSimilarityFunction() {
     super("MIP", 3);
   }

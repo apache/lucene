@@ -24,7 +24,12 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.CosineVectorSimilarityFunction;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.MaximumInnerProductVectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -39,6 +44,16 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
   private static Analyzer analyzer;
   private static IndexReader reader;
   private static IndexSearcher searcher;
+
+  private static final EuclideanVectorSimilarityFunction euclideanVectorSimilarityFunction =
+      new EuclideanVectorSimilarityFunction();
+  private static final DotProductVectorSimilarityFunction dotProductVectorSimilarityFunction =
+      new DotProductVectorSimilarityFunction();
+  private static final MaximumInnerProductVectorSimilarityFunction
+      maximumInnerProductVectorSimilarityFunction =
+          new MaximumInnerProductVectorSimilarityFunction();
+  private static final CosineVectorSimilarityFunction cosineVectorSimilarityFunction =
+      new CosineVectorSimilarityFunction();
 
   @BeforeClass
   public static void beforeClass() throws Exception {
@@ -56,24 +71,28 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
         new KnnFloatVectorField(
             "knnFloatField2",
             new float[] {2.2f, -3.2f, -3.1f},
-            getVectorSimilarityFunction("DOTP")));
+            dotProductVectorSimilarityFunction));
     document.add(
         new KnnFloatVectorField(
-            "knnFloatField3", new float[] {4.5f, 10.3f, -7.f}, getVectorSimilarityFunction("COS")));
+            "knnFloatField3", new float[] {4.5f, 10.3f, -7.f}, cosineVectorSimilarityFunction));
     document.add(
         new KnnFloatVectorField(
-            "knnFloatField4", new float[] {-1.3f, 1.0f, 1.0f}, getVectorSimilarityFunction("MIP")));
+            "knnFloatField4",
+            new float[] {-1.3f, 1.0f, 1.0f},
+            maximumInnerProductVectorSimilarityFunction));
     document.add(new KnnFloatVectorField("knnFloatField5", new float[] {-6.7f, -1.0f, -0.9f}));
     document.add(new KnnByteVectorField("knnByteField1", new byte[] {106, 80, 127}));
     document.add(
         new KnnByteVectorField(
-            "knnByteField2", new byte[] {4, 2, 3}, getVectorSimilarityFunction("DOTP")));
+            "knnByteField2", new byte[] {4, 2, 3}, dotProductVectorSimilarityFunction));
     document.add(
         new KnnByteVectorField(
-            "knnByteField3", new byte[] {-121, -64, -1}, getVectorSimilarityFunction("COS")));
+            "knnByteField3", new byte[] {-121, -64, -1}, cosineVectorSimilarityFunction));
     document.add(
         new KnnByteVectorField(
-            "knnByteField4", new byte[] {-127, 127, 127}, getVectorSimilarityFunction("MIP")));
+            "knnByteField4",
+            new byte[] {-127, 127, 127},
+            maximumInnerProductVectorSimilarityFunction));
     iw.addDocument(document);
 
     Document document2 = new Document();
@@ -82,23 +101,21 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     document2.add(new KnnFloatVectorField("knnFloatField1", new float[] {1.f, 2.f, 3.f}));
     document2.add(
         new KnnFloatVectorField(
-            "knnFloatField2",
-            new float[] {-5.2f, 8.7f, 3.1f},
-            getVectorSimilarityFunction("DOTP")));
+            "knnFloatField2", new float[] {-5.2f, 8.7f, 3.1f}, dotProductVectorSimilarityFunction));
     document2.add(
         new KnnFloatVectorField(
-            "knnFloatField3", new float[] {0.2f, -3.2f, 3.1f}, getVectorSimilarityFunction("COS")));
+            "knnFloatField3", new float[] {0.2f, -3.2f, 3.1f}, cosineVectorSimilarityFunction));
     document2.add(new KnnFloatVectorField("knnFloatField5", new float[] {2.f, 13.2f, 9.1f}));
     document2.add(new KnnByteVectorField("knnByteField1", new byte[] {1, -2, -30}));
     document2.add(
         new KnnByteVectorField(
-            "knnByteField2", new byte[] {40, 21, 3}, getVectorSimilarityFunction("DOTP")));
+            "knnByteField2", new byte[] {40, 21, 3}, dotProductVectorSimilarityFunction));
     document2.add(
         new KnnByteVectorField(
-            "knnByteField3", new byte[] {9, 2, 3}, getVectorSimilarityFunction("COS")));
+            "knnByteField3", new byte[] {9, 2, 3}, cosineVectorSimilarityFunction));
     document2.add(
         new KnnByteVectorField(
-            "knnByteField4", new byte[] {14, 29, 31}, getVectorSimilarityFunction("MIP")));
+            "knnByteField4", new byte[] {14, 29, 31}, maximumInnerProductVectorSimilarityFunction));
     iw.addDocument(document2);
 
     Document document3 = new Document();
@@ -107,18 +124,20 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     document3.add(new KnnFloatVectorField("knnFloatField1", new float[] {1.f, 2.f, 3.f}));
     document3.add(
         new KnnFloatVectorField(
-            "knnFloatField2", new float[] {-8.f, 7.f, -6.f}, getVectorSimilarityFunction("DOTP")));
+            "knnFloatField2", new float[] {-8.f, 7.f, -6.f}, dotProductVectorSimilarityFunction));
     document3.add(new KnnFloatVectorField("knnFloatField5", new float[] {5.2f, 3.2f, 3.1f}));
     document3.add(new KnnByteVectorField("knnByteField1", new byte[] {-128, 0, 127}));
     document3.add(
         new KnnByteVectorField(
-            "knnByteField2", new byte[] {-1, -2, -3}, getVectorSimilarityFunction("DOTP")));
+            "knnByteField2", new byte[] {-1, -2, -3}, dotProductVectorSimilarityFunction));
     document3.add(
         new KnnByteVectorField(
-            "knnByteField3", new byte[] {4, 2, 3}, getVectorSimilarityFunction("COS")));
+            "knnByteField3", new byte[] {4, 2, 3}, cosineVectorSimilarityFunction));
     document3.add(
         new KnnByteVectorField(
-            "knnByteField4", new byte[] {-4, -2, -128}, getVectorSimilarityFunction("MIP")));
+            "knnByteField4",
+            new byte[] {-4, -2, -128},
+            maximumInnerProductVectorSimilarityFunction));
     document3.add(new KnnByteVectorField("knnByteField5", new byte[] {-120, -2, 3}));
     iw.addDocument(document3);
     iw.commit();
@@ -135,10 +154,6 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     IOUtils.close(reader, dir, analyzer);
   }
 
-  private static VectorSimilarityFunction getVectorSimilarityFunction(String name) {
-    return VectorSimilarityFunction.forName(name);
-  }
-
   public void testEuclideanSimilarityValuesSource() throws Exception {
     float[] floatQueryVector = new float[] {9.f, 1.f, -10.f};
 
@@ -150,18 +165,18 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new float[] {1.f, 2.f, 3.f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new float[] {1.f, 2.f, 3.f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new float[] {1.f, 2.f, 3.f}, floatQueryVector));
 
     dv =
         DoubleValuesSource.similarityToQueryVector(
@@ -169,18 +184,18 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new float[] {-6.7f, -1.0f, -0.9f}, floatQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new float[] {-6.7f, -1.0f, -0.9f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new float[] {2.f, 13.2f, 9.1f}, floatQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new float[] {2.f, 13.2f, 9.1f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new float[] {5.2f, 3.2f, 3.1f}, floatQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new float[] {5.2f, 3.2f, 3.1f}, floatQueryVector));
 
     byte[] byteQueryVector = new byte[] {-128, 2, 127};
 
@@ -190,18 +205,18 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new byte[] {106, 80, 127}, byteQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new byte[] {106, 80, 127}, byteQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new byte[] {1, -2, -30}, byteQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new byte[] {1, -2, -30}, byteQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new byte[] {-128, 0, 127}, byteQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new byte[] {-128, 0, 127}, byteQueryVector));
 
     dv =
         DoubleValuesSource.similarityToQueryVector(
@@ -211,8 +226,8 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("EUC")
-                    .compare(new byte[] {-120, -2, 3}, byteQueryVector));
+                == euclideanVectorSimilarityFunction.compare(
+                    new byte[] {-120, -2, 3}, byteQueryVector));
   }
 
   public void testDotSimilarityValuesSource() throws Exception {
@@ -226,18 +241,18 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("DOTP")
-                    .compare(new float[] {2.2f, -3.2f, -3.1f}, floatQueryVector));
+                == dotProductVectorSimilarityFunction.compare(
+                    new float[] {2.2f, -3.2f, -3.1f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("DOTP")
-                    .compare(new float[] {-5.2f, 8.7f, 3.1f}, floatQueryVector));
+                == dotProductVectorSimilarityFunction.compare(
+                    new float[] {-5.2f, 8.7f, 3.1f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("DOTP")
-                    .compare(new float[] {-8.f, 7.f, -6.f}, floatQueryVector));
+                == dotProductVectorSimilarityFunction.compare(
+                    new float[] {-8.f, 7.f, -6.f}, floatQueryVector));
 
     byte[] byteQueryVector = new byte[] {-128, 2, 127};
 
@@ -247,18 +262,18 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("DOTP")
-                    .compare(new byte[] {4, 2, 3}, byteQueryVector));
+                == dotProductVectorSimilarityFunction.compare(
+                    new byte[] {4, 2, 3}, byteQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("DOTP")
-                    .compare(new byte[] {40, 21, 3}, byteQueryVector));
+                == dotProductVectorSimilarityFunction.compare(
+                    new byte[] {40, 21, 3}, byteQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("DOTP")
-                    .compare(new byte[] {-1, -2, -3}, byteQueryVector));
+                == dotProductVectorSimilarityFunction.compare(
+                    new byte[] {-1, -2, -3}, byteQueryVector));
   }
 
   public void testCosineSimilarityValuesSource() throws Exception {
@@ -272,13 +287,13 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("COS")
-                    .compare(new float[] {4.5f, 10.3f, -7.f}, floatQueryVector));
+                == cosineVectorSimilarityFunction.compare(
+                    new float[] {4.5f, 10.3f, -7.f}, floatQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("COS")
-                    .compare(new float[] {0.2f, -3.2f, 3.1f}, floatQueryVector));
+                == cosineVectorSimilarityFunction.compare(
+                    new float[] {0.2f, -3.2f, 3.1f}, floatQueryVector));
     assertFalse(dv.advanceExact(2));
 
     byte[] byteQueryVector = new byte[] {-10, 8, 0};
@@ -289,18 +304,16 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(
         dv.advanceExact(0)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("COS")
-                    .compare(new byte[] {-121, -64, -1}, byteQueryVector));
+                == cosineVectorSimilarityFunction.compare(
+                    new byte[] {-121, -64, -1}, byteQueryVector));
     assertTrue(
         dv.advanceExact(1)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("COS")
-                    .compare(new byte[] {9, 2, 3}, byteQueryVector));
+                == cosineVectorSimilarityFunction.compare(new byte[] {9, 2, 3}, byteQueryVector));
     assertTrue(
         dv.advanceExact(2)
             && dv.doubleValue()
-                == getVectorSimilarityFunction("COS")
-                    .compare(new byte[] {4, 2, 3}, byteQueryVector));
+                == cosineVectorSimilarityFunction.compare(new byte[] {4, 2, 3}, byteQueryVector));
   }
 
   public void testMaximumProductSimilarityValuesSource() throws Exception {
@@ -313,8 +326,8 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField4");
     assertTrue(dv.advanceExact(0));
     assertEquals(
-        getVectorSimilarityFunction("MIP")
-            .compare(new float[] {-1.3f, 1.0f, 1.0f}, floatQueryVector),
+        maximumInnerProductVectorSimilarityFunction.compare(
+            new float[] {-1.3f, 1.0f, 1.0f}, floatQueryVector),
         dv.doubleValue(),
         0.0001);
     assertFalse(dv.advanceExact(1));
@@ -327,17 +340,20 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
             searcher.reader.leaves().get(0), byteQueryVector, "knnByteField4");
     assertTrue(dv.advanceExact(0));
     assertEquals(
-        getVectorSimilarityFunction("MIP").compare(new byte[] {-127, 127, 127}, byteQueryVector),
+        maximumInnerProductVectorSimilarityFunction.compare(
+            new byte[] {-127, 127, 127}, byteQueryVector),
         dv.doubleValue(),
         0.0001);
     assertTrue(dv.advanceExact(1));
     assertEquals(
-        getVectorSimilarityFunction("MIP").compare(new byte[] {14, 29, 31}, byteQueryVector),
+        maximumInnerProductVectorSimilarityFunction.compare(
+            new byte[] {14, 29, 31}, byteQueryVector),
         dv.doubleValue(),
         0.0001);
     assertTrue(dv.advanceExact(2));
     assertEquals(
-        getVectorSimilarityFunction("MIP").compare(new byte[] {-4, -2, -128}, byteQueryVector),
+        maximumInnerProductVectorSimilarityFunction.compare(
+            new byte[] {-4, -2, -128}, byteQueryVector),
         dv.doubleValue(),
         0.0001);
   }
@@ -363,16 +379,17 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     assertTrue(dv.advanceExact(0));
     assertEquals(
         dv.doubleValue(),
-        getVectorSimilarityFunction("EUC").compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector),
+        euclideanVectorSimilarityFunction.compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector),
         0.0);
     assertNotEquals(
         dv.doubleValue(),
-        getVectorSimilarityFunction("DOTP").compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
+        dotProductVectorSimilarityFunction.compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
     assertNotEquals(
         dv.doubleValue(),
-        getVectorSimilarityFunction("COS").compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
+        cosineVectorSimilarityFunction.compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
     assertNotEquals(
         dv.doubleValue(),
-        getVectorSimilarityFunction("MIP").compare(new float[] {1.f, 2.f, 3.f}, floatQueryVector));
+        maximumInnerProductVectorSimilarityFunction.compare(
+            new float[] {1.f, 2.f, 3.f}, floatQueryVector));
   }
 }
