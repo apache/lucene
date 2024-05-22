@@ -20,8 +20,6 @@ import static org.apache.lucene.codecs.lucene90.Lucene90NormsFormat.VERSION_CURR
 import static org.apache.lucene.codecs.lucene90.Lucene90NormsFormat.VERSION_START;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.CorruptIndexException;
@@ -35,17 +33,18 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /** Reader for {@link Lucene90NormsFormat} */
 final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
   // metadata maps (just file pointers and minimal stuff)
-  private final Map<Integer, NormsEntry> norms = new HashMap<>();
+  private final IntObjectHashMap<NormsEntry> norms = new IntObjectHashMap<>();
   private final int maxDoc;
   private IndexInput data;
   private boolean merging;
-  private Map<Integer, IndexInput> disiInputs;
-  private Map<Integer, RandomAccessInput> disiJumpTables;
-  private Map<Integer, RandomAccessInput> dataInputs;
+  private IntObjectHashMap<IndexInput> disiInputs;
+  private IntObjectHashMap<RandomAccessInput> disiJumpTables;
+  private IntObjectHashMap<RandomAccessInput> dataInputs;
 
   Lucene90NormsProducer(
       SegmentReadState state,
@@ -121,9 +120,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       throw new RuntimeException(e);
     }
     clone.data = data.clone();
-    clone.disiInputs = new HashMap<>();
-    clone.disiJumpTables = new HashMap<>();
-    clone.dataInputs = new HashMap<>();
+    clone.disiInputs = new IntObjectHashMap<>();
+    clone.disiJumpTables = new IntObjectHashMap<>();
+    clone.dataInputs = new IntObjectHashMap<>();
     clone.merging = true;
     return clone;
   }

@@ -17,7 +17,6 @@
 package org.apache.lucene.benchmark.byTask.feeds;
 
 import java.util.AbstractMap;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -31,6 +30,7 @@ import org.apache.lucene.spatial.prefix.tree.PackedQuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTreeFactory;
 import org.apache.lucene.spatial.serialized.SerializedDVStrategy;
+import org.apache.lucene.util.hppc.IntObjectHashMap;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
 import org.locationtech.spatial4j.shape.Point;
@@ -50,7 +50,7 @@ public class SpatialDocMaker extends DocMaker {
   public static final String SPATIAL_FIELD = "spatial";
 
   // cache spatialStrategy by round number
-  private static Map<Integer, SpatialStrategy> spatialStrategyCache = new HashMap<>();
+  private static IntObjectHashMap<SpatialStrategy> spatialStrategyCache = new IntObjectHashMap<>();
 
   private SpatialStrategy strategy;
   private ShapeConverter shapeConverter;

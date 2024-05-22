@@ -18,14 +18,16 @@
 package org.apache.lucene.util.hppc;
 
 import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
+import static org.apache.lucene.util.hppc.HashContainers.*;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A hash map of <code>int</code> to <code>Object</code>, implemented using open addressing with
- * linear probing for collision resolution.
+ * linear probing for collision resolution. Supports null values.
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntObjectHashMap
  *
@@ -33,28 +35,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @SuppressWarnings("unchecked")
 public class IntObjectHashMap<VType>
-    implements Iterable<IntObjectHashMap.IntObjectCursor<VType>>, Cloneable {
+    implements Iterable<IntObjectHashMap.IntObjectCursor<VType>>, Accountable, Cloneable {
 
-  public static final int DEFAULT_EXPECTED_ELEMENTS = 4;
-
-  public static final float DEFAULT_LOAD_FACTOR = 0.75f;
-
-  private static final AtomicInteger ITERATION_SEED = new AtomicInteger();
-
-  /** Minimal sane load factor (99 empty slots per 100). */
-  public static final float MIN_LOAD_FACTOR = 1 / 100.0f;
-
-  /** Maximum sane load factor (1 empty slot per 100). */
-  public static final float MAX_LOAD_FACTOR = 99 / 100.0f;
-
-  /** Minimum hash buffer size. */
-  public static final int MIN_HASH_ARRAY_LENGTH = 4;
-
-  /**
-   * Maximum array size for hash containers (power-of-two and still allocable in Java, not a
-   * negative int).
-   */
-  public static final int MAX_HASH_ARRAY_LENGTH = 0x80000000 >>> 1;
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(IntObjectHashMap.class);
 
   /** The array holding keys. */
   public int[] keys;
@@ -304,7 +288,7 @@ public class IntObjectHashMap<VType>
     return (VType) values[index];
   }
 
-  public VType indexReplace(int index, int newValue) {
+  public VType indexReplace(int index, VType newValue) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
@@ -434,6 +418,19 @@ public class IntObjectHashMap<VType>
   @Override
   public Iterator<IntObjectCursor<VType>> iterator() {
     return new EntryIterator();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(keys) + sizeOfValues();
+  }
+
+  private long sizeOfValues() {
+    long size = RamUsageEstimator.shallowSizeOf(values);
+    for (ObjectCursor<VType> value : values()) {
+      size += RamUsageEstimator.sizeOfObject(value);
+    }
+    return size;
   }
 
   /** An iterator implementation for {@link #iterator}. */
@@ -867,23 +864,6 @@ public class IntObjectHashMap<VType>
     @Override
     public String toString() {
       return "[cursor, index: " + index + ", key: " + key + ", value: " + value + "]";
-    }
-  }
-
-  /** Forked from HPPC, holding int index and Object value */
-  public static final class ObjectCursor<VType> {
-    /**
-     * The current value's index in the container this cursor belongs to. The meaning of this index
-     * is defined by the container (usually it will be an index in the underlying storage buffer).
-     */
-    public int index;
-
-    /** The current value. */
-    public VType value;
-
-    @Override
-    public String toString() {
-      return "[cursor, index: " + index + ", value: " + value + "]";
     }
   }
 }
