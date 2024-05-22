@@ -182,7 +182,12 @@ public final class TermStates {
       }
       final TermsEnum termsEnum = terms.iterator();
       termsEnum.prepareSeekExact(term.bytes());
+      final Thread creationThread = Thread.currentThread();
       return () -> {
+        if (creationThread != Thread.currentThread()) {
+          throw new IllegalStateException(
+              "The Supplier returned by TermStates#get must be consumed in the same thread");
+        }
         if (this.states[ctx.ord] == null) {
           try {
             TermState state = null;
