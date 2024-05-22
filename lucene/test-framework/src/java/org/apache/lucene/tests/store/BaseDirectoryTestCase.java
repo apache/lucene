@@ -1465,6 +1465,37 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testGroupVIntOverflow() throws IOException {
+    try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
+      final int size = 32;
+      final long[] values = new long[size];
+      final long[] restore = new long[size];
+      values[0] = 1L << 31; // values[0] = 2147483648 as long, but as int it is -2147483648
+
+      for (int i = 0; i < size; i++) {
+        if (random().nextBoolean()) {
+          values[i] = values[0];
+        }
+      }
+
+      // a smaller limit value cover default implementation of readGroupVInts
+      // and a bigger limit value cover the faster implementation.
+      final int limit = random().nextInt(1, size);
+      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
+      out.writeGroupVInts(values, limit);
+      out.close();
+      try (IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
+        in.readGroupVInts(restore, limit);
+        for (int i = 0; i < limit; i++) {
+          assertEquals(values[i], restore[i]);
+        }
+      }
+
+      values[0] = 0xFFFFFFFFL + 1;
+      assertThrows(ArithmeticException.class, () -> out.writeGroupVInts(values, 4));
+    }
+  }
+
   public void testGroupVInt() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
       // test fallback to default implementation of readGroupVInt
@@ -1540,35 +1571,31 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           in = orig.slice("slice", startOffset, totalLength - startOffset);
         }
         for (int i = 0; i < 10_000; ++i) {
-          final int startPointer = (int) in.getFilePointer();
-          assertTrue(startPointer < in.length());
+          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
           if (random().nextBoolean()) {
-            final long prefetchLength = TestUtil.nextLong(random(), 1, in.length() - startPointer);
-            in.prefetch(prefetchLength);
+            final long prefetchLength = TestUtil.nextLong(random(), 1, in.length() - offset);
+            in.prefetch(offset, prefetchLength);
           }
-          assertEquals(startPointer, in.getFilePointer());
+          in.seek(offset);
+          assertEquals(offset, in.getFilePointer());
           switch (random().nextInt(100)) {
             case 0:
-              assertEquals(arr[startOffset + startPointer], in.readByte());
+              assertEquals(arr[startOffset + offset], in.readByte());
               break;
             case 1:
-              if (in.length() - startPointer >= Long.BYTES) {
+              if (in.length() - offset >= Long.BYTES) {
                 assertEquals(
-                    (long) BitUtil.VH_LE_LONG.get(arr, startOffset + startPointer), in.readLong());
+                    (long) BitUtil.VH_LE_LONG.get(arr, startOffset + offset), in.readLong());
               }
               break;
             default:
               final int readLength =
-                  TestUtil.nextInt(
-                      random(), 1, (int) Math.min(temp.length, in.length() - startPointer));
+                  TestUtil.nextInt(random(), 1, (int) Math.min(temp.length, in.length() - offset));
               in.readBytes(temp, 0, readLength);
               assertArrayEquals(
                   ArrayUtil.copyOfSubArray(
-                      arr, startOffset + startPointer, startOffset + startPointer + readLength),
+                      arr, startOffset + offset, startOffset + offset + readLength),
                   ArrayUtil.copyOfSubArray(temp, 0, readLength));
-          }
-          if (in.getFilePointer() == in.length() || random().nextBoolean()) {
-            in.seek(TestUtil.nextInt(random(), 0, (int) in.length() - 1));
           }
         }
       }

@@ -698,7 +698,7 @@ public class ScalarQuantizer {
         }
         corr.add(1 - errors.var() / scoreVariance);
       }
-      return corr.mean;
+      return Double.isNaN(corr.mean) ? 0.0 : corr.mean;
     }
   }
 }

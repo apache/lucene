@@ -21,10 +21,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.fst.FST;
+import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /** {@link Viterbi} subclass for n-best path calculation. */
 public abstract class ViterbiNBest<T extends Token, U extends MorphData>
@@ -137,14 +137,14 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
     }
 
     // offset=>position map
-    HashMap<Integer, Integer> map = new HashMap<>();
+    IntIntHashMap map = new IntIntHashMap();
     for (Token t : pending) {
       map.put(t.getOffset(), 0);
       map.put(t.getOffset() + t.getLength(), 0);
     }
 
     // Get unique and sorted list of all edge position of tokens.
-    Integer[] offsets = map.keySet().toArray(new Integer[0]);
+    int[] offsets = map.keys().toArray();
     Arrays.sort(offsets);
 
     // setup all value of map.  It specifies N-th position from begin.

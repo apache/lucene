@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 
@@ -27,6 +28,11 @@ import org.apache.lucene.store.IndexInput;
  * Used by MockDirectoryWrapper to create an input stream that keeps track of when it's been closed.
  */
 public class MockIndexInputWrapper extends FilterIndexInput {
+
+  static {
+    TestSecrets.getFilterInputIndexAccess().addTestFilterType(MockIndexInputWrapper.class);
+  }
+
   private MockDirectoryWrapper dir;
   final String name;
   private volatile boolean closed;
@@ -131,9 +137,9 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   }
 
   @Override
-  public void prefetch(long length) throws IOException {
+  public void prefetch(long offset, long length) throws IOException {
     ensureOpen();
-    in.prefetch(length);
+    in.prefetch(offset, length);
   }
 
   @Override
