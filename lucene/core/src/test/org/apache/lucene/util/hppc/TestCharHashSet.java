@@ -17,6 +17,18 @@
 
 package org.apache.lucene.util.hppc;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -24,51 +36,40 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.not;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.hamcrest.MatcherAssert;
-import org.junit.Before;
-import org.junit.Test;
-
 /**
- * Tests for {@link IntHashSet}.
+ * Tests for {@link CharHashSet}.
  *
- * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntHashSetTest
+ * <p>Mostly forked and trimmed from com.carrotsearch.hppc.CharHashSetTest
  *
  * <p>github: https://github.com/carrotsearch/hppc release: 0.9.0
  */
-public class TestIntHashSet extends LuceneTestCase {
-  private static final int EMPTY_KEY = 0;
+public class TestCharHashSet extends LuceneTestCase {
+  private static final char EMPTY_KEY = (char) 0;
 
-  private final int keyE = 0;
-  private final int key1 = cast(1);
-  private final int key2 = cast(2);
-  private final int key3 = cast(3);
-  private final int key4 = cast(4);
+  private final char keyE = 0;
+  private final char key1 = cast(1);
+  private final char key2 = cast(2);
+  private final char key3 = cast(3);
+  private final char key4 = cast(4);
 
   /** Per-test fresh initialized instance. */
-  private IntHashSet set;
+  private CharHashSet set;
 
   /** Convert to target type from an integer used to test stuff. */
-  private int cast(int v) {
-    return v;
+  private static char cast(int v) {
+    return (char) ('a' + v);
   }
 
   @Before
   public void initialize() {
-    set = new IntHashSet();
+    set = new CharHashSet();
   }
 
   @Test
   public void testAddAllViaInterface() {
     set.addAll(key1, key2);
 
-    IntHashSet iface = new IntHashSet();
+    CharHashSet iface = new CharHashSet();
     iface.clear();
     iface.addAll(set);
     MatcherAssert.assertThat(set(iface.toArray()), is(equalTo(set(key1, key2))));
@@ -118,7 +119,7 @@ public class TestIntHashSet extends LuceneTestCase {
     set.add(key1);
     set.add(key2);
 
-    for (IntCursor c : set) {
+    for (CharCursor c : set) {
       MatcherAssert.assertThat(set.indexExists(c.index), is(true));
       MatcherAssert.assertThat(set.indexGet(c.index), is(equalTo(c.value)));
     }
@@ -126,7 +127,7 @@ public class TestIntHashSet extends LuceneTestCase {
 
   @Test
   public void testEmptyKey() {
-    IntHashSet set = new IntHashSet();
+    CharHashSet set = new CharHashSet();
 
     boolean b = set.add(EMPTY_KEY);
 
@@ -167,8 +168,8 @@ public class TestIntHashSet extends LuceneTestCase {
   @Test
   public void testEnsureCapacity() {
     final AtomicInteger expands = new AtomicInteger();
-    IntHashSet set =
-        new IntHashSet(0) {
+    CharHashSet set =
+        new CharHashSet(0) {
           @Override
           protected void allocateBuffers(int arraySize) {
             super.allocateBuffers(arraySize);
@@ -220,7 +221,7 @@ public class TestIntHashSet extends LuceneTestCase {
 
   @Test
   public void testAddAll() {
-    IntHashSet set2 = new IntHashSet();
+    CharHashSet set2 = new CharHashSet();
     set2.addAll(asArray(1, 2));
     set.addAll(asArray(0, 1));
 
@@ -244,7 +245,7 @@ public class TestIntHashSet extends LuceneTestCase {
   @Test
   public void testInitialCapacityAndGrowth() {
     for (int i = 0; i < 256; i++) {
-      IntHashSet set = new IntHashSet(i);
+      CharHashSet set = new CharHashSet(i);
 
       for (int j = 0; j < i; j++) {
         set.add(cast(j));
@@ -259,7 +260,7 @@ public class TestIntHashSet extends LuceneTestCase {
     final AtomicInteger reallocations = new AtomicInteger();
     final int elements = 0x7F;
     set =
-        new IntHashSet(elements, 1f) {
+        new CharHashSet(elements, 1f) {
           @Override
           protected double verifyLoadFactor(double loadFactor) {
             // Skip load factor sanity range checking.
@@ -280,7 +281,7 @@ public class TestIntHashSet extends LuceneTestCase {
     }
 
     // Non-existent key.
-    int outOfSet = cast(elements + 1);
+    char outOfSet = cast(elements + 1);
     set.remove(outOfSet);
     assertFalse(set.contains(outOfSet));
     assertEquals(reallocationsBefore, reallocations.get());
@@ -303,7 +304,7 @@ public class TestIntHashSet extends LuceneTestCase {
   public void testRemoveAllFromLookupContainer() {
     set.addAll(asArray(0, 1, 2, 3, 4));
 
-    IntHashSet list2 = new IntHashSet();
+    CharHashSet list2 = new CharHashSet();
     list2.addAll(asArray(1, 3, 5));
 
     assertEquals(2, set.removeAll(list2));
@@ -334,7 +335,7 @@ public class TestIntHashSet extends LuceneTestCase {
     assertEquals(3, set.size());
 
     int count = 0;
-    for (IntCursor cursor : set) {
+    for (CharCursor cursor : set) {
       count++;
       assertTrue(set.contains(cursor.value));
     }
@@ -356,9 +357,9 @@ public class TestIntHashSet extends LuceneTestCase {
       set.clear();
 
       for (int round = 0; round < size * 20; round++) {
-        int key = cast(rnd.nextInt(size));
+        char key = cast(rnd.nextInt(size));
         if (rnd.nextInt(50) == 0) {
-          key = 0;
+          key = EMPTY_KEY;
         }
 
         if (rnd.nextBoolean()) {
@@ -395,12 +396,12 @@ public class TestIntHashSet extends LuceneTestCase {
 
   @Test
   public void testHashCodeEquals() {
-    IntHashSet l0 = new IntHashSet();
+    CharHashSet l0 = new CharHashSet();
     assertEquals(0, l0.hashCode());
-    assertEquals(l0, new IntHashSet());
+    assertEquals(l0, new CharHashSet());
 
-    IntHashSet l1 = IntHashSet.from(key1, key2, key3);
-    IntHashSet l2 = IntHashSet.from(key1, key2);
+    CharHashSet l1 = CharHashSet.from(key1, key2, key3);
+    CharHashSet l2 = CharHashSet.from(key1, key2);
     l2.add(key3);
 
     assertEquals(l1.hashCode(), l2.hashCode());
@@ -411,7 +412,7 @@ public class TestIntHashSet extends LuceneTestCase {
   public void testClone() {
     this.set.addAll(asArray(1, 2, 3));
 
-    IntHashSet cloned = set.clone();
+    CharHashSet cloned = set.clone();
     cloned.remove(key1);
 
     assertSortedListEquals(set.toArray(), asArray(1, 2, 3));
@@ -420,9 +421,9 @@ public class TestIntHashSet extends LuceneTestCase {
 
   @Test
   public void testEqualsSameClass() {
-    IntHashSet l1 = IntHashSet.from(key1, key2, key3);
-    IntHashSet l2 = IntHashSet.from(key1, key2, key3);
-    IntHashSet l3 = IntHashSet.from(key1, key2, key4);
+    CharHashSet l1 = CharHashSet.from(key1, key2, key3);
+    CharHashSet l2 = CharHashSet.from(key1, key2, key3);
+    CharHashSet l3 = CharHashSet.from(key1, key2, key4);
 
     MatcherAssert.assertThat(l1, is(equalTo(l2)));
     MatcherAssert.assertThat(l1.hashCode(), is(equalTo(l2.hashCode())));
@@ -431,12 +432,12 @@ public class TestIntHashSet extends LuceneTestCase {
 
   @Test
   public void testEqualsSubClass() {
-    class Sub extends IntHashSet {}
+    class Sub extends CharHashSet {}
     ;
 
-    IntHashSet l1 = IntHashSet.from(key1, key2, key3);
-    IntHashSet l2 = new Sub();
-    IntHashSet l3 = new Sub();
+    CharHashSet l1 = CharHashSet.from(key1, key2, key3);
+    CharHashSet l2 = new Sub();
+    CharHashSet l3 = new Sub();
     l2.addAll(l1);
     l3.addAll(l1);
 
@@ -448,20 +449,24 @@ public class TestIntHashSet extends LuceneTestCase {
     return min + random().nextInt(max + 1 - min);
   }
 
-  private static Set<Integer> set(int... elements) {
-    Set<Integer> set = new HashSet<>();
-    for (int element : elements) {
+  private static Set<Character> set(char... elements) {
+    Set<Character> set = new HashSet<>();
+    for (char element : elements) {
       set.add(element);
     }
     return set;
   }
 
-  private static int[] asArray(int... elements) {
-    return elements;
+  private static char[] asArray(int... elements) {
+    char[] result = new char[elements.length];
+    for (int i = 0; i < elements.length; i++) {
+      result[i] = cast(elements[i]);
+    }
+    return result;
   }
 
   /** Check if the array's content is identical to a given sequence of elements. */
-  private static void assertSortedListEquals(int[] array, int[] elements) {
+  private static void assertSortedListEquals(char[] array, char[] elements) {
     assertEquals(elements.length, array.length);
     Arrays.sort(array);
     assertArrayEquals(elements, array);

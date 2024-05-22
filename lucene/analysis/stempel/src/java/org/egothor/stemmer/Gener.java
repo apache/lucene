@@ -54,6 +54,8 @@
 */
 package org.egothor.stemmer;
 
+import org.apache.lucene.util.hppc.ObjectCursor;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -103,8 +105,8 @@ public class Gener extends Reduce {
    */
   public boolean eat(Row in, int[] remap) {
     int sum = 0;
-    for (Iterator<Cell> i = in.cells.values().iterator(); i.hasNext(); ) {
-      Cell c = i.next();
+    for (Iterator<ObjectCursor<Cell>> i = in.cells.values().iterator(); i.hasNext(); ) {
+      Cell c = i.next().value;
       sum += c.cnt;
       if (c.ref >= 0) {
         if (remap[c.ref] == 0) {
@@ -114,8 +116,8 @@ public class Gener extends Reduce {
     }
     int frame = sum / 10;
     boolean live = false;
-    for (Iterator<Cell> i = in.cells.values().iterator(); i.hasNext(); ) {
-      Cell c = i.next();
+    for (Iterator<ObjectCursor<Cell>> i = in.cells.values().iterator(); i.hasNext(); ) {
+      Cell c = i.next().value;
       if (c.cnt < frame && c.cmd >= 0) {
         c.cnt = 0;
         c.cmd = -1;

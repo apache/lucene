@@ -17,10 +17,10 @@
 package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
-import java.util.Map;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.util.hppc.CharObjectHashMap;
 
 /**
  * A {@link TokenFilter} that normalizes small letters (捨て仮名) in hiragana into normal letters. For
@@ -30,25 +30,16 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  * legal, contract policies, etc.
  */
 public final class JapaneseHiraganaUppercaseFilter extends TokenFilter {
-  private static final Map<Character, Character> LETTER_MAPPINGS;
+  private static final CharObjectHashMap<Character> LETTER_MAPPINGS;
 
   static {
     // supported characters are:
     // ぁ ぃ ぅ ぇ ぉ っ ゃ ゅ ょ ゎ ゕ ゖ
     LETTER_MAPPINGS =
-        Map.ofEntries(
-            Map.entry('ぁ', 'あ'),
-            Map.entry('ぃ', 'い'),
-            Map.entry('ぅ', 'う'),
-            Map.entry('ぇ', 'え'),
-            Map.entry('ぉ', 'お'),
-            Map.entry('っ', 'つ'),
-            Map.entry('ゃ', 'や'),
-            Map.entry('ゅ', 'ゆ'),
-            Map.entry('ょ', 'よ'),
-            Map.entry('ゎ', 'わ'),
-            Map.entry('ゕ', 'か'),
-            Map.entry('ゖ', 'け'));
+            CharObjectHashMap.from(
+              new char[] {'ぁ','ぃ','ぅ','ぇ','ぉ','っ','ゃ','ゅ','ょ','ゎ','ゕ','ゖ'},
+                    new Character[] {'あ','い','う','え','お','つ','や','ゆ','よ','わ','か','け'}
+                    );
   }
 
   private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
@@ -59,17 +50,16 @@ public final class JapaneseHiraganaUppercaseFilter extends TokenFilter {
 
   @Override
   public boolean incrementToken() throws IOException {
-    if (input.incrementToken()) {
-      char[] termBuffer = termAttr.buffer();
-      for (int i = 0; i < termBuffer.length; i++) {
+    if (!input.incrementToken()) {
+      return false;
+    }
+      final char[] termBuffer = termAttr.buffer();
+      for (int i = 0, length = termAttr.length(); i < length; i++) {
         Character c = LETTER_MAPPINGS.get(termBuffer[i]);
         if (c != null) {
           termBuffer[i] = c;
         }
       }
       return true;
-    } else {
-      return false;
-    }
   }
 }

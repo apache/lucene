@@ -17,10 +17,10 @@
 package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
-import java.util.Map;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.util.hppc.CharObjectHashMap;
 
 /**
  * A {@link TokenFilter} that normalizes small letters (捨て仮名) in katakana into normal letters. For
@@ -30,41 +30,16 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  * legal, contract policies, etc.
  */
 public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
-  private static final Map<Character, Character> LETTER_MAPPINGS;
+  private static final CharObjectHashMap<Character> LETTER_MAPPINGS;
 
   static {
     // supported characters are:
     // ァ ィ ゥ ェ ォ ヵ ㇰ ヶ ㇱ ㇲ ッ ㇳ ㇴ ㇵ ㇶ ㇷ ㇷ゚ ㇸ ㇹ ㇺ ャ ュ ョ ㇻ ㇼ ㇽ ㇾ ㇿ ヮ
     LETTER_MAPPINGS =
-        Map.ofEntries(
-            Map.entry('ァ', 'ア'),
-            Map.entry('ィ', 'イ'),
-            Map.entry('ゥ', 'ウ'),
-            Map.entry('ェ', 'エ'),
-            Map.entry('ォ', 'オ'),
-            Map.entry('ヵ', 'カ'),
-            Map.entry('ㇰ', 'ク'),
-            Map.entry('ヶ', 'ケ'),
-            Map.entry('ㇱ', 'シ'),
-            Map.entry('ㇲ', 'ス'),
-            Map.entry('ッ', 'ツ'),
-            Map.entry('ㇳ', 'ト'),
-            Map.entry('ㇴ', 'ヌ'),
-            Map.entry('ㇵ', 'ハ'),
-            Map.entry('ㇶ', 'ヒ'),
-            Map.entry('ㇷ', 'フ'),
-            Map.entry('ㇸ', 'ヘ'),
-            Map.entry('ㇹ', 'ホ'),
-            Map.entry('ㇺ', 'ム'),
-            Map.entry('ャ', 'ヤ'),
-            Map.entry('ュ', 'ユ'),
-            Map.entry('ョ', 'ヨ'),
-            Map.entry('ㇻ', 'ラ'),
-            Map.entry('ㇼ', 'リ'),
-            Map.entry('ㇽ', 'ル'),
-            Map.entry('ㇾ', 'レ'),
-            Map.entry('ㇿ', 'ロ'),
-            Map.entry('ヮ', 'ワ'));
+            CharObjectHashMap.from(
+                    new char[]      {'ァ', 'ィ', 'ゥ', 'ェ', 'ォ', 'ヵ', 'ㇰ', 'ヶ', 'ㇱ', 'ㇲ', 'ッ', 'ㇳ', 'ㇴ', 'ㇵ', 'ㇶ', 'ㇷ', 'ㇸ', 'ㇹ', 'ㇺ', 'ャ', 'ュ', 'ョ', 'ㇻ', 'ㇼ', 'ㇽ', 'ㇾ', 'ㇿ', 'ヮ'},
+                    new Character[] {'ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'ク', 'ケ', 'シ', 'ス', 'ツ', 'ト', 'ヌ', 'ハ', 'ヒ', 'フ', 'ヘ', 'ホ', 'ム', 'ヤ', 'ユ', 'ヨ', 'ラ', 'リ', 'ル', 'レ', 'ロ', 'ワ'}
+            );
   }
 
   private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
@@ -75,22 +50,26 @@ public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
 
   @Override
   public boolean incrementToken() throws IOException {
-    if (input.incrementToken()) {
-      String term = termAttr.toString();
-      if (term.contains("ㇷ゚")) {
-        term = term.replace("ㇷ゚", "プ");
-        termAttr.setEmpty().append(term);
-      }
-      char[] termBuffer = termAttr.buffer();
-      for (int i = 0; i < termBuffer.length; i++) {
-        Character c = LETTER_MAPPINGS.get(termBuffer[i]);
-        if (c != null) {
-          termBuffer[i] = c;
+    if (!input.incrementToken()) {
+      return false;
+    }
+      final char[] termBuffer = termAttr.buffer();
+      for (int i = 0, length = termAttr.length(); i < length; i++) {
+        if (termBuffer[i] == 'ㇷ' && i + 1 < length && termBuffer[i + 1] == '゚') {
+          // ㇷ゚detected, replace it by プ.
+          termBuffer[i] = 'プ';
+          int remaining = length - (i + 2);
+          if (remaining > 0) {
+            System.arraycopy(termBuffer, i + 2, termBuffer, i + 1, remaining);
+          }
+          termAttr.setLength(--length);
+        } else {
+          Character c = LETTER_MAPPINGS.get(termBuffer[i]);
+          if (c != null) {
+            termBuffer[i] = c;
+          }
         }
       }
       return true;
-    } else {
-      return false;
-    }
   }
 }

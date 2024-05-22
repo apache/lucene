@@ -42,6 +42,7 @@ import org.apache.lucene.analysis.hunspell.AffixedWord.Affix;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.IntsRefFSTEnum;
+import org.apache.lucene.util.hppc.CharObjectHashMap;
 
 /**
  * A utility class used for generating possible word forms by adding affixes to stems ({@link
@@ -50,7 +51,7 @@ import org.apache.lucene.util.fst.IntsRefFSTEnum;
  */
 public class WordFormGenerator {
   private final Dictionary dictionary;
-  private final Map<Character, List<AffixEntry>> affixes = new HashMap<>();
+  private final CharObjectHashMap<List<AffixEntry>> affixes = new CharObjectHashMap<>();
   private final Stemmer stemmer;
 
   public WordFormGenerator(Dictionary dictionary) {
@@ -75,7 +76,15 @@ public class WordFormGenerator {
           char flag = dictionary.affixData(id, AFFIX_FLAG);
           var entry =
               new AffixEntry(id, flag, kind, toString(kind, io.input), strip(id), condition(id));
-          affixes.computeIfAbsent(flag, __ -> new ArrayList<>()).add(entry);
+          List<AffixEntry> entries;
+          int index = affixes.indexOf(flag);
+          if (index < 0) {
+            entries = new ArrayList<>();
+            affixes.indexInsert(index, flag, entries);
+          } else {
+            entries = affixes.indexGet(index);
+          }
+          entries.add(entry);
         }
       }
     } catch (IOException e) {
