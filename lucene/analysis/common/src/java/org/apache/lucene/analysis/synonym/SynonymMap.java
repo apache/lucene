@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.synonym;
 import java.io.IOException;
 import java.io.Reader;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Set;
@@ -39,6 +38,7 @@ import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.Util;
 import org.apache.lucene.util.hppc.IntHashSet;
+import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * A map of synonyms, keys and values are phrases.
@@ -91,7 +91,7 @@ public class SynonymMap {
     private static class MapEntry {
       boolean includeOrig;
       // we could sort for better sharing ultimately, but it could confuse people
-      ArrayList<Integer> ords = new ArrayList<>();
+      IntArrayList ords = new IntArrayList();
     }
 
     /**

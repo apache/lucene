@@ -17,9 +17,9 @@
 
 package org.apache.lucene.spatial3d.geom;
 
+import com.carrotsearch.hppc.IntObjectHashMap;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Lookup tables for classes that can be serialized using a code.
