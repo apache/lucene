@@ -15,13 +15,17 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+package org.apache.lucene.internal.tests;
 
-description = 'Index-time and Query-time joins for normalized content'
+import org.apache.lucene.store.FilterIndexInput;
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleImplementation 'com.carrotsearch:hppc'
-
-  moduleTestImplementation project(':lucene:test-framework')
+/**
+ * Access to {@link org.apache.lucene.store.FilterIndexInput} internals exposed to the test
+ * framework.
+ *
+ * @lucene.internal
+ */
+public interface FilterIndexInputAccess {
+  /** Adds the given test FilterIndexInput class. */
+  void addTestFilterType(Class<? extends FilterIndexInput> cls);
 }

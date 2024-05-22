@@ -15,13 +15,26 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+package org.apache.lucene.codecs.hnsw;
 
-description = 'Index-time and Query-time joins for normalized content'
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleImplementation 'com.carrotsearch:hppc'
+/**
+ * Utilities for {@link FlatVectorsScorer}.
+ *
+ * @lucene.experimental
+ */
+public final class FlatVectorScorerUtil {
 
-  moduleTestImplementation project(':lucene:test-framework')
+  private static final VectorizationProvider IMPL = VectorizationProvider.getInstance();
+
+  private FlatVectorScorerUtil() {}
+
+  /**
+   * Returns a FlatVectorsScorer that supports the Lucene99 format. Scorers retrieved through this
+   * method may be optimized on certain platforms. Otherwise, a DefaultFlatVectorScorer is returned.
+   */
+  public static FlatVectorsScorer getLucene99FlatVectorsScorer() {
+    return IMPL.getLucene99FlatVectorsScorer();
+  }
 }

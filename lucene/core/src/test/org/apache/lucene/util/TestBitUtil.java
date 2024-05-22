@@ -14,14 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
 
-apply plugin: 'java-library'
+import org.apache.lucene.tests.util.LuceneTestCase;
 
-description = 'Index-time and Query-time joins for normalized content'
+public class TestBitUtil extends LuceneTestCase {
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleImplementation 'com.carrotsearch:hppc'
-
-  moduleTestImplementation project(':lucene:test-framework')
+  public void testIsZeroOrPowerOfTwo() {
+    assertTrue(BitUtil.isZeroOrPowerOfTwo(0));
+    for (int shift = 0; shift <= 31; ++shift) {
+      assertTrue(BitUtil.isZeroOrPowerOfTwo(1 << shift));
+    }
+    assertFalse(BitUtil.isZeroOrPowerOfTwo(3));
+    assertFalse(BitUtil.isZeroOrPowerOfTwo(5));
+    assertFalse(BitUtil.isZeroOrPowerOfTwo(6));
+    assertFalse(BitUtil.isZeroOrPowerOfTwo(7));
+    assertFalse(BitUtil.isZeroOrPowerOfTwo(9));
+    assertFalse(BitUtil.isZeroOrPowerOfTwo(Integer.MAX_VALUE));
+    assertFalse(BitUtil.isZeroOrPowerOfTwo(Integer.MAX_VALUE + 2));
+    assertFalse(BitUtil.isZeroOrPowerOfTwo(-1));
+  }
 }
