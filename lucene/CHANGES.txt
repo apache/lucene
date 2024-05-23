@@ -72,6 +72,8 @@ Improvements
 * GITHUB#13385: Add Intervals.noIntervals() method to produce an empty IntervalsSource.
   (Aniketh Jain, Uwe Schindler, Alan Woodward))
 
+* GITHUB#13276: UnifiedHighlighter: new 'passageSortComparator' option to allow sorting other than offset order. (Seunghan Jung)
+
 Optimizations
 ---------------------
 
