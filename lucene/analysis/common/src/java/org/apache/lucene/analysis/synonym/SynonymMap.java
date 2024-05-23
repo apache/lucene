@@ -37,8 +37,8 @@ import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.Util;
-import org.apache.lucene.util.hppc.IntHashSet;
 import org.apache.lucene.util.hppc.IntArrayList;
+import org.apache.lucene.util.hppc.IntHashSet;
 
 /**
  * A map of synonyms, keys and values are phrases.
