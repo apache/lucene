@@ -20,8 +20,7 @@ import org.apache.lucene.util.NamedSPILoader;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
- * vector. This is a label describing the method used during indexing and searching of the vectors
- * in order to determine the nearest neighbors.
+ * vector.
  */
 public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSPI {
 
@@ -40,7 +39,10 @@ public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSP
   /** Holds name of Vector Similarity Function */
   public final String name;
 
-  /** Holds integer value of Vector Similarity Function to be used for reading and writing index */
+  /**
+   * Holds integer value of Vector Similarity Function to be used while reading and writing
+   * field-info in the index
+   */
   public final int ordinal;
 
   /** Construct object with function name and ordinal value */
@@ -70,5 +72,17 @@ public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSP
   /** look up for VectorSimilarityFunction using name */
   public static VectorSimilarityFunction forName(String name) {
     return Holder.getLoader().lookup(name);
+  }
+
+  /**
+   * Reloads the VectorSimilarityFunction list from the given {@link ClassLoader}
+   *
+   * <p><b>NOTE:</b> Only new functions are added, existing ones are never removed or replaced.
+   *
+   * <p><em>This method is expensive and should only be called for discovery of new codecs on the
+   * given classpath/classloader!</em>
+   */
+  public static void reloadVectorSimilarityFunction(ClassLoader classloader) {
+    Holder.getLoader().reload(classloader);
   }
 }
