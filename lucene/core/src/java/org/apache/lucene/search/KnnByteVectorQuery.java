@@ -98,7 +98,12 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    return VectorScorer.create(context, fi, target);
+    ByteVectorValues vectorValues = context.reader().getByteVectorValues(field);
+    if (vectorValues == null) {
+      ByteVectorValues.checkField(context.reader(), field);
+      return null;
+    }
+    return vectorValues.scorer(target);
   }
 
   @Override
@@ -123,6 +128,6 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @return the target query vector of the search. Each vector element is a byte.
    */
   public byte[] getTargetCopy() {
-    return ArrayUtil.copyOfSubArray(target, 0, target.length);
+    return ArrayUtil.copyArray(target);
   }
 }

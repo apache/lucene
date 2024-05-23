@@ -28,7 +28,9 @@ import org.apache.lucene.store.DataOutput;
 public final class GroupVIntUtil {
   // the maximum length of a single group-varint is 4 integers + 1 byte flag.
   public static final int MAX_LENGTH_PER_GROUP = 17;
-  private static final int[] MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
+
+  // we use long array instead of int array to make negative integer to be read as positive long.
+  private static final long[] MASKS = new long[] {0xFFL, 0xFFFFL, 0xFFFFFFL, 0xFFFFFFFFL};
 
   /**
    * Default implementation of read single group, for optimal performance, you should use {@link
@@ -118,6 +120,13 @@ public final class GroupVIntUtil {
     return Integer.BYTES - (Integer.numberOfLeadingZeros(v | 1) >> 3);
   }
 
+  private static int toInt(long value) {
+    if ((Long.compareUnsigned(value, 0xFFFFFFFFL) > 0)) {
+      throw new ArithmeticException("integer overflow");
+    }
+    return (int) value;
+  }
+
   /**
    * The implementation for group-varint encoding, It uses a maximum of {@link
    * #MAX_LENGTH_PER_GROUP} bytes scratch buffer.
@@ -129,19 +138,19 @@ public final class GroupVIntUtil {
     // encode each group
     while ((limit - readPos) >= 4) {
       int writePos = 0;
-      final int n1Minus1 = numBytes(Math.toIntExact(values[readPos])) - 1;
-      final int n2Minus1 = numBytes(Math.toIntExact(values[readPos + 1])) - 1;
-      final int n3Minus1 = numBytes(Math.toIntExact(values[readPos + 2])) - 1;
-      final int n4Minus1 = numBytes(Math.toIntExact(values[readPos + 3])) - 1;
+      final int n1Minus1 = numBytes(toInt(values[readPos])) - 1;
+      final int n2Minus1 = numBytes(toInt(values[readPos + 1])) - 1;
+      final int n3Minus1 = numBytes(toInt(values[readPos + 2])) - 1;
+      final int n4Minus1 = numBytes(toInt(values[readPos + 3])) - 1;
       int flag = (n1Minus1 << 6) | (n2Minus1 << 4) | (n3Minus1 << 2) | (n4Minus1);
       scratch[writePos++] = (byte) flag;
-      BitUtil.VH_LE_INT.set(scratch, writePos, Math.toIntExact(values[readPos++]));
+      BitUtil.VH_LE_INT.set(scratch, writePos, (int) (values[readPos++]));
       writePos += n1Minus1 + 1;
-      BitUtil.VH_LE_INT.set(scratch, writePos, Math.toIntExact(values[readPos++]));
+      BitUtil.VH_LE_INT.set(scratch, writePos, (int) (values[readPos++]));
       writePos += n2Minus1 + 1;
-      BitUtil.VH_LE_INT.set(scratch, writePos, Math.toIntExact(values[readPos++]));
+      BitUtil.VH_LE_INT.set(scratch, writePos, (int) (values[readPos++]));
       writePos += n3Minus1 + 1;
-      BitUtil.VH_LE_INT.set(scratch, writePos, Math.toIntExact(values[readPos++]));
+      BitUtil.VH_LE_INT.set(scratch, writePos, (int) (values[readPos++]));
       writePos += n4Minus1 + 1;
 
       out.writeBytes(scratch, writePos);
@@ -149,7 +158,7 @@ public final class GroupVIntUtil {
 
     // tail vints
     for (; readPos < limit; readPos++) {
-      out.writeVInt(Math.toIntExact(values[readPos]));
+      out.writeVInt(toInt(values[readPos]));
     }
   }
 }

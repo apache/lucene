@@ -17,7 +17,9 @@
 
 package org.apache.lucene.util.hppc;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,94 +37,44 @@ import org.junit.Test;
 public class TestIntIntHashMap extends LuceneTestCase {
   /* Ready to use key values. */
 
-  protected int keyE = 0;
-  protected int key0 = cast(0), k0 = key0;
-  protected int key1 = cast(1), k1 = key1;
-  protected int key2 = cast(2), k2 = key2;
-  protected int key3 = cast(3), k3 = key3;
-  protected int key4 = cast(4), k4 = key4;
-  protected int key5 = cast(5), k5 = key5;
-  protected int key6 = cast(6), k6 = key6;
-  protected int key7 = cast(7), k7 = key7;
-  protected int key8 = cast(8), k8 = key8;
-  protected int key9 = cast(9), k9 = key9;
+  private final int keyE = 0;
+  private final int key1 = cast(1);
+  private final int key2 = cast(2);
+  private final int key3 = cast(3);
+  private final int key4 = cast(4);
 
   /** Convert to target type from an integer used to test stuff. */
-  public int cast(Integer v) {
-    return v.intValue();
-  }
-
-  public int[] asArray(int... ints) {
-    int[] values = (new int[ints.length]);
-    for (int i = 0; i < ints.length; i++) values[i] = ints[i];
-    return values;
+  private int cast(int v) {
+    return v;
   }
 
   /** Create a new array of a given type and copy the arguments to this array. */
-  /*  */
-  public final int[] newArray(int... elements) {
-    return newArray0(elements);
-  }
-
-  /*  */
-  private final int[] newArray0(int... elements) {
+  private int[] newArray(int... elements) {
     return elements;
   }
 
-  public int[] newArray(int v0) {
-    return this.newArray0(v0);
-  }
-
-  public int[] newArray(int v0, int v1) {
-    return this.newArray0(v0, v1);
-  }
-
-  public int[] newArray(int v0, int v1, int v2) {
-    return this.newArray0(v0, v1, v2);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3) {
-    return this.newArray0(v0, v1, v2, v3);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5, int v6) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5, v6);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4) {
-    return this.newArray0(v0, v1, v2, v3, v4);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5, v6, v7);
-  }
-
-  public static int randomIntBetween(int min, int max) {
+  private static int randomIntBetween(int min, int max) {
     return min + random().nextInt(max + 1 - min);
   }
 
   /** Check if the array's content is identical to a given sequence of elements. */
-  public static void assertSortedListEquals(int[] array, int... elements) {
+  private static void assertSortedListEquals(int[] array, int... elements) {
     assertEquals(elements.length, array.length);
     Arrays.sort(array);
     Arrays.sort(elements);
     assertArrayEquals(elements, array);
   }
 
-  protected int value0 = vcast(0);
-  protected int value1 = vcast(1);
-  protected int value2 = vcast(2);
-  protected int value3 = vcast(3);
-  protected int value4 = vcast(4);
+  private final int value0 = vcast(0);
+  private final int value1 = vcast(1);
+  private final int value2 = vcast(2);
+  private final int value3 = vcast(3);
+  private final int value4 = vcast(4);
 
   /** Per-test fresh initialized instance. */
-  public IntIntHashMap map = newInstance();
+  private IntIntHashMap map = newInstance();
 
-  protected IntIntHashMap newInstance() {
+  private IntIntHashMap newInstance() {
     return new IntIntHashMap();
   }
 
@@ -144,13 +96,12 @@ public class TestIntIntHashMap extends LuceneTestCase {
   }
 
   /** Convert to target type from an integer used to test stuff. */
-  protected int vcast(int value) {
+  private int vcast(int value) {
     return value;
   }
 
   /** Create a new array of a given type and copy the arguments to this array. */
-  /*  */
-  protected final int[] newvArray(int... elements) {
+  private int[] newvArray(int... elements) {
     return elements;
   }
 
@@ -223,7 +174,6 @@ public class TestIntIntHashMap extends LuceneTestCase {
         AssertionError.class,
         () -> {
           map.indexGet(map.indexOf(key2));
-          fail();
         });
 
     assertEquals(value1, map.indexReplace(map.indexOf(keyE), value3));
@@ -385,6 +335,15 @@ public class TestIntIntHashMap extends LuceneTestCase {
 
     map.remove(empty);
     assertEquals(0, map.get(empty));
+    assertEquals(0, map.size());
+
+    assertEquals(0, map.put(empty, value1));
+    assertEquals(value1, map.put(empty, value2));
+    map.clear();
+    assertFalse(map.indexExists(map.indexOf(empty)));
+    assertEquals(0, map.put(empty, value1));
+    map.clear();
+    assertEquals(0, map.remove(empty));
   }
 
   /* */
@@ -405,7 +364,7 @@ public class TestIntIntHashMap extends LuceneTestCase {
     map.put(key3, value1);
 
     int counted = 0;
-    for (IntIntHashMap.IntCursor c : map.keys()) {
+    for (IntCursor c : map.keys()) {
       assertEquals(map.keys[c.index], c.value);
       counted++;
     }
@@ -422,6 +381,11 @@ public class TestIntIntHashMap extends LuceneTestCase {
 
     // These are internals, but perhaps worth asserting too.
     assertEquals(0, map.assigned);
+
+    // Check values are cleared.
+    assertEquals(0, map.put(key1, value1));
+    assertEquals(0, map.remove(key2));
+    map.clear();
 
     // Check if the map behaves properly upon subsequent use.
     testPutWithExpansions();
@@ -498,13 +462,13 @@ public class TestIntIntHashMap extends LuceneTestCase {
     assertEquals(reallocationsBefore, reallocations.get());
 
     // Should not expand because we're replacing an existing element.
-    map.put(k1, value2);
+    map.put(key1, value2);
     assertEquals(reallocationsBefore, reallocations.get());
 
     // Remove from a full map.
-    map.remove(k1);
+    map.remove(key1);
     assertEquals(reallocationsBefore, reallocations.get());
-    map.put(k1, value2);
+    map.put(key1, value2);
 
     // Check expand on "last slot of a full map" condition.
     map.put(outOfSet, value1);
@@ -540,6 +504,61 @@ public class TestIntIntHashMap extends LuceneTestCase {
 
     assertFalse(l1.equals(l2));
     assertFalse(l2.equals(l1));
+  }
+
+  /** Runs random insertions/deletions/clearing and compares the results against {@link HashMap}. */
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  public void testAgainstHashMap() {
+    final Random rnd = RandomizedTest.getRandom();
+    final HashMap other = new HashMap();
+
+    for (int size = 1000; size < 20000; size += 4000) {
+      other.clear();
+      map.clear();
+
+      for (int round = 0; round < size * 20; round++) {
+        int key = cast(rnd.nextInt(size));
+        if (rnd.nextInt(50) == 0) {
+          key = 0;
+        }
+
+        int value = vcast(rnd.nextInt());
+
+        boolean hadOldValue = map.containsKey(key);
+        if (rnd.nextBoolean()) {
+          int previousValue;
+          if (rnd.nextBoolean()) {
+            int index = map.indexOf(key);
+            if (map.indexExists(index)) {
+              previousValue = map.indexReplace(index, value);
+            } else {
+              map.indexInsert(index, key, value);
+              previousValue = 0;
+            }
+          } else {
+            previousValue = map.put(key, value);
+          }
+          assertEquals(
+              other.put(key, value), ((previousValue) == 0) && !hadOldValue ? null : previousValue);
+
+          assertEquals(value, map.get(key));
+          assertEquals(value, map.indexGet(map.indexOf(key)));
+          assertTrue(map.containsKey(key));
+          assertTrue(map.indexExists(map.indexOf(key)));
+        } else {
+          assertEquals(other.containsKey(key), map.containsKey(key));
+          int previousValue =
+              map.containsKey(key) && rnd.nextBoolean()
+                  ? map.indexRemove(map.indexOf(key))
+                  : map.remove(key);
+          assertEquals(
+              other.remove(key), ((previousValue) == 0) && !hadOldValue ? null : previousValue);
+        }
+
+        assertEquals(other.size(), map.size());
+      }
+    }
   }
 
   /*
@@ -581,7 +600,7 @@ public class TestIntIntHashMap extends LuceneTestCase {
     map.put(key3, value1);
 
     int counted = 0;
-    for (IntIntHashMap.IntCursor c : map.values()) {
+    for (IntCursor c : map.values()) {
       assertEquals(map.values[c.index], c.value);
       counted++;
     }
@@ -592,16 +611,16 @@ public class TestIntIntHashMap extends LuceneTestCase {
   @Test
   public void testEqualsSameClass() {
     IntIntHashMap l1 = newInstance();
-    l1.put(k1, value0);
-    l1.put(k2, value1);
-    l1.put(k3, value2);
+    l1.put(key1, value0);
+    l1.put(key2, value1);
+    l1.put(key3, value2);
 
     IntIntHashMap l2 = new IntIntHashMap(l1);
     l2.putAll(l1);
 
     IntIntHashMap l3 = new IntIntHashMap(l2);
     l3.putAll(l2);
-    l3.put(k4, value0);
+    l3.put(key4, value0);
 
     assertEquals(l2, l1);
     assertEquals(l2.hashCode(), l1.hashCode());
@@ -614,13 +633,13 @@ public class TestIntIntHashMap extends LuceneTestCase {
     class Sub extends IntIntHashMap {}
 
     IntIntHashMap l1 = newInstance();
-    l1.put(k1, value0);
-    l1.put(k2, value1);
-    l1.put(k3, value2);
+    l1.put(key1, value0);
+    l1.put(key2, value1);
+    l1.put(key3, value2);
 
     IntIntHashMap l2 = new Sub();
     l2.putAll(l1);
-    l2.put(k4, value3);
+    l2.put(key4, value3);
 
     IntIntHashMap l3 = new Sub();
     l3.putAll(l2);

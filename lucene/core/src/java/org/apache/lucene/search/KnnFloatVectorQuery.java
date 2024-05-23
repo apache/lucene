@@ -99,7 +99,12 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    return VectorScorer.create(context, fi, target);
+    FloatVectorValues vectorValues = context.reader().getFloatVectorValues(field);
+    if (vectorValues == null) {
+      FloatVectorValues.checkField(context.reader(), field);
+      return null;
+    }
+    return vectorValues.scorer(target);
   }
 
   @Override
@@ -126,6 +131,6 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    * @return the target query vector of the search. Each vector element is a float.
    */
   public float[] getTargetCopy() {
-    return ArrayUtil.copyOfSubArray(target, 0, target.length);
+    return ArrayUtil.copyArray(target);
   }
 }

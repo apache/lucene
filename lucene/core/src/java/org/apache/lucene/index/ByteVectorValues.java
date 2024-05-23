@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -75,4 +76,14 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
               + ")");
     }
   }
+
+  /**
+   * Return a {@link VectorScorer} for the given query vector. The iterator for the scorer is not
+   * the same instance as the iterator for this {@link ByteVectorValues}. It is a copy, and
+   * iteration over the scorer will not affect the iteration of this {@link ByteVectorValues}.
+   *
+   * @param query the query vector
+   * @return a {@link VectorScorer} instance or null
+   */
+  public abstract VectorScorer scorer(byte[] query) throws IOException;
 }

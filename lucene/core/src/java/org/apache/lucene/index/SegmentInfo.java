@@ -249,6 +249,7 @@ public final class SegmentInfo {
       s.append(']');
     }
 
+    Map<String, String> attributes = getAttributes();
     if (!attributes.isEmpty()) {
       s.append(":[attributes=");
       s.append(attributes.toString());
@@ -342,7 +343,7 @@ public final class SegmentInfo {
   }
 
   /** Get a codec attribute value, or null if it does not exist */
-  public String getAttribute(String key) {
+  public synchronized String getAttribute(String key) {
     return attributes.get(key);
   }
 
@@ -356,17 +357,12 @@ public final class SegmentInfo {
    * <p>If a value already exists for the field, it will be replaced with the new value. This method
    * make a copy on write for every attribute change.
    */
-  public String putAttribute(String key, String value) {
+  public synchronized String putAttribute(String key, String value) {
     HashMap<String, String> newMap = new HashMap<>(attributes);
     String oldValue = newMap.put(key, value);
-    // we make a full copy of this to prevent concurrent modifications to this in the toString
-    // method
-    // this method is only called when a segment is written but the SegmentInfo might be exposed
-    // in running merges which can cause ConcurrentModificationExceptions if we modify / share
-    // the same instance. Technically that's an unsafe publication but IW design would require
-    // significant changes to prevent this. On the other hand, since we expose the map in
-    // getAttributes()
-    // it's a good design to make it unmodifiable anyway.
+    // This needs to be thread-safe because multiple threads may be updating (different) attributes
+    // at the same time due to concurrent merging, plus some threads may be calling toString() on
+    // segment info while other threads are updating attributes.
     attributes = Collections.unmodifiableMap(newMap);
     return oldValue;
   }
@@ -376,7 +372,7 @@ public final class SegmentInfo {
    *
    * @return internal codec attributes map.
    */
-  public Map<String, String> getAttributes() {
+  public synchronized Map<String, String> getAttributes() {
     return attributes;
   }
 

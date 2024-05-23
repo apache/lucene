@@ -325,20 +325,6 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
   }
 
   @Override
-  public long ramBytesUsed() {
-    long sizeInBytes = ((termBytesReader != null) ? termBytesReader.ramBytesUsed() : 0);
-    for (FieldIndexData entry : fields.values()) {
-      sizeInBytes += entry.ramBytesUsed();
-    }
-    return sizeInBytes;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    return Accountables.namedAccountables("field", fields);
-  }
-
-  @Override
   public String toString() {
     return getClass().getSimpleName()
         + "(fields="

@@ -20,6 +20,7 @@ package org.apache.lucene.search.uhighlight.visibility;
 import java.io.IOException;
 import java.text.BreakIterator;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -130,6 +131,11 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
           }
 
           @Override
+          protected Comparator<Passage> getPassageSortComparator(String field) {
+            return super.getPassageSortComparator(field);
+          }
+
+          @Override
           public Analyzer getIndexAnalyzer() {
             return super.getIndexAnalyzer();
           }
@@ -186,7 +192,8 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
                 getScorer(field),
                 maxPassages,
                 getMaxNoHighlightPassages(field),
-                getFormatter(field));
+                getFormatter(field),
+                getPassageSortComparator(field));
           }
 
           @Override
@@ -240,7 +247,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
   public void testFieldHiglighterExtensibility() {
     final String fieldName = "fieldName";
     FieldHighlighter fieldHighlighter =
-        new FieldHighlighter(fieldName, null, null, null, 1, 1, null) {
+        new FieldHighlighter(fieldName, null, null, null, 1, 1, null, null) {
           @Override
           protected Passage[] highlightOffsetsEnums(OffsetsEnum offsetsEnums) throws IOException {
             return super.highlightOffsetsEnums(offsetsEnums);
@@ -262,7 +269,8 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
         PassageScorer passageScorer,
         int maxPassages,
         int maxNoHighlightPassages,
-        PassageFormatter passageFormatter) {
+        PassageFormatter passageFormatter,
+        Comparator<Passage> passageSortComparator) {
       super(
           field,
           fieldOffsetStrategy,
@@ -270,7 +278,8 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
           passageScorer,
           maxPassages,
           maxNoHighlightPassages,
-          passageFormatter);
+          passageFormatter,
+          passageSortComparator);
     }
 
     @Override

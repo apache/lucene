@@ -25,6 +25,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -154,7 +155,7 @@ public class FunctionRangeQuery extends Query {
       // note: by using ValueSourceScorer directly, we avoid calling scorer.advance(doc) and
       // checking if true, which can be slow since if that doc doesn't match, it has to linearly
       // find the next matching
-      ValueSourceScorer scorer = scorer(context);
+      ValueSourceScorer scorer = (ValueSourceScorer) scorer(context);
       if (scorer.matches(doc)) {
         scorer.iterator().advance(doc);
         return Explanation.match(
@@ -165,11 +166,12 @@ public class FunctionRangeQuery extends Query {
     }
 
     @Override
-    public ValueSourceScorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       FunctionValues functionValues = valueSource.getValues(vsContext, context);
-      // getRangeScorer takes String args and parses them. Weird.
-      return functionValues.getRangeScorer(
-          this, context, lowerVal, upperVal, includeLower, includeUpper);
+      final var scorer =
+          functionValues.getRangeScorer(
+              this, context, lowerVal, upperVal, includeLower, includeUpper);
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

@@ -17,11 +17,10 @@
 package org.apache.lucene.analysis.cn.smart.hhmm;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.analysis.cn.smart.Utility;
+import org.apache.lucene.util.hppc.IntObjectHashMap;
+import org.apache.lucene.util.hppc.ObjectCursor;
 
 /**
  * Graph representing possible token pairs (bigrams) at each start offset in the sentence.
@@ -32,7 +31,7 @@ import org.apache.lucene.analysis.cn.smart.Utility;
  */
 class BiSegGraph {
 
-  private Map<Integer, ArrayList<SegTokenPair>> tokenPairListTable = new HashMap<>();
+  private IntObjectHashMap<ArrayList<SegTokenPair>> tokenPairListTable = new IntObjectHashMap<>();
 
   private List<SegToken> segTokenList;
 
@@ -122,7 +121,7 @@ class BiSegGraph {
    * @return true if a token pair exists
    */
   public boolean isToExist(int to) {
-    return tokenPairListTable.get(Integer.valueOf(to)) != null;
+    return tokenPairListTable.get(to) != null;
   }
 
   /**
@@ -220,9 +219,8 @@ class BiSegGraph {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    Collection<ArrayList<SegTokenPair>> values = tokenPairListTable.values();
-    for (ArrayList<SegTokenPair> segList : values) {
-      for (SegTokenPair pair : segList) {
+    for (ObjectCursor<ArrayList<SegTokenPair>> segList : tokenPairListTable.values()) {
+      for (SegTokenPair pair : segList.value) {
         sb.append(pair).append("\n");
       }
     }
