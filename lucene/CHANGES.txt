@@ -146,6 +146,8 @@ Improvements
 
 * GITHUB#12172: Update Romanian stopwords list to include the modern unicode forms.  (Trey Jones)
 
+* GITHUB#13407: Adds support for efSearch in KNNVector queries. (Tejas Shah)
+
 Optimizations
 ---------------------
 
