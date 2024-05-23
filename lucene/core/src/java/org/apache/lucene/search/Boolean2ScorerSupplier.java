@@ -184,17 +184,12 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
     }
   }
 
-  private BulkScorer booleanScorer() throws IOException {
+  BulkScorer booleanScorer() throws IOException {
     final int numOptionalClauses = subs.get(Occur.SHOULD).size();
     final int numRequiredClauses = subs.get(Occur.MUST).size() + subs.get(Occur.FILTER).size();
 
     BulkScorer positiveScorer;
     if (numRequiredClauses == 0) {
-      positiveScorer = optionalBulkScorer();
-      if (positiveScorer == null) {
-        return null;
-      }
-
       // TODO: what is the right heuristic here?
       final long costThreshold;
       if (minShouldMatch <= 1) {
@@ -212,10 +207,11 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
         costThreshold = maxDoc / 3;
       }
 
-      if (positiveScorer.cost() < costThreshold) {
+      if (cost() < costThreshold) {
         return null;
       }
 
+      positiveScorer = optionalBulkScorer();
     } else if (numRequiredClauses > 0 && numOptionalClauses == 0 && minShouldMatch == 0) {
       positiveScorer = requiredBulkScorer();
     } else {
@@ -242,11 +238,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
           prohibited.size() == 1
               ? prohibited.get(0)
               : new DisjunctionSumScorer(weight, prohibited, ScoreMode.COMPLETE_NO_SCORES);
-      if (prohibitedScorer.twoPhaseIterator() != null) {
-        // ReqExclBulkScorer can't deal efficiently with two-phased prohibited clauses
-        return null;
-      }
-      return new ReqExclBulkScorer(positiveScorer, prohibitedScorer.iterator());
+      return new ReqExclBulkScorer(positiveScorer, prohibitedScorer);
     }
   }
 
@@ -327,9 +319,9 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
     }
 
     long leadCost =
-        subs.get(Occur.MUST).stream().mapToLong(ScorerSupplier::cost).max().orElse(Long.MAX_VALUE);
+        subs.get(Occur.MUST).stream().mapToLong(ScorerSupplier::cost).min().orElse(Long.MAX_VALUE);
     leadCost =
-        subs.get(Occur.FILTER).stream().mapToLong(ScorerSupplier::cost).max().orElse(leadCost);
+        subs.get(Occur.FILTER).stream().mapToLong(ScorerSupplier::cost).min().orElse(leadCost);
 
     List<Scorer> requiredNoScoring = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
