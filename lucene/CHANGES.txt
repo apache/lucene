@@ -350,6 +350,8 @@ Optimizations
 
 * GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
 
+* GITHUB#13400: Replace Set<Integer> by IntHashSet and Set<Long> by LongHashSet. (Bruno Roustant)
+
 Bug Fixes
 ---------------------
 
