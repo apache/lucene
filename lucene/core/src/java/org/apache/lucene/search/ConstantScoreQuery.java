@@ -167,7 +167,7 @@ public final class ConstantScoreQuery extends Query {
               }
               return new ConstantBulkScorer(innerScorer, innerWeight, score());
             }
-            
+
             @Override
             public long cost() {
               return innerScorerSupplier.cost();

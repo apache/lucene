@@ -248,7 +248,7 @@ final class BooleanWeight extends Weight {
     }
 
     return new BooleanScorer(
-        this, optional, Math.max(1, query.getMinimumNumberShouldMatch()), scoreMode.needsScores());
+        optional, Math.max(1, query.getMinimumNumberShouldMatch()), scoreMode.needsScores());
   }
 
   // Return a BulkScorer for the required clauses only
@@ -607,6 +607,7 @@ final class BooleanWeight extends Weight {
       scorers.get(Occur.SHOULD).clear();
     }
 
-    return new Boolean2ScorerSupplier(this, scorers, scoreMode, minShouldMatch);
+    return new Boolean2ScorerSupplier(
+        this, scorers, scoreMode, minShouldMatch, context.reader().maxDoc());
   }
 }

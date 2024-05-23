@@ -1369,16 +1369,16 @@ public class TestLRUQueryCache extends LuceneTestCase {
         }
 
         @Override
+        public BulkScorer getBulkScorer() throws IOException {
+          bulkScorerCalled.set(true);
+          return in.bulkScorer(context);
+        }
+
+        @Override
         public long cost() {
           return scorer.iterator().cost();
         }
       };
-    }
-
-    @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      bulkScorerCalled.set(true);
-      return in.bulkScorer(context);
     }
   }
 

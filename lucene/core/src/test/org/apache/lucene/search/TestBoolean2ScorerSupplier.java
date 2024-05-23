@@ -138,7 +138,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     assertEquals(
         42,
         new Boolean2ScorerSupplier(
-                null, subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+                null, subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
             .cost());
 
     subs.get(RandomPicks.randomFrom(random(), Arrays.asList(Occur.FILTER, Occur.MUST)))
@@ -146,7 +146,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     assertEquals(
         12,
         new Boolean2ScorerSupplier(
-                null, subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+                null, subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
             .cost());
 
     subs.get(RandomPicks.randomFrom(random(), Arrays.asList(Occur.FILTER, Occur.MUST)))
@@ -154,7 +154,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     assertEquals(
         12,
         new Boolean2ScorerSupplier(
-                null, subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+                null, subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
             .cost());
   }
 
@@ -167,21 +167,21 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(42));
     ScorerSupplier s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100);
     assertEquals(42, s.cost());
     assertEquals(42, s.get(random().nextInt(100)).iterator().cost());
 
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(12));
     s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100);
     assertEquals(42 + 12, s.cost());
     assertEquals(42 + 12, s.get(random().nextInt(100)).iterator().cost());
 
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(20));
     s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100);
     assertEquals(42 + 12 + 20, s.cost());
     assertEquals(42 + 12 + 20, s.get(random().nextInt(100)).iterator().cost());
   }
@@ -196,36 +196,36 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(12));
     ScorerSupplier s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 1);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 1, 100);
     assertEquals(42 + 12, s.cost());
     assertEquals(42 + 12, s.get(random().nextInt(100)).iterator().cost());
 
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(20));
     s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 1);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 1, 100);
     assertEquals(42 + 12 + 20, s.cost());
     assertEquals(42 + 12 + 20, s.get(random().nextInt(100)).iterator().cost());
     s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2, 100);
     assertEquals(12 + 20, s.cost());
     assertEquals(12 + 20, s.get(random().nextInt(100)).iterator().cost());
 
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(30));
     s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 1);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 1, 100);
     assertEquals(42 + 12 + 20 + 30, s.cost());
     assertEquals(42 + 12 + 20 + 30, s.get(random().nextInt(100)).iterator().cost());
     s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2, 100);
     assertEquals(12 + 20 + 30, s.cost());
     assertEquals(12 + 20 + 30, s.get(random().nextInt(100)).iterator().cost());
     s =
         new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 3);
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 3, 100);
     assertEquals(12 + 20, s.cost());
     assertEquals(12 + 20, s.get(random().nextInt(100)).iterator().cost());
   }
@@ -261,7 +261,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
       }
       int minShouldMatch = numShoulds == 0 ? 0 : TestUtil.nextInt(random(), 0, numShoulds - 1);
       Boolean2ScorerSupplier supplier =
-          new Boolean2ScorerSupplier(new FakeWeight(), subs, scoreMode, minShouldMatch);
+          new Boolean2ScorerSupplier(new FakeWeight(), subs, scoreMode, minShouldMatch, 100);
       long cost1 = supplier.cost();
       long cost2 = supplier.get(Long.MAX_VALUE).iterator().cost();
       assertEquals("clauses=" + subs + ", minShouldMatch=" + minShouldMatch, cost1, cost2);
@@ -288,7 +288,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(RandomPicks.randomFrom(random(), Arrays.asList(Occur.FILTER, Occur.MUST)))
         .add(new FakeScorerSupplier(12, 12));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(Long.MAX_VALUE); // triggers assertions as a side-effect
 
     subs = new EnumMap<>(Occur.class);
@@ -302,7 +302,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(RandomPicks.randomFrom(random(), Arrays.asList(Occur.FILTER, Occur.MUST)))
         .add(new FakeScorerSupplier(12, 7));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(7); // triggers assertions as a side-effect
   }
 
@@ -314,14 +314,14 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(42, 54));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(12, 54));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(100); // triggers assertions as a side-effect
 
     subs.get(Occur.SHOULD).clear();
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(42, 20));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(12, 20));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(20); // triggers assertions as a side-effect
   }
 
@@ -337,7 +337,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(12, 42));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(30, 42));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2, 100)
         .get(100); // triggers assertions as a side-effect
 
     subs = new EnumMap<>(Occur.class);
@@ -350,7 +350,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(12, 20));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(30, 20));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2, 100)
         .get(20); // triggers assertions as a side-effect
 
     subs = new EnumMap<>(Occur.class);
@@ -363,7 +363,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(30, 62));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(20, 62));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 2, 100)
         .get(100); // triggers assertions as a side-effect
 
     subs = new EnumMap<>(Occur.class);
@@ -376,7 +376,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(30, 32));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(20, 32));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 3)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 3, 100)
         .get(100); // triggers assertions as a side-effect
   }
 
@@ -390,7 +390,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.MUST).add(new FakeScorerSupplier(42, 42));
     subs.get(Occur.MUST_NOT).add(new FakeScorerSupplier(30, 42));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(100); // triggers assertions as a side-effect
 
     subs.get(Occur.MUST).clear();
@@ -398,7 +398,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.MUST).add(new FakeScorerSupplier(42, 42));
     subs.get(Occur.MUST_NOT).add(new FakeScorerSupplier(80, 42));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(100); // triggers assertions as a side-effect
 
     subs.get(Occur.MUST).clear();
@@ -406,7 +406,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.MUST).add(new FakeScorerSupplier(42, 20));
     subs.get(Occur.MUST_NOT).add(new FakeScorerSupplier(30, 20));
     new Boolean2ScorerSupplier(
-            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0)
+            new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(20); // triggers assertions as a side-effect
   }
 
@@ -419,21 +419,21 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     // The SHOULD clause is always called with the same lead cost as the MUST clause
     subs.get(Occur.MUST).add(new FakeScorerSupplier(42, 42));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(30, 42));
-    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.COMPLETE, 0)
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.COMPLETE, 0, 100)
         .get(100); // triggers assertions as a side-effect
 
     subs.get(Occur.MUST).clear();
     subs.get(Occur.SHOULD).clear();
     subs.get(Occur.MUST).add(new FakeScorerSupplier(42, 42));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(80, 42));
-    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.COMPLETE, 0)
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.COMPLETE, 0, 100)
         .get(100); // triggers assertions as a side-effect
 
     subs.get(Occur.MUST).clear();
     subs.get(Occur.SHOULD).clear();
     subs.get(Occur.MUST).add(new FakeScorerSupplier(42, 20));
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(80, 20));
-    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.COMPLETE, 0)
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.COMPLETE, 0, 100)
         .get(20); // triggers assertions as a side-effect
   }
 
@@ -448,7 +448,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
     subs.get(Occur.SHOULD).add(clause2);
 
-    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, 100)
         .setTopLevelScoringClause();
     assertFalse(clause1.topLevelScoringClause);
     assertFalse(clause2.topLevelScoringClause);
@@ -465,7 +465,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
     subs.get(Occur.MUST).add(clause2);
 
-    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, 100)
         .setTopLevelScoringClause();
     assertFalse(clause1.topLevelScoringClause);
     assertFalse(clause2.topLevelScoringClause);
@@ -482,7 +482,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
     subs.get(Occur.FILTER).add(clause2);
 
-    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, 100)
         .setTopLevelScoringClause();
     assertFalse(clause1.topLevelScoringClause);
     assertFalse(clause2.topLevelScoringClause);
@@ -499,7 +499,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
     subs.get(Occur.FILTER).add(clause2);
 
-    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, 100)
         .setTopLevelScoringClause();
     assertTrue(clause1.topLevelScoringClause);
     assertFalse(clause2.topLevelScoringClause);
@@ -516,7 +516,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
     subs.get(Occur.MUST_NOT).add(clause2);
 
-    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, 100)
         .setTopLevelScoringClause();
     assertTrue(clause1.topLevelScoringClause);
     assertFalse(clause2.topLevelScoringClause);
@@ -534,7 +534,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.MUST).add(clause2);
 
     Scorer scorer =
-        new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0).get(10);
+        new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, 100).get(10);
     assertEquals(2.0, scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0.0);
 
     subs = new EnumMap<>(Occur.class);
@@ -545,7 +545,8 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(clause1);
     subs.get(Occur.SHOULD).add(clause2);
 
-    scorer = new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0).get(10);
+    scorer =
+        new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, 100).get(10);
     assertEquals(2.0, scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0.0);
   }
 }

@@ -148,7 +148,9 @@ public abstract class Weight implements SegmentCacheable {
   public abstract ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException;
 
   /**
-   * Helper method that delegates to {@link #scorerSupplier(LeafReaderContext)}. It is implemented as
+   * Helper method that delegates to {@link #scorerSupplier(LeafReaderContext)}. It is implemented
+   * as
+   *
    * <pre class="prettyprint">
    * ScorerSupplier scorerSupplier = scorerSupplier(context);
    * if (scorerSupplier == null) {
@@ -168,7 +170,7 @@ public abstract class Weight implements SegmentCacheable {
     }
 
     scorerSupplier.setTopLevelScoringClause();
-    return new DefaultBulkScorer(scorerSupplier.get(Long.MAX_VALUE));
+    return scorerSupplier.getBulkScorer();
   }
 
   /**

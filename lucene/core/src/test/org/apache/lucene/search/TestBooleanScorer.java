@@ -94,31 +94,31 @@ public class TestBooleanScorer extends LuceneTestCase {
             public long cost() {
               throw new UnsupportedOperationException();
             }
+
+            @Override
+            public BulkScorer getBulkScorer() throws IOException {
+              return new BulkScorer() {
+                @Override
+                public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+                    throws IOException {
+                  assert min == 0;
+                  collector.setScorer(new Score());
+                  collector.collect(0);
+                  return DocIdSetIterator.NO_MORE_DOCS;
+                }
+
+                @Override
+                public long cost() {
+                  return 1;
+                }
+              };
+            }
           };
         }
 
         @Override
         public boolean isCacheable(LeafReaderContext ctx) {
           return false;
-        }
-
-        @Override
-        public BulkScorer bulkScorer(LeafReaderContext context) {
-          return new BulkScorer() {
-            @Override
-            public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
-                throws IOException {
-              assert min == 0;
-              collector.setScorer(new Score());
-              collector.collect(0);
-              return DocIdSetIterator.NO_MORE_DOCS;
-            }
-
-            @Override
-            public long cost() {
-              return 1;
-            }
-          };
         }
       };
     }

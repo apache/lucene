@@ -770,8 +770,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
                 return supplier.get(leadCost);
               }
 
-              CacheAndCount cached =
-                  cacheImpl(supplier.getBulkScorer(), context.reader().maxDoc());
+              CacheAndCount cached = cacheImpl(supplier.getBulkScorer(), context.reader().maxDoc());
               putIfAbsent(in.getQuery(), cached, cacheHelper);
               DocIdSetIterator disi = cached.iterator();
               if (disi == null) {
@@ -784,21 +783,6 @@ public class LRUQueryCache implements QueryCache, Accountable {
                   CachingWrapperWeight.this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi);
             }
 
-            @Override
-            public BulkScorer getBulkScorer() throws IOException {
-              CacheAndCount cached =
-                  cacheImpl(supplier.getBulkScorer(), context.reader().maxDoc());
-              putIfAbsent(in.getQuery(), cached, cacheHelper);
-              
-              DocIdSetIterator disi = cached.iterator();
-              if (disi == null) {
-                disi = DocIdSetIterator.empty();
-              }
-
-              return new DefaultBulkScorer(
-                  new ConstantScoreScorer(CachingWrapperWeight.this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi));
-            }
-            
             @Override
             public long cost() {
               return cost;
