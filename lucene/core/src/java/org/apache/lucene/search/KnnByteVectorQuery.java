@@ -71,7 +71,22 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnByteVectorQuery(String field, byte[] target, int k, Query filter) {
-    super(field, k, filter);
+    this(field, target, k, k, filter);
+  }
+
+  /**
+   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
+   * given field. <code>target</code> vector.
+   *
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find
+   * @param efSearch number of neighbors to explore for top k
+   * @param filter a filter applied before the vector search
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   */
+  public KnnByteVectorQuery(String field, byte[] target, int k, int efSearch, Query filter) {
+    super(field, k, efSearch, filter);
     this.target = Objects.requireNonNull(target, "target");
   }
 

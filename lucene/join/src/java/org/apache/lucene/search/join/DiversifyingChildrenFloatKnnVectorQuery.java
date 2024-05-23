@@ -69,7 +69,26 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
    */
   public DiversifyingChildrenFloatKnnVectorQuery(
       String field, float[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
-    super(field, query, k, childFilter);
+    this(field, query, childFilter, k, k, parentsFilter);
+  }
+
+  /**
+   * Create a ToParentBlockJoinFloatVectorQuery.
+   *
+   * @param field the query field
+   * @param query the vector query
+   * @param childFilter the child filter
+   * @param k how many parent documents to return given the matching children
+   * @param parentsFilter Filter identifying the parent documents.
+   */
+  public DiversifyingChildrenFloatKnnVectorQuery(
+      String field,
+      float[] query,
+      Query childFilter,
+      int k,
+      int efSearch,
+      BitSetProducer parentsFilter) {
+    super(field, query, k, efSearch, childFilter);
     this.childFilter = childFilter;
     this.parentsFilter = parentsFilter;
     this.k = k;

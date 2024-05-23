@@ -61,8 +61,12 @@ import org.apache.lucene.util.FixedBitSet;
 /** Test cases for AbstractKnnVectorQuery objects. */
 abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
+  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
+    return getKnnVectorQuery(field, query, k, k, queryFilter);
+  }
+
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter);
+      String field, float[] query, int k, int efSearch, Query queryFilter);
 
   abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
@@ -89,10 +93,19 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
     Query filter1 = new TermQuery(new Term("id", "id1"));
     AbstractKnnVectorQuery q2 = getKnnVectorQuery("f1", new float[] {0, 1}, 10, filter1);
+    AbstractKnnVectorQuery q3 = getKnnVectorQuery("f1", new float[] {0, 1}, 10, 20, null);
+    AbstractKnnVectorQuery q4 = getKnnVectorQuery("f1", new float[] {0, 1}, 10, 20, filter1);
 
     assertNotEquals(q2, q1);
     assertNotEquals(q1, q2);
+    assertNotEquals(q3, q1);
+    assertNotEquals(q3, q2);
+    assertNotEquals(q3, q4);
+    assertNotEquals(q4, q2);
+    assertNotEquals(q4, q1);
     assertEquals(q2, getKnnVectorQuery("f1", new float[] {0, 1}, 10, filter1));
+    assertEquals(q3, getKnnVectorQuery("f1", new float[] {0, 1}, 10, 20, null));
+    assertEquals(q4, getKnnVectorQuery("f1", new float[] {0, 1}, 10, 20, filter1));
 
     Query filter2 = new TermQuery(new Term("id", "id2"));
     assertNotEquals(q2, getKnnVectorQuery("f1", new float[] {0, 1}, 10, filter2));
@@ -125,6 +138,15 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
     assertEquals(6, q1.getK());
     assertEquals(7, q2.getK());
+  }
+
+  public void testGetEfSearch() {
+    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 1, 5, null);
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    AbstractKnnVectorQuery q2 = getKnnVectorQuery("f2", new float[] {0, 1}, 1, 6, filter1);
+
+    assertEquals(5, q1.getEfSearch());
+    assertEquals(6, q2.getEfSearch());
   }
 
   public void testGetFilter() {
@@ -260,6 +282,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   /** Test bad parameters */
   public void testIllegalArguments() throws IOException {
     expectThrows(IllegalArgumentException.class, () -> getKnnVectorQuery("xx", new float[] {1}, 0));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> getKnnVectorQuery("xx", new float[] {1}, 100, 5, null));
   }
 
   public void testDifferentReader() throws IOException {
@@ -272,6 +297,28 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       expectThrows(
           IllegalStateException.class,
           () -> dasq.createWeight(leafSearcher, ScoreMode.COMPLETE, 1));
+    }
+  }
+
+  public void testEfSearch() {
+    float[][] vectors = new float[10][];
+    for (int j = 0; j < 10; j++) {
+      vectors[j] = new float[] {j, j};
+    }
+
+    try (Directory d = getIndexStore("field", vectors);
+        IndexReader reader = DirectoryReader.open(d)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3, 5, null);
+      Query rewritten = query.rewrite(searcher);
+      Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+      Scorer scorer = weight.scorer(reader.leaves().get(0));
+
+      DocIdSetIterator it = scorer.iterator();
+      assertEquals(3, it.cost());
+
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 

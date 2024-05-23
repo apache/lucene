@@ -72,8 +72,23 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     return parent;
   }
 
+  Query getParentJoinKnnQuery(
+      String fieldName,
+      float[] queryVector,
+      Query childFilter,
+      int k,
+      BitSetProducer parentBitSet) {
+    return getParentJoinKnnQuery(fieldName, queryVector, childFilter, k, k, parentBitSet);
+  }
+  ;
+
   abstract Query getParentJoinKnnQuery(
-      String fieldName, float[] queryVector, Query childFilter, int k, BitSetProducer parentBitSet);
+      String fieldName,
+      float[] queryVector,
+      Query childFilter,
+      int k,
+      int efSearch,
+      BitSetProducer parentBitSet);
 
   public void testEmptyIndex() throws IOException {
     try (Directory indexStore = getIndexStore("field");
@@ -178,6 +193,43 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       Query kvq = getParentJoinKnnQuery("field", new float[] {1, 2}, filter, 2, parentFilter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(0, topDocs.totalHits.value);
+    }
+  }
+
+  public void testScoringWithEfsearch() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
+        List<Document> toAdd = new ArrayList<>();
+        for (int j = 1; j <= 5; j++) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {j, j}));
+          doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
+          toAdd.add(doc);
+        }
+        toAdd.add(makeParent(new int[] {1, 2, 3, 4, 5}));
+        w.addDocuments(toAdd);
+
+        toAdd = new ArrayList<>();
+        for (int j = 7; j <= 11; j++) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {j, j}));
+          doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
+          toAdd.add(doc);
+        }
+        toAdd.add(makeParent(new int[] {6, 7, 8, 9, 10}));
+        w.addDocuments(toAdd);
+        w.forceMerge(1);
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(1, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        BitSetProducer parentFilter = parentFilter(searcher.getIndexReader());
+        Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, 5, parentFilter);
+        assertScorerResults(
+            searcher, query, new float[] {1f, 1f / 51f}, new String[] {"2", "7"}, 2);
+      }
     }
   }
 

@@ -54,14 +54,20 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   protected final String field;
   protected final int k;
+  protected final int efSearch;
   private final Query filter;
 
-  public AbstractKnnVectorQuery(String field, int k, Query filter) {
+  public AbstractKnnVectorQuery(String field, int k, int efSearch, Query filter) {
     this.field = Objects.requireNonNull(field, "field");
     this.k = k;
     if (k < 1) {
       throw new IllegalArgumentException("k must be at least 1, got: " + k);
     }
+    if (efSearch < k) {
+      throw new IllegalArgumentException(
+          "efSearch must be greater than or equal to k, got: " + efSearch + "<" + k);
+    }
+    this.efSearch = efSearch;
     this.filter = filter;
   }
 
@@ -84,7 +90,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     TimeLimitingKnnCollectorManager knnCollectorManager =
         new TimeLimitingKnnCollectorManager(
-            getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
+            getKnnCollectorManager(efSearch, indexSearcher), indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = reader.leaves();
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
@@ -301,12 +307,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     AbstractKnnVectorQuery that = (AbstractKnnVectorQuery) o;
-    return k == that.k && Objects.equals(field, that.field) && Objects.equals(filter, that.filter);
+    return k == that.k
+        && efSearch == that.efSearch
+        && Objects.equals(field, that.field)
+        && Objects.equals(filter, that.filter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, k, filter);
+    return Objects.hash(field, k, efSearch, filter);
   }
 
   /**
@@ -321,6 +330,13 @@ abstract class AbstractKnnVectorQuery extends Query {
    */
   public int getK() {
     return k;
+  }
+
+  /**
+   * @return the number of candidate neighbors to be considered for getting k results
+   */
+  public int getEfSearch() {
+    return efSearch;
   }
 
   /**
