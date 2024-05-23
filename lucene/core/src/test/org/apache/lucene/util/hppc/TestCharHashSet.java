@@ -17,24 +17,23 @@
 
 package org.apache.lucene.util.hppc;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.hamcrest.MatcherAssert;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.not;
+
+import com.carrotsearch.randomizedtesting.RandomizedTest;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * Tests for {@link CharHashSet}.

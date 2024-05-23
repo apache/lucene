@@ -54,15 +54,14 @@
 */
 package org.egothor.stemmer;
 
-import org.apache.lucene.util.hppc.CharCursor;
-import org.apache.lucene.util.hppc.CharObjectHashMap;
-import org.apache.lucene.util.hppc.ObjectCursor;
-
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Iterator;
+import org.apache.lucene.util.hppc.CharCursor;
+import org.apache.lucene.util.hppc.CharObjectHashMap;
+import org.apache.lucene.util.hppc.ObjectCursor;
 
 /** The Row class represents a row in a matrix representation of a trie. */
 public class Row {

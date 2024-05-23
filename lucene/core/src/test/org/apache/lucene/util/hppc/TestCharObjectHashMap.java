@@ -18,15 +18,14 @@
 package org.apache.lucene.util.hppc;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.After;
+import org.junit.Test;
 
 /**
  * Tests for {@link CharObjectHashMap}.

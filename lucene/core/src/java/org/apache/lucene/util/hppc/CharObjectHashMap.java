@@ -17,12 +17,6 @@
 
 package org.apache.lucene.util.hppc;
 
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.RamUsageEstimator;
-
-import java.util.Arrays;
-import java.util.Iterator;
-
 import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_EXPECTED_ELEMENTS;
 import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_LOAD_FACTOR;
 import static org.apache.lucene.util.hppc.HashContainers.ITERATION_SEED;
@@ -34,6 +28,11 @@ import static org.apache.lucene.util.hppc.HashContainers.expandAtCount;
 import static org.apache.lucene.util.hppc.HashContainers.iterationIncrement;
 import static org.apache.lucene.util.hppc.HashContainers.minBufferSize;
 import static org.apache.lucene.util.hppc.HashContainers.nextBufferSize;
+
+import java.util.Arrays;
+import java.util.Iterator;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A hash map of <code>char</code> to <code>Object</code>, implemented using open addressing with

@@ -153,6 +153,17 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   }
 
   /**
+   * Adds all elements from the given set to this set.
+   *
+   * @return Returns the number of elements actually added as a result of this call (not previously
+   *     present in the set).
+   */
+  public int addAll(IntHashSet set) {
+    ensureCapacity(set.size());
+    return addAll((Iterable<? extends IntCursor>) set);
+  }
+
+  /**
    * Adds all elements from the given iterable to this set.
    *
    * @return Returns the number of elements actually added as a result of this call (not previously

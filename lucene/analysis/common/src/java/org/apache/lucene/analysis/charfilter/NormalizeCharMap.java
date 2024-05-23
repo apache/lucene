@@ -53,8 +53,7 @@ public class NormalizeCharMap {
           while (true) {
             assert scratchArc.label() != FST.END_LABEL;
             cachedRootArcs.put(
-                (char) scratchArc.label(),
-                new FST.Arc<CharsRef>().copyFrom(scratchArc));
+                (char) scratchArc.label(), new FST.Arc<CharsRef>().copyFrom(scratchArc));
             if (scratchArc.isLast()) {
               break;
             }

@@ -17,12 +17,6 @@
 
 package org.apache.lucene.util.hppc;
 
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.RamUsageEstimator;
-
-import java.util.Arrays;
-import java.util.Iterator;
-
 import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_EXPECTED_ELEMENTS;
 import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_LOAD_FACTOR;
 import static org.apache.lucene.util.hppc.HashContainers.ITERATION_SEED;
@@ -33,6 +27,11 @@ import static org.apache.lucene.util.hppc.HashContainers.expandAtCount;
 import static org.apache.lucene.util.hppc.HashContainers.iterationIncrement;
 import static org.apache.lucene.util.hppc.HashContainers.minBufferSize;
 import static org.apache.lucene.util.hppc.HashContainers.nextBufferSize;
+
+import java.util.Arrays;
+import java.util.Iterator;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A hash set of <code>char</code>s, implemented using open addressing with linear probing for
@@ -155,6 +154,17 @@ public class CharHashSet implements Iterable<CharCursor>, Accountable, Cloneable
       }
     }
     return count;
+  }
+
+  /**
+   * Adds all elements from the given set to this set.
+   *
+   * @return Returns the number of elements actually added as a result of this call (not previously
+   *     present in the set).
+   */
+  public int addAll(CharHashSet set) {
+    ensureCapacity(set.size());
+    return addAll((Iterable<? extends CharCursor>) set);
   }
 
   /**

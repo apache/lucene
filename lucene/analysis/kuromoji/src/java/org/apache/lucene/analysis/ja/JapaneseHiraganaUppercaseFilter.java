@@ -36,10 +36,9 @@ public final class JapaneseHiraganaUppercaseFilter extends TokenFilter {
     // supported characters are:
     // ぁ ぃ ぅ ぇ ぉ っ ゃ ゅ ょ ゎ ゕ ゖ
     LETTER_MAPPINGS =
-            CharObjectHashMap.from(
-              new char[] {'ぁ','ぃ','ぅ','ぇ','ぉ','っ','ゃ','ゅ','ょ','ゎ','ゕ','ゖ'},
-                    new Character[] {'あ','い','う','え','お','つ','や','ゆ','よ','わ','か','け'}
-                    );
+        CharObjectHashMap.from(
+            new char[] {'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'っ', 'ゃ', 'ゅ', 'ょ', 'ゎ', 'ゕ', 'ゖ'},
+            new Character[] {'あ', 'い', 'う', 'え', 'お', 'つ', 'や', 'ゆ', 'よ', 'わ', 'か', 'け'});
   }
 
   private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
@@ -53,13 +52,13 @@ public final class JapaneseHiraganaUppercaseFilter extends TokenFilter {
     if (!input.incrementToken()) {
       return false;
     }
-      final char[] termBuffer = termAttr.buffer();
-      for (int i = 0, length = termAttr.length(); i < length; i++) {
-        Character c = LETTER_MAPPINGS.get(termBuffer[i]);
-        if (c != null) {
-          termBuffer[i] = c;
-        }
+    final char[] termBuffer = termAttr.buffer();
+    for (int i = 0, length = termAttr.length(); i < length; i++) {
+      Character c = LETTER_MAPPINGS.get(termBuffer[i]);
+      if (c != null) {
+        termBuffer[i] = c;
       }
-      return true;
+    }
+    return true;
   }
 }

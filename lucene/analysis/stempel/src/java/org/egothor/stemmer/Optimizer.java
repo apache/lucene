@@ -54,12 +54,11 @@
 */
 package org.egothor.stemmer;
 
-import org.apache.lucene.util.hppc.CharCursor;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.util.hppc.CharCursor;
 
 /**
  * The Optimizer class is a Trie that will be reduced (have empty rows removed).

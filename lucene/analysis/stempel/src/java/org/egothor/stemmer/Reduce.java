@@ -54,13 +54,12 @@
 */
 package org.egothor.stemmer;
 
-import org.apache.lucene.util.hppc.CharCursor;
-import org.apache.lucene.util.hppc.ObjectCursor;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.util.hppc.CharCursor;
+import org.apache.lucene.util.hppc.ObjectCursor;
 
 /** The Reduce object is used to remove gaps in a Trie which stores a dictionary. */
 public class Reduce {

@@ -54,12 +54,11 @@
 */
 package org.egothor.stemmer;
 
-import org.apache.lucene.util.hppc.ObjectCursor;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.util.hppc.ObjectCursor;
 
 /**
  * The Gener object helps in the discarding of nodes which break the reduction effort and defend the

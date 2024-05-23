@@ -36,10 +36,15 @@ public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
     // supported characters are:
     // ァ ィ ゥ ェ ォ ヵ ㇰ ヶ ㇱ ㇲ ッ ㇳ ㇴ ㇵ ㇶ ㇷ ㇷ゚ ㇸ ㇹ ㇺ ャ ュ ョ ㇻ ㇼ ㇽ ㇾ ㇿ ヮ
     LETTER_MAPPINGS =
-            CharObjectHashMap.from(
-                    new char[]      {'ァ', 'ィ', 'ゥ', 'ェ', 'ォ', 'ヵ', 'ㇰ', 'ヶ', 'ㇱ', 'ㇲ', 'ッ', 'ㇳ', 'ㇴ', 'ㇵ', 'ㇶ', 'ㇷ', 'ㇸ', 'ㇹ', 'ㇺ', 'ャ', 'ュ', 'ョ', 'ㇻ', 'ㇼ', 'ㇽ', 'ㇾ', 'ㇿ', 'ヮ'},
-                    new Character[] {'ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'ク', 'ケ', 'シ', 'ス', 'ツ', 'ト', 'ヌ', 'ハ', 'ヒ', 'フ', 'ヘ', 'ホ', 'ム', 'ヤ', 'ユ', 'ヨ', 'ラ', 'リ', 'ル', 'レ', 'ロ', 'ワ'}
-            );
+        CharObjectHashMap.from(
+            new char[] {
+              'ァ', 'ィ', 'ゥ', 'ェ', 'ォ', 'ヵ', 'ㇰ', 'ヶ', 'ㇱ', 'ㇲ', 'ッ', 'ㇳ', 'ㇴ', 'ㇵ', 'ㇶ', 'ㇷ', 'ㇸ',
+              'ㇹ', 'ㇺ', 'ャ', 'ュ', 'ョ', 'ㇻ', 'ㇼ', 'ㇽ', 'ㇾ', 'ㇿ', 'ヮ'
+            },
+            new Character[] {
+              'ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'ク', 'ケ', 'シ', 'ス', 'ツ', 'ト', 'ヌ', 'ハ', 'ヒ', 'フ', 'ヘ',
+              'ホ', 'ム', 'ヤ', 'ユ', 'ヨ', 'ラ', 'リ', 'ル', 'レ', 'ロ', 'ワ'
+            });
   }
 
   private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
@@ -53,23 +58,23 @@ public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
     if (!input.incrementToken()) {
       return false;
     }
-      final char[] termBuffer = termAttr.buffer();
-      for (int i = 0, length = termAttr.length(); i < length; i++) {
-        if (termBuffer[i] == 'ㇷ' && i + 1 < length && termBuffer[i + 1] == '゚') {
-          // ㇷ゚detected, replace it by プ.
-          termBuffer[i] = 'プ';
-          int remaining = length - (i + 2);
-          if (remaining > 0) {
-            System.arraycopy(termBuffer, i + 2, termBuffer, i + 1, remaining);
-          }
-          termAttr.setLength(--length);
-        } else {
-          Character c = LETTER_MAPPINGS.get(termBuffer[i]);
-          if (c != null) {
-            termBuffer[i] = c;
-          }
+    final char[] termBuffer = termAttr.buffer();
+    for (int i = 0, length = termAttr.length(); i < length; i++) {
+      if (termBuffer[i] == 'ㇷ' && i + 1 < length && termBuffer[i + 1] == '゚') {
+        // ㇷ゚detected, replace it by プ.
+        termBuffer[i] = 'プ';
+        int remaining = length - (i + 2);
+        if (remaining > 0) {
+          System.arraycopy(termBuffer, i + 2, termBuffer, i + 1, remaining);
+        }
+        termAttr.setLength(--length);
+      } else {
+        Character c = LETTER_MAPPINGS.get(termBuffer[i]);
+        if (c != null) {
+          termBuffer[i] = c;
         }
       }
-      return true;
+    }
+    return true;
   }
 }
