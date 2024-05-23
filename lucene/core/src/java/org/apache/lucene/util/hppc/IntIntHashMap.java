@@ -17,7 +17,6 @@
 
 package org.apache.lucene.util.hppc;
 
-import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
 import static org.apache.lucene.util.hppc.HashContainers.*;
 
 import java.util.Arrays;
@@ -96,10 +95,10 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
     ensureCapacity(expectedElements);
   }
 
-  /** Create a hash map from all key-value pairs of another container. */
-  public IntIntHashMap(Iterable<? extends IntIntCursor> container) {
-    this();
-    putAll(container);
+  /** Create a hash map from all key-value pairs of another map. */
+  public IntIntHashMap(IntIntHashMap map) {
+    this(map.size());
+    putAll(map);
   }
 
   public int put(int key, int value) {
@@ -107,8 +106,8 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
 
     final int mask = this.mask;
     if (((key) == 0)) {
+      int previousValue = hasEmptyKey ? values[mask + 1] : 0;
       hasEmptyKey = true;
-      int previousValue = values[mask + 1];
       values[mask + 1] = value;
       return previousValue;
     } else {
@@ -205,6 +204,9 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
   public int remove(int key) {
     final int mask = this.mask;
     if (((key) == 0)) {
+      if (!hasEmptyKey) {
+        return 0;
+      }
       hasEmptyKey = false;
       int previousValue = values[mask + 1];
       values[mask + 1] = 0;
@@ -357,6 +359,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
 
     int previousValue = values[index];
     if (index > mask) {
+      assert index == mask + 1;
       hasEmptyKey = false;
       values[index] = 0;
     } else {
@@ -402,7 +405,8 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
 
   @Override
   public boolean equals(Object obj) {
-    return obj != null && getClass() == obj.getClass() && equalElements(getClass().cast(obj));
+    return (this == obj)
+        || (obj != null && getClass() == obj.getClass() && equalElements(getClass().cast(obj)));
   }
 
   /** Return true if all keys of some other container exist in this container. */
@@ -625,7 +629,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
       cloned.keys = keys.clone();
       cloned.values = values.clone();
       cloned.hasEmptyKey = hasEmptyKey;
-      cloned.iterationSeed = nextIterationSeed();
+      cloned.iterationSeed = ITERATION_SEED.incrementAndGet();
       return cloned;
     } catch (CloneNotSupportedException e) {
       throw new RuntimeException(e);
@@ -762,64 +766,6 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
 
     // Rehash old keys, including the pending key.
     rehash(prevKeys, prevValues);
-  }
-
-  static int nextBufferSize(int arraySize, int elements, double loadFactor) {
-    assert checkPowerOfTwo(arraySize);
-    if (arraySize == MAX_HASH_ARRAY_LENGTH) {
-      throw new BufferAllocationException(
-          "Maximum array size exceeded for this load factor (elements: %d, load factor: %f)",
-          elements, loadFactor);
-    }
-
-    return arraySize << 1;
-  }
-
-  static int expandAtCount(int arraySize, double loadFactor) {
-    assert checkPowerOfTwo(arraySize);
-    // Take care of hash container invariant (there has to be at least one empty slot to ensure
-    // the lookup loop finds either the element or an empty slot).
-    return Math.min(arraySize - 1, (int) Math.ceil(arraySize * loadFactor));
-  }
-
-  static boolean checkPowerOfTwo(int arraySize) {
-    // These are internals, we can just assert without retrying.
-    assert arraySize > 1;
-    assert nextHighestPowerOfTwo(arraySize) == arraySize;
-    return true;
-  }
-
-  static int minBufferSize(int elements, double loadFactor) {
-    if (elements < 0) {
-      throw new IllegalArgumentException("Number of elements must be >= 0: " + elements);
-    }
-
-    long length = (long) Math.ceil(elements / loadFactor);
-    if (length == elements) {
-      length++;
-    }
-    length = Math.max(MIN_HASH_ARRAY_LENGTH, nextHighestPowerOfTwo(length));
-
-    if (length > MAX_HASH_ARRAY_LENGTH) {
-      throw new BufferAllocationException(
-          "Maximum array size exceeded for this load factor (elements: %d, load factor: %f)",
-          elements, loadFactor);
-    }
-
-    return (int) length;
-  }
-
-  static void checkLoadFactor(
-      double loadFactor, double minAllowedInclusive, double maxAllowedInclusive) {
-    if (loadFactor < minAllowedInclusive || loadFactor > maxAllowedInclusive) {
-      throw new BufferAllocationException(
-          "The load factor should be in range [%.2f, %.2f]: %f",
-          minAllowedInclusive, maxAllowedInclusive, loadFactor);
-    }
-  }
-
-  static int iterationIncrement(int seed) {
-    return 29 + ((seed & 7) << 1); // Small odd integer.
   }
 
   /**
