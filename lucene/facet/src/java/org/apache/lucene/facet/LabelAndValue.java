@@ -24,10 +24,21 @@ public final class LabelAndValue {
   /** Value associated with this label. */
   public final Number value;
 
+  /** Number of occurrences for this label. */
+  public final int count;
+
   /** Sole constructor. */
   public LabelAndValue(String label, Number value) {
     this.label = label;
     this.value = value;
+    this.count = value.intValue();
+  }
+
+  /** Sole constructor. */
+  public LabelAndValue(String label, Number value, int count) {
+    this.label = label;
+    this.value = value;
+    this.count = count;
   }
 
   @Override
