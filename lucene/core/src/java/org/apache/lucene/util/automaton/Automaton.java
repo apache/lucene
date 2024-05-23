@@ -18,14 +18,13 @@ package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.Sorter;
+import org.apache.lucene.util.hppc.IntHashSet;
 
 // TODO
 //   - could use packed int arrays instead
@@ -624,7 +623,7 @@ public class Automaton implements Accountable {
 
   /** Returns sorted array of all interval start points. */
   public int[] getStartPoints() {
-    Set<Integer> pointset = new HashSet<>();
+    IntHashSet pointset = new IntHashSet();
     pointset.add(Character.MIN_CODE_POINT);
     // System.out.println("getStartPoints");
     for (int s = 0; s < nextState; s += 2) {
@@ -642,11 +641,7 @@ public class Automaton implements Accountable {
         trans += 3;
       }
     }
-    int[] points = new int[pointset.size()];
-    int n = 0;
-    for (Integer m : pointset) {
-      points[n++] = m;
-    }
+    int[] points = pointset.toArray();
     Arrays.sort(points);
     return points;
   }

@@ -42,12 +42,12 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
       RamUsageEstimator.shallowSizeOfInstance(SortedNumericDocValuesSetQuery.class);
 
   private final String field;
-  private final LongHashSet numbers;
+  private final DocValuesLongHashSet numbers;
 
   SortedNumericDocValuesSetQuery(String field, long[] numbers) {
     this.field = Objects.requireNonNull(field);
     Arrays.sort(numbers);
-    this.numbers = new LongHashSet(numbers);
+    this.numbers = new DocValuesLongHashSet(numbers);
   }
 
   @Override
