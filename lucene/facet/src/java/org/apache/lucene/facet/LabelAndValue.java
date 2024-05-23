@@ -16,8 +16,65 @@
  */
 package org.apache.lucene.facet;
 
+import java.util.Objects;
+
 /** Single label and its value, usually contained in a {@link FacetResult}. */
 public final class LabelAndValue {
+  static public class ValueAndCount extends Number {
+    public Number value;
+    public int count;
+
+    public ValueAndCount(Number value, int count) {
+      this.value = value;
+      this.count = count;
+    }
+
+    public int getCount() {
+      return count;
+    }
+
+    @Override
+    public int intValue() {
+      return value.intValue();
+    }
+
+    @Override
+    public long longValue() {
+      return value.longValue();
+    }
+
+    @Override
+    public float floatValue() {
+      return value.floatValue();
+    }
+
+    @Override
+    public double doubleValue() {
+      return value.doubleValue();
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(value, count);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj instanceof ValueAndCount vac) {
+        return value.equals(vac.value) && count == vac.count;
+      }
+      if (obj instanceof Number num) {
+        return value.equals(num);
+      }
+      return false;
+    }
+
+    @Override
+    public String toString() {
+      return value.toString();
+    }
+  }
+
   /** Facet's label. */
   public final String label;
 

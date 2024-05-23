@@ -20,6 +20,7 @@ import com.carrotsearch.hppc.IntFloatHashMap;
 import java.io.IOException;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
 
@@ -102,6 +103,11 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
   @Override
   protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
     return new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
+  }
+
+  @Override
+  protected Number makeValue(Number value, int ord) {
+    return new LabelAndValue.ValueAndCount(value, getCount(ord));
   }
 
   @Override
