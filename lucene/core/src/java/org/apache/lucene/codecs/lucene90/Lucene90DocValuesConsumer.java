@@ -22,8 +22,6 @@ import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -52,6 +50,7 @@ import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.compress.LZ4;
+import org.apache.lucene.util.hppc.LongHashSet;
 import org.apache.lucene.util.hppc.LongIntHashMap;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 import org.apache.lucene.util.packed.DirectWriter;
@@ -198,7 +197,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     MinMaxTracker minMax = new MinMaxTracker();
     MinMaxTracker blockMinMax = new MinMaxTracker();
     long gcd = 0;
-    Set<Long> uniqueValues = ords ? null : new HashSet<>();
+    LongHashSet uniqueValues = ords ? null : new LongHashSet();
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       for (int i = 0, count = values.docValueCount(); i < count; ++i) {
         long v = values.nextValue();
@@ -282,10 +281,10 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           && DirectWriter.unsignedBitsRequired(uniqueValues.size() - 1)
               < DirectWriter.unsignedBitsRequired((max - min) / gcd)) {
         numBitsPerValue = DirectWriter.unsignedBitsRequired(uniqueValues.size() - 1);
-        final Long[] sortedUniqueValues = uniqueValues.toArray(new Long[0]);
+        final long[] sortedUniqueValues = uniqueValues.toArray();
         Arrays.sort(sortedUniqueValues);
         meta.writeInt(sortedUniqueValues.length); // tablesize
-        for (Long v : sortedUniqueValues) {
+        for (long v : sortedUniqueValues) {
           meta.writeLong(v); // table[] entry
         }
         encode = new LongIntHashMap();

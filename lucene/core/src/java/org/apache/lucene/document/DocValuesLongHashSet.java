@@ -25,9 +25,9 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
 
 /** Set of longs, optimized for docvalues usage */
-final class LongHashSet implements Accountable {
+final class DocValuesLongHashSet implements Accountable {
   private static final long BASE_RAM_BYTES =
-      RamUsageEstimator.shallowSizeOfInstance(LongHashSet.class);
+      RamUsageEstimator.shallowSizeOfInstance(DocValuesLongHashSet.class);
 
   private static final long MISSING = Long.MIN_VALUE;
 
@@ -43,7 +43,7 @@ final class LongHashSet implements Accountable {
   final long maxValue;
 
   /** Construct a set. Values must be in sorted order. */
-  LongHashSet(long[] values) {
+  DocValuesLongHashSet(long[] values) {
     int tableSize = Math.toIntExact(values.length * 3L / 2);
     tableSize = 1 << PackedInts.bitsRequired(tableSize); // make it a power of 2
     assert tableSize >= values.length * 3L / 2;
@@ -119,8 +119,8 @@ final class LongHashSet implements Accountable {
 
   @Override
   public boolean equals(Object obj) {
-    if (obj != null && obj instanceof LongHashSet) {
-      LongHashSet that = (LongHashSet) obj;
+    if (obj != null && obj instanceof DocValuesLongHashSet) {
+      DocValuesLongHashSet that = (DocValuesLongHashSet) obj;
       return size == that.size
           && minValue == that.minValue
           && maxValue == that.maxValue
