@@ -266,10 +266,6 @@ abstract class TaxonomyFacets extends Facets {
     return new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
   }
 
-  protected Number makeValue(Number value, int ord) {
-    return value;
-  }
-
   // TODO: We don't need this if we're okay with having an integer -1 in the results even for float
   // aggregations.
   /** Return the value for a missing aggregation, i.e. {@code -1} or {@code -1f}. */
@@ -347,7 +343,7 @@ abstract class TaxonomyFacets extends Facets {
     // add 1 here to also account for the dim:
     int childComponentIdx = path.length + 1;
     for (int i = 0; i < labelValues.length; i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[childComponentIdx], makeValue(values[i], ordinals[i]));
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[childComponentIdx], values[i]);
     }
 
     return new FacetResult(
@@ -423,7 +419,7 @@ abstract class TaxonomyFacets extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[ordValues.size()];
     for (int i = 0; i < ordValues.size(); i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], makeValue(ordValues.get(i), ordinals.get(i)));
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
     }
     return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }

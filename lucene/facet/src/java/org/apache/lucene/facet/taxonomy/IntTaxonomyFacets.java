@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Comparator;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
 
@@ -99,11 +98,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     int currentValue = getValue(ordinal);
     int newValue = aggregationFunction.aggregate(currentValue, rollup(childOrdinal));
     setValue(ordinal, newValue);
-  }
-
-  @Override
-  protected Number makeValue(Number value, int ord) {
-    return new LabelAndValue.ValueAndCount(value, getCount(ord));
   }
 
   private int rollup(int ord) throws IOException {
