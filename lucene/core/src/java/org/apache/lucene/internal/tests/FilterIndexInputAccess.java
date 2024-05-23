@@ -15,27 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.internal.tests;
 
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.store.FilterIndexInput;
 
-/** Default provider returning scalar implementations. */
-final class DefaultVectorizationProvider extends VectorizationProvider {
-
-  private final VectorUtilSupport vectorUtilSupport;
-
-  DefaultVectorizationProvider() {
-    vectorUtilSupport = new DefaultVectorUtilSupport();
-  }
-
-  @Override
-  public VectorUtilSupport getVectorUtilSupport() {
-    return vectorUtilSupport;
-  }
-
-  @Override
-  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
-    return DefaultFlatVectorScorer.INSTANCE;
-  }
+/**
+ * Access to {@link org.apache.lucene.store.FilterIndexInput} internals exposed to the test
+ * framework.
+ *
+ * @lucene.internal
+ */
+public interface FilterIndexInputAccess {
+  /** Adds the given test FilterIndexInput class. */
+  void addTestFilterType(Class<? extends FilterIndexInput> cls);
 }
