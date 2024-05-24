@@ -770,7 +770,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
                 return supplier.get(leadCost);
               }
 
-              CacheAndCount cached = cacheImpl(supplier.getBulkScorer(), context.reader().maxDoc());
+              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), context.reader().maxDoc());
               putIfAbsent(in.getQuery(), cached, cacheHelper);
               DocIdSetIterator disi = cached.iterator();
               if (disi == null) {

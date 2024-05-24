@@ -257,6 +257,32 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         }
 
         @Override
+        public BulkScorer bulkScorer() throws IOException {
+          WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+          final BulkScorer bulkScorer;
+          if (weightOrIterator == null) {
+            bulkScorer = null;
+          } else if (weightOrIterator.weight != null) {
+            bulkScorer = weightOrIterator.weight.bulkScorer(context);
+          } else {
+            bulkScorer =
+                new DefaultBulkScorer(
+                    new ConstantScoreScorer(weight, score(), scoreMode, weightOrIterator.iterator));
+          }
+
+          // It's against the API contract to return a null scorer from a non-null ScoreSupplier.
+          // So if our ScoreSupplier was non-null (i.e., thought there might be hits) but we now
+          // find that there are actually no hits, we need to return an empty BulkScorer as opposed
+          // to null:
+          return Objects.requireNonNullElseGet(
+              bulkScorer,
+              () ->
+                  new DefaultBulkScorer(
+                      new ConstantScoreScorer(
+                          weight, score(), scoreMode, DocIdSetIterator.empty())));
+        }
+
+        @Override
         public long cost() {
           return cost;
         }

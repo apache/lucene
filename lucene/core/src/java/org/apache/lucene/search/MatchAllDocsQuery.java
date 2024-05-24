@@ -43,9 +43,9 @@ public final class MatchAllDocsQuery extends Query {
           }
 
           @Override
-          public BulkScorer getBulkScorer() throws IOException {
+          public BulkScorer bulkScorer() throws IOException {
             if (scoreMode.isExhaustive() == false) {
-              return super.getBulkScorer();
+              return super.bulkScorer();
             }
             final float score = score();
             final int maxDoc = context.reader().maxDoc();

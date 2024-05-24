@@ -30,7 +30,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 import org.apache.lucene.util.Bits;
 
-final class Boolean2ScorerSupplier extends ScorerSupplier {
+final class BooleanScorerSupplier extends ScorerSupplier {
 
   private final Weight weight;
   private final Map<BooleanClause.Occur, Collection<ScorerSupplier>> subs;
@@ -40,7 +40,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
   private long cost = -1;
   private boolean topLevelScoringClause;
 
-  Boolean2ScorerSupplier(
+  BooleanScorerSupplier(
       Weight weight,
       Map<Occur, Collection<ScorerSupplier>> subs,
       ScoreMode scoreMode,
@@ -173,14 +173,14 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
   }
 
   @Override
-  public BulkScorer getBulkScorer() throws IOException {
+  public BulkScorer bulkScorer() throws IOException {
     final BulkScorer bulkScorer = booleanScorer();
     if (bulkScorer != null) {
       // bulk scoring is applicable, use it
       return bulkScorer;
     } else {
       // use a Scorer-based impl (BS2)
-      return super.getBulkScorer();
+      return super.bulkScorer();
     }
   }
 
@@ -280,7 +280,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
     if (subs.get(Occur.SHOULD).size() == 0) {
       return null;
     } else if (subs.get(Occur.SHOULD).size() == 1 && minShouldMatch <= 1) {
-      return subs.get(Occur.SHOULD).iterator().next().getBulkScorer();
+      return subs.get(Occur.SHOULD).iterator().next().bulkScorer();
     }
 
     if (scoreMode == ScoreMode.TOP_SCORES && minShouldMatch <= 1) {
@@ -294,7 +294,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
 
     List<BulkScorer> optional = new ArrayList<BulkScorer>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
-      optional.add(ss.getBulkScorer());
+      optional.add(ss.bulkScorer());
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());
@@ -308,9 +308,9 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
     } else if (subs.get(Occur.MUST).size() + subs.get(Occur.FILTER).size() == 1) {
       BulkScorer scorer;
       if (subs.get(Occur.MUST).isEmpty() == false) {
-        scorer = subs.get(Occur.MUST).iterator().next().getBulkScorer();
+        scorer = subs.get(Occur.MUST).iterator().next().bulkScorer();
       } else {
-        scorer = subs.get(Occur.FILTER).iterator().next().getBulkScorer();
+        scorer = subs.get(Occur.FILTER).iterator().next().bulkScorer();
         if (scoreMode.needsScores()) {
           scorer = disableScoring(scorer);
         }

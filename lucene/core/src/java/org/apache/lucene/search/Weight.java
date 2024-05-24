@@ -159,7 +159,7 @@ public abstract class Weight implements SegmentCacheable {
    * }
    *
    * scorerSupplier.setTopLevelScoringClause();
-   * return new DefaultBulkScorer(scorerSupplier.get(Long.MAX_VALUE));
+   * return scorerSupplier.bulkScorer();
    * </pre>
    */
   public final BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
@@ -170,7 +170,7 @@ public abstract class Weight implements SegmentCacheable {
     }
 
     scorerSupplier.setTopLevelScoringClause();
-    return scorerSupplier.getBulkScorer();
+    return scorerSupplier.bulkScorer();
   }
 
   /**

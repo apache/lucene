@@ -707,7 +707,7 @@ public class IndexSearcher {
       ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
       if (scorerSupplier != null) {
         scorerSupplier.setTopLevelScoringClause();
-        BulkScorer scorer = scorerSupplier.getBulkScorer();
+        BulkScorer scorer = scorerSupplier.bulkScorer();
         if (queryTimeout != null) {
           scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
         }

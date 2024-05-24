@@ -86,7 +86,7 @@ class AssertingWeight extends FilterWeight {
       }
 
       @Override
-      public BulkScorer getBulkScorer() throws IOException {
+      public BulkScorer bulkScorer() throws IOException {
         assert getCalled == false;
 
         BulkScorer inScorer;
@@ -100,10 +100,10 @@ class AssertingWeight extends FilterWeight {
             new RuntimeException().printStackTrace();
           }
           getCalled = true;
-          inScorer = inScorerSupplier.getBulkScorer();
+          inScorer = inScorerSupplier.bulkScorer();
         } else {
           // Don't set getCalled = true, since this calls #get under the hood
-          inScorer = super.getBulkScorer();
+          inScorer = super.bulkScorer();
         }
 
         return AssertingBulkScorer.wrap(

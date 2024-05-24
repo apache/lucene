@@ -216,7 +216,7 @@ class DrillSidewaysQuery extends Query {
           }
 
           @Override
-          public BulkScorer getBulkScorer() throws IOException {
+          public BulkScorer bulkScorer() throws IOException {
             return new DrillSidewaysScorer(
                 context,
                 baseScorerSupplier.get(Long.MAX_VALUE),

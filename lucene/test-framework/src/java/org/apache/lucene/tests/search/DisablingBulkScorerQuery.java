@@ -68,7 +68,7 @@ public class DisablingBulkScorerQuery extends Query {
           }
 
           @Override
-          public BulkScorer getBulkScorer() throws IOException {
+          public BulkScorer bulkScorer() throws IOException {
             return new DefaultBulkScorer(get(Long.MAX_VALUE));
           }
         };

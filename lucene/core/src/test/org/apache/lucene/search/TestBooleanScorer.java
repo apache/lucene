@@ -96,7 +96,7 @@ public class TestBooleanScorer extends LuceneTestCase {
             }
 
             @Override
-            public BulkScorer getBulkScorer() throws IOException {
+            public BulkScorer bulkScorer() throws IOException {
               return new BulkScorer() {
                 @Override
                 public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
@@ -186,7 +186,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     // no scores -> term scorer
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
     ScorerSupplier ss = weight.scorerSupplier(ctx);
-    BulkScorer scorer = ((Boolean2ScorerSupplier) ss).booleanScorer();
+    BulkScorer scorer = ((BooleanScorerSupplier) ss).booleanScorer();
     assertTrue(scorer instanceof DefaultBulkScorer); // term scorer
 
     // scores -> term scorer too
@@ -197,7 +197,7 @@ public class TestBooleanScorer extends LuceneTestCase {
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
-    scorer = ((Boolean2ScorerSupplier) ss).booleanScorer();
+    scorer = ((BooleanScorerSupplier) ss).booleanScorer();
     assertTrue(scorer instanceof DefaultBulkScorer); // term scorer
 
     w.close();
@@ -228,7 +228,7 @@ public class TestBooleanScorer extends LuceneTestCase {
             .build();
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ScorerSupplier ss = weight.scorerSupplier(ctx);
-    BulkScorer scorer = ((Boolean2ScorerSupplier) ss).booleanScorer();
+    BulkScorer scorer = ((BooleanScorerSupplier) ss).booleanScorer();
     assertTrue(scorer instanceof ReqExclBulkScorer);
 
     query =
@@ -239,7 +239,7 @@ public class TestBooleanScorer extends LuceneTestCase {
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
-    scorer = ((Boolean2ScorerSupplier) ss).booleanScorer();
+    scorer = ((BooleanScorerSupplier) ss).booleanScorer();
     assertTrue(scorer instanceof ReqExclBulkScorer);
 
     query =
@@ -249,7 +249,7 @@ public class TestBooleanScorer extends LuceneTestCase {
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
-    scorer = ((Boolean2ScorerSupplier) ss).booleanScorer();
+    scorer = ((BooleanScorerSupplier) ss).booleanScorer();
     assertTrue(scorer instanceof ReqExclBulkScorer);
 
     query =
@@ -259,7 +259,7 @@ public class TestBooleanScorer extends LuceneTestCase {
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
-    scorer = ((Boolean2ScorerSupplier) ss).booleanScorer();
+    scorer = ((BooleanScorerSupplier) ss).booleanScorer();
     assertTrue(scorer instanceof ReqExclBulkScorer);
 
     w.close();

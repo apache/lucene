@@ -180,10 +180,10 @@ public final class IndexOrDocValuesQuery extends Query {
           }
 
           @Override
-          public BulkScorer getBulkScorer() throws IOException {
+          public BulkScorer bulkScorer() throws IOException {
             // Bulk scorers need to consume the entire set of docs, so using an
             // index structure should perform better
-            return indexScorerSupplier.getBulkScorer();
+            return indexScorerSupplier.bulkScorer();
           }
 
           @Override

@@ -157,11 +157,11 @@ public final class ConstantScoreQuery extends Query {
             }
 
             @Override
-            public BulkScorer getBulkScorer() throws IOException {
+            public BulkScorer bulkScorer() throws IOException {
               if (scoreMode.isExhaustive() == false) {
-                return super.getBulkScorer();
+                return super.bulkScorer();
               }
-              final BulkScorer innerScorer = innerScorerSupplier.getBulkScorer();
+              final BulkScorer innerScorer = innerScorerSupplier.bulkScorer();
               if (innerScorer == null) {
                 return null;
               }

@@ -77,7 +77,7 @@ class QueryProfilerWeight extends FilterWeight {
       }
 
       @Override
-      public BulkScorer getBulkScorer() throws IOException {
+      public BulkScorer bulkScorer() throws IOException {
         // We use the default bulk scorer instead of the specialized one. The reason
         // is that BulkScorers do everything at once: finding matches,
         // scoring them and calling the collector, so they make it impossible to
@@ -85,7 +85,7 @@ class QueryProfilerWeight extends FilterWeight {
         // The default bulk scorer will pull a scorer and iterate over matches,
         // this might be a significantly different execution path for some queries
         // like disjunctions, but in general this is what is done anyway
-        return super.getBulkScorer();
+        return super.bulkScorer();
       }
 
       @Override

@@ -100,7 +100,7 @@ public class CompletionWeight extends Weight {
       }
 
       @Override
-      public BulkScorer getBulkScorer() throws IOException {
+      public BulkScorer bulkScorer() throws IOException {
         final LeafReader reader = context.reader();
         final Terms terms;
         final NRTSuggester suggester;

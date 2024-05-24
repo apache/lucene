@@ -36,7 +36,12 @@ public abstract class ScorerSupplier {
    */
   public abstract Scorer get(long leadCost) throws IOException;
 
-  public BulkScorer getBulkScorer() throws IOException {
+  /**
+   * Optional method: Get a scorer that is optimized for bulk-scoring. The default implementation
+   * iterates matches from the {@link Scorer} but some queries can have more efficient approaches
+   * for matching all hits.
+   */
+  public BulkScorer bulkScorer() throws IOException {
     return new DefaultBulkScorer(get(Long.MAX_VALUE));
   }
 

@@ -22,7 +22,6 @@ import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.Similarity;
@@ -390,7 +389,7 @@ final class BooleanWeight extends Weight {
       scorers.get(Occur.SHOULD).clear();
     }
 
-    return new Boolean2ScorerSupplier(
+    return new BooleanScorerSupplier(
         this, scorers, scoreMode, minShouldMatch, context.reader().maxDoc());
   }
 }
