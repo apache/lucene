@@ -65,16 +65,9 @@ class AssertingWeight extends FilterWeight {
     return new ScorerSupplier() {
       private boolean getCalled = false;
       private boolean topLevelScoringClause = false;
-      Exception prev;
 
       @Override
       public Scorer get(long leadCost) throws IOException {
-        if (prev == null) {
-          prev = new RuntimeException();
-        } else {
-          prev.printStackTrace();
-          new RuntimeException().printStackTrace();
-        }
         assert getCalled == false;
         getCalled = true;
         assert leadCost >= 0 : leadCost;
@@ -93,17 +86,12 @@ class AssertingWeight extends FilterWeight {
         // We explicitly test both the delegate's bulk scorer, and also the normal scorer.
         // This ensures that normal scorers are sometimes tested with an asserting wrapper.
         if (usually(random)) {
-          if (prev == null) {
-            prev = new RuntimeException();
-          } else {
-            prev.printStackTrace();
-            new RuntimeException().printStackTrace();
-          }
           getCalled = true;
           inScorer = inScorerSupplier.bulkScorer();
         } else {
           // Don't set getCalled = true, since this calls #get under the hood
           inScorer = super.bulkScorer();
+          assert getCalled;
         }
 
         return AssertingBulkScorer.wrap(
