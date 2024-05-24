@@ -27,14 +27,14 @@ public final class LabelAndValue {
   /** Number of occurrences for this label. */
   public final int count;
 
-  /** Sole constructor. */
+  /** Constructor with unspecified count, we assume the value is a count. */
   public LabelAndValue(String label, Number value) {
     this.label = label;
     this.value = value;
     this.count = value.intValue();
   }
 
-  /** Sole constructor. */
+  /** Constructor with value and count. */
   public LabelAndValue(String label, Number value, int count) {
     this.label = label;
     this.value = value;
