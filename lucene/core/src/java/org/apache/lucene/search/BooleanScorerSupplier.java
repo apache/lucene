@@ -336,7 +336,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       requiredScoring.add(ss.get(leadCost));
     }
     if (scoreMode == ScoreMode.TOP_SCORES
-        && subs.get(Occur.FILTER).isEmpty()
+        && requiredNoScoring.isEmpty()
         && requiredScoring.size() > 1
         // Only specialize top-level conjunctions for clauses that don't have a two-phase iterator.
         && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
