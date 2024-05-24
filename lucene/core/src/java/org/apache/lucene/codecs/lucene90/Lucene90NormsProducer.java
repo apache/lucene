@@ -255,7 +255,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       }
       // Prefetch the first page of data. Following pages are expected to get prefetched through
       // read-ahead.
-      slice.prefetch(0, 1);
+      if (slice.length() > 0) {
+        slice.prefetch(0, 1);
+      }
     }
     return slice;
   }
