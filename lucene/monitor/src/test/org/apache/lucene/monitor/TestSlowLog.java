@@ -24,56 +24,55 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSlowLog extends LuceneTestCase {
 
-    public void testAddQuery() {
-        SlowLog slowLog = new SlowLog();
-        long time1 = 1;
-        long time2 = 2;
-        long time3 = 3;
-        slowLog.addQuery("query1", time1);
-        slowLog.addQuery("query2", time2);
-        slowLog.addQuery("query3", time3);
+  public void testAddQuery() {
+    SlowLog slowLog = new SlowLog();
+    long time1 = 1;
+    long time2 = 2;
+    long time3 = 3;
+    slowLog.addQuery("query1", time1);
+    slowLog.addQuery("query2", time2);
+    slowLog.addQuery("query3", time3);
 
-        Iterator<SlowLog.Entry> iterator = slowLog.iterator();
-        long curQuery = 1;
-        while (iterator.hasNext()) {
-            SlowLog.Entry entry = iterator.next();
-            assertEquals(entry.queryId, "query" + curQuery);
-            assertEquals(entry.time, curQuery);
-            curQuery += 1;
-        }
+    Iterator<SlowLog.Entry> iterator = slowLog.iterator();
+    long curQuery = 1;
+    while (iterator.hasNext()) {
+      SlowLog.Entry entry = iterator.next();
+      assertEquals(entry.queryId, "query" + curQuery);
+      assertEquals(entry.time, curQuery);
+      curQuery += 1;
     }
+  }
 
+  public void testAddAllQueries() {
+    SlowLog slowLog = new SlowLog();
+    long time1 = 1;
+    long time2 = 2;
+    long time3 = 3;
+    List<SlowLog.Entry> queries = new ArrayList<>();
+    queries.add(new SlowLog.Entry("query1", time1));
+    queries.add(new SlowLog.Entry("query2", time2));
+    queries.add(new SlowLog.Entry("query3", time3));
+    slowLog.addAll(queries);
 
-    public void testAddAllQueries() {
-        SlowLog slowLog = new SlowLog();
-        long time1 = 1;
-        long time2 = 2;
-        long time3 = 3;
-        List<SlowLog.Entry> queries = new ArrayList<>();
-        queries.add(new SlowLog.Entry("query1", time1));
-        queries.add(new SlowLog.Entry("query2", time2));
-        queries.add(new SlowLog.Entry("query3", time3));
-        slowLog.addAll(queries);
-
-        Iterator<SlowLog.Entry> iterator = slowLog.iterator();
-        long curQuery = 1;
-        while (iterator.hasNext()) {
-            SlowLog.Entry entry = iterator.next();
-            assertEquals(entry.queryId, "query" + curQuery);
-            assertEquals(entry.time, curQuery);
-            curQuery += 1;
-        }
+    Iterator<SlowLog.Entry> iterator = slowLog.iterator();
+    long curQuery = 1;
+    while (iterator.hasNext()) {
+      SlowLog.Entry entry = iterator.next();
+      assertEquals(entry.queryId, "query" + curQuery);
+      assertEquals(entry.time, curQuery);
+      curQuery += 1;
     }
+  }
 
-    public void testToString() {
-        SlowLog slowLog = new SlowLog();
-        long time1 = 1;
-        long time2 = 2;
-        long time3 = 3;
-        slowLog.addQuery("query1", time1);
-        slowLog.addQuery("query2", time2);
-        slowLog.addQuery("query3", time3);
+  public void testToString() {
+    SlowLog slowLog = new SlowLog();
+    long time1 = 1;
+    long time2 = 2;
+    long time3 = 3;
+    slowLog.addQuery("query1", time1);
+    slowLog.addQuery("query2", time2);
+    slowLog.addQuery("query3", time3);
 
-        assertEquals(slowLog.toString(), "query1 [1ns]\nquery2 [2ns]\nquery3 [3ns]\n");
-    }
+    assertEquals(slowLog.toString(), "query1 [1ns]\nquery2 [2ns]\nquery3 [3ns]\n");
+  }
 }
