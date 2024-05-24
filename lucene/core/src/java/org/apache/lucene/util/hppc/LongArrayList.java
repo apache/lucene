@@ -185,11 +185,11 @@ public class LongArrayList implements Iterable<LongCursor>, Cloneable, Accountab
   }
 
   /**
-   * Removes the first element that equals <code>e1</code>, returning whether an element has been
+   * Removes the first element that equals <code>e</code>, returning whether an element has been
    * removed.
    */
-  public boolean remove(long element) {
-    return removeFirst(element) != -1;
+  public boolean removeElement(long e) {
+    return removeFirst(e) != -1;
   }
 
   /**

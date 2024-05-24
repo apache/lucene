@@ -350,7 +350,7 @@ public final class FlattenGraphFilter extends TokenFilter {
              * The last node in the alt path didn't arrive to remove this reference.
              */
             assert inputNodes.get(inputFrom).tokens.isEmpty() : "about to remove non empty edge";
-            outSrc.inputNodes.remove(inputFrom);
+            outSrc.inputNodes.removeElement(inputFrom);
             src.outputNode = -1;
             int prevEndOffset = outSrc.endOffset;
 
@@ -382,7 +382,7 @@ public final class FlattenGraphFilter extends TokenFilter {
 
         if (outputEndNode > dest.outputNode) {
           if (dest.outputNode != -1) {
-            boolean removed = outputNodes.get(dest.outputNode).inputNodes.remove(inputTo);
+            boolean removed = outputNodes.get(dest.outputNode).inputNodes.removeElement(inputTo);
             assert removed;
           }
           // System.out.println("    increase output node: " + dest.outputNode + " vs " +

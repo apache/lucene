@@ -153,12 +153,12 @@ public class TestIntArrayList extends LuceneTestCase {
   }
 
   @Test
-  public void testRemove() {
+  public void testRemoveElement() {
     list.add(asArray(0, 1, 2, 3, 3, 4));
 
-    assertTrue(list.remove(3));
-    assertTrue(list.remove(2));
-    assertFalse(list.remove(5));
+    assertTrue(list.removeElement(3));
+    assertTrue(list.removeElement(2));
+    assertFalse(list.removeElement(5));
 
     assertListEquals(list.toArray(), 0, 1, 3, 4);
   }

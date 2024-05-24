@@ -185,11 +185,11 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
   }
 
   /**
-   * Removes the first element that equals <code>e1</code>, returning whether an element has been
+   * Removes the first element that equals <code>e</code>, returning whether an element has been
    * removed.
    */
-  public boolean remove(int element) {
-    return removeFirst(element) != -1;
+  public boolean removeElement(int e) {
+    return removeFirst(e) != -1;
   }
 
   /**
