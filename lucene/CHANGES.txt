@@ -106,6 +106,10 @@ API Changes
   the directory about bytes that are about to be read. (Adrien Grand, Uwe
   Schindler)
 
+* GITHUB#13408: Moved Weight#bulkScorer() to ScorerSupplier#bulkScorer() to better help parallelize
+  I/O for top-level disjunctions. Weight#bulkScorer() still exists for compatibility, but delegates
+  to ScorerSupplier#bulkScorer(). (Adrien Grand)
+
 New Features
 ---------------------
 
