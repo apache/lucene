@@ -253,6 +253,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       if (merging) {
         dataInputs.put(field.number, slice);
       }
+      // Prefetch the first page of data. Following pages are expected to get prefetched through
+      // read-ahead.
+      slice.prefetch(0, 1);
     }
     return slice;
   }
@@ -328,7 +331,7 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
 
       @Override
       public long length() {
-        throw new UnsupportedOperationException("Unused by IndexedDISI");
+        return inF.length();
       }
 
       @Override
@@ -339,6 +342,11 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       @Override
       public void close() throws IOException {
         throw new UnsupportedOperationException("Unused by IndexedDISI");
+      }
+
+      @Override
+      public void prefetch(long offset, long length) throws IOException {
+        // Not delegating to the wrapped instance on purpose. This is only used for merging.
       }
     };
   }
