@@ -21,7 +21,8 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
 
     LongRange[] longRanges;
 
-    DoubleRangeFacetCutter(String field, MultiDoubleValuesSource valuesSource, DoubleRange[] doubleRanges) {
+    /**TODO: add doc**/
+    public DoubleRangeFacetCutter(String field, MultiDoubleValuesSource valuesSource, DoubleRange[] doubleRanges) {
         super(field);
         this.multiDoubleValuesSource = valuesSource;
         this.doubleRanges = doubleRanges;
