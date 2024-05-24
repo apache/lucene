@@ -149,13 +149,13 @@ public class RandomApproximationQuery extends Query {
     }
   }
 
-  private static class RandomTwoPhaseView extends TwoPhaseIterator {
+  public static class RandomTwoPhaseView extends TwoPhaseIterator {
 
     private final DocIdSetIterator disi;
     private int lastDoc = -1;
     private final float randomMatchCost;
 
-    RandomTwoPhaseView(Random random, DocIdSetIterator disi) {
+    public RandomTwoPhaseView(Random random, DocIdSetIterator disi) {
       super(new RandomApproximation(random, disi));
       this.disi = disi;
       this.randomMatchCost = random.nextFloat() * 200; // between 0 and 200

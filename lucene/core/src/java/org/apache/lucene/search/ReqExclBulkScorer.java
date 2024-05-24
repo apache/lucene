@@ -41,6 +41,12 @@ final class ReqExclBulkScorer extends BulkScorer {
     this.exclApproximation = excl;
   }
 
+  ReqExclBulkScorer(BulkScorer req, TwoPhaseIterator excl) {
+    this.req = req;
+    this.exclTwoPhase = excl;
+    this.exclApproximation = excl.approximation();
+  }
+
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     int upTo = min;
