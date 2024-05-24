@@ -298,7 +298,7 @@ final class SegmentTermsEnumFrame {
     statsReader.setPosition(0);
     bytesReader.setPosition(0);
 
-    // TODO: Since we only rewind without reload for fist floor(currentFrame.fp ==
+    // TODO: Since we only rewind without reload for first floor(currentFrame.fp ==
     // currentFrame.fpOrig)
     // So no need to set floorDataReader again?
     //    if (isFloor) {

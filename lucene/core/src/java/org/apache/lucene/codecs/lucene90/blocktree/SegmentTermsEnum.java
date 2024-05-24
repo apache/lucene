@@ -550,7 +550,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         final SeekStatus result = currentFrame.scanToTerm(target, true);
 
-        // Revert entCount to origEntCount.
+        // Restore entCount to origEntCount.
         if (origEntCount != -1) {
           currentFrame.entCount = origEntCount;
         }
@@ -618,7 +618,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     final SeekStatus result = currentFrame.scanToTerm(target, true);
 
-    // Revert entCount to origEntCount.
+    // Restore entCount to origEntCount.
     if (origEntCount != -1) {
       currentFrame.entCount = origEntCount;
     }
@@ -862,7 +862,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // if (DEBUG) System.out.println("  now scanToTerm");
         final SeekStatus result = currentFrame.scanToTerm(target, false);
 
-        // Revert entCount to origEntCount.
+        // Restore entCount to origEntCount.
         if (origEntCount != -1) {
           currentFrame.entCount = origEntCount;
         }
@@ -931,7 +931,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     final SeekStatus result = currentFrame.scanToTerm(target, false);
 
-    // Revert entCount to origEntCount.
+    // Restore entCount to origEntCount.
     if (origEntCount != -1) {
       currentFrame.entCount = origEntCount;
     }
