@@ -34,7 +34,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TermQuery;
@@ -123,7 +122,6 @@ abstract class QueryIndex implements Closeable {
     SortedDocValues cacheId;
     BinaryDocValues mq;
     Weight weight;
-    Scorable scorer;
     LeafReaderContext ctx;
     int docID;
 

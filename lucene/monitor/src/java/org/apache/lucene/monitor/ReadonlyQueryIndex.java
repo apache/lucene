@@ -161,11 +161,6 @@ class ReadonlyQueryIndex extends QueryIndex {
     }
 
     @Override
-    public void setScorer(Scorable scorer) {
-      this.dataValues.scorer = scorer;
-    }
-
-    @Override
     public void collect(int doc) throws IOException {
       dataValues.advanceTo(doc);
       BytesRef cache_id = dataValues.cacheId.lookupOrd(dataValues.cacheId.ordValue());
