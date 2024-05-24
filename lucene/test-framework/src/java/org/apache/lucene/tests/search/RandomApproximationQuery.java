@@ -149,12 +149,16 @@ public class RandomApproximationQuery extends Query {
     }
   }
 
+  /**
+   * A wrapper around a {@link DocIdSetIterator} that matches the same documents, but introduces false positives that need to be verified via {@link TwoPhaseIterator#matches()}.
+   */
   public static class RandomTwoPhaseView extends TwoPhaseIterator {
 
     private final DocIdSetIterator disi;
     private int lastDoc = -1;
     private final float randomMatchCost;
 
+    /** Constructor. */
     public RandomTwoPhaseView(Random random, DocIdSetIterator disi) {
       super(new RandomApproximation(random, disi));
       this.disi = disi;
