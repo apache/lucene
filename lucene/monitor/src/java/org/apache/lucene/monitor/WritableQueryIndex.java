@@ -45,6 +45,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -361,6 +362,11 @@ class WritableQueryIndex extends QueryIndex {
     MonitorQueryCollector(Map<String, QueryCacheEntry> queries, QueryCollector matcher) {
       this.queries = queries;
       this.matcher = matcher;
+    }
+
+    @Override
+    public void setWeight(Weight weight) {
+      this.dataValues.weight = weight;
     }
 
     @Override

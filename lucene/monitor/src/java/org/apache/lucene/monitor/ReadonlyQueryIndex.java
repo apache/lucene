@@ -156,6 +156,11 @@ class ReadonlyQueryIndex extends QueryIndex {
     }
 
     @Override
+    public void setWeight(Weight weight) {
+      this.dataValues.weight = weight;
+    }
+
+    @Override
     public void setScorer(Scorable scorer) {
       this.dataValues.scorer = scorer;
     }
