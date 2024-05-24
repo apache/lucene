@@ -38,6 +38,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
@@ -121,8 +122,10 @@ abstract class QueryIndex implements Closeable {
     SortedDocValues queryId;
     SortedDocValues cacheId;
     BinaryDocValues mq;
+    Weight weight;
     Scorable scorer;
     LeafReaderContext ctx;
+    int docID;
 
     void advanceTo(int doc) throws IOException {
       queryId.advanceExact(doc);
@@ -130,6 +133,7 @@ abstract class QueryIndex implements Closeable {
       if (mq != null) {
         mq.advanceExact(doc);
       }
+      this.docID = doc;
     }
   }
 

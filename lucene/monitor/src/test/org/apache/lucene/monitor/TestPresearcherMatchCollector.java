@@ -42,7 +42,7 @@ public class TestPresearcherMatchCollector extends MonitorTestBase {
       PresearcherMatches<QueryMatch> matches = monitor.debug(doc, QueryMatch.SIMPLE_MATCHER);
 
       assertNotNull(matches.match("1", 0));
-      assertEquals(" field:test", matches.match("1", 0).presearcherMatches);
+      assertEquals(" field:(foo test)", matches.match("1", 0).presearcherMatches);
       assertNotNull(matches.match("1", 0).queryMatch);
 
       assertNotNull(matches.match("2", 0));
@@ -51,7 +51,7 @@ public class TestPresearcherMatchCollector extends MonitorTestBase {
       MatcherAssert.assertThat(pm, containsString("f2:(quuz)"));
 
       assertNotNull(matches.match("3", 0));
-      assertEquals(" field:foo", matches.match("3", 0).presearcherMatches);
+      assertEquals(" field:(foo test)", matches.match("3", 0).presearcherMatches);
       assertNull(matches.match("3", 0).queryMatch);
 
       assertNull(matches.match("4", 0));
