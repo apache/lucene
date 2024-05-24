@@ -21,10 +21,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -161,8 +159,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
-          "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP "
-              + "to inconsistent vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOTP";
+          "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT "
+              + "to inconsistent vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOT";
       assertEquals(errMsg, expected.getMessage());
     }
   }
@@ -181,7 +179,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
           "Inconsistency of field data structures across documents for field [f] of doc [1]."
-              + " vector similarity function: expected 'DOTP', but it has 'EUCLIDEAN'.";
+              + " vector similarity function: expected 'DOT', but it has 'EUCLIDEAN'.";
       assertEquals(errMsg, expected.getMessage());
     }
 
@@ -198,7 +196,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc2));
       String errMsg =
-          "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP "
+          "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT "
               + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=EUCLIDEAN";
       assertEquals(errMsg, expected.getMessage());
     }
@@ -218,8 +216,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
-            "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP "
-                + "to inconsistent vector dimension=2, vector encoding=FLOAT32, vector similarity function=DOTP",
+            "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT "
+                + "to inconsistent vector dimension=2, vector encoding=FLOAT32, vector similarity function=DOT",
             expected.getMessage());
       }
     }
@@ -239,7 +237,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         IllegalArgumentException expected =
             expectThrows(IllegalArgumentException.class, () -> w2.addDocument(doc2));
         assertEquals(
-            "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP "
+            "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT "
                 + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=EUCLIDEAN",
             expected.getMessage());
       }
@@ -340,8 +338,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             expectThrows(
                 IllegalArgumentException.class, () -> w2.addIndexes(new Directory[] {dir}));
         assertEquals(
-            "cannot change field \"f\" from vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOTP "
-                + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP",
+            "cannot change field \"f\" from vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOT "
+                + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT",
             expected.getMessage());
       }
     }
@@ -363,7 +361,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             expectThrows(IllegalArgumentException.class, () -> w2.addIndexes(dir));
         assertEquals(
             "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=EUCLIDEAN "
-                + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP",
+                + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT",
             expected.getMessage());
       }
     }
@@ -387,8 +385,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   IllegalArgumentException.class,
                   () -> w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)}));
           assertEquals(
-              "cannot change field \"f\" from vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOTP "
-                  + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP",
+              "cannot change field \"f\" from vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOT "
+                  + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT",
               expected.getMessage());
         }
       }
@@ -414,7 +412,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   () -> w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)}));
           assertEquals(
               "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=EUCLIDEAN "
-                  + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP",
+                  + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT",
               expected.getMessage());
         }
       }
@@ -437,8 +435,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           IllegalArgumentException expected =
               expectThrows(IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w2, r));
           assertEquals(
-              "cannot change field \"f\" from vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOTP "
-                  + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP",
+              "cannot change field \"f\" from vector dimension=6, vector encoding=FLOAT32, vector similarity function=DOT "
+                  + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT",
               expected.getMessage());
         }
       }
@@ -462,7 +460,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               expectThrows(IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w2, r));
           assertEquals(
               "cannot change field \"f\" from vector dimension=4, vector encoding=FLOAT32, vector similarity function=EUCLIDEAN "
-                  + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOTP",
+                  + "to inconsistent vector dimension=4, vector encoding=FLOAT32, vector similarity function=DOT",
               expected.getMessage());
         }
       }
@@ -848,13 +846,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   protected VectorSimilarityFunction randomSimilarity() {
-    var expectedFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
-    List<String> expectedFunctionsName = new ArrayList<>();
-    for (var function : expectedFunctions) {
-      expectedFunctionsName.add(function.getName());
-    }
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
     return VectorSimilarityFunction.forName(
-        expectedFunctionsName.get(random().nextInt(expectedFunctionsName.size())));
+        vectorSimilarityFunctions.get(random().nextInt(vectorSimilarityFunctions.size())));
   }
 
   /**

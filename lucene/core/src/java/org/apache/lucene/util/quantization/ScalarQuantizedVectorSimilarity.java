@@ -40,7 +40,7 @@ public interface ScalarQuantizedVectorSimilarity {
       VectorSimilarityFunction sim, float constMultiplier, byte bits) {
     return switch (sim.getName()) {
       case "EUCLIDEAN" -> new Euclidean(constMultiplier);
-      case "COSINE", "DOTP" -> new DotProduct(
+      case "COSINE", "DOT" -> new DotProduct(
           constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
       case "MIP" -> new MaximumInnerProduct(
           constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);

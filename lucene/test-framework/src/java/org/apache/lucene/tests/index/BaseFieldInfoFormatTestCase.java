@@ -18,14 +18,12 @@ package org.apache.lucene.tests.index;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.ServiceLoader;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
@@ -63,6 +61,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
   private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =
       TestSecrets.getIndexPackageAccess();
+  private static final List<String> vectorSimilarityFunctions =
+      VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
 
   /** Test field infos read/write with a single field */
   public void testOneField() throws Exception {
@@ -333,14 +333,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
   }
 
   private VectorSimilarityFunction randomSimilarity() {
-
-    var expectedFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
-    List<String> expectedFunctionsName = new ArrayList<>();
-    for (var function : expectedFunctions) {
-      expectedFunctionsName.add(function.getName());
-    }
     return VectorSimilarityFunction.forName(
-        expectedFunctionsName.get(random().nextInt(expectedFunctionsName.size())));
+        vectorSimilarityFunctions.get(random().nextInt(vectorSimilarityFunctions.size())));
   }
 
   private IndexableFieldType randomFieldType(Random r, String fieldName) {

@@ -18,7 +18,6 @@ package org.apache.lucene.backward_codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -117,13 +116,11 @@ import org.apache.lucene.store.IndexOutput;
  */
 public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
 
-  private static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP = new HashMap<>();
-
-  static {
-    SIMILARITY_FUNCTIONS_MAP.put(0, "EUCLIDEAN");
-    SIMILARITY_FUNCTIONS_MAP.put(1, "DOTP");
-    SIMILARITY_FUNCTIONS_MAP.put(2, "COSINE");
-  }
+  private static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP =
+      Map.of(
+          0, "EUCLIDEAN",
+          1, "DOT",
+          2, "COSINE");
 
   /** Sole constructor. */
   public Lucene90FieldInfosFormat() {}
@@ -271,10 +268,10 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
 
   /** Returns VectorSimilarityFunction from index input and ordinal value */
   public static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    if ((int) b < 0 || (int) b >= SIMILARITY_FUNCTIONS_MAP.size()) {
-      throw new CorruptIndexException("invalid distance function: " + (int) b, input);
+    if (!SIMILARITY_FUNCTIONS_MAP.containsKey(Integer.valueOf(b))) {
+      throw new CorruptIndexException("invalid distance function: " + Integer.valueOf(b), input);
     }
-    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get((int) b));
+    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get(Integer.valueOf(b)));
   }
 
   static {

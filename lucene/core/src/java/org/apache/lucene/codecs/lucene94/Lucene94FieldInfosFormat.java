@@ -18,7 +18,6 @@ package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -124,14 +123,12 @@ import org.apache.lucene.store.IndexOutput;
  */
 public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
 
-  public static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP = new HashMap<>();
-
-  static {
-    SIMILARITY_FUNCTIONS_MAP.put(0, "EUCLIDEAN");
-    SIMILARITY_FUNCTIONS_MAP.put(1, "DOTP");
-    SIMILARITY_FUNCTIONS_MAP.put(2, "COSINE");
-    SIMILARITY_FUNCTIONS_MAP.put(3, "MIP");
-  }
+  public static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP =
+      Map.of(
+          0, "EUCLIDEAN",
+          1, "DOT",
+          2, "COSINE",
+          3, "MIP");
 
   /** Sole constructor. */
   public Lucene94FieldInfosFormat() {}
@@ -307,14 +304,10 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   }
 
   static VectorSimilarityFunction distOrdToFunc(byte i) {
-    if (i < 0 || i >= SIMILARITY_FUNCTIONS_MAP.size()) {
-      throw new IllegalArgumentException("invalid distance function: " + i);
+    if (!SIMILARITY_FUNCTIONS_MAP.containsKey(Integer.valueOf(i))) {
+      throw new IllegalArgumentException("invalid distance function: " + Integer.valueOf(i));
     }
-    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get((int) i));
-  }
-
-  static byte distFuncToOrd(VectorSimilarityFunction func) {
-    return (byte) func.getOrdinal();
+    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get(Integer.valueOf(i)));
   }
 
   static {

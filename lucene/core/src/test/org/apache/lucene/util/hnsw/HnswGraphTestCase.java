@@ -29,7 +29,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -285,15 +284,13 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     int M = random().nextInt(10) + 5;
     int beamWidth = random().nextInt(10) + 10;
-    var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
-    List<String> similarityFunctionsName = new ArrayList<>();
-    for (var function : similarityFunctions) {
-      similarityFunctionsName.add(function.getName());
-    }
 
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
     VectorSimilarityFunction similarityFunction =
         VectorSimilarityFunction.forName(
-            similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
+            vectorSimilarityFunctions.get(random().nextInt(vectorSimilarityFunctions.size())));
+
     long seed = random().nextLong();
     HnswGraphBuilder.randSeed = seed;
     IndexWriterConfig iwc =
@@ -752,16 +749,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int size = atLeast(2000);
     int dim = randomIntBetween(100, 1024);
     int M = randomIntBetween(4, 96);
-
-    var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
-    List<String> similarityFunctionsName = new ArrayList<>();
-    for (var function : similarityFunctions) {
-      similarityFunctionsName.add(function.getName());
-    }
-
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
     similarityFunction =
         VectorSimilarityFunction.forName(
-            similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
+            vectorSimilarityFunctions.get(random().nextInt(vectorSimilarityFunctions.size())));
     RandomAccessVectorValues vectors = vectorValues(size, dim);
 
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);

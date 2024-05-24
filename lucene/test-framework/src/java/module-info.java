@@ -18,9 +18,6 @@
 /** Lucene test framework. */
 @SuppressWarnings({"module", "requires-automatic", "requires-transitive-automatic"})
 module org.apache.lucene.test_framework {
-  uses org.apache.lucene.codecs.KnnVectorsFormat;
-  uses org.apache.lucene.index.VectorSimilarityFunction;
-
   requires org.apache.lucene.core;
   requires org.apache.lucene.codecs;
   requires transitive junit;

@@ -20,9 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.ServiceLoader;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
@@ -44,15 +42,11 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Before
   public void setup() {
-    var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
-    List<String> similarityFunctionsName = new ArrayList<>();
-    for (var function : similarityFunctions) {
-      similarityFunctionsName.add(function.getName());
-    }
-
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
     similarityFunction =
         VectorSimilarityFunction.forName(
-            similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
+            vectorSimilarityFunctions.get(random().nextInt(vectorSimilarityFunctions.size())));
   }
 
   @Override

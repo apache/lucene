@@ -20,7 +20,7 @@ import static org.apache.lucene.util.quantization.ScalarQuantizer.SCRATCH_SIZE;
 
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.ServiceLoader;
+import java.util.Iterator;
 import java.util.Set;
 import org.apache.lucene.index.DotProductVectorSimilarityFunction;
 import org.apache.lucene.index.FloatVectorValues;
@@ -31,7 +31,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestScalarQuantizer extends LuceneTestCase {
 
   public void testTinyVectors() throws IOException {
-    for (VectorSimilarityFunction function : ServiceLoader.load(VectorSimilarityFunction.class)) {
+    for (Iterator<VectorSimilarityFunction> it = VectorSimilarityFunction.getIterator();
+        it.hasNext(); ) {
+      VectorSimilarityFunction function = it.next();
       int dims = random().nextInt(9) + 1;
       int numVecs = random().nextInt(9) + 10;
       float[][] floats = randomFloats(numVecs, dims);
@@ -51,7 +53,9 @@ public class TestScalarQuantizer extends LuceneTestCase {
   }
 
   public void testNanAndInfValueFailure() {
-    for (VectorSimilarityFunction function : ServiceLoader.load(VectorSimilarityFunction.class)) {
+    for (Iterator<VectorSimilarityFunction> it = VectorSimilarityFunction.getIterator();
+        it.hasNext(); ) {
+      VectorSimilarityFunction function = it.next();
       int dims = random().nextInt(9) + 1;
       int numVecs = random().nextInt(9) + 10;
       float[][] floats = new float[numVecs][dims];

@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
@@ -148,11 +147,13 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(vec0, 0, vec0.length);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
-          var vectorValues = byteVectorValues(4, 1, in, sim.getName());
+        for (String sim : VectorSimilarityFunction.getAvailableVectorSimilarityFunction()) {
+          var vectorValues = byteVectorValues(4, 1, in, sim);
           expectThrows(
               IllegalArgumentException.class,
-              () -> flatVectorsScorer.getRandomVectorScorer(sim, vectorValues, new byte[5]));
+              () ->
+                  flatVectorsScorer.getRandomVectorScorer(
+                      VectorSimilarityFunction.forName(sim), vectorValues, new byte[5]));
         }
       }
     }
@@ -166,11 +167,13 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         out.writeBytes(concat(vec0), 0, vec0.length * Float.BYTES);
       }
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-        for (var sim : ServiceLoader.load(VectorSimilarityFunction.class)) {
-          var vectorValues = floatVectorValues(4, 1, in, sim.getName());
+        for (String sim : VectorSimilarityFunction.getAvailableVectorSimilarityFunction()) {
+          var vectorValues = floatVectorValues(4, 1, in, sim);
           expectThrows(
               IllegalArgumentException.class,
-              () -> flatVectorsScorer.getRandomVectorScorer(sim, vectorValues, new float[5]));
+              () ->
+                  flatVectorsScorer.getRandomVectorScorer(
+                      VectorSimilarityFunction.forName(sim), vectorValues, new float[5]));
         }
       }
     }

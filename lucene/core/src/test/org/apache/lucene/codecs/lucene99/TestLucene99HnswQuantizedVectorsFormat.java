@@ -24,7 +24,6 @@ import static org.hamcrest.Matchers.oneOf;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.ServiceLoader;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -274,13 +273,11 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   // Ensures that all expected vector similarity functions are translatable
   // in the format.
   public void testVectorSimilarityFuncs() {
-    var expectedFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
-    List<String> expectedFunctionsName = new ArrayList<>();
-    for (var function : expectedFunctions) {
-      expectedFunctionsName.add(function.getName());
-    }
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
+
     assertTrue(
-        expectedFunctionsName.containsAll(
+        vectorSimilarityFunctions.containsAll(
             Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS_MAP.values()));
   }
 }

@@ -76,7 +76,7 @@ public class TestLucene91HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
 
   @Override
   protected VectorSimilarityFunction randomSimilarity() {
-    String[] vectorSimilairtyFunctionNames = new String[] {"COSINE", "EUCLIDEAN", "DOTP"};
+    String[] vectorSimilairtyFunctionNames = new String[] {"COSINE", "EUCLIDEAN", "DOT"};
     return VectorSimilarityFunction.forName(
         vectorSimilairtyFunctionNames[random().nextInt(vectorSimilairtyFunctionNames.length)]);
   }

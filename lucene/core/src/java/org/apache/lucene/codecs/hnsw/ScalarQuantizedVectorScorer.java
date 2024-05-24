@@ -42,7 +42,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       ScalarQuantizer scalarQuantizer) {
     float[] processedQuery =
         switch (similarityFunction.getName()) {
-          case "EUCLIDEAN", "DOTP", "MIP" -> query;
+          case "EUCLIDEAN", "DOT", "MIP" -> query;
           case "COSINE" -> {
             float[] queryCopy = ArrayUtil.copyArray(query);
             VectorUtil.l2normalize(queryCopy);

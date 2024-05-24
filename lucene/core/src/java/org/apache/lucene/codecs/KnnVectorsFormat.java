@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
@@ -139,4 +140,9 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
           return 0;
         }
       };
+
+  /** Return list of all KNNVectorsFormat names */
+  public static List<String> getKnnVectorsFormat() {
+    return Holder.getLoader().availableServices().stream().toList();
+  }
 }

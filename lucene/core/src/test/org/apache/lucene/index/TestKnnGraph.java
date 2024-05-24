@@ -27,7 +27,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
@@ -80,16 +79,11 @@ public class TestKnnGraph extends LuceneTestCase {
     if (random().nextBoolean()) {
       M = random().nextInt(256) + 3;
     }
-
-    var similarityFunctions = ServiceLoader.load(VectorSimilarityFunction.class);
-    List<String> similarityFunctionsName = new ArrayList<>();
-    for (var function : similarityFunctions) {
-      similarityFunctionsName.add(function.getName());
-    }
-
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
     similarityFunction =
         VectorSimilarityFunction.forName(
-            similarityFunctionsName.get(random().nextInt(similarityFunctionsName.size())));
+            vectorSimilarityFunctions.get(random().nextInt(vectorSimilarityFunctions.size())));
     vectorEncoding = randomVectorEncoding();
     boolean quantized = randomBoolean();
     codec =
@@ -152,7 +146,7 @@ public class TestKnnGraph extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
-      if (similarityFunction.getName().equals("DOTP")) {
+      if (similarityFunction.getName().equals("DOT")) {
         VectorUtil.l2normalize(values[0]);
       }
       if (vectorEncoding == VectorEncoding.BYTE) {

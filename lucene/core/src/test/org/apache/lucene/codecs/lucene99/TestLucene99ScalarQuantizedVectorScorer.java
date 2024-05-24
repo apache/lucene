@@ -23,7 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ServiceLoader;
+import java.util.Iterator;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -149,8 +149,9 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
         for (int i = 0; i < 32; i++) {
           queryVector[i] = i * 0.1f;
         }
-        for (VectorSimilarityFunction function :
-            ServiceLoader.load(VectorSimilarityFunction.class)) {
+        for (Iterator<VectorSimilarityFunction> it = VectorSimilarityFunction.getIterator();
+            it.hasNext(); ) {
+          VectorSimilarityFunction function = it.next();
           RandomVectorScorer randomScorer =
               scorer.getRandomVectorScorer(function, values, queryVector);
           assertTrue(randomScorer.score(0) >= 0f);
@@ -264,7 +265,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
   }
 
   public void testSingleVectorPerSegmentDot() throws IOException {
-    testSingleVectorPerSegment("DOTP");
+    testSingleVectorPerSegment("DOT");
   }
 
   public void testSingleVectorPerSegmentEuclidean() throws IOException {

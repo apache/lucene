@@ -30,7 +30,7 @@ public class DotProductVectorSimilarityFunction extends VectorSimilarityFunction
 
   /** Construct object with function name and ordinal value */
   public DotProductVectorSimilarityFunction() {
-    super("DOTP", 1);
+    super("DOT", 1);
   }
 
   @Override

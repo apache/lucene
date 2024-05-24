@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Iterator;
+import java.util.List;
 import org.apache.lucene.util.NamedSPILoader;
 
 /**
@@ -30,7 +32,10 @@ public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSP
 
     static NamedSPILoader<VectorSimilarityFunction> getLoader() {
       if (LOADER == null) {
-        throw new IllegalStateException();
+        throw new IllegalStateException(
+            "You tried to lookup a VectorSimilarityFunction by name before all formats could be initialize. "
+                + "This likely happens if you call VectorSimilarityFunction#forName "
+                + "from a VectorSimilarityFunction's ctor.");
       }
       return LOADER;
     }
@@ -84,5 +89,15 @@ public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSP
    */
   public static void reloadVectorSimilarityFunction(ClassLoader classloader) {
     Holder.getLoader().reload(classloader);
+  }
+
+  /** Return list of all VectorSimilarity functions name */
+  public static List<String> getAvailableVectorSimilarityFunction() {
+    return Holder.getLoader().availableServices().stream().toList();
+  }
+
+  /** Returns Iterator to VectorSimilarityFunctions */
+  public static Iterator<VectorSimilarityFunction> getIterator() {
+    return Holder.getLoader().iterator();
   }
 }

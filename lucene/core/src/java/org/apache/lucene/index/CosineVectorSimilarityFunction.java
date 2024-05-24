@@ -24,7 +24,8 @@ import static org.apache.lucene.util.VectorUtil.cosine;
  * only use this function if you need to preserve the original vectors and cannot normalize them in
  * advance. The similarity score is normalized to assure it is positive.
  *
- * @deprecated Use MAXIMUM_INNER_PRODUCT or DOT_PRODUCT instead
+ * @deprecated Use {@link MaximumInnerProductVectorSimilarityFunction} or {@link
+ *     DotProductVectorSimilarityFunction} instead
  */
 @Deprecated
 public class CosineVectorSimilarityFunction extends VectorSimilarityFunction {
