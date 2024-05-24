@@ -63,7 +63,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    *     expansion (inclusive).
    */
   public IntArrayList(int expectedElements) {
-    ensureCapacity(expectedElements);
+    buffer = new int[expectedElements];
   }
 
   /** Creates a new list from the elements of another list in its iteration order. */
@@ -150,11 +150,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
         : "Index " + index + " out of bounds [" + 0 + ", " + size() + ").";
 
     final int v = buffer[index];
-    if (index + 1 < elementsCount) {
-      System.arraycopy(buffer, index + 1, buffer, index, elementsCount - index - 1);
-    }
-    elementsCount--;
-    buffer[elementsCount] = 0;
+    System.arraycopy(buffer, index + 1, buffer, index, --elementsCount - index);
     return v;
   }
 
@@ -162,9 +158,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
   public int removeLast() {
     assert !isEmpty() : "List is empty";
 
-    int v = buffer[--elementsCount];
-    buffer[elementsCount] = 0;
-    return v;
+    return buffer[--elementsCount];
   }
 
   /**
@@ -181,7 +175,6 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
     System.arraycopy(buffer, toIndex, buffer, fromIndex, elementsCount - toIndex);
     final int count = toIndex - fromIndex;
     elementsCount -= count;
-    Arrays.fill(buffer, elementsCount, elementsCount + count, 0);
   }
 
   /**
@@ -222,17 +215,13 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
     int to = 0;
     for (int from = 0; from < elementsCount; from++) {
       if (((e) == (buffer[from]))) {
-        buffer[from] = 0;
         continue;
       }
-
       if (to != from) {
         buffer[to] = buffer[from];
-        buffer[from] = 0;
       }
       to++;
     }
-
     final int deleted = elementsCount - to;
     this.elementsCount = to;
     return deleted;

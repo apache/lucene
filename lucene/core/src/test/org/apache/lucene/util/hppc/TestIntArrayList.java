@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,13 +52,6 @@ public class TestIntArrayList extends LuceneTestCase {
   @Before
   public void initialize() {
     list = new IntArrayList();
-  }
-
-  @After
-  public void checkTrailingSpaceUninitialized() {
-    if (list != null) {
-      for (int i = list.elementsCount; i < list.buffer.length; i++) assertTrue(0 == list.buffer[i]);
-    }
   }
 
   @Test
@@ -230,6 +222,7 @@ public class TestIntArrayList extends LuceneTestCase {
   @Test
   public void testEnsureCapacity() {
     IntArrayList list = new IntArrayList(0);
+    assertEquals(list.size(), list.buffer.length);
     int[] buffer1 = list.buffer;
     list.ensureCapacity(100);
     assertNotSame(buffer1, list.buffer);
@@ -314,14 +307,25 @@ public class TestIntArrayList extends LuceneTestCase {
   public void testClear() {
     list.add(asArray(1, 2, 3));
     list.clear();
-    checkTrailingSpaceUninitialized();
+    assertTrue(list.isEmpty());
+    assertEquals(-1, list.indexOf(cast(1)));
   }
 
   @Test
   public void testFrom() {
-    IntArrayList variable = IntArrayList.from(key1, key2, key3);
-    assertEquals(3, variable.size());
-    assertListEquals(variable.toArray(), 1, 2, 3);
+    list = IntArrayList.from(key1, key2, key3);
+    assertEquals(3, list.size());
+    assertListEquals(list.toArray(), 1, 2, 3);
+    assertEquals(list.size(), list.buffer.length);
+  }
+
+  @Test
+  public void testCopyList() {
+    list.add(asArray(1, 2, 3));
+    IntArrayList copy = new IntArrayList(list);
+    assertEquals(3, copy.size());
+    assertListEquals(copy.toArray(), 1, 2, 3);
+    assertEquals(copy.size(), copy.buffer.length);
   }
 
   @Test
