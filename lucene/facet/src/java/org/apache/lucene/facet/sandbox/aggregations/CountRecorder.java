@@ -3,6 +3,7 @@ package org.apache.lucene.facet.sandbox.aggregations;
 import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.IntIntMap;
 import com.carrotsearch.hppc.cursors.IntCursor;
+import com.carrotsearch.hppc.cursors.IntIntCursor;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafCutter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafRecorder;
 import org.apache.lucene.facet.sandbox.abstracts.FacetRecorder;
@@ -11,7 +12,10 @@ import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
 import org.apache.lucene.index.LeafReaderContext;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 import static org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator.NO_MORE_ORDS;
 
@@ -20,11 +24,35 @@ import static org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator.NO_MORE_
  */
 public class CountRecorder implements FacetRecorder {
 
+    private final boolean useSyncMap;
+
     /**
      * Create
      */
     public CountRecorder() {
+        this(true);
+    }
+
+    IntIntMap values;
+    List<IntIntMap> perLeafValues;
+
+    /**
+     * Create.
+     * @param useSyncMap if true, use single sync map for all leafs.
+     */
+    public CountRecorder(boolean useSyncMap) {
         super();
+        // TODO: useSyncMap param is temporary, we should run performance tests and understand what is faster -
+        //  - collecting in a sync map,
+        //  - collecting in a map per leaf, and then merge at reduce.
+        if (useSyncMap) {
+            values = new SafeIntIntHashMap();
+        } else {
+            // Has to be synchronizedList as we have one recorder per all slices.
+            // TODO: do we want to have RecorderSlice/RecorderManager for CollectorManager, and then FacetRecorder per Collector?
+            perLeafValues = Collections.synchronizedList(new ArrayList<>());
+        }
+        this.useSyncMap = useSyncMap;
     }
 
     /**
@@ -42,13 +70,16 @@ public class CountRecorder implements FacetRecorder {
         }
     }
 
-    // TODO: lazy init
-    // TODO: doing it in syncronized class must be much slower than what we are doing now in fast taxo facets! Should we
-    //  try building its own map for each leaf, and then find a way to merge it effectively?
-    IntIntMap values = new SafeIntIntHashMap();
+
     @Override
     public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) {
-        return new CountLeafRecorder(values);
+        if (useSyncMap) {
+            return new CountLeafRecorder(values);
+        } else {
+            IntIntMap leafValues = new IntIntHashMap();
+            perLeafValues.add(leafValues);
+            return new CountLeafRecorder(leafValues);
+        }
     }
 
     @Override
@@ -73,6 +104,24 @@ public class CountRecorder implements FacetRecorder {
 
     @Override
     public void reduce(FacetRollup facetRollup) throws IOException {
+        if (useSyncMap == false) {
+            boolean firstElement = true;
+            for (IntIntMap leafRecords: perLeafValues) {
+                if (firstElement) {
+                    values = leafRecords;
+                    firstElement = false;
+                } else {
+                    for(IntIntCursor elem: leafRecords) {
+                        values.addTo(elem.key, elem.value);
+                    }
+                }
+            }
+            if (firstElement) {
+                // TODO: do we need empty map by default?
+                values = new IntIntHashMap();
+            }
+        }
+
         if (facetRollup == null) {
             return;
         }
@@ -81,7 +130,7 @@ public class CountRecorder implements FacetRecorder {
         OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
         for(int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; ) {
             // TODO: we call addTo because this is what IntTaxonomyFacets does (add to current value).
-            //  We might want to just replace the value instead? We should not have current value in the map.
+            //  We might want to just replace the value instead? We should not have dimOrd in the map.
             values.addTo(dimOrd, rollup(dimOrd, facetRollup));
             dimOrd = dimOrds.nextOrd();
         }
@@ -91,6 +140,8 @@ public class CountRecorder implements FacetRecorder {
         OrdinalIterator childOrds = facetRollup.getChildrenOrds(ord);
         int accum = 0;
         for(int nextChild = childOrds.nextOrd(); nextChild != NO_MORE_ORDS; ) {
+            // TODO: we call addTo because this is what IntTaxonomyFacets does (add to current value).
+            //  We might want to just replace the value instead? We should not have nextChild in the map.
             accum += values.addTo(nextChild, rollup(nextChild, facetRollup));
             nextChild = childOrds.nextOrd();
         }

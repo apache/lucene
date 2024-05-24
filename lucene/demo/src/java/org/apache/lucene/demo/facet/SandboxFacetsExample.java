@@ -144,7 +144,7 @@ public class SandboxFacetsExample {
 
     //// (2) init collector
     TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountRecorder defaultRecorder = new CountRecorder();
+    CountRecorder defaultRecorder = new CountRecorder(false);
 
     FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
 
@@ -152,7 +152,7 @@ public class SandboxFacetsExample {
     ////       or even two taxonomy facets that use different Category List Field, we can use MultiCollectorManager, e.g.:
     // TODO: add a demo for it.
     // TaxonomyFacetsCutter publishDateCutter = new TaxonomyFacetsCutter(config.getDimConfig("Publish Date"), taxoReader);
-    // CountRecorder publishDateRecorder = new CountRecorder();
+    // CountRecorder publishDateRecorder = new CountRecorder(false);
     // FacetFieldCollectorManager<CountRecorder> publishDateCollectorManager = new FacetFieldCollectorManager<>(publishDateCutter, publishDateRecorder);
     // MultiCollectorManager drillDownCollectorManager = new MultiCollectorManager(authorCollectorManager, publishDateCollectorManager);
     // Object[] results = searcher.search(new MatchAllDocsQuery(), drillDownCollectorManager);
@@ -206,7 +206,7 @@ public class SandboxFacetsExample {
     inputRanges[1] = new LongRange("5-10", 5, false, 10, true);
 
     LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
-    CountRecorder countRecorder = new CountRecorder();
+    CountRecorder countRecorder = new CountRecorder(false);
 
     FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
@@ -246,7 +246,7 @@ public class SandboxFacetsExample {
     inputRanges[1] = new LongRange("0-10", 0, true, 10, true);
 
     LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
-    CountRecorder countRecorder = new CountRecorder();
+    CountRecorder countRecorder = new CountRecorder(false);
 
     FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
@@ -299,7 +299,7 @@ public class SandboxFacetsExample {
 
     LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
-    CountRecorder countRecorder = new CountRecorder();
+    CountRecorder countRecorder = new CountRecorder(false);
 
     // Compute both counts and aggregations
     MultiFacetsRecorder multiFacetsRecorder = new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
@@ -361,7 +361,7 @@ public class SandboxFacetsExample {
     //// (2) init collectors
     // Facet collectors
     TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountRecorder defaultRecorder = new CountRecorder();
+    CountRecorder defaultRecorder = new CountRecorder(false);
     FacetFieldCollectorManager<CountRecorder> taxoFacetsCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
     // Hits collector
     TopScoreDocCollectorManager hitsCollectorManager = new TopScoreDocCollectorManager(2, Integer.MAX_VALUE);
@@ -417,7 +417,7 @@ public class SandboxFacetsExample {
 
     //// (2) init collector
     TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountRecorder defaultRecorder = new CountRecorder();
+    CountRecorder defaultRecorder = new CountRecorder(false);
 
     FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
             defaultTaxoCutter, defaultRecorder);
@@ -471,7 +471,7 @@ public class SandboxFacetsExample {
 
     //// (2) init drill down query and collectors
     TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountRecorder drillDownRecorder = new CountRecorder();
+    CountRecorder drillDownRecorder = new CountRecorder(false);
     FacetFieldCollectorManager<CountRecorder> drillDownCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
             defaultTaxoCutter, drillDownRecorder);
 
@@ -479,7 +479,7 @@ public class SandboxFacetsExample {
 
     //// (2.1) add query and collector dimensions
     q.add("Publish Date", "2010");
-    CountRecorder publishDayDimensionRecorder = new CountRecorder();
+    CountRecorder publishDayDimensionRecorder = new CountRecorder(false);
     // Note that it is safe to use the same FacetsCutter here because we create Leaf cutter for each leaf for each
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
     FacetFieldCollectorManager<CountRecorder> publishDayDimensionCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
