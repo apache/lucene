@@ -34,5 +34,5 @@ public class TestIntRange extends LuceneTestCase {
     }
     String expectedMessage = "min value (-1) is greater than max value (-3)";
     assert (actualMessage.contains(expectedMessage));
-  } 
+  }
 }
