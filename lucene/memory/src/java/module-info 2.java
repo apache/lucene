@@ -14,12 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.similarities;
 
-public class TestBasicModelIne extends BasicModelTestCase {
+/** Single-document in-memory index implementation */
+module org.apache.lucene.memory {
+  requires org.apache.lucene.core;
 
-  @Override
-  protected BasicModel getBasicModel() {
-    return new BasicModelIne();
-  }
+  exports org.apache.lucene.index.memory;
 }

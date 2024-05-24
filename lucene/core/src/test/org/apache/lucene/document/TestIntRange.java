@@ -23,4 +23,16 @@ public class TestIntRange extends LuceneTestCase {
     IntRange range = new IntRange("foo", new int[] {1, 11, 21, 31}, new int[] {2, 12, 22, 32});
     assertEquals("IntRange <foo: [1 : 2] [11 : 12] [21 : 22] [31 : 32]>", range.toString());
   }
+
+  public void testInvalidRangeInput() {
+    String actualMessage = "";
+    try{
+      IntRange range = new IntRange("foo", new int[] {-1, 11, 21, 31}, new int[] {-3, 12, 22, 32});
+      range.toString();
+    } catch (IllegalArgumentException exception) {
+      actualMessage = exception.getMessage();
+    }
+    String expectedMessage = "min value (-1) is greater than max value (-3)";
+    assert(actualMessage.contains(expectedMessage));
+  }
 }
