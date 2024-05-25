@@ -44,6 +44,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.bkd.BKDUtil.ByteArrayPredicate;
+import org.apache.lucene.util.hppc.LongArrayList;
 
 // TODO
 //   - allow variable length byte[] (across docs and dims), but this is quite a bit more hairy
@@ -650,7 +651,7 @@ public class BKDWriter implements Closeable {
 
     final IndexOutput metaOut, indexOut, dataOut;
     final long dataStartFP;
-    final List<Long> leafBlockFPs = new ArrayList<>();
+    final LongArrayList leafBlockFPs = new LongArrayList();
     final List<byte[]> leafBlockStartValues = new ArrayList<>();
     final byte[] leafValues = new byte[config.maxPointsInLeafNode * config.packedBytesLength];
     final int[] leafDocs = new int[config.maxPointsInLeafNode];

@@ -81,8 +81,9 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
 
     String lastToken = null;
     List<int[]> _segmentations = new ArrayList<>(entries.size());
-    List<Short> _rightIds = new ArrayList<>(entries.size());
+    short[] rightIds = new short[entries.size()];
     long ord = 0;
+    int entryIndex = 0;
     for (String entry : entries) {
       String[] splits = entry.split("\\s+");
       String token = splits[0];
@@ -92,12 +93,12 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       char lastChar = entry.charAt(entry.length() - 1);
       if (charDef.isHangul(lastChar)) {
         if (charDef.hasCoda(lastChar)) {
-          _rightIds.add(RIGHT_ID_T);
+          rightIds[entryIndex++] = RIGHT_ID_T;
         } else {
-          _rightIds.add(RIGHT_ID_F);
+          rightIds[entryIndex++] = RIGHT_ID_F;
         }
       } else {
-        _rightIds.add(RIGHT_ID);
+        rightIds[entryIndex++] = RIGHT_ID;
       }
 
       if (splits.length == 1) {
@@ -133,10 +134,7 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     this.fst =
         new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     int[][] segmentations = _segmentations.toArray(new int[_segmentations.size()][]);
-    short[] rightIds = new short[_rightIds.size()];
-    for (int i = 0; i < _rightIds.size(); i++) {
-      rightIds[i] = _rightIds.get(i);
-    }
+    assert entryIndex == rightIds.length;
     this.morphAtts = new UserMorphData(segmentations, rightIds);
   }
 

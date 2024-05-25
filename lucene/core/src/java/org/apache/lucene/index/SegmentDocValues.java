@@ -17,13 +17,13 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RefCount;
+import org.apache.lucene.util.hppc.LongArrayList;
+import org.apache.lucene.util.hppc.LongCursor;
 import org.apache.lucene.util.hppc.LongObjectHashMap;
 
 /**
@@ -36,12 +36,12 @@ final class SegmentDocValues {
       new LongObjectHashMap<>();
 
   private RefCount<DocValuesProducer> newDocValuesProducer(
-      SegmentCommitInfo si, Directory dir, final Long gen, FieldInfos infos) throws IOException {
+      SegmentCommitInfo si, Directory dir, final long gen, FieldInfos infos) throws IOException {
     Directory dvDir = dir;
     String segmentSuffix = "";
-    if (gen.longValue() != -1) {
+    if (gen != -1) {
       dvDir = si.info.dir; // gen'd files are written outside CFS, so use SegInfo directory
-      segmentSuffix = Long.toString(gen.longValue(), Character.MAX_RADIX);
+      segmentSuffix = Long.toString(gen, Character.MAX_RADIX);
     }
 
     // set SegmentReadState to list only the fields that are relevant to that gen
@@ -75,13 +75,11 @@ final class SegmentDocValues {
   }
 
   /** Decrement the reference count of the given {@link DocValuesProducer} generations. */
-  synchronized void decRef(List<Long> dvProducersGens) throws IOException {
-    IOUtils.applyToAll(
-        dvProducersGens,
-        gen -> {
-          RefCount<DocValuesProducer> dvp = genDVProducers.get(gen);
-          assert dvp != null : "gen=" + gen;
-          dvp.decRef();
-        });
+  synchronized void decRef(LongArrayList dvProducersGens) throws IOException {
+    for (LongCursor gen : dvProducersGens) {
+      RefCount<DocValuesProducer> dvp = genDVProducers.get(gen.value);
+      assert dvp != null : "gen=" + gen;
+      dvp.decRef();
+    }
   }
 }

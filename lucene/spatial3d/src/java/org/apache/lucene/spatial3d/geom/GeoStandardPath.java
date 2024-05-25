@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
+import com.carrotsearch.hppc.IntArrayList;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -1957,18 +1958,18 @@ class GeoStandardPath extends GeoBasePath {
 
   private static class TreeBuilder {
     private final List<PathComponent> componentStack;
-    private final List<Integer> depthStack;
+    private final IntArrayList depthStack;
 
     public TreeBuilder(final int max) {
       componentStack = new ArrayList<>(max);
-      depthStack = new ArrayList<>(max);
+      depthStack = new IntArrayList(max);
     }
 
     public void addComponent(final PathComponent component) {
       componentStack.add(component);
       depthStack.add(0);
       while (depthStack.size() >= 2) {
-        if (depthStack.get(depthStack.size() - 1).equals(depthStack.get(depthStack.size() - 2))) {
+        if (depthStack.get(depthStack.size() - 1) == depthStack.get(depthStack.size() - 2)) {
           mergeTop();
         } else {
           break;

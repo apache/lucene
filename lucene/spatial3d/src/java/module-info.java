@@ -16,8 +16,10 @@
  */
 
 /** 3D spatial planar geometry APIs */
+@SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.spatial3d {
   requires org.apache.lucene.core;
+  requires com.carrotsearch.hppc;
 
   exports org.apache.lucene.spatial3d;
   exports org.apache.lucene.spatial3d.geom;

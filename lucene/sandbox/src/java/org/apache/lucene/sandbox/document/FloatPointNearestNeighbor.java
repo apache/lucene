@@ -31,6 +31,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * KNN search on top of N dimensional indexed float points.
@@ -176,7 +177,7 @@ public class FloatPointNearestNeighbor {
   private static NearestHit[] nearest(
       List<PointValues> readers,
       List<Bits> liveDocs,
-      List<Integer> docBases,
+      IntArrayList docBases,
       final int topN,
       float[] origin)
       throws IOException {
@@ -310,7 +311,7 @@ public class FloatPointNearestNeighbor {
       throw new IllegalArgumentException("searcher must not be null");
     }
     List<PointValues> readers = new ArrayList<>();
-    List<Integer> docBases = new ArrayList<>();
+    IntArrayList docBases = new IntArrayList();
     List<Bits> liveDocs = new ArrayList<>();
     int totalHits = 0;
     for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {
