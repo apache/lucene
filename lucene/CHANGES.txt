@@ -352,6 +352,8 @@ Optimizations
 
 * GITHUB#13400: Replace Set<Integer> by IntHashSet and Set<Long> by LongHashSet. (Bruno Roustant)
 
+* GITHUB#13406: Replace List<Integer> by IntArrayList and List<Long> by LongArrayList. (Bruno Roustant)
+
 Bug Fixes
 ---------------------
 
