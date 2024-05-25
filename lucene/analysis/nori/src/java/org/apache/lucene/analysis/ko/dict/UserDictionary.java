@@ -88,8 +88,9 @@ public final class UserDictionary implements Dictionary {
 
     String lastToken = null;
     List<int[]> segmentations = new ArrayList<>(entries.size());
-    List<Short> rightIds = new ArrayList<>(entries.size());
+    short[] rightIds = new short[entries.size()];
     long ord = 0;
+    int entryIndex = 0;
     for (String entry : entries) {
       String[] splits = entry.split("\\s+");
       String token = splits[0];
@@ -99,12 +100,12 @@ public final class UserDictionary implements Dictionary {
       char lastChar = entry.charAt(entry.length() - 1);
       if (charDef.isHangul(lastChar)) {
         if (charDef.hasCoda(lastChar)) {
-          rightIds.add(RIGHT_ID_T);
+          rightIds[entryIndex++] = RIGHT_ID_T;
         } else {
-          rightIds.add(RIGHT_ID_F);
+          rightIds[entryIndex++] = RIGHT_ID_F;
         }
       } else {
-        rightIds.add(RIGHT_ID);
+        rightIds[entryIndex++] = RIGHT_ID;
       }
 
       if (splits.length == 1) {
@@ -140,10 +141,8 @@ public final class UserDictionary implements Dictionary {
     this.fst =
         new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     this.segmentations = segmentations.toArray(new int[segmentations.size()][]);
-    this.rightIds = new short[rightIds.size()];
-    for (int i = 0; i < rightIds.size(); i++) {
-      this.rightIds[i] = rightIds.get(i);
-    }
+    assert entryIndex == rightIds.length;
+    this.rightIds = rightIds;
   }
 
   public TokenInfoFST getFST() {

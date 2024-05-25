@@ -60,6 +60,8 @@ import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.IntSequenceOutputs;
 import org.apache.lucene.util.fst.Util;
+import org.apache.lucene.util.hppc.IntArrayList;
+import org.apache.lucene.util.hppc.IntCursor;
 
 /** In-memory structure for the dictionary (.dic) and affix (.aff) data of a hunspell dictionary. */
 public class Dictionary {
@@ -330,8 +332,8 @@ public class Dictionary {
    */
   private void readAffixFile(InputStream affixStream, CharsetDecoder decoder, FlagEnumerator flags)
       throws IOException, ParseException {
-    TreeMap<String, List<Integer>> prefixes = new TreeMap<>();
-    TreeMap<String, List<Integer>> suffixes = new TreeMap<>();
+    TreeMap<String, IntArrayList> prefixes = new TreeMap<>();
+    TreeMap<String, IntArrayList> suffixes = new TreeMap<>();
     Set<Character> prefixContFlags = new HashSet<>();
     Set<Character> suffixContFlags = new HashSet<>();
     Map<String, Integer> seenPatterns = new HashMap<>();
@@ -643,17 +645,17 @@ public class Dictionary {
     return new Breaks(starting, ending, middle);
   }
 
-  private FST<IntsRef> affixFST(TreeMap<String, List<Integer>> affixes) throws IOException {
+  private FST<IntsRef> affixFST(TreeMap<String, IntArrayList> affixes) throws IOException {
     IntSequenceOutputs outputs = IntSequenceOutputs.getSingleton();
     FSTCompiler<IntsRef> fstCompiler =
         new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
-    for (Map.Entry<String, List<Integer>> entry : affixes.entrySet()) {
+    for (Map.Entry<String, IntArrayList> entry : affixes.entrySet()) {
       Util.toUTF32(entry.getKey(), scratch);
-      List<Integer> entries = entry.getValue();
+      IntArrayList entries = entry.getValue();
       IntsRef output = new IntsRef(entries.size());
-      for (Integer c : entries) {
-        output.ints[output.length++] = c;
+      for (IntCursor c : entries) {
+        output.ints[output.length++] = c.value;
       }
       fstCompiler.add(scratch.get(), output);
     }
@@ -670,7 +672,7 @@ public class Dictionary {
    * @throws IOException Can be thrown while reading the rule
    */
   private void parseAffix(
-      TreeMap<String, List<Integer>> affixes,
+      TreeMap<String, IntArrayList> affixes,
       Set<Character> secondStageFlags,
       String header,
       LineNumberReader reader,
@@ -792,7 +794,7 @@ public class Dictionary {
         affixArg = new StringBuilder(affixArg).reverse().toString();
       }
 
-      affixes.computeIfAbsent(affixArg, __ -> new ArrayList<>()).add(currentAffix);
+      affixes.computeIfAbsent(affixArg, __ -> new IntArrayList()).add(currentAffix);
       currentAffix++;
     }
   }

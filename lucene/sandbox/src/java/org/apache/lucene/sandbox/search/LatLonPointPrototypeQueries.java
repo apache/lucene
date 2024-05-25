@@ -33,6 +33,7 @@ import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SloppyMath;
+import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * Holder class for prototype sandboxed queries
@@ -89,7 +90,7 @@ public class LatLonPointPrototypeQueries {
       throw new IllegalArgumentException("searcher must not be null");
     }
     List<PointValues> readers = new ArrayList<>();
-    List<Integer> docBases = new ArrayList<>();
+    IntArrayList docBases = new IntArrayList();
     List<Bits> liveDocs = new ArrayList<>();
     int totalHits = 0;
     for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {

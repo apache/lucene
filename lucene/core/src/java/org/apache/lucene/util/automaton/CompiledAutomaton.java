@@ -17,8 +17,6 @@
 package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -32,6 +30,7 @@ import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.UnicodeUtil;
+import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * Immutable class holding compiled details for a given Automaton. The Automaton is deterministic,
@@ -394,7 +393,7 @@ public class CompiledAutomaton implements Accountable {
       }
     }
 
-    final List<Integer> stack = new ArrayList<>();
+    final IntArrayList stack = new IntArrayList();
 
     int idx = 0;
     while (true) {
@@ -442,7 +441,7 @@ public class CompiledAutomaton implements Accountable {
                 // if (DEBUG) System.out.println("  pop ord=" + idx + " return null");
                 return null;
               } else {
-                state = stack.remove(stack.size() - 1);
+                state = stack.removeLast();
                 idx--;
                 // if (DEBUG) System.out.println("  pop ord=" + (idx+1) + " label=" + (char) label +
                 // " first trans.min=" + (char) transitions[0].min);

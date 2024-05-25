@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -36,6 +35,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hppc.LongArrayList;
 
 /**
  * IndexReader implementation over a single segment.
@@ -226,7 +226,7 @@ public final class SegmentReader extends CodecReader {
       if (docValuesProducer instanceof SegmentDocValuesProducer) {
         segDocValues.decRef(((SegmentDocValuesProducer) docValuesProducer).dvGens);
       } else if (docValuesProducer != null) {
-        segDocValues.decRef(Collections.singletonList(-1L));
+        segDocValues.decRef(LongArrayList.from(-1L));
       }
     }
   }
