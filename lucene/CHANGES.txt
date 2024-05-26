@@ -391,6 +391,8 @@ Bug Fixes
 
 * GITHUB#13376: Fix integer overflow exception in postings encoding as group-varint. (Zhang Chao, Guo Feng)
 
+* GITHUB#13411: Fixes TestOrdinalMap.testRamBytesUsed for multiple default PackedInts.NullReader instances. (Amir Raza)
+
 Build
 ---------------------
 
