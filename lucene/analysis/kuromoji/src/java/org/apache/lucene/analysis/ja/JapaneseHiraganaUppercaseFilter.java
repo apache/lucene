@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.analysis.ja;
 
+import static org.apache.lucene.analysis.ja.JapaneseFilterUtil.createCharMap;
+
 import java.io.IOException;
+import java.util.Map;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -36,9 +39,19 @@ public final class JapaneseHiraganaUppercaseFilter extends TokenFilter {
     // supported characters are:
     // ぁ ぃ ぅ ぇ ぉ っ ゃ ゅ ょ ゎ ゕ ゖ
     LETTER_MAPPINGS =
-        CharObjectHashMap.from(
-            new char[] {'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'っ', 'ゃ', 'ゅ', 'ょ', 'ゎ', 'ゕ', 'ゖ'},
-            new Character[] {'あ', 'い', 'う', 'え', 'お', 'つ', 'や', 'ゆ', 'よ', 'わ', 'か', 'け'});
+        createCharMap(
+            Map.entry('ぁ', 'あ'),
+            Map.entry('ぃ', 'い'),
+            Map.entry('ぅ', 'う'),
+            Map.entry('ぇ', 'え'),
+            Map.entry('ぉ', 'お'),
+            Map.entry('っ', 'つ'),
+            Map.entry('ゃ', 'や'),
+            Map.entry('ゅ', 'ゆ'),
+            Map.entry('ょ', 'よ'),
+            Map.entry('ゎ', 'わ'),
+            Map.entry('ゕ', 'か'),
+            Map.entry('ゖ', 'け'));
   }
 
   private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
