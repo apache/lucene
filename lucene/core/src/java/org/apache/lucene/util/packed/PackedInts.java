@@ -562,7 +562,7 @@ public class PackedInts {
   /** A {@link Reader} which has all its values equal to 0 (bitsPerValue = 0). */
   public static final class NullReader extends Reader {
 
-    private static final NullReader DEFAULT_PACKED_LONG_VALUES_PAGE_SIZE =
+    public static final NullReader DEFAULT_PACKED_LONG_VALUES_PAGE_SIZE =
         new NullReader(PackedLongValues.DEFAULT_PAGE_SIZE);
 
     private final int valueCount;
