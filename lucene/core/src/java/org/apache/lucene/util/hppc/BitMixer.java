@@ -23,7 +23,7 @@ package org.apache.lucene.util.hppc;
  *
  * <p>Forked from com.carrotsearch.hppc.BitMixer
  *
- * <p>github: https://github.com/carrotsearch/hppc release: 0.9.0
+ * <p>github: https://github.com/carrotsearch/hppc release: 0.10.0
  */
 public final class BitMixer {
 

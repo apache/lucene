@@ -30,7 +30,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.LongIntHashMap
  *
- * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
+ * <p>github: https://github.com/carrotsearch/hppc release 0.10.0
  */
 public class LongIntHashMap
     implements Iterable<LongIntHashMap.LongIntCursor>, Accountable, Cloneable {

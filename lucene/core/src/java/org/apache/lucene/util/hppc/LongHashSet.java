@@ -30,7 +30,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.LongHashSet
  *
- * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
+ * <p>github: https://github.com/carrotsearch/hppc release 0.10.0
  */
 public class LongHashSet implements Iterable<LongCursor>, Accountable, Cloneable {
 

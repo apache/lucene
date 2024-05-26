@@ -31,7 +31,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntArrayList
  *
- * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
+ * <p>github: https://github.com/carrotsearch/hppc release 0.10.0
  */
 public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable {
   private static final long BASE_RAM_BYTES_USED =
