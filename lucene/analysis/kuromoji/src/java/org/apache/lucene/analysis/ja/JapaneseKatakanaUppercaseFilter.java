@@ -84,16 +84,15 @@ public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
     final char[] termBuffer = termAttr.buffer();
     int newLength = termAttr.length();
     for (int from = 0, to = 0, length = newLength; from < length; from++, to++) {
-      if (termBuffer[from] == 'ㇷ' && from + 1 < length && termBuffer[from + 1] == '゚') {
+      char c = termBuffer[from];
+      if (c == 'ㇷ' && from + 1 < length && termBuffer[from + 1] == '゚') {
         // ㇷ゚detected, replace it by プ.
         termBuffer[to] = 'プ';
         from++;
         newLength--;
       } else {
-        Character c = LETTER_MAPPINGS.get(termBuffer[from]);
-        if (c != null) {
-          termBuffer[to] = c;
-        }
+        Character mappedChar = LETTER_MAPPINGS.get(c);
+        termBuffer[to] = mappedChar == null ? c : mappedChar;
       }
     }
     termAttr.setLength(newLength);
