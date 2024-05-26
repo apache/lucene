@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
 import org.junit.Test;
 
 /**
@@ -84,23 +83,6 @@ public class TestLongObjectHashMap extends LuceneTestCase {
 
   private LongObjectHashMap newInstance() {
     return new LongObjectHashMap();
-  }
-
-  @After
-  public void checkEmptySlotsUninitialized() {
-    if (map != null) {
-      int occupied = 0;
-      for (int i = 0; i <= map.mask; i++) {
-        if (((map.keys[i]) == 0)) {
-
-        } else {
-          occupied++;
-        }
-      }
-      assertEquals(occupied, map.assigned);
-
-      if (!map.hasEmptyKey) {}
-    }
   }
 
   /** Convert to target type from an integer used to test stuff. */
@@ -325,7 +307,7 @@ public class TestLongObjectHashMap extends LuceneTestCase {
   public void testRemove() {
     map.put(key1, value1);
     assertEquals(value1, map.remove(key1));
-    assertEquals(null, map.remove(key1));
+    assertNull(map.remove(key1));
     assertEquals(0, map.size());
 
     // These are internals, but perhaps worth asserting too.
@@ -339,15 +321,15 @@ public class TestLongObjectHashMap extends LuceneTestCase {
 
     map.put(empty, value1);
     assertEquals(1, map.size());
-    assertEquals(false, map.isEmpty());
+    assertFalse(map.isEmpty());
     assertEquals(value1, map.get(empty));
     assertEquals(value1, map.getOrDefault(empty, value2));
-    assertEquals(true, map.iterator().hasNext());
+    assertTrue(map.iterator().hasNext());
     assertEquals(empty, map.iterator().next().key);
     assertEquals(value1, map.iterator().next().value);
 
     map.remove(empty);
-    assertEquals(null, map.get(empty));
+    assertNull(map.get(empty));
     assertEquals(0, map.size());
 
     map.put(empty, null);
@@ -360,13 +342,13 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     assertFalse(map.containsKey(empty));
     assertNull(map.get(empty));
 
-    assertEquals(null, map.put(empty, value1));
+    assertNull(map.put(empty, value1));
     assertEquals(value1, map.put(empty, value2));
     map.clear();
     assertFalse(map.indexExists(map.indexOf(empty)));
-    assertEquals(null, map.put(empty, value1));
+    assertNull(map.put(empty, value1));
     map.clear();
-    assertEquals(null, map.remove(empty));
+    assertNull(map.remove(empty));
   }
 
   /* */
@@ -406,8 +388,8 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     assertEquals(0, map.assigned);
 
     // Check values are cleared.
-    assertEquals(null, map.put(key1, value1));
-    assertEquals(null, map.remove(key2));
+    assertNull(map.put(key1, value1));
+    assertNull(map.remove(key2));
     map.clear();
 
     // Check if the map behaves properly upon subsequent use.
@@ -515,8 +497,8 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     assertEquals(l1.hashCode(), l2.hashCode());
     assertEquals(l1, l2);
 
-    assertFalse(l1.equals(l3));
-    assertFalse(l2.equals(l3));
+    assertNotEquals(l1, l3);
+    assertNotEquals(l2, l3);
   }
 
   @Test
@@ -525,8 +507,8 @@ public class TestLongObjectHashMap extends LuceneTestCase {
 
     LongObjectHashMap l2 = LongObjectHashMap.from(newArray(key2), newvArray(value1));
 
-    assertFalse(l1.equals(l2));
-    assertFalse(l2.equals(l1));
+    assertNotEquals(l1, l2);
+    assertNotEquals(l2, l1);
   }
 
   /** Runs random insertions/deletions/clearing and compares the results against {@link HashMap}. */

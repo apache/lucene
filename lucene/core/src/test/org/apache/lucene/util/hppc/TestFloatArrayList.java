@@ -19,39 +19,38 @@ package org.apache.lucene.util.hppc;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Tests for {@link LongArrayList}.
+ * Tests for {@link FloatArrayList}.
  *
- * <p>Mostly forked and trimmed from com.carrotsearch.hppc.LongArrayListTest
+ * <p>Mostly forked and trimmed from com.carrotsearch.hppc.FloatArrayListTest
  *
  * <p>github: https://github.com/carrotsearch/hppc release: 0.9.0
  */
-public class TestLongArrayList extends LuceneTestCase {
-  private final long key0 = cast(0);
-  private final long key1 = cast(1);
-  private final long key2 = cast(2);
-  private final long key3 = cast(3);
-  private final long key4 = cast(4);
-  private final long key5 = cast(5);
-  private final long key6 = cast(6);
-  private final long key7 = cast(7);
+public class TestFloatArrayList extends LuceneTestCase {
+  private final float key0 = cast(0);
+  private final float key1 = cast(1);
+  private final float key2 = cast(2);
+  private final float key3 = cast(3);
+  private final float key4 = cast(4);
+  private final float key5 = cast(5);
+  private final float key6 = cast(6);
+  private final float key7 = cast(7);
 
   /** Convert to target type from an integer used to test stuff. */
-  private long cast(int v) {
+  private float cast(int v) {
     return v;
   }
 
   /** Per-test fresh initialized instance. */
-  private LongArrayList list;
+  private FloatArrayList list;
 
   @Before
   public void initialize() {
-    list = new LongArrayList();
+    list = new FloatArrayList();
   }
 
   @Test
@@ -87,7 +86,7 @@ public class TestLongArrayList extends LuceneTestCase {
 
   @Test
   public void testAddAll() {
-    LongArrayList list2 = new LongArrayList();
+    FloatArrayList list2 = new FloatArrayList();
     list2.add(asArray(0, 1, 2));
 
     list.addAll(list2);
@@ -221,9 +220,9 @@ public class TestLongArrayList extends LuceneTestCase {
 
   @Test
   public void testEnsureCapacity() {
-    LongArrayList list = new LongArrayList(0);
+    FloatArrayList list = new FloatArrayList(0);
     assertEquals(list.size(), list.buffer.length);
-    long[] buffer1 = list.buffer;
+    float[] buffer1 = list.buffer;
     list.ensureCapacity(100);
     assertNotSame(buffer1, list.buffer);
   }
@@ -270,7 +269,7 @@ public class TestLongArrayList extends LuceneTestCase {
   public void testIterable() {
     list.add(asArray(0, 1, 2, 3));
     int count = 0;
-    for (LongCursor cursor : list) {
+    for (FloatCursor cursor : list) {
       count++;
       assertEquals(list.get(cursor.index), cursor.value);
       assertEquals(list.buffer[cursor.index], cursor.value);
@@ -279,7 +278,7 @@ public class TestLongArrayList extends LuceneTestCase {
 
     count = 0;
     list.resize(0);
-    for (@SuppressWarnings("unused") LongCursor cursor : list) {
+    for (@SuppressWarnings("unused") FloatCursor cursor : list) {
       count++;
     }
     assertEquals(0, count);
@@ -288,7 +287,7 @@ public class TestLongArrayList extends LuceneTestCase {
   @Test
   public void testIterator() {
     list.add(asArray(0, 1, 2, 3));
-    Iterator<LongCursor> iterator = list.iterator();
+    Iterator<FloatCursor> iterator = list.iterator();
     int count = 0;
     while (iterator.hasNext()) {
       iterator.hasNext();
@@ -313,7 +312,7 @@ public class TestLongArrayList extends LuceneTestCase {
 
   @Test
   public void testFrom() {
-    list = LongArrayList.from(key1, key2, key3);
+    list = FloatArrayList.from(key1, key2, key3);
     assertEquals(3, list.size());
     assertListEquals(list.toArray(), 1, 2, 3);
     assertEquals(list.size(), list.buffer.length);
@@ -322,7 +321,7 @@ public class TestLongArrayList extends LuceneTestCase {
   @Test
   public void testCopyList() {
     list.add(asArray(1, 2, 3));
-    LongArrayList copy = new LongArrayList(list);
+    FloatArrayList copy = new FloatArrayList(list);
     assertEquals(3, copy.size());
     assertListEquals(copy.toArray(), 1, 2, 3);
     assertEquals(copy.size(), copy.buffer.length);
@@ -330,12 +329,12 @@ public class TestLongArrayList extends LuceneTestCase {
 
   @Test
   public void testHashCodeEquals() {
-    LongArrayList l0 = LongArrayList.from();
+    FloatArrayList l0 = FloatArrayList.from();
     assertEquals(1, l0.hashCode());
-    assertEquals(l0, LongArrayList.from());
+    assertEquals(l0, FloatArrayList.from());
 
-    LongArrayList l1 = LongArrayList.from(key1, key2, key3);
-    LongArrayList l2 = LongArrayList.from(key1, key2);
+    FloatArrayList l1 = FloatArrayList.from(key1, key2, key3);
+    FloatArrayList l2 = FloatArrayList.from(key1, key2);
     l2.add(key3);
 
     assertEquals(l1.hashCode(), l2.hashCode());
@@ -344,8 +343,8 @@ public class TestLongArrayList extends LuceneTestCase {
 
   @Test
   public void testEqualElements() {
-    LongArrayList l1 = LongArrayList.from(key1, key2, key3);
-    LongArrayList l2 = LongArrayList.from(key1, key2);
+    FloatArrayList l1 = FloatArrayList.from(key1, key2, key3);
+    FloatArrayList l2 = FloatArrayList.from(key1, key2);
     l2.add(key3);
 
     assertEquals(l1.hashCode(), l2.hashCode());
@@ -354,17 +353,17 @@ public class TestLongArrayList extends LuceneTestCase {
 
   @Test
   public void testToArray() {
-    LongArrayList l1 = LongArrayList.from(key1, key2, key3);
+    FloatArrayList l1 = FloatArrayList.from(key1, key2, key3);
     l1.ensureCapacity(100);
-    long[] result = l1.toArray();
-    assertArrayEquals(new long[] {key1, key2, key3}, result);
+    float[] result = l1.toArray();
+    assertArrayEquals(new float[] {key1, key2, key3}, result);
   }
 
   @Test
   public void testClone() {
     list.add(key1, key2, key3);
 
-    LongArrayList cloned = list.clone();
+    FloatArrayList cloned = list.clone();
     cloned.removeAt(cloned.indexOf(key1));
 
     assertSortedListEquals(list.toArray(), key1, key2, key3);
@@ -375,14 +374,14 @@ public class TestLongArrayList extends LuceneTestCase {
   public void testToString() {
     assertEquals(
         "[" + key1 + ", " + key2 + ", " + key3 + "]",
-        LongArrayList.from(key1, key2, key3).toString());
+        FloatArrayList.from(key1, key2, key3).toString());
   }
 
   @Test
   public void testEqualsSameClass() {
-    LongArrayList l1 = LongArrayList.from(key1, key2, key3);
-    LongArrayList l2 = LongArrayList.from(key1, key2, key3);
-    LongArrayList l3 = LongArrayList.from(key1, key3, key2);
+    FloatArrayList l1 = FloatArrayList.from(key1, key2, key3);
+    FloatArrayList l2 = FloatArrayList.from(key1, key2, key3);
+    FloatArrayList l3 = FloatArrayList.from(key1, key3, key2);
 
     assertEquals(l1, l2);
     assertEquals(l1.hashCode(), l2.hashCode());
@@ -391,12 +390,12 @@ public class TestLongArrayList extends LuceneTestCase {
 
   @Test
   public void testEqualsSubClass() {
-    class Sub extends LongArrayList {}
+    class Sub extends FloatArrayList {}
     ;
 
-    LongArrayList l1 = LongArrayList.from(key1, key2, key3);
-    LongArrayList l2 = new Sub();
-    LongArrayList l3 = new Sub();
+    FloatArrayList l1 = FloatArrayList.from(key1, key2, key3);
+    FloatArrayList l2 = new Sub();
+    FloatArrayList l3 = new Sub();
     l2.addAll(l1);
     l3.addAll(l1);
 
@@ -405,61 +404,57 @@ public class TestLongArrayList extends LuceneTestCase {
   }
 
   @Test
-  public void testStream() {
-    assertEquals(key1, LongArrayList.from(key1, key2, key3).stream().min().orElseThrow());
-    assertEquals(key3, LongArrayList.from(key2, key1, key3).stream().max().orElseThrow());
-    assertEquals(0, LongArrayList.from(key1, key2, -key3).stream().sum());
-    expectThrows(
-        NoSuchElementException.class,
-        () -> {
-          LongArrayList.from().stream().min().orElseThrow();
-        });
-  }
-
-  @Test
   public void testSort() {
     list.add(key3, key1, key3, key2);
-    LongArrayList list2 = new LongArrayList();
+    FloatArrayList list2 = new FloatArrayList();
     list2.ensureCapacity(100);
     list2.addAll(list);
     assertSame(list2, list2.sort());
-    assertEquals(LongArrayList.from(key1, key2, key3, key3), list2);
+    assertEquals(FloatArrayList.from(key1, key2, key3, key3), list2);
   }
 
   @Test
   public void testReverse() {
     for (int i = 0; i < 10; i++) {
-      long[] elements = new long[i];
+      float[] elements = new float[i];
       for (int j = 0; j < i; j++) {
         elements[j] = cast(j);
       }
-      LongArrayList list = new LongArrayList();
+      FloatArrayList list = new FloatArrayList();
       list.ensureCapacity(30);
       list.add(elements);
       assertSame(list, list.reverse());
       assertEquals(elements.length, list.size());
       int reverseIndex = elements.length - 1;
-      for (LongCursor cursor : list) {
+      for (FloatCursor cursor : list) {
         assertEquals(elements[reverseIndex--], cursor.value);
       }
     }
   }
 
   /** Check if the array's content is identical to a given sequence of elements. */
-  private static void assertListEquals(long[] array, long... elements) {
+  private static void assertListEquals(float[] array, float... elements) {
     assertEquals(elements.length, array.length);
     assertArrayEquals(elements, array);
   }
 
-  private static long[] asArray(long... elements) {
+  private static float[] asArray(float... elements) {
     return elements;
   }
 
   /** Check if the array's content is identical to a given sequence of elements. */
-  private static void assertSortedListEquals(long[] array, long... elements) {
+  private static void assertSortedListEquals(float[] array, float... elements) {
     assertEquals(elements.length, array.length);
     Arrays.sort(array);
     Arrays.sort(elements);
     assertArrayEquals(elements, array);
+  }
+
+  private static void assertEquals(float f1, float f2) {
+    assertEquals(f1, f2, 0f);
+  }
+
+  private static void assertArrayEquals(float[] f1, float[] f2) {
+    assertArrayEquals(f1, f2, 0f);
   }
 }

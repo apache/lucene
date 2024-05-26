@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
-import com.carrotsearch.hppc.IntArrayList;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -29,6 +28,7 @@ import org.apache.lucene.index.FilterSortedNumericDocValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * A {@link org.apache.lucene.index.FilterLeafReader} for updating facets ordinal references, based

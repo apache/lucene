@@ -278,7 +278,7 @@ public class IntObjectHashMap<VType>
   }
 
   public boolean indexExists(int index) {
-    assert index < 0 || (index >= 0 && index <= mask) || (index == mask + 1 && hasEmptyKey);
+    assert index < 0 || index <= mask || (index == mask + 1 && hasEmptyKey);
 
     return index >= 0;
   }

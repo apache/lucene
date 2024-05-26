@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.spatial.util;
 
-import com.carrotsearch.hppc.IntDoubleHashMap;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.util.hppc.IntDoubleHashMap;
 
 /**
  * Caches the doubleVal of another value source in a HashMap so that it is computed only once.

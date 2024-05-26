@@ -15,16 +15,21 @@
  * limitations under the License.
  */
 
-/** Faceted indexing and search capabilities */
-module org.apache.lucene.facet {
-  requires org.apache.lucene.core;
+package org.apache.lucene.util.hppc;
 
-  exports org.apache.lucene.facet;
-  exports org.apache.lucene.facet.range;
-  exports org.apache.lucene.facet.sortedset;
-  exports org.apache.lucene.facet.taxonomy;
-  exports org.apache.lucene.facet.taxonomy.directory;
-  exports org.apache.lucene.facet.taxonomy.writercache;
-  exports org.apache.lucene.facet.facetset;
-  exports org.apache.lucene.facet.rangeonrange;
+/** Forked from HPPC, holding int index and float value */
+public final class FloatCursor {
+  /**
+   * The current value's index in the container this cursor belongs to. The meaning of this index is
+   * defined by the container (usually it will be an index in the underlying storage buffer).
+   */
+  public int index;
+
+  /** The current value. */
+  public float value;
+
+  @Override
+  public String toString() {
+    return "[cursor, index: " + index + ", value: " + value + "]";
+  }
 }

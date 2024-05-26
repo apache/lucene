@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
-import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.cursors.IntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,6 +51,8 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringSorter;
+import org.apache.lucene.util.hppc.IntArrayList;
+import org.apache.lucene.util.hppc.IntCursor;
 
 /**
  * A {@link TaxonomyReader} which retrieves stored taxonomy information from a {@link Directory}.

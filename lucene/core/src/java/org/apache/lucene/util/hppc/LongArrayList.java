@@ -40,13 +40,11 @@ public class LongArrayList implements Iterable<LongCursor>, Cloneable, Accountab
   /** An immutable empty buffer (array). */
   public static final long[] EMPTY_ARRAY = new long[0];
 
-  ;
-
   /**
    * Internal array for storing the list. The array may be larger than the current size ({@link
    * #size()}).
    */
-  public long[] buffer = EMPTY_ARRAY;
+  public long[] buffer;
 
   /** Current number of elements stored in {@link #buffer}. */
   public int elementsCount;
@@ -262,8 +260,7 @@ public class LongArrayList implements Iterable<LongCursor>, Cloneable, Accountab
    * @param expectedElements The total number of elements, inclusive.
    */
   public void ensureCapacity(int expectedElements) {
-    final int bufferLen = (buffer == null ? 0 : buffer.length);
-    if (expectedElements > bufferLen) {
+    if (expectedElements > buffer.length) {
       ensureBufferSpace(expectedElements - size());
     }
   }
@@ -273,8 +270,7 @@ public class LongArrayList implements Iterable<LongCursor>, Cloneable, Accountab
    * Increases internal buffer size if needed.
    */
   protected void ensureBufferSpace(int expectedAdditions) {
-    final int bufferLen = (buffer == null ? 0 : buffer.length);
-    if (elementsCount + expectedAdditions > bufferLen) {
+    if (elementsCount + expectedAdditions > buffer.length) {
       this.buffer = ArrayUtil.grow(buffer, elementsCount + expectedAdditions);
     }
   }

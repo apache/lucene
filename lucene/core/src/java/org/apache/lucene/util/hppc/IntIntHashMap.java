@@ -310,7 +310,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
   }
 
   public boolean indexExists(int index) {
-    assert index < 0 || (index >= 0 && index <= mask) || (index == mask + 1 && hasEmptyKey);
+    assert index < 0 || index <= mask || (index == mask + 1 && hasEmptyKey);
 
     return index >= 0;
   }
@@ -806,7 +806,7 @@ public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Acco
   }
 
   /** Forked from HPPC, holding int index,key and value */
-  public final class IntIntCursor {
+  public static final class IntIntCursor {
     /**
      * The current key and value's index in the container this cursor belongs to. The meaning of
      * this index is defined by the container (usually it will be an index in the underlying storage

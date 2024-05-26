@@ -17,7 +17,17 @@
 
 package org.apache.lucene.util.hppc;
 
-import static org.apache.lucene.util.hppc.HashContainers.*;
+import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_EXPECTED_ELEMENTS;
+import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_LOAD_FACTOR;
+import static org.apache.lucene.util.hppc.HashContainers.ITERATION_SEED;
+import static org.apache.lucene.util.hppc.HashContainers.MAX_LOAD_FACTOR;
+import static org.apache.lucene.util.hppc.HashContainers.MIN_LOAD_FACTOR;
+import static org.apache.lucene.util.hppc.HashContainers.checkLoadFactor;
+import static org.apache.lucene.util.hppc.HashContainers.checkPowerOfTwo;
+import static org.apache.lucene.util.hppc.HashContainers.expandAtCount;
+import static org.apache.lucene.util.hppc.HashContainers.iterationIncrement;
+import static org.apache.lucene.util.hppc.HashContainers.minBufferSize;
+import static org.apache.lucene.util.hppc.HashContainers.nextBufferSize;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -25,24 +35,24 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
- * A hash map of <code>long</code> to <code>int</code>, implemented using open addressing with
+ * A hash map of <code>long</code> to <code>float</code>, implemented using open addressing with
  * linear probing for collision resolution.
  *
- * <p>Mostly forked and trimmed from com.carrotsearch.hppc.LongIntHashMap
+ * <p>Mostly forked and trimmed from com.carrotsearch.hppc.LongFloatHashMap
  *
  * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
  */
-public class LongIntHashMap
-    implements Iterable<LongIntHashMap.LongIntCursor>, Accountable, Cloneable {
+public class LongFloatHashMap
+    implements Iterable<LongFloatHashMap.LongFloatCursor>, Accountable, Cloneable {
 
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(LongIntHashMap.class);
+      RamUsageEstimator.shallowSizeOfInstance(LongFloatHashMap.class);
 
   /** The array holding keys. */
   public long[] keys;
 
   /** The array holding values. */
-  public int[] values;
+  public float[] values;
 
   /**
    * The number of stored keys (assigned key slots), excluding the special "empty" key, if any (use
@@ -68,7 +78,7 @@ public class LongIntHashMap
   protected int iterationSeed;
 
   /** New instance with sane defaults. */
-  public LongIntHashMap() {
+  public LongFloatHashMap() {
     this(DEFAULT_EXPECTED_ELEMENTS);
   }
 
@@ -78,7 +88,7 @@ public class LongIntHashMap
    * @param expectedElements The expected number of elements guaranteed not to cause buffer
    *     expansion (inclusive).
    */
-  public LongIntHashMap(int expectedElements) {
+  public LongFloatHashMap(int expectedElements) {
     this(expectedElements, DEFAULT_LOAD_FACTOR);
   }
 
@@ -90,24 +100,24 @@ public class LongIntHashMap
    * @param loadFactor The load factor for internal buffers. Insane load factors (zero, full
    *     capacity) are rejected by {@link #verifyLoadFactor(double)}.
    */
-  public LongIntHashMap(int expectedElements, double loadFactor) {
+  public LongFloatHashMap(int expectedElements, double loadFactor) {
     this.loadFactor = verifyLoadFactor(loadFactor);
     iterationSeed = ITERATION_SEED.incrementAndGet();
     ensureCapacity(expectedElements);
   }
 
   /** Create a hash map from all key-value pairs of another map. */
-  public LongIntHashMap(LongIntHashMap map) {
+  public LongFloatHashMap(LongFloatHashMap map) {
     this(map.size());
     putAll(map);
   }
 
-  public int put(long key, int value) {
+  public float put(long key, float value) {
     assert assigned < mask + 1;
 
     final int mask = this.mask;
     if (((key) == 0)) {
-      int previousValue = hasEmptyKey ? values[mask + 1] : 0;
+      float previousValue = hasEmptyKey ? values[mask + 1] : 0;
       hasEmptyKey = true;
       values[mask + 1] = value;
       return previousValue;
@@ -118,7 +128,7 @@ public class LongIntHashMap
       long existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((existing) == (key))) {
-          final int previousValue = values[slot];
+          final float previousValue = values[slot];
           values[slot] = value;
           return previousValue;
         }
@@ -137,9 +147,9 @@ public class LongIntHashMap
     }
   }
 
-  public int putAll(Iterable<? extends LongIntCursor> iterable) {
+  public int putAll(Iterable<? extends LongFloatCursor> iterable) {
     final int count = size();
-    for (LongIntCursor c : iterable) {
+    for (LongFloatCursor c : iterable) {
       put(c.key, c.value);
     }
     return size() - count;
@@ -158,7 +168,7 @@ public class LongIntHashMap
    * @return <code>true</code> if <code>key</code> did not exist and <code>value</code> was placed
    *     in the map.
    */
-  public boolean putIfAbsent(long key, int value) {
+  public boolean putIfAbsent(long key, float value) {
     int keyIndex = indexOf(key);
     if (!indexExists(keyIndex)) {
       indexInsert(keyIndex, key, value);
@@ -177,7 +187,7 @@ public class LongIntHashMap
    * @param incrementValue The value to add to the existing value if <code>key</code> exists.
    * @return Returns the current value associated with <code>key</code> (after changes).
    */
-  public int putOrAdd(long key, int putValue, int incrementValue) {
+  public float putOrAdd(long key, float putValue, float incrementValue) {
     assert assigned < mask + 1;
 
     int keyIndex = indexOf(key);
@@ -198,18 +208,18 @@ public class LongIntHashMap
    * @param incrementValue The value to put or add to the existing value if <code>key</code> exists.
    * @return Returns the current value associated with <code>key</code> (after changes).
    */
-  public int addTo(long key, int incrementValue) {
+  public float addTo(long key, float incrementValue) {
     return putOrAdd(key, incrementValue, incrementValue);
   }
 
-  public int remove(long key) {
+  public float remove(long key) {
     final int mask = this.mask;
     if (((key) == 0)) {
       if (!hasEmptyKey) {
         return 0;
       }
       hasEmptyKey = false;
-      int previousValue = values[mask + 1];
+      float previousValue = values[mask + 1];
       values[mask + 1] = 0;
       return previousValue;
     } else {
@@ -219,7 +229,7 @@ public class LongIntHashMap
       long existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((existing) == (key))) {
-          final int previousValue = values[slot];
+          final float previousValue = values[slot];
           shiftConflictingKeys(slot);
           return previousValue;
         }
@@ -230,7 +240,7 @@ public class LongIntHashMap
     }
   }
 
-  public int get(long key) {
+  public float get(long key) {
     if (((key) == 0)) {
       return hasEmptyKey ? values[mask + 1] : 0;
     } else {
@@ -250,7 +260,7 @@ public class LongIntHashMap
     }
   }
 
-  public int getOrDefault(long key, int defaultValue) {
+  public float getOrDefault(long key, float defaultValue) {
     if (((key) == 0)) {
       return hasEmptyKey ? values[mask + 1] : defaultValue;
     } else {
@@ -316,23 +326,23 @@ public class LongIntHashMap
     return index >= 0;
   }
 
-  public int indexGet(int index) {
+  public float indexGet(int index) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
     return values[index];
   }
 
-  public int indexReplace(int index, int newValue) {
+  public float indexReplace(int index, float newValue) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
-    int previousValue = values[index];
+    float previousValue = values[index];
     values[index] = newValue;
     return previousValue;
   }
 
-  public void indexInsert(int index, long key, int value) {
+  public void indexInsert(int index, long key, float value) {
     assert index < 0 : "The index must not point at an existing key.";
 
     index = ~index;
@@ -354,11 +364,11 @@ public class LongIntHashMap
     }
   }
 
-  public int indexRemove(int index) {
+  public float indexRemove(int index) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
-    int previousValue = values[index];
+    float previousValue = values[index];
     if (index > mask) {
       assert index == mask + 1;
       hasEmptyKey = false;
@@ -398,7 +408,7 @@ public class LongIntHashMap
   @Override
   public int hashCode() {
     int h = hasEmptyKey ? 0xDEADBEEF : 0;
-    for (LongIntCursor c : this) {
+    for (LongFloatCursor c : this) {
       h += BitMixer.mix(c.key) + BitMixer.mix(c.value);
     }
     return h;
@@ -411,14 +421,14 @@ public class LongIntHashMap
   }
 
   /** Return true if all keys of some other container exist in this container. */
-  protected boolean equalElements(LongIntHashMap other) {
+  protected boolean equalElements(LongFloatHashMap other) {
     if (other.size() != size()) {
       return false;
     }
 
-    for (LongIntCursor c : other) {
+    for (LongFloatCursor c : other) {
       long key = c.key;
-      if (!containsKey(key) || !((get(key)) == (c.value))) {
+      if (!containsKey(key) || !(Float.floatToIntBits(c.value) == Float.floatToIntBits(get(key)))) {
         return false;
       }
     }
@@ -435,7 +445,7 @@ public class LongIntHashMap
   public void ensureCapacity(int expectedElements) {
     if (expectedElements > resizeAt || keys == null) {
       final long[] prevKeys = this.keys;
-      final int[] prevValues = this.values;
+      final float[] prevValues = this.values;
       allocateBuffers(minBufferSize(expectedElements, loadFactor));
       if (prevKeys != null && !isEmpty()) {
         rehash(prevKeys, prevValues);
@@ -458,22 +468,22 @@ public class LongIntHashMap
   }
 
   /** An iterator implementation for {@link #iterator}. */
-  private final class EntryIterator extends AbstractIterator<LongIntCursor> {
-    private final LongIntCursor cursor;
+  private final class EntryIterator extends AbstractIterator<LongFloatCursor> {
+    private final LongFloatCursor cursor;
     private final int increment;
     private int index;
     private int slot;
 
     public EntryIterator() {
-      cursor = new LongIntCursor();
+      cursor = new LongFloatCursor();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;
     }
 
     @Override
-    protected LongIntCursor fetch() {
-      final int mask = LongIntHashMap.this.mask;
+    protected LongFloatCursor fetch() {
+      final int mask = LongFloatHashMap.this.mask;
       while (index <= mask) {
         long existing;
         index++;
@@ -498,7 +508,7 @@ public class LongIntHashMap
   }
 
   @Override
-  public Iterator<LongIntCursor> iterator() {
+  public Iterator<LongFloatCursor> iterator() {
     return new EntryIterator();
   }
 
@@ -516,7 +526,7 @@ public class LongIntHashMap
     }
 
     public int size() {
-      return LongIntHashMap.this.size();
+      return LongFloatHashMap.this.size();
     }
 
     public long[] toArray() {
@@ -545,7 +555,7 @@ public class LongIntHashMap
 
     @Override
     protected LongCursor fetch() {
-      final int mask = LongIntHashMap.this.mask;
+      final int mask = LongFloatHashMap.this.mask;
       while (index <= mask) {
         long existing;
         index++;
@@ -575,21 +585,21 @@ public class LongIntHashMap
   }
 
   /** A view over the set of values of this map. */
-  public final class ValuesContainer implements Iterable<IntCursor> {
+  public final class ValuesContainer implements Iterable<FloatCursor> {
 
     @Override
-    public Iterator<IntCursor> iterator() {
+    public Iterator<FloatCursor> iterator() {
       return new ValuesIterator();
     }
 
     public int size() {
-      return LongIntHashMap.this.size();
+      return LongFloatHashMap.this.size();
     }
 
-    public int[] toArray() {
-      int[] array = new int[size()];
+    public float[] toArray() {
+      float[] array = new float[size()];
       int i = 0;
-      for (IntCursor cursor : this) {
+      for (FloatCursor cursor : this) {
         array[i++] = cursor.value;
       }
       return array;
@@ -597,22 +607,22 @@ public class LongIntHashMap
   }
 
   /** An iterator over the set of assigned values. */
-  private final class ValuesIterator extends AbstractIterator<IntCursor> {
-    private final IntCursor cursor;
+  private final class ValuesIterator extends AbstractIterator<FloatCursor> {
+    private final FloatCursor cursor;
     private final int increment;
     private int index;
     private int slot;
 
     public ValuesIterator() {
-      cursor = new IntCursor();
+      cursor = new FloatCursor();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;
     }
 
     @Override
-    protected IntCursor fetch() {
-      final int mask = LongIntHashMap.this.mask;
+    protected FloatCursor fetch() {
+      final int mask = LongFloatHashMap.this.mask;
       while (index <= mask) {
         index++;
         slot = (slot + increment) & mask;
@@ -634,10 +644,10 @@ public class LongIntHashMap
   }
 
   @Override
-  public LongIntHashMap clone() {
+  public LongFloatHashMap clone() {
     try {
       /*  */
-      LongIntHashMap cloned = (LongIntHashMap) super.clone();
+      LongFloatHashMap cloned = (LongFloatHashMap) super.clone();
       cloned.keys = keys.clone();
       cloned.values = values.clone();
       cloned.hasEmptyKey = hasEmptyKey;
@@ -655,7 +665,7 @@ public class LongIntHashMap
     buffer.append("[");
 
     boolean first = true;
-    for (LongIntCursor cursor : this) {
+    for (LongFloatCursor cursor : this) {
       if (!first) {
         buffer.append(", ");
       }
@@ -669,13 +679,13 @@ public class LongIntHashMap
   }
 
   /** Creates a hash map from two index-aligned arrays of key-value pairs. */
-  public static LongIntHashMap from(long[] keys, int[] values) {
+  public static LongFloatHashMap from(long[] keys, float[] values) {
     if (keys.length != values.length) {
       throw new IllegalArgumentException(
           "Arrays of keys and values must have an identical length.");
     }
 
-    LongIntHashMap map = new LongIntHashMap(keys.length);
+    LongFloatHashMap map = new LongFloatHashMap(keys.length);
     for (int i = 0; i < keys.length; i++) {
       map.put(keys[i], values[i]);
     }
@@ -703,12 +713,12 @@ public class LongIntHashMap
   }
 
   /** Rehash from old buffers to new buffers. */
-  protected void rehash(long[] fromKeys, int[] fromValues) {
+  protected void rehash(long[] fromKeys, float[] fromValues) {
     assert fromKeys.length == fromValues.length && checkPowerOfTwo(fromKeys.length - 1);
 
     // Rehash all stored key/value pairs into the new buffers.
     final long[] keys = this.keys;
-    final int[] values = this.values;
+    final float[] values = this.values;
     final int mask = this.mask;
     long existing;
 
@@ -737,11 +747,11 @@ public class LongIntHashMap
 
     // Ensure no change is done if we hit an OOM.
     long[] prevKeys = this.keys;
-    int[] prevValues = this.values;
+    float[] prevValues = this.values;
     try {
       int emptyElementSlot = 1;
       this.keys = (new long[arraySize + emptyElementSlot]);
-      this.values = (new int[arraySize + emptyElementSlot]);
+      this.values = (new float[arraySize + emptyElementSlot]);
     } catch (OutOfMemoryError e) {
       this.keys = prevKeys;
       this.values = prevValues;
@@ -762,12 +772,12 @@ public class LongIntHashMap
    * assign the pending element to the previous buffer (possibly violating the invariant of having
    * at least one empty slot) and rehash all keys, substituting new buffers at the end.
    */
-  protected void allocateThenInsertThenRehash(int slot, long pendingKey, int pendingValue) {
+  protected void allocateThenInsertThenRehash(int slot, long pendingKey, float pendingValue) {
     assert assigned == resizeAt && ((keys[slot]) == 0) && !((pendingKey) == 0);
 
     // Try to allocate new buffers first. If we OOM, we leave in a consistent state.
     final long[] prevKeys = this.keys;
-    final int[] prevValues = this.values;
+    final float[] prevValues = this.values;
     allocateBuffers(nextBufferSize(mask + 1, size(), loadFactor));
     assert this.keys.length > prevKeys.length;
 
@@ -785,7 +795,7 @@ public class LongIntHashMap
    */
   protected void shiftConflictingKeys(int gapSlot) {
     final long[] keys = this.keys;
-    final int[] values = this.values;
+    final float[] values = this.values;
     final int mask = this.mask;
 
     // Perform shifts of conflicting keys to fill in the gap.
@@ -818,7 +828,7 @@ public class LongIntHashMap
   }
 
   /** Forked from HPPC, holding int index,key and value */
-  public static final class LongIntCursor {
+  public static final class LongFloatCursor {
     /**
      * The current key and value's index in the container this cursor belongs to. The meaning of
      * this index is defined by the container (usually it will be an index in the underlying storage
@@ -830,7 +840,7 @@ public class LongIntHashMap
     public long key;
 
     /** The current value. */
-    public int value;
+    public float value;
 
     @Override
     public String toString() {

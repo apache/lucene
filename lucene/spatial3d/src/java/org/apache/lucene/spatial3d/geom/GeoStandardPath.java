@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
-import com.carrotsearch.hppc.IntArrayList;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * GeoShape representing a path across the surface of the globe, with a specified half-width. Path
@@ -1988,9 +1988,9 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     private void mergeTop() {
-      depthStack.remove(depthStack.size() - 1);
+      depthStack.removeAt(depthStack.size() - 1);
       PathComponent secondComponent = componentStack.remove(componentStack.size() - 1);
-      int newDepth = depthStack.remove(depthStack.size() - 1) + 1;
+      int newDepth = depthStack.removeAt(depthStack.size() - 1) + 1;
       PathComponent firstComponent = componentStack.remove(componentStack.size() - 1);
       depthStack.add(newDepth);
       componentStack.add(new PathNode(firstComponent, secondComponent));

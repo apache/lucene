@@ -16,12 +16,6 @@
  */
 package org.apache.lucene.search.join;
 
-import com.carrotsearch.hppc.LongArrayList;
-import com.carrotsearch.hppc.LongFloatHashMap;
-import com.carrotsearch.hppc.LongHashSet;
-import com.carrotsearch.hppc.LongIntHashMap;
-import com.carrotsearch.hppc.cursors.LongCursor;
-import com.carrotsearch.hppc.procedures.LongFloatProcedure;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -48,6 +42,11 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.join.DocValuesTermsCollector.Function;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.hppc.LongArrayList;
+import org.apache.lucene.util.hppc.LongCursor;
+import org.apache.lucene.util.hppc.LongFloatHashMap;
+import org.apache.lucene.util.hppc.LongHashSet;
+import org.apache.lucene.util.hppc.LongIntHashMap;
 
 /**
  * Utility for query time joining.
@@ -292,7 +291,8 @@ public final class JoinUtil {
     }
     fromSearcher.search(fromQuery, collector);
 
-    LongArrayList joinValuesList = new LongArrayList(joinValues);
+    LongArrayList joinValuesList = new LongArrayList(joinValues.size());
+    joinValuesList.addAll(joinValues);
     Arrays.sort(joinValuesList.buffer, 0, joinValuesList.size());
     Iterator<LongCursor> iterator = joinValuesList.iterator();
 
@@ -587,5 +587,11 @@ public final class JoinUtil {
   private interface LongFloatFunction {
 
     float apply(long value);
+  }
+
+  /** Similar to {@link java.util.function.BiConsumer} for primitive arguments. */
+  private interface LongFloatProcedure {
+
+    void apply(long key, float value);
   }
 }

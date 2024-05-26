@@ -21,36 +21,35 @@ import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_EXPECTED_ELEMEN
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.stream.IntStream;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
- * An array-backed list of {@code int}.
+ * An array-backed list of {@code float}.
  *
- * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntArrayList
+ * <p>Mostly forked and trimmed from com.carrotsearch.hppc.FloatArrayList
  *
  * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
  */
-public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable {
+public class FloatArrayList implements Iterable<FloatCursor>, Cloneable, Accountable {
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(IntArrayList.class);
+      RamUsageEstimator.shallowSizeOfInstance(FloatArrayList.class);
 
   /** An immutable empty buffer (array). */
-  public static final int[] EMPTY_ARRAY = new int[0];
+  public static final float[] EMPTY_ARRAY = new float[0];
 
   /**
    * Internal array for storing the list. The array may be larger than the current size ({@link
    * #size()}).
    */
-  public int[] buffer;
+  public float[] buffer;
 
   /** Current number of elements stored in {@link #buffer}. */
   public int elementsCount;
 
   /** New instance with sane defaults. */
-  public IntArrayList() {
+  public FloatArrayList() {
     this(DEFAULT_EXPECTED_ELEMENTS);
   }
 
@@ -60,23 +59,23 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    * @param expectedElements The expected number of elements guaranteed not to cause buffer
    *     expansion (inclusive).
    */
-  public IntArrayList(int expectedElements) {
-    buffer = new int[expectedElements];
+  public FloatArrayList(int expectedElements) {
+    buffer = new float[expectedElements];
   }
 
   /** Creates a new list from the elements of another list in its iteration order. */
-  public IntArrayList(IntArrayList list) {
+  public FloatArrayList(FloatArrayList list) {
     this(list.size());
     addAll(list);
   }
 
-  public void add(int e1) {
+  public void add(float e1) {
     ensureBufferSpace(1);
     buffer[elementsCount++] = e1;
   }
 
   /** Add all elements from a range of given array to the list. */
-  public void add(int[] elements, int start, int length) {
+  public void add(float[] elements, int start, int length) {
     assert length >= 0 : "Length must be >= 0";
 
     ensureBufferSpace(length);
@@ -90,16 +89,16 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    * <p><b>This method is handy, but costly if used in tight loops (anonymous array passing)</b>
    */
   /*  */
-  public final void add(int... elements) {
+  public final void add(float... elements) {
     add(elements, 0, elements.length);
   }
 
   /** Adds all elements from another list. */
-  public int addAll(IntArrayList list) {
+  public int addAll(FloatArrayList list) {
     final int size = list.size();
     ensureBufferSpace(size);
 
-    for (IntCursor cursor : list) {
+    for (FloatCursor cursor : list) {
       add(cursor.value);
     }
 
@@ -107,16 +106,16 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
   }
 
   /** Adds all elements from another iterable. */
-  public int addAll(Iterable<? extends IntCursor> iterable) {
+  public int addAll(Iterable<? extends FloatCursor> iterable) {
     int size = 0;
-    for (IntCursor cursor : iterable) {
+    for (FloatCursor cursor : iterable) {
       add(cursor.value);
       size++;
     }
     return size;
   }
 
-  public void insert(int index, int e1) {
+  public void insert(int index, float e1) {
     assert (index >= 0 && index <= size())
         : "Index " + index + " out of bounds [" + 0 + ", " + size() + "].";
 
@@ -126,34 +125,34 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
     elementsCount++;
   }
 
-  public int get(int index) {
+  public float get(int index) {
     assert (index >= 0 && index < size())
         : "Index " + index + " out of bounds [" + 0 + ", " + size() + ").";
 
     return buffer[index];
   }
 
-  public int set(int index, int e1) {
+  public float set(int index, float e1) {
     assert (index >= 0 && index < size())
         : "Index " + index + " out of bounds [" + 0 + ", " + size() + ").";
 
-    final int v = buffer[index];
+    final float v = buffer[index];
     buffer[index] = e1;
     return v;
   }
 
   /** Removes the element at the specified position in this container and returns it. */
-  public int removeAt(int index) {
+  public float removeAt(int index) {
     assert (index >= 0 && index < size())
         : "Index " + index + " out of bounds [" + 0 + ", " + size() + ").";
 
-    final int v = buffer[index];
+    final float v = buffer[index];
     System.arraycopy(buffer, index + 1, buffer, index, --elementsCount - index);
     return v;
   }
 
   /** Removes and returns the last element of this list. */
-  public int removeLast() {
+  public float removeLast() {
     assert !isEmpty() : "List is empty";
 
     return buffer[--elementsCount];
@@ -179,7 +178,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    * Removes the first element that equals <code>e</code>, returning whether an element has been
    * removed.
    */
-  public boolean removeElement(int e) {
+  public boolean removeElement(float e) {
     return removeFirst(e) != -1;
   }
 
@@ -187,7 +186,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    * Removes the first element that equals <code>e1</code>, returning its deleted position or <code>
    * -1</code> if the element was not found.
    */
-  public int removeFirst(int e1) {
+  public int removeFirst(float e1) {
     final int index = indexOf(e1);
     if (index >= 0) removeAt(index);
     return index;
@@ -197,7 +196,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    * Removes the last element that equals <code>e1</code>, returning its deleted position or <code>
    * -1</code> if the element was not found.
    */
-  public int removeLast(int e1) {
+  public int removeLast(float e1) {
     final int index = lastIndexOf(e1);
     if (index >= 0) removeAt(index);
     return index;
@@ -209,7 +208,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    * @param e Element to be removed from this collection, if present.
    * @return The number of removed elements as a result of this call.
    */
-  public int removeAll(int e) {
+  public int removeAll(float e) {
     int to = 0;
     for (int from = 0; from < elementsCount; from++) {
       if (((e) == (buffer[from]))) {
@@ -225,11 +224,11 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
     return deleted;
   }
 
-  public boolean contains(int e1) {
+  public boolean contains(float e1) {
     return indexOf(e1) >= 0;
   }
 
-  public int indexOf(int e1) {
+  public int indexOf(float e1) {
     for (int i = 0; i < elementsCount; i++) {
       if (((e1) == (buffer[i]))) {
         return i;
@@ -239,7 +238,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
     return -1;
   }
 
-  public int lastIndexOf(int e1) {
+  public int lastIndexOf(float e1) {
     for (int i = elementsCount - 1; i >= 0; i--) {
       if (((e1) == (buffer[i]))) {
         return i;
@@ -284,9 +283,9 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
   public void resize(int newSize) {
     if (newSize <= buffer.length) {
       if (newSize < elementsCount) {
-        Arrays.fill(buffer, newSize, elementsCount, 0);
+        Arrays.fill(buffer, newSize, elementsCount, 0L);
       } else {
-        Arrays.fill(buffer, elementsCount, newSize, 0);
+        Arrays.fill(buffer, elementsCount, newSize, 0L);
       }
     } else {
       ensureCapacity(newSize);
@@ -322,7 +321,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
   }
 
   /** The returned array is sized to match exactly the number of elements of the stack. */
-  public int[] toArray() {
+  public float[] toArray() {
 
     return ArrayUtil.copyOfSubArray(buffer, 0, elementsCount);
   }
@@ -332,9 +331,9 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    * strategy.
    */
   @Override
-  public IntArrayList clone() {
+  public FloatArrayList clone() {
     try {
-      final IntArrayList cloned = (IntArrayList) super.clone();
+      final FloatArrayList cloned = (FloatArrayList) super.clone();
       cloned.buffer = buffer.clone();
       return cloned;
     } catch (CloneNotSupportedException e) {
@@ -361,8 +360,8 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
         || (obj != null && getClass() == obj.getClass() && equalElements(getClass().cast(obj)));
   }
 
-  /** Compare index-aligned elements against another {@link IntArrayList}. */
-  protected boolean equalElements(IntArrayList other) {
+  /** Compare index-aligned elements against another {@link FloatArrayList}. */
+  protected boolean equalElements(FloatArrayList other) {
     int max = size();
     if (other.size() != max) {
       return false;
@@ -388,43 +387,38 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
     return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(buffer);
   }
 
-  /** Returns a stream of all the elements contained in this list. */
-  public IntStream stream() {
-    return Arrays.stream(buffer, 0, size());
-  }
-
   /** Sorts the elements in this list and returns this list. */
-  public IntArrayList sort() {
+  public FloatArrayList sort() {
     Arrays.sort(buffer, 0, elementsCount);
     return this;
   }
 
   /** Reverses the elements in this list and returns this list. */
-  public IntArrayList reverse() {
+  public FloatArrayList reverse() {
     for (int i = 0, mid = elementsCount >> 1, j = elementsCount - 1; i < mid; i++, j--) {
-      int tmp = buffer[i];
+      float tmp = buffer[i];
       buffer[i] = buffer[j];
       buffer[j] = tmp;
     }
     return this;
   }
 
-  /** An iterator implementation for {@link IntArrayList#iterator}. */
-  static final class ValueIterator extends AbstractIterator<IntCursor> {
-    private final IntCursor cursor;
+  /** An iterator implementation for {@link FloatArrayList#iterator}. */
+  static final class ValueIterator extends AbstractIterator<FloatCursor> {
+    private final FloatCursor cursor;
 
-    private final int[] buffer;
+    private final float[] buffer;
     private final int size;
 
-    public ValueIterator(int[] buffer, int size) {
-      this.cursor = new IntCursor();
+    public ValueIterator(float[] buffer, int size) {
+      this.cursor = new FloatCursor();
       this.cursor.index = -1;
       this.size = size;
       this.buffer = buffer;
     }
 
     @Override
-    protected IntCursor fetch() {
+    protected FloatCursor fetch() {
       if (cursor.index + 1 == size) return done();
 
       cursor.value = buffer[++cursor.index];
@@ -433,7 +427,7 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
   }
 
   @Override
-  public Iterator<IntCursor> iterator() {
+  public Iterator<FloatCursor> iterator() {
     return new ValueIterator(buffer, size());
   }
 
@@ -442,8 +436,8 @@ public class IntArrayList implements Iterable<IntCursor>, Cloneable, Accountable
    * are copied from the argument to the internal buffer.
    */
   /*  */
-  public static IntArrayList from(int... elements) {
-    final IntArrayList list = new IntArrayList(elements.length);
+  public static FloatArrayList from(float... elements) {
+    final FloatArrayList list = new FloatArrayList(elements.length);
     list.add(elements);
     return list;
   }

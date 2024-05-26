@@ -418,13 +418,12 @@ public class TestIntArrayList extends LuceneTestCase {
 
   @Test
   public void testSort() {
-    list.add(key1, key3, key2);
-
+    list.add(key3, key1, key3, key2);
     IntArrayList list2 = new IntArrayList();
     list2.ensureCapacity(100);
     list2.addAll(list);
     assertSame(list2, list2.sort());
-    assertEquals(IntArrayList.from(list.stream().sorted().toArray()), list2);
+    assertEquals(IntArrayList.from(key1, key2, key3, key3), list2);
   }
 
   @Test

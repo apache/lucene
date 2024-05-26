@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.facet;
 
-import com.carrotsearch.hppc.IntIntHashMap;
-import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +35,7 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
+import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /**
  * Compute facet counts from a previously indexed {@link SortedSetDocValues} or {@link
@@ -150,7 +149,7 @@ public class StringValueFacetCounts extends Facets {
     List<LabelAndValue> labelValues = new ArrayList<>();
 
     if (sparseCounts != null) {
-      for (IntIntCursor sparseCount : sparseCounts) {
+      for (IntIntHashMap.IntIntCursor sparseCount : sparseCounts) {
         int count = sparseCount.value;
         final BytesRef term = docValues.lookupOrd(sparseCount.key);
         labelValues.add(new LabelAndValue(term.utf8ToString(), count));
@@ -186,7 +185,7 @@ public class StringValueFacetCounts extends Facets {
     int childCount = 0; // total number of labels with non-zero count
 
     if (sparseCounts != null) {
-      for (IntIntCursor sparseCount : sparseCounts) {
+      for (IntIntHashMap.IntIntCursor sparseCount : sparseCounts) {
         childCount++; // every count in sparseValues should be non-zero
         int ord = sparseCount.key;
         int count = sparseCount.value;

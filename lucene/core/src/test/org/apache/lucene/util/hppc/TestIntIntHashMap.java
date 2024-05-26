@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
 import org.junit.Test;
 
 /**
@@ -76,23 +75,6 @@ public class TestIntIntHashMap extends LuceneTestCase {
 
   private IntIntHashMap newInstance() {
     return new IntIntHashMap();
-  }
-
-  @After
-  public void checkEmptySlotsUninitialized() {
-    if (map != null) {
-      int occupied = 0;
-      for (int i = 0; i <= map.mask; i++) {
-        if (((map.keys[i]) == 0)) {
-
-        } else {
-          occupied++;
-        }
-      }
-      assertEquals(occupied, map.assigned);
-
-      if (!map.hasEmptyKey) {}
-    }
   }
 
   /** Convert to target type from an integer used to test stuff. */
@@ -326,10 +308,10 @@ public class TestIntIntHashMap extends LuceneTestCase {
 
     map.put(empty, value1);
     assertEquals(1, map.size());
-    assertEquals(false, map.isEmpty());
+    assertFalse(map.isEmpty());
     assertEquals(value1, map.get(empty));
     assertEquals(value1, map.getOrDefault(empty, value2));
-    assertEquals(true, map.iterator().hasNext());
+    assertTrue(map.iterator().hasNext());
     assertEquals(empty, map.iterator().next().key);
     assertEquals(value1, map.iterator().next().value);
 
@@ -492,8 +474,8 @@ public class TestIntIntHashMap extends LuceneTestCase {
     assertEquals(l1.hashCode(), l2.hashCode());
     assertEquals(l1, l2);
 
-    assertFalse(l1.equals(l3));
-    assertFalse(l2.equals(l3));
+    assertNotEquals(l1, l3);
+    assertNotEquals(l2, l3);
   }
 
   @Test
@@ -502,8 +484,8 @@ public class TestIntIntHashMap extends LuceneTestCase {
 
     IntIntHashMap l2 = IntIntHashMap.from(newArray(key2), newvArray(value1));
 
-    assertFalse(l1.equals(l2));
-    assertFalse(l2.equals(l1));
+    assertNotEquals(l1, l2);
+    assertNotEquals(l2, l1);
   }
 
   /** Runs random insertions/deletions/clearing and compares the results against {@link HashMap}. */

@@ -17,8 +17,6 @@
 
 package org.apache.lucene.search.join;
 
-import com.carrotsearch.hppc.FloatArrayList;
-import com.carrotsearch.hppc.cursors.FloatCursor;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.function.BiFunction;
@@ -49,6 +47,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hppc.FloatArrayList;
+import org.apache.lucene.util.hppc.FloatCursor;
 
 // A TermsIncludingScoreQuery variant for point values:
 abstract class PointInSetIncludingScoreQuery extends Query implements Accountable {
