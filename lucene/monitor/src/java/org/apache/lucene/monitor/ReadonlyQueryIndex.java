@@ -22,7 +22,12 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.SearcherManager;
+import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -156,8 +161,8 @@ class ReadonlyQueryIndex extends QueryIndex {
     }
 
     @Override
-    public void setScorer(Scorable scorer) {
-      this.dataValues.scorer = scorer;
+    public void setWeight(Weight weight) {
+      this.dataValues.weight = weight;
     }
 
     @Override

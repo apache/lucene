@@ -16,8 +16,10 @@
  */
 package org.apache.lucene.facet.range;
 
+import com.carrotsearch.hppc.IntArrayList;
 import com.carrotsearch.hppc.LongArrayList;
 import com.carrotsearch.hppc.LongIntHashMap;
+import com.carrotsearch.hppc.cursors.IntCursor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -198,8 +200,8 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
       }
     }
     if (node.outputs != null) {
-      for (int rangeIndex : node.outputs) {
-        increment(rangeIndex, count);
+      for (IntCursor rangeIndex : node.outputs) {
+        increment(rangeIndex.value, count);
       }
     }
 
@@ -224,8 +226,8 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
       elementaryIntervalUpto++;
     }
     if (containedHit && node.outputs != null) {
-      for (int rangeIndex : node.outputs) {
-        multiValuedDocRangeHits.set(rangeIndex);
+      for (IntCursor rangeIndex : node.outputs) {
+        multiValuedDocRangeHits.set(rangeIndex.value);
       }
     }
 
@@ -318,7 +320,7 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
 
     // Which range indices to output when a query goes
     // through this node:
-    List<Integer> outputs;
+    IntArrayList outputs;
 
     public LongRangeNode(
         long start,
@@ -352,7 +354,7 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
         // Our range is fully included in the incoming
         // range; add to our output list:
         if (outputs == null) {
-          outputs = new ArrayList<>();
+          outputs = new IntArrayList();
         }
         outputs.add(index);
       } else if (left != null) {

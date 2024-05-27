@@ -27,6 +27,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.hppc.IntArrayList;
+import org.apache.lucene.util.hppc.IntCursor;
 import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /** Converts an Automaton into a TokenStream. */
@@ -44,7 +46,7 @@ public class AutomatonToTokenStream {
    * @return TokenStream representation of automaton.
    */
   public static TokenStream toTokenStream(Automaton automaton) {
-    List<List<Integer>> positionNodes = new ArrayList<>();
+    List<IntArrayList> positionNodes = new ArrayList<>();
 
     Transition[][] transitions = automaton.getSortedTransitions();
 
@@ -72,7 +74,7 @@ public class AutomatonToTokenStream {
         }
       }
       if (positionNodes.size() == currState.pos) {
-        List<Integer> posIncs = new ArrayList<>();
+        IntArrayList posIncs = new IntArrayList();
         posIncs.add(currState.id);
         positionNodes.add(posIncs);
       } else {
@@ -88,10 +90,10 @@ public class AutomatonToTokenStream {
     }
 
     List<List<EdgeToken>> edgesByLayer = new ArrayList<>();
-    for (List<Integer> layer : positionNodes) {
+    for (IntArrayList layer : positionNodes) {
       List<EdgeToken> edges = new ArrayList<>();
-      for (int state : layer) {
-        for (Transition t : transitions[state]) {
+      for (IntCursor state : layer) {
+        for (Transition t : transitions[state.value]) {
           // each edge in the token stream can only be on value, though a transition takes a range.
           for (int val = t.min; val <= t.max; val++) {
             int destLayer = idToPos.get(t.dest);

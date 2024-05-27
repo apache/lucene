@@ -28,6 +28,7 @@ import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.IntSequenceOutputs;
+import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * A data structure for memory-efficient word storage and fast lookup/enumeration. Each dictionary
@@ -262,7 +263,7 @@ abstract class WordStorage {
 
     private final IntsRefBuilder currentOrds = new IntsRefBuilder();
     private final List<char[]> group = new ArrayList<>();
-    private final List<Integer> morphDataIDs = new ArrayList<>();
+    private final IntArrayList morphDataIDs = new IntArrayList();
     private String currentEntry = null;
     private final int wordCount;
     private final double hashFactor;

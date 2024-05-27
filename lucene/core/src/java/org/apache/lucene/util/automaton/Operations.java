@@ -48,6 +48,8 @@ import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hppc.BitMixer;
+import org.apache.lucene.util.hppc.IntCursor;
+import org.apache.lucene.util.hppc.IntHashSet;
 import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
@@ -249,14 +251,14 @@ public final class Operations {
       b = concatenate(as);
     }
 
-    Set<Integer> prevAcceptStates = toSet(b, 0);
+    IntHashSet prevAcceptStates = toSet(b, 0);
     Automaton.Builder builder = new Automaton.Builder();
     builder.copy(b);
     for (int i = min; i < max; i++) {
       int numStates = builder.getNumStates();
       builder.copy(a);
-      for (int s : prevAcceptStates) {
-        builder.addEpsilon(s, numStates);
+      for (IntCursor s : prevAcceptStates) {
+        builder.addEpsilon(s.value, numStates);
       }
       prevAcceptStates = toSet(a, numStates);
     }
@@ -264,16 +266,15 @@ public final class Operations {
     return builder.finish();
   }
 
-  private static Set<Integer> toSet(Automaton a, int offset) {
+  private static IntHashSet toSet(Automaton a, int offset) {
     int numStates = a.getNumStates();
     BitSet isAccept = a.getAcceptStates();
-    Set<Integer> result = new HashSet<Integer>();
+    IntHashSet result = new IntHashSet();
     int upto = 0;
     while (upto < numStates && (upto = isAccept.nextSetBit(upto)) != -1) {
       result.add(offset + upto);
       upto++;
     }
-
     return result;
   }
 
@@ -1130,7 +1131,7 @@ public final class Operations {
       throw new IllegalArgumentException("input automaton must be deterministic");
     }
     IntsRefBuilder builder = new IntsRefBuilder();
-    HashSet<Integer> visited = new HashSet<>();
+    IntHashSet visited = new IntHashSet();
     int s = 0;
     Transition t = new Transition();
     while (true) {

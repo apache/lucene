@@ -106,6 +106,10 @@ API Changes
   the directory about bytes that are about to be read. (Adrien Grand, Uwe
   Schindler)
 
+* GITHUB#13408: Moved Weight#bulkScorer() to ScorerSupplier#bulkScorer() to better help parallelize
+  I/O for top-level disjunctions. Weight#bulkScorer() still exists for compatibility, but delegates
+  to ScorerSupplier#bulkScorer(). (Adrien Grand)
+
 New Features
 ---------------------
 
@@ -298,6 +302,8 @@ Improvements
 * GITHUB#13385: Add Intervals.noIntervals() method to produce an empty IntervalsSource.
   (Aniketh Jain, Uwe Schindler, Alan Woodward))
 
+* GITHUB#13276: UnifiedHighlighter: new 'passageSortComparator' option to allow sorting other than offset order. (Seunghan Jung)
+
 Optimizations
 ---------------------
 
@@ -349,6 +355,10 @@ Optimizations
 * GITHUB#13392: Replace Map<Long, Object> by primitive LongObjectHashMap. (Bruno Roustant)
 
 * GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
+
+* GITHUB#13400: Replace Set<Integer> by IntHashSet and Set<Long> by LongHashSet. (Bruno Roustant)
+
+* GITHUB#13406: Replace List<Integer> by IntArrayList and List<Long> by LongArrayList. (Bruno Roustant)
 
 Bug Fixes
 ---------------------

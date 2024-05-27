@@ -17,13 +17,13 @@
 
 package org.apache.lucene.search.join;
 
+import com.carrotsearch.hppc.IntIntHashMap;
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /**
  * This collects the nearest children vectors. Diversifying the results over the provided parent

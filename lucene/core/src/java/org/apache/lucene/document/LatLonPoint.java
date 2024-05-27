@@ -53,6 +53,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;
+import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * An indexed location field.
@@ -417,7 +418,7 @@ public class LatLonPoint extends Field {
       throw new IllegalArgumentException("searcher must not be null");
     }
     List<PointValues> readers = new ArrayList<>();
-    List<Integer> docBases = new ArrayList<>();
+    IntArrayList docBases = new IntArrayList();
     List<Bits> liveDocs = new ArrayList<>();
     int totalHits = 0;
     for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {

@@ -17,10 +17,10 @@
 
 package org.apache.lucene.search.join;
 
+import com.carrotsearch.hppc.FloatArrayList;
+import com.carrotsearch.hppc.cursors.FloatCursor;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.function.BiFunction;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
@@ -78,7 +78,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
   final String field;
   final int bytesPerDim;
 
-  final List<Float> aggregatedJoinScores;
+  final FloatArrayList aggregatedJoinScores;
 
   private final long ramBytesUsed; // cache
 
@@ -104,7 +104,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
     }
     this.bytesPerDim = bytesPerDim;
 
-    aggregatedJoinScores = new ArrayList<>();
+    aggregatedJoinScores = new FloatArrayList();
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
     BytesRefBuilder previous = null;
     BytesRef current;
@@ -243,8 +243,8 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
     private final FixedBitSet result;
     private final float[] scores;
 
-    private TermIterator iterator;
-    private Iterator<Float> scoreIterator;
+    private final TermIterator iterator;
+    private final Iterator<FloatCursor> scoreIterator;
     private BytesRef nextQueryPoint;
     float nextScore;
     private final BytesRef scratch = new BytesRef();
@@ -259,7 +259,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
       this.scoreIterator = aggregatedJoinScores.iterator();
       nextQueryPoint = iterator.next();
       if (scoreIterator.hasNext()) {
-        nextScore = scoreIterator.next();
+        nextScore = scoreIterator.next().value;
       }
     }
 
@@ -289,7 +289,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
           // Query point is before index point, so we move to next query point
           nextQueryPoint = iterator.next();
           if (scoreIterator.hasNext()) {
-            nextScore = scoreIterator.next();
+            nextScore = scoreIterator.next().value;
           }
         } else {
           // Query point is after index point, so we don't collect and we return:
@@ -307,7 +307,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
           // query point is before the start of this cell
           nextQueryPoint = iterator.next();
           if (scoreIterator.hasNext()) {
-            nextScore = scoreIterator.next();
+            nextScore = scoreIterator.next().value;
           }
           continue;
         }
