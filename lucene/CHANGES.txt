@@ -309,6 +309,8 @@ Improvements
 
 * GITHUB#13276: UnifiedHighlighter: new 'passageSortComparator' option to allow sorting other than offset order. (Seunghan Jung)
 
+* GITHUB#13429: Hunspell: speed up "compress"; minimize the number of the generated entries; don't even consider "forbidden" entries anymore (Peter Gromov)
+
 Optimizations
 ---------------------
 
