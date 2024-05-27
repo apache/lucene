@@ -3281,4 +3281,22 @@ public abstract class LuceneTestCase extends Assert {
 
     return it;
   }
+
+  private static boolean supportsVectorEncoding(
+      KnnVectorsFormat format, VectorEncoding vectorEncoding) {
+    if (format instanceof HnswBitVectorsFormat) {
+      // special case, this only supports BYTE
+      return vectorEncoding == VectorEncoding.BYTE;
+    }
+    return true;
+  }
+
+  protected static KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
+    List<KnnVectorsFormat> availableFormats =
+        KnnVectorsFormat.availableKnnVectorsFormats().stream()
+            .map(KnnVectorsFormat::forName)
+            .filter(format -> supportsVectorEncoding(format, vectorEncoding))
+            .toList();
+    return RandomPicks.randomFrom(random(), availableFormats);
+  }
 }
