@@ -185,6 +185,8 @@ Other
 * GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
 
 
+* GITHUB#13393: Add support for reloading the SPI for KnnVectorsFormat class (Navneet Verma)
+
 ======================== Lucene 9.10.0 =======================
 
 API Changes
