@@ -39,6 +39,8 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Accountable;
@@ -51,8 +53,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringSorter;
-import org.apache.lucene.util.hppc.IntArrayList;
-import org.apache.lucene.util.hppc.IntCursor;
 
 /**
  * A {@link TaxonomyReader} which retrieves stored taxonomy information from a {@link Directory}.

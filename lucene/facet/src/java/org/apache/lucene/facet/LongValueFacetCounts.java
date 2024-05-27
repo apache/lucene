@@ -28,6 +28,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
@@ -35,7 +36,6 @@ import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.PriorityQueue;
-import org.apache.lucene.util.hppc.LongIntHashMap;
 
 /**
  * {@link Facets} implementation that computes counts for all unique long values, more efficiently

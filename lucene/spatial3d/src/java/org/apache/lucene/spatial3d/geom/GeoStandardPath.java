@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.lucene.util.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * GeoShape representing a path across the surface of the globe, with a specified half-width. Path

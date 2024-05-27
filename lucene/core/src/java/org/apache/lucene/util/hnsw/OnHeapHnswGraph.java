@@ -21,10 +21,10 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to

@@ -27,11 +27,11 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hppc.IntHashSet;
 
 /**
  * A {@link ParallelTaxonomyArrays} that are initialized from the taxonomy index.

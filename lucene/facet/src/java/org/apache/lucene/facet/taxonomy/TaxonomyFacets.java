@@ -34,9 +34,9 @@ import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.PriorityQueue;
-import org.apache.lucene.util.hppc.IntArrayList;
-import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /** Base class for all taxonomy-based facets impls. */
 abstract class TaxonomyFacets extends Facets {

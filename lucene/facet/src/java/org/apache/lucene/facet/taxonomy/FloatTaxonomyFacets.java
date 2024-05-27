@@ -21,7 +21,7 @@ import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
-import org.apache.lucene.util.hppc.IntFloatHashMap;
+import org.apache.lucene.internal.hppc.IntFloatHashMap;
 
 /** Base class for all taxonomy-based facets that aggregate to float. */
 abstract class FloatTaxonomyFacets extends TaxonomyFacets {

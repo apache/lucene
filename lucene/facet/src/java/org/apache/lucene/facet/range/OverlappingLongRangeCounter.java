@@ -19,11 +19,11 @@ package org.apache.lucene.facet.range;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.LongArrayList;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.hppc.IntArrayList;
-import org.apache.lucene.util.hppc.IntCursor;
-import org.apache.lucene.util.hppc.LongArrayList;
-import org.apache.lucene.util.hppc.LongIntHashMap;
 
 /**
  * This implementation supports requested ranges that overlap. Because of this, we use a

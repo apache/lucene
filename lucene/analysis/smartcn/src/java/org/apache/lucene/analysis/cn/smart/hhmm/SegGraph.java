@@ -18,7 +18,7 @@ package org.apache.lucene.analysis.cn.smart.hhmm;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 
 /**
  * Graph representing possible tokens at each start offset in the sentence.

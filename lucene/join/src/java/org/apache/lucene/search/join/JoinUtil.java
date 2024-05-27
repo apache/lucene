@@ -33,6 +33,11 @@ import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.internal.hppc.LongArrayList;
+import org.apache.lucene.internal.hppc.LongCursor;
+import org.apache.lucene.internal.hppc.LongFloatHashMap;
+import org.apache.lucene.internal.hppc.LongHashSet;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
@@ -42,11 +47,6 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.join.DocValuesTermsCollector.Function;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.hppc.LongArrayList;
-import org.apache.lucene.util.hppc.LongCursor;
-import org.apache.lucene.util.hppc.LongFloatHashMap;
-import org.apache.lucene.util.hppc.LongHashSet;
-import org.apache.lucene.util.hppc.LongIntHashMap;
 
 /**
  * Utility for query time joining.

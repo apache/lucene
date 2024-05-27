@@ -27,8 +27,8 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.FilterSortedNumericDocValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * A {@link org.apache.lucene.index.FilterLeafReader} for updating facets ordinal references, based

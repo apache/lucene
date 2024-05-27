@@ -27,11 +27,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.analysis.TokenizerFactory;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ResourceLoader;
 import org.apache.lucene.util.ResourceLoaderAware;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Factory for {@link ICUTokenizer}. Words are broken across script boundaries, then segmented

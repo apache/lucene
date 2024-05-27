@@ -39,11 +39,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.hunspell.AffixedWord.Affix;
+import org.apache.lucene.internal.hppc.CharHashSet;
+import org.apache.lucene.internal.hppc.CharObjectHashMap;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.IntsRefFSTEnum;
-import org.apache.lucene.util.hppc.CharHashSet;
-import org.apache.lucene.util.hppc.CharObjectHashMap;
 
 /**
  * A utility class used for generating possible word forms by adding affixes to stems ({@link

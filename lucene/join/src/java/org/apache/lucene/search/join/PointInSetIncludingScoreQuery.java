@@ -32,6 +32,8 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
+import org.apache.lucene.internal.hppc.FloatArrayList;
+import org.apache.lucene.internal.hppc.FloatCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -47,8 +49,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hppc.FloatArrayList;
-import org.apache.lucene.util.hppc.FloatCursor;
 
 // A TermsIncludingScoreQuery variant for point values:
 abstract class PointInSetIncludingScoreQuery extends Query implements Accountable {
