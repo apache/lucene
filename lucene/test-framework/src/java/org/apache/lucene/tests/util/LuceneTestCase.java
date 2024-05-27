@@ -3295,11 +3295,11 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   protected static KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
-    List<KnnVectorsFormat> availableFormats =
+    KnnVectorsFormat[] availableFormats =
         KnnVectorsFormat.availableKnnVectorsFormats().stream()
             .map(KnnVectorsFormat::forName)
             .filter(format -> supportsVectorEncoding(format, vectorEncoding))
-            .toList();
+            .toArray(KnnVectorsFormat[]::new);
     return RandomPicks.randomFrom(random(), availableFormats);
   }
 }
