@@ -283,9 +283,9 @@ public class FloatArrayList implements Iterable<FloatCursor>, Cloneable, Account
   public void resize(int newSize) {
     if (newSize <= buffer.length) {
       if (newSize < elementsCount) {
-        Arrays.fill(buffer, newSize, elementsCount, 0L);
+        Arrays.fill(buffer, newSize, elementsCount, 0f);
       } else {
-        Arrays.fill(buffer, elementsCount, newSize, 0L);
+        Arrays.fill(buffer, elementsCount, newSize, 0f);
       }
     } else {
       ensureCapacity(newSize);
