@@ -567,6 +567,13 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
       assertTrue(dict.getRightId(3) != 0);
       assertThrows(ArrayIndexOutOfBoundsException.class, () -> dict.getRightId(4));
     }
+
+    String dupdup = "c++\nC쁠쁠\n세종\n세종\n세종시 세종 시\n세종시 세종 시";
+    try (Reader rulesReader = new StringReader(dupdup)) {
+      var dict = UserDictionary.open(rulesReader);
+      assertTrue(dict.getRightId(3) != 0);
+      assertThrows(ArrayIndexOutOfBoundsException.class, () -> dict.getRightId(4));
+    }
   }
 
   private void assertReadings(Analyzer analyzer, String input, String... readings)
