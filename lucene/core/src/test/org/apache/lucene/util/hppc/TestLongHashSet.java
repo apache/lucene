@@ -210,7 +210,7 @@ public class TestLongHashSet extends LuceneTestCase {
   public void testAddVarArgs() {
     set.addAll(asArray(0, 1, 2, 1, 0));
     assertEquals(3, set.size());
-    assertSortedListEquals(set.toArray(), 0, 1, 2);
+    assertSortedListEquals(set.toArray(), asArray(0, 1, 2));
   }
 
   @Test
@@ -223,7 +223,7 @@ public class TestLongHashSet extends LuceneTestCase {
     assertEquals(0, set.addAll(set2));
 
     assertEquals(3, set.size());
-    assertSortedListEquals(set.toArray(), 0, 1, 2);
+    assertSortedListEquals(set.toArray(), asArray(0, 1, 2));
   }
 
   @Test
@@ -233,7 +233,7 @@ public class TestLongHashSet extends LuceneTestCase {
     assertTrue(set.remove(key2));
     assertFalse(set.remove(key2));
     assertEquals(4, set.size());
-    assertSortedListEquals(set.toArray(), 0, 1, 3, 4);
+    assertSortedListEquals(set.toArray(), asArray(0, 1, 3, 4));
   }
 
   @Test
@@ -303,7 +303,7 @@ public class TestLongHashSet extends LuceneTestCase {
 
     assertEquals(2, set.removeAll(list2));
     assertEquals(3, set.size());
-    assertSortedListEquals(set.toArray(), 0, 2, 4);
+    assertSortedListEquals(set.toArray(), asArray(0, 2, 4));
   }
 
   @Test
@@ -404,13 +404,13 @@ public class TestLongHashSet extends LuceneTestCase {
 
   @Test
   public void testClone() {
-    this.set.addAll(key1, key2, key3);
+    this.set.addAll(asArray(1, 2, 3));
 
     LongHashSet cloned = set.clone();
     cloned.remove(key1);
 
-    assertSortedListEquals(set.toArray(), key1, key2, key3);
-    assertSortedListEquals(cloned.toArray(), key2, key3);
+    assertSortedListEquals(set.toArray(), asArray(1, 2, 3));
+    assertSortedListEquals(cloned.toArray(), asArray(2, 3));
   }
 
   @Test
@@ -456,7 +456,7 @@ public class TestLongHashSet extends LuceneTestCase {
   }
 
   /** Check if the array's content is identical to a given sequence of elements. */
-  private static void assertSortedListEquals(long[] array, long... elements) {
+  private static void assertSortedListEquals(long[] array, long[] elements) {
     assertEquals(elements.length, array.length);
     Arrays.sort(array);
     assertArrayEquals(elements, array);

@@ -65,6 +65,7 @@ public class TestJapaneseKatakanaUppercaseFilter extends BaseTokenStreamTestCase
         new String[] {"アイウエオカクケシスツトヌハヒフプヘホムヤユヨラリルレロワ"});
     assertAnalyzesTo(keywordAnalyzer, "ストップウォッチ", new String[] {"ストツプウオツチ"});
     assertAnalyzesTo(keywordAnalyzer, "サラニㇷ゚ カムイチェㇷ゚ ㇷ゚ㇷ゚", new String[] {"サラニプ", "カムイチエプ", "ププ"});
+    assertAnalyzesTo(keywordAnalyzer, "カムイチェㇷ゚カムイチェ", new String[] {"カムイチエプカムイチエ"});
   }
 
   public void testKanaUppercaseWithSurrogatePair() throws IOException {

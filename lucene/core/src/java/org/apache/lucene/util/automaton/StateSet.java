@@ -95,8 +95,8 @@ final class StateSet extends IntSet {
     }
     arrayCache = new int[inner.size()];
     int i = 0;
-    for (IntCursor cursor : inner.keys()) {
-      arrayCache[i++] = cursor.value;
+    for (IntCursor key : inner.keys()) {
+      arrayCache[i++] = key.value;
     }
     // we need to sort this array since "equals" method depend on this
     Arrays.sort(arrayCache);
@@ -115,8 +115,8 @@ final class StateSet extends IntSet {
       return hashCode;
     }
     hashCode = inner.size();
-    for (IntCursor cursor : inner.keys()) {
-      hashCode += BitMixer.mix(cursor.value);
+    for (IntCursor key : inner.keys()) {
+      hashCode += BitMixer.mix(key.value);
     }
     hashUpdated = true;
     return hashCode;
