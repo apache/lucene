@@ -50,13 +50,31 @@ module org.apache.lucene.core {
   exports org.apache.lucene.util.fst;
   exports org.apache.lucene.util.graph;
   exports org.apache.lucene.util.hnsw;
-  exports org.apache.lucene.util.hppc;
   exports org.apache.lucene.util.mutable;
   exports org.apache.lucene.util.packed;
 
   // Only export internal packages to the test framework.
   exports org.apache.lucene.internal.tests to
       org.apache.lucene.test_framework;
+
+  // Export internally repackaged HPPC classes to other Lucene components.
+  exports org.apache.lucene.util.hppc to
+      org.apache.lucene.analysis.common,
+      org.apache.lucene.analysis.icu,
+      org.apache.lucene.analysis.kuromoji,
+      org.apache.lucene.analysis.smartcn,
+      org.apache.lucene.analysis.stempel,
+      org.apache.lucene.benchmark,
+      org.apache.lucene.facet,
+      org.apache.lucene.grouping,
+      org.apache.lucene.highlighter,
+      org.apache.lucene.join,
+      org.apache.lucene.misc,
+      org.apache.lucene.queryparser,
+      org.apache.lucene.sandbox,
+      org.apache.lucene.spatial3d,
+      org.apache.lucene.spatial_extras,
+      org.apache.lucene.suggest;
 
   // Open certain packages for the test framework (ram usage tester).
   opens org.apache.lucene.document to
