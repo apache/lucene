@@ -259,16 +259,21 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   /**
-   * Sets the target search concurrency. This is the number of threads that will be used for
-   * @param minNumSegments
-   * @return
+   * Sets the minimum number of segments to merge to. This allows merging to ensure that there are
+   * at least minNumSegments segments after a natural merge. This setting can be overriden by force
+   * merging to a specified number. Default is 1.
    */
   public TieredMergePolicy setMinNumSegments(int minNumSegments) {
+    if (minNumSegments < 1) {
+      throw new IllegalArgumentException(
+          "minNumSegments must be >= 1 (got " + minNumSegments + ")");
+    }
     this.minNumSegments = minNumSegments;
     return this;
   }
 
-  public int minNumSegments() {
+  /** Returns the current minimum number of segments. */
+  public int getMinNumSegments() {
     return minNumSegments;
   }
 
@@ -617,8 +622,7 @@ public class TieredMergePolicy extends MergePolicy {
           break;
         }
 
-        final MergeScore score =
-            score(candidate, hitTooLarge || hitMaxDocs, segInfosSizes);
+        final MergeScore score = score(candidate, hitTooLarge || hitMaxDocs, segInfosSizes);
         if (verbose(mergeContext)) {
           message(
               "  maybe="
@@ -774,7 +778,6 @@ public class TieredMergePolicy extends MergePolicy {
               + segmentsToMerge,
           mergeContext);
     }
-
     List<SegmentSizeAndDocs> sortedSizeAndDocs = getSortedBySegmentSize(infos, mergeContext);
 
     long totalMergeBytes = 0;
@@ -988,7 +991,7 @@ public class TieredMergePolicy extends MergePolicy {
         Integer.MAX_VALUE,
         Integer.MAX_VALUE,
         0,
-            Integer.MAX_VALUE,
+        Integer.MAX_VALUE,
         MERGE_TYPE.FORCE_MERGE_DELETES,
         mergeContext,
         false);
