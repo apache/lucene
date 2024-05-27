@@ -31,6 +31,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.packed.PackedInts;
+import org.apache.lucene.util.packed.PackedLongValues;
 
 public class TestOrdinalMap extends LuceneTestCase {
 
@@ -55,7 +56,7 @@ public class TestOrdinalMap extends LuceneTestCase {
             java.util.Collection<Object> queue) {
           if (o == LongValues.ZEROES
               || o == LongValues.IDENTITY
-              || o == PackedInts.NullReader.DEFAULT_PACKED_LONG_VALUES_PAGE_SIZE) {
+              || o == PackedInts.NullReader.forCount(PackedLongValues.DEFAULT_PAGE_SIZE)) {
             return 0L;
           }
           if (o instanceof OrdinalMap) {
