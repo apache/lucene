@@ -563,8 +563,8 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
   public void testDuplicate() throws IOException {
     String s = "c++\nC쁠쁠\n세종\n세종\n세종시 세종 시";
     try (Reader rulesReader = new StringReader(s)) {
-      var dict = UserDictionary.open(rulesReader); // throws assertion if the bug exists
-      var four = dict.getRightId(3);
+      var dict = UserDictionary.open(rulesReader);
+      assertTrue(dict.getRightId(3) != 0);
       assertThrows(ArrayIndexOutOfBoundsException.class, () -> dict.getRightId(4));
     }
   }
