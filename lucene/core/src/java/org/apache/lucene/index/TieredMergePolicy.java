@@ -93,7 +93,7 @@ public class TieredMergePolicy extends MergePolicy {
   private double segsPerTier = 10.0;
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 20.0;
-  private int targetNumSegments = 1;
+  private int minNumSegments = 1;
 
   /** Sole constructor, setting all settings to their defaults. */
   public TieredMergePolicy() {
@@ -260,16 +260,16 @@ public class TieredMergePolicy extends MergePolicy {
 
   /**
    * Sets the target search concurrency. This is the number of threads that will be used for
-   * @param targetNumSegments
+   * @param minNumSegments
    * @return
    */
-  public TieredMergePolicy setTargetNumSegments(int targetNumSegments) {
-    this.targetNumSegments = targetNumSegments;
+  public TieredMergePolicy setMinNumSegments(int minNumSegments) {
+    this.minNumSegments = minNumSegments;
     return this;
   }
 
-  public int targetNumSegments() {
-    return targetNumSegments;
+  public int minNumSegments() {
+    return minNumSegments;
   }
 
   private static class SegmentSizeAndDocs {
@@ -440,7 +440,7 @@ public class TieredMergePolicy extends MergePolicy {
               + tooBigCount,
           mergeContext);
     }
-    int allowedDocCount = totalMaxDoc / targetNumSegments;
+    int allowedDocCount = totalMaxDoc / minNumSegments;
     return doFindMerges(
         sortedInfos,
         maxMergedSegmentBytes,
@@ -618,7 +618,7 @@ public class TieredMergePolicy extends MergePolicy {
         }
 
         final MergeScore score =
-            score(candidate, hitTooLarge, hitMaxDocs, segInfosSizes);
+            score(candidate, hitTooLarge || hitMaxDocs, segInfosSizes);
         if (verbose(mergeContext)) {
           message(
               "  maybe="
@@ -691,8 +691,7 @@ public class TieredMergePolicy extends MergePolicy {
   /** Expert: scores one merge; subclasses can override. */
   protected MergeScore score(
       List<SegmentCommitInfo> candidate,
-      boolean hitTooLarge,
-      boolean hitMaxSearchParallelism,
+      boolean tooLargeSegment,
       Map<SegmentCommitInfo, SegmentSizeAndDocs> segmentsSizes)
       throws IOException {
     long totBeforeMergeBytes = 0;
@@ -712,7 +711,7 @@ public class TieredMergePolicy extends MergePolicy {
     // lopsided merges (skew near 1.0) is no good; it means
     // O(N^2) merge cost over time:
     final double skew;
-    if (hitTooLarge) {
+    if (tooLargeSegment) {
       // Pretend the merge has perfect skew; skew doesn't
       // matter in this case because this merge will not
       // "cascade" and so it cannot lead to N^2 merge cost
@@ -1010,7 +1009,7 @@ public class TieredMergePolicy extends MergePolicy {
     sb.append("maxCFSSegmentSizeMB=").append(getMaxCFSSegmentSizeMB()).append(", ");
     sb.append("noCFSRatio=").append(noCFSRatio).append(", ");
     sb.append("deletesPctAllowed=").append(deletesPctAllowed).append(", ");
-    sb.append("targetSearchConcurrency=").append(targetNumSegments);
+    sb.append("targetNumSegments=").append(minNumSegments);
     return sb.toString();
   }
 }
