@@ -24,6 +24,8 @@ import java.util.NoSuchElementException;
  * Simplifies the implementation of iterators a bit. Modeled loosely after Google Guava's API.
  *
  * <p>Forked from com.carrotsearch.hppc.AbstractIterator
+ *
+ * @lucene.internal
  */
 public abstract class AbstractIterator<E> implements Iterator<E> {
   private static final int NOT_CACHED = 0;

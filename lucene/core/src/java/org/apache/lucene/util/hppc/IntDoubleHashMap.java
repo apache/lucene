@@ -41,6 +41,8 @@ import org.apache.lucene.util.RamUsageEstimator;
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntDoubleHashMap
  *
  * <p>github: https://github.com/carrotsearch/hppc release 0.10.0
+ *
+ * @lucene.internal
  */
 public class IntDoubleHashMap
     implements Iterable<IntDoubleHashMap.IntDoubleCursor>, Accountable, Cloneable {

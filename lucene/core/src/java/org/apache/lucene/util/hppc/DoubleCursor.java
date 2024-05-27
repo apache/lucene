@@ -17,7 +17,11 @@
 
 package org.apache.lucene.util.hppc;
 
-/** Forked from HPPC, holding int index and double value */
+/**
+ * Forked from HPPC, holding int index and double value.
+ *
+ * @lucene.internal
+ */
 public final class DoubleCursor {
   /**
    * The current value's index in the container this cursor belongs to. The meaning of this index is

@@ -17,7 +17,11 @@
 
 package org.apache.lucene.util.hppc;
 
-/** Forked from HPPC, holding int index and long value */
+/**
+ * Forked from HPPC, holding int index and long value.
+ *
+ * @lucene.internal
+ */
 public final class LongCursor {
   /**
    * The current value's index in the container this cursor belongs to. The meaning of this index is

@@ -32,6 +32,8 @@ import org.apache.lucene.util.RamUsageEstimator;
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.LongArrayList
  *
  * <p>github: https://github.com/carrotsearch/hppc release 0.10.0
+ *
+ * @lucene.internal
  */
 public class LongArrayList implements Iterable<LongCursor>, Cloneable, Accountable {
   private static final long BASE_RAM_BYTES_USED =

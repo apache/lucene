@@ -31,6 +31,8 @@ import org.apache.lucene.util.RamUsageEstimator;
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntIntHashMap
  *
  * <p>github: https://github.com/carrotsearch/hppc release 0.10.0
+ *
+ * @lucene.internal
  */
 public class IntIntHashMap implements Iterable<IntIntHashMap.IntIntCursor>, Accountable, Cloneable {
 

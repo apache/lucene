@@ -21,7 +21,11 @@ import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Constants for primitive maps. */
+/**
+ * Constants for primitive maps.
+ *
+ * @lucene.internal
+ */
 class HashContainers {
 
   static final int DEFAULT_EXPECTED_ELEMENTS = 4;

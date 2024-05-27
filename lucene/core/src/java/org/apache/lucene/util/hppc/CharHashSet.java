@@ -39,7 +39,9 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.CharHashSet
  *
- * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
+ * <p>github: https://github.com/carrotsearch/hppc release 0.10.0
+ *
+ * @lucene.internal
  */
 public class CharHashSet implements Iterable<CharCursor>, Accountable, Cloneable {
 
