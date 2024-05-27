@@ -28,28 +28,29 @@ import org.junit.After;
 import org.junit.Test;
 
 /**
- * Tests for {@link LongIntHashMap}.
+ * Tests for {@link CharObjectHashMap}.
  *
- * <p>Mostly forked and trimmed from com.carrotsearch.hppc.LongIntHashMapTest
+ * <p>Mostly forked and trimmed from com.carrotsearch.hppc.CharObjectHashMapTest
  *
  * <p>github: https://github.com/carrotsearch/hppc release: 0.9.0
  */
-public class TestLongIntHashMap extends LuceneTestCase {
+@SuppressWarnings({"rawtypes", "unchecked"})
+public class TestCharObjectHashMap extends LuceneTestCase {
   /* Ready to use key values. */
 
-  private final long keyE = 0;
-  private final long key1 = cast(1);
-  private final long key2 = cast(2);
-  private final long key3 = cast(3);
-  private final long key4 = cast(4);
+  private final char keyE = 0;
+  private final char key1 = cast(1);
+  private final char key2 = cast(2);
+  private final char key3 = cast(3);
+  private final char key4 = cast(4);
 
   /** Convert to target type from an integer used to test stuff. */
-  private long cast(int v) {
-    return v;
+  private char cast(int v) {
+    return (char) ('a' + v);
   }
 
   /** Create a new array of a given type and copy the arguments to this array. */
-  private long[] newArray(long... elements) {
+  private char[] newArray(char... elements) {
     return elements;
   }
 
@@ -58,7 +59,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
   }
 
   /** Check if the array's content is identical to a given sequence of elements. */
-  private static void assertSortedListEquals(long[] array, long... elements) {
+  private static void assertSortedListEquals(char[] array, char... elements) {
     assertEquals(elements.length, array.length);
     Arrays.sort(array);
     Arrays.sort(elements);
@@ -66,10 +67,9 @@ public class TestLongIntHashMap extends LuceneTestCase {
   }
 
   /** Check if the array's content is identical to a given sequence of elements. */
-  private static void assertSortedListEquals(int[] array, int... elements) {
+  private static void assertSortedListEquals(Object[] array, Object... elements) {
     assertEquals(elements.length, array.length);
     Arrays.sort(array);
-    Arrays.sort(elements);
     assertArrayEquals(elements, array);
   }
 
@@ -80,10 +80,10 @@ public class TestLongIntHashMap extends LuceneTestCase {
   private final int value4 = vcast(4);
 
   /** Per-test fresh initialized instance. */
-  private LongIntHashMap map = newInstance();
+  private CharObjectHashMap<Object> map = newInstance();
 
-  private LongIntHashMap newInstance() {
-    return new LongIntHashMap();
+  private CharObjectHashMap newInstance() {
+    return new CharObjectHashMap();
   }
 
   @After
@@ -110,14 +110,15 @@ public class TestLongIntHashMap extends LuceneTestCase {
 
   /** Create a new array of a given type and copy the arguments to this array. */
   /*  */
-  private int[] newvArray(int... elements) {
+  private Object[] newvArray(Object... elements) {
     return elements;
   }
 
-  private void assertSameMap(final LongIntHashMap c1, final LongIntHashMap c2) {
+  private void assertSameMap(
+      final CharObjectHashMap<Object> c1, final CharObjectHashMap<Object> c2) {
     assertEquals(c1.size(), c2.size());
 
-    for (LongIntHashMap.LongIntCursor entry : c1) {
+    for (CharObjectHashMap.CharObjectCursor entry : c1) {
       assertTrue(c2.containsKey(entry.key));
       assertEquals(entry.value, c2.get(entry.key));
     }
@@ -127,8 +128,8 @@ public class TestLongIntHashMap extends LuceneTestCase {
   @Test
   public void testEnsureCapacity() {
     final AtomicInteger expands = new AtomicInteger();
-    LongIntHashMap map =
-        new LongIntHashMap(0) {
+    CharObjectHashMap map =
+        new CharObjectHashMap(0) {
           @Override
           protected void allocateBuffers(int arraySize) {
             super.allocateBuffers(arraySize);
@@ -157,7 +158,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     map.put(key1, value2);
     map.put(key2, value3);
 
-    for (LongIntHashMap.LongIntCursor c : map) {
+    for (CharObjectHashMap.CharObjectCursor c : map) {
       assertTrue(map.indexExists(c.index));
       assertEquals(c.value, map.indexGet(c.index));
     }
@@ -210,7 +211,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     map.put(key2, value2);
     map.put(key3, value3);
 
-    assertSameMap(map, new LongIntHashMap(map));
+    assertSameMap(map, new CharObjectHashMap(map));
   }
 
   /* */
@@ -220,8 +221,8 @@ public class TestLongIntHashMap extends LuceneTestCase {
     map.put(key2, value2);
     map.put(key3, value3);
 
-    LongIntHashMap map2 =
-        LongIntHashMap.from(newArray(key1, key2, key3), newvArray(value1, value2, value3));
+    CharObjectHashMap map2 =
+        CharObjectHashMap.from(newArray(key1, key2, key3), newvArray(value1, value2, value3));
 
     assertSameMap(map, map2);
   }
@@ -249,10 +250,25 @@ public class TestLongIntHashMap extends LuceneTestCase {
 
   /* */
   @Test
+  public void testNullValue() {
+    map.put(key1, null);
+
+    assertTrue(map.containsKey(key1));
+    assertNull(map.get(key1));
+  }
+
+  @Test
   public void testPutOverExistingKey() {
     map.put(key1, value1);
     assertEquals(value1, map.put(key1, value3));
     assertEquals(value3, map.get(key1));
+
+    assertEquals(value3, map.put(key1, null));
+    assertTrue(map.containsKey(key1));
+    assertNull(map.get(key1));
+
+    assertNull(map.put(key1, value1));
+    assertEquals(value1, map.get(key1));
   }
 
   /* */
@@ -280,7 +296,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     map.put(key1, value1);
     map.put(key2, value1);
 
-    LongIntHashMap map2 = newInstance();
+    CharObjectHashMap map2 = newInstance();
 
     map2.put(key2, value2);
     map2.put(keyE, value1);
@@ -304,24 +320,12 @@ public class TestLongIntHashMap extends LuceneTestCase {
     assertEquals(value1, map.get(key1));
   }
 
-  @Test
-  public void testPutOrAdd() {
-    assertEquals(value1, map.putOrAdd(key1, value1, value2));
-    assertEquals(value3, map.putOrAdd(key1, value1, value2));
-  }
-
-  @Test
-  public void testAddTo() {
-    assertEquals(value1, map.addTo(key1, value1));
-    assertEquals(value3, map.addTo(key1, value2));
-  }
-
   /* */
   @Test
   public void testRemove() {
     map.put(key1, value1);
     assertEquals(value1, map.remove(key1));
-    assertEquals(0, map.remove(key1));
+    assertEquals(null, map.remove(key1));
     assertEquals(0, map.size());
 
     // These are internals, but perhaps worth asserting too.
@@ -331,7 +335,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
   /* */
   @Test
   public void testEmptyKey() {
-    final long empty = 0;
+    final char empty = 0;
 
     map.put(empty, value1);
     assertEquals(1, map.size());
@@ -343,16 +347,26 @@ public class TestLongIntHashMap extends LuceneTestCase {
     assertEquals(value1, map.iterator().next().value);
 
     map.remove(empty);
-    assertEquals(0, map.get(empty));
+    assertEquals(null, map.get(empty));
     assertEquals(0, map.size());
 
-    assertEquals(0, map.put(empty, value1));
+    map.put(empty, null);
+    assertEquals(1, map.size());
+    assertTrue(map.containsKey(empty));
+    assertNull(map.get(empty));
+
+    map.remove(empty);
+    assertEquals(0, map.size());
+    assertFalse(map.containsKey(empty));
+    assertNull(map.get(empty));
+
+    assertEquals(null, map.put(empty, value1));
     assertEquals(value1, map.put(empty, value2));
     map.clear();
     assertFalse(map.indexExists(map.indexOf(empty)));
-    assertEquals(0, map.put(empty, value1));
+    assertEquals(null, map.put(empty, value1));
     map.clear();
-    assertEquals(0, map.remove(empty));
+    assertEquals(null, map.remove(empty));
   }
 
   /* */
@@ -373,7 +387,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     map.put(key3, value1);
 
     int counted = 0;
-    for (LongCursor c : map.keys()) {
+    for (CharCursor c : map.keys()) {
       assertEquals(map.keys[c.index], c.value);
       counted++;
     }
@@ -392,8 +406,8 @@ public class TestLongIntHashMap extends LuceneTestCase {
     assertEquals(0, map.assigned);
 
     // Check values are cleared.
-    assertEquals(0, map.put(key1, value1));
-    assertEquals(0, map.remove(key2));
+    assertEquals(null, map.put(key1, value1));
+    assertEquals(null, map.remove(key2));
     map.clear();
 
     // Check if the map behaves properly upon subsequent use.
@@ -424,7 +438,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     map.remove(key2);
 
     int count = 0;
-    for (LongIntHashMap.LongIntCursor cursor : map) {
+    for (CharObjectHashMap.CharObjectCursor cursor : map) {
       count++;
       assertTrue(map.containsKey(cursor.key));
       assertEquals(cursor.value, map.get(cursor.key));
@@ -444,7 +458,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     final AtomicInteger reallocations = new AtomicInteger();
     final int elements = 0x7F;
     map =
-        new LongIntHashMap(elements, 1f) {
+        new CharObjectHashMap(elements, 1f) {
           @Override
           protected double verifyLoadFactor(double loadFactor) {
             // Skip load factor sanity range checking.
@@ -465,7 +479,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     }
 
     // Non-existent key.
-    long outOfSet = cast(elements + 1);
+    char outOfSet = cast(elements + 1);
     map.remove(outOfSet);
     assertFalse(map.containsKey(outOfSet));
     assertEquals(reallocationsBefore, reallocations.get());
@@ -486,17 +500,17 @@ public class TestLongIntHashMap extends LuceneTestCase {
 
   @Test
   public void testHashCodeEquals() {
-    LongIntHashMap l0 = newInstance();
+    CharObjectHashMap l0 = newInstance();
     assertEquals(0, l0.hashCode());
     assertEquals(l0, newInstance());
 
-    LongIntHashMap l1 =
-        LongIntHashMap.from(newArray(key1, key2, key3), newvArray(value1, value2, value3));
+    CharObjectHashMap l1 =
+        CharObjectHashMap.from(newArray(key1, key2, key3), newvArray(value1, value2, value3));
 
-    LongIntHashMap l2 =
-        LongIntHashMap.from(newArray(key2, key1, key3), newvArray(value2, value1, value3));
+    CharObjectHashMap l2 =
+        CharObjectHashMap.from(newArray(key2, key1, key3), newvArray(value2, value1, value3));
 
-    LongIntHashMap l3 = LongIntHashMap.from(newArray(key1, key2), newvArray(value2, value1));
+    CharObjectHashMap l3 = CharObjectHashMap.from(newArray(key1, key2), newvArray(value2, value1));
 
     assertEquals(l1.hashCode(), l2.hashCode());
     assertEquals(l1, l2);
@@ -507,9 +521,9 @@ public class TestLongIntHashMap extends LuceneTestCase {
 
   @Test
   public void testBug_HPPC37() {
-    LongIntHashMap l1 = LongIntHashMap.from(newArray(key1), newvArray(value1));
+    CharObjectHashMap l1 = CharObjectHashMap.from(newArray(key1), newvArray(value1));
 
-    LongIntHashMap l2 = LongIntHashMap.from(newArray(key2), newvArray(value1));
+    CharObjectHashMap l2 = CharObjectHashMap.from(newArray(key2), newvArray(value1));
 
     assertFalse(l1.equals(l2));
     assertFalse(l2.equals(l1));
@@ -527,29 +541,27 @@ public class TestLongIntHashMap extends LuceneTestCase {
       map.clear();
 
       for (int round = 0; round < size * 20; round++) {
-        long key = cast(rnd.nextInt(size));
+        char key = cast(rnd.nextInt(size));
         if (rnd.nextInt(50) == 0) {
           key = 0;
         }
 
         int value = vcast(rnd.nextInt());
 
-        boolean hadOldValue = map.containsKey(key);
         if (rnd.nextBoolean()) {
-          int previousValue;
+          Object previousValue;
           if (rnd.nextBoolean()) {
             int index = map.indexOf(key);
             if (map.indexExists(index)) {
               previousValue = map.indexReplace(index, value);
             } else {
               map.indexInsert(index, key, value);
-              previousValue = 0;
+              previousValue = null;
             }
           } else {
             previousValue = map.put(key, value);
           }
-          assertEquals(
-              other.put(key, value), ((previousValue) == 0) && !hadOldValue ? null : previousValue);
+          assertEquals(other.put(key, value), previousValue);
 
           assertEquals(value, map.get(key));
           assertEquals(value, map.indexGet(map.indexOf(key)));
@@ -557,12 +569,11 @@ public class TestLongIntHashMap extends LuceneTestCase {
           assertTrue(map.indexExists(map.indexOf(key)));
         } else {
           assertEquals(other.containsKey(key), map.containsKey(key));
-          int previousValue =
+          Object previousValue =
               map.containsKey(key) && rnd.nextBoolean()
                   ? map.indexRemove(map.indexOf(key))
                   : map.remove(key);
-          assertEquals(
-              other.remove(key), ((previousValue) == 0) && !hadOldValue ? null : previousValue);
+          assertEquals(other.remove(key), previousValue);
         }
 
         assertEquals(other.size(), map.size());
@@ -579,7 +590,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     this.map.put(key2, value2);
     this.map.put(key3, value3);
 
-    LongIntHashMap cloned = map.clone();
+    CharObjectHashMap cloned = map.clone();
     cloned.remove(key1);
 
     assertSortedListEquals(map.keys().toArray(), key1, key2, key3);
@@ -609,7 +620,7 @@ public class TestLongIntHashMap extends LuceneTestCase {
     map.put(key3, value1);
 
     int counted = 0;
-    for (IntCursor c : map.values()) {
+    for (ObjectCursor c : map.values()) {
       assertEquals(map.values[c.index], c.value);
       counted++;
     }
@@ -619,15 +630,15 @@ public class TestLongIntHashMap extends LuceneTestCase {
   /* */
   @Test
   public void testEqualsSameClass() {
-    LongIntHashMap l1 = newInstance();
+    CharObjectHashMap l1 = newInstance();
     l1.put(key1, value0);
     l1.put(key2, value1);
     l1.put(key3, value2);
 
-    LongIntHashMap l2 = new LongIntHashMap(l1);
+    CharObjectHashMap l2 = new CharObjectHashMap(l1);
     l2.putAll(l1);
 
-    LongIntHashMap l3 = new LongIntHashMap(l2);
+    CharObjectHashMap l3 = new CharObjectHashMap(l2);
     l3.putAll(l2);
     l3.put(key4, value0);
 
@@ -639,18 +650,18 @@ public class TestLongIntHashMap extends LuceneTestCase {
   /* */
   @Test
   public void testEqualsSubClass() {
-    class Sub extends LongIntHashMap {}
+    class Sub extends CharObjectHashMap {}
 
-    LongIntHashMap l1 = newInstance();
+    CharObjectHashMap l1 = newInstance();
     l1.put(key1, value0);
     l1.put(key2, value1);
     l1.put(key3, value2);
 
-    LongIntHashMap l2 = new Sub();
+    CharObjectHashMap l2 = new Sub();
     l2.putAll(l1);
     l2.put(key4, value3);
 
-    LongIntHashMap l3 = new Sub();
+    CharObjectHashMap l3 = new Sub();
     l3.putAll(l2);
 
     assertNotEquals(l1, l2);

@@ -335,7 +335,7 @@ public class TestLongObjectHashMap extends LuceneTestCase {
   /* */
   @Test
   public void testEmptyKey() {
-    final int empty = 0;
+    final long empty = 0;
 
     map.put(empty, value1);
     assertEquals(1, map.size());

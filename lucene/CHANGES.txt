@@ -130,6 +130,8 @@ Optimizations
 
 * GITHUB#13406: Replace List<Integer> by IntArrayList and List<Long> by LongArrayList. (Bruno Roustant)
 
+* GITHUB#13420: Replace Map<Character> by CharObjectHashMap and Set<Character> by CharHashSet. (Bruno Roustant)
+
 Bug Fixes
 ---------------------
 

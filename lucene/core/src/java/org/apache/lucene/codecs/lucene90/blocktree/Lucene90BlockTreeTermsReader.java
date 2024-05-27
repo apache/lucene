@@ -280,8 +280,8 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   private static List<String> sortFieldNames(
       IntObjectHashMap<FieldReader> fieldMap, FieldInfos fieldInfos) {
     List<String> fieldNames = new ArrayList<>(fieldMap.size());
-    for (IntCursor fieldNumberCursor : fieldMap.keys()) {
-      fieldNames.add(fieldInfos.fieldInfo(fieldNumberCursor.value).name);
+    for (IntCursor fieldNumber : fieldMap.keys()) {
+      fieldNames.add(fieldInfos.fieldInfo(fieldNumber.value).name);
     }
     fieldNames.sort(null);
     return Collections.unmodifiableList(fieldNames);

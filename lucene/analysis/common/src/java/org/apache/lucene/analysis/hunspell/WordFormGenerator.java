@@ -43,6 +43,8 @@ import org.apache.lucene.analysis.hunspell.AffixedWord.Affix;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.IntsRefFSTEnum;
+import org.apache.lucene.util.hppc.CharHashSet;
+import org.apache.lucene.util.hppc.CharObjectHashMap;
 
 /**
  * A utility class used for generating possible word forms by adding affixes to stems ({@link
@@ -51,7 +53,7 @@ import org.apache.lucene.util.fst.IntsRefFSTEnum;
  */
 public class WordFormGenerator {
   private final Dictionary dictionary;
-  private final Map<Character, List<AffixEntry>> affixes = new HashMap<>();
+  private final CharObjectHashMap<List<AffixEntry>> affixes = new CharObjectHashMap<>();
   private final Stemmer stemmer;
 
   public WordFormGenerator(Dictionary dictionary) {
@@ -76,7 +78,15 @@ public class WordFormGenerator {
           char flag = dictionary.affixData(id, AFFIX_FLAG);
           var entry =
               new AffixEntry(id, flag, kind, toString(kind, io.input), strip(id), condition(id));
-          affixes.computeIfAbsent(flag, __ -> new ArrayList<>()).add(entry);
+          List<AffixEntry> entries;
+          int index = affixes.indexOf(flag);
+          if (index < 0) {
+            entries = new ArrayList<>();
+            affixes.indexInsert(index, flag, entries);
+          } else {
+            entries = affixes.indexGet(index);
+          }
+          entries.add(entry);
         }
       }
     } catch (IOException e) {
@@ -163,11 +173,7 @@ public class WordFormGenerator {
   }
 
   private static char[] deduplicate(char[] flags) {
-    Set<Character> set = new HashSet<>();
-    for (char flag : flags) {
-      set.add(flag);
-    }
-    return toSortedCharArray(set);
+    return toSortedCharArray(CharHashSet.from(flags));
   }
 
   /**
@@ -442,7 +448,7 @@ public class WordFormGenerator {
                 int innerSuffix) {
               String candidate = new String(word, offset, length);
               stemCounts.merge(candidate, 1, Integer::sum);
-              Set<Character> flags = new LinkedHashSet<>();
+              CharHashSet flags = new CharHashSet();
               if (outerPrefix >= 0) flags.add(dictionary.affixData(outerPrefix, AFFIX_FLAG));
               if (innerPrefix >= 0) flags.add(dictionary.affixData(innerPrefix, AFFIX_FLAG));
               if (outerSuffix >= 0) flags.add(dictionary.affixData(outerSuffix, AFFIX_FLAG));
@@ -515,7 +521,7 @@ public class WordFormGenerator {
         if (wordSet.contains(extra)) continue;
 
         if (forbidden.contains(extra) && dictionary.forbiddenword != FLAG_UNSET) {
-          addEntry(toEdit, toAdd, extra, Set.of(dictionary.forbiddenword));
+          addEntry(toEdit, toAdd, extra, CharHashSet.from(dictionary.forbiddenword));
         } else {
           extraGenerated.add(extra);
         }
@@ -525,7 +531,7 @@ public class WordFormGenerator {
     }
 
     private void addEntry(
-        List<DictEntry> toEdit, List<DictEntry> toAdd, String stem, Set<Character> flags) {
+        List<DictEntry> toEdit, List<DictEntry> toAdd, String stem, CharHashSet flags) {
       String flagString = toFlagString(flags);
       (existingStems.contains(stem) ? toEdit : toAdd).add(DictEntry.create(stem, flagString));
     }
@@ -589,20 +595,20 @@ public class WordFormGenerator {
           .flatMap(swc -> expansionCache.computeIfAbsent(swc, expandToWords).stream());
     }
 
-    private List<AffixedWord> expand(String stem, Set<Character> flagSet) {
+    private List<AffixedWord> expand(String stem, CharHashSet flagSet) {
       return getAllWordForms(stem, toFlagString(flagSet), checkCanceled);
     }
 
-    private String toFlagString(Set<Character> flagSet) {
+    private String toFlagString(CharHashSet flagSet) {
       return dictionary.flagParsingStrategy.printFlags(Dictionary.toSortedCharArray(flagSet));
     }
   }
 
   private static class FlagSet {
-    final Set<Character> flags;
+    final CharHashSet flags;
     final Dictionary dictionary;
 
-    FlagSet(Set<Character> flags, Dictionary dictionary) {
+    FlagSet(CharHashSet flags, Dictionary dictionary) {
       this.flags = flags;
       this.dictionary = dictionary;
     }
@@ -620,8 +626,10 @@ public class WordFormGenerator {
       return Objects.hash(flags, dictionary);
     }
 
-    static Set<Character> flatten(Set<FlagSet> flagSets) {
-      return flagSets.stream().flatMap(f -> f.flags.stream()).collect(Collectors.toSet());
+    static CharHashSet flatten(Set<FlagSet> flagSets) {
+      CharHashSet set = new CharHashSet(flagSets.size() << 1);
+      flagSets.forEach(flagSet -> set.addAll(flagSet.flags));
+      return set;
     }
 
     @Override

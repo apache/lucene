@@ -17,29 +17,39 @@
 
 package org.apache.lucene.util.hppc;
 
-import static org.apache.lucene.util.hppc.HashContainers.*;
+import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_EXPECTED_ELEMENTS;
+import static org.apache.lucene.util.hppc.HashContainers.DEFAULT_LOAD_FACTOR;
+import static org.apache.lucene.util.hppc.HashContainers.ITERATION_SEED;
+import static org.apache.lucene.util.hppc.HashContainers.MAX_LOAD_FACTOR;
+import static org.apache.lucene.util.hppc.HashContainers.MIN_LOAD_FACTOR;
+import static org.apache.lucene.util.hppc.HashContainers.checkLoadFactor;
+import static org.apache.lucene.util.hppc.HashContainers.expandAtCount;
+import static org.apache.lucene.util.hppc.HashContainers.iterationIncrement;
+import static org.apache.lucene.util.hppc.HashContainers.minBufferSize;
+import static org.apache.lucene.util.hppc.HashContainers.nextBufferSize;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
- * A hash set of <code>int</code>s, implemented using open addressing with linear probing for
+ * A hash set of <code>char</code>s, implemented using open addressing with linear probing for
  * collision resolution.
  *
- * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntHashSet
+ * <p>Mostly forked and trimmed from com.carrotsearch.hppc.CharHashSet
  *
  * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
  */
-public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
+public class CharHashSet implements Iterable<CharCursor>, Accountable, Cloneable {
 
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(IntHashSet.class);
+      RamUsageEstimator.shallowSizeOfInstance(CharHashSet.class);
+
+  private static final char EMPTY_KEY = (char) 0;
 
   /** The hash array holding keys. */
-  public int[] keys;
+  public char[] keys;
 
   /**
    * The number of stored keys (assigned key slots), excluding the special "empty" key, if any.
@@ -65,7 +75,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   protected int iterationSeed;
 
   /** New instance with sane defaults. */
-  public IntHashSet() {
+  public CharHashSet() {
     this(DEFAULT_EXPECTED_ELEMENTS);
   }
 
@@ -75,7 +85,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @param expectedElements The expected number of elements guaranteed not to cause a rehash
    *     (inclusive).
    */
-  public IntHashSet(int expectedElements) {
+  public CharHashSet(int expectedElements) {
     this(expectedElements, DEFAULT_LOAD_FACTOR);
   }
 
@@ -87,36 +97,30 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @param loadFactor The load factor for internal buffers. Insane load factors (zero, full
    *     capacity) are rejected by {@link #verifyLoadFactor(double)}.
    */
-  public IntHashSet(int expectedElements, double loadFactor) {
+  public CharHashSet(int expectedElements, double loadFactor) {
     this.loadFactor = verifyLoadFactor(loadFactor);
     iterationSeed = ITERATION_SEED.incrementAndGet();
     ensureCapacity(expectedElements);
   }
 
   /** New instance copying elements from another set. */
-  public IntHashSet(IntHashSet set) {
+  public CharHashSet(CharHashSet set) {
     this(set.size());
     addAll(set);
   }
 
-  /** New instance copying elements from another collection. */
-  public IntHashSet(Collection<Integer> collection) {
-    this(collection.size());
-    addAll(collection);
-  }
-
-  public boolean add(int key) {
+  public boolean add(char key) {
     if (((key) == 0)) {
       assert ((keys[mask + 1]) == 0);
       boolean added = !hasEmptyKey;
       hasEmptyKey = true;
       return added;
     } else {
-      final int[] keys = this.keys;
+      final char[] keys = this.keys;
       final int mask = this.mask;
       int slot = hashKey(key) & mask;
 
-      int existing;
+      char existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((key) == (existing))) {
           return false;
@@ -141,10 +145,10 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @return Returns the number of elements actually added as a result of this call (not previously
    *     present in the set).
    */
-  public final int addAll(int... elements) {
+  public final int addAll(char... elements) {
     ensureCapacity(elements.length);
     int count = 0;
-    for (int e : elements) {
+    for (char e : elements) {
       if (add(e)) {
         count++;
       }
@@ -158,9 +162,9 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @return Returns the number of elements actually added as a result of this call (not previously
    *     present in the set).
    */
-  public int addAll(IntHashSet set) {
+  public int addAll(CharHashSet set) {
     ensureCapacity(set.size());
-    return addAll((Iterable<? extends IntCursor>) set);
+    return addAll((Iterable<? extends CharCursor>) set);
   }
 
   /**
@@ -169,9 +173,9 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @return Returns the number of elements actually added as a result of this call (not previously
    *     present in the set).
    */
-  public int addAll(Iterable<? extends IntCursor> iterable) {
+  public int addAll(Iterable<? extends CharCursor> iterable) {
     int count = 0;
-    for (IntCursor cursor : iterable) {
+    for (CharCursor cursor : iterable) {
       if (add(cursor.value)) {
         count++;
       }
@@ -179,31 +183,21 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
     return count;
   }
 
-  public int addAll(Collection<Integer> collection) {
-    int count = 0;
-    for (int element : collection) {
-      if (add(element)) {
-        count++;
-      }
-    }
-    return count;
-  }
+  public char[] toArray() {
 
-  public int[] toArray() {
-
-    final int[] cloned = (new int[size()]);
+    final char[] cloned = (new char[size()]);
     int j = 0;
     if (hasEmptyKey) {
-      cloned[j++] = 0;
+      cloned[j++] = EMPTY_KEY;
     }
 
-    final int[] keys = this.keys;
+    final char[] keys = this.keys;
     int seed = nextIterationSeed();
     int inc = iterationIncrement(seed);
     for (int i = 0, mask = this.mask, slot = seed & mask;
         i <= mask;
         i++, slot = (slot + inc) & mask) {
-      int existing;
+      char existing;
       if (!((existing = keys[slot]) == 0)) {
         cloned[j++] = existing;
       }
@@ -213,17 +207,17 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   }
 
   /** An alias for the (preferred) {@link #removeAll}. */
-  public boolean remove(int key) {
+  public boolean remove(char key) {
     if (((key) == 0)) {
       boolean hadEmptyKey = hasEmptyKey;
       hasEmptyKey = false;
       return hadEmptyKey;
     } else {
-      final int[] keys = this.keys;
+      final char[] keys = this.keys;
       final int mask = this.mask;
       int slot = hashKey(key) & mask;
 
-      int existing;
+      char existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((key) == (existing))) {
           shiftConflictingKeys(slot);
@@ -240,20 +234,20 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    *
    * @return Returns the number of elements actually removed as a result of this call.
    */
-  public int removeAll(IntHashSet other) {
+  public int removeAll(CharHashSet other) {
     final int before = size();
 
     // Try to iterate over the smaller set or over the container that isn't implementing
     // efficient contains() lookup.
 
     if (other.size() >= size()) {
-      if (hasEmptyKey && other.contains(0)) {
+      if (hasEmptyKey && other.contains(EMPTY_KEY)) {
         hasEmptyKey = false;
       }
 
-      final int[] keys = this.keys;
+      final char[] keys = this.keys;
       for (int slot = 0, max = this.mask; slot <= max; ) {
-        int existing;
+        char existing;
         if (!((existing = keys[slot]) == 0) && other.contains(existing)) {
           // Shift, do not increment slot.
           shiftConflictingKeys(slot);
@@ -262,7 +256,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
         }
       }
     } else {
-      for (IntCursor c : other) {
+      for (CharCursor c : other) {
         remove(c.value);
       }
     }
@@ -270,14 +264,14 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
     return before - size();
   }
 
-  public boolean contains(int key) {
+  public boolean contains(char key) {
     if (((key) == 0)) {
       return hasEmptyKey;
     } else {
-      final int[] keys = this.keys;
+      final char[] keys = this.keys;
       final int mask = this.mask;
       int slot = hashKey(key) & mask;
-      int existing;
+      char existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((key) == (existing))) {
           return true;
@@ -291,7 +285,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   public void clear() {
     assigned = 0;
     hasEmptyKey = false;
-    Arrays.fill(keys, 0);
+    Arrays.fill(keys, EMPTY_KEY);
   }
 
   public void release() {
@@ -313,7 +307,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    */
   public void ensureCapacity(int expectedElements) {
     if (expectedElements > resizeAt || keys == null) {
-      final int[] prevKeys = this.keys;
+      final char[] prevKeys = this.keys;
       allocateBuffers(minBufferSize(expectedElements, loadFactor));
       if (prevKeys != null && !isEmpty()) {
         rehash(prevKeys);
@@ -328,9 +322,9 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   @Override
   public int hashCode() {
     int h = hasEmptyKey ? 0xDEADBEEF : 0;
-    final int[] keys = this.keys;
+    final char[] keys = this.keys;
     for (int slot = mask; slot >= 0; slot--) {
-      int existing;
+      char existing;
       if (!((existing = keys[slot]) == 0)) {
         h += BitMixer.mix(existing);
       }
@@ -345,12 +339,12 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   }
 
   /** Return true if all keys of some other container exist in this container. */
-  private boolean sameKeys(IntHashSet other) {
+  private boolean sameKeys(CharHashSet other) {
     if (other.size() != size()) {
       return false;
     }
 
-    for (IntCursor c : other) {
+    for (CharCursor c : other) {
       if (!contains(c.value)) {
         return false;
       }
@@ -360,10 +354,10 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   }
 
   @Override
-  public IntHashSet clone() {
+  public CharHashSet clone() {
     try {
       /*  */
-      IntHashSet cloned = (IntHashSet) super.clone();
+      CharHashSet cloned = (CharHashSet) super.clone();
       cloned.keys = keys.clone();
       cloned.hasEmptyKey = hasEmptyKey;
       cloned.iterationSeed = ITERATION_SEED.incrementAndGet();
@@ -374,7 +368,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   }
 
   @Override
-  public Iterator<IntCursor> iterator() {
+  public Iterator<CharCursor> iterator() {
     return new EntryIterator();
   }
 
@@ -393,24 +387,24 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   }
 
   /** An iterator implementation for {@link #iterator}. */
-  protected final class EntryIterator extends AbstractIterator<IntCursor> {
-    private final IntCursor cursor;
+  protected final class EntryIterator extends AbstractIterator<CharCursor> {
+    private final CharCursor cursor;
     private final int increment;
     private int index;
     private int slot;
 
     public EntryIterator() {
-      cursor = new IntCursor();
+      cursor = new CharCursor();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;
     }
 
     @Override
-    protected IntCursor fetch() {
-      final int mask = IntHashSet.this.mask;
+    protected CharCursor fetch() {
+      final int mask = CharHashSet.this.mask;
       while (index <= mask) {
-        int existing;
+        char existing;
         index++;
         slot = (slot + increment) & mask;
         if (!((existing = keys[slot]) == 0)) {
@@ -422,7 +416,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
 
       if (index == mask + 1 && hasEmptyKey) {
         cursor.index = index++;
-        cursor.value = 0;
+        cursor.value = EMPTY_KEY;
         return cursor;
       }
 
@@ -431,12 +425,12 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   }
 
   /**
-   * Create a set from a variable number of arguments or an array of <code>int</code>. The elements
+   * Create a set from a variable number of arguments or an array of <code>char</code>. The elements
    * are copied from the argument to the internal buffer.
    */
   /*  */
-  public static IntHashSet from(int... elements) {
-    final IntHashSet set = new IntHashSet(elements.length);
+  public static CharHashSet from(char... elements) {
+    final CharHashSet set = new CharHashSet(elements.length);
     set.addAll(elements);
     return set;
   }
@@ -446,7 +440,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    *
    * <p>The output from this function should evenly distribute keys across the entire integer range.
    */
-  protected int hashKey(int key) {
+  protected int hashKey(char key) {
     assert !((key) == 0); // Handled as a special case (empty slot marker).
     return BitMixer.mixPhi(key);
   }
@@ -469,15 +463,15 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @return A non-negative value of the logical "index" of the key in the set or a negative value
    *     if the key did not exist.
    */
-  public int indexOf(int key) {
+  public int indexOf(char key) {
     final int mask = this.mask;
     if (((key) == 0)) {
       return hasEmptyKey ? mask + 1 : ~(mask + 1);
     } else {
-      final int[] keys = this.keys;
+      final char[] keys = this.keys;
       int slot = hashKey(key) & mask;
 
-      int existing;
+      char existing;
       while (!((existing = keys[slot]) == 0)) {
         if (((key) == (existing))) {
           return slot;
@@ -512,7 +506,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @throws AssertionError If assertions are enabled and the index does not correspond to an
    *     existing key.
    */
-  public int indexGet(int index) {
+  public char indexGet(int index) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
@@ -531,12 +525,12 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @throws AssertionError If assertions are enabled and the index does not correspond to an
    *     existing key.
    */
-  public int indexReplace(int index, int equivalentKey) {
+  public char indexReplace(int index, char equivalentKey) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
     assert ((keys[index]) == (equivalentKey));
 
-    int previousValue = keys[index];
+    char previousValue = keys[index];
     keys[index] = equivalentKey;
     return previousValue;
   }
@@ -550,7 +544,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * @throws AssertionError If assertions are enabled and the index does not correspond to an
    *     existing key.
    */
-  public void indexInsert(int index, int key) {
+  public void indexInsert(int index, char key) {
     assert index < 0 : "The index must not point at an existing key.";
 
     index = ~index;
@@ -600,13 +594,13 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
   }
 
   /** Rehash from old buffers to new buffers. */
-  protected void rehash(int[] fromKeys) {
+  protected void rehash(char[] fromKeys) {
     assert HashContainers.checkPowerOfTwo(fromKeys.length - 1);
 
     // Rehash all stored keys into the new buffers.
-    final int[] keys = this.keys;
+    final char[] keys = this.keys;
     final int mask = this.mask;
-    int existing;
+    char existing;
     for (int i = fromKeys.length - 1; --i >= 0; ) {
       if (!((existing = fromKeys[i]) == 0)) {
         int slot = hashKey(existing) & mask;
@@ -626,10 +620,10 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
     assert Integer.bitCount(arraySize) == 1;
 
     // Ensure no change is done if we hit an OOM.
-    int[] prevKeys = this.keys;
+    char[] prevKeys = this.keys;
     try {
       int emptyElementSlot = 1;
-      this.keys = (new int[arraySize + emptyElementSlot]);
+      this.keys = (new char[arraySize + emptyElementSlot]);
     } catch (OutOfMemoryError e) {
       this.keys = prevKeys;
       throw new BufferAllocationException(
@@ -649,11 +643,11 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
    * assign the pending element to the previous buffer (possibly violating the invariant of having
    * at least one empty slot) and rehash all keys, substituting new buffers at the end.
    */
-  protected void allocateThenInsertThenRehash(int slot, int pendingKey) {
+  protected void allocateThenInsertThenRehash(int slot, char pendingKey) {
     assert assigned == resizeAt && ((keys[slot]) == 0) && !((pendingKey) == 0);
 
     // Try to allocate new buffers first. If we OOM, we leave in a consistent state.
-    final int[] prevKeys = this.keys;
+    final char[] prevKeys = this.keys;
     allocateBuffers(nextBufferSize(mask + 1, size(), loadFactor));
     assert this.keys.length > prevKeys.length;
 
@@ -667,14 +661,14 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
 
   /** Shift all the slot-conflicting keys allocated to (and including) <code>slot</code>. */
   protected void shiftConflictingKeys(int gapSlot) {
-    final int[] keys = this.keys;
+    final char[] keys = this.keys;
     final int mask = this.mask;
 
     // Perform shifts of conflicting keys to fill in the gap.
     int distance = 0;
     while (true) {
       final int slot = (gapSlot + (++distance)) & mask;
-      final int existing = keys[slot];
+      final char existing = keys[slot];
       if (((existing) == 0)) {
         break;
       }
@@ -693,7 +687,7 @@ public class IntHashSet implements Iterable<IntCursor>, Accountable, Cloneable {
     }
 
     // Mark the last found gap slot without a conflict as empty.
-    keys[gapSlot] = 0;
+    keys[gapSlot] = EMPTY_KEY;
     assigned--;
   }
 }

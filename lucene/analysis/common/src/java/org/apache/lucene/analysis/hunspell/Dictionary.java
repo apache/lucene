@@ -41,7 +41,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -49,7 +48,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntryAccumulator;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntrySupplier;
 import org.apache.lucene.store.Directory;
@@ -60,6 +58,7 @@ import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.IntSequenceOutputs;
 import org.apache.lucene.util.fst.Util;
+import org.apache.lucene.util.hppc.CharHashSet;
 import org.apache.lucene.util.hppc.IntArrayList;
 import org.apache.lucene.util.hppc.IntCursor;
 
@@ -334,8 +333,8 @@ public class Dictionary {
       throws IOException, ParseException {
     TreeMap<String, IntArrayList> prefixes = new TreeMap<>();
     TreeMap<String, IntArrayList> suffixes = new TreeMap<>();
-    Set<Character> prefixContFlags = new HashSet<>();
-    Set<Character> suffixContFlags = new HashSet<>();
+    CharHashSet prefixContFlags = new CharHashSet();
+    CharHashSet suffixContFlags = new CharHashSet();
     Map<String, Integer> seenPatterns = new HashMap<>();
 
     // zero condition -> 0 ord
@@ -673,7 +672,7 @@ public class Dictionary {
    */
   private void parseAffix(
       TreeMap<String, IntArrayList> affixes,
-      Set<Character> secondStageFlags,
+      CharHashSet secondStageFlags,
       String header,
       LineNumberReader reader,
       AffixKind kind,
@@ -1173,10 +1172,14 @@ public class Dictionary {
   }
 
   char[] allNonSuggestibleFlags() {
-    return Dictionary.toSortedCharArray(
-        Stream.of(HIDDEN_FLAG, noSuggest, forbiddenword, onlyincompound, subStandard)
-            .filter(c -> c != FLAG_UNSET)
-            .collect(Collectors.toSet()));
+    CharHashSet set = new CharHashSet(5);
+    set.add(HIDDEN_FLAG);
+    for (char c : new char[] {noSuggest, forbiddenword, onlyincompound, subStandard}) {
+      if (c != FLAG_UNSET) {
+        set.add(c);
+      }
+    }
+    return Dictionary.toSortedCharArray(set);
   }
 
   private List<String> readMorphFields(String word, String unparsed) {
@@ -1533,12 +1536,8 @@ public class Dictionary {
     return reuse;
   }
 
-  static char[] toSortedCharArray(Set<Character> set) {
-    char[] chars = new char[set.size()];
-    int i = 0;
-    for (Character c : set) {
-      chars[i++] = c;
-    }
+  static char[] toSortedCharArray(CharHashSet set) {
+    char[] chars = set.toArray();
     Arrays.sort(chars);
     return chars;
   }
