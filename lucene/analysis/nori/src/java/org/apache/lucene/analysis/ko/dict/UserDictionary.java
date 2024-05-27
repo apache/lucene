@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -134,6 +135,9 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     this.fst =
         new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     int[][] segmentations = _segmentations.toArray(new int[_segmentations.size()][]);
+    if (entryIndex != rightIds.length) {
+      rightIds = ArrayUtil.copyOfSubArray(rightIds, 0, entryIndex);
+    }
     this.morphAtts = new UserMorphData(segmentations, rightIds);
   }
 
