@@ -26,13 +26,13 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.hppc.LongHashSet;
 
 /**
  * Tracks the stream of {@link FrozenBufferedUpdates}. When DocumentsWriterPerThread flushes, its

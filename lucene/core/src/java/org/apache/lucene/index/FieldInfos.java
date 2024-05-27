@@ -33,9 +33,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).

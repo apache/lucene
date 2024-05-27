@@ -30,9 +30,9 @@ import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.hppc.IntHashSet;
 
 /**
  * Find all slop-valid position-combinations (matches) encountered while traversing/hopping the

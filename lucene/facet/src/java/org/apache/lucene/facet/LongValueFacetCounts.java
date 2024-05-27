@@ -17,8 +17,6 @@
 
 package org.apache.lucene.facet;
 
-import com.carrotsearch.hppc.LongIntHashMap;
-import com.carrotsearch.hppc.cursors.LongIntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +28,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
@@ -391,7 +390,7 @@ public class LongValueFacetCounts extends Facets {
       }
     }
     if (hashCounts.size() != 0) {
-      for (LongIntCursor c : hashCounts) {
+      for (LongIntHashMap.LongIntCursor c : hashCounts) {
         int count = c.value;
         if (count != 0) {
           labelValues.add(new LabelAndValue(Long.toString(c.key), c.value));
@@ -459,7 +458,7 @@ public class LongValueFacetCounts extends Facets {
 
     if (hashCounts.size() != 0) {
       childCount += hashCounts.size();
-      for (LongIntCursor c : hashCounts) {
+      for (LongIntHashMap.LongIntCursor c : hashCounts) {
         int count = c.value;
         if (count != 0) {
           if (e == null) {
@@ -503,7 +502,7 @@ public class LongValueFacetCounts extends Facets {
     long[] hashValues = new long[this.hashCounts.size()];
 
     int upto = 0;
-    for (LongIntCursor c : this.hashCounts) {
+    for (LongIntHashMap.LongIntCursor c : this.hashCounts) {
       if (c.value != 0) {
         hashCounts[upto] = c.value;
         hashValues[upto] = c.key;
@@ -602,7 +601,7 @@ public class LongValueFacetCounts extends Facets {
       }
 
       if (hashCounts.size() != 0) {
-        for (LongIntCursor c : hashCounts) {
+        for (LongIntHashMap.LongIntCursor c : hashCounts) {
           if (c.value != 0) {
             b.append("  ");
             b.append(c.key);

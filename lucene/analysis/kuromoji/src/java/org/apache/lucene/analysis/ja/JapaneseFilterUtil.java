@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis.ja;
 
 import java.util.Map;
-import org.apache.lucene.util.hppc.CharObjectHashMap;
+import org.apache.lucene.internal.hppc.CharObjectHashMap;
 
 /** Utility methods for Japanese filters. */
 class JapaneseFilterUtil {

@@ -19,9 +19,9 @@ package org.apache.lucene.analysis.cn.smart.hhmm;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.cn.smart.Utility;
-import org.apache.lucene.util.hppc.IntArrayList;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
-import org.apache.lucene.util.hppc.ObjectCursor;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 
 /**
  * Graph representing possible token pairs (bigrams) at each start offset in the sentence.
