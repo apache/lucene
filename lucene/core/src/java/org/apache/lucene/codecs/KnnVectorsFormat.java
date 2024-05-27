@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import java.util.Set;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
@@ -84,6 +85,11 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
   /** looks up a format by name */
   public static KnnVectorsFormat forName(String name) {
     return Holder.getLoader().lookup(name);
+  }
+
+  /** returns a list of all available format names */
+  public static Set<String> availableKnnVectorsFormats() {
+    return Holder.getLoader().availableServices();
   }
 
   /** Returns a {@link KnnVectorsWriter} to write the vectors to the index. */
