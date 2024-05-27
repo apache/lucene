@@ -383,7 +383,7 @@ public class LongFloatHashMap
     assigned = 0;
     hasEmptyKey = false;
 
-    Arrays.fill(keys, 0);
+    Arrays.fill(keys, 0L);
 
     /*  */
   }

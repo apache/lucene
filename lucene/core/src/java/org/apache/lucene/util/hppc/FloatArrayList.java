@@ -310,7 +310,7 @@ public class FloatArrayList implements Iterable<FloatCursor>, Cloneable, Account
    * #elementsCount} field to zero.
    */
   public void clear() {
-    Arrays.fill(buffer, 0, elementsCount, 0);
+    Arrays.fill(buffer, 0, elementsCount, 0f);
     this.elementsCount = 0;
   }
 

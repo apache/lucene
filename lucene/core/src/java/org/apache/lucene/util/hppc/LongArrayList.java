@@ -311,7 +311,7 @@ public class LongArrayList implements Iterable<LongCursor>, Cloneable, Accountab
    * #elementsCount} field to zero.
    */
   public void clear() {
-    Arrays.fill(buffer, 0, elementsCount, 0);
+    Arrays.fill(buffer, 0, elementsCount, 0L);
     this.elementsCount = 0;
   }
 
