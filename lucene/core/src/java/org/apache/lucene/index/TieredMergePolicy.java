@@ -93,7 +93,7 @@ public class TieredMergePolicy extends MergePolicy {
   private double segsPerTier = 10.0;
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 20.0;
-  private int targetSearchConcurrency = 1;
+  private int targetNumSegments = 1;
 
   /** Sole constructor, setting all settings to their defaults. */
   public TieredMergePolicy() {
@@ -256,6 +256,20 @@ public class TieredMergePolicy extends MergePolicy {
    */
   public double getSegmentsPerTier() {
     return segsPerTier;
+  }
+
+  /**
+   * Sets the target search concurrency. This is the number of threads that will be used for
+   * @param targetNumSegments
+   * @return
+   */
+  public TieredMergePolicy setTargetNumSegments(int targetNumSegments) {
+    this.targetNumSegments = targetNumSegments;
+    return this;
+  }
+
+  public int targetNumSegments() {
+    return targetNumSegments;
   }
 
   private static class SegmentSizeAndDocs {
@@ -426,7 +440,7 @@ public class TieredMergePolicy extends MergePolicy {
               + tooBigCount,
           mergeContext);
     }
-    int allowedDocCount = totalMaxDoc / targetSearchConcurrency;
+    int allowedDocCount = totalMaxDoc / targetNumSegments;
     return doFindMerges(
         sortedInfos,
         maxMergedSegmentBytes,
@@ -520,7 +534,7 @@ public class TieredMergePolicy extends MergePolicy {
       MergeScore bestScore = null;
       List<SegmentCommitInfo> best = null;
       boolean bestTooLarge = false;
-      boolean bestHitMaxSearchParallelism = false;
+      boolean bestMaxDocs = false;
       long bestMergeBytes = 0;
 
       for (int startIdx = 0; startIdx < sortedEligible.size(); startIdx++) {
@@ -529,7 +543,7 @@ public class TieredMergePolicy extends MergePolicy {
 
         final List<SegmentCommitInfo> candidate = new ArrayList<>();
         boolean hitTooLarge = false;
-        boolean hitMaxSearchParallelism = false;
+        boolean hitMaxDocs = false;
         long bytesThisMerge = 0;
         long docCountThisMerge = 0;
         for (int idx = startIdx;
@@ -543,13 +557,14 @@ public class TieredMergePolicy extends MergePolicy {
 
           int segDocCount = segSizeDocs.maxDoc - segSizeDocs.delCount;
           hitTooLarge = totAfterMergeBytes + segBytes > maxMergedSegmentBytes;
-          hitMaxSearchParallelism = docCountThisMerge + segDocCount > allowedDocCount;
-          if (hitTooLarge || hitMaxSearchParallelism) {
+          hitMaxDocs = docCountThisMerge + segDocCount > allowedDocCount;
+          if (hitTooLarge || hitMaxDocs) {
             if (candidate.size() == 0) {
               // We should never have something coming in that _cannot_ be merged, so handle
               // singleton merges
               candidate.add(segSizeDocs.segInfo);
               bytesThisMerge += segBytes;
+              docCountThisMerge += segDocCount;
             }
             // NOTE: we continue, so that we can try
             // "packing" smaller segments into this merge
@@ -597,13 +612,13 @@ public class TieredMergePolicy extends MergePolicy {
         // Stop here.
         if (bestScore != null
             && hitTooLarge == false
-            && hitMaxSearchParallelism == false
+            && hitMaxDocs == false
             && candidate.size() < mergeFactor) {
           break;
         }
 
         final MergeScore score =
-            score(candidate, hitTooLarge, hitMaxSearchParallelism, segInfosSizes);
+            score(candidate, hitTooLarge, hitMaxDocs, segInfosSizes);
         if (verbose(mergeContext)) {
           message(
               "  maybe="
@@ -614,19 +629,19 @@ public class TieredMergePolicy extends MergePolicy {
                   + score.getExplanation()
                   + " tooLarge="
                   + hitTooLarge
-                  + " hitMaxSearchParallelism="
-                  + hitMaxSearchParallelism
+                  + " hitMaxDocs="
+                  + hitMaxDocs
                   + " size="
                   + String.format(Locale.ROOT, "%.3f MB", totAfterMergeBytes / 1024. / 1024.),
               mergeContext);
         }
 
         if ((bestScore == null || score.getScore() < bestScore.getScore())
-            && (!hitTooLarge || !hitMaxSearchParallelism || !maxMergeIsRunning)) {
+            && (!hitTooLarge || !hitMaxDocs || !maxMergeIsRunning)) {
           best = candidate;
           bestScore = score;
           bestTooLarge = hitTooLarge;
-          bestHitMaxSearchParallelism = hitMaxSearchParallelism;
+          bestMaxDocs = hitMaxDocs;
           bestMergeBytes = totAfterMergeBytes;
         }
       }
@@ -641,10 +656,10 @@ public class TieredMergePolicy extends MergePolicy {
       // we should remove this.
       if (haveOneLargeMerge == false
           || bestTooLarge == false
-          || bestHitMaxSearchParallelism == false
+          || bestMaxDocs == false
           || mergeType == MERGE_TYPE.FORCE_MERGE_DELETES) {
 
-        haveOneLargeMerge |= bestTooLarge || bestHitMaxSearchParallelism;
+        haveOneLargeMerge |= bestTooLarge || bestMaxDocs;
 
         if (spec == null) {
           spec = new MergeSpecification();
@@ -663,7 +678,7 @@ public class TieredMergePolicy extends MergePolicy {
                   + " "
                   + bestScore.getExplanation()
                   + (bestTooLarge ? " [max merge]" : "")
-                  + (bestHitMaxSearchParallelism ? " [max search parallelism]" : ""),
+                  + (bestMaxDocs ? " [max docs]" : ""),
               mergeContext);
         }
       }
@@ -994,7 +1009,8 @@ public class TieredMergePolicy extends MergePolicy {
     sb.append("segmentsPerTier=").append(segsPerTier).append(", ");
     sb.append("maxCFSSegmentSizeMB=").append(getMaxCFSSegmentSizeMB()).append(", ");
     sb.append("noCFSRatio=").append(noCFSRatio).append(", ");
-    sb.append("deletesPctAllowed=").append(deletesPctAllowed);
+    sb.append("deletesPctAllowed=").append(deletesPctAllowed).append(", ");
+    sb.append("targetSearchConcurrency=").append(targetNumSegments);
     return sb.toString();
   }
 }
