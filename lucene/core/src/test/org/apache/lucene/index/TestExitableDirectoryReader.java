@@ -424,7 +424,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
         value[j] = random().nextFloat();
       }
       FieldType fieldType =
-          KnnFloatVectorField.createFieldType(dimension, VectorSimilarityFunction.COSINE);
+          KnnFloatVectorField.createFieldType(dimension, new CosineVectorSimilarityFunction());
       doc.add(new KnnFloatVectorField("vector", value, fieldType));
 
       doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
@@ -501,7 +501,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       Document doc = new Document();
       byte[] value = new byte[dimension];
       random().nextBytes(value);
-      doc.add(new KnnByteVectorField("vector", value, VectorSimilarityFunction.COSINE));
+      doc.add(new KnnByteVectorField("vector", value, new CosineVectorSimilarityFunction()));
       doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
       writer.addDocument(doc);
     }

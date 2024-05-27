@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.ThreadLocalRandom;
@@ -25,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -72,10 +71,10 @@ public class VectorScorerBenchmark {
       out.writeBytes(vec2, 0, vec2.length);
     }
     in = dir.openInput("vector.data", IOContext.DEFAULT);
-    vectorValues = vectorValues(size, 2, in, DOT_PRODUCT);
+    vectorValues = vectorValues(size, 2, in, new DotProductVectorSimilarityFunction());
     scorer =
         FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
-            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
+            .getRandomVectorScorerSupplier(new DotProductVectorSimilarityFunction(), vectorValues)
             .scorer(0);
   }
 

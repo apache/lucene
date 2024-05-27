@@ -79,9 +79,11 @@ public class TestKnnGraph extends LuceneTestCase {
     if (random().nextBoolean()) {
       M = random().nextInt(256) + 3;
     }
-
-    int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
-    similarityFunction = VectorSimilarityFunction.values()[similarity];
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
+    similarityFunction =
+        VectorSimilarityFunction.forName(
+            vectorSimilarityFunctions.get(random().nextInt(vectorSimilarityFunctions.size())));
     vectorEncoding = randomVectorEncoding();
     boolean quantized = randomBoolean();
     codec =
@@ -144,7 +146,7 @@ public class TestKnnGraph extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
-      if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+      if (similarityFunction.getName().equals("DOT")) {
         VectorUtil.l2normalize(values[0]);
       }
       if (vectorEncoding == VectorEncoding.BYTE) {
@@ -242,7 +244,7 @@ public class TestKnnGraph extends LuceneTestCase {
   /** Verify that searching does something reasonable */
   public void testSearch() throws Exception {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = new EuclideanVectorSimilarityFunction();
     IndexWriterConfig config = newIndexWriterConfig();
     config.setCodec(float32Codec);
     try (Directory dir = newDirectory();
@@ -298,7 +300,7 @@ public class TestKnnGraph extends LuceneTestCase {
   }
 
   public void testMultiThreadedSearch() throws Exception {
-    similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    similarityFunction = new EuclideanVectorSimilarityFunction();
     IndexWriterConfig config = newIndexWriterConfig();
     config.setCodec(float32Codec);
     Directory dir = newDirectory();

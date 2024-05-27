@@ -19,8 +19,8 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
@@ -37,7 +37,12 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
 
   @Before
   public void setup() {
-    similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
+    similarityFunction =
+        VectorSimilarityFunction.forName(
+            vectorSimilarityFunctions.get(random().nextInt(vectorSimilarityFunctions.size())));
   }
 
   @Override

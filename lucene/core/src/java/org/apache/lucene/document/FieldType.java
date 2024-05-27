@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
 import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
@@ -45,7 +46,8 @@ public class FieldType implements IndexableFieldType {
   private int dimensionNumBytes;
   private int vectorDimension;
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
-  private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+  private VectorSimilarityFunction vectorSimilarityFunction =
+      new EuclideanVectorSimilarityFunction();
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */

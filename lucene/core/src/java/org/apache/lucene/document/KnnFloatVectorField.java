@@ -18,6 +18,7 @@
 package org.apache.lucene.document;
 
 import java.util.Objects;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -56,6 +57,9 @@ public class KnnFloatVectorField extends Field {
     return type;
   }
 
+  private static final EuclideanVectorSimilarityFunction euclideanVectorSimilarityFunction =
+      new EuclideanVectorSimilarityFunction();
+
   /**
    * A convenience method for creating a vector field type.
    *
@@ -86,8 +90,9 @@ public class KnnFloatVectorField extends Field {
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
-   * be unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
+   * some vector similarities (like {@link
+   * org.apache.lucene.index.DotProductVectorSimilarityFunction}) require values to be unit-length,
+   * which can be enforced using {@link VectorUtil#l2normalize(float[])}.
    *
    * @param name field name
    * @param vector value
@@ -112,7 +117,7 @@ public class KnnFloatVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnFloatVectorField(String name, float[] vector) {
-    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
+    this(name, vector, euclideanVectorSimilarityFunction);
   }
 
   /**

@@ -22,6 +22,7 @@ import java.util.Iterator;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -39,7 +40,6 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
@@ -102,7 +102,7 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             0,
             VectorEncoding.FLOAT32,
-            VectorSimilarityFunction.EUCLIDEAN,
+            new EuclideanVectorSimilarityFunction(),
             false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});

@@ -204,7 +204,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
       Lucene91OnHeapHnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
-    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeInt(field.getVectorSimilarityFunction().getOrdinal());
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
     meta.writeVLong(vectorIndexOffset);

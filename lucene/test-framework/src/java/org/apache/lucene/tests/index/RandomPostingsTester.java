@@ -46,6 +46,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -62,7 +63,6 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -88,6 +88,9 @@ public class RandomPostingsTester {
   private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =
       TestSecrets.getIndexPackageAccess();
   private static final IntToLongFunction DOC_TO_NORM = doc -> 1 + (doc & 0x0f);
+
+  private static final EuclideanVectorSimilarityFunction euclideanVectorSimilarityFunction =
+      new EuclideanVectorSimilarityFunction();
 
   /** Which features to test. */
   public enum Option {
@@ -164,7 +167,7 @@ public class RandomPostingsTester {
               0,
               0,
               VectorEncoding.FLOAT32,
-              VectorSimilarityFunction.EUCLIDEAN,
+              euclideanVectorSimilarityFunction,
               false,
               false);
       fieldUpto++;
@@ -738,7 +741,7 @@ public class RandomPostingsTester {
               0,
               0,
               VectorEncoding.FLOAT32,
-              VectorSimilarityFunction.EUCLIDEAN,
+              euclideanVectorSimilarityFunction,
               false,
               false);
     }

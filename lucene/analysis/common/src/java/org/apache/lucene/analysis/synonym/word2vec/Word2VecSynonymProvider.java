@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
@@ -42,7 +43,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 public class Word2VecSynonymProvider {
 
   private static final VectorSimilarityFunction SIMILARITY_FUNCTION =
-      VectorSimilarityFunction.DOT_PRODUCT;
+      new DotProductVectorSimilarityFunction();
   private final Word2VecModel word2VecModel;
   private final OnHeapHnswGraph hnswGraph;
   private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();

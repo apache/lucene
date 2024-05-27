@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -30,6 +29,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -106,10 +106,14 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {-1, 0}, DOT_PRODUCT));
+        doc.add(
+            getKnnVectorField(
+                "field", new float[] {-1, 0}, new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
         doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 0}, DOT_PRODUCT));
+        doc.add(
+            getKnnVectorField(
+                "field", new float[] {1, 0}, new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
@@ -138,7 +142,9 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           Document doc = new Document();
           doc.add(
               getKnnVectorField(
-                  "field", VectorUtil.l2normalize(new float[] {j, j * j}), DOT_PRODUCT));
+                  "field",
+                  VectorUtil.l2normalize(new float[] {j, j * j}),
+                  new DotProductVectorSimilarityFunction()));
           w.addDocument(doc);
         }
       }

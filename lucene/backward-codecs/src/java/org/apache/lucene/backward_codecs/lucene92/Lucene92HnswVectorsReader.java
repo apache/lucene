@@ -36,7 +36,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
@@ -180,16 +179,6 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
               + " * 4 = "
               + numBytes);
     }
-  }
-
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
-    int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException(
-          "Invalid similarity function id: " + similarityFunctionId, input);
-    }
-    return VectorSimilarityFunction.values()[similarityFunctionId];
   }
 
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {

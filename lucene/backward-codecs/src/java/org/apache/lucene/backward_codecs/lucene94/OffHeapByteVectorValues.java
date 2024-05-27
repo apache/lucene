@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.CosineVectorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -272,7 +273,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
   private static class EmptyOffHeapVectorValues extends OffHeapByteVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, null, VectorSimilarityFunction.COSINE, 0);
+      super(dimension, 0, null, new CosineVectorSimilarityFunction(), 0);
     }
 
     private int doc = -1;

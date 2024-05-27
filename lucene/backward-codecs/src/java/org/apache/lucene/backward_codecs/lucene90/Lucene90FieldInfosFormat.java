@@ -103,15 +103,24 @@ import org.apache.lucene.store.IndexOutput;
  *   <li>VectorSimilarityFunction: a byte containing distance function used for similarity
  *       calculation.
  *       <ul>
- *         <li>0: EUCLIDEAN distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
- *         <li>1: DOT_PRODUCT similarity. ({@link VectorSimilarityFunction#DOT_PRODUCT})
- *         <li>2: COSINE similarity. ({@link VectorSimilarityFunction#COSINE})
+ *         <li>0: EUCLIDEAN distance. ({@link
+ *             org.apache.lucene.index.EuclideanVectorSimilarityFunction})
+ *         <li>1: DOT_PRODUCT similarity. ({@link
+ *             org.apache.lucene.index.DotProductVectorSimilarityFunction})
+ *         <li>2: COSINE similarity. ({@link
+ *             org.apache.lucene.index.CosineVectorSimilarityFunction})
  *       </ul>
  * </ul>
  *
  * @lucene.experimental
  */
 public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
+
+  private static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP =
+      Map.of(
+          0, "EUCLIDEAN",
+          1, "DOT",
+          2, "COSINE");
 
   /** Sole constructor. */
   public Lucene90FieldInfosFormat() {}
@@ -257,11 +266,12 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    if (b < 0 || b >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException("invalid distance function: " + b, input);
+  /** Returns VectorSimilarityFunction from index input and ordinal value */
+  public static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
+    if (!SIMILARITY_FUNCTIONS_MAP.containsKey(Integer.valueOf(b))) {
+      throw new CorruptIndexException("invalid distance function: " + Integer.valueOf(b), input);
     }
-    return VectorSimilarityFunction.values()[b];
+    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get(Integer.valueOf(b)));
   }
 
   static {
@@ -350,7 +360,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
           output.writeVInt(fi.getPointNumBytes());
         }
         output.writeVInt(fi.getVectorDimension());
-        output.writeByte((byte) fi.getVectorSimilarityFunction().ordinal());
+        output.writeByte((byte) fi.getVectorSimilarityFunction().getOrdinal());
       }
       CodecUtil.writeFooter(output);
     }

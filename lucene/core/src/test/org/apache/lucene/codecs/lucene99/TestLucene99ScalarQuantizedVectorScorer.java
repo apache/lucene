@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Iterator;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -33,9 +34,12 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MaximumInnerProductVectorSimilarityFunction;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
@@ -145,7 +149,9 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
         for (int i = 0; i < 32; i++) {
           queryVector[i] = i * 0.1f;
         }
-        for (VectorSimilarityFunction function : VectorSimilarityFunction.values()) {
+        for (Iterator<VectorSimilarityFunction> it = VectorSimilarityFunction.getIterator();
+            it.hasNext(); ) {
+          VectorSimilarityFunction function = it.next();
           RandomVectorScorer randomScorer =
               scorer.getRandomVectorScorer(function, values, queryVector);
           assertTrue(randomScorer.score(0) >= 0f);
@@ -186,9 +192,9 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
     // create lucene directory with codec
     for (VectorSimilarityFunction similarityFunction :
         new VectorSimilarityFunction[] {
-          VectorSimilarityFunction.DOT_PRODUCT,
-          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
-          VectorSimilarityFunction.EUCLIDEAN
+          new DotProductVectorSimilarityFunction(),
+          new MaximumInnerProductVectorSimilarityFunction(),
+          new EuclideanVectorSimilarityFunction()
         }) {
       try (Directory dir = newDirectory()) {
         indexVectors(dir, storedVectors, similarityFunction, bits, compress);
@@ -255,22 +261,23 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
   }
 
   public void testSingleVectorPerSegmentCosine() throws IOException {
-    testSingleVectorPerSegment(VectorSimilarityFunction.COSINE);
+    testSingleVectorPerSegment("COSINE");
   }
 
   public void testSingleVectorPerSegmentDot() throws IOException {
-    testSingleVectorPerSegment(VectorSimilarityFunction.DOT_PRODUCT);
+    testSingleVectorPerSegment("DOT");
   }
 
   public void testSingleVectorPerSegmentEuclidean() throws IOException {
-    testSingleVectorPerSegment(VectorSimilarityFunction.EUCLIDEAN);
+    testSingleVectorPerSegment("EUCLIDEAN");
   }
 
   public void testSingleVectorPerSegmentMIP() throws IOException {
-    testSingleVectorPerSegment(VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+    testSingleVectorPerSegment("MIP");
   }
 
-  private void testSingleVectorPerSegment(VectorSimilarityFunction sim) throws IOException {
+  private void testSingleVectorPerSegment(String simName) throws IOException {
+    VectorSimilarityFunction sim = VectorSimilarityFunction.forName(simName);
     var codec = getCodec(7, false);
     try (Directory dir = newDirectory()) {
       try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig().setCodec(codec))) {

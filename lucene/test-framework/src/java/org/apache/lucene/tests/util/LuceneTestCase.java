@@ -89,7 +89,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -3216,10 +3215,11 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   protected KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
-    ServiceLoader<KnnVectorsFormat> formats = java.util.ServiceLoader.load(KnnVectorsFormat.class);
+    List<String> formats = KnnVectorsFormat.getKnnVectorsFormat();
     List<KnnVectorsFormat> availableFormats = new ArrayList<>();
-    for (KnnVectorsFormat f : formats) {
-      if (f.getName().equals(HnswBitVectorsFormat.NAME)) {
+    for (String format : formats) {
+      KnnVectorsFormat f = KnnVectorsFormat.forName(format);
+      if (format.equals(HnswBitVectorsFormat.NAME)) {
         if (vectorEncoding.equals(VectorEncoding.BYTE)) {
           availableFormats.add(f);
         }

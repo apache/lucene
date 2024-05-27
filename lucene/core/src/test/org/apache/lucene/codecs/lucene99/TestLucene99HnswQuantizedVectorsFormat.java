@@ -22,18 +22,19 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -101,7 +102,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                         }))) {
       for (float[] vector : vectors) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.DOT_PRODUCT));
+        doc.add(new KnnFloatVectorField("f", vector, new DotProductVectorSimilarityFunction()));
         w.addDocument(doc);
         w.commit();
       }
@@ -123,7 +124,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
-    boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
+    boolean normalize = similarityFunction.getName().equals("COSINE");
     int dim = random().nextInt(64) + 1;
     if (dim % 2 == 1) {
       dim++;
@@ -272,9 +273,11 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   // Ensures that all expected vector similarity functions are translatable
   // in the format.
   public void testVectorSimilarityFuncs() {
-    // This does not necessarily have to be all similarity functions, but
-    // differences should be considered carefully.
-    var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).toList();
-    assertEquals(Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS, expectedValues);
+    List<String> vectorSimilarityFunctions =
+        VectorSimilarityFunction.getAvailableVectorSimilarityFunction();
+
+    assertTrue(
+        vectorSimilarityFunctions.containsAll(
+            Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS_MAP.values()));
   }
 }

@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -31,7 +30,9 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.CosineVectorSimilarityFunction;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
@@ -39,6 +40,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MaximumInnerProductVectorSimilarityFunction;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -320,7 +322,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
-          doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
+          doc.add(
+              getKnnVectorField(
+                  "field", new float[] {j, j * j}, new CosineVectorSimilarityFunction()));
           w.addDocument(doc);
         }
       }
@@ -371,7 +375,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     try (Directory indexStore =
             getIndexStore(
                 "field",
-                VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
+                new MaximumInnerProductVectorSimilarityFunction(),
                 new float[] {0, 1},
                 new float[] {1, 2},
                 new float[] {0, 0});
@@ -851,7 +855,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   Directory getIndexStore(String field, float[]... contents) throws IOException {
-    return getIndexStore(field, VectorSimilarityFunction.EUCLIDEAN, contents);
+    return getIndexStore(field, new EuclideanVectorSimilarityFunction(), contents);
   }
 
   /**

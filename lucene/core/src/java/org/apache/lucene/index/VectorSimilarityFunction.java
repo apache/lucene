@@ -16,104 +16,88 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.VectorUtil.cosine;
-import static org.apache.lucene.util.VectorUtil.dotProduct;
-import static org.apache.lucene.util.VectorUtil.dotProductScore;
-import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
-import static org.apache.lucene.util.VectorUtil.squareDistance;
+import java.util.Iterator;
+import java.util.List;
+import org.apache.lucene.util.NamedSPILoader;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
- * vector. This is a label describing the method used during indexing and searching of the vectors
- * in order to determine the nearest neighbors.
+ * vector.
  */
-public enum VectorSimilarityFunction {
+public abstract class VectorSimilarityFunction implements NamedSPILoader.NamedSPI {
 
-  /** Euclidean distance */
-  EUCLIDEAN {
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return 1 / (1 + squareDistance(v1, v2));
-    }
+  private static class Holder {
+    private static final NamedSPILoader<VectorSimilarityFunction> LOADER =
+        new NamedSPILoader<>(VectorSimilarityFunction.class);
 
-    @Override
-    public float compare(byte[] v1, byte[] v2) {
-      return 1 / (1f + squareDistance(v1, v2));
+    static NamedSPILoader<VectorSimilarityFunction> getLoader() {
+      if (LOADER == null) {
+        throw new IllegalStateException(
+            "You tried to lookup a VectorSimilarityFunction by name before all formats could be initialize. "
+                + "This likely happens if you call VectorSimilarityFunction#forName "
+                + "from a VectorSimilarityFunction's ctor.");
+      }
+      return LOADER;
     }
-  },
+  }
+
+  /** Holds name of Vector Similarity Function */
+  public final String name;
 
   /**
-   * Dot product. NOTE: this similarity is intended as an optimized way to perform cosine
-   * similarity. In order to use it, all vectors must be normalized, including both document and
-   * query vectors. Using dot product with vectors that are not normalized can result in errors or
-   * poor search results. Floating point vectors must be normalized to be of unit length, while byte
-   * vectors should simply all have the same norm.
+   * Holds integer value of Vector Similarity Function to be used while reading and writing
+   * field-info in the index
    */
-  DOT_PRODUCT {
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return Math.max((1 + dotProduct(v1, v2)) / 2, 0);
-    }
+  public final int ordinal;
 
-    @Override
-    public float compare(byte[] v1, byte[] v2) {
-      return dotProductScore(v1, v2);
-    }
-  },
+  /** Construct object with function name and ordinal value */
+  protected VectorSimilarityFunction(String name, int ordinal) {
+    NamedSPILoader.checkServiceName(name);
+    this.name = name;
+    this.ordinal = ordinal;
+  }
 
-  /**
-   * Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize all
-   * vectors to unit length, and instead use {@link VectorSimilarityFunction#DOT_PRODUCT}. You
-   * should only use this function if you need to preserve the original vectors and cannot normalize
-   * them in advance. The similarity score is normalised to assure it is positive.
-   */
-  COSINE {
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return Math.max((1 + cosine(v1, v2)) / 2, 0);
-    }
+  /** Get name of VectorSimilarityFunction used by the object */
+  @Override
+  public String getName() {
+    return name;
+  }
 
-    @Override
-    public float compare(byte[] v1, byte[] v2) {
-      return (1 + cosine(v1, v2)) / 2;
-    }
-  },
+  /** Get ordinal of VectorSimilarityFunction used by the object */
+  public int getOrdinal() {
+    return ordinal;
+  }
 
-  /**
-   * Maximum inner product. This is like {@link VectorSimilarityFunction#DOT_PRODUCT}, but does not
-   * require normalization of the inputs. Should be used when the embedding vectors store useful
-   * information within the vector magnitude
-   */
-  MAXIMUM_INNER_PRODUCT {
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return scaleMaxInnerProductScore(dotProduct(v1, v2));
-    }
-
-    @Override
-    public float compare(byte[] v1, byte[] v2) {
-      return scaleMaxInnerProductScore(dotProduct(v1, v2));
-    }
-  };
-
-  /**
-   * Calculates a similarity score between the two vectors with a specified function. Higher
-   * similarity scores correspond to closer vectors.
-   *
-   * @param v1 a vector
-   * @param v2 another vector, of the same dimension
-   * @return the value of the similarity function applied to the two vectors
-   */
+  /** Compares two float vector */
   public abstract float compare(float[] v1, float[] v2);
 
-  /**
-   * Calculates a similarity score between the two vectors with a specified function. Higher
-   * similarity scores correspond to closer vectors. Each (signed) byte represents a vector
-   * dimension.
-   *
-   * @param v1 a vector
-   * @param v2 another vector, of the same dimension
-   * @return the value of the similarity function applied to the two vectors
-   */
+  /** Compares two byte vector */
   public abstract float compare(byte[] v1, byte[] v2);
+
+  /** look up for VectorSimilarityFunction using name */
+  public static VectorSimilarityFunction forName(String name) {
+    return Holder.getLoader().lookup(name);
+  }
+
+  /**
+   * Reloads the VectorSimilarityFunction list from the given {@link ClassLoader}
+   *
+   * <p><b>NOTE:</b> Only new functions are added, existing ones are never removed or replaced.
+   *
+   * <p><em>This method is expensive and should only be called for discovery of new codecs on the
+   * given classpath/classloader!</em>
+   */
+  public static void reloadVectorSimilarityFunction(ClassLoader classloader) {
+    Holder.getLoader().reload(classloader);
+  }
+
+  /** Return list of all VectorSimilarity functions name */
+  public static List<String> getAvailableVectorSimilarityFunction() {
+    return Holder.getLoader().availableServices().stream().toList();
+  }
+
+  /** Returns Iterator to VectorSimilarityFunctions */
+  public static Iterator<VectorSimilarityFunction> getIterator() {
+    return Holder.getLoader().iterator();
+  }
 }

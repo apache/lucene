@@ -37,6 +37,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DotProductVectorSimilarityFunction;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -51,7 +52,6 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -1296,7 +1296,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 0,
                 0,
                 VectorEncoding.FLOAT32,
-                VectorSimilarityFunction.DOT_PRODUCT,
+                new DotProductVectorSimilarityFunction(),
                 fi.isSoftDeletesField(),
                 fi.isParentField());
         newInfos[i] = noIndexFI;

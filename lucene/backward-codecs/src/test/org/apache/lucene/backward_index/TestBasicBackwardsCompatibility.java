@@ -42,6 +42,7 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.CosineVectorSimilarityFunction;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FloatVectorValues;
@@ -72,7 +73,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -98,7 +98,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
-      KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+      KnnFloatVectorField.createFieldType(3, new CosineVectorSimilarityFunction());
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   /**

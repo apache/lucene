@@ -18,7 +18,6 @@ package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -109,17 +108,27 @@ import org.apache.lucene.store.IndexOutput;
  *   <li>VectorSimilarityFunction: a byte containing distance function used for similarity
  *       calculation.
  *       <ul>
- *         <li>0: EUCLIDEAN distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
- *         <li>1: DOT_PRODUCT similarity. ({@link VectorSimilarityFunction#DOT_PRODUCT})
- *         <li>2: COSINE similarity. ({@link VectorSimilarityFunction#COSINE})
+ *         <li>0: EUCLIDEAN distance. ({@link
+ *             org.apache.lucene.index.EuclideanVectorSimilarityFunction})
+ *         <li>1: DOT_PRODUCT similarity. ({@link
+ *             org.apache.lucene.index.DotProductVectorSimilarityFunction})
+ *         <li>2: COSINE similarity. ({@link
+ *             org.apache.lucene.index.CosineVectorSimilarityFunction})
  *         <li>3: MAXIMUM_INNER_PRODUCT similarity. ({@link
- *             VectorSimilarityFunction#MAXIMUM_INNER_PRODUCT})
+ *             org.apache.lucene.index.MaximumInnerProductVectorSimilarityFunction})
  *       </ul>
  * </ul>
  *
  * @lucene.experimental
  */
 public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
+
+  public static final Map<Integer, String> SIMILARITY_FUNCTIONS_MAP =
+      Map.of(
+          0, "EUCLIDEAN",
+          1, "DOT",
+          2, "COSINE",
+          3, "MIP");
 
   /** Sole constructor. */
   public Lucene94FieldInfosFormat() {}
@@ -294,31 +303,11 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
-  // List of vector similarity functions. This list is defined here, in order
-  // to avoid an undesirable dependency on the declaration and order of values
-  // in VectorSimilarityFunction. The list values and order have been chosen to
-  // match that of VectorSimilarityFunction in, at least, Lucene 9.10. Values
-  static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
-      List.of(
-          VectorSimilarityFunction.EUCLIDEAN,
-          VectorSimilarityFunction.DOT_PRODUCT,
-          VectorSimilarityFunction.COSINE,
-          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
-
   static VectorSimilarityFunction distOrdToFunc(byte i) {
-    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
-      throw new IllegalArgumentException("invalid distance function: " + i);
+    if (!SIMILARITY_FUNCTIONS_MAP.containsKey(Integer.valueOf(i))) {
+      throw new IllegalArgumentException("invalid distance function: " + Integer.valueOf(i));
     }
-    return SIMILARITY_FUNCTIONS.get(i);
-  }
-
-  static byte distFuncToOrd(VectorSimilarityFunction func) {
-    for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
-      if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
-        return (byte) i;
-      }
-    }
-    throw new IllegalArgumentException("invalid distance function: " + func);
+    return VectorSimilarityFunction.forName(SIMILARITY_FUNCTIONS_MAP.get(Integer.valueOf(i)));
   }
 
   static {
@@ -409,7 +398,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         }
         output.writeVInt(fi.getVectorDimension());
         output.writeByte((byte) fi.getVectorEncoding().ordinal());
-        output.writeByte(distFuncToOrd(fi.getVectorSimilarityFunction()));
+        output.writeByte((byte) fi.getVectorSimilarityFunction().getOrdinal());
       }
       CodecUtil.writeFooter(output);
     }

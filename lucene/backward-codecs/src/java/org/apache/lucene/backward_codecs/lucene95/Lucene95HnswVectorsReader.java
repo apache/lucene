@@ -199,16 +199,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     }
   }
 
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
-    int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException(
-          "Invalid similarity function id: " + similarityFunctionId, input);
-    }
-    return VectorSimilarityFunction.values()[similarityFunctionId];
-  }
-
   private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
     int encodingId = input.readInt();
     if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {

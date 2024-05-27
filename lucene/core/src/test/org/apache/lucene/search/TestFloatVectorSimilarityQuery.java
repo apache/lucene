@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.util.Arrays;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.TestVectorUtil;
@@ -31,7 +32,7 @@ public class TestFloatVectorSimilarityQuery
   public void setup() {
     vectorField = getClass().getSimpleName() + ":VectorField";
     idField = getClass().getSimpleName() + ":IdField";
-    function = VectorSimilarityFunction.EUCLIDEAN;
+    function = new EuclideanVectorSimilarityFunction();
     numDocs = atLeast(100);
     dim = atLeast(5);
   }

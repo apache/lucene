@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
-
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
@@ -26,6 +24,7 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.EuclideanVectorSimilarityFunction;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
@@ -76,7 +75,7 @@ public class TestVectorScorer extends LuceneTestCase {
         for (int j = 0; j < v.length; j++) {
           v[j] = (byte) contents[i][j];
         }
-        doc.add(new KnnByteVectorField(field, v, EUCLIDEAN));
+        doc.add(new KnnByteVectorField(field, v, new EuclideanVectorSimilarityFunction()));
       } else {
         doc.add(new KnnFloatVectorField(field, contents[i]));
       }
