@@ -30,101 +30,81 @@ import java.util.Iterator;
  *   - [premature optimization idea] if instead of one array we keep aggregations in two LongVector (one for MAX aggregation
  *     and one for SUM) we can benefit from SIMD?
  */
-public class LongAggregationsFacetRecorder implements FacetRecorder {
-
-    private IntObjectHashMap<long[]> aggregates;
+public abstract class LongAggregationsFacetRecorder implements FacetRecorder {
 
     final LongValuesSource[] longValuesSources;
     final Reducer[] reducers;
 
-    static class SafeIntLongHashMap extends IntLongHashMap {
-        @Override
-        public synchronized long put(int key, long value) {
-            return super.put(key, value);
-        }
-    }
-
-    final SafeIntLongHashMap[] perOrdinalValues;
-
     /** TODO */
-    public LongAggregationsFacetRecorder(LongValuesSource[] longValuesSources, Reducer[] reducers) {
+    LongAggregationsFacetRecorder(LongValuesSource[] longValuesSources, Reducer[] reducers) {
         assert longValuesSources.length == reducers.length;
         this.longValuesSources = longValuesSources;
         this.reducers = reducers;
-        perOrdinalValues = new SafeIntLongHashMap[longValuesSources.length];
-        for (int i = 0; i < longValuesSources.length; i++) {
-            perOrdinalValues[i] = new SafeIntLongHashMap();
-        }
+        initialisePerOrdinalValues();
     }
 
+    /** TODO: add doc
+     *
+     * @param useSyncMap TK
+     * @param longValuesSources TK
+     * @param reducers TK
+     * @return TK
+     */
+    public static LongAggregationsFacetRecorder create(boolean useSyncMap, LongValuesSource[] longValuesSources, Reducer[] reducers) {
+        if (useSyncMap) {
+            return new SyncLongAggregationsFacetRecorder(longValuesSources, reducers);
+        }
+        return new ReducingLongAggregationsFacetRecorder(longValuesSources, reducers);
+    }
+
+    abstract void initialisePerOrdinalValues();
+
+    /**TODO:
+     *
+     * @param context TK
+     * @return TK
+     * @throws IOException TK
+     */
     @Override
     public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
         LongValues[] longValues = new LongValues[longValuesSources.length];
         for (int i=0; i< longValuesSources.length; i++) {
             longValues[i] = longValuesSources[i].getValues(context, null);
         }
-        return new LongAggregationsFacetLeafRecorder(longValues, reducers, perOrdinalValues);
+        return getLeafRecorder(longValues, reducers);
     }
 
-    @Override
-    public OrdinalIterator recordedOrds() {
-        if (perOrdinalValues.length == 0) {
-            return null;
-        }
-        Iterator<IntCursor> ordIterator = perOrdinalValues[0].keys().iterator();
-        return new OrdinalIterator() {
-            @Override
-            public int nextOrd() throws IOException {
-                if (ordIterator.hasNext()) {
-                    return ordIterator.next().value;
-                } else {
-                    return NO_MORE_ORDS;
-                }
-            }
-        };
-    }
+    abstract LongAggregationsFacetLeafRecorder getLeafRecorder(LongValues[] longValues, Reducer[] reducers);
 
-    @Override
-    public void reduce(FacetRollup facetRollup) throws IOException {
-        // TODO: reduce
-        if (facetRollup != null && facetRollup.getDimOrdsToRollup().nextOrd() != OrdinalIterator.NO_MORE_ORDS) {
-            throw new UnsupportedOperationException("Rollup is required, but not implemented");
-        }
-    }
+    /**TODO
+     *
+     * @param ord TK
+     * @param valuesId TK
+     * @return TK
+     */
+    public abstract long getRecordedValue(int ord, int valuesId);
 
-    /** Get aggregation value by its id */
-    public long getRecordedValue(int ord, int aggregationId) {
-        if (aggregationId < 0 || aggregationId >= perOrdinalValues.length) {
-            throw new IllegalArgumentException("Invalid Aggregation");
-        }
-        // TODO: should we return any default value?
-        return perOrdinalValues[aggregationId].get(ord);
-    }
-
-    static class LongAggregationsFacetLeafRecorder implements FacetLeafRecorder {
+    static abstract class LongAggregationsFacetLeafRecorder implements FacetLeafRecorder {
 
         final LongValues[] longValues;
 
         final Reducer[] reducers;
 
-        final IntLongHashMap[] perOrdinalValues;
-
-        LongAggregationsFacetLeafRecorder(LongValues[] longValues, Reducer[] reducers, IntLongHashMap[] perOrdinalValues) {
+        LongAggregationsFacetLeafRecorder(LongValues[] longValues, Reducer[] reducers) {
             this.longValues = longValues;
             this.reducers = reducers;
-            this.perOrdinalValues = perOrdinalValues;
         }
         @Override
         public void record(int docId, int facetId) throws IOException {
             for (int i=0; i < longValues.length; i++) {
                 LongValues values = longValues[i];
                 if (values.advanceExact(docId)) {
-                    long prev = perOrdinalValues[i].get(facetId);
-                    long reducedValue = reducers[i].reduce(prev, values.longValue());
-                    perOrdinalValues[i].put(facetId, reducedValue);
+                    recordValue(i, facetId, values.longValue());
                 }
             }
         }
+
+        abstract void recordValue(int i, int facetId, long value);
 
         @Override
         public void finish(FacetLeafCutter cutter) {

@@ -35,5 +35,7 @@ public interface Reducer {
         public long reduce(long a, long b) {
             return Math.addExact(a, b);
         }
+
+
     };
 }
