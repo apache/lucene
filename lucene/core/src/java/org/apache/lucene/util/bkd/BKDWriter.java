@@ -28,6 +28,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
@@ -44,7 +45,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.bkd.BKDUtil.ByteArrayPredicate;
-import org.apache.lucene.util.hppc.LongArrayList;
 
 // TODO
 //   - allow variable length byte[] (across docs and dims), but this is quite a bit more hairy

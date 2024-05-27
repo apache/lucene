@@ -23,7 +23,7 @@ import java.util.Map;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.util.hppc.CharObjectHashMap;
+import org.apache.lucene.internal.hppc.CharObjectHashMap;
 
 /**
  * A {@link TokenFilter} that normalizes small letters (捨て仮名) in katakana into normal letters. For

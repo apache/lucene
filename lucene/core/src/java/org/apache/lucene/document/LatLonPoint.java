@@ -35,6 +35,7 @@ import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
@@ -53,7 +54,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;
-import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * An indexed location field.

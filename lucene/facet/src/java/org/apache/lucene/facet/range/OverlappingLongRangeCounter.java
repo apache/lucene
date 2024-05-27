@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.facet.range;
 
-import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.LongArrayList;
-import com.carrotsearch.hppc.LongIntHashMap;
-import com.carrotsearch.hppc.cursors.IntCursor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.LongArrayList;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -260,7 +260,8 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
       }
     }
 
-    LongArrayList endsList = new LongArrayList(endsMap.keys());
+    LongArrayList endsList = new LongArrayList(endsMap.size());
+    endsList.addAll(endsMap.keys());
     Arrays.sort(endsList.buffer, 0, endsList.size());
 
     // Build elementaryIntervals (a 1D Venn diagram):

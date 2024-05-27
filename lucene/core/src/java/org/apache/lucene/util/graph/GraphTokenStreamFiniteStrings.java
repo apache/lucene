@@ -30,6 +30,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IntsRef;
@@ -37,7 +38,6 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.FiniteStringsIterator;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * Consumes a TokenStream and creates an {@link Automaton} where the transition labels are terms

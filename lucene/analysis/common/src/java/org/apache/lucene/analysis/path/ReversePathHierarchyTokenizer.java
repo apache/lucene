@@ -21,9 +21,9 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.IgnoreRandomChains;
-import org.apache.lucene.util.hppc.IntArrayList;
 
 /**
  * Tokenizer for domain-like hierarchies.

@@ -58,7 +58,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.lucene.util.hppc.ObjectCursor;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 
 /**
  * The Lift class is a data structure that is a variation of a Patricia trie.

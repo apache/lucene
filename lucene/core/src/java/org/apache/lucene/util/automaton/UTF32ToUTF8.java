@@ -17,7 +17,7 @@
 package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
-import org.apache.lucene.util.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 // TODO
 //   - do we really need the .bits...?  if not we can make util in UnicodeUtil to convert 1 char

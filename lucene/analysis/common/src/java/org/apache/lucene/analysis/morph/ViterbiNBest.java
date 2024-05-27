@@ -20,11 +20,11 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.hppc.IntArrayList;
-import org.apache.lucene.util.hppc.IntCursor;
-import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /** {@link Viterbi} subclass for n-best path calculation. */
 public abstract class ViterbiNBest<T extends Token, U extends MorphData>
