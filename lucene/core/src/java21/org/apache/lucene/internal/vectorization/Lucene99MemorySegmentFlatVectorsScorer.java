@@ -23,6 +23,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
 
 public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
 
@@ -39,6 +40,8 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityType, RandomAccessVectorValues vectorValues)
       throws IOException {
+    // a quantized values here is a wrapping or delegation issue
+    assert !(vectorValues instanceof RandomAccessQuantizedByteVectorValues);
     // currently only supports binary vectors
     if (vectorValues instanceof RandomAccessVectorValues.Bytes && vectorValues.getSlice() != null) {
       var scorer =
@@ -68,6 +71,8 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
       byte[] queryVector)
       throws IOException {
     checkDimensions(queryVector.length, vectorValues.dimension());
+    // a quantized values here is a wrapping or delegation issue
+    assert !(vectorValues instanceof RandomAccessQuantizedByteVectorValues);
     if (vectorValues instanceof RandomAccessVectorValues.Bytes && vectorValues.getSlice() != null) {
       var scorer =
           Lucene99MemorySegmentByteVectorScorer.create(
