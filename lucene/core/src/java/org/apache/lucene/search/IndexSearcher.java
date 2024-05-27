@@ -704,8 +704,10 @@ public class IndexSearcher {
         // continue with the following leaf
         continue;
       }
-      BulkScorer scorer = weight.bulkScorer(ctx);
-      if (scorer != null) {
+      ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+      if (scorerSupplier != null) {
+        scorerSupplier.setTopLevelScoringClause();
+        BulkScorer scorer = scorerSupplier.bulkScorer();
         if (queryTimeout != null) {
           scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
         }

@@ -77,6 +77,18 @@ class QueryProfilerWeight extends FilterWeight {
       }
 
       @Override
+      public BulkScorer bulkScorer() throws IOException {
+        // We use the default bulk scorer instead of the specialized one. The reason
+        // is that BulkScorers do everything at once: finding matches,
+        // scoring them and calling the collector, so they make it impossible to
+        // see where time is spent, which is the purpose of query profiling.
+        // The default bulk scorer will pull a scorer and iterate over matches,
+        // this might be a significantly different execution path for some queries
+        // like disjunctions, but in general this is what is done anyway
+        return super.bulkScorer();
+      }
+
+      @Override
       public long cost() {
         timer.start();
         try {
@@ -91,18 +103,6 @@ class QueryProfilerWeight extends FilterWeight {
         subQueryScorerSupplier.setTopLevelScoringClause();
       }
     };
-  }
-
-  @Override
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    // We use the default bulk scorer instead of the specialized one. The reason
-    // is that BulkScorers do everything at once: finding matches,
-    // scoring them and calling the collector, so they make it impossible to
-    // see where time is spent, which is the purpose of query profiling.
-    // The default bulk scorer will pull a scorer and iterate over matches,
-    // this might be a significantly different execution path for some queries
-    // like disjunctions, but in general this is what is done anyway
-    return super.bulkScorer(context);
   }
 
   @Override

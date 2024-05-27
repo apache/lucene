@@ -19,7 +19,6 @@ package org.apache.lucene.tests.search;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
@@ -98,11 +97,6 @@ public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
   public static final class BrokenExplainWeight extends FilterWeight {
     public BrokenExplainWeight(BrokenExplainTermQuery q, Weight in) {
       super(q, in);
-    }
-
-    @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      return in.bulkScorer(context);
     }
 
     @Override
