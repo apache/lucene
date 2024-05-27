@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
@@ -591,6 +592,22 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new POS.Type[] {POS.Type.MORPHEME},
         new POS.Tag[] {POS.Tag.SL},
         new POS.Tag[] {POS.Tag.SL});
+  }
+
+  public void testDuplicate() throws IOException {
+    String s = "c++\nC쁠쁠\n세종\n세종\n세종시 세종 시";
+    try (Reader rulesReader = new StringReader(s)) {
+      var dict = UserDictionary.open(rulesReader);
+      assertTrue(dict.getRightId(3) != 0);
+      assertThrows(ArrayIndexOutOfBoundsException.class, () -> dict.getRightId(4));
+    }
+
+    String dupdup = "c++\nC쁠쁠\n세종\n세종\n세종시 세종 시\n세종시 세종 시";
+    try (Reader rulesReader = new StringReader(dupdup)) {
+      var dict = UserDictionary.open(rulesReader);
+      assertTrue(dict.getRightId(3) != 0);
+      assertThrows(ArrayIndexOutOfBoundsException.class, () -> dict.getRightId(4));
+    }
   }
 
   private void assertReadings(Analyzer analyzer, String input, String... readings)
