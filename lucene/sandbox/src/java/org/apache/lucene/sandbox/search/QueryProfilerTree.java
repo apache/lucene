@@ -22,9 +22,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.hppc.IntArrayList;
-import org.apache.lucene.util.hppc.IntCursor;
 
 /**
  * This class tracks the dependency tree for queries (scoring and rewriting) and generates {@link

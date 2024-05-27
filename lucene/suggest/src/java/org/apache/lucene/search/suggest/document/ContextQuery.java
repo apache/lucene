@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -36,7 +37,6 @@ import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.fst.Util;
-import org.apache.lucene.util.hppc.IntHashSet;
 
 /**
  * A {@link CompletionQuery} that matches documents specified by a wrapped {@link CompletionQuery}

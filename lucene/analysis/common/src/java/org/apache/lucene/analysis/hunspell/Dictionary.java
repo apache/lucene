@@ -50,6 +50,9 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntryAccumulator;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntrySupplier;
+import org.apache.lucene.internal.hppc.CharHashSet;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRef;
@@ -58,9 +61,6 @@ import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.IntSequenceOutputs;
 import org.apache.lucene.util.fst.Util;
-import org.apache.lucene.util.hppc.CharHashSet;
-import org.apache.lucene.util.hppc.IntArrayList;
-import org.apache.lucene.util.hppc.IntCursor;
 
 /** In-memory structure for the dictionary (.dic) and affix (.aff) data of a hunspell dictionary. */
 public class Dictionary {

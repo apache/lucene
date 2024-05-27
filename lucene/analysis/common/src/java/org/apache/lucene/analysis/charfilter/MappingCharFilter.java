@@ -20,11 +20,11 @@ import java.io.IOException;
 import java.io.Reader;
 import org.apache.lucene.analysis.CharFilter; // javadocs
 import org.apache.lucene.analysis.util.RollingCharBuffer;
+import org.apache.lucene.internal.hppc.CharObjectHashMap;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.fst.CharSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Outputs;
-import org.apache.lucene.util.hppc.CharObjectHashMap;
 
 /**
  * Simplistic {@link CharFilter} that applies the mappings contained in a {@link NormalizeCharMap}

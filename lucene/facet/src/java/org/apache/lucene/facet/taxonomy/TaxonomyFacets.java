@@ -17,9 +17,6 @@
 
 package org.apache.lucene.facet.taxonomy;
 
-import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.IntIntHashMap;
-import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +34,8 @@ import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Base class for all taxonomy-based facets impls. */
@@ -370,7 +369,7 @@ abstract class TaxonomyFacets extends Facets {
     List<Number> ordValues = new ArrayList<>();
 
     if (sparseCounts != null) {
-      for (IntIntCursor ordAndCount : sparseCounts) {
+      for (IntIntHashMap.IntIntCursor ordAndCount : sparseCounts) {
         int ord = ordAndCount.key;
         int count = ordAndCount.value;
         Number value = getAggregationValue(ord);
@@ -486,7 +485,7 @@ abstract class TaxonomyFacets extends Facets {
     // TODO: would be faster if we had a "get the following children" API?  then we
     // can make a single pass over the hashmap
     if (sparseCounts != null) {
-      for (IntIntCursor c : sparseCounts) {
+      for (IntIntHashMap.IntIntCursor c : sparseCounts) {
         int ord = c.key;
         int count = c.value;
         if (parents.get(ord) == pathOrd && count > 0) {

@@ -29,11 +29,11 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /** Reader for {@link Lucene90NormsFormat} */
 final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
