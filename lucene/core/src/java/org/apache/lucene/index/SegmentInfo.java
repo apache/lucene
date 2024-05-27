@@ -67,6 +67,7 @@ public final class SegmentInfo {
   private Map<String, String> attributes;
 
   private final Sort indexSort;
+  private final DataCubesConfig dataCubesConfig;
 
   // Tracks the Lucene version this segment was created with, since 3.1. Null
   // indicates an older than 3.0 index, and it's used to detect a too old index.
@@ -124,7 +125,8 @@ public final class SegmentInfo {
       Map<String, String> diagnostics,
       byte[] id,
       Map<String, String> attributes,
-      Sort indexSort) {
+      Sort indexSort,
+      DataCubesConfig dataCubesConfig) {
     assert !(dir instanceof TrackingDirectoryWrapper);
     this.dir = Objects.requireNonNull(dir);
     this.version = Objects.requireNonNull(version);
@@ -141,6 +143,37 @@ public final class SegmentInfo {
     }
     this.attributes = Map.copyOf(Objects.requireNonNull(attributes));
     this.indexSort = indexSort;
+    this.dataCubesConfig = dataCubesConfig;
+  }
+
+  /** TODO: remove this? */
+  public SegmentInfo(
+      Directory dir,
+      Version version,
+      Version minVersion,
+      String name,
+      int maxDoc,
+      boolean isCompoundFile,
+      boolean hasBlocks,
+      Codec codec,
+      Map<String, String> diagnostics,
+      byte[] id,
+      Map<String, String> attributes,
+      Sort indexSort) {
+    this(
+        dir,
+        version,
+        minVersion,
+        name,
+        maxDoc,
+        isCompoundFile,
+        hasBlocks,
+        codec,
+        diagnostics,
+        id,
+        attributes,
+        indexSort,
+        null);
   }
 
   /**
@@ -379,5 +412,13 @@ public final class SegmentInfo {
   /** Return the sort order of this segment, or null if the index has no sort. */
   public Sort getIndexSort() {
     return indexSort;
+  }
+
+  /**
+   * Returns the dataCubesConfig of this segment based on which the data cube indices will be
+   * created, or null if the index has no dataCubesConfig
+   */
+  public DataCubesConfig getDataCubesConfig() {
+    return dataCubesConfig;
   }
 }

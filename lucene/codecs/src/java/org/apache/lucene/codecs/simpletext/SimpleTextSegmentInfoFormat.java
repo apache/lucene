@@ -203,6 +203,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       } else {
         indexSort = new Sort(sortField);
       }
+      // TODO
 
       SimpleTextUtil.checkFooter(input);
 

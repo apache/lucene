@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.codecs.DataCubesFormat;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -279,6 +280,13 @@ final class IndexingChain implements Accountable {
       infoStream.message(
           "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write norms");
     }
+    DataCubesConfig dataCubesConfig = state.segmentInfo.getDataCubesConfig();
+    t0 = System.nanoTime();
+    writeDataCubes(state, sortMap, dataCubesConfig);
+    if (infoStream.isEnabled("IW")) {
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write dataCubes");
+    }
     SegmentReadState readState =
         new SegmentReadState(
             state.directory,
@@ -403,6 +411,31 @@ final class IndexingChain implements Accountable {
         IOUtils.close(pointsWriter);
       } else {
         IOUtils.closeWhileHandlingException(pointsWriter);
+      }
+    }
+  }
+
+  /** Writes DataCubeIndices based on buffered doc values (called from {@link #flush}). */
+  private void writeDataCubes(
+      SegmentWriteState state, Sorter.DocMap sortMap, DataCubesConfig dataCubesConfig)
+      throws IOException {
+    if (dataCubesConfig == null) return;
+    DataCubesConsumer dataCubesConsumer = null;
+    boolean success = false;
+    LeafReader docValuesReader = getDocValuesLeafReader();
+    try {
+      DataCubesFormat fmt = state.segmentInfo.getCodec().dataCubesFormat();
+      dataCubesConsumer = fmt.fieldsConsumer(state, dataCubesConfig);
+      // This creates the data cubes structures
+      if (dataCubesConsumer != null) {
+        dataCubesConsumer.flush(state, dataCubesConfig, docValuesReader, sortMap);
+      }
+      success = true;
+    } finally {
+      if (success) {
+        IOUtils.close(dataCubesConsumer);
+      } else {
+        IOUtils.closeWhileHandlingException(dataCubesConsumer);
       }
     }
   }

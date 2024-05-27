@@ -184,6 +184,15 @@ final class SegmentMerger {
           });
     }
 
+    if (mergeState.segmentInfo.getDataCubesConfig() != null) {
+      mergingTasks.add(
+          () -> {
+            mergeWithLogging(
+                this::mergeDataCubes, segmentWriteState, segmentReadState, "data cubes", numMerged);
+            return null;
+          });
+    }
+
     taskExecutor.invokeAll(mergingTasks);
     // write the merged infos
     mergeWithLogging(
@@ -280,6 +289,16 @@ final class SegmentMerger {
       SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
     try (KnnVectorsWriter writer = codec.knnVectorsFormat().fieldsWriter(segmentWriteState)) {
       writer.merge(mergeState);
+    }
+  }
+
+  private void mergeDataCubes(
+      SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
+    try (DataCubesConsumer consumer =
+        codec
+            .dataCubesFormat()
+            .fieldsConsumer(segmentWriteState, mergeState.segmentInfo.getDataCubesConfig())) {
+      consumer.merge(mergeState);
     }
   }
 

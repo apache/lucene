@@ -66,6 +66,7 @@ final class PerFieldMergeState {
         fieldsProducers,
         in.pointsReaders,
         in.knnVectorsReaders,
+        in.dataCubesProducers,
         in.maxDocs,
         in.infoStream,
         in.intraMergeTaskExecutor,

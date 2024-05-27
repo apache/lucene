@@ -408,6 +408,13 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
+  public DataCubeValues<?> getDataCubeValues(String fieldName) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(fieldName);
+    return reader == null ? null : reader.getDataCubeValues(fieldName);
+  }
+
+  @Override
   public FloatVectorValues getFloatVectorValues(String fieldName) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
