@@ -48,7 +48,9 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
@@ -526,6 +528,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                   docsWithField.cardinality(),
                   mergedQuantizationState,
                   compress,
+                  fieldInfo.getVectorSimilarityFunction(),
+                  vectorsScorer,
                   quantizationDataInput)));
     } finally {
       if (success == false) {
@@ -537,7 +541,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static ScalarQuantizer mergeQuantiles(
-      List<ScalarQuantizer> quantizationStates, List<Integer> segmentSizes, byte bits) {
+      List<ScalarQuantizer> quantizationStates, IntArrayList segmentSizes, byte bits) {
     assert quantizationStates.size() == segmentSizes.size();
     if (quantizationStates.isEmpty()) {
       return null;
@@ -629,7 +633,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       throws IOException {
     assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
     List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
-    List<Integer> segmentSizes = new ArrayList<>(mergeState.liveDocs.length);
+    IntArrayList segmentSizes = new IntArrayList(mergeState.liveDocs.length);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       FloatVectorValues fvv;
       if (mergeState.knnVectorsReaders[i] != null
@@ -890,6 +894,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       curDoc = target;
       return docID();
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
@@ -1013,6 +1022,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     public float getScoreCorrectionConstant() throws IOException {
       return current.values.getScoreCorrectionConstant();
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) throws IOException {
+      throw new UnsupportedOperationException();
+    }
   }
 
   static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
@@ -1080,6 +1094,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         quantize();
       }
       return doc;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) throws IOException {
+      throw new UnsupportedOperationException();
     }
 
     private void quantize() throws IOException {
@@ -1181,6 +1200,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     @Override
     public int advance(int target) throws IOException {
       return in.advance(target);
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) throws IOException {
+      throw new UnsupportedOperationException();
     }
   }
 }

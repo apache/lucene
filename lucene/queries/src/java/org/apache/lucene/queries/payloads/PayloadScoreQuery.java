@@ -36,6 +36,7 @@ import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.util.BytesRef;
 
 /** A Query class that uses a {@link PayloadFunction} to modify the score of a wrapped SpanQuery */
@@ -156,17 +157,6 @@ public class PayloadScoreQuery extends SpanQuery {
     }
 
     @Override
-    public SpanScorer scorer(LeafReaderContext context) throws IOException {
-      Spans spans = getSpans(context, Postings.PAYLOADS);
-      if (spans == null) {
-        return null;
-      }
-      LeafSimScorer docScorer = innerWeight.getSimScorer(context);
-      PayloadSpans payloadSpans = new PayloadSpans(spans, decoder);
-      return new PayloadSpanScorer(this, payloadSpans, docScorer);
-    }
-
-    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return innerWeight.isCacheable(ctx);
     }
@@ -188,6 +178,18 @@ public class PayloadScoreQuery extends SpanQuery {
       }
 
       return scorer.getPayloadExplanation();
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      Spans spans = getSpans(context, Postings.PAYLOADS);
+      if (spans == null) {
+        return null;
+      }
+      LeafSimScorer docScorer = innerWeight.getSimScorer(context);
+      PayloadSpans payloadSpans = new PayloadSpans(spans, decoder);
+      final var scorer = new PayloadSpanScorer(this, payloadSpans, docScorer);
+      return new DefaultScorerSupplier(scorer);
     }
   }
 

@@ -127,15 +127,6 @@ public class ToParentBlockJoinQuery extends Query {
       this.scoreMode = scoreMode;
     }
 
-    @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      final ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
-    }
-
     // NOTE: acceptDocs applies (and is checked) only in the
     // parent document space
     @Override

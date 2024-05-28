@@ -19,14 +19,15 @@ package org.apache.lucene.analysis;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Transition;
 
@@ -45,7 +46,7 @@ public class AutomatonToTokenStream {
    * @return TokenStream representation of automaton.
    */
   public static TokenStream toTokenStream(Automaton automaton) {
-    List<List<Integer>> positionNodes = new ArrayList<>();
+    List<IntArrayList> positionNodes = new ArrayList<>();
 
     Transition[][] transitions = automaton.getSortedTransitions();
 
@@ -61,7 +62,7 @@ public class AutomatonToTokenStream {
     }
 
     LinkedList<RemapNode> noIncomingEdges = new LinkedList<>();
-    Map<Integer, Integer> idToPos = new HashMap<>();
+    IntIntHashMap idToPos = new IntIntHashMap();
     noIncomingEdges.addLast(new RemapNode(0, 0));
     while (noIncomingEdges.isEmpty() == false) {
       RemapNode currState = noIncomingEdges.removeFirst();
@@ -73,7 +74,7 @@ public class AutomatonToTokenStream {
         }
       }
       if (positionNodes.size() == currState.pos) {
-        List<Integer> posIncs = new ArrayList<>();
+        IntArrayList posIncs = new IntArrayList();
         posIncs.add(currState.id);
         positionNodes.add(posIncs);
       } else {
@@ -89,10 +90,10 @@ public class AutomatonToTokenStream {
     }
 
     List<List<EdgeToken>> edgesByLayer = new ArrayList<>();
-    for (List<Integer> layer : positionNodes) {
+    for (IntArrayList layer : positionNodes) {
       List<EdgeToken> edges = new ArrayList<>();
-      for (int state : layer) {
-        for (Transition t : transitions[state]) {
+      for (IntCursor state : layer) {
+        for (Transition t : transitions[state.value]) {
           // each edge in the token stream can only be on value, though a transition takes a range.
           for (int val = t.min; val <= t.max; val++) {
             int destLayer = idToPos.get(t.dest);

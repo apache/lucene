@@ -26,8 +26,6 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
@@ -41,6 +39,7 @@ import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
@@ -454,16 +453,18 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
 
   /** Returns a sorted array containing unique field numbers */
   private int[] flushFieldNums() throws IOException {
-    SortedSet<Integer> fieldNums = new TreeSet<>();
+    IntHashSet fieldNumsSet = new IntHashSet();
     for (DocData dd : pendingDocs) {
       for (FieldData fd : dd.fields) {
-        fieldNums.add(fd.fieldNum);
+        fieldNumsSet.add(fd.fieldNum);
       }
     }
+    int[] fieldNums = fieldNumsSet.toArray();
+    Arrays.sort(fieldNums);
 
-    final int numDistinctFields = fieldNums.size();
+    final int numDistinctFields = fieldNums.length;
     assert numDistinctFields > 0;
-    final int bitsRequired = PackedInts.bitsRequired(fieldNums.last());
+    final int bitsRequired = PackedInts.bitsRequired(fieldNums[numDistinctFields - 1]);
     final int token = (Math.min(numDistinctFields - 1, 0x07) << 5) | bitsRequired;
     vectorsStream.writeByte((byte) token);
     if (numDistinctFields - 1 >= 0x07) {
@@ -471,18 +472,13 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     }
     final PackedInts.Writer writer =
         PackedInts.getWriterNoHeader(
-            vectorsStream, PackedInts.Format.PACKED, fieldNums.size(), bitsRequired, 1);
+            vectorsStream, PackedInts.Format.PACKED, numDistinctFields, bitsRequired, 1);
     for (Integer fieldNum : fieldNums) {
       writer.add(fieldNum);
     }
     writer.finish();
 
-    int[] fns = new int[fieldNums.size()];
-    int i = 0;
-    for (Integer key : fieldNums) {
-      fns[i++] = key;
-    }
-    return fns;
+    return fieldNums;
   }
 
   private void flushFields(int totalFields, int[] fieldNums) throws IOException {

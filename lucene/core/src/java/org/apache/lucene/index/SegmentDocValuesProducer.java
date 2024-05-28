@@ -17,14 +17,13 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.store.Directory;
 
 /** Encapsulates multiple producers when there are docvalues updates as one producer */
@@ -36,7 +35,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
   final Map<String, DocValuesProducer> dvProducersByField = new HashMap<>();
   final Set<DocValuesProducer> dvProducers =
       Collections.newSetFromMap(new IdentityHashMap<DocValuesProducer, Boolean>());
-  final List<Long> dvGens = new ArrayList<>();
+  final LongArrayList dvGens = new LongArrayList();
 
   /**
    * Creates a new producer that handles updated docvalues fields

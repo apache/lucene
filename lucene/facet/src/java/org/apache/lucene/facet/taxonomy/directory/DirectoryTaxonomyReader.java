@@ -39,6 +39,8 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Accountable;
@@ -549,7 +551,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     LeafReader leafReader;
     LeafReaderContext leafReaderContext;
     BinaryDocValues values = null;
-    List<Integer> uncachedOrdinalPositions = new ArrayList<>();
+    IntArrayList uncachedOrdinalPositions = new IntArrayList();
 
     for (int i = 0; i < ordinalsLength; i++) {
       if (bulkPath[originalPosition[i]] == null) {
@@ -586,9 +588,9 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
 
     if (uncachedOrdinalPositions.isEmpty() == false) {
       synchronized (categoryCache) {
-        for (int i : uncachedOrdinalPositions) {
+        for (IntCursor i : uncachedOrdinalPositions) {
           // add the value to the categoryCache after computation
-          categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+          categoryCache.put(ordinals[i.value], bulkPath[originalPosition[i.value]]);
         }
       }
     }

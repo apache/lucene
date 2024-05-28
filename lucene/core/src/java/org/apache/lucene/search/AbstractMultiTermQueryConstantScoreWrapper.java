@@ -212,35 +212,6 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
     }
 
     @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      final Terms terms = context.reader().terms(q.getField());
-      if (terms == null) {
-        return null;
-      }
-      final WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
-      if (weightOrIterator == null) {
-        return null;
-      } else if (weightOrIterator.weight != null) {
-        return weightOrIterator.weight.bulkScorer(context);
-      } else {
-        final Scorer scorer = scorerForIterator(weightOrIterator.iterator);
-        if (scorer == null) {
-          return null;
-        }
-        return new DefaultBulkScorer(scorer);
-      }
-    }
-
-    @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      final ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
-    }
-
-    @Override
     public Matches matches(LeafReaderContext context, int doc) throws IOException {
       final Terms terms = context.reader().terms(q.field);
       if (terms == null) {
@@ -283,6 +254,32 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           return Objects.requireNonNullElseGet(
               scorer,
               () -> new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty()));
+        }
+
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+          final BulkScorer bulkScorer;
+          if (weightOrIterator == null) {
+            bulkScorer = null;
+          } else if (weightOrIterator.weight != null) {
+            bulkScorer = weightOrIterator.weight.bulkScorer(context);
+          } else {
+            bulkScorer =
+                new DefaultBulkScorer(
+                    new ConstantScoreScorer(weight, score(), scoreMode, weightOrIterator.iterator));
+          }
+
+          // It's against the API contract to return a null scorer from a non-null ScoreSupplier.
+          // So if our ScoreSupplier was non-null (i.e., thought there might be hits) but we now
+          // find that there are actually no hits, we need to return an empty BulkScorer as opposed
+          // to null:
+          return Objects.requireNonNullElseGet(
+              bulkScorer,
+              () ->
+                  new DefaultBulkScorer(
+                      new ConstantScoreScorer(
+                          weight, score(), scoreMode, DocIdSetIterator.empty())));
         }
 
         @Override

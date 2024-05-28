@@ -28,6 +28,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
@@ -513,6 +514,10 @@ public class BKDWriter implements Closeable {
 
     pointCount = values.size();
 
+    if (pointCount == 0) {
+      return null;
+    }
+
     final int numLeaves =
         Math.toIntExact((pointCount + config.maxPointsInLeafNode - 1) / config.maxPointsInLeafNode);
     final int numSplits = numLeaves - 1;
@@ -646,7 +651,7 @@ public class BKDWriter implements Closeable {
 
     final IndexOutput metaOut, indexOut, dataOut;
     final long dataStartFP;
-    final List<Long> leafBlockFPs = new ArrayList<>();
+    final LongArrayList leafBlockFPs = new LongArrayList();
     final List<byte[]> leafBlockStartValues = new ArrayList<>();
     final byte[] leafValues = new byte[config.maxPointsInLeafNode * config.packedBytesLength];
     final int[] leafDocs = new int[config.maxPointsInLeafNode];

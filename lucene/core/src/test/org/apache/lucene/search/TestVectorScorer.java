@@ -26,7 +26,6 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
@@ -44,24 +43,22 @@ public class TestVectorScorer extends LuceneTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       assert reader.leaves().size() == 1;
       LeafReaderContext context = reader.leaves().get(0);
-      FieldInfo fieldInfo = context.reader().getFieldInfos().fieldInfo("field");
       final VectorScorer vectorScorer;
       switch (encoding) {
         case BYTE:
-          vectorScorer = VectorScorer.create(context, fieldInfo, new byte[] {1, 2});
+          vectorScorer = context.reader().getByteVectorValues("field").scorer(new byte[] {1, 2});
           break;
         case FLOAT32:
-          vectorScorer = VectorScorer.create(context, fieldInfo, new float[] {1, 2});
+          vectorScorer = context.reader().getFloatVectorValues("field").scorer(new float[] {1, 2});
           break;
         default:
           throw new IllegalArgumentException("unexpected vector encoding: " + encoding);
       }
 
+      DocIdSetIterator iterator = vectorScorer.iterator();
       int numDocs = 0;
-      for (int i = 0; i < reader.maxDoc(); i++) {
-        if (vectorScorer.advanceExact(i)) {
-          numDocs++;
-        }
+      while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        numDocs++;
       }
       assertEquals(3, numDocs);
     }
