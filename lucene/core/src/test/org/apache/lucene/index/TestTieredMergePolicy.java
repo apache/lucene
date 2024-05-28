@@ -212,8 +212,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         int count = w.getSegmentCount();
         maxCount = Math.max(count, maxCount);
         assertTrue("count=" + count + " maxCount=" + maxCount, count >= maxCount - 3);
-        assertTrue("num segments=" + count + " minNumSegments=" + tmp.getMinSegmentCount(), tmp.getMinSegmentCount() <= count);
       }
+      assertTrue(
+          "num segments=" + w.getSegmentCount() + " minNumSegments=" + tmp.getMinSegmentCount(),
+          tmp.getMinSegmentCount() <= w.getSegmentCount());
 
       w.flush(true, true);
 
@@ -497,10 +499,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     checkSegmentsInExpectations(w, segNamesBefore, false); // There should have been no merges
     checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
     assertEquals(
-            "NumDocs should reflect removed documents ", remainingDocs, w.getDocStats().numDocs);
+        "NumDocs should reflect removed documents ", remainingDocs, w.getDocStats().numDocs);
     assertTrue(
-            "Should still be deleted docs in the index",
-            w.getDocStats().numDocs < w.getDocStats().maxDoc);
+        "Should still be deleted docs in the index",
+        w.getDocStats().numDocs < w.getDocStats().maxDoc);
 
     // This time, forceMerge. By default, this should respect max segment size.
     // Will change for LUCENE-8236
@@ -516,11 +518,11 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     w.forceMerge(1);
     assertEquals("There should be exactly one segment now", 1, w.getSegmentCount());
     assertEquals(
-            "maxDoc and numDocs should be identical", w.getDocStats().numDocs, w.getDocStats().maxDoc);
+        "maxDoc and numDocs should be identical", w.getDocStats().numDocs, w.getDocStats().maxDoc);
     assertEquals(
-            "There should be an exact number of documents in that one segment",
-            remainingDocs,
-            w.getDocStats().numDocs);
+        "There should be an exact number of documents in that one segment",
+        remainingDocs,
+        w.getDocStats().numDocs);
 
     // Delete 5% and expunge, should be no change.
     segNamesBefore = getSegmentNames(w);
@@ -529,8 +531,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     checkSegmentsInExpectations(w, segNamesBefore, false);
     assertEquals("There should still be only one segment. ", 1, w.getSegmentCount());
     assertTrue(
-            "The segment should have deleted documents",
-            w.getDocStats().numDocs < w.getDocStats().maxDoc);
+        "The segment should have deleted documents",
+        w.getDocStats().numDocs < w.getDocStats().maxDoc);
 
     w.forceMerge(1); // back to one segment so deletePctDocsFromEachSeg still works
 
@@ -540,9 +542,9 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     assertEquals("There should still be only one segment. ", 1, w.getSegmentCount());
     assertEquals(
-            "The segment should have no deleted documents",
-            w.getDocStats().numDocs,
-            w.getDocStats().maxDoc);
+        "The segment should have no deleted documents",
+        w.getDocStats().numDocs,
+        w.getDocStats().maxDoc);
 
     // sanity check, at this point we should have an over`-large segment, we know we have exactly
     // one.
@@ -567,9 +569,9 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     w.commit(); // want to trigger merge no matter what.
 
     assertEquals(
-            "There should be exactly one very large and one small segment",
-            2,
-            w.cloneSegmentInfos().size());
+        "There should be exactly one very large and one small segment",
+        2,
+        w.cloneSegmentInfos().size());
     SegmentCommitInfo info0 = w.cloneSegmentInfos().info(0);
     SegmentCommitInfo info1 = w.cloneSegmentInfos().info(1);
     int largeSegDocCount = Math.max(info0.info.maxDoc(), info1.info.maxDoc());
@@ -581,7 +583,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     dir.close();
   }
-
 
   /**
    * Returns how many segments are in the index after applying all merges from the {@code spec} to
