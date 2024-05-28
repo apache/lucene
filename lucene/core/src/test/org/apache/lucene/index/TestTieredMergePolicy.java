@@ -78,8 +78,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         "Number of segments "
             + infos.size()
             + " is lower than the minimum: "
-            + tmp.getMinNumSegments(),
-        infos.size() >= tmp.getMinNumSegments());
+            + tmp.getMinSegmentCount(),
+        infos.size() >= tmp.getMinSegmentCount());
 
     long levelSizeBytes = Math.max(minSegmentBytes, (long) (tmp.getFloorSegmentMB() * 1024 * 1024));
     long bytesLeft = totalBytes;
@@ -133,7 +133,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             totalBytes,
             delPercentage,
             tmp.getDeletesPctAllowed(),
-            tmp.getMinNumSegments()),
+            tmp.getMinSegmentCount()),
         numSegments <= allowedSegCount || hasBalancedMerges == false);
   }
 
@@ -144,7 +144,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     for (OneMerge merge : merges.merges) {
       assertTrue(merge.segments.size() <= mergeFactor);
     }
-    assertTrue(merges.merges.size() >= tmp.getMinNumSegments());
+    assertTrue(merges.merges.size() >= tmp.getMinSegmentCount());
   }
 
   public void testForceMergeDeletes() throws Exception {
@@ -200,6 +200,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       conf.setMaxBufferedDocs(2);
       tmp.setMaxMergeAtOnce(3);
       tmp.setSegmentsPerTier(6);
+      tmp.setMinSegmentCount(TestUtil.nextInt(random(), 1, 5));
 
       IndexWriter w = new IndexWriter(dir, conf);
       int maxCount = 0;
@@ -211,13 +212,13 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         int count = w.getSegmentCount();
         maxCount = Math.max(count, maxCount);
         assertTrue("count=" + count + " maxCount=" + maxCount, count >= maxCount - 3);
+        assertTrue("num segments=" + count + " minNumSegments=" + tmp.getMinSegmentCount(), tmp.getMinSegmentCount() <= count);
       }
 
       w.flush(true, true);
 
       int segmentCount = w.getSegmentCount();
-      tmp.setMinNumSegments(TestUtil.nextInt(random(), 1, segmentCount));
-      int targetCount = TestUtil.nextInt(random(), tmp.getMinNumSegments(), segmentCount);
+      int targetCount = TestUtil.nextInt(random(), 1, segmentCount);
 
       if (VERBOSE) {
         System.out.println(
@@ -248,10 +249,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
               max125Pct >= info.sizeInBytes());
         }
       }
-
-      assertTrue(
-          "There should be at least " + tmp.getMinNumSegments() + " segments",
-          w.getSegmentCount() >= tmp.getMinNumSegments());
 
       w.close();
       dir.close();
@@ -306,9 +303,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
   }
 
   // LUCENE-7976 makes findForceMergeDeletes and findForcedDeletes respect max segment size by
-  // default, so ensure that this works. We also check that the minimum number of segments is
-  // respected.
-  public void testForcedMergesRespectSizes() throws Exception {
+  // default, so ensure that this works.
+  public void testForcedMergesRespectSegSize() throws Exception {
     final Directory dir = newDirectory();
     final IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     final TieredMergePolicy tmp = new TieredMergePolicy();
@@ -321,7 +317,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         (long)
             ((1024.0 * 1024.0)); // fudge it up, we're trying to catch egregious errors and segbytes
     // don't really reflect the number for original merges.
-    tmp.setMinNumSegments(TestUtil.nextInt(random(), 1, 10));
     tmp.setMaxMergedSegmentMB(mbSize);
     conf.setMaxBufferedDocs(100);
     conf.setMergePolicy(tmp);
@@ -343,12 +338,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     List<String> segNamesBefore = getSegmentNames(w);
     w.forceMergeDeletes();
     checkSegmentsInExpectations(w, segNamesBefore, false); // There should have been no merges.
-    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
 
     w.forceMerge(Integer.MAX_VALUE);
     checkSegmentsInExpectations(w, segNamesBefore, true);
     checkSegmentSizeNotExceeded(w.cloneSegmentInfos(), maxSegBytes);
-    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
 
     // Delete 12-17% of each segment and expungeDeletes. This should result in:
     // > the same number of segments as before.
@@ -358,7 +351,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     w.forceMergeDeletes();
     w.commit();
     checkSegmentSizeNotExceeded(w.cloneSegmentInfos(), maxSegBytes);
-    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
     assertFalse("There should be no deleted docs in the index.", w.hasDeletions());
 
     // Check that deleting _fewer_ than 10% doesn't merge inappropriately. Nothing should be merged
@@ -369,7 +361,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     w.forceMergeDeletes();
     remainingDocs -= deletedThisPass;
     checkSegmentsInExpectations(w, segNamesBefore, false); // There should have been no merges
-    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
     assertEquals(
         "NumDocs should reflect removed documents ", remainingDocs, w.getDocStats().numDocs);
     assertTrue(
@@ -380,12 +371,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // Will change for LUCENE-8236
     w.forceMerge(Integer.MAX_VALUE);
     checkSegmentSizeNotExceeded(w.cloneSegmentInfos(), maxSegBytes);
-    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
-
-    // forceMerge to minimum number of segments, should respect max segment size
-    w.forceMerge(tmp.getMinNumSegments());
-    checkSegmentSizeNotExceeded(w.cloneSegmentInfos(), maxSegBytes);
-    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
 
     // Now forceMerge down to one segment, there should be exactly remainingDocs in exactly one
     // segment.
@@ -457,6 +442,146 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     dir.close();
   }
+
+  public void testForcedMergesRespectMinSegmentCount() throws Exception {
+    final Directory dir = newDirectory();
+    final IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
+    final TieredMergePolicy tmp = new TieredMergePolicy();
+
+    tmp.setMinSegmentCount(TestUtil.nextInt(random(), 1, 10));
+    int maxBufferedDocs = 100;
+    conf.setMaxBufferedDocs(maxBufferedDocs);
+    conf.setMergePolicy(tmp);
+    conf.setMergeScheduler(new SerialMergeScheduler());
+
+    final IndexWriter w = new IndexWriter(dir, conf);
+
+    final int numDocs = atLeast(2400);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("id", "" + i, Field.Store.NO));
+      doc.add(newTextField("content", "aaa " + i, Field.Store.NO));
+      w.addDocument(doc);
+    }
+
+    w.commit();
+    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
+
+    // These should be no-ops on an index with no deletions and segments are pretty big.
+    List<String> segNamesBefore = getSegmentNames(w);
+    w.forceMergeDeletes();
+    checkSegmentsInExpectations(w, segNamesBefore, false); // There should have been no merges.
+    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
+
+    w.forceMerge(Integer.MAX_VALUE);
+    checkSegmentsInExpectations(w, segNamesBefore, true);
+    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
+
+    // Delete 12-17% of each segment and expungeDeletes. This should result in:
+    // > the same number of segments as before.
+    // > no segments larger than maxSegmentSize.
+    // > no deleted docs left.
+    int remainingDocs = numDocs - deletePctDocsFromEachSeg(w, random().nextInt(5) + 12, true);
+    w.forceMergeDeletes();
+    w.commit();
+    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
+    assertFalse("There should be no deleted docs in the index.", w.hasDeletions());
+
+    // Check that deleting _fewer_ than 10% doesn't merge inappropriately. Nothing should be merged
+    // since no segment
+    // has had more than 10% of its docs deleted.
+    segNamesBefore = getSegmentNames(w);
+    int deletedThisPass = deletePctDocsFromEachSeg(w, random().nextInt(4) + 3, false);
+    w.forceMergeDeletes();
+    remainingDocs -= deletedThisPass;
+    checkSegmentsInExpectations(w, segNamesBefore, false); // There should have been no merges
+    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
+    assertEquals(
+            "NumDocs should reflect removed documents ", remainingDocs, w.getDocStats().numDocs);
+    assertTrue(
+            "Should still be deleted docs in the index",
+            w.getDocStats().numDocs < w.getDocStats().maxDoc);
+
+    // This time, forceMerge. By default, this should respect max segment size.
+    // Will change for LUCENE-8236
+    w.forceMerge(Integer.MAX_VALUE);
+    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
+
+    // forceMerge to minimum number of segments, should respect min segment size
+    w.forceMerge(tmp.getMinSegmentCount());
+    checkMinNumSegmentNotExceeded(w.cloneSegmentInfos(), tmp);
+
+    // Now forceMerge down to one segment, there should be exactly remainingDocs in exactly one
+    // segment.
+    w.forceMerge(1);
+    assertEquals("There should be exactly one segment now", 1, w.getSegmentCount());
+    assertEquals(
+            "maxDoc and numDocs should be identical", w.getDocStats().numDocs, w.getDocStats().maxDoc);
+    assertEquals(
+            "There should be an exact number of documents in that one segment",
+            remainingDocs,
+            w.getDocStats().numDocs);
+
+    // Delete 5% and expunge, should be no change.
+    segNamesBefore = getSegmentNames(w);
+    remainingDocs -= deletePctDocsFromEachSeg(w, random().nextInt(5) + 1, false);
+    w.forceMergeDeletes();
+    checkSegmentsInExpectations(w, segNamesBefore, false);
+    assertEquals("There should still be only one segment. ", 1, w.getSegmentCount());
+    assertTrue(
+            "The segment should have deleted documents",
+            w.getDocStats().numDocs < w.getDocStats().maxDoc);
+
+    w.forceMerge(1); // back to one segment so deletePctDocsFromEachSeg still works
+
+    // Test singleton merge for expungeDeletes
+    remainingDocs -= deletePctDocsFromEachSeg(w, random().nextInt(5) + 20, true);
+    w.forceMergeDeletes();
+
+    assertEquals("There should still be only one segment. ", 1, w.getSegmentCount());
+    assertEquals(
+            "The segment should have no deleted documents",
+            w.getDocStats().numDocs,
+            w.getDocStats().maxDoc);
+
+    // sanity check, at this point we should have an over`-large segment, we know we have exactly
+    // one.
+    assertTrue("Our single segment should have quite a few docs", w.getDocStats().numDocs > 1_000);
+
+    // Delete 60% of the documents and then add a few more docs and commit. This should "singleton
+    // merge" the large segment
+    // created above. 60% leaves some wriggle room, LUCENE-8263 will change this assumption and
+    // should be tested
+    // when we deal with that JIRA.
+
+    deletedThisPass = deletePctDocsFromEachSeg(w, (w.getDocStats().numDocs * 60) / 100, true);
+    remainingDocs -= deletedThisPass;
+
+    for (int i = 0; i < 50; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("id", "" + (i + numDocs), Field.Store.NO));
+      doc.add(newTextField("content", "aaa " + i, Field.Store.NO));
+      w.addDocument(doc);
+    }
+
+    w.commit(); // want to trigger merge no matter what.
+
+    assertEquals(
+            "There should be exactly one very large and one small segment",
+            2,
+            w.cloneSegmentInfos().size());
+    SegmentCommitInfo info0 = w.cloneSegmentInfos().info(0);
+    SegmentCommitInfo info1 = w.cloneSegmentInfos().info(1);
+    int largeSegDocCount = Math.max(info0.info.maxDoc(), info1.info.maxDoc());
+    int smallSegDocCount = Math.min(info0.info.maxDoc(), info1.info.maxDoc());
+    assertEquals("The large segment should have a bunch of docs", largeSegDocCount, remainingDocs);
+    assertEquals("Small segment should have fewer docs", smallSegDocCount, 50);
+
+    w.close();
+
+    dir.close();
+  }
+
 
   /**
    * Returns how many segments are in the index after applying all merges from the {@code spec} to
@@ -765,10 +890,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
   private static void checkMinNumSegmentNotExceeded(SegmentInfos infos, TieredMergePolicy tmp) {
     assertTrue(
         "There should be at least "
-            + tmp.getMinNumSegments()
+            + tmp.getMinSegmentCount()
             + " segments, there are "
             + infos.size(),
-        infos.size() >= tmp.getMinNumSegments());
+        infos.size() >= tmp.getMinSegmentCount());
   }
 
   private static final double EPSILON = 1E-14;
