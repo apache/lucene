@@ -443,15 +443,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
 
-        // Only rewindWithoutReload for non-floor block or first floor block.
-        // TODO: We need currentFrame's first entry to judge whether we can rewindWithoutReload for
-        // non-first floor blocks.
-        if (currentFrame.fp
-                != currentFrame.fpOrig // this is a floor multi-block and not the first one.
-            || currentFrame.nextEnt
-                == -1) { // this is a block we pushed in stack but haven't loaded its data, or a
-          // block we just changed its fp and set nextEnt to -1 to prepare reload by
-          // scanToFloorFrame.
+        if (shouldRewind()) {
           currentFrame.rewind();
         } else {
           // Prepare to reduce entCount.
@@ -771,15 +763,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
 
-        // Only rewindWithoutReload for non-floor block or first floor block.
-        // TODO: We need currentFrame's first entry to judge whether we can rewindWithoutReload for
-        // non-first floor blocks.
-        if (currentFrame.fp
-                != currentFrame.fpOrig // this is a floor multi-block and not the first one.
-            || currentFrame.nextEnt
-                == -1) { // this is a block we pushed in stack but haven't loaded its data, or a
-          // block we just changed its fp and set nextEnt to -1 to prepare reload by
-          // scanToFloorFrame.
+        if (shouldRewind()) {
           currentFrame.rewind();
         } else {
           // Prepare to reduce entCount.
@@ -959,6 +943,20 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     } else {
       return result;
     }
+  }
+
+  // We should rewind a block in two cases:
+  // 1: currentFrame.fp != currentFrame.fpOrig. This is a floor multi-block and not the first one.
+  // 2: currentFrame.nextEnt == -1. This is a block we pushed in stack but haven't loaded its data,
+  // or a block we just changed its fp and set nextEnt to -1 by scanToFloorFrame to prepare reload.
+  // This means we only rewindWithoutReload for non-floor block or first floor block.
+  // TODO: We need currentFrame's first entry to judge whether we can rewindWithoutReload for
+  // non-first floor blocks.
+  private boolean shouldRewind() {
+    if (currentFrame.fp != currentFrame.fpOrig || currentFrame.nextEnt == -1) {
+      return true;
+    }
+    return false;
   }
 
   @SuppressWarnings("unused")
