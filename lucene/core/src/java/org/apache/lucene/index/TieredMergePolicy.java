@@ -93,7 +93,7 @@ public class TieredMergePolicy extends MergePolicy {
   private double segsPerTier = 10.0;
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 20.0;
-  private int minNumSegments = 1;
+  private int minSegmentCount = 1;
 
   /** Sole constructor, setting all settings to their defaults. */
   public TieredMergePolicy() {
@@ -260,21 +260,21 @@ public class TieredMergePolicy extends MergePolicy {
 
   /**
    * Sets the minimum number of segments to merge to. This allows merging to ensure that there are
-   * at least minNumSegments segments after a natural merge. This setting can be overriden by force
-   * merging to a specified number. Default is 1.
+   * at least minSegmentCount segments after a non-forced merge. This setting can be overriden by force
+   * merging to a specified number of segments. Default is 1.
    */
-  public TieredMergePolicy setMinNumSegments(int minNumSegments) {
-    if (minNumSegments < 1) {
+  public TieredMergePolicy setMinSegmentCount(int minSegmentCount) {
+    if (minSegmentCount < 1) {
       throw new IllegalArgumentException(
-          "minNumSegments must be >= 1 (got " + minNumSegments + ")");
+          "minSegmentCount must be >= 1 (got " + minSegmentCount + ")");
     }
-    this.minNumSegments = minNumSegments;
+    this.minSegmentCount = minSegmentCount;
     return this;
   }
 
   /** Returns the current minimum number of segments. */
-  public int getMinNumSegments() {
-    return minNumSegments;
+  public int getMinSegmentCount() {
+    return minSegmentCount;
   }
 
   private static class SegmentSizeAndDocs {
@@ -445,7 +445,7 @@ public class TieredMergePolicy extends MergePolicy {
               + tooBigCount,
           mergeContext);
     }
-    int allowedDocCount = totalMaxDoc / minNumSegments;
+    int allowedDocCount = Math.ceilDiv(totalMaxDoc, minSegmentCount);
     return doFindMerges(
         sortedInfos,
         maxMergedSegmentBytes,
@@ -772,6 +772,8 @@ public class TieredMergePolicy extends MergePolicy {
       message(
           "findForcedMerges maxSegmentCount="
               + maxSegmentCount
+              + " minSegmentCount="
+              + minSegmentCount
               + " infos="
               + segString(mergeContext, infos)
               + " segmentsToMerge="
@@ -781,6 +783,7 @@ public class TieredMergePolicy extends MergePolicy {
     List<SegmentSizeAndDocs> sortedSizeAndDocs = getSortedBySegmentSize(infos, mergeContext);
 
     long totalMergeBytes = 0;
+    long totalMergeDocs = 0;
     final Set<SegmentCommitInfo> merging = mergeContext.getMergingSegments();
 
     // Trim the list down, remove if we're respecting max segment size and it's not original.
@@ -799,15 +802,19 @@ public class TieredMergePolicy extends MergePolicy {
           iter.remove();
         } else {
           totalMergeBytes += segSizeDocs.sizeInBytes;
+          totalMergeDocs += segSizeDocs.maxDoc - segSizeDocs.delCount;
         }
       }
     }
 
     long maxMergeBytes = maxMergedSegmentBytes;
+    long maxMergeDocs = Math.ceilDiv(totalMergeDocs, Math.min(minSegmentCount, maxSegmentCount));
+
 
     // Set the maximum segment size based on how many segments have been specified.
     if (maxSegmentCount == 1) {
       maxMergeBytes = Long.MAX_VALUE;
+      maxMergeDocs = Long.MAX_VALUE;
     } else if (maxSegmentCount != Integer.MAX_VALUE) {
       maxMergeBytes =
           Math.max(
@@ -840,7 +847,7 @@ public class TieredMergePolicy extends MergePolicy {
         iter.remove();
       }
       // Don't try to merge a segment with no deleted docs that's over the max size.
-      if (maxSegmentCount != Integer.MAX_VALUE && segSizeDocs.sizeInBytes >= maxMergeBytes) {
+      if (maxSegmentCount != Integer.MAX_VALUE && (segSizeDocs.sizeInBytes >= maxMergeBytes || segSizeDocs.maxDoc >= maxMergeDocs)) {
         iter.remove();
       }
     }
@@ -899,18 +906,23 @@ public class TieredMergePolicy extends MergePolicy {
     while (true) {
       List<SegmentCommitInfo> candidate = new ArrayList<>();
       long currentCandidateBytes = 0L;
-      while (index >= 0 && resultingSegments > maxSegmentCount) {
-        final SegmentCommitInfo current = sortedSizeAndDocs.get(index).segInfo;
+      long currentCandidateDocs = 0L;
+      while (index >= 0 && resultingSegments > Math.min(maxSegmentCount, minSegmentCount)) {
+        SegmentSizeAndDocs sizeAndDocs = sortedSizeAndDocs.get(index);
+        final SegmentCommitInfo current = sizeAndDocs.segInfo;
         final int initialCandidateSize = candidate.size();
         final long currentSegmentSize = current.sizeInBytes();
-        // We either add to the bin because there's space or because the it is the smallest possible
+        final long currentSegmentDocs = sizeAndDocs.maxDoc - sizeAndDocs.delCount;
+        // We either add to the bin because there's space or because it is the smallest possible
         // bin since
         // decrementing the index will move us to even larger segments.
-        if (currentCandidateBytes + currentSegmentSize <= maxMergeBytes
-            || initialCandidateSize < 2) {
+        boolean isRightSize = (currentCandidateBytes + currentSegmentSize <= maxMergeBytes)
+                && (currentSegmentDocs + currentCandidateDocs <= maxMergeDocs);
+        if (isRightSize || initialCandidateSize < 2) {
           candidate.add(current);
           --index;
           currentCandidateBytes += currentSegmentSize;
+          currentCandidateDocs += currentSegmentDocs;
           if (initialCandidateSize > 0) {
             // Any merge that handles two or more segments reduces the resulting number of segments
             // by the number of segments handled - 1
@@ -1012,7 +1024,7 @@ public class TieredMergePolicy extends MergePolicy {
     sb.append("maxCFSSegmentSizeMB=").append(getMaxCFSSegmentSizeMB()).append(", ");
     sb.append("noCFSRatio=").append(noCFSRatio).append(", ");
     sb.append("deletesPctAllowed=").append(deletesPctAllowed).append(", ");
-    sb.append("targetNumSegments=").append(minNumSegments);
+    sb.append("minSegmentCount=").append(minSegmentCount);
     return sb.toString();
   }
 }
