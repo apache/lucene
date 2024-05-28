@@ -217,7 +217,7 @@ public class TestHunspell extends LuceneTestCase {
     Hunspell h = loadNoTimeout("base");
     String[] createQuery = {"create", "created", "creates", "creating", "creation"};
     checkCompression(h, "toEdit=[create/DGNS], toAdd=[], extra=[]", createQuery);
-    checkCompression(h, "toEdit=[created], toAdd=[creates], extra=[]", "creates", "created");
+    checkCompression(h, "toEdit=[create/DS], toAdd=[], extra=[]", "creates", "created");
     checkCompression(h, "toEdit=[], toAdd=[creation/S], extra=[]", "creation", "creations");
     checkCompression(h, "toEdit=[], toAdd=[abc, def], extra=[]", "abc", "def");
     checkCompression(h, "toEdit=[], toAdd=[form/S], extra=[]", "form", "forms");
@@ -231,6 +231,20 @@ public class TestHunspell extends LuceneTestCase {
     Hunspell h = loadNoTimeout("compress");
     checkCompression(
         h, "toEdit=[], toAdd=[form/GS], extra=[]", "formings", "forming", "form", "forms");
+
+    checkCompression(h, "toEdit=[], toAdd=[f/def], extra=[]", "f", "fd", "fe", "ff");
+
+    WordFormGenerator gen = new WordFormGenerator(h.dictionary);
+    EntrySuggestion fAbc =
+        gen.compress(List.of("f", "fa", "fb", "fc"), Set.of("fyy", "fxx"), () -> {});
+    assertEquals("toEdit=[], toAdd=[f/abc], extra=[]", fAbc.internalsToString());
+  }
+
+  @Test
+  public void testCompressingIsFastOnLargeUnrelatedWordSets() throws Exception {
+    Hunspell h = loadNoTimeout("compress");
+    String[] letters = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"};
+    checkCompression(h, "toEdit=[], toAdd=[a, b, c, d, e, f, g, h, i, j, k, l], extra=[]", letters);
   }
 
   @Test

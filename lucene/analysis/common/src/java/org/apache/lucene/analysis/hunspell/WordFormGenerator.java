@@ -418,57 +418,65 @@ public class WordFormGenerator {
 
   private class WordCompressor {
     private final Comparator<State> solutionFitness =
-        Comparator.comparingInt((State s) -> s.forbidden)
-            .thenComparingInt(s -> s.underGenerated)
+        Comparator.comparingInt((State s) -> -s.potentialCoverage)
             .thenComparingInt(s -> s.stemToFlags.size())
+            .thenComparingInt(s -> s.underGenerated)
             .thenComparingInt(s -> s.overGenerated);
     private final Set<String> forbidden;
     private final Runnable checkCanceled;
     private final Set<String> wordSet;
     private final Set<String> existingStems;
     private final Map<String, Set<FlagSet>> stemToPossibleFlags = new HashMap<>();
-    private final Map<String, Integer> stemCounts = new LinkedHashMap<>();
+    private final Map<String, Set<String>> stemsToForms = new LinkedHashMap<>();
 
     WordCompressor(List<String> words, Set<String> forbidden, Runnable checkCanceled) {
       this.forbidden = forbidden;
       this.checkCanceled = checkCanceled;
       wordSet = new HashSet<>(words);
 
-      Stemmer.StemCandidateProcessor processor =
-          new Stemmer.StemCandidateProcessor(WordContext.SIMPLE_WORD) {
-            @Override
-            boolean processStemCandidate(
-                char[] word,
-                int offset,
-                int length,
-                int lastAffix,
-                int outerPrefix,
-                int innerPrefix,
-                int outerSuffix,
-                int innerSuffix) {
-              String candidate = new String(word, offset, length);
-              stemCounts.merge(candidate, 1, Integer::sum);
-              CharHashSet flags = new CharHashSet();
-              if (outerPrefix >= 0) flags.add(dictionary.affixData(outerPrefix, AFFIX_FLAG));
-              if (innerPrefix >= 0) flags.add(dictionary.affixData(innerPrefix, AFFIX_FLAG));
-              if (outerSuffix >= 0) flags.add(dictionary.affixData(outerSuffix, AFFIX_FLAG));
-              if (innerSuffix >= 0) flags.add(dictionary.affixData(innerSuffix, AFFIX_FLAG));
-              stemToPossibleFlags
-                  .computeIfAbsent(candidate, __ -> new LinkedHashSet<>())
-                  .add(new FlagSet(flags, dictionary));
-              return true;
-            }
-          };
-
       for (String word : words) {
         checkCanceled.run();
-        stemCounts.merge(word, 1, Integer::sum);
         stemToPossibleFlags.computeIfAbsent(word, __ -> new LinkedHashSet<>());
+        var processor =
+            new Stemmer.StemCandidateProcessor(WordContext.SIMPLE_WORD) {
+              @Override
+              boolean processStemCandidate(
+                  char[] chars,
+                  int offset,
+                  int length,
+                  int lastAffix,
+                  int outerPrefix,
+                  int innerPrefix,
+                  int outerSuffix,
+                  int innerSuffix) {
+                String candidate = new String(chars, offset, length);
+                CharHashSet flags = new CharHashSet();
+                if (outerPrefix >= 0) flags.add(dictionary.affixData(outerPrefix, AFFIX_FLAG));
+                if (innerPrefix >= 0) flags.add(dictionary.affixData(innerPrefix, AFFIX_FLAG));
+                if (outerSuffix >= 0) flags.add(dictionary.affixData(outerSuffix, AFFIX_FLAG));
+                if (innerSuffix >= 0) flags.add(dictionary.affixData(innerSuffix, AFFIX_FLAG));
+                FlagSet flagSet = new FlagSet(flags, dictionary);
+                StemWithFlags swf = new StemWithFlags(candidate, Set.of(flagSet));
+                if (forbidden.isEmpty()
+                    || allGenerated(swf).stream().noneMatch(forbidden::contains)) {
+                  registerStem(candidate);
+                  stemToPossibleFlags
+                      .computeIfAbsent(candidate, __ -> new LinkedHashSet<>())
+                      .add(flagSet);
+                }
+                return true;
+              }
+
+              void registerStem(String stem) {
+                stemsToForms.computeIfAbsent(stem, __ -> new LinkedHashSet<>()).add(word);
+              }
+            };
+        processor.registerStem(word);
         stemmer.removeAffixes(word.toCharArray(), 0, word.length(), true, -1, -1, -1, processor);
       }
 
       existingStems =
-          stemCounts.keySet().stream()
+          stemsToForms.keySet().stream()
               .filter(stem -> dictionary.lookupEntries(stem) != null)
               .collect(Collectors.toSet());
     }
@@ -476,31 +484,50 @@ public class WordFormGenerator {
     EntrySuggestion compress() {
       Comparator<String> stemSorter =
           Comparator.comparing((String s) -> existingStems.contains(s))
-              .thenComparing(stemCounts::get)
+              .thenComparing(s -> stemsToForms.get(s).size())
               .reversed();
       List<String> sortedStems =
-          stemCounts.keySet().stream().sorted(stemSorter).collect(Collectors.toList());
+          stemsToForms.keySet().stream().sorted(stemSorter).collect(Collectors.toList());
       PriorityQueue<State> queue = new PriorityQueue<>(solutionFitness);
+      Set<Map<String, Set<FlagSet>>> visited = new HashSet<>();
       queue.offer(new State(Map.of(), wordSet.size(), 0, 0));
       State result = null;
       while (!queue.isEmpty()) {
         State state = queue.poll();
         if (state.underGenerated == 0) {
-          if (result == null || solutionFitness.compare(state, result) < 0) result = state;
-          if (state.forbidden == 0) break;
-          continue;
+          result = state;
+          break;
         }
 
         for (String stem : sortedStems) {
           if (!state.stemToFlags.containsKey(stem)) {
-            queue.offer(addStem(state, stem));
+            var withStem = addStem(state, stem);
+            if (visited.add(withStem)) {
+              var next = newState(withStem);
+              if (next != null
+                  && (state.underGenerated > next.underGenerated
+                      || next.potentialCoverage > state.potentialCoverage)) {
+                queue.offer(next);
+              }
+            }
           }
+        }
+
+        if (state.potentialCoverage < wordSet.size()) {
+          // don't add flags until the suggested entries can potentially cover all requested forms
+          continue;
         }
 
         for (Map.Entry<String, Set<FlagSet>> entry : state.stemToFlags.entrySet()) {
           for (FlagSet flags : stemToPossibleFlags.get(entry.getKey())) {
             if (!entry.getValue().contains(flags)) {
-              queue.offer(addFlags(state, entry.getKey(), flags));
+              var withFlags = addFlags(state, entry.getKey(), flags);
+              if (visited.add(withFlags)) {
+                var next = newState(withFlags);
+                if (next != null && state.underGenerated > next.underGenerated) {
+                  queue.offer(next);
+                }
+              }
             }
           }
         }
@@ -518,7 +545,7 @@ public class WordFormGenerator {
       List<String> extraGenerated = new ArrayList<>();
       for (String extra :
           allGenerated(state.stemToFlags).distinct().sorted().collect(Collectors.toList())) {
-        if (wordSet.contains(extra)) continue;
+        if (wordSet.contains(extra) || existingStems.contains(extra)) continue;
 
         if (forbidden.contains(extra) && dictionary.forbiddenword != FLAG_UNSET) {
           addEntry(toEdit, toAdd, extra, CharHashSet.from(dictionary.forbiddenword));
@@ -536,27 +563,39 @@ public class WordFormGenerator {
       (existingStems.contains(stem) ? toEdit : toAdd).add(DictEntry.create(stem, flagString));
     }
 
-    private State addStem(State state, String stem) {
-      LinkedHashMap<String, Set<FlagSet>> stemToFlags = new LinkedHashMap<>(state.stemToFlags);
+    private Map<String, Set<FlagSet>> addStem(State state, String stem) {
+      Map<String, Set<FlagSet>> stemToFlags = new LinkedHashMap<>(state.stemToFlags);
       stemToFlags.put(stem, Set.of());
-      return newState(stemToFlags);
+      return stemToFlags;
     }
 
-    private State addFlags(State state, String stem, FlagSet flags) {
-      LinkedHashMap<String, Set<FlagSet>> stemToFlags = new LinkedHashMap<>(state.stemToFlags);
+    private Map<String, Set<FlagSet>> addFlags(State state, String stem, FlagSet flags) {
+      Map<String, Set<FlagSet>> stemToFlags = new LinkedHashMap<>(state.stemToFlags);
       Set<FlagSet> flagSets = new LinkedHashSet<>(stemToFlags.get(stem));
       flagSets.add(flags);
       stemToFlags.put(stem, flagSets);
-      return newState(stemToFlags);
+      return stemToFlags;
     }
 
     private State newState(Map<String, Set<FlagSet>> stemToFlags) {
       Set<String> allGenerated = allGenerated(stemToFlags).collect(Collectors.toSet());
+      int overGenerated = 0;
+      for (String s : allGenerated) {
+        if (forbidden.contains(s)) return null;
+        if (!wordSet.contains(s)) overGenerated++;
+      }
+
+      int potentialCoverage =
+          (int)
+              stemToFlags.keySet().stream()
+                  .flatMap(s -> stemsToForms.get(s).stream())
+                  .distinct()
+                  .count();
       return new State(
           stemToFlags,
           (int) wordSet.stream().filter(s -> !allGenerated.contains(s)).count(),
-          (int) allGenerated.stream().filter(s -> !wordSet.contains(s)).count(),
-          (int) allGenerated.stream().filter(s -> forbidden.contains(s)).count());
+          overGenerated,
+          potentialCoverage);
     }
 
     private final Map<StemWithFlags, List<String>> expansionCache = new HashMap<>();
@@ -584,15 +623,19 @@ public class WordFormGenerator {
       }
     }
 
-    private Stream<String> allGenerated(Map<String, Set<FlagSet>> stemToFlags) {
+    private List<String> allGenerated(StemWithFlags swc) {
       Function<StemWithFlags, List<String>> expandToWords =
           e ->
               expand(e.stem, FlagSet.flatten(e.flags)).stream()
                   .map(w -> w.getWord())
                   .collect(Collectors.toList());
+      return expansionCache.computeIfAbsent(swc, expandToWords);
+    }
+
+    private Stream<String> allGenerated(Map<String, Set<FlagSet>> stemToFlags) {
       return stemToFlags.entrySet().stream()
-          .map(e -> new StemWithFlags(e.getKey(), e.getValue()))
-          .flatMap(swc -> expansionCache.computeIfAbsent(swc, expandToWords).stream());
+          .flatMap(
+              entry -> allGenerated(new StemWithFlags(entry.getKey(), entry.getValue())).stream());
     }
 
     private List<AffixedWord> expand(String stem, CharHashSet flagSet) {
@@ -642,17 +685,19 @@ public class WordFormGenerator {
     final Map<String, Set<FlagSet>> stemToFlags;
     final int underGenerated;
     final int overGenerated;
-    final int forbidden;
+
+    // The maximum number of requested forms possibly generated by adding only flags to this state
+    final int potentialCoverage;
 
     State(
         Map<String, Set<FlagSet>> stemToFlags,
         int underGenerated,
         int overGenerated,
-        int forbidden) {
+        int potentialCoverage) {
       this.stemToFlags = stemToFlags;
       this.underGenerated = underGenerated;
       this.overGenerated = overGenerated;
-      this.forbidden = forbidden;
+      this.potentialCoverage = potentialCoverage;
     }
   }
 }
