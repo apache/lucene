@@ -365,6 +365,9 @@ Optimizations
 
 * GITHUB#13406: Replace List<Integer> by IntArrayList and List<Long> by LongArrayList. (Bruno Roustant)
 
+* GITHUB##13425: Rewrite SortedNumericDocValuesRangeQuery to MatchNoDocsQuery when the upper bound is smaller than the
+  lower bound. (Ioana Tagirta)
+
 Bug Fixes
 ---------------------
 
