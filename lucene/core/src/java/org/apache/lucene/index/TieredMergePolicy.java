@@ -374,9 +374,9 @@ public class TieredMergePolicy extends MergePolicy {
         iter.remove();
         // if this segment is merging, then its deletes are being reclaimed already.
         // only count live docs in the total max doc
-        int mergeDocs = segSizeDocs.maxDoc - segSizeDocs.delCount;
-        mergingDocs += mergeDocs;
-        totalMaxDoc += mergeDocs;
+        int liveDocs = segSizeDocs.maxDoc - segSizeDocs.delCount;
+        mergingDocs += liveDocs;
+        totalMaxDoc += liveDocs;
       } else {
         totalDelDocs += segSizeDocs.delCount;
         totalMaxDoc += segSizeDocs.maxDoc;
@@ -1005,7 +1005,7 @@ public class TieredMergePolicy extends MergePolicy {
         sortedInfos,
         maxMergedSegmentBytes,
         Integer.MAX_VALUE,
-        minSegmentCount,
+        Integer.MAX_VALUE,
         0,
         Math.ceilDiv(infos.totalMaxDoc() - totalDelCount, minSegmentCount),
         MERGE_TYPE.FORCE_MERGE_DELETES,
