@@ -303,4 +303,20 @@ public abstract class FacetTestCase extends LuceneTestCase {
     // assert children equal with no assumption of the children ordering
     assertTrue(Arrays.asList(result.labelValues).containsAll(Arrays.asList(expectedChildren)));
   }
+
+  protected void assertFacetResult(
+      FacetResult result,
+      String expectedDim,
+      String[] expectedPath,
+      int expectedChildCount,
+      Number expectedValue,
+      Map<String, Integer> countPerLabel,
+      LabelAndValue... expectedChildren) {
+    assertFacetResult(
+        result, expectedDim, expectedPath, expectedChildCount, expectedValue, expectedChildren);
+    assertEquals(result.labelValues.length, countPerLabel.size());
+    for (LabelAndValue lv : result.labelValues) {
+      assertEquals(lv.count, (int) countPerLabel.get(lv.label));
+    }
+  }
 }

@@ -44,6 +44,8 @@ New Features
 * GITHUB#13181: Add new VectorScorer interface to vector value iterators. This allows for vector codecs to supply
   simpler and more optimized vector scoring when iterating vector values directly. (Ben Trent)
 
+* GITHUB#13414: Counts are always available in the result when using taxonomy facets. (Stefan Vodita)
+
 Improvements
 ---------------------
 

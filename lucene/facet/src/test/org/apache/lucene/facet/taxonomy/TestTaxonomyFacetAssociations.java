@@ -225,6 +225,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         new String[0],
         2,
         -1,
+        Map.of("a", 100, "b", 50),
         new LabelAndValue[] {
           new LabelAndValue("a", 200), new LabelAndValue("b", 150),
         });
@@ -306,6 +307,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         new String[0],
         2,
         -1f,
+        Map.of("a", 100, "b", 50),
         new LabelAndValue[] {
           new LabelAndValue("a", 50.0f), new LabelAndValue("b", 9.999995f),
         });

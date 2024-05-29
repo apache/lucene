@@ -379,7 +379,9 @@ public abstract class TaxonomyFacets extends Facets {
     // add 1 here to also account for the dim:
     int childComponentIdx = path.length + 1;
     for (int i = 0; i < labelValues.length; i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[childComponentIdx], values[i]);
+      labelValues[i] =
+          new LabelAndValue(
+              bulkPath[i].components[childComponentIdx], values[i], getCount(ordinals[i]));
     }
 
     return new FacetResult(
@@ -455,7 +457,9 @@ public abstract class TaxonomyFacets extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[ordValues.size()];
     for (int i = 0; i < ordValues.size(); i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
+      labelValues[i] =
+          new LabelAndValue(
+              bulkPath[i].components[cp.length], ordValues.get(i), getCount(ordinals.get(i)));
     }
     return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
