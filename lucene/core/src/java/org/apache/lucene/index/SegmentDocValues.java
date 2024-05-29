@@ -77,7 +77,7 @@ final class SegmentDocValues {
   /** Decrement the reference count of the given {@link DocValuesProducer} generations. */
   synchronized void decRef(LongArrayList dvProducersGens) throws IOException {
     IOUtils.applyToAll(
-        dvProducersGens.stream().mapToObj(Long::valueOf),
+        dvProducersGens.stream().<Long>mapToObj(Long::valueOf).toList(),
         gen -> {
           RefCount<DocValuesProducer> dvp = genDVProducers.get(gen);
           assert dvp != null : "gen=" + gen;
