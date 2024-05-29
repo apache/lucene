@@ -5,6 +5,7 @@ import org.apache.lucene.facet.sandbox.abstracts.OrdToLabels;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 
 import java.io.IOException;
+import java.util.List;
 
 /**TODO: add doc**/
 public class RangeOrdToLabels implements OrdToLabels {
@@ -14,6 +15,11 @@ public class RangeOrdToLabels implements OrdToLabels {
     /**TODO: add doc**/
     public RangeOrdToLabels(Range[] inputRanges) {
         ranges = inputRanges;
+    }
+
+    /**TODO: add doc**/
+    public RangeOrdToLabels(List<? extends Range> inputRanges) {
+        ranges = inputRanges.toArray(new Range[0]);
     }
     @Override
     public FacetLabel getLabel(int ordinal) throws IOException {
