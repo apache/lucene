@@ -23,8 +23,13 @@ import org.apache.lucene.search.DocIdSetIterator;
 public abstract class DocValuesSkipper {
 
   /**
-   * Advance this skipper so that all levels contain {@code target}. The behavior is undefined if
-   * {@code target} is greater than the number of documents in the index.
+   * Advance this skipper so that all levels contain the next document on or after {@code target}.
+   *
+   * <p><b>NOTE</b>: The behavior is undefined if {@code target} is less than or equal to {@code
+   * maxDocID(0)}.
+   *
+   * <p><b>NOTE</b>: {@code minDocID(0)} may return a doc ID that is greater than {@code target} if
+   * the target document doesn't have a value.
    */
   public abstract void advance(int target) throws IOException;
 
@@ -34,30 +39,55 @@ public abstract class DocValuesSkipper {
   /**
    * Return the minimum doc ID on the given level, inclusive. This returns {@code -1} if {@link
    * #advance(int)} has not been called yet and {@link DocIdSetIterator#NO_MORE_DOCS} if the
-   * iterator is exhausted.
+   * iterator is exhausted. This method is non-increasing when {@code level} increases. Said
+   * otherwise {@code minDocID(level+1) <= minDocId(level)}.
    */
   public abstract int minDocID(int level);
 
   /**
    * Return the maximum doc ID on the given level, inclusive. This returns {@code -1} if {@link
    * #advance(int)} has not been called yet and {@link DocIdSetIterator#NO_MORE_DOCS} if the
-   * iterator is exhausted.
+   * iterator is exhausted. This method is non-decreasing when {@code level} decreases. Said
+   * otherwise {@code maxDocID(level+1) >= maxDocId(level)}.
    */
   public abstract int maxDocID(int level);
 
-  /** Return the minimum value on the given level, inclusive. */
+  /**
+   * Return the minimum value at the given level, inclusive.
+   *
+   * <p><b>NOTE</b>: It is only guaranteed that values in this interval are greater than or equal
+   * the returned value. There is no guarantee that one document actually has this value.
+   */
   public abstract long minValue(int level);
 
-  /** Return the maximum value on the given level, inclusive. */
+  /**
+   * Return the maximum value at the given level, inclusive.
+   *
+   * <p><b>NOTE</b>: It is only guaranteed that values in this interval are less than or equal the
+   * returned value. There is no guarantee that one document actually has this value.
+   */
   public abstract long maxValue(int level);
 
-  /** Return the number of documents that have a value on the given level */
+  /**
+   * Return the number of documents that have a value in the interval associated with the given
+   * level.
+   */
   public abstract int docCount(int level);
 
-  /** Return the global minimum value. */
+  /**
+   * Return the global minimum value.
+   *
+   * <p><b>NOTE</b>: It is only guaranteed that values are greater than or equal the returned value.
+   * There is no guarantee that one document actually has this value.
+   */
   public abstract long minValue();
 
-  /** Return the global maximum value. */
+  /**
+   * Return the global maximum value.
+   *
+   * <p><b>NOTE</b>: It is only guaranteed that values are greater than or equal the returned value.
+   * There is no guarantee that one document actually has this value.
+   */
   public abstract long maxValue();
 
   /** Return the global number of documents with a value for the field. */
