@@ -40,6 +40,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.lucene.store.Directory;
 
 /**
@@ -460,11 +461,18 @@ public final class IOUtils {
    * The first exception thrown by the consumer is re-thrown and subsequent exceptions are
    * suppressed.
    */
-  @SuppressWarnings("StreamToIterable")
   public static <T> void applyToAll(Collection<T> collection, IOConsumer<T> consumer)
       throws IOException {
+    applyToAll(collection.stream(), consumer);
+  }
+
+  /**
+   * Applies the consumer to all non-null elements in the stream even if an exception is thrown. The
+   * first exception thrown by the consumer is re-thrown and subsequent exceptions are suppressed.
+   */
+  @SuppressWarnings("StreamToIterable")
+  public static <T> void applyToAll(Stream<T> stream, IOConsumer<T> consumer) throws IOException {
     IOUtils.close(
-        collection.stream().filter(Objects::nonNull).map(t -> (Closeable) () -> consumer.accept(t))
-            ::iterator);
+        stream.filter(Objects::nonNull).map(t -> (Closeable) () -> consumer.accept(t))::iterator);
   }
 }
