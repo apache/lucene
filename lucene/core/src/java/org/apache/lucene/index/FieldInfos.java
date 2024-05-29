@@ -598,6 +598,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   false,
                   IndexOptions.NONE,
                   dvType,
+                  false,
                   -1,
                   new HashMap<>(),
                   0,
@@ -682,6 +683,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           false,
           IndexOptions.NONE,
           dvType,
+          false,
           -1,
           new HashMap<>(),
           0,
@@ -805,6 +807,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.hasPayloads(),
               fi.getIndexOptions(),
               fi.getDocValuesType(),
+              fi.hasDocValuesSkipIndex(),
               dvGen,
               // original attributes is UnmodifiableMap
               new HashMap<>(fi.attributes()),
@@ -816,7 +819,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getVectorSimilarityFunction(),
               fi.isSoftDeletesField(),
               fi.isParentField());
-      fiNew.setDocValuesSkipIndex(fi.hasDocValuesSkipIndex());
       byName.put(fiNew.getName(), fiNew);
       return fiNew;
     }

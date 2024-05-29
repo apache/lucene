@@ -190,6 +190,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 storePayloads,
                 indexOptions,
                 docValuesType,
+                docValueSkipper,
                 dvGen,
                 Collections.unmodifiableMap(atts),
                 dimensionalCount,
@@ -200,7 +201,6 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 vectorDistFunc,
                 isSoftDeletesField,
                 isParentField);
-        infos[i].setDocValuesSkipIndex(docValueSkipper);
       }
 
       SimpleTextUtil.checkFooter(input);

@@ -36,7 +36,7 @@ public final class FieldInfo {
 
   private DocValuesType docValuesType = DocValuesType.NONE;
 
-  private boolean docValuesSkipIndex;
+  private final boolean docValuesSkipIndex;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -82,6 +82,7 @@ public final class FieldInfo {
       boolean storePayloads,
       IndexOptions indexOptions,
       DocValuesType docValues,
+      boolean hasDocValuesSkipIndex,
       long dvGen,
       Map<String, String> attributes,
       int pointDimensionCount,
@@ -97,6 +98,7 @@ public final class FieldInfo {
     this.docValuesType =
         Objects.requireNonNull(
             docValues, "DocValuesType must not be null (field: \"" + name + "\")");
+    this.docValuesSkipIndex = hasDocValuesSkipIndex;
     this.indexOptions =
         Objects.requireNonNull(
             indexOptions, "IndexOptions must not be null (field: \"" + name + "\")");
@@ -153,6 +155,12 @@ public final class FieldInfo {
 
     if (docValuesType == null) {
       throw new IllegalArgumentException("DocValuesType must not be null (field: '" + name + "')");
+    }
+    if (docValuesType == DocValuesType.NONE && docValuesSkipIndex) {
+      throw new IllegalArgumentException(
+          "field '"
+              + name
+              + "' cannot have docValuesSkipIndex set to true without having docvalues");
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
       throw new IllegalArgumentException(
@@ -536,12 +544,6 @@ public final class FieldInfo {
               + "\"");
     }
     docValuesType = type;
-    this.checkConsistency();
-  }
-
-  /** Record a skip index for doc values on this field. */
-  public void setDocValuesSkipIndex(boolean docValuesSkipIndex) {
-    this.docValuesSkipIndex = docValuesSkipIndex;
     this.checkConsistency();
   }
 

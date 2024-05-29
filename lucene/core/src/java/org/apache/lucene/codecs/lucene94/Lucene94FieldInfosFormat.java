@@ -163,8 +163,10 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           boolean isSoftDeletesField = (bits & SOFT_DELETES_FIELD) != 0;
           boolean isParentField =
               format >= FORMAT_PARENT_FIELD ? (bits & PARENT_FIELD_FIELD) != 0 : false;
+          boolean hasDocValuesSkipIndex =
+              format >= FORMAT_DOCVALUE_SKIPPER ? (bits & DOCVALUES_SKIPPER) != 0 : false;
 
-          if ((bits & 0xE0) != 0) {
+          if ((bits & 0xC0) != 0) {
             throw new CorruptIndexException(
                 "unused bits are set \"" + Integer.toBinaryString(bits) + "\"", input);
           }
@@ -173,14 +175,18 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                 "parent field bit is set but shouldn't \"" + Integer.toBinaryString(bits) + "\"",
                 input);
           }
+          if (format < FORMAT_DOCVALUE_SKIPPER && (bits & DOCVALUES_SKIPPER) != 0) {
+            throw new CorruptIndexException(
+                "doc values skipper bit is set but shouldn't \""
+                    + Integer.toBinaryString(bits)
+                    + "\"",
+                input);
+          }
 
           final IndexOptions indexOptions = getIndexOptions(input, input.readByte());
 
           // DV Types are packed in one byte
           final DocValuesType docValuesType = getDocValuesType(input, input.readByte());
-          // TODO: add this as a bit?
-          final boolean hasDocValuesSkipIndex =
-              format < FORMAT_DOCVALUE_SKIPPER ? false : (input.readByte() & 1) == 1;
           final long dvGen = input.readLong();
           Map<String, String> attributes = input.readMapOfStrings();
           // just use the last field's map if its the same
@@ -211,6 +217,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     storePayloads,
                     indexOptions,
                     docValuesType,
+                    hasDocValuesSkipIndex,
                     dvGen,
                     attributes,
                     pointDataDimensionCount,
@@ -221,7 +228,6 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     vectorDistFunc,
                     isSoftDeletesField,
                     isParentField);
-            infos[i].setDocValuesSkipIndex(hasDocValuesSkipIndex);
             infos[i].checkConsistency();
           } catch (IllegalStateException e) {
             throw new CorruptIndexException(
@@ -398,13 +404,13 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;
         if (fi.isParentField()) bits |= PARENT_FIELD_FIELD;
+        if (fi.hasDocValuesSkipIndex()) bits |= DOCVALUES_SKIPPER;
         output.writeByte(bits);
 
         output.writeByte(indexOptionsByte(fi.getIndexOptions()));
 
         // pack the DV type and hasNorms in one byte
         output.writeByte(docValuesByte(fi.getDocValuesType()));
-        output.writeByte(fi.hasDocValuesSkipIndex() ? (byte) 1 : (byte) 0);
         output.writeLong(fi.getDocValuesGen());
         output.writeMapOfStrings(fi.attributes());
         output.writeVInt(fi.getPointDimensionCount());
@@ -437,4 +443,5 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final byte STORE_PAYLOADS = 0x4;
   static final byte SOFT_DELETES_FIELD = 0x8;
   static final byte PARENT_FIELD_FIELD = 0x10;
+  static final byte DOCVALUES_SKIPPER = 0x20;
 }

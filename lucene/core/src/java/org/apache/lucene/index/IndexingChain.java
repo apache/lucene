@@ -680,6 +680,7 @@ final class IndexingChain implements Accountable {
                 false,
                 s.indexOptions,
                 s.docValuesType,
+                s.hasDocValuesSkipIndex,
                 -1,
                 s.attributes,
                 s.pointDimensionCount,
@@ -694,7 +695,6 @@ final class IndexingChain implements Accountable {
     if (fi.getIndexOptions() != IndexOptions.NONE) {
       pf.setInvertState();
     }
-    fi.setDocValuesSkipIndex(s.hasDocValuesSkipIndex);
     DocValuesType dvType = fi.getDocValuesType();
     switch (dvType) {
       case NONE:

@@ -96,6 +96,7 @@ public class TermVectorLeafReader extends LeafReader {
             terms.hasPayloads(),
             indexOptions,
             DocValuesType.NONE,
+            false,
             -1,
             Collections.emptyMap(),
             0,
