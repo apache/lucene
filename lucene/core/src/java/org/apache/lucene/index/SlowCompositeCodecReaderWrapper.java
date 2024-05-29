@@ -491,8 +491,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
-      // TODO: do we need to implenment it?
-      throw new IllegalAccessError("This method is for searching not for merging");
+      throw new UnsupportedOperationException("This method is for searching not for merging");
     }
   }
 

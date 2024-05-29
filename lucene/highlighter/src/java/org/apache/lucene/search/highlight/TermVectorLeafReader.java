@@ -143,14 +143,13 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public NumericDocValues getNormValues(String field) throws IOException {
-    return null; // Is this needed?  See MemoryIndex for a way to do it.
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    return null;
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
-    // TODO: is this needed
-    return null;
+  public NumericDocValues getNormValues(String field) throws IOException {
+    return null; // Is this needed?  See MemoryIndex for a way to do it.
   }
 
   @Override

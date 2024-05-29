@@ -283,7 +283,10 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
 
     @Override
     public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
-      return in.getSkipper(field);
+      assert field.hasDocValuesSkipIndex();
+      DocValuesSkipper skipper = in.getSkipper(field);
+      assert skipper != null;
+      return new AssertingLeafReader.AssertingDocValuesSkipper(skipper);
     }
 
     @Override

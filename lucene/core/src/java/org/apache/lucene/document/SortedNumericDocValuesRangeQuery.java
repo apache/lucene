@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -105,9 +106,17 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+
+        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+            return null;
+          }
+        }
+
         SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
-        final TwoPhaseIterator iterator;
+        TwoPhaseIterator iterator;
         if (singleton != null) {
           iterator =
               new TwoPhaseIterator(singleton) {
@@ -144,6 +153,9 @@ final class SortedNumericDocValuesRangeQuery extends Query {
                   return 2; // 2 comparisons
                 }
               };
+        }
+        if (skipper != null) {
+          iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue);
         }
         final var scorer = new ConstantScoreScorer(this, score(), scoreMode, iterator);
         return new DefaultScorerSupplier(scorer);

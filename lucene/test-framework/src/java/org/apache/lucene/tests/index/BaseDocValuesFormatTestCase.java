@@ -3823,9 +3823,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
             NumericDocValues numericDocValues = leafReader.getNumericDocValues("test");
             return new DocValuesWrapper() {
+
               @Override
-              public boolean advanceExact(int target) throws IOException {
-                return numericDocValues.advanceExact(target);
+              public void advance(int target) throws IOException {
+                numericDocValues.advance(target);
               }
 
               @Override
@@ -3871,18 +3872,20 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
               long min;
 
               @Override
-              public boolean advanceExact(int target) throws IOException {
-                if (sortedNumericDocValues.advanceExact(target)) {
-                  max = Long.MIN_VALUE;
-                  min = Long.MAX_VALUE;
-                  for (int i = 0; i < sortedNumericDocValues.docValueCount(); i++) {
-                    long value = sortedNumericDocValues.nextValue();
-                    max = Math.max(max, value);
-                    min = Math.min(min, value);
-                  }
-                  return true;
+              public void advance(int target) throws IOException {
+                if (sortedNumericDocValues.advance(target) != NO_MORE_DOCS) {
+                  readValues();
                 }
-                return false;
+              }
+
+              private void readValues() throws IOException {
+                max = Long.MIN_VALUE;
+                min = Long.MAX_VALUE;
+                for (int i = 0; i < sortedNumericDocValues.docValueCount(); i++) {
+                  long value = sortedNumericDocValues.nextValue();
+                  max = Math.max(max, value);
+                  min = Math.min(min, value);
+                }
               }
 
               @Override
@@ -3923,8 +3926,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
             return new DocValuesWrapper() {
 
               @Override
-              public boolean advanceExact(int target) throws IOException {
-                return sortedDocValues.advanceExact(target);
+              public void advance(int target) throws IOException {
+                sortedDocValues.advance(target);
               }
 
               @Override
@@ -3969,18 +3972,20 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
               long min;
 
               @Override
-              public boolean advanceExact(int target) throws IOException {
-                if (sortedSetDocValues.advanceExact(target)) {
-                  max = Long.MIN_VALUE;
-                  min = Long.MAX_VALUE;
-                  for (int i = 0; i < sortedSetDocValues.docValueCount(); i++) {
-                    long value = sortedSetDocValues.nextOrd();
-                    max = Math.max(max, value);
-                    min = Math.min(min, value);
-                  }
-                  return true;
+              public void advance(int target) throws IOException {
+                if (sortedSetDocValues.advance(target) != NO_MORE_DOCS) {
+                  readValues();
                 }
-                return false;
+              }
+
+              private void readValues() throws IOException {
+                max = Long.MIN_VALUE;
+                min = Long.MAX_VALUE;
+                for (int i = 0; i < sortedSetDocValues.docValueCount(); i++) {
+                  long value = sortedSetDocValues.nextOrd();
+                  max = Math.max(max, value);
+                  min = Math.min(min, value);
+                }
               }
 
               @Override
@@ -4036,52 +4041,75 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
       writer.forceMerge(1);
     }
 
-    // Now search the index:
     IndexReader r = writer.getReader();
     int readDocs = 0;
     for (LeafReaderContext readerContext : r.leaves()) {
       LeafReader reader = readerContext.reader();
       readDocs +=
-          assertDocValuesSkipIndex(
+          assertDocValuesSkipSequential(
               testDocValueSkipper.docValuesWrapper(reader),
               testDocValueSkipper.docValuesSkipper(reader));
+      for (int i = 0; i < 10; i++) {
+        assertDocValuesSkipRandom(
+            testDocValueSkipper.docValuesWrapper(reader),
+            testDocValueSkipper.docValuesSkipper(reader),
+            reader.maxDoc());
+      }
     }
     assertEquals(numDocs, readDocs);
     IOUtils.close(r, writer, directory);
   }
 
-  private static int assertDocValuesSkipIndex(DocValuesWrapper iterator, DocValuesSkipper skipper)
-      throws IOException {
+  private static int assertDocValuesSkipSequential(
+      DocValuesWrapper iterator, DocValuesSkipper skipper) throws IOException {
     if (skipper == null) {
       return 0;
     }
-    assertNotNull(skipper);
-    int readDocs = 0;
-    int[] prevMinDocIDs =
-        new int[skipper.numLevels()]; // TODO: this should be something like max levels?
-    for (int doc = 0; ; doc++) {
-      skipper.advance(doc);
-      if (skipper.maxDocID(0) == NO_MORE_DOCS) {
+    int docCount = 0;
+    while (true) {
+      iterator.advance(skipper.maxDocID(0) + 1);
+      skipper.advance(skipper.maxDocID(0) + 1);
+      if (iterator.docID() == NO_MORE_DOCS) {
         assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+        assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
         break;
       }
-      if (iterator.advanceExact(doc)) {
-        for (int level = 0; level < skipper.numLevels(); level++) {
-          assertTrue(skipper.minValue(level) <= iterator.minValue());
-          assertTrue(skipper.maxValue(level) >= iterator.maxValue());
-          assertTrue(skipper.minValue(level) >= skipper.minValue());
-          assertTrue(skipper.maxValue(level) <= skipper.maxValue());
-          prevMinDocIDs[level] = skipper.minDocID(level);
-        }
-        readDocs++;
+      assertEquals(iterator.docID(), skipper.minDocID(0));
+      int intervalDocs = 1;
+      long minVal = iterator.minValue();
+      long maxVal = iterator.maxValue();
+      while (iterator.docID() != skipper.maxDocID(0)) {
+        iterator.advance(iterator.docID() + 1);
+        minVal = Math.min(minVal, iterator.minValue());
+        maxVal = Math.max(maxVal, iterator.maxValue());
+        intervalDocs++;
       }
-      for (int level = 0; level < skipper.numLevels(); level++) {
-        assertTrue(skipper.maxDocID(level) >= iterator.docID());
-        assertTrue(prevMinDocIDs[level] <= iterator.docID());
-      }
+      assertEquals(minVal, skipper.minValue(0));
+      assertEquals(maxVal, skipper.maxValue(0));
+      assertEquals(intervalDocs, skipper.docCount(0));
+      docCount += intervalDocs;
     }
-    assertEquals(readDocs, skipper.docCount());
-    return skipper.docCount();
+    assertEquals(docCount, skipper.docCount());
+    return docCount;
+  }
+
+  private static void assertDocValuesSkipRandom(
+      DocValuesWrapper iterator, DocValuesSkipper skipper, int maxDoc) throws IOException {
+    if (skipper == null) {
+      return;
+    }
+    while (true) {
+      if (iterator.docID() == NO_MORE_DOCS) {
+        assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+        assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
+        return;
+      }
+      int doc = random().nextInt(skipper.maxDocID(0), maxDoc) + 1;
+      iterator.advance(doc);
+      skipper.advance(doc);
+      assertTrue(iterator.docID() >= skipper.minDocID(0));
+      assertTrue(iterator.docID() <= skipper.maxDocID(0));
+    }
   }
 
   private interface TestDocValueSkipper {
@@ -4094,7 +4122,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
   }
 
   private interface DocValuesWrapper {
-    boolean advanceExact(int target) throws IOException;
+
+    void advance(int target) throws IOException;
 
     long maxValue() throws IOException;
 
