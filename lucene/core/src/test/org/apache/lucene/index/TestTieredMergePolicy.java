@@ -78,8 +78,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         "Number of segments "
             + infos.size()
             + " is lower than the minimum: "
-            + tmp.getMinSegmentCount(),
-        infos.size() >= tmp.getMinSegmentCount());
+            + tmp.getTargetSearchConcurrency(),
+        infos.size() >= tmp.getTargetSearchConcurrency());
 
     long levelSizeBytes = Math.max(minSegmentBytes, (long) (tmp.getFloorSegmentMB() * 1024 * 1024));
     long bytesLeft = totalBytes;
@@ -133,7 +133,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             totalBytes,
             delPercentage,
             tmp.getDeletesPctAllowed(),
-            tmp.getMinSegmentCount()),
+            tmp.getTargetSearchConcurrency()),
         numSegments <= allowedSegCount || hasBalancedMerges == false);
   }
 
@@ -144,7 +144,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     for (OneMerge merge : merges.merges) {
       assertTrue(merge.segments.size() <= mergeFactor);
     }
-    assertTrue(merges.merges.size() >= tmp.getMinSegmentCount());
+    assertTrue(merges.merges.size() >= tmp.getTargetSearchConcurrency());
   }
 
   public void testForceMergeDeletes() throws Exception {
@@ -200,7 +200,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       conf.setMaxBufferedDocs(2);
       tmp.setMaxMergeAtOnce(3);
       tmp.setSegmentsPerTier(6);
-      tmp.setMinSegmentCount(TestUtil.nextInt(random(), 1, 5));
+      tmp.setTargetSearchConcurrency(TestUtil.nextInt(random(), 1, 5));
 
       IndexWriter w = new IndexWriter(dir, conf);
       int maxCount = 0;
@@ -214,8 +214,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         assertTrue("count=" + count + " maxCount=" + maxCount, count >= maxCount - 3);
       }
       assertTrue(
-          "num segments=" + w.getSegmentCount() + " minNumSegments=" + tmp.getMinSegmentCount(),
-          tmp.getMinSegmentCount() <= w.getSegmentCount());
+          "num segments=" + w.getSegmentCount() + " minNumSegments=" + tmp.getTargetSearchConcurrency(),
+          tmp.getTargetSearchConcurrency() <= w.getSegmentCount());
 
       w.flush(true, true);
 
@@ -451,7 +451,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     final TieredMergePolicy tmp = new TieredMergePolicy();
 
     tmp.setSegmentsPerTier(TestUtil.nextInt(random(), 2, 10));
-    tmp.setMinSegmentCount(TestUtil.nextInt(random(), 1, 10));
+    tmp.setTargetSearchConcurrency(TestUtil.nextInt(random(), 1, 10));
     int maxBufferedDocs = 100;
     conf.setMaxBufferedDocs(maxBufferedDocs);
     conf.setMergePolicy(tmp);
@@ -509,7 +509,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     checkMinSegmentCountNotExceeded(w, tmp);
 
     // forceMerge to minimum number of segments, should respect min segment size
-    w.forceMerge(tmp.getMinSegmentCount());
+    w.forceMerge(tmp.getTargetSearchConcurrency());
     checkMinSegmentCountNotExceeded(w, tmp);
 
     // Now forceMerge down to one segment, there should be exactly remainingDocs in exactly one
@@ -537,7 +537,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     final TieredMergePolicy tmp = new TieredMergePolicy();
 
     tmp.setSegmentsPerTier(TestUtil.nextInt(random(), 2, 5));
-    tmp.setMinSegmentCount(TestUtil.nextInt(random(), 1, 10));
+    tmp.setTargetSearchConcurrency(TestUtil.nextInt(random(), 1, 10));
     conf.setMaxBufferedDocs(TestUtil.nextInt(random(), 10, 100));
     conf.setMergePolicy(tmp);
     conf.setMergeScheduler(new SerialMergeScheduler());
@@ -551,12 +551,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       doc.add(newStringField("id", "" + i, Field.Store.NO));
       doc.add(newTextField("content", "aaa " + i, Field.Store.NO));
       w.addDocument(doc);
-      if ((i + 1) % conf.getMaxBufferedDocs() == 0) {
-        // Start checking when we have enough segments
-        checkMinSegments = checkMinSegments | w.getSegmentCount() >= tmp.getMinSegmentCount();
-        if (checkMinSegments) {
-          checkMinSegmentCountNotExceeded(w, tmp);
-        }
+      // Start checking when we have enough segments
+      checkMinSegments = checkMinSegments | w.getSegmentCount() >= tmp.getTargetSearchConcurrency();
+      if (checkMinSegments) {
+        checkMinSegmentCountNotExceeded(w, tmp);
       }
     }
 
@@ -878,10 +876,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
   private static void checkMinSegmentCountNotExceeded(IndexWriter writer, TieredMergePolicy tmp) {
     assertTrue(
         "There should be at least "
-            + tmp.getMinSegmentCount()
+            + tmp.getTargetSearchConcurrency()
             + " segments, there are "
             + writer.getSegmentCount(),
-            writer.getSegmentCount() >= tmp.getMinSegmentCount());
+            writer.getSegmentCount() >= tmp.getTargetSearchConcurrency());
   }
 
   private static final double EPSILON = 1E-14;

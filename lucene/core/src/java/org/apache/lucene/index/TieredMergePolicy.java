@@ -93,7 +93,7 @@ public class TieredMergePolicy extends MergePolicy {
   private double segsPerTier = 10.0;
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 20.0;
-  private int minSegmentCount = 1;
+  private int targetSearchConcurrency = 1;
 
   /** Sole constructor, setting all settings to their defaults. */
   public TieredMergePolicy() {
@@ -259,22 +259,22 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   /**
-   * Sets the minimum number of segments to merge to. This allows merging to ensure that there are
-   * at least minSegmentCount segments after a non-forced merge. This setting can be overriden by
+   * Sets the target search concurrency. This allows merging to ensure that there are
+   * at least targetSearchConcurrency segments on the top tier. This setting can be overriden by
    * force merging to a specified number of segments. Default is 1.
    */
-  public TieredMergePolicy setMinSegmentCount(int minSegmentCount) {
-    if (minSegmentCount < 1) {
+  public TieredMergePolicy setTargetSearchConcurrency(int targetSearchConcurrency) {
+    if (targetSearchConcurrency < 1) {
       throw new IllegalArgumentException(
-          "minSegmentCount must be >= 1 (got " + minSegmentCount + ")");
+          "minSegmentCount must be >= 1 (got " + targetSearchConcurrency + ")");
     }
-    this.minSegmentCount = minSegmentCount;
+    this.targetSearchConcurrency = targetSearchConcurrency;
     return this;
   }
 
-  /** Returns the current minimum number of segments. */
-  public int getMinSegmentCount() {
-    return minSegmentCount;
+  /** Returns the target search concurrency. */
+  public int getTargetSearchConcurrency() {
+    return targetSearchConcurrency;
   }
 
   private static class SegmentSizeAndDocs {
@@ -400,7 +400,7 @@ public class TieredMergePolicy extends MergePolicy {
     // 1> Overall percent deleted docs relatively small and this segment is larger than 50%
     // maxSegSize or max allowed docs
     // 2> overall percent deleted docs large and this segment is large and has few deleted docs
-    int allowedDocCount = Math.ceilDiv(totalMaxDoc, minSegmentCount);
+    int allowedDocCount = Math.ceilDiv(totalMaxDoc, targetSearchConcurrency);
     while (iter.hasNext()) {
       SegmentSizeAndDocs segSizeDocs = iter.next();
       double segDelPct = 100 * (double) segSizeDocs.delCount / (double) segSizeDocs.maxDoc;
@@ -777,7 +777,7 @@ public class TieredMergePolicy extends MergePolicy {
           "findForcedMerges maxSegmentCount="
               + maxSegmentCount
               + " minSegmentCount="
-              + minSegmentCount
+              + targetSearchConcurrency
               + " infos="
               + segString(mergeContext, infos)
               + " segmentsToMerge="
@@ -812,7 +812,7 @@ public class TieredMergePolicy extends MergePolicy {
     }
 
     long maxMergeBytes = maxMergedSegmentBytes;
-    long maxMergeDocs = Math.ceilDiv(totalMergeDocs, Math.min(minSegmentCount, maxSegmentCount));
+    long maxMergeDocs = Math.ceilDiv(totalMergeDocs, Math.min(targetSearchConcurrency, maxSegmentCount));
 
     // Set the maximum segment size based on how many segments have been specified.
     if (maxSegmentCount == 1) {
@@ -1007,7 +1007,7 @@ public class TieredMergePolicy extends MergePolicy {
         Integer.MAX_VALUE,
         Integer.MAX_VALUE,
         0,
-        Math.ceilDiv(infos.totalMaxDoc() - totalDelCount, minSegmentCount),
+        Math.ceilDiv(infos.totalMaxDoc() - totalDelCount, targetSearchConcurrency),
         MERGE_TYPE.FORCE_MERGE_DELETES,
         mergeContext,
         false);
@@ -1028,7 +1028,7 @@ public class TieredMergePolicy extends MergePolicy {
     sb.append("maxCFSSegmentSizeMB=").append(getMaxCFSSegmentSizeMB()).append(", ");
     sb.append("noCFSRatio=").append(noCFSRatio).append(", ");
     sb.append("deletesPctAllowed=").append(deletesPctAllowed).append(", ");
-    sb.append("minSegmentCount=").append(minSegmentCount);
+    sb.append("minSegmentCount=").append(targetSearchConcurrency);
     return sb.toString();
   }
 }
