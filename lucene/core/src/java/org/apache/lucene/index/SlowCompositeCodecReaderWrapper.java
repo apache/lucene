@@ -488,6 +488,12 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       }
       return new MultiSortedSetDocValues(values, docStarts, map, totalCost);
     }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      // TODO: do we need to implenment it?
+      throw new IllegalAccessError("This method is for searching not for merging");
+    }
   }
 
   @Override

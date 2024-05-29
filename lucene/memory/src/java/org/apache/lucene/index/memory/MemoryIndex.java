@@ -2128,6 +2128,12 @@ public class MemoryIndex {
     }
 
     @Override
+    public DocValuesSkipper getDocValuesSkipper(String field) {
+      // TODO: can we implement it?
+      return null;
+    }
+
+    @Override
     public LeafMetaData getMetaData() {
       return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
     }

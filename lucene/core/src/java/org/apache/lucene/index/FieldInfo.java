@@ -34,7 +34,9 @@ public final class FieldInfo {
   /** Internal field number */
   public final int number;
 
-  private DocValuesType docValuesType;
+  private DocValuesType docValuesType = DocValuesType.NONE;
+
+  private boolean docValuesSkipIndex;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -157,6 +159,17 @@ public final class FieldInfo {
           "field '"
               + name
               + "' cannot have a docvalues update generation without having docvalues");
+    }
+    if (docValuesSkipIndex
+        && docValuesType != DocValuesType.NUMERIC
+        && docValuesType != DocValuesType.SORTED_NUMERIC
+        && docValuesType != DocValuesType.SORTED
+        && docValuesType != DocValuesType.SORTED_SET) {
+      throw new IllegalArgumentException(
+          "field '"
+              + name
+              + "' cannot enable a skip index on doc values and have a doc values type which is not one of NUMERIC, SORTED_NUMERIC, SORTED, SORTED_SET: "
+              + docValuesType);
     }
 
     if (pointDimensionCount < 0) {
@@ -526,6 +539,12 @@ public final class FieldInfo {
     this.checkConsistency();
   }
 
+  /** Record a skip index for doc values on this field. */
+  public void setDocValuesSkipIndex(boolean docValuesSkipIndex) {
+    this.docValuesSkipIndex = docValuesSkipIndex;
+    this.checkConsistency();
+  }
+
   /** Returns IndexOptions for the field, or IndexOptions.NONE if the field is not indexed */
   public IndexOptions getIndexOptions() {
     return indexOptions;
@@ -555,6 +574,11 @@ public final class FieldInfo {
    */
   public DocValuesType getDocValuesType() {
     return docValuesType;
+  }
+
+  /** Returns true if, and only if, this field has a skip index. */
+  public boolean hasDocValuesSkipIndex() {
+    return docValuesSkipIndex;
   }
 
   /** Sets the docValues generation of this field. */

@@ -694,6 +694,7 @@ final class IndexingChain implements Accountable {
     if (fi.getIndexOptions() != IndexOptions.NONE) {
       pf.setInvertState();
     }
+    fi.setDocValuesSkipIndex(s.hasDocValuesSkipIndex);
     DocValuesType dvType = fi.getDocValuesType();
     switch (dvType) {
       case NONE:
@@ -831,7 +832,7 @@ final class IndexingChain implements Accountable {
       verifyUnIndexedFieldType(fieldName, fieldType);
     }
     if (fieldType.docValuesType() != DocValuesType.NONE) {
-      schema.setDocValues(fieldType.docValuesType());
+      schema.setDocValues(fieldType.docValuesType(), fieldType.hasDocValuesSkipIndex());
     }
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
@@ -1432,6 +1433,7 @@ final class IndexingChain implements Accountable {
     private boolean storeTermVector = false;
     private IndexOptions indexOptions = IndexOptions.NONE;
     private DocValuesType docValuesType = DocValuesType.NONE;
+    private boolean hasDocValuesSkipIndex = false;
     private int pointDimensionCount = 0;
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
@@ -1497,9 +1499,10 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setDocValues(DocValuesType newDocValuesType) {
+    void setDocValues(DocValuesType newDocValuesType, boolean hasDocValuesSkipIndex) {
       if (docValuesType == DocValuesType.NONE) {
         this.docValuesType = newDocValuesType;
+        this.hasDocValuesSkipIndex = hasDocValuesSkipIndex;
       } else {
         assertSame("doc values type", docValuesType, newDocValuesType);
       }

@@ -60,6 +60,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   static final BytesRef PAYLOADS = new BytesRef("  payloads ");
   static final BytesRef NORMS = new BytesRef("  norms ");
   static final BytesRef DOCVALUES = new BytesRef("  doc values ");
+  static final BytesRef DOCVALUES_SKIP_INDEX = new BytesRef("  doc values skip index");
   static final BytesRef DOCVALUES_GEN = new BytesRef("  doc values gen ");
   static final BytesRef INDEXOPTIONS = new BytesRef("  index options ");
   static final BytesRef NUM_ATTS = new BytesRef("  attributes ");
@@ -121,6 +122,11 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         assert StringHelper.startsWith(scratch.get(), DOCVALUES);
         String dvType = readString(DOCVALUES.length, scratch);
         final DocValuesType docValuesType = docValuesType(dvType);
+
+        SimpleTextUtil.readLine(input, scratch);
+        assert StringHelper.startsWith(scratch.get(), DOCVALUES_SKIP_INDEX);
+        boolean docValueSkipper =
+            Boolean.parseBoolean(readString(DOCVALUES_SKIP_INDEX.length, scratch));
 
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), DOCVALUES_GEN);
@@ -194,6 +200,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 vectorDistFunc,
                 isSoftDeletesField,
                 isParentField);
+        infos[i].setDocValuesSkipIndex(docValueSkipper);
       }
 
       SimpleTextUtil.checkFooter(input);
@@ -274,6 +281,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
         SimpleTextUtil.write(out, DOCVALUES);
         SimpleTextUtil.write(out, getDocValuesType(fi.getDocValuesType()), scratch);
+        SimpleTextUtil.writeNewline(out);
+
+        SimpleTextUtil.write(out, DOCVALUES_SKIP_INDEX);
+        SimpleTextUtil.write(out, Boolean.toString(fi.hasDocValuesSkipIndex()), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, DOCVALUES_GEN);

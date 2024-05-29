@@ -42,6 +42,7 @@ import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -56,6 +57,8 @@ import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -3806,5 +3809,361 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
   protected boolean codecAcceptsHugeBinaryValues(String field) {
     return true;
+  }
+
+  public void testNumericDocValuesWithSkipper() throws IOException {
+    assertDocValuesWithSkipper(
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            doc.add(new NumericDocValuesSkipping("test", random().nextLong()));
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            NumericDocValues numericDocValues = leafReader.getNumericDocValues("test");
+            return new DocValuesWrapper() {
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                return numericDocValues.advanceExact(target);
+              }
+
+              @Override
+              public long maxValue() throws IOException {
+                return numericDocValues.longValue();
+              }
+
+              @Override
+              public long minValue() throws IOException {
+                return numericDocValues.longValue();
+              }
+
+              @Override
+              public int docID() {
+                return numericDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
+  }
+
+  public void testSortedNumericDocValuesWithSkipper() throws IOException {
+    assertDocValuesWithSkipper(
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            for (int j = 0; j < random().nextInt(1, 5); j++) {
+              doc.add(new SortedNumericDocValuesSkipping("test", random().nextLong()));
+            }
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedNumericDocValues sortedNumericDocValues =
+                leafReader.getSortedNumericDocValues("test");
+            return new DocValuesWrapper() {
+              long max;
+              long min;
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                if (sortedNumericDocValues.advanceExact(target)) {
+                  max = Long.MIN_VALUE;
+                  min = Long.MAX_VALUE;
+                  for (int i = 0; i < sortedNumericDocValues.docValueCount(); i++) {
+                    long value = sortedNumericDocValues.nextValue();
+                    max = Math.max(max, value);
+                    min = Math.min(min, value);
+                  }
+                  return true;
+                }
+                return false;
+              }
+
+              @Override
+              public long maxValue() {
+                return max;
+              }
+
+              @Override
+              public long minValue() {
+                return min;
+              }
+
+              @Override
+              public int docID() {
+                return sortedNumericDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
+  }
+
+  public void testSortedDocValuesWithSkipper() throws IOException {
+    assertDocValuesWithSkipper(
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            doc.add(new SortedDocValuesSkipping("test", TestUtil.randomBinaryTerm(random())));
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedDocValues sortedDocValues = leafReader.getSortedDocValues("test");
+            return new DocValuesWrapper() {
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                return sortedDocValues.advanceExact(target);
+              }
+
+              @Override
+              public long maxValue() throws IOException {
+                return sortedDocValues.ordValue();
+              }
+
+              @Override
+              public long minValue() throws IOException {
+                return sortedDocValues.ordValue();
+              }
+
+              @Override
+              public int docID() {
+                return sortedDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
+  }
+
+  public void testSortedSetDocValuesWithSkipper() throws IOException {
+    assertDocValuesWithSkipper(
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            for (int j = 0; j < random().nextInt(1, 5); j++) {
+              doc.add(new SortedSetDocValuesSkipping("test", TestUtil.randomBinaryTerm(random())));
+            }
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedSetDocValues sortedSetDocValues = leafReader.getSortedSetDocValues("test");
+            return new DocValuesWrapper() {
+              long max;
+              long min;
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                if (sortedSetDocValues.advanceExact(target)) {
+                  max = Long.MIN_VALUE;
+                  min = Long.MAX_VALUE;
+                  for (int i = 0; i < sortedSetDocValues.docValueCount(); i++) {
+                    long value = sortedSetDocValues.nextOrd();
+                    max = Math.max(max, value);
+                    min = Math.min(min, value);
+                  }
+                  return true;
+                }
+                return false;
+              }
+
+              @Override
+              public long maxValue() {
+                return max;
+              }
+
+              @Override
+              public long minValue() {
+                return min;
+              }
+
+              @Override
+              public int docID() {
+                return sortedSetDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
+  }
+
+  private void assertDocValuesWithSkipper(TestDocValueSkipper testDocValueSkipper)
+      throws IOException {
+    Supplier<Boolean> booleanSupplier;
+    switch (random().nextInt(3)) {
+      case 0 -> booleanSupplier = () -> true;
+      case 1 -> booleanSupplier = () -> random().nextBoolean();
+      case 2 -> booleanSupplier = () -> random().nextBoolean() && random().nextBoolean();
+      default -> throw new AssertionError();
+    }
+    Directory directory = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
+    int numDocs = 0;
+    for (int i = 0; i < random().nextInt(1, 50000); i++) {
+      Document doc = new Document();
+      if (booleanSupplier.get()) {
+        testDocValueSkipper.populateDoc(doc);
+        numDocs++;
+      }
+      writer.addDocument(doc);
+      if (rarely()) {
+        writer.commit();
+      }
+    }
+    writer.flush();
+
+    if (random().nextBoolean()) {
+      writer.forceMerge(1);
+    }
+
+    // Now search the index:
+    IndexReader r = writer.getReader();
+    int readDocs = 0;
+    for (LeafReaderContext readerContext : r.leaves()) {
+      LeafReader reader = readerContext.reader();
+      readDocs +=
+          assertDocValuesSkipIndex(
+              testDocValueSkipper.docValuesWrapper(reader),
+              testDocValueSkipper.docValuesSkipper(reader));
+    }
+    assertEquals(numDocs, readDocs);
+    IOUtils.close(r, writer, directory);
+  }
+
+  private static int assertDocValuesSkipIndex(DocValuesWrapper iterator, DocValuesSkipper skipper)
+      throws IOException {
+    if (skipper == null) {
+      return 0;
+    }
+    assertNotNull(skipper);
+    int readDocs = 0;
+    int[] prevMinDocIDs =
+        new int[skipper.numLevels()]; // TODO: this should be something like max levels?
+    for (int doc = 0; ; doc++) {
+      skipper.advance(doc);
+      if (skipper.maxDocID(0) == NO_MORE_DOCS) {
+        assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+        break;
+      }
+      if (iterator.advanceExact(doc)) {
+        for (int level = 0; level < skipper.numLevels(); level++) {
+          assertTrue(skipper.minValue(level) <= iterator.minValue());
+          assertTrue(skipper.maxValue(level) >= iterator.maxValue());
+          assertTrue(skipper.minValue(level) >= skipper.minValue());
+          assertTrue(skipper.maxValue(level) <= skipper.maxValue());
+          prevMinDocIDs[level] = skipper.minDocID(level);
+        }
+        readDocs++;
+      }
+      for (int level = 0; level < skipper.numLevels(); level++) {
+        assertTrue(skipper.maxDocID(level) >= iterator.docID());
+        assertTrue(prevMinDocIDs[level] <= iterator.docID());
+      }
+    }
+    assertEquals(readDocs, skipper.docCount());
+    return skipper.docCount();
+  }
+
+  private interface TestDocValueSkipper {
+
+    void populateDoc(Document doc);
+
+    DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException;
+
+    DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException;
+  }
+
+  private interface DocValuesWrapper {
+    boolean advanceExact(int target) throws IOException;
+
+    long maxValue() throws IOException;
+
+    long minValue() throws IOException;
+
+    int docID();
+  }
+
+  private static class NumericDocValuesSkipping extends Field {
+
+    public static final FieldType TYPE = new FieldType();
+
+    static {
+      TYPE.setDocValuesType(DocValuesType.NUMERIC);
+      TYPE.setDocValuesSkipIndex(true);
+      TYPE.freeze();
+    }
+
+    public NumericDocValuesSkipping(String name, long value) {
+      super(name, TYPE);
+      fieldsData = value;
+    }
+  }
+
+  private static class SortedNumericDocValuesSkipping extends Field {
+
+    public static final FieldType TYPE = new FieldType();
+
+    static {
+      TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+      TYPE.setDocValuesSkipIndex(true);
+      TYPE.freeze();
+    }
+
+    public SortedNumericDocValuesSkipping(String name, long value) {
+      super(name, TYPE);
+      fieldsData = value;
+    }
+  }
+
+  private static class SortedDocValuesSkipping extends Field {
+
+    public static final FieldType TYPE = new FieldType();
+
+    static {
+      TYPE.setDocValuesType(DocValuesType.SORTED);
+      TYPE.setDocValuesSkipIndex(true);
+      TYPE.freeze();
+    }
+
+    public SortedDocValuesSkipping(String name, BytesRef value) {
+      super(name, TYPE);
+      fieldsData = value;
+    }
+  }
+
+  private static class SortedSetDocValuesSkipping extends Field {
+
+    public static final FieldType TYPE = new FieldType();
+
+    static {
+      TYPE.setDocValuesType(DocValuesType.SORTED_SET);
+      TYPE.setDocValuesSkipIndex(true);
+      TYPE.freeze();
+    }
+
+    public SortedSetDocValuesSkipping(String name, BytesRef value) {
+      super(name, TYPE);
+      fieldsData = value;
+    }
   }
 }

@@ -624,6 +624,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
+      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+        return delegate.getSkipper(field);
+      }
+
+      @Override
       public void checkIntegrity() throws IOException {
         delegate.checkIntegrity();
       }

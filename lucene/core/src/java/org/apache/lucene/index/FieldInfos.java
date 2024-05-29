@@ -816,6 +816,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getVectorSimilarityFunction(),
               fi.isSoftDeletesField(),
               fi.isParentField());
+      fiNew.setDocValuesSkipIndex(fi.hasDocValuesSkipIndex());
       byName.put(fiNew.getName(), fiNew);
       return fiNew;
     }

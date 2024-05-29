@@ -349,8 +349,15 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     }
 
     if (r.nextBoolean()) {
-      DocValuesType values[] = DocValuesType.values();
+      DocValuesType[] values = DocValuesType.values();
+      DocValuesType current = values[r.nextInt(values.length)];
       type.setDocValuesType(values[r.nextInt(values.length)]);
+      if (current == DocValuesType.NUMERIC
+          || current == DocValuesType.SORTED_NUMERIC
+          || current == DocValuesType.SORTED
+          || current == DocValuesType.SORTED_SET) {
+        type.setDocValuesSkipIndex(random().nextBoolean());
+      }
     }
 
     if (r.nextBoolean()) {
@@ -389,6 +396,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(expected.number, actual.number);
     assertEquals(expected.name, actual.name);
     assertEquals(expected.getDocValuesType(), actual.getDocValuesType());
+    assertEquals(expected.hasDocValuesSkipIndex(), actual.hasDocValuesSkipIndex());
     assertEquals(expected.getIndexOptions(), actual.getIndexOptions());
     assertEquals(expected.hasNorms(), actual.hasNorms());
     assertEquals(expected.hasPayloads(), actual.hasPayloads());

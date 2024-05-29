@@ -178,6 +178,9 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
 
           // DV Types are packed in one byte
           final DocValuesType docValuesType = getDocValuesType(input, input.readByte());
+          // TODO: add this as a bit?
+          final boolean hasDocValuesSkipIndex =
+              format < FORMAT_DOCVALUE_SKIPPER ? false : (input.readByte() & 1) == 1;
           final long dvGen = input.readLong();
           Map<String, String> attributes = input.readMapOfStrings();
           // just use the last field's map if its the same
@@ -218,6 +221,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     vectorDistFunc,
                     isSoftDeletesField,
                     isParentField);
+            infos[i].setDocValuesSkipIndex(hasDocValuesSkipIndex);
             infos[i].checkConsistency();
           } catch (IllegalStateException e) {
             throw new CorruptIndexException(
@@ -400,6 +404,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
 
         // pack the DV type and hasNorms in one byte
         output.writeByte(docValuesByte(fi.getDocValuesType()));
+        output.writeByte(fi.hasDocValuesSkipIndex() ? (byte) 1 : (byte) 0);
         output.writeLong(fi.getDocValuesGen());
         output.writeMapOfStrings(fi.attributes());
         output.writeVInt(fi.getPointDimensionCount());
@@ -423,7 +428,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final int FORMAT_START = 0;
   // this doesn't actually change the file format but uses up one more bit an existing bit pattern
   static final int FORMAT_PARENT_FIELD = 1;
-  static final int FORMAT_CURRENT = FORMAT_PARENT_FIELD;
+  static final int FORMAT_DOCVALUE_SKIPPER = 2;
+  static final int FORMAT_CURRENT = FORMAT_DOCVALUE_SKIPPER;
 
   // Field flags
   static final byte STORE_TERMVECTOR = 0x1;
