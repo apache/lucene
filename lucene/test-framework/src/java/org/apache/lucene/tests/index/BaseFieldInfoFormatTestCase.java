@@ -299,9 +299,9 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       boolean hasDocValuesSkipIndex = false;
       if (EnumSet.of(
               DocValuesType.NUMERIC,
-              DocValuesType.NUMERIC,
-              DocValuesType.NUMERIC,
-              DocValuesType.NUMERIC)
+              DocValuesType.SORTED,
+              DocValuesType.SORTED_NUMERIC,
+              DocValuesType.SORTED_SET)
           .contains(fieldType.docValuesType())) {
         hasDocValuesSkipIndex = fieldType.hasDocValuesSkipIndex();
       }

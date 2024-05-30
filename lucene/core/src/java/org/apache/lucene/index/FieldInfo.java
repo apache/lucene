@@ -28,6 +28,7 @@ import java.util.Objects;
  * threads accessing this object.
  */
 public final class FieldInfo {
+
   /** Field's name */
   public final String name;
 
@@ -156,11 +157,11 @@ public final class FieldInfo {
     if (docValuesType == null) {
       throw new IllegalArgumentException("DocValuesType must not be null (field: '" + name + "')");
     }
-    if (docValuesType == DocValuesType.NONE && docValuesSkipIndex) {
+    if (docValuesType.supportsSkipIndex == false && docValuesSkipIndex) {
       throw new IllegalArgumentException(
           "field '"
               + name
-              + "' cannot have docValuesSkipIndex set to true without having docvalues");
+              + "' cannot have docValuesSkipIndex set to true with doc values type " + docValuesType);
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
       throw new IllegalArgumentException(
