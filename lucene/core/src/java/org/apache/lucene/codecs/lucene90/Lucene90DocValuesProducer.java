@@ -212,13 +212,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private DocValuesSkipperEntry readDocValueSkipperMeta(IndexInput meta) throws IOException {
-    return new DocValuesSkipperEntry(
-        meta.readLong(),
-        meta.readLong(),
-        meta.readLong(),
-        meta.readLong(),
-        meta.readInt(),
-        meta.readInt());
+    long offset = meta.readLong();
+    long length = meta.readLong();
+    long minValue = meta.readLong();
+    long maxValue = meta.readLong();
+    int docCount = meta.readInt();
+    int maxDocID = meta.readInt();
+
+    return new DocValuesSkipperEntry(offset, length, minValue, maxValue, docCount, maxDocID);
   }
 
   private void readNumeric(IndexInput meta, NumericEntry entry) throws IOException {

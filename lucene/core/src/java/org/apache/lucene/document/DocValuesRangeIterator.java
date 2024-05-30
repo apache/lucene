@@ -118,8 +118,7 @@ final class DocValuesRangeIterator extends TwoPhaseIterator {
               return doc = target;
             }
             // Otherwise we are breaking the invariant that `doc` must always be <= upTo, so let
-            // the
-            // loop run one more iteration to advance the skipper.
+            // the loop run one more iteration to advance the skipper.
             break;
           case NO:
             if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
