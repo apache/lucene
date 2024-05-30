@@ -161,7 +161,8 @@ public final class FieldInfo {
       throw new IllegalArgumentException(
           "field '"
               + name
-              + "' cannot have docValuesSkipIndex set to true with doc values type " + docValuesType);
+              + "' cannot have docValuesSkipIndex set to true with doc values type "
+              + docValuesType);
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
       throw new IllegalArgumentException(
