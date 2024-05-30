@@ -854,4 +854,34 @@ final class SegmentTermsEnumFrame {
     ste.term.grow(termLength);
     System.arraycopy(suffixBytes, startBytePos, ste.term.bytes(), prefix, suffix);
   }
+
+  @Override
+  public String toString() {
+    return "fp: "
+        + fp
+        + ", fpOrig: "
+        + fpOrig
+        + ", fpEnd: "
+        + fpEnd
+        + ", lastSubFP: "
+        + lastSubFP
+        + ", entCount: "
+        + entCount
+        + ", nextEnt: "
+        + nextEnt
+        + ", isLeafBlock: "
+        + isLeafBlock
+        + ", isFloor: "
+        + isFloor
+        + ", isLastInFloor: "
+        + isLastInFloor
+        + ", nextFloorLabel: "
+        + nextFloorLabel
+        + ", suffixesPos: "
+        + suffixesReader.getPosition()
+        + ", suffixLengthsPos: "
+        + suffixLengthsReader.getPosition()
+        + ", floorDataPos: "
+        + floorDataReader.getPosition();
+  }
 }
