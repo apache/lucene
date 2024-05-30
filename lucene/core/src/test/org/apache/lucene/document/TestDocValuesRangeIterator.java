@@ -212,12 +212,14 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
     assertEquals(DocValuesRangeIterator.Match.YES, rangeApproximation.match);
     assertEquals(255, rangeApproximation.upTo);
     assertTrue(rangeIterator.matches());
+    assertTrue(values.docID() < rangeApproximation.docID()); // we did not advance doc values
     assertFalse(twoPhaseCalled.get());
 
     assertEquals(768, rangeApproximation.advance(300));
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximation.match);
     assertEquals(1023, rangeApproximation.upTo);
     for (int i = 0; i < 10; ++i) {
+      assertEquals(values.docID(), rangeApproximation.docID());
       assertEquals(twoPhase.matches(), rangeIterator.matches());
       assertTrue(twoPhaseCalled.get());
       twoPhaseCalled.set(false);
@@ -227,12 +229,15 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
     assertEquals(1100, rangeApproximation.advance(1099));
     assertEquals(DocValuesRangeIterator.Match.IF_DOC_HAS_VALUE, rangeApproximation.match);
     assertEquals(1024 + 256 - 1, rangeApproximation.upTo);
+    assertEquals(values.docID(), rangeApproximation.docID());
     assertTrue(rangeIterator.matches());
     assertFalse(twoPhaseCalled.get());
 
     assertEquals(1024 + 768, rangeApproximation.advance(1024 + 300));
+    assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximation.match);
     assertEquals(2047, rangeApproximation.upTo);
     for (int i = 0; i < 10; ++i) {
+      assertEquals(values.docID(), rangeApproximation.docID());
       assertEquals(twoPhase.matches(), rangeIterator.matches());
       assertTrue(twoPhaseCalled.get());
       twoPhaseCalled.set(false);
