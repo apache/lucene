@@ -263,40 +263,6 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     meta.writeInt(maxDocId);
   }
 
-  //  private void writeSkipIndexCopy(FieldInfo field, SortedNumericDocValues values) throws
-  // IOException {
-  //    assert field.hasDocValuesSkipIndex();
-  //    @SuppressWarnings("unchecked")
-  //    List<SkipAccumulator>[] accumulators = new List[SKIP_INDEX_MAX_LEVEL];
-  //    for (int i = 0; i < accumulators.length; ++i) {
-  //      accumulators[i] = new ArrayList<>();
-  //    }
-  //    SkipAccumulator accumulator = null;
-  //    int counter = 0;
-  //    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc =
-  // values.nextDoc()) {
-  //      if (counter == 0) {
-  //        accumulator = new SkipAccumulator(doc);
-  //      }
-  //      for (int i = 0, end = values.docValueCount(); i < end; ++i) {
-  //        accumulator.accumulate(doc, values.nextValue());
-  //      }
-  //      if (++counter == SKIP_INDEX_INTERVAL_SIZE) {
-  //        accumulators[0].add(accumulator);
-  //        for (int i = 0; i < SKIP_INDEX_MAX_LEVEL - 1; ++i) {
-  //          if (accumulators[i].size() % SKIP_INDEX_MULTIPLIER == 0) {
-  //
-  // accumulators[i+1].add(SkipAccumulator.merge(accumulators[i].subList(accumulators[i].size() -
-  // SKIP_INDEX_MULTIPLIER, accumulators[i].size())));
-  //          } else {
-  //            break;
-  //          }
-  //        }
-  //        counter = 0;
-  //      }
-  //    }
-  //  }
-
   private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
       throws IOException {
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);

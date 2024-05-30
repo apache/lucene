@@ -184,7 +184,4 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
 
   static final int SKIP_INDEX_INTERVAL_SHIFT = 12;
   static final int SKIP_INDEX_INTERVAL_SIZE = 1 << SKIP_INDEX_INTERVAL_SHIFT;
-  static final int SKIP_INDEX_INTERVAL_MASK = SKIP_INDEX_INTERVAL_SIZE - 1;
-  static final int SKIP_INDEX_MULTIPLIER = 8;
-  static final int SKIP_INDEX_MAX_LEVEL = 3;
 }
