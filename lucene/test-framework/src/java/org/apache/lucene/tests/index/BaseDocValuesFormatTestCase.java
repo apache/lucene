@@ -921,6 +921,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -2270,6 +2271,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(0, dv.getValueCount());
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -3251,6 +3253,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -3381,6 +3384,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -3551,6 +3555,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -3590,6 +3595,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -3629,6 +3635,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -3664,6 +3671,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
