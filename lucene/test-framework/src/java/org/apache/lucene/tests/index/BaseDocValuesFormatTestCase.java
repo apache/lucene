@@ -42,7 +42,6 @@ import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -58,7 +57,6 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
-import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -3834,7 +3832,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
-            doc.add(new NumericDocValuesSkipping("test", random().nextLong()));
+            doc.add(NumericDocValuesField.indexedField("test", random().nextLong()));
           }
 
           @Override
@@ -3882,7 +3880,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           @Override
           public void populateDoc(Document doc) {
             for (int j = 0; j < random().nextInt(1, 5); j++) {
-              doc.add(new SortedNumericDocValuesSkipping("test", random().nextLong()));
+              doc.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
             }
           }
 
@@ -3951,7 +3949,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
-            doc.add(new SortedDocValuesSkipping("test", TestUtil.randomBinaryTerm(random())));
+            doc.add(SortedDocValuesField.indexedField("test", TestUtil.randomBinaryTerm(random())));
           }
 
           @Override
@@ -3999,7 +3997,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
           @Override
           public void populateDoc(Document doc) {
             for (int j = 0; j < random().nextInt(1, 5); j++) {
-              doc.add(new SortedSetDocValuesSkipping("test", TestUtil.randomBinaryTerm(random())));
+              doc.add(
+                  SortedSetDocValuesField.indexedField(
+                      "test", TestUtil.randomBinaryTerm(random())));
             }
           }
 
@@ -4216,69 +4216,5 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     long minValue() throws IOException;
 
     int docID();
-  }
-
-  private static class NumericDocValuesSkipping extends Field {
-
-    public static final FieldType TYPE = new FieldType();
-
-    static {
-      TYPE.setDocValuesType(DocValuesType.NUMERIC);
-      TYPE.setDocValuesSkipIndex(true);
-      TYPE.freeze();
-    }
-
-    public NumericDocValuesSkipping(String name, long value) {
-      super(name, TYPE);
-      fieldsData = value;
-    }
-  }
-
-  private static class SortedNumericDocValuesSkipping extends Field {
-
-    public static final FieldType TYPE = new FieldType();
-
-    static {
-      TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-      TYPE.setDocValuesSkipIndex(true);
-      TYPE.freeze();
-    }
-
-    public SortedNumericDocValuesSkipping(String name, long value) {
-      super(name, TYPE);
-      fieldsData = value;
-    }
-  }
-
-  private static class SortedDocValuesSkipping extends Field {
-
-    public static final FieldType TYPE = new FieldType();
-
-    static {
-      TYPE.setDocValuesType(DocValuesType.SORTED);
-      TYPE.setDocValuesSkipIndex(true);
-      TYPE.freeze();
-    }
-
-    public SortedDocValuesSkipping(String name, BytesRef value) {
-      super(name, TYPE);
-      fieldsData = value;
-    }
-  }
-
-  private static class SortedSetDocValuesSkipping extends Field {
-
-    public static final FieldType TYPE = new FieldType();
-
-    static {
-      TYPE.setDocValuesType(DocValuesType.SORTED_SET);
-      TYPE.setDocValuesSkipIndex(true);
-      TYPE.freeze();
-    }
-
-    public SortedSetDocValuesSkipping(String name, BytesRef value) {
-      super(name, TYPE);
-      fieldsData = value;
-    }
   }
 }
