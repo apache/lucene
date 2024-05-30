@@ -860,10 +860,6 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     // valid:
     assert field != null;
 
-    if (field.docCount == 0) {
-      return null;
-    }
-
     return new DocValuesSkipper() {
       int doc = -1;
 
@@ -906,7 +902,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       public int minDocID(int level) {
         if (doc == -1) {
           return -1;
-        } else if (doc >= maxDoc) {
+        } else if (doc >= maxDoc || field.docCount == 0) {
           return DocIdSetIterator.NO_MORE_DOCS;
         } else {
           return 0;
@@ -917,7 +913,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       public int maxDocID(int level) {
         if (doc == -1) {
           return -1;
-        } else if (doc >= maxDoc) {
+        } else if (doc >= maxDoc || field.docCount == 0) {
           return DocIdSetIterator.NO_MORE_DOCS;
         } else {
           return maxDoc;
