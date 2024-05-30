@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ABSMAXVALUE;
-import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ABSMINVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.DOCCOUNT;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.END;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.FIELD;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.LENGTH;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXLENGTH;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MINVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.NUMVALUES;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ORDPATTERN;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ORIGIN;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.PATTERN;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.TYPE;
 
@@ -69,9 +69,9 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     String ordPattern;
     int maxLength;
     boolean fixedLength;
+    long origin;
     long minValue;
-    long absMinValue;
-    long absMaxValue;
+    long maxValue;
     long numValues;
   }
 
@@ -109,13 +109,13 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       if (dvType == DocValuesType.NUMERIC || dvType == DocValuesType.SORTED_NUMERIC) {
         readLine();
-        assert startsWith(ABSMINVALUE)
+        assert startsWith(MINVALUE)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
-        field.absMinValue = Long.parseLong(stripPrefix(ABSMINVALUE));
+        field.minValue = Long.parseLong(stripPrefix(MINVALUE));
         readLine();
-        assert startsWith(ABSMAXVALUE)
+        assert startsWith(MAXVALUE)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
-        field.absMaxValue = Long.parseLong(stripPrefix(ABSMAXVALUE));
+        field.maxValue = Long.parseLong(stripPrefix(MAXVALUE));
       }
 
       readLine();
@@ -125,9 +125,9 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       if (dvType == DocValuesType.NUMERIC) {
         readLine();
-        assert startsWith(MINVALUE)
+        assert startsWith(ORIGIN)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
-        field.minValue = Long.parseLong(stripPrefix(MINVALUE));
+        field.origin = Long.parseLong(stripPrefix(ORIGIN));
         readLine();
         assert startsWith(PATTERN);
         field.pattern = stripPrefix(PATTERN);
@@ -249,7 +249,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
             throw new CorruptIndexException("failed to parse BigDecimal value", in, pe);
           }
           SimpleTextUtil.readLine(in, scratch); // read the line telling us if it's real or not
-          return BigInteger.valueOf(field.minValue).add(bd.toBigIntegerExact()).longValue();
+          return BigInteger.valueOf(field.origin).add(bd.toBigIntegerExact()).longValue();
         } catch (IOException ioe) {
           throw new RuntimeException(ioe);
         }
@@ -889,12 +889,12 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public long minValue() {
-        return numeric ? field.absMinValue : 0;
+        return numeric ? field.minValue : 0;
       }
 
       @Override
       public long maxValue() {
-        return numeric ? field.absMaxValue : field.numValues - 1;
+        return numeric ? field.maxValue : field.numValues - 1;
       }
 
       @Override

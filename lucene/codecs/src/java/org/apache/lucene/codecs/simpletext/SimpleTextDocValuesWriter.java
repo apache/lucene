@@ -48,10 +48,10 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   static final BytesRef TYPE = new BytesRef("  type ");
   static final BytesRef DOCCOUNT = new BytesRef("  doccount ");
   // used for numerics
-  static final BytesRef MINVALUE = new BytesRef("  minvalue "); // for deltas
+  static final BytesRef ORIGIN = new BytesRef("  origin "); // for deltas
 
-  static final BytesRef ABSMINVALUE = new BytesRef("  absminalue ");
-  static final BytesRef ABSMAXVALUE = new BytesRef("  absmaxvalue ");
+  static final BytesRef MINVALUE = new BytesRef("  minalue ");
+  static final BytesRef MAXVALUE = new BytesRef("  maxvalue ");
 
   static final BytesRef PATTERN = new BytesRef("  pattern ");
   // used for bytes
@@ -104,11 +104,11 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     }
 
     // write absolute min and max for skipper
-    SimpleTextUtil.write(data, ABSMINVALUE);
+    SimpleTextUtil.write(data, MINVALUE);
     SimpleTextUtil.write(data, Long.toString(minValue), scratch);
     SimpleTextUtil.writeNewline(data);
 
-    SimpleTextUtil.write(data, ABSMAXVALUE);
+    SimpleTextUtil.write(data, MAXVALUE);
     SimpleTextUtil.write(data, Long.toString(maxValue), scratch);
     SimpleTextUtil.writeNewline(data);
 
@@ -122,7 +122,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     }
 
     // write our minimum value to the .dat, all entries are deltas from that
-    SimpleTextUtil.write(data, MINVALUE);
+    SimpleTextUtil.write(data, ORIGIN);
     SimpleTextUtil.write(data, Long.toString(minValue), scratch);
     SimpleTextUtil.writeNewline(data);
 
@@ -369,11 +369,11 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     }
 
     // write absolute min and max for skipper
-    SimpleTextUtil.write(data, ABSMINVALUE);
+    SimpleTextUtil.write(data, MINVALUE);
     SimpleTextUtil.write(data, Long.toString(minValue), scratch);
     SimpleTextUtil.writeNewline(data);
 
-    SimpleTextUtil.write(data, ABSMAXVALUE);
+    SimpleTextUtil.write(data, MAXVALUE);
     SimpleTextUtil.write(data, Long.toString(maxValue), scratch);
     SimpleTextUtil.writeNewline(data);
 
