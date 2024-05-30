@@ -103,10 +103,6 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       numValues++;
     }
 
-    SimpleTextUtil.write(data, DOCCOUNT);
-    SimpleTextUtil.write(data, Integer.toString(numValues), scratch);
-    SimpleTextUtil.writeNewline(data);
-
     // write absolute min and max for skipper
     SimpleTextUtil.write(data, ABSMINVALUE);
     SimpleTextUtil.write(data, Long.toString(minValue), scratch);
@@ -114,6 +110,10 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
 
     SimpleTextUtil.write(data, ABSMAXVALUE);
     SimpleTextUtil.write(data, Long.toString(maxValue), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, DOCCOUNT);
+    SimpleTextUtil.write(data, Integer.toString(numValues), scratch);
     SimpleTextUtil.writeNewline(data);
 
     if (numValues != numDocs) {
@@ -180,6 +180,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   public void addBinaryField(FieldInfo field, DocValuesProducer valuesProducer) throws IOException {
     assert fieldSeen(field.name);
     assert field.getDocValuesType() == DocValuesType.BINARY;
+    writeFieldEntry(field, DocValuesType.BINARY);
     doAddBinaryField(field, valuesProducer);
   }
 
@@ -192,7 +193,6 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       ++docCount;
       maxLength = Math.max(maxLength, values.binaryValue().toString().length());
     }
-    writeFieldEntry(field, DocValuesType.BINARY);
 
     SimpleTextUtil.write(data, DOCCOUNT);
     SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
@@ -355,6 +355,28 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       throws IOException {
     assert fieldSeen(field.name);
     assert field.getDocValuesType() == DocValuesType.SORTED_NUMERIC;
+    writeFieldEntry(field, DocValuesType.SORTED_NUMERIC);
+
+    long minValue = Long.MAX_VALUE;
+    long maxValue = Long.MIN_VALUE;
+    SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      for (int i = 0; i < values.docValueCount(); ++i) {
+        long v = values.nextValue();
+        minValue = Math.min(minValue, v);
+        maxValue = Math.max(maxValue, v);
+      }
+    }
+
+    // write absolute min and max for skipper
+    SimpleTextUtil.write(data, ABSMINVALUE);
+    SimpleTextUtil.write(data, Long.toString(minValue), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, ABSMAXVALUE);
+    SimpleTextUtil.write(data, Long.toString(maxValue), scratch);
+    SimpleTextUtil.writeNewline(data);
+
     doAddBinaryField(
         field,
         new EmptyDocValuesProducer() {

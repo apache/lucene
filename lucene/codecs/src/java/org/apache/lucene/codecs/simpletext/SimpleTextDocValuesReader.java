@@ -107,12 +107,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       DocValuesType dvType = DocValuesType.valueOf(stripPrefix(TYPE));
       assert dvType != DocValuesType.NONE;
 
-      readLine();
-      assert startsWith(DOCCOUNT)
-          : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
-      field.docCount = Integer.parseInt(stripPrefix(DOCCOUNT));
-
-      if (dvType == DocValuesType.NUMERIC) {
+      if (dvType == DocValuesType.NUMERIC || dvType == DocValuesType.SORTED_NUMERIC) {
         readLine();
         assert startsWith(ABSMINVALUE)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
@@ -121,6 +116,14 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         assert startsWith(ABSMAXVALUE)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
         field.absMaxValue = Long.parseLong(stripPrefix(ABSMAXVALUE));
+      }
+
+      readLine();
+      assert startsWith(DOCCOUNT)
+          : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
+      field.docCount = Integer.parseInt(stripPrefix(DOCCOUNT));
+
+      if (dvType == DocValuesType.NUMERIC) {
         readLine();
         assert startsWith(MINVALUE)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
@@ -130,7 +133,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         field.pattern = stripPrefix(PATTERN);
         field.dataStartFilePointer = data.getFilePointer();
         data.seek(data.getFilePointer() + (1 + field.pattern.length() + 2) * (long) maxDoc);
-      } else if (dvType == DocValuesType.BINARY) {
+      } else if (dvType == DocValuesType.BINARY || dvType == DocValuesType.SORTED_NUMERIC) {
         readLine();
         assert startsWith(MAXLENGTH);
         field.maxLength = Integer.parseInt(stripPrefix(MAXLENGTH));

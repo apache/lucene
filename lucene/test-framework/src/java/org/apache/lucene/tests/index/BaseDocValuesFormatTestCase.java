@@ -104,6 +104,24 @@ import org.apache.lucene.util.automaton.RegExp;
  */
 public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTestCase {
 
+  /**
+   * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
+   * sometimes returns documents in {@link DocValuesSkipper#minDocID(int)} or {@link
+   * DocValuesSkipper#maxDocID(int)} that may not have a value.
+   */
+  protected boolean skipperHasAccurateDocBounds() {
+    return true;
+  }
+
+  /**
+   * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
+   * sometimes returns values in {@link DocValuesSkipper#minValue(int)} or {@link
+   * DocValuesSkipper#maxValue(int)} that none of the documents in the range have.
+   */
+  protected boolean skipperHasAccurateValueBounds() {
+    return true;
+  }
+
   @Override
   protected void addRandomFields(Document doc) {
     if (usually()) {
@@ -3825,8 +3843,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
             return new DocValuesWrapper() {
 
               @Override
-              public void advance(int target) throws IOException {
-                numericDocValues.advance(target);
+              public int advance(int target) throws IOException {
+                return numericDocValues.advance(target);
               }
 
               @Override
@@ -3877,10 +3895,12 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
               long min;
 
               @Override
-              public void advance(int target) throws IOException {
-                if (sortedNumericDocValues.advance(target) != NO_MORE_DOCS) {
+              public int advance(int target) throws IOException {
+                int doc = sortedNumericDocValues.advance(target);
+                if (doc != NO_MORE_DOCS) {
                   readValues();
                 }
+                return doc;
               }
 
               @Override
@@ -3940,8 +3960,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
             return new DocValuesWrapper() {
 
               @Override
-              public void advance(int target) throws IOException {
-                sortedDocValues.advance(target);
+              public int advance(int target) throws IOException {
+                return sortedDocValues.advance(target);
               }
 
               @Override
@@ -3991,10 +4011,12 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
               long min;
 
               @Override
-              public void advance(int target) throws IOException {
-                if (sortedSetDocValues.advance(target) != NO_MORE_DOCS) {
+              public int advance(int target) throws IOException {
+                int doc = sortedSetDocValues.advance(target);
+                if (doc != NO_MORE_DOCS) {
                   readValues();
                 }
+                return doc;
               }
 
               @Override
@@ -4088,29 +4110,67 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     IOUtils.close(r, writer, directory);
   }
 
-  private static int assertDocValuesSkipSequential(
-      DocValuesWrapper iterator, DocValuesSkipper skipper) throws IOException {
+  private int assertDocValuesSkipSequential(DocValuesWrapper iterator, DocValuesSkipper skipper)
+      throws IOException {
     if (skipper == null) {
       return 0;
     }
+
+    assertEquals(-1, iterator.docID());
+    assertEquals(-1, skipper.minDocID(0));
+    assertEquals(-1, skipper.maxDocID(0));
+
+    iterator.advance(0);
     int docCount = 0;
     while (true) {
-      skipper.advance(skipper.maxDocID(0) + 1);
+      int previousMaxDoc = skipper.maxDocID(0);
+      skipper.advance(previousMaxDoc + 1);
+      assertTrue(skipper.minDocID(0) > previousMaxDoc);
+      if (skipperHasAccurateDocBounds()) {
+        assertEquals(iterator.docID(), skipper.minDocID(0));
+      } else {
+        assertTrue(
+            "Expected: " + iterator.docID() + " but got " + skipper.minDocID(0),
+            skipper.minDocID(0) <= iterator.docID());
+      }
+
       if (skipper.minDocID(0) == NO_MORE_DOCS) {
         assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
         break;
       }
+      assertTrue(skipper.docCount(0) > 0);
+
+      int maxDoc = -1;
       long minVal = Long.MAX_VALUE;
       long maxVal = Long.MIN_VALUE;
-      for (int i = 0; i < skipper.docCount(0); i++) {
-        iterator.advance(iterator.docID() + 1);
+      for (int i = 0; i < skipper.docCount(0); ++i) {
+        assertNotEquals(NO_MORE_DOCS, iterator.docID());
+        maxDoc = Math.max(maxDoc, iterator.docID());
         minVal = Math.min(minVal, iterator.minValue());
         maxVal = Math.max(maxVal, iterator.maxValue());
+        iterator.advance(iterator.docID() + 1);
       }
-      assertEquals(minVal, skipper.minValue(0));
-      assertEquals(maxVal, skipper.maxValue(0));
+      if (skipperHasAccurateDocBounds()) {
+        assertEquals(maxDoc, skipper.maxDocID(0));
+      } else {
+        assertTrue(
+            "Expected: " + maxDoc + " but got " + skipper.maxDocID(0),
+            skipper.maxDocID(0) >= maxDoc);
+      }
+      if (skipperHasAccurateValueBounds()) {
+        assertEquals(minVal, skipper.minValue(0));
+        assertEquals(maxVal, skipper.maxValue(0));
+      } else {
+        assertTrue(
+            "Expected: " + minVal + " but got " + skipper.minValue(0),
+            minVal >= skipper.minValue(0));
+        assertTrue(
+            "Expected: " + maxVal + " but got " + skipper.maxValue(0),
+            maxVal <= skipper.maxValue(0));
+      }
       docCount += skipper.docCount(0);
     }
+
     assertEquals(docCount, skipper.docCount());
     return docCount;
   }
@@ -4147,7 +4207,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
   private interface DocValuesWrapper {
 
-    void advance(int target) throws IOException;
+    int advance(int target) throws IOException;
 
     boolean advanceExact(int target) throws IOException;
 
