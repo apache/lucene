@@ -24,12 +24,12 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDReader;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /** Reads point values previously written with {@link Lucene90PointsWriter} */
 public class Lucene90PointsReader extends PointsReader {

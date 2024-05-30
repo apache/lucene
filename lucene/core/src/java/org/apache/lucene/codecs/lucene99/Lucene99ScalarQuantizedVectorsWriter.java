@@ -48,6 +48,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
@@ -540,7 +541,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static ScalarQuantizer mergeQuantiles(
-      List<ScalarQuantizer> quantizationStates, List<Integer> segmentSizes, byte bits) {
+      List<ScalarQuantizer> quantizationStates, IntArrayList segmentSizes, byte bits) {
     assert quantizationStates.size() == segmentSizes.size();
     if (quantizationStates.isEmpty()) {
       return null;
@@ -632,7 +633,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       throws IOException {
     assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
     List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
-    List<Integer> segmentSizes = new ArrayList<>(mergeState.liveDocs.length);
+    IntArrayList segmentSizes = new IntArrayList(mergeState.liveDocs.length);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       FloatVectorValues fvv;
       if (mergeState.knnVectorsReaders[i] != null

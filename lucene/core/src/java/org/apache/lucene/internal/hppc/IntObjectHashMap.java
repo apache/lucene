@@ -15,46 +15,31 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hppc;
+package org.apache.lucene.internal.hppc;
 
-import static org.apache.lucene.util.BitUtil.nextHighestPowerOfTwo;
+import static org.apache.lucene.internal.hppc.HashContainers.*;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A hash map of <code>int</code> to <code>Object</code>, implemented using open addressing with
- * linear probing for collision resolution.
+ * linear probing for collision resolution. Supports null values.
  *
  * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntObjectHashMap
  *
- * <p>github: https://github.com/carrotsearch/hppc release 0.9.0
+ * <p>github: https://github.com/carrotsearch/hppc release 0.10.0
+ *
+ * @lucene.internal
  */
 @SuppressWarnings("unchecked")
 public class IntObjectHashMap<VType>
-    implements Iterable<IntObjectHashMap.IntObjectCursor<VType>>, Cloneable {
+    implements Iterable<IntObjectHashMap.IntObjectCursor<VType>>, Accountable, Cloneable {
 
-  public static final int DEFAULT_EXPECTED_ELEMENTS = 4;
-
-  public static final float DEFAULT_LOAD_FACTOR = 0.75f;
-
-  private static final AtomicInteger ITERATION_SEED = new AtomicInteger();
-
-  /** Minimal sane load factor (99 empty slots per 100). */
-  public static final float MIN_LOAD_FACTOR = 1 / 100.0f;
-
-  /** Maximum sane load factor (1 empty slot per 100). */
-  public static final float MAX_LOAD_FACTOR = 99 / 100.0f;
-
-  /** Minimum hash buffer size. */
-  public static final int MIN_HASH_ARRAY_LENGTH = 4;
-
-  /**
-   * Maximum array size for hash containers (power-of-two and still allocable in Java, not a
-   * negative int).
-   */
-  public static final int MAX_HASH_ARRAY_LENGTH = 0x80000000 >>> 1;
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(IntObjectHashMap.class);
 
   /** The array holding keys. */
   public int[] keys;
@@ -114,10 +99,10 @@ public class IntObjectHashMap<VType>
     ensureCapacity(expectedElements);
   }
 
-  /** Create a hash map from all key-value pairs of another container. */
-  public IntObjectHashMap(Iterable<? extends IntObjectCursor<? extends VType>> container) {
-    this();
-    putAll(container);
+  /** Create a hash map from all key-value pairs of another map. */
+  public IntObjectHashMap(IntObjectHashMap<VType> map) {
+    this(map.size());
+    putAll(map);
   }
 
   public VType put(int key, VType value) {
@@ -125,8 +110,8 @@ public class IntObjectHashMap<VType>
 
     final int mask = this.mask;
     if (((key) == 0)) {
+      VType previousValue = hasEmptyKey ? (VType) values[mask + 1] : null;
       hasEmptyKey = true;
-      VType previousValue = (VType) values[mask + 1];
       values[mask + 1] = value;
       return previousValue;
     } else {
@@ -189,6 +174,9 @@ public class IntObjectHashMap<VType>
   public VType remove(int key) {
     final int mask = this.mask;
     if (((key) == 0)) {
+      if (!hasEmptyKey) {
+        return null;
+      }
       hasEmptyKey = false;
       VType previousValue = (VType) values[mask + 1];
       values[mask + 1] = 0;
@@ -292,7 +280,7 @@ public class IntObjectHashMap<VType>
   }
 
   public boolean indexExists(int index) {
-    assert index < 0 || (index >= 0 && index <= mask) || (index == mask + 1 && hasEmptyKey);
+    assert index < 0 || index <= mask || (index == mask + 1 && hasEmptyKey);
 
     return index >= 0;
   }
@@ -304,7 +292,7 @@ public class IntObjectHashMap<VType>
     return (VType) values[index];
   }
 
-  public VType indexReplace(int index, int newValue) {
+  public VType indexReplace(int index, VType newValue) {
     assert index >= 0 : "The index must point at an existing key.";
     assert index <= mask || (index == mask + 1 && hasEmptyKey);
 
@@ -341,6 +329,7 @@ public class IntObjectHashMap<VType>
 
     VType previousValue = (VType) values[index];
     if (index > mask) {
+      assert index == mask + 1;
       hasEmptyKey = false;
       values[index] = 0;
     } else {
@@ -386,7 +375,8 @@ public class IntObjectHashMap<VType>
 
   @Override
   public boolean equals(Object obj) {
-    return obj != null && getClass() == obj.getClass() && equalElements(getClass().cast(obj));
+    return (this == obj)
+        || (obj != null && getClass() == obj.getClass() && equalElements(getClass().cast(obj)));
   }
 
   /** Return true if all keys of some other container exist in this container. */
@@ -434,6 +424,19 @@ public class IntObjectHashMap<VType>
   @Override
   public Iterator<IntObjectCursor<VType>> iterator() {
     return new EntryIterator();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(keys) + sizeOfValues();
+  }
+
+  private long sizeOfValues() {
+    long size = RamUsageEstimator.shallowSizeOf(values);
+    for (ObjectCursor<VType> value : values()) {
+      size += RamUsageEstimator.sizeOfObject(value);
+    }
+    return size;
   }
 
   /** An iterator implementation for {@link #iterator}. */
@@ -615,7 +618,7 @@ public class IntObjectHashMap<VType>
       cloned.keys = keys.clone();
       cloned.values = values.clone();
       cloned.hasEmptyKey = hasEmptyKey;
-      cloned.iterationSeed = nextIterationSeed();
+      cloned.iterationSeed = ITERATION_SEED.incrementAndGet();
       return cloned;
     } catch (CloneNotSupportedException e) {
       throw new RuntimeException(e);
@@ -754,64 +757,6 @@ public class IntObjectHashMap<VType>
     rehash(prevKeys, prevValues);
   }
 
-  static int nextBufferSize(int arraySize, int elements, double loadFactor) {
-    assert checkPowerOfTwo(arraySize);
-    if (arraySize == MAX_HASH_ARRAY_LENGTH) {
-      throw new BufferAllocationException(
-          "Maximum array size exceeded for this load factor (elements: %d, load factor: %f)",
-          elements, loadFactor);
-    }
-
-    return arraySize << 1;
-  }
-
-  static int expandAtCount(int arraySize, double loadFactor) {
-    assert checkPowerOfTwo(arraySize);
-    // Take care of hash container invariant (there has to be at least one empty slot to ensure
-    // the lookup loop finds either the element or an empty slot).
-    return Math.min(arraySize - 1, (int) Math.ceil(arraySize * loadFactor));
-  }
-
-  static boolean checkPowerOfTwo(int arraySize) {
-    // These are internals, we can just assert without retrying.
-    assert arraySize > 1;
-    assert nextHighestPowerOfTwo(arraySize) == arraySize;
-    return true;
-  }
-
-  static int minBufferSize(int elements, double loadFactor) {
-    if (elements < 0) {
-      throw new IllegalArgumentException("Number of elements must be >= 0: " + elements);
-    }
-
-    long length = (long) Math.ceil(elements / loadFactor);
-    if (length == elements) {
-      length++;
-    }
-    length = Math.max(MIN_HASH_ARRAY_LENGTH, nextHighestPowerOfTwo(length));
-
-    if (length > MAX_HASH_ARRAY_LENGTH) {
-      throw new BufferAllocationException(
-          "Maximum array size exceeded for this load factor (elements: %d, load factor: %f)",
-          elements, loadFactor);
-    }
-
-    return (int) length;
-  }
-
-  static void checkLoadFactor(
-      double loadFactor, double minAllowedInclusive, double maxAllowedInclusive) {
-    if (loadFactor < minAllowedInclusive || loadFactor > maxAllowedInclusive) {
-      throw new BufferAllocationException(
-          "The load factor should be in range [%.2f, %.2f]: %f",
-          minAllowedInclusive, maxAllowedInclusive, loadFactor);
-    }
-  }
-
-  static int iterationIncrement(int seed) {
-    return 29 + ((seed & 7) << 1); // Small odd integer.
-  }
-
   /**
    * Shift all the slot-conflicting keys and values allocated to (and including) <code>slot</code>.
    */
@@ -867,23 +812,6 @@ public class IntObjectHashMap<VType>
     @Override
     public String toString() {
       return "[cursor, index: " + index + ", key: " + key + ", value: " + value + "]";
-    }
-  }
-
-  /** Forked from HPPC, holding int index and Object value */
-  public static final class ObjectCursor<VType> {
-    /**
-     * The current value's index in the container this cursor belongs to. The meaning of this index
-     * is defined by the container (usually it will be an index in the underlying storage buffer).
-     */
-    public int index;
-
-    /** The current value. */
-    public VType value;
-
-    @Override
-    public String toString() {
-      return "[cursor, index: " + index + ", value: " + value + "]";
     }
   }
 }

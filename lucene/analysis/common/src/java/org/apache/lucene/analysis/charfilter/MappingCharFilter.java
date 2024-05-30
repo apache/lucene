@@ -18,9 +18,9 @@ package org.apache.lucene.analysis.charfilter;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.Map;
 import org.apache.lucene.analysis.CharFilter; // javadocs
 import org.apache.lucene.analysis.util.RollingCharBuffer;
+import org.apache.lucene.internal.hppc.CharObjectHashMap;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.fst.CharSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
@@ -38,7 +38,7 @@ public class MappingCharFilter extends BaseCharFilter {
   private final FST.BytesReader fstReader;
   private final RollingCharBuffer buffer = new RollingCharBuffer();
   private final FST.Arc<CharsRef> scratchArc = new FST.Arc<>();
-  private final Map<Character, FST.Arc<CharsRef>> cachedRootArcs;
+  private final CharObjectHashMap<FST.Arc<CharsRef>> cachedRootArcs;
 
   private CharsRef replacement;
   private int replacementPointer;
@@ -96,7 +96,7 @@ public class MappingCharFilter extends BaseCharFilter {
 
       final int firstCH = buffer.get(inputOff);
       if (firstCH != -1) {
-        FST.Arc<CharsRef> arc = cachedRootArcs.get(Character.valueOf((char) firstCH));
+        FST.Arc<CharsRef> arc = cachedRootArcs.get((char) firstCH);
         if (arc != null) {
           if (!FST.targetHasArcs(arc)) {
             // Fast pass for single character match:

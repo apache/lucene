@@ -149,13 +149,6 @@ public final class IndexOrDocValuesQuery extends Query {
       }
 
       @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        // Bulk scorers need to consume the entire set of docs, so using an
-        // index structure should perform better
-        return indexWeight.bulkScorer(context);
-      }
-
-      @Override
       public int count(LeafReaderContext context) throws IOException {
         final int count = indexWeight.count(context);
         if (count != -1) {
@@ -184,6 +177,13 @@ public final class IndexOrDocValuesQuery extends Query {
             } else {
               return dvScorerSupplier.get(leadCost);
             }
+          }
+
+          @Override
+          public BulkScorer bulkScorer() throws IOException {
+            // Bulk scorers need to consume the entire set of docs, so using an
+            // index structure should perform better
+            return indexScorerSupplier.bulkScorer();
           }
 
           @Override

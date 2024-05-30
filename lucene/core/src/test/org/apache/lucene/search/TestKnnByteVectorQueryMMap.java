@@ -14,22 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
-package org.apache.lucene.util.hppc;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
 
-/** Forked from HPPC, holding int index and int value */
-public final class IntCursor {
-  /**
-   * The current value's index in the container this cursor belongs to. The meaning of this index is
-   * defined by the container (usually it will be an index in the underlying storage buffer).
-   */
-  public int index;
-
-  /** The current value. */
-  public int value;
+public class TestKnnByteVectorQueryMMap extends TestKnnByteVectorQuery {
 
   @Override
-  public String toString() {
-    return "[cursor, index: " + index + ", value: " + value + "]";
+  protected BaseDirectoryWrapper newDirectoryForTest() {
+    try {
+      return new MockDirectoryWrapper(
+          random(), new MMapDirectory(createTempDir("TestKnnByteVectorQueryMMap")));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }

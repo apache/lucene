@@ -106,6 +106,10 @@ API Changes
   the directory about bytes that are about to be read. (Adrien Grand, Uwe
   Schindler)
 
+* GITHUB#13408: Moved Weight#bulkScorer() to ScorerSupplier#bulkScorer() to better help parallelize
+  I/O for top-level disjunctions. Weight#bulkScorer() still exists for compatibility, but delegates
+  to ScorerSupplier#bulkScorer(). (Adrien Grand)
+
 New Features
 ---------------------
 
@@ -232,12 +236,43 @@ Other
 * GITHUB#13112: Declared ShingleFilter fields final and added Builder to facilitate the construction of ShingleFilter
   (Sanjay Dutt)
 
+======================== Lucene 9.12.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
 ---------------------
 
 * GITHUB#13145: Deprecate ByteBufferIndexInput as it will be removed in Lucene 10.0. (Uwe Schindler)
+
+* GITHUB#13422: an explicit dependency on the HPPC library is removed in favor of an internal repackaged copy in
+  oal.internal.hppc. If you relied on HPPC as a transitive dependency, you'll have to add it to your project explicitly.
+  The HPPC classes now bundled in Lucene core are internal and will have restricted access in future releases, please do
+  not use them. (Bruno Roustant, Dawid Weiss, Uwe Schindler, Chris Hegarty)
 
 New Features
 ---------------------
@@ -268,6 +303,8 @@ New Features
 * GITHUB#13181: Add new VectorScorer interface to vector value iterators. This allows for vector codecs to supply
   simpler and more optimized vector scoring when iterating vector values directly. (Ben Trent)
 
+* GITHUB#13414: Counts are always available in the result when using taxonomy facets. (Stefan Vodita)
+
 Improvements
 ---------------------
 
@@ -297,6 +334,13 @@ Improvements
   This reduces code duplication and enables future development. (Stefan Vodita)
 
 * GITHUB#13362: Add sub query explanations to DisjunctionMaxQuery, if the overall query didn't match. (Tim Grein)
+
+* GITHUB#13385: Add Intervals.noIntervals() method to produce an empty IntervalsSource.
+  (Aniketh Jain, Uwe Schindler, Alan Woodward))
+
+* GITHUB#13276: UnifiedHighlighter: new 'passageSortComparator' option to allow sorting other than offset order. (Seunghan Jung)
+
+* GITHUB#13429: Hunspell: speed up "compress"; minimize the number of the generated entries; don't even consider "forbidden" entries anymore (Peter Gromov)
 
 Optimizations
 ---------------------
@@ -346,6 +390,14 @@ Optimizations
 
 * GITHUB#13368: Replace Map<Integer, Object> by primitive IntObjectHashMap. (Bruno Roustant)
 
+* GITHUB#13392: Replace Map<Long, Object> by primitive LongObjectHashMap. (Bruno Roustant)
+
+* GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
+
+* GITHUB#13400: Replace Set<Integer> by IntHashSet and Set<Long> by LongHashSet. (Bruno Roustant)
+
+* GITHUB#13406: Replace List<Integer> by IntArrayList and List<Long> by LongArrayList. (Bruno Roustant)
+
 Bug Fixes
 ---------------------
 
@@ -381,6 +433,8 @@ Bug Fixes
 
 * GITHUB#13376: Fix integer overflow exception in postings encoding as group-varint. (Zhang Chao, Guo Feng)
 
+* GITHUB#13421: Fixes TestOrdinalMap.testRamBytesUsed for multiple default PackedInts.NullReader instances. (Amir Raza)
+
 Build
 ---------------------
 
@@ -393,7 +447,8 @@ Other
 
 * GITHUB#13077: Add public getter for SynonymQuery#field (Andrey Bozhko)
 
-* GITHUB#13385: Make NO_INTERVALS source as public to be used by Lucene clients instead of creating clones themselves (Aniketh Jain)
+
+* GITHUB#13393: Add support for reloading the SPI for KnnVectorsFormat class (Navneet Verma)
 
 ======================== Lucene 9.10.0 =======================
 

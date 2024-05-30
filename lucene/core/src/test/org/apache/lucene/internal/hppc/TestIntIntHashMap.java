@@ -15,157 +15,82 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hppc;
+package org.apache.lucene.internal.hppc;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
 import org.junit.Test;
 
 /**
- * Tests for {@link IntObjectHashMap}.
+ * Tests for {@link IntIntHashMap}.
  *
- * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntObjectHashMapTest
+ * <p>Mostly forked and trimmed from com.carrotsearch.hppc.IntIntHashMapTest
  *
  * <p>github: https://github.com/carrotsearch/hppc release: 0.9.0
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
-public class TestIntObjectHashMap extends LuceneTestCase {
+public class TestIntIntHashMap extends LuceneTestCase {
   /* Ready to use key values. */
 
-  protected int keyE = 0;
-  protected int key0 = cast(0), k0 = key0;
-  protected int key1 = cast(1), k1 = key1;
-  protected int key2 = cast(2), k2 = key2;
-  protected int key3 = cast(3), k3 = key3;
-  protected int key4 = cast(4), k4 = key4;
-  protected int key5 = cast(5), k5 = key5;
-  protected int key6 = cast(6), k6 = key6;
-  protected int key7 = cast(7), k7 = key7;
-  protected int key8 = cast(8), k8 = key8;
-  protected int key9 = cast(9), k9 = key9;
+  private final int keyE = 0;
+  private final int key1 = cast(1);
+  private final int key2 = cast(2);
+  private final int key3 = cast(3);
+  private final int key4 = cast(4);
 
   /** Convert to target type from an integer used to test stuff. */
-  public int cast(Integer v) {
-    return v.intValue();
-  }
-
-  public int[] asArray(int... ints) {
-    int[] values = (new int[ints.length]);
-    for (int i = 0; i < ints.length; i++) values[i] = ints[i];
-    return values;
+  private int cast(int v) {
+    return v;
   }
 
   /** Create a new array of a given type and copy the arguments to this array. */
-  /*  */
-  public final int[] newArray(int... elements) {
-    return newArray0(elements);
-  }
-
-  /*  */
-  private final int[] newArray0(int... elements) {
+  private int[] newArray(int... elements) {
     return elements;
   }
 
-  public int[] newArray(int v0) {
-    return this.newArray0(v0);
-  }
-
-  public int[] newArray(int v0, int v1) {
-    return this.newArray0(v0, v1);
-  }
-
-  public int[] newArray(int v0, int v1, int v2) {
-    return this.newArray0(v0, v1, v2);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3) {
-    return this.newArray0(v0, v1, v2, v3);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5, int v6) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5, v6);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4) {
-    return this.newArray0(v0, v1, v2, v3, v4);
-  }
-
-  public int[] newArray(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7) {
-    return this.newArray0(v0, v1, v2, v3, v4, v5, v6, v7);
-  }
-
-  public static int randomIntBetween(int min, int max) {
+  private static int randomIntBetween(int min, int max) {
     return min + random().nextInt(max + 1 - min);
   }
 
   /** Check if the array's content is identical to a given sequence of elements. */
-  public static void assertSortedListEquals(int[] array, int... elements) {
+  private static void assertSortedListEquals(int[] array, int... elements) {
     assertEquals(elements.length, array.length);
     Arrays.sort(array);
     Arrays.sort(elements);
     assertArrayEquals(elements, array);
   }
 
-  /** Check if the array's content is identical to a given sequence of elements. */
-  public static void assertSortedListEquals(Object[] array, Object... elements) {
-    assertEquals(elements.length, array.length);
-    Arrays.sort(array);
-    assertArrayEquals(elements, array);
-  }
-
-  protected int value0 = vcast(0);
-  protected int value1 = vcast(1);
-  protected int value2 = vcast(2);
-  protected int value3 = vcast(3);
-  protected int value4 = vcast(4);
+  private final int value0 = vcast(0);
+  private final int value1 = vcast(1);
+  private final int value2 = vcast(2);
+  private final int value3 = vcast(3);
+  private final int value4 = vcast(4);
 
   /** Per-test fresh initialized instance. */
-  public IntObjectHashMap<Object> map = newInstance();
+  private IntIntHashMap map = newInstance();
 
-  protected IntObjectHashMap newInstance() {
-    return new IntObjectHashMap();
-  }
-
-  @After
-  public void checkEmptySlotsUninitialized() {
-    if (map != null) {
-      int occupied = 0;
-      for (int i = 0; i <= map.mask; i++) {
-        if (((map.keys[i]) == 0)) {
-
-        } else {
-          occupied++;
-        }
-      }
-      assertEquals(occupied, map.assigned);
-
-      if (!map.hasEmptyKey) {}
-    }
+  private IntIntHashMap newInstance() {
+    return new IntIntHashMap();
   }
 
   /** Convert to target type from an integer used to test stuff. */
-  protected int vcast(int value) {
+  private int vcast(int value) {
     return value;
   }
 
   /** Create a new array of a given type and copy the arguments to this array. */
-  /*  */
-  protected final Object[] newvArray(Object... elements) {
+  private int[] newvArray(int... elements) {
     return elements;
   }
 
-  private void assertSameMap(final IntObjectHashMap<Object> c1, final IntObjectHashMap<Object> c2) {
+  private void assertSameMap(final IntIntHashMap c1, final IntIntHashMap c2) {
     assertEquals(c1.size(), c2.size());
 
-    for (IntObjectHashMap.IntObjectCursor entry : c1) {
+    for (IntIntHashMap.IntIntCursor entry : c1) {
       assertTrue(c2.containsKey(entry.key));
       assertEquals(entry.value, c2.get(entry.key));
     }
@@ -175,8 +100,8 @@ public class TestIntObjectHashMap extends LuceneTestCase {
   @Test
   public void testEnsureCapacity() {
     final AtomicInteger expands = new AtomicInteger();
-    IntObjectHashMap map =
-        new IntObjectHashMap(0) {
+    IntIntHashMap map =
+        new IntIntHashMap(0) {
           @Override
           protected void allocateBuffers(int arraySize) {
             super.allocateBuffers(arraySize);
@@ -205,7 +130,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     map.put(key1, value2);
     map.put(key2, value3);
 
-    for (IntObjectHashMap.IntObjectCursor c : map) {
+    for (IntIntHashMap.IntIntCursor c : map) {
       assertTrue(map.indexExists(c.index));
       assertEquals(c.value, map.indexGet(c.index));
     }
@@ -231,7 +156,6 @@ public class TestIntObjectHashMap extends LuceneTestCase {
         AssertionError.class,
         () -> {
           map.indexGet(map.indexOf(key2));
-          fail();
         });
 
     assertEquals(value1, map.indexReplace(map.indexOf(keyE), value3));
@@ -259,7 +183,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     map.put(key2, value2);
     map.put(key3, value3);
 
-    assertSameMap(map, new IntObjectHashMap(map));
+    assertSameMap(map, new IntIntHashMap(map));
   }
 
   /* */
@@ -269,8 +193,8 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     map.put(key2, value2);
     map.put(key3, value3);
 
-    IntObjectHashMap map2 =
-        IntObjectHashMap.from(newArray(key1, key2, key3), newvArray(value1, value2, value3));
+    IntIntHashMap map2 =
+        IntIntHashMap.from(newArray(key1, key2, key3), newvArray(value1, value2, value3));
 
     assertSameMap(map, map2);
   }
@@ -329,7 +253,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     map.put(key1, value1);
     map.put(key2, value1);
 
-    IntObjectHashMap map2 = newInstance();
+    IntIntHashMap map2 = newInstance();
 
     map2.put(key2, value2);
     map2.put(keyE, value1);
@@ -353,12 +277,24 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     assertEquals(value1, map.get(key1));
   }
 
+  @Test
+  public void testPutOrAdd() {
+    assertEquals(value1, map.putOrAdd(key1, value1, value2));
+    assertEquals(value3, map.putOrAdd(key1, value1, value2));
+  }
+
+  @Test
+  public void testAddTo() {
+    assertEquals(value1, map.addTo(key1, value1));
+    assertEquals(value3, map.addTo(key1, value2));
+  }
+
   /* */
   @Test
   public void testRemove() {
     map.put(key1, value1);
     assertEquals(value1, map.remove(key1));
-    assertEquals(null, map.remove(key1));
+    assertEquals(0, map.remove(key1));
     assertEquals(0, map.size());
 
     // These are internals, but perhaps worth asserting too.
@@ -372,15 +308,24 @@ public class TestIntObjectHashMap extends LuceneTestCase {
 
     map.put(empty, value1);
     assertEquals(1, map.size());
-    assertEquals(false, map.isEmpty());
+    assertFalse(map.isEmpty());
     assertEquals(value1, map.get(empty));
     assertEquals(value1, map.getOrDefault(empty, value2));
-    assertEquals(true, map.iterator().hasNext());
+    assertTrue(map.iterator().hasNext());
     assertEquals(empty, map.iterator().next().key);
     assertEquals(value1, map.iterator().next().value);
 
     map.remove(empty);
-    assertEquals(null, map.get(empty));
+    assertEquals(0, map.get(empty));
+    assertEquals(0, map.size());
+
+    assertEquals(0, map.put(empty, value1));
+    assertEquals(value1, map.put(empty, value2));
+    map.clear();
+    assertFalse(map.indexExists(map.indexOf(empty)));
+    assertEquals(0, map.put(empty, value1));
+    map.clear();
+    assertEquals(0, map.remove(empty));
   }
 
   /* */
@@ -419,6 +364,11 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     // These are internals, but perhaps worth asserting too.
     assertEquals(0, map.assigned);
 
+    // Check values are cleared.
+    assertEquals(0, map.put(key1, value1));
+    assertEquals(0, map.remove(key2));
+    map.clear();
+
     // Check if the map behaves properly upon subsequent use.
     testPutWithExpansions();
   }
@@ -447,7 +397,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     map.remove(key2);
 
     int count = 0;
-    for (IntObjectHashMap.IntObjectCursor cursor : map) {
+    for (IntIntHashMap.IntIntCursor cursor : map) {
       count++;
       assertTrue(map.containsKey(cursor.key));
       assertEquals(cursor.value, map.get(cursor.key));
@@ -467,7 +417,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     final AtomicInteger reallocations = new AtomicInteger();
     final int elements = 0x7F;
     map =
-        new IntObjectHashMap(elements, 1f) {
+        new IntIntHashMap(elements, 1f) {
           @Override
           protected double verifyLoadFactor(double loadFactor) {
             // Skip load factor sanity range checking.
@@ -494,13 +444,13 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     assertEquals(reallocationsBefore, reallocations.get());
 
     // Should not expand because we're replacing an existing element.
-    map.put(k1, value2);
+    map.put(key1, value2);
     assertEquals(reallocationsBefore, reallocations.get());
 
     // Remove from a full map.
-    map.remove(k1);
+    map.remove(key1);
     assertEquals(reallocationsBefore, reallocations.get());
-    map.put(k1, value2);
+    map.put(key1, value2);
 
     // Check expand on "last slot of a full map" condition.
     map.put(outOfSet, value1);
@@ -509,33 +459,88 @@ public class TestIntObjectHashMap extends LuceneTestCase {
 
   @Test
   public void testHashCodeEquals() {
-    IntObjectHashMap l0 = newInstance();
+    IntIntHashMap l0 = newInstance();
     assertEquals(0, l0.hashCode());
     assertEquals(l0, newInstance());
 
-    IntObjectHashMap l1 =
-        IntObjectHashMap.from(newArray(key1, key2, key3), newvArray(value1, value2, value3));
+    IntIntHashMap l1 =
+        IntIntHashMap.from(newArray(key1, key2, key3), newvArray(value1, value2, value3));
 
-    IntObjectHashMap l2 =
-        IntObjectHashMap.from(newArray(key2, key1, key3), newvArray(value2, value1, value3));
+    IntIntHashMap l2 =
+        IntIntHashMap.from(newArray(key2, key1, key3), newvArray(value2, value1, value3));
 
-    IntObjectHashMap l3 = IntObjectHashMap.from(newArray(key1, key2), newvArray(value2, value1));
+    IntIntHashMap l3 = IntIntHashMap.from(newArray(key1, key2), newvArray(value2, value1));
 
     assertEquals(l1.hashCode(), l2.hashCode());
     assertEquals(l1, l2);
 
-    assertFalse(l1.equals(l3));
-    assertFalse(l2.equals(l3));
+    assertNotEquals(l1, l3);
+    assertNotEquals(l2, l3);
   }
 
   @Test
   public void testBug_HPPC37() {
-    IntObjectHashMap l1 = IntObjectHashMap.from(newArray(key1), newvArray(value1));
+    IntIntHashMap l1 = IntIntHashMap.from(newArray(key1), newvArray(value1));
 
-    IntObjectHashMap l2 = IntObjectHashMap.from(newArray(key2), newvArray(value1));
+    IntIntHashMap l2 = IntIntHashMap.from(newArray(key2), newvArray(value1));
 
-    assertFalse(l1.equals(l2));
-    assertFalse(l2.equals(l1));
+    assertNotEquals(l1, l2);
+    assertNotEquals(l2, l1);
+  }
+
+  /** Runs random insertions/deletions/clearing and compares the results against {@link HashMap}. */
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  public void testAgainstHashMap() {
+    final Random rnd = RandomizedTest.getRandom();
+    final HashMap other = new HashMap();
+
+    for (int size = 1000; size < 20000; size += 4000) {
+      other.clear();
+      map.clear();
+
+      for (int round = 0; round < size * 20; round++) {
+        int key = cast(rnd.nextInt(size));
+        if (rnd.nextInt(50) == 0) {
+          key = 0;
+        }
+
+        int value = vcast(rnd.nextInt());
+
+        boolean hadOldValue = map.containsKey(key);
+        if (rnd.nextBoolean()) {
+          int previousValue;
+          if (rnd.nextBoolean()) {
+            int index = map.indexOf(key);
+            if (map.indexExists(index)) {
+              previousValue = map.indexReplace(index, value);
+            } else {
+              map.indexInsert(index, key, value);
+              previousValue = 0;
+            }
+          } else {
+            previousValue = map.put(key, value);
+          }
+          assertEquals(
+              other.put(key, value), ((previousValue) == 0) && !hadOldValue ? null : previousValue);
+
+          assertEquals(value, map.get(key));
+          assertEquals(value, map.indexGet(map.indexOf(key)));
+          assertTrue(map.containsKey(key));
+          assertTrue(map.indexExists(map.indexOf(key)));
+        } else {
+          assertEquals(other.containsKey(key), map.containsKey(key));
+          int previousValue =
+              map.containsKey(key) && rnd.nextBoolean()
+                  ? map.indexRemove(map.indexOf(key))
+                  : map.remove(key);
+          assertEquals(
+              other.remove(key), ((previousValue) == 0) && !hadOldValue ? null : previousValue);
+        }
+
+        assertEquals(other.size(), map.size());
+      }
+    }
   }
 
   /*
@@ -547,7 +552,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     this.map.put(key2, value2);
     this.map.put(key3, value3);
 
-    IntObjectHashMap cloned = map.clone();
+    IntIntHashMap cloned = map.clone();
     cloned.remove(key1);
 
     assertSortedListEquals(map.keys().toArray(), key1, key2, key3);
@@ -577,7 +582,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     map.put(key3, value1);
 
     int counted = 0;
-    for (IntObjectHashMap.ObjectCursor c : map.values()) {
+    for (IntCursor c : map.values()) {
       assertEquals(map.values[c.index], c.value);
       counted++;
     }
@@ -587,17 +592,17 @@ public class TestIntObjectHashMap extends LuceneTestCase {
   /* */
   @Test
   public void testEqualsSameClass() {
-    IntObjectHashMap l1 = newInstance();
-    l1.put(k1, value0);
-    l1.put(k2, value1);
-    l1.put(k3, value2);
+    IntIntHashMap l1 = newInstance();
+    l1.put(key1, value0);
+    l1.put(key2, value1);
+    l1.put(key3, value2);
 
-    IntObjectHashMap l2 = new IntObjectHashMap(l1);
+    IntIntHashMap l2 = new IntIntHashMap(l1);
     l2.putAll(l1);
 
-    IntObjectHashMap l3 = new IntObjectHashMap(l2);
+    IntIntHashMap l3 = new IntIntHashMap(l2);
     l3.putAll(l2);
-    l3.put(k4, value0);
+    l3.put(key4, value0);
 
     assertEquals(l2, l1);
     assertEquals(l2.hashCode(), l1.hashCode());
@@ -607,19 +612,18 @@ public class TestIntObjectHashMap extends LuceneTestCase {
   /* */
   @Test
   public void testEqualsSubClass() {
-    class Sub extends IntObjectHashMap {}
-    ;
+    class Sub extends IntIntHashMap {}
 
-    IntObjectHashMap l1 = newInstance();
-    l1.put(k1, value0);
-    l1.put(k2, value1);
-    l1.put(k3, value2);
+    IntIntHashMap l1 = newInstance();
+    l1.put(key1, value0);
+    l1.put(key2, value1);
+    l1.put(key3, value2);
 
-    IntObjectHashMap l2 = new Sub();
+    IntIntHashMap l2 = new Sub();
     l2.putAll(l1);
-    l2.put(k4, value3);
+    l2.put(key4, value3);
 
-    IntObjectHashMap l3 = new Sub();
+    IntIntHashMap l3 = new Sub();
     l3.putAll(l2);
 
     assertNotEquals(l1, l2);

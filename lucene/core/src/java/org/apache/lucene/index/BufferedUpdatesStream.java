@@ -26,6 +26,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
@@ -323,7 +324,7 @@ final class BufferedUpdatesStream implements Accountable {
      * This lets us track the "holes" in the current frontier of applying del gens; once the holes
      * are filled in we can advance completedDelGen.
      */
-    private final Set<Long> finishedDelGens = new HashSet<>();
+    private final LongHashSet finishedDelGens = new LongHashSet();
 
     private final InfoStream infoStream;
 

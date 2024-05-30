@@ -15,12 +15,16 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hppc;
+package org.apache.lucene.internal.hppc;
 
 import java.util.IllegalFormatException;
 import java.util.Locale;
 
-/** BufferAllocationException forked from HPPC */
+/**
+ * BufferAllocationException forked from HPPC.
+ *
+ * @lucene.internal
+ */
 public class BufferAllocationException extends RuntimeException {
   public BufferAllocationException(String message) {
     super(message);

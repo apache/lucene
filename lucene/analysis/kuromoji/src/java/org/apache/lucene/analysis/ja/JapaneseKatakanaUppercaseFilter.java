@@ -16,11 +16,14 @@
  */
 package org.apache.lucene.analysis.ja;
 
+import static org.apache.lucene.analysis.ja.JapaneseFilterUtil.createCharMap;
+
 import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.internal.hppc.CharObjectHashMap;
 
 /**
  * A {@link TokenFilter} that normalizes small letters (捨て仮名) in katakana into normal letters. For
@@ -30,13 +33,13 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  * legal, contract policies, etc.
  */
 public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
-  private static final Map<Character, Character> LETTER_MAPPINGS;
+  private static final CharObjectHashMap<Character> LETTER_MAPPINGS;
 
   static {
     // supported characters are:
     // ァ ィ ゥ ェ ォ ヵ ㇰ ヶ ㇱ ㇲ ッ ㇳ ㇴ ㇵ ㇶ ㇷ ㇷ゚ ㇸ ㇹ ㇺ ャ ュ ョ ㇻ ㇼ ㇽ ㇾ ㇿ ヮ
     LETTER_MAPPINGS =
-        Map.ofEntries(
+        createCharMap(
             Map.entry('ァ', 'ア'),
             Map.entry('ィ', 'イ'),
             Map.entry('ゥ', 'ウ'),
@@ -75,22 +78,24 @@ public final class JapaneseKatakanaUppercaseFilter extends TokenFilter {
 
   @Override
   public boolean incrementToken() throws IOException {
-    if (input.incrementToken()) {
-      String term = termAttr.toString();
-      if (term.contains("ㇷ゚")) {
-        term = term.replace("ㇷ゚", "プ");
-        termAttr.setEmpty().append(term);
-      }
-      char[] termBuffer = termAttr.buffer();
-      for (int i = 0; i < termBuffer.length; i++) {
-        Character c = LETTER_MAPPINGS.get(termBuffer[i]);
-        if (c != null) {
-          termBuffer[i] = c;
-        }
-      }
-      return true;
-    } else {
+    if (!input.incrementToken()) {
       return false;
     }
+    final char[] termBuffer = termAttr.buffer();
+    int newLength = termAttr.length();
+    for (int from = 0, to = 0, length = newLength; from < length; from++, to++) {
+      char c = termBuffer[from];
+      if (c == 'ㇷ' && from + 1 < length && termBuffer[from + 1] == '゚') {
+        // ㇷ゚detected, replace it by プ.
+        termBuffer[to] = 'プ';
+        from++;
+        newLength--;
+      } else {
+        Character mappedChar = LETTER_MAPPINGS.get(c);
+        termBuffer[to] = mappedChar == null ? c : mappedChar;
+      }
+    }
+    termAttr.setLength(newLength);
+    return true;
   }
 }
