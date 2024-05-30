@@ -95,7 +95,7 @@ public class RandomApproximationQuery extends Query {
         return null;
       } else {
         final var subScorer = scorerSupplier.get(Long.MAX_VALUE);
-        scorer = new RandomApproximationScorer(subScorer, new Random(random.nextLong()));
+        scorer = new RandomApproximationScorer(in, subScorer, new Random(random.nextLong()));
       }
       return new DefaultScorerSupplier(scorer);
     }
@@ -106,8 +106,8 @@ public class RandomApproximationQuery extends Query {
     private final Scorer scorer;
     private final RandomTwoPhaseView twoPhaseView;
 
-    RandomApproximationScorer(Scorer scorer, Random random) {
-      super(scorer.getWeight());
+    RandomApproximationScorer(Weight weight, Scorer scorer, Random random) {
+      super(weight);
       this.scorer = scorer;
       this.twoPhaseView = new RandomTwoPhaseView(random, scorer.iterator());
     }

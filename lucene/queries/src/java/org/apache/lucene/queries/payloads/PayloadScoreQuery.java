@@ -171,7 +171,7 @@ public class PayloadScoreQuery extends SpanQuery {
       Explanation payloadExpl = scorer.getPayloadExplanation();
 
       if (includeSpanScore) {
-        SpanWeight innerWeight = ((PayloadSpanWeight) scorer.getWeight()).innerWeight;
+        SpanWeight innerWeight = this.innerWeight;
         Explanation innerExpl = innerWeight.explain(context, doc);
         return Explanation.match(
             scorer.scoreCurrentDoc(), "PayloadSpanQuery, product of:", innerExpl, payloadExpl);

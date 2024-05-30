@@ -39,15 +39,6 @@ public abstract class Scorer extends Scorable {
     this.weight = Objects.requireNonNull(weight);
   }
 
-  /**
-   * returns parent Weight
-   *
-   * @lucene.experimental
-   */
-  public Weight getWeight() {
-    return weight;
-  }
-
   /** Returns the doc ID that is currently being scored. */
   public abstract int docID();
 

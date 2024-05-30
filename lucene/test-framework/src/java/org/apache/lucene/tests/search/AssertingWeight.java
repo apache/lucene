@@ -72,6 +72,7 @@ class AssertingWeight extends FilterWeight {
         getCalled = true;
         assert leadCost >= 0 : leadCost;
         return AssertingScorer.wrap(
+            in,
             new Random(random.nextLong()),
             inScorerSupplier.get(leadCost),
             scoreMode,

@@ -779,3 +779,9 @@ to manage the indexed data on their own and create new `Facet` implementations t
 The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier 
 interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to 
 `Weight#scorerSupplier` for the scorer.
+
+### `Scorer#getWeight` is removed (GITHUB#13410)
+
+The `Scorer#getWeight` method has been removed. Callers must now keep track of the Weight instance 
+that created the Scorer if they need it instead of relying on `Scorer`.
+
