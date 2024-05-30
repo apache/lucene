@@ -26,7 +26,15 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDocValuesRangeIterator extends LuceneTestCase {
 
-  public void testBasics() throws IOException {
+  public void testSingleLevel() throws IOException {
+   doTestBasics(false);
+  }
+
+  public void testMultipleLevels() throws IOException {
+    doTestBasics(true);
+  }
+
+  private void doTestBasics(boolean doLevels) throws IOException {
     long queryMin = 10;
     long queryMax = 20;
 
@@ -124,28 +132,38 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
 
           @Override
           public int numLevels() {
-            return 1;
+            return doLevels ? 9 : 1;
           }
 
           @Override
           public int minDocID(int level) {
+            if (doLevels == false) {
+              level = 8; // intervals of 256 docs
+            }
+
+            // the level is the log2 of the interval
             if (doc < 0) {
               return -1;
             } else if (doc >= 2048) {
               return DocIdSetIterator.NO_MORE_DOCS;
             } else {
-              // prior multiple of 256
-              return (doc / 256) * 256;
+              int mask = (1 << level) - 1;
+              // prior multiple of 2^level
+              return doc & ~mask;
             }
           }
 
           @Override
           public int maxDocID(int level) {
+            if (doLevels == false) {
+              level = 8; // intervals of 256 docs
+            }
+
             int minDocID = minDocID(level);
             return switch (minDocID) {
               case -1 -> -1;
               case DocIdSetIterator.NO_MORE_DOCS -> DocIdSetIterator.NO_MORE_DOCS;
-              default -> minDocID + 256 - 1;
+              default -> minDocID + (1 << level) - 1;
             };
           }
 
@@ -179,11 +197,15 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
 
           @Override
           public int docCount(int level) {
+            if (doLevels == false) {
+              level = 8; // intervals of 256 docs
+            }
+
             if (doc < 1024) {
-              return 256;
+              return 1 << level;
             } else {
               // half docs have a value
-              return 128;
+              return 1 << level >> 1;
             }
           }
 
@@ -217,7 +239,11 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
 
     assertEquals(768, rangeApproximation.advance(300));
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximation.match);
-    assertEquals(1023, rangeApproximation.upTo);
+    if (doLevels) {
+      assertEquals(768, rangeApproximation.upTo);
+    } else {
+      assertEquals(1023, rangeApproximation.upTo);
+    }
     for (int i = 0; i < 10; ++i) {
       assertEquals(values.docID(), rangeApproximation.docID());
       assertEquals(twoPhase.matches(), rangeIterator.matches());
@@ -235,7 +261,11 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
 
     assertEquals(1024 + 768, rangeApproximation.advance(1024 + 300));
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximation.match);
-    assertEquals(2047, rangeApproximation.upTo);
+    if (doLevels) {
+      assertEquals(1024 + 768, rangeApproximation.upTo);
+    } else {
+      assertEquals(2047, rangeApproximation.upTo);
+    }
     for (int i = 0; i < 10; ++i) {
       assertEquals(values.docID(), rangeApproximation.docID());
       assertEquals(twoPhase.matches(), rangeIterator.matches());
