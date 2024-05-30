@@ -132,14 +132,12 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
 
           @Override
           public int numLevels() {
-            return doLevels ? 9 : 1;
+            return doLevels ? 3 : 1;
           }
 
           @Override
           public int minDocID(int level) {
-            if (doLevels == false) {
-              level = 8; // intervals of 256 docs
-            }
+            int rangeLog = 9 - numLevels() + level;
 
             // the level is the log2 of the interval
             if (doc < 0) {
@@ -147,7 +145,7 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
             } else if (doc >= 2048) {
               return DocIdSetIterator.NO_MORE_DOCS;
             } else {
-              int mask = (1 << level) - 1;
+              int mask = (1 << rangeLog) - 1;
               // prior multiple of 2^level
               return doc & ~mask;
             }
@@ -155,15 +153,13 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
 
           @Override
           public int maxDocID(int level) {
-            if (doLevels == false) {
-              level = 8; // intervals of 256 docs
-            }
+            int rangeLog = 9 - numLevels() + level;
 
             int minDocID = minDocID(level);
             return switch (minDocID) {
               case -1 -> -1;
               case DocIdSetIterator.NO_MORE_DOCS -> DocIdSetIterator.NO_MORE_DOCS;
-              default -> minDocID + (1 << level) - 1;
+              default -> minDocID + (1 << rangeLog) - 1;
             };
           }
 
@@ -197,15 +193,13 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
 
           @Override
           public int docCount(int level) {
-            if (doLevels == false) {
-              level = 8; // intervals of 256 docs
-            }
+            int rangeLog = 9 - numLevels() + level;
 
             if (doc < 1024) {
-              return 1 << level;
+              return 1 << rangeLog;
             } else {
               // half docs have a value
-              return 1 << level >> 1;
+              return 1 << rangeLog >> 1;
             }
           }
 
@@ -240,7 +234,7 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
     assertEquals(768, rangeApproximation.advance(300));
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximation.match);
     if (doLevels) {
-      assertEquals(768, rangeApproximation.upTo);
+      assertEquals(831, rangeApproximation.upTo);
     } else {
       assertEquals(1023, rangeApproximation.upTo);
     }
@@ -262,7 +256,7 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
     assertEquals(1024 + 768, rangeApproximation.advance(1024 + 300));
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximation.match);
     if (doLevels) {
-      assertEquals(1024 + 768, rangeApproximation.upTo);
+      assertEquals(1024 + 831, rangeApproximation.upTo);
     } else {
       assertEquals(2047, rangeApproximation.upTo);
     }
