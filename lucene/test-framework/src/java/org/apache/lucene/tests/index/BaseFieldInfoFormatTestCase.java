@@ -19,6 +19,7 @@ package org.apache.lucene.tests.index;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -295,6 +296,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
           storePayloads = random().nextBoolean();
         }
       }
+      boolean hasDocValuesSkipIndex = false;
+      if (EnumSet.of(DocValuesType.NUMERIC, DocValuesType.NUMERIC, DocValuesType.NUMERIC, DocValuesType.NUMERIC).contains(fieldType.docValuesType())) {
+        hasDocValuesSkipIndex = fieldType.hasDocValuesSkipIndex();
+      }
       FieldInfo fi =
           new FieldInfo(
               field,
@@ -304,7 +309,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               storePayloads,
               fieldType.indexOptions(),
               fieldType.docValuesType(),
-              fieldType.hasDocValuesSkipIndex(),
+              hasDocValuesSkipIndex,
               -1,
               new HashMap<>(),
               fieldType.pointDimensionCount(),
