@@ -48,11 +48,10 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   static final BytesRef TYPE = new BytesRef("  type ");
   static final BytesRef DOCCOUNT = new BytesRef("  doccount ");
   // used for numerics
-  static final BytesRef MINVALUE = new BytesRef("  minvalue ");
-  static final BytesRef MAXVALUE = new BytesRef("  maxvalue ");
+  static final BytesRef MINVALUE = new BytesRef("  minvalue "); // for deltas
 
-  static final BytesRef MINDOC = new BytesRef("  mindoc ");
-  static final BytesRef MAXDOC = new BytesRef("  maxdoc ");
+  static final BytesRef ABSMINVALUE = new BytesRef("  absminalue ");
+  static final BytesRef ABSMAXVALUE = new BytesRef("  absmaxvalue ");
 
   static final BytesRef PATTERN = new BytesRef("  pattern ");
   // used for bytes
@@ -103,22 +102,28 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       maxValue = Math.max(maxValue, v);
       numValues++;
     }
-    if (numValues != numDocs) {
-      minValue = Math.min(minValue, 0);
-      maxValue = Math.max(maxValue, 0);
-    }
 
     SimpleTextUtil.write(data, DOCCOUNT);
     SimpleTextUtil.write(data, Integer.toString(numValues), scratch);
     SimpleTextUtil.writeNewline(data);
 
-    // write our minimum value to the .dat, all entries are deltas from that
-    SimpleTextUtil.write(data, MINVALUE);
+    // write absolute min and max for skipper
+    SimpleTextUtil.write(data, ABSMINVALUE);
     SimpleTextUtil.write(data, Long.toString(minValue), scratch);
     SimpleTextUtil.writeNewline(data);
 
-    SimpleTextUtil.write(data, MAXVALUE);
+    SimpleTextUtil.write(data, ABSMAXVALUE);
     SimpleTextUtil.write(data, Long.toString(maxValue), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    if (numValues != numDocs) {
+      minValue = Math.min(minValue, 0);
+      maxValue = Math.max(maxValue, 0);
+    }
+
+    // write our minimum value to the .dat, all entries are deltas from that
+    SimpleTextUtil.write(data, MINVALUE);
+    SimpleTextUtil.write(data, Long.toString(minValue), scratch);
     SimpleTextUtil.writeNewline(data);
 
     // build up our fixed-width "simple text packed ints"

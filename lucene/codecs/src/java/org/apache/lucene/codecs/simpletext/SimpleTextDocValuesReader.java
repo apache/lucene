@@ -16,12 +16,13 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ABSMAXVALUE;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ABSMINVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.DOCCOUNT;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.END;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.FIELD;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.LENGTH;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXLENGTH;
-import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MINVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.NUMVALUES;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ORDPATTERN;
@@ -69,7 +70,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     int maxLength;
     boolean fixedLength;
     long minValue;
-    long maxValue;
+    long absMinValue;
+    long absMaxValue;
     long numValues;
   }
 
@@ -112,13 +114,17 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       if (dvType == DocValuesType.NUMERIC) {
         readLine();
+        assert startsWith(ABSMINVALUE)
+            : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
+        field.absMinValue = Long.parseLong(stripPrefix(ABSMINVALUE));
+        readLine();
+        assert startsWith(ABSMAXVALUE)
+            : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
+        field.absMaxValue = Long.parseLong(stripPrefix(ABSMAXVALUE));
+        readLine();
         assert startsWith(MINVALUE)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
         field.minValue = Long.parseLong(stripPrefix(MINVALUE));
-        readLine();
-        assert startsWith(MAXVALUE)
-            : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
-        field.maxValue = Long.parseLong(stripPrefix(MAXVALUE));
         readLine();
         assert startsWith(PATTERN);
         field.pattern = stripPrefix(PATTERN);
@@ -854,6 +860,10 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     // valid:
     assert field != null;
 
+    if (field.docCount == 0) {
+      return null;
+    }
+
     return new DocValuesSkipper() {
       int doc = -1;
 
@@ -879,12 +889,12 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public long minValue() {
-        return numeric ? field.minValue : 0;
+        return numeric ? field.absMinValue : 0;
       }
 
       @Override
       public long maxValue() {
-        return numeric ? field.maxValue : field.numValues - 1;
+        return numeric ? field.absMaxValue : field.numValues - 1;
       }
 
       @Override

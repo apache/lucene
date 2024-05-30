@@ -3830,6 +3830,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
               }
 
               @Override
+              public boolean advanceExact(int target) throws IOException {
+                return numericDocValues.advanceExact(target);
+              }
+
+              @Override
               public long maxValue() throws IOException {
                 return numericDocValues.longValue();
               }
@@ -3876,6 +3881,15 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
                 if (sortedNumericDocValues.advance(target) != NO_MORE_DOCS) {
                   readValues();
                 }
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                if (sortedNumericDocValues.advanceExact(target)) {
+                  readValues();
+                  return true;
+                }
+                return false;
               }
 
               private void readValues() throws IOException {
@@ -3931,6 +3945,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
               }
 
               @Override
+              public boolean advanceExact(int target) throws IOException {
+                return sortedDocValues.advanceExact(target);
+              }
+
+              @Override
               public long maxValue() throws IOException {
                 return sortedDocValues.ordValue();
               }
@@ -3976,6 +3995,15 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
                 if (sortedSetDocValues.advance(target) != NO_MORE_DOCS) {
                   readValues();
                 }
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                if (sortedSetDocValues.advanceExact(target)) {
+                  readValues();
+                  return true;
+                }
+                return false;
               }
 
               private void readValues() throws IOException {
@@ -4067,27 +4095,21 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     }
     int docCount = 0;
     while (true) {
-      iterator.advance(skipper.maxDocID(0) + 1);
       skipper.advance(skipper.maxDocID(0) + 1);
-      if (iterator.docID() == NO_MORE_DOCS) {
-        assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+      if (skipper.minDocID(0) == NO_MORE_DOCS) {
         assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
         break;
       }
-      assertEquals(iterator.docID(), skipper.minDocID(0));
-      int intervalDocs = 1;
-      long minVal = iterator.minValue();
-      long maxVal = iterator.maxValue();
-      while (iterator.docID() != skipper.maxDocID(0)) {
+      long minVal = Long.MAX_VALUE;
+      long maxVal = Long.MIN_VALUE;
+      for (int i = 0; i < skipper.docCount(0); i++) {
         iterator.advance(iterator.docID() + 1);
         minVal = Math.min(minVal, iterator.minValue());
         maxVal = Math.max(maxVal, iterator.maxValue());
-        intervalDocs++;
       }
       assertEquals(minVal, skipper.minValue(0));
       assertEquals(maxVal, skipper.maxValue(0));
-      assertEquals(intervalDocs, skipper.docCount(0));
-      docCount += intervalDocs;
+      docCount += skipper.docCount(0);
     }
     assertEquals(docCount, skipper.docCount());
     return docCount;
@@ -4099,16 +4121,18 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
       return;
     }
     while (true) {
-      if (iterator.docID() == NO_MORE_DOCS) {
-        assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+      int doc = random().nextInt(skipper.maxDocID(0), maxDoc + 1) + 1;
+      skipper.advance(doc);
+      if (skipper.minDocID(0) == NO_MORE_DOCS) {
         assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
         return;
       }
-      int doc = random().nextInt(skipper.maxDocID(0), maxDoc) + 1;
-      iterator.advance(doc);
-      skipper.advance(doc);
-      assertTrue(iterator.docID() >= skipper.minDocID(0));
-      assertTrue(iterator.docID() <= skipper.maxDocID(0));
+      if (iterator.advanceExact(doc)) {
+        assertTrue(iterator.docID() >= skipper.minDocID(0));
+        assertTrue(iterator.docID() <= skipper.maxDocID(0));
+        assertTrue(iterator.minValue() >= skipper.minValue(0));
+        assertTrue(iterator.maxValue() <= skipper.maxValue(0));
+      }
     }
   }
 
@@ -4124,6 +4148,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
   private interface DocValuesWrapper {
 
     void advance(int target) throws IOException;
+
+    boolean advanceExact(int target) throws IOException;
 
     long maxValue() throws IOException;
 
