@@ -27,7 +27,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestDocValuesRangeIterator extends LuceneTestCase {
 
   public void testSingleLevel() throws IOException {
-   doTestBasics(false);
+    doTestBasics(false);
   }
 
   public void testMultipleLevels() throws IOException {

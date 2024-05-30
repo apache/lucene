@@ -3867,8 +3867,22 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     return true;
   }
 
-  public void testNumericDocValuesWithSkipper() throws IOException {
+  public void testNumericDocValuesWithSkipperSmall() throws IOException {
+    doTestNumericDocValuesWithSkipper(random().nextInt(1, 1000));
+  }
+
+  public void testNumericDocValuesWithSkipperMedium() throws IOException {
+    doTestNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
+  }
+
+  @Nightly
+  public void testNumericDocValuesWithSkipperBig() throws IOException {
+    doTestNumericDocValuesWithSkipper(random().nextInt(50000, 100000));
+  }
+
+  private void doTestNumericDocValuesWithSkipper(int totalDocs) throws IOException {
     assertDocValuesWithSkipper(
+        totalDocs,
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
@@ -3914,8 +3928,22 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         });
   }
 
-  public void testSortedNumericDocValuesWithSkipper() throws IOException {
+  public void testSortedNumericDocValuesWithSkipperSmall() throws IOException {
+    doTestSortedNumericDocValuesWithSkipper(random().nextInt(1, 1000));
+  }
+
+  public void testSortedNumericDocValuesWithSkipperMedium() throws IOException {
+    doTestSortedNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
+  }
+
+  @Nightly
+  public void testSortedNumericDocValuesWithSkipperBig() throws IOException {
+    doTestSortedNumericDocValuesWithSkipper(random().nextInt(50000, 100000));
+  }
+
+  private void doTestSortedNumericDocValuesWithSkipper(int totalDocs) throws IOException {
     assertDocValuesWithSkipper(
+        totalDocs,
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
@@ -3984,8 +4012,22 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         });
   }
 
-  public void testSortedDocValuesWithSkipper() throws IOException {
+  public void testSortedDocValuesWithSkipperSmall() throws IOException {
+    doTestSortedDocValuesWithSkipper(random().nextInt(1, 1000));
+  }
+
+  public void testSortedDocValuesWithSkipperMedium() throws IOException {
+    doTestSortedDocValuesWithSkipper(random().nextInt(1000, 20000));
+  }
+
+  @Nightly
+  public void testSortedDocValuesWithSkipperBig() throws IOException {
+    doTestSortedDocValuesWithSkipper(random().nextInt(50000, 100000));
+  }
+
+  private void doTestSortedDocValuesWithSkipper(int totalDocs) throws IOException {
     assertDocValuesWithSkipper(
+        totalDocs,
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
@@ -4031,8 +4073,22 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         });
   }
 
-  public void testSortedSetDocValuesWithSkipper() throws IOException {
+  public void testSortedSetDocValuesWithSkipperSmall() throws IOException {
+    doTestSortedSetDocValuesWithSkipper(random().nextInt(1, 1000));
+  }
+
+  public void testSortedSetDocValuesWithSkipperMedium() throws IOException {
+    doTestSortedSetDocValuesWithSkipper(random().nextInt(10000, 20000));
+  }
+
+  @Nightly
+  public void testSortedSetDocValuesWithSkipperBig() throws IOException {
+    doTestSortedSetDocValuesWithSkipper(random().nextInt(50000, 100000));
+  }
+
+  private void doTestSortedSetDocValuesWithSkipper(int totalDocs) throws IOException {
     assertDocValuesWithSkipper(
+        totalDocs,
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
@@ -4102,7 +4158,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         });
   }
 
-  private void assertDocValuesWithSkipper(TestDocValueSkipper testDocValueSkipper)
+  private void assertDocValuesWithSkipper(int totalDocs, TestDocValueSkipper testDocValueSkipper)
       throws IOException {
     Supplier<Boolean> booleanSupplier;
     switch (random().nextInt(3)) {
@@ -4114,7 +4170,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     Directory directory = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
     int numDocs = 0;
-    for (int i = 0; i < random().nextInt(1, 50000); i++) {
+    for (int i = 0; i < totalDocs; i++) {
       Document doc = new Document();
       if (booleanSupplier.get()) {
         testDocValueSkipper.populateDoc(doc);
