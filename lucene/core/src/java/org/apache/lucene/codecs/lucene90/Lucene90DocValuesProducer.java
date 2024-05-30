@@ -1725,9 +1725,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   @Override
   public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
     final DocValuesSkipperEntry entry = skippers.get(field.name);
-    if (entry == null) {
-      return null;
-    }
 
     final IndexInput input = data.slice("doc value skipper", entry.offset, entry.length);
     return new DocValuesSkipper() {

@@ -851,9 +851,6 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
   @Override
   public DocValuesSkipper getSkipper(FieldInfo fieldInfo) {
-    if (fieldInfo.hasDocValuesSkipIndex() == false) {
-      return null;
-    }
     final boolean numeric =
         fieldInfo.getDocValuesType() == DocValuesType.NUMERIC
             || fieldInfo.getDocValuesType() == DocValuesType.SORTED_NUMERIC;
