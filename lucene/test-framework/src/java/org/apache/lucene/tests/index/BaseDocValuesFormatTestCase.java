@@ -908,7 +908,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.addDocument(doc);
     doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.NO));
-    doc.add(new SortedDocValuesField("field", newBytesRef("hello")));
+    doc.add(SortedDocValuesField.indexedField("field", newBytesRef("hello")));
     iwriter.addDocument(doc);
     iwriter.commit();
     iwriter.deleteDocuments(new Term("id", "1"));
@@ -919,6 +919,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedDocValues dv = getOnlyLeafReader(ireader).getSortedDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     TermsEnum termsEnum = dv.termsEnum();
     assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
@@ -2253,7 +2257,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.addDocument(doc);
     doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.NO));
-    doc.add(new SortedSetDocValuesField("field", newBytesRef("hello")));
+    doc.add(SortedSetDocValuesField.indexedField("field", newBytesRef("hello")));
     iwriter.addDocument(doc);
     iwriter.commit();
     iwriter.deleteDocuments(new Term("id", "1"));
@@ -2264,6 +2268,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(0, dv.getValueCount());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     TermsEnum termsEnum = dv.termsEnum();
     assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
@@ -3230,7 +3238,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.addDocument(doc);
     doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.NO));
-    doc.add(new NumericDocValuesField("field", 5));
+    doc.add(NumericDocValuesField.indexedField("field", 5));
     iwriter.addDocument(doc);
     iwriter.commit();
     iwriter.deleteDocuments(new Term("id", "1"));
@@ -3241,6 +3249,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     NumericDocValues dv = getOnlyLeafReader(ireader).getNumericDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     ireader.close();
     directory.close();
@@ -3356,7 +3368,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     iwriter.addDocument(doc);
     doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.NO));
-    doc.add(new SortedNumericDocValuesField("field", 5));
+    doc.add(SortedNumericDocValuesField.indexedField("field", 5));
     iwriter.addDocument(doc);
     iwriter.commit();
     iwriter.deleteDocuments(new Term("id", "1"));
@@ -3367,6 +3379,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedNumericDocValues dv = getOnlyLeafReader(ireader).getSortedNumericDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     ireader.close();
     directory.close();
@@ -3518,7 +3534,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     Document doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.NO));
-    doc.add(new SortedDocValuesField("field", newBytesRef("hello")));
+    doc.add(SortedDocValuesField.indexedField("field", newBytesRef("hello")));
     iwriter.addDocument(doc);
     final int numEmptyDocs = atLeast(1024);
     for (int i = 0; i < numEmptyDocs; ++i) {
@@ -3533,6 +3549,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedDocValues dv = getOnlyLeafReader(ireader).getSortedDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     TermsEnum termsEnum = dv.termsEnum();
     assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
@@ -3553,7 +3573,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     Document doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.NO));
-    doc.add(new SortedSetDocValuesField("field", newBytesRef("hello")));
+    doc.add(SortedSetDocValuesField.indexedField("field", newBytesRef("hello")));
     iwriter.addDocument(doc);
     final int numEmptyDocs = atLeast(1024);
     for (int i = 0; i < numEmptyDocs; ++i) {
@@ -3568,6 +3588,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     TermsEnum termsEnum = dv.termsEnum();
     assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
@@ -3588,7 +3612,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     Document doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.NO));
-    doc.add(new NumericDocValuesField("field", 42L));
+    doc.add(NumericDocValuesField.indexedField("field", 42L));
     iwriter.addDocument(doc);
     final int numEmptyDocs = atLeast(1024);
     for (int i = 0; i < numEmptyDocs; ++i) {
@@ -3603,6 +3627,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     NumericDocValues dv = getOnlyLeafReader(ireader).getNumericDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     ireader.close();
     directory.close();
@@ -3619,7 +3647,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     Document doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.NO));
-    doc.add(new SortedNumericDocValuesField("field", 42L));
+    doc.add(SortedNumericDocValuesField.indexedField("field", 42L));
     iwriter.addDocument(doc);
     final int numEmptyDocs = atLeast(1024);
     for (int i = 0; i < numEmptyDocs; ++i) {
@@ -3634,6 +3662,10 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedNumericDocValues dv = getOnlyLeafReader(ireader).getSortedNumericDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     ireader.close();
     directory.close();

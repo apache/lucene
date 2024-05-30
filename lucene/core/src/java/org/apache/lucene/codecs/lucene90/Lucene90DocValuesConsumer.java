@@ -219,7 +219,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     long globalMaxValue = Long.MIN_VALUE;
     long globalMinValue = Long.MAX_VALUE;
     int globalDocCount = 0;
-    int maxDocId = 0;
+    int maxDocId = -1;
     SkipAccumulator accumulator = null;
     int counter = 0;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
