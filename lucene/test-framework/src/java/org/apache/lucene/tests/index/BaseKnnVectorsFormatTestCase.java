@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.index;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.ByteArrayOutputStream;
@@ -834,6 +835,58 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertNotSame(scorer, newScorer);
           assertNotSame(iterator, newScorer.iterator());
         }
+      }
+    }
+  }
+
+  public void testEmptyFloatVectorData() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      var doc1 = new Document();
+      doc1.add(new StringField("id", "0", Field.Store.NO));
+      doc1.add(new KnnFloatVectorField("v", new float[] {2, 3, 5, 6}, DOT_PRODUCT));
+      w.addDocument(doc1);
+
+      var doc2 = new Document();
+      doc2.add(new StringField("id", "1", Field.Store.NO));
+      w.addDocument(doc2);
+
+      w.deleteDocuments(new Term("id", Integer.toString(0)));
+      w.commit();
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        FloatVectorValues values = r.getFloatVectorValues("v");
+        assertNotNull(values);
+        assertEquals(0, values.size());
+        assertNull(values.scorer(new float[] {2, 3, 5, 6}));
+      }
+    }
+  }
+
+  public void testEmptyByteVectorData() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      var doc1 = new Document();
+      doc1.add(new StringField("id", "0", Field.Store.NO));
+      doc1.add(new KnnByteVectorField("v", new byte[] {2, 3, 5, 6}, DOT_PRODUCT));
+      w.addDocument(doc1);
+
+      var doc2 = new Document();
+      doc2.add(new StringField("id", "1", Field.Store.NO));
+      w.addDocument(doc2);
+
+      w.deleteDocuments(new Term("id", Integer.toString(0)));
+      w.commit();
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        ByteVectorValues values = r.getByteVectorValues("v");
+        assertNotNull(values);
+        assertEquals(0, values.size());
+        assertNull(values.scorer(new byte[] {2, 3, 5, 6}));
       }
     }
   }
