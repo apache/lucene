@@ -451,6 +451,9 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public VectorScorer scorer(float[] target) {
+      if (size() == 0) {
+        return null;
+      }
       OffHeapFloatVectorValues values = this.copy();
       return new VectorScorer() {
         @Override
