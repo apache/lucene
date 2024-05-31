@@ -170,17 +170,6 @@ public final class FieldInfo {
               + name
               + "' cannot have a docvalues update generation without having docvalues");
     }
-    if (docValuesSkipIndex
-        && docValuesType != DocValuesType.NUMERIC
-        && docValuesType != DocValuesType.SORTED_NUMERIC
-        && docValuesType != DocValuesType.SORTED
-        && docValuesType != DocValuesType.SORTED_SET) {
-      throw new IllegalArgumentException(
-          "field '"
-              + name
-              + "' cannot enable a skip index on doc values and have a doc values type which is not one of NUMERIC, SORTED_NUMERIC, SORTED, SORTED_SET: "
-              + docValuesType);
-    }
 
     if (pointDimensionCount < 0) {
       throw new IllegalArgumentException(
