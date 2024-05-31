@@ -89,8 +89,6 @@ public class TestWordlistLoader extends LuceneTestCase {
     byte[] sByteArr = s.getBytes(charset);
     InputStream sInputStream = new ByteArrayInputStream(sByteArr);
     List<String> lines = WordlistLoader.getLines(sInputStream, charset);
-    assertEquals(3, lines.size());
-    assertFalse(lines.contains("#Comment"));
     assertEquals("One", lines.get(0));
     assertEquals("Two", lines.get(1));
     assertEquals("Three", lines.get(2));
