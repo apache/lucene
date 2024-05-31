@@ -24,7 +24,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 
 /** Wraps a Scorer with additional checks */
 public class AssertingScorer extends Scorer {
@@ -37,15 +36,11 @@ public class AssertingScorer extends Scorer {
   };
 
   public static Scorer wrap(
-      Weight weight,
-      Random random,
-      Scorer other,
-      ScoreMode scoreMode,
-      boolean canCallMinCompetitiveScore) {
+      Random random, Scorer other, ScoreMode scoreMode, boolean canCallMinCompetitiveScore) {
     if (other == null) {
       return null;
     }
-    return new AssertingScorer(weight, random, other, scoreMode, canCallMinCompetitiveScore);
+    return new AssertingScorer(random, other, scoreMode, canCallMinCompetitiveScore);
   }
 
   final Random random;
@@ -59,12 +54,7 @@ public class AssertingScorer extends Scorer {
   int lastShallowTarget = -1;
 
   private AssertingScorer(
-      Weight weight,
-      Random random,
-      Scorer in,
-      ScoreMode scoreMode,
-      boolean canCallMinCompetitiveScore) {
-    super(weight);
+      Random random, Scorer in, ScoreMode scoreMode, boolean canCallMinCompetitiveScore) {
     this.random = random;
     this.in = in;
     this.scoreMode = scoreMode;

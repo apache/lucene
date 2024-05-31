@@ -38,8 +38,7 @@ class QueryProfilerScorer extends Scorer {
       computeMaxScoreTimer,
       setMinCompetitiveScoreTimer;
 
-  QueryProfilerScorer(QueryProfilerWeight w, Scorer scorer, QueryProfilerBreakdown profile) {
-    super(w);
+  QueryProfilerScorer(Scorer scorer, QueryProfilerBreakdown profile) {
     this.scorer = scorer;
     scoreTimer = profile.getTimer(QueryProfilerTimingType.SCORE);
     nextDocTimer = profile.getTimer(QueryProfilerTimingType.NEXT_DOC);

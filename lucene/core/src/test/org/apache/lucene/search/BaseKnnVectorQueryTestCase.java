@@ -1008,7 +1008,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                   throw new UnsupportedOperationException("reusing BitSet is not supported");
                 }
               };
-          final var scorer = new ConstantScoreScorer(this, score(), scoreMode, bitSetIterator);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, bitSetIterator);
           return new DefaultScorerSupplier(scorer);
         }
 

@@ -89,7 +89,7 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
 
       @Override
       public Scorer get(long leadCost) {
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       }
 
       @Override

@@ -165,9 +165,7 @@ final class JustCompileSearch {
 
   static final class JustCompileScorer extends Scorer {
 
-    protected JustCompileScorer(Weight weight) {
-      super(weight);
-    }
+    protected JustCompileScorer() {}
 
     @Override
     public float score() {

@@ -62,15 +62,13 @@ class QueryProfilerWeight extends FilterWeight {
     if (subQueryScorerSupplier == null) {
       return null;
     }
-
-    final QueryProfilerWeight weight = this;
     return new ScorerSupplier() {
 
       @Override
       public Scorer get(long loadCost) throws IOException {
         timer.start();
         try {
-          return new QueryProfilerScorer(weight, subQueryScorerSupplier.get(loadCost), profile);
+          return new QueryProfilerScorer(subQueryScorerSupplier.get(loadCost), profile);
         } finally {
           timer.stop();
         }

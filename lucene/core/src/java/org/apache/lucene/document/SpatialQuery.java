@@ -178,8 +178,7 @@ abstract class SpatialQuery extends Query {
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) {
-          return new ConstantScoreScorer(
-              weight, score, scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+          return new ConstantScoreScorer(score, scoreMode, DocIdSetIterator.all(reader.maxDoc()));
         }
 
         @Override
@@ -324,7 +323,7 @@ abstract class SpatialQuery extends Query {
         final long[] cost = new long[] {reader.maxDoc()};
         values.intersect(getInverseDenseVisitor(spatialVisitor, queryRelation, result, cost));
         final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       } else if (values.getDocCount() < (values.size() >>> 2)) {
         // we use a dense structure so we can skip already visited documents
         final FixedBitSet result = new FixedBitSet(reader.maxDoc());
@@ -333,12 +332,12 @@ abstract class SpatialQuery extends Query {
         assert cost[0] > 0 || result.cardinality() == 0;
         final DocIdSetIterator iterator =
             cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       } else {
         final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc(), values, field);
         values.intersect(getSparseVisitor(spatialVisitor, queryRelation, docIdSetBuilder));
         final DocIdSetIterator iterator = docIdSetBuilder.build().iterator();
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       }
     }
 
@@ -369,7 +368,7 @@ abstract class SpatialQuery extends Query {
       assert cost[0] > 0 || result.cardinality() == 0;
       final DocIdSetIterator iterator =
           cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-      return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+      return new ConstantScoreScorer(boost, scoreMode, iterator);
     }
 
     private Scorer getContainsDenseScorer(
@@ -385,7 +384,7 @@ abstract class SpatialQuery extends Query {
       assert cost[0] > 0 || result.cardinality() == 0;
       final DocIdSetIterator iterator =
           cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-      return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+      return new ConstantScoreScorer(boost, scoreMode, iterator);
     }
 
     @Override

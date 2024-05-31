@@ -149,10 +149,9 @@ public final class ConstantScoreQuery extends Query {
               final Scorer innerScorer = innerScorerSupplier.get(leadCost);
               final TwoPhaseIterator twoPhaseIterator = innerScorer.twoPhaseIterator();
               if (twoPhaseIterator == null) {
-                return new ConstantScoreScorer(
-                    innerWeight, score(), scoreMode, innerScorer.iterator());
+                return new ConstantScoreScorer(score(), scoreMode, innerScorer.iterator());
               } else {
-                return new ConstantScoreScorer(innerWeight, score(), scoreMode, twoPhaseIterator);
+                return new ConstantScoreScorer(score(), scoreMode, twoPhaseIterator);
               }
             }
 

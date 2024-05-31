@@ -372,38 +372,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     }
   }
 
-  private static class FakeWeight extends Weight {
-
-    protected FakeWeight() {
-      super(null);
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return false;
-    }
-
-    @Override
-    public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public ScorerSupplier scorerSupplier(LeafReaderContext context) {
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long leadCost) throws IOException {
-          throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public long cost() {
-          throw new UnsupportedOperationException();
-        }
-      };
-    }
-  }
-
   private static class FakeScorer extends Scorer {
 
     final String toString;
@@ -413,7 +381,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     int cost = 10;
 
     protected FakeScorer(String toString) {
-      super(new FakeWeight());
       this.toString = toString;
     }
 
