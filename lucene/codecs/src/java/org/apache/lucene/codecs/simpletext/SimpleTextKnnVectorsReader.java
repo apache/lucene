@@ -395,6 +395,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     @Override
     public VectorScorer scorer(float[] target) {
+      if (size() == 0) {
+        return null;
+      }
       SimpleTextFloatVectorValues simpleTextFloatVectorValues =
           new SimpleTextFloatVectorValues(this);
       return new VectorScorer() {
@@ -504,6 +507,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     @Override
     public VectorScorer scorer(byte[] target) {
+      if (size() == 0) {
+        return null;
+      }
       SimpleTextByteVectorValues simpleTextByteVectorValues = new SimpleTextByteVectorValues(this);
       return new VectorScorer() {
         @Override
