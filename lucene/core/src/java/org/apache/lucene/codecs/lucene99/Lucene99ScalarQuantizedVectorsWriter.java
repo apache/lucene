@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.DYNAMIC_CONFIDENCE_INTERVAL;
 import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -117,6 +118,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         false,
         rawVectorDelegate,
         scorer);
+    if (confidenceInterval != null && confidenceInterval == 0) {
+      throw new IllegalArgumentException("confidenceInterval cannot be set to zero");
+    }
   }
 
   public Lucene99ScalarQuantizedVectorsWriter(
@@ -347,6 +351,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         meta.writeByte(bits);
         meta.writeByte(compress ? (byte) 1 : (byte) 0);
       } else {
+        assert confidenceInterval == null || confidenceInterval != DYNAMIC_CONFIDENCE_INTERVAL;
         meta.writeInt(
             Float.floatToIntBits(
                 confidenceInterval == null
@@ -667,20 +672,34 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           doc = vectorValues.nextDoc()) {
         numVectors++;
       }
-      mergedQuantiles =
-          confidenceInterval == null
-              ? ScalarQuantizer.fromVectorsAutoInterval(
-                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-                  fieldInfo.getVectorSimilarityFunction(),
-                  numVectors,
-                  bits)
-              : ScalarQuantizer.fromVectors(
-                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-                  confidenceInterval,
-                  numVectors,
-                  bits);
+      return buildScalarQuantizer(
+          KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
+          numVectors,
+          fieldInfo.getVectorSimilarityFunction(),
+          confidenceInterval,
+          bits);
     }
     return mergedQuantiles;
+  }
+
+  static ScalarQuantizer buildScalarQuantizer(
+      FloatVectorValues floatVectorValues,
+      int numVectors,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      Float confidenceInterval,
+      byte bits)
+      throws IOException {
+    if (confidenceInterval != null && confidenceInterval == DYNAMIC_CONFIDENCE_INTERVAL) {
+      return ScalarQuantizer.fromVectorsAutoInterval(
+          floatVectorValues, vectorSimilarityFunction, numVectors, bits);
+    }
+    return ScalarQuantizer.fromVectors(
+        floatVectorValues,
+        confidenceInterval == null
+            ? calculateDefaultConfidenceInterval(floatVectorValues.dimension())
+            : confidenceInterval,
+        numVectors,
+        bits);
   }
 
   /**
@@ -785,14 +804,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       }
       FloatVectorValues floatVectorValues = new FloatVectorWrapper(floatVectors, normalize);
       ScalarQuantizer quantizer =
-          confidenceInterval == null
-              ? ScalarQuantizer.fromVectorsAutoInterval(
-                  floatVectorValues,
-                  fieldInfo.getVectorSimilarityFunction(),
-                  floatVectors.size(),
-                  bits)
-              : ScalarQuantizer.fromVectors(
-                  floatVectorValues, confidenceInterval, floatVectors.size(), bits);
+          buildScalarQuantizer(
+              floatVectorValues,
+              floatVectors.size(),
+              fieldInfo.getVectorSimilarityFunction(),
+              confidenceInterval,
+              bits);
       minQuantile = quantizer.getLowerQuantile();
       maxQuantile = quantizer.getUpperQuantile();
       if (infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
