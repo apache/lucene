@@ -72,6 +72,10 @@ New Features
 
 * GITHUB#13414: Counts are always available in the result when using taxonomy facets. (Stefan Vodita)
 
+* GITHUB#13445: Add new option when calculating scalar quantiles. The new option of setting `confidenceInterval` to
+  `0` will now dynamically determine the quantiles through a grid search over multiple quantiles calculated
+  by multiple intervals. (Ben Trent)
+
 Improvements
 ---------------------
 

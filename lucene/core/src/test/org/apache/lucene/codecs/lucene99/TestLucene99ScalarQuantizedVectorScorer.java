@@ -60,7 +60,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
             1,
             bits,
             compress,
-            null,
+            0f,
             null);
       }
     };
