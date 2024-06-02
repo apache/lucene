@@ -37,22 +37,10 @@ public record CopyState(
     long primaryGen,
     SegmentInfos infos) {
 
-  public CopyState(
-      Map<String, FileMetaData> files,
-      long version,
-      long gen,
-      byte[] infosBytes,
-      Set<String> completedMergeFiles,
-      long primaryGen,
-      SegmentInfos infos) {
+  public CopyState {
     assert completedMergeFiles != null;
-    this.files = Collections.unmodifiableMap(files);
-    this.version = version;
-    this.gen = gen;
-    this.infosBytes = infosBytes;
-    this.completedMergeFiles = Collections.unmodifiableSet(completedMergeFiles);
-    this.primaryGen = primaryGen;
-    this.infos = infos;
+    files = Collections.unmodifiableMap(files);
+    completedMergeFiles = Collections.unmodifiableSet(completedMergeFiles);
   }
 
   @Override

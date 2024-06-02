@@ -55,14 +55,6 @@ final class FSTOrdsOutputs extends Outputs<FSTOrdsOutputs.Output> {
       }
       return startOrd + " to " + x;
     }
-
-    @Override
-    public int hashCode() {
-      int hash = bytes.hashCode();
-      hash = (int) (hash ^ startOrd);
-      hash = (int) (hash ^ endOrd);
-      return hash;
-    }
   }
 
   @Override

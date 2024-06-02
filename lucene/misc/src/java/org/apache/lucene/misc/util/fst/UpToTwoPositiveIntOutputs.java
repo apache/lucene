@@ -43,9 +43,7 @@ public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
 
   /** Holds two long outputs. */
   public record TwoLongs(long first, long second) {
-    public TwoLongs(long first, long second) {
-      this.first = first;
-      this.second = second;
+    public TwoLongs {
       assert first >= 0;
       assert second >= 0;
     }

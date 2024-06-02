@@ -450,15 +450,6 @@ class GeneratingSuggester {
       implements Comparable<Weighted<T>> {
 
     @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof Weighted)) return false;
-      @SuppressWarnings("unchecked")
-      Weighted<T> that = (Weighted<T>) o;
-      return score == that.score && word.equals(that.word);
-    }
-
-    @Override
     public String toString() {
       return word + "(" + score + ")";
     }

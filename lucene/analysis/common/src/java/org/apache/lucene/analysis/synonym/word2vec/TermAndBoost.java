@@ -26,8 +26,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public record TermAndBoost(BytesRef term, float boost) {
   /** Creates a new TermAndBoost */
-  public TermAndBoost(BytesRef term, float boost) {
-    this.term = BytesRef.deepCopyOf(term);
-    this.boost = boost;
+  public TermAndBoost {
+    term = BytesRef.deepCopyOf(term);
   }
 }

@@ -149,27 +149,9 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
       int docCount,
       BytesRef minTerm,
       BytesRef maxTerm) {
-    private FieldMetaData(
-        FieldInfo fieldInfo,
-        Output rootCode,
-        long numTerms,
-        long indexStartFP,
-        long sumTotalTermFreq,
-        long sumDocFreq,
-        int docCount,
-        BytesRef minTerm,
-        BytesRef maxTerm) {
+    private FieldMetaData {
       assert numTerms > 0;
-      this.fieldInfo = fieldInfo;
       assert rootCode != null : "field=" + fieldInfo.name + " numTerms=" + numTerms;
-      this.rootCode = rootCode;
-      this.indexStartFP = indexStartFP;
-      this.numTerms = numTerms;
-      this.sumTotalTermFreq = sumTotalTermFreq;
-      this.sumDocFreq = sumDocFreq;
-      this.docCount = docCount;
-      this.minTerm = minTerm;
-      this.maxTerm = maxTerm;
     }
   }
 

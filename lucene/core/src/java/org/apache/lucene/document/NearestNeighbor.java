@@ -44,17 +44,9 @@ class NearestNeighbor {
   record Cell(
       PointTree index, int readerIndex, byte[] minPacked, byte[] maxPacked, double distanceSortKey)
       implements Comparable<Cell> {
-    Cell(
-        PointTree index,
-        int readerIndex,
-        byte[] minPacked,
-        byte[] maxPacked,
-        double distanceSortKey) {
-      this.index = index;
-      this.readerIndex = readerIndex;
-      this.minPacked = minPacked.clone();
-      this.maxPacked = maxPacked.clone();
-      this.distanceSortKey = distanceSortKey;
+    Cell {
+      minPacked = minPacked.clone();
+      maxPacked = maxPacked.clone();
     }
 
     @Override

@@ -46,8 +46,7 @@ public record LeafMetaData(
     int createdVersionMajor, Version minVersion, Sort sort, boolean hasBlocks) {
 
   /** Expert: Sole constructor. Public for use by custom {@link LeafReader} impls. */
-  public LeafMetaData(int createdVersionMajor, Version minVersion, Sort sort, boolean hasBlocks) {
-    this.createdVersionMajor = createdVersionMajor;
+  public LeafMetaData {
     if (createdVersionMajor > Version.LATEST.major) {
       throw new IllegalArgumentException(
           "createdVersionMajor is in the future: " + createdVersionMajor);
@@ -59,8 +58,5 @@ public record LeafMetaData(
     if (createdVersionMajor >= 7 && minVersion == null) {
       throw new IllegalArgumentException("minVersion must be set when createdVersionMajor is >= 7");
     }
-    this.minVersion = minVersion;
-    this.sort = sort;
-    this.hasBlocks = hasBlocks;
   }
 }
