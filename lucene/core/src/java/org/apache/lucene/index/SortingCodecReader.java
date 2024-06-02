@@ -35,6 +35,7 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -258,6 +259,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
       return docId = docsWithField.nextSetBit(target);
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private static class SortingByteVectorValues extends ByteVectorValues {
@@ -311,6 +317,11 @@ public final class SortingCodecReader extends FilterCodecReader {
         return NO_MORE_DOCS;
       }
       return docId = docsWithField.nextSetBit(target);
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
+      throw new UnsupportedOperationException();
     }
   }
 

@@ -35,6 +35,7 @@ import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
@@ -417,7 +418,7 @@ public class LatLonPoint extends Field {
       throw new IllegalArgumentException("searcher must not be null");
     }
     List<PointValues> readers = new ArrayList<>();
-    List<Integer> docBases = new ArrayList<>();
+    IntArrayList docBases = new IntArrayList();
     List<Bits> liveDocs = new ArrayList<>();
     int totalHits = 0;
     for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {

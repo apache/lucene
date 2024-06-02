@@ -17,11 +17,11 @@
 package org.apache.lucene.analysis.cn.smart.hhmm;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.analysis.cn.smart.Utility;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 
 /**
  * Graph representing possible token pairs (bigrams) at each start offset in the sentence.
@@ -32,7 +32,7 @@ import org.apache.lucene.analysis.cn.smart.Utility;
  */
 class BiSegGraph {
 
-  private Map<Integer, ArrayList<SegTokenPair>> tokenPairListTable = new HashMap<>();
+  private IntObjectHashMap<ArrayList<SegTokenPair>> tokenPairListTable = new IntObjectHashMap<>();
 
   private List<SegToken> segTokenList;
 
@@ -122,7 +122,7 @@ class BiSegGraph {
    * @return true if a token pair exists
    */
   public boolean isToExist(int to) {
-    return tokenPairListTable.get(Integer.valueOf(to)) != null;
+    return tokenPairListTable.get(to) != null;
   }
 
   /**
@@ -198,19 +198,18 @@ class BiSegGraph {
     int preNode, lastNode;
     lastNode = path.size() - 1;
     current = lastNode;
-    List<Integer> rpath = new ArrayList<>();
+    IntArrayList rpath = new IntArrayList();
     List<SegToken> resultPath = new ArrayList<>();
 
     rpath.add(current);
     while (current != 0) {
       PathNode currentPathNode = path.get(current);
       preNode = currentPathNode.preNode;
-      rpath.add(Integer.valueOf(preNode));
+      rpath.add(preNode);
       current = preNode;
     }
     for (int j = rpath.size() - 1; j >= 0; j--) {
-      Integer idInteger = rpath.get(j);
-      int id = idInteger.intValue();
+      int id = rpath.get(j);
       SegToken t = segTokenList.get(id);
       resultPath.add(t);
     }
@@ -220,9 +219,8 @@ class BiSegGraph {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    Collection<ArrayList<SegTokenPair>> values = tokenPairListTable.values();
-    for (ArrayList<SegTokenPair> segList : values) {
-      for (SegTokenPair pair : segList) {
+    for (ObjectCursor<ArrayList<SegTokenPair>> segList : tokenPairListTable.values()) {
+      for (SegTokenPair pair : segList.value) {
         sb.append(pair).append("\n");
       }
     }

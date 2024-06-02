@@ -38,6 +38,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
@@ -92,7 +93,13 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         }
         assert fieldEntries.containsKey(fieldName) == false;
         fieldEntries.put(
-            fieldName, new FieldEntry(dimension, vectorDataOffset, vectorDataLength, docIds));
+            fieldName,
+            new FieldEntry(
+                dimension,
+                vectorDataOffset,
+                vectorDataLength,
+                docIds,
+                readState.fieldInfos.fieldInfo(fieldName).getVectorSimilarityFunction()));
         fieldNumber = readInt(in, FIELD_NUMBER);
       }
       SimpleTextUtil.checkFooter(in);
@@ -275,7 +282,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   private record FieldEntry(
-      int dimension, long vectorDataOffset, long vectorDataLength, int[] ordToDoc) {
+      int dimension,
+      long vectorDataOffset,
+      long vectorDataLength,
+      int[] ordToDoc,
+      VectorSimilarityFunction similarityFunction) {
     int size() {
       return ordToDoc.length;
     }
@@ -296,6 +307,13 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       values = new float[entry.size()][entry.dimension];
       curOrd = -1;
       readAllVectors();
+    }
+
+    private SimpleTextFloatVectorValues(SimpleTextFloatVectorValues other) {
+      this.entry = other.entry;
+      this.in = other.in.clone();
+      this.values = other.values;
+      this.curOrd = other.curOrd;
     }
 
     @Override
@@ -340,6 +358,28 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       return slowAdvance(target);
     }
 
+    @Override
+    public VectorScorer scorer(float[] target) {
+      if (size() == 0) {
+        return null;
+      }
+      SimpleTextFloatVectorValues simpleTextFloatVectorValues =
+          new SimpleTextFloatVectorValues(this);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return entry
+              .similarityFunction()
+              .compare(simpleTextFloatVectorValues.vectorValue(), target);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return simpleTextFloatVectorValues;
+        }
+      };
+    }
+
     private void readAllVectors() throws IOException {
       for (float[] value : values) {
         readVector(value);
@@ -377,6 +417,15 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       binaryValue.length = binaryValue.bytes.length;
       curOrd = -1;
       readAllVectors();
+    }
+
+    private SimpleTextByteVectorValues(SimpleTextByteVectorValues other) {
+      this.entry = other.entry;
+      this.in = other.in.clone();
+      this.values = other.values;
+      this.binaryValue = new BytesRef(entry.dimension);
+      this.binaryValue.length = binaryValue.bytes.length;
+      this.curOrd = other.curOrd;
     }
 
     @Override
@@ -420,6 +469,27 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     @Override
     public int advance(int target) throws IOException {
       return slowAdvance(target);
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
+      if (size() == 0) {
+        return null;
+      }
+      SimpleTextByteVectorValues simpleTextByteVectorValues = new SimpleTextByteVectorValues(this);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return entry
+              .similarityFunction()
+              .compare(simpleTextByteVectorValues.vectorValue(), target);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return simpleTextByteVectorValues;
+        }
+      };
     }
 
     private void readAllVectors() throws IOException {

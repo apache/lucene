@@ -21,6 +21,7 @@ import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,6 +87,7 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  *   <li>{@link #getBreakIterator(String)}: Customize how the text is divided into passages.
  *   <li>{@link #getScorer(String)}: Customize how passages are ranked.
  *   <li>{@link #getFormatter(String)}: Customize how snippets are formatted.
+ *   <li>{@link #getPassageSortComparator(String)}: Customize how snippets are formatted.
  * </ul>
  *
  * <p>This is thread-safe, notwithstanding the setters.
@@ -113,6 +115,8 @@ public class UnifiedHighlighter {
   private static final PassageScorer DEFAULT_PASSAGE_SCORER = new PassageScorer();
   private static final PassageFormatter DEFAULT_PASSAGE_FORMATTER = new DefaultPassageFormatter();
   private static final int DEFAULT_MAX_HIGHLIGHT_PASSAGES = -1;
+  private static final Comparator<Passage> DEFAULT_PASSAGE_SORT_COMPARATOR =
+      Comparator.comparingInt(Passage::getStartOffset);
 
   protected final IndexSearcher searcher; // if null, can only use highlightWithoutSearcher
 
@@ -150,6 +154,8 @@ public class UnifiedHighlighter {
   private int maxNoHighlightPassages = DEFAULT_MAX_HIGHLIGHT_PASSAGES;
 
   private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
+
+  private Comparator<Passage> passageSortComparator = DEFAULT_PASSAGE_SORT_COMPARATOR;
 
   /**
    * Constructs the highlighter with the given index searcher and analyzer.
@@ -276,6 +282,7 @@ public class UnifiedHighlighter {
     private PassageFormatter formatter = DEFAULT_PASSAGE_FORMATTER;
     private int maxNoHighlightPassages = DEFAULT_MAX_HIGHLIGHT_PASSAGES;
     private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
+    private Comparator<Passage> passageSortComparator = DEFAULT_PASSAGE_SORT_COMPARATOR;
 
     /**
      * Constructor for UH builder which accepts {@link IndexSearcher} and {@link Analyzer} objects.
@@ -402,6 +409,11 @@ public class UnifiedHighlighter {
       return this;
     }
 
+    public Builder withPassageSortComparator(Comparator<Passage> value) {
+      this.passageSortComparator = value;
+      return this;
+    }
+
     public UnifiedHighlighter build() {
       return new UnifiedHighlighter(this);
     }
@@ -463,6 +475,7 @@ public class UnifiedHighlighter {
     this.formatter = builder.formatter;
     this.maxNoHighlightPassages = builder.maxNoHighlightPassages;
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
+    this.passageSortComparator = builder.passageSortComparator;
   }
 
   /** Extracts matching terms */
@@ -612,6 +625,11 @@ public class UnifiedHighlighter {
    */
   protected PassageFormatter getFormatter(String field) {
     return formatter;
+  }
+
+  /** Returns the {@link Comparator} to use for finally sorting passages. */
+  protected Comparator<Passage> getPassageSortComparator(String field) {
+    return passageSortComparator;
   }
 
   /**
@@ -1119,7 +1137,8 @@ public class UnifiedHighlighter {
         getScorer(field),
         maxPassages,
         getMaxNoHighlightPassages(field),
-        getFormatter(field));
+        getFormatter(field),
+        getPassageSortComparator(field));
   }
 
   protected FieldHighlighter newFieldHighlighter(
@@ -1129,7 +1148,8 @@ public class UnifiedHighlighter {
       PassageScorer passageScorer,
       int maxPassages,
       int maxNoHighlightPassages,
-      PassageFormatter passageFormatter) {
+      PassageFormatter passageFormatter,
+      Comparator<Passage> passageSortComparator) {
     return new FieldHighlighter(
         field,
         fieldOffsetStrategy,
@@ -1137,7 +1157,8 @@ public class UnifiedHighlighter {
         passageScorer,
         maxPassages,
         maxNoHighlightPassages,
-        passageFormatter);
+        passageFormatter,
+        passageSortComparator);
   }
 
   protected UHComponents getHighlightComponents(String field, Query query, Set<Term> allTerms) {

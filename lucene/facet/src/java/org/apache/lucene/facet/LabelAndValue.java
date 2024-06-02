@@ -16,15 +16,47 @@
  */
 package org.apache.lucene.facet;
 
-/**
- * Single label and its value, usually contained in a {@link FacetResult}.
- *
- * @param label Facet's label.
- * @param value Value associated with this label.
- */
-public record LabelAndValue(String label, Number value) {
+/** Single label and its value, usually contained in a {@link FacetResult}. */
+public final class LabelAndValue {
+  /** Facet's label. */
+  public final String label;
+
+  /** Value associated with this label. */
+  public final Number value;
+
+  /** Number of occurrences for this label. */
+  public final int count;
+
+  /** Constructor with unspecified count, we assume the value is a count. */
+  public LabelAndValue(String label, Number value) {
+    this.label = label;
+    this.value = value;
+    this.count = value.intValue();
+  }
+
+  /** Constructor with value and count. */
+  public LabelAndValue(String label, Number value, int count) {
+    this.label = label;
+    this.value = value;
+    this.count = count;
+  }
+
   @Override
   public String toString() {
     return label + " (" + value + ")";
+  }
+
+  @Override
+  public boolean equals(Object _other) {
+    if ((_other instanceof LabelAndValue) == false) {
+      return false;
+    }
+    LabelAndValue other = (LabelAndValue) _other;
+    return label.equals(other.label) && value.equals(other.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return label.hashCode() + 1439 * value.hashCode();
   }
 }

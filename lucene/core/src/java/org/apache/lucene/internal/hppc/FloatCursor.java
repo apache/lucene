@@ -15,5 +15,25 @@
  * limitations under the License.
  */
 
-/** package holding hppc related classes. */
-package org.apache.lucene.util.hppc;
+package org.apache.lucene.internal.hppc;
+
+/**
+ * Forked from HPPC, holding int index and float value.
+ *
+ * @lucene.internal
+ */
+public final class FloatCursor {
+  /**
+   * The current value's index in the container this cursor belongs to. The meaning of this index is
+   * defined by the container (usually it will be an index in the underlying storage buffer).
+   */
+  public int index;
+
+  /** The current value. */
+  public float value;
+
+  @Override
+  public String toString() {
+    return "[cursor, index: " + index + ", value: " + value + "]";
+  }
+}

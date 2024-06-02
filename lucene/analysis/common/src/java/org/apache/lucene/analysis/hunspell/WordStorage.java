@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -262,7 +263,7 @@ abstract class WordStorage {
 
     private final IntsRefBuilder currentOrds = new IntsRefBuilder();
     private final List<char[]> group = new ArrayList<>();
-    private final List<Integer> morphDataIDs = new ArrayList<>();
+    private final IntArrayList morphDataIDs = new IntArrayList();
     private String currentEntry = null;
     private final int wordCount;
     private final double hashFactor;
