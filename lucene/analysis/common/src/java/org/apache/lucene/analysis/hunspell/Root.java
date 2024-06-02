@@ -16,34 +16,11 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
-import java.util.Objects;
-
-class Root<T extends CharSequence> implements Comparable<Root<T>> {
-  final T word;
-  final int entryId;
-
-  Root(T word, int entryId) {
-    this.word = word;
-    this.entryId = entryId;
-  }
+record Root<T extends CharSequence>(T word, int entryId) implements Comparable<Root<T>> {
 
   @Override
   public String toString() {
     return word.toString();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof Root)) return false;
-    @SuppressWarnings("unchecked")
-    Root<T> root = (Root<T>) o;
-    return entryId == root.entryId && word.equals(root.word);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(word, entryId);
   }
 
   @Override

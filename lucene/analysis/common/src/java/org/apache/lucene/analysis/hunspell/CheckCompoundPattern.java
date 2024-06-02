@@ -52,7 +52,7 @@ class CheckCompoundPattern {
 
   boolean prohibitsCompounding(CharsRef word, int breakPos, Root<?> rootBefore, Root<?> rootAfter) {
     if (isNonAffixedPattern(endChars)) {
-      if (!charsMatch(word, breakPos - rootBefore.word.length(), rootBefore.word)) {
+      if (!charsMatch(word, breakPos - rootBefore.word().length(), rootBefore.word())) {
         return false;
       }
     } else if (!charsMatch(word, breakPos - endChars.length(), endChars)) {
@@ -60,7 +60,7 @@ class CheckCompoundPattern {
     }
 
     if (isNonAffixedPattern(beginChars)) {
-      if (!charsMatch(word, breakPos, rootAfter.word)) {
+      if (!charsMatch(word, breakPos, rootAfter.word())) {
         return false;
       }
     } else if (!charsMatch(word, breakPos, beginChars)) {
@@ -84,7 +84,7 @@ class CheckCompoundPattern {
 
   private boolean hasAllFlags(Root<?> root, char[] flags) {
     for (char flag : flags) {
-      if (!dictionary.hasFlag(root.entryId, flag)) {
+      if (!dictionary.hasFlag(root.entryId(), flag)) {
         return false;
       }
     }

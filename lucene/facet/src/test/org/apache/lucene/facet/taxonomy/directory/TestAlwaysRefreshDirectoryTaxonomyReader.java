@@ -86,7 +86,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
      * the call flow here initializes {@link DirectoryTaxonomyReader#taxoArrays}. These reused
      * `taxoArrays` form the basis of the inconsistency *
      */
-    getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
+    getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
 
     // now try to go back to checkpoint 1 and refresh the SearcherTaxonomyManager
 
@@ -112,8 +112,8 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     } else {
       mgr.maybeRefresh();
       pair = mgr.acquire();
-      assertEquals(new FacetLabel("a"), pair.taxonomyReader.getPath(1));
-      assertEquals(-1, pair.taxonomyReader.getOrdinal(new FacetLabel("b")));
+      assertEquals(new FacetLabel("a"), pair.taxonomyReader().getPath(1));
+      assertEquals(-1, pair.taxonomyReader().getOrdinal(new FacetLabel("b")));
     }
 
     mgr.release(pair);
