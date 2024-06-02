@@ -167,8 +167,8 @@ public class TestLongValueFacetCounts extends FacetTestCase {
     // ascending order in order to compare with expected results
     Arrays.sort(
         result.labelValues,
-        Comparator.comparing((LabelAndValue a) -> a.label())
-            .thenComparingLong(a -> a.value().longValue()));
+        Comparator.comparing((LabelAndValue a) -> a.label)
+            .thenComparingLong(a -> a.value.longValue()));
 
     assertEquals(
         "dim=field path=[] value=3 childCount=3\n  9223372036854775805 (1)\n  "
@@ -370,8 +370,8 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       // sort labels by value, count in ascending order
       Arrays.sort(
           allChildren.labelValues,
-          Comparator.comparing((LabelAndValue a) -> a.label())
-              .thenComparingLong(a -> a.value().longValue()));
+          Comparator.comparing((LabelAndValue a) -> a.label)
+              .thenComparingLong(a -> a.value.longValue()));
       assertSame(
           "test getAllChildren",
           expectedCounts,
@@ -633,8 +633,8 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       // sort labels by value, count in ascending order
       Arrays.sort(
           allChildren.labelValues,
-          Comparator.comparing((LabelAndValue a) -> a.label())
-              .thenComparingLong(a -> a.value().longValue()));
+          Comparator.comparing((LabelAndValue a) -> a.label)
+              .thenComparingLong(a -> a.value.longValue()));
       assertSame(
           "test getAllChildren",
           expectedCounts,
@@ -778,9 +778,9 @@ public class TestLongValueFacetCounts extends FacetTestCase {
             "    "
                 + i
                 + ": value="
-                + actual.labelValues[i].label()
+                + actual.labelValues[i].label
                 + " count="
-                + actual.labelValues[i].value());
+                + actual.labelValues[i].value);
       }
     }
     assertEquals(desc + ": topN", expectedTopN, actual.labelValues.length);
@@ -792,11 +792,11 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       assertEquals(
           desc + ": label[" + i + "]",
           Long.toString(expectedCounts.get(i).getKey()),
-          actual.labelValues[i].label());
+          actual.labelValues[i].label);
       assertEquals(
           desc + ": counts[" + i + "]",
           expectedCounts.get(i).getValue().intValue(),
-          actual.labelValues[i].value().intValue());
+          actual.labelValues[i].value.intValue());
     }
   }
 
@@ -824,7 +824,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
 
     FacetResult fr = facetCounts.getAllChildrenSortByValue();
     for (LabelAndValue labelAndValue : fr.labelValues) {
-      assert labelAndValue.value().equals(1);
+      assert labelAndValue.value.equals(1);
     }
 
     assertFacetResult(

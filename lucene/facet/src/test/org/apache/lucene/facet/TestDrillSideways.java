@@ -1900,15 +1900,10 @@ public class TestDrillSideways extends FacetTestCase {
 
       if (fr != null) {
         for (LabelAndValue labelValue : fr.labelValues) {
-          actualValues.put(labelValue.label(), labelValue.value().intValue());
+          actualValues.put(labelValue.label, labelValue.value.intValue());
           if (VERBOSE) {
             System.out.println(
-                "        "
-                    + idx
-                    + ": "
-                    + new BytesRef(labelValue.label())
-                    + ": "
-                    + labelValue.value());
+                "        " + idx + ": " + new BytesRef(labelValue.label) + ": " + labelValue.value);
             idx++;
           }
         }
@@ -1943,12 +1938,11 @@ public class TestDrillSideways extends FacetTestCase {
         }
         for (int i = 0; i < topNIDs.length; i++) {
           int expectedOrd = topNIDs[i];
-          assertEquals(expected.counts[dim][expectedOrd], fr.labelValues[i].value().intValue());
+          assertEquals(expected.counts[dim][expectedOrd], fr.labelValues[i].value.intValue());
           if (isSortedSetDV) {
             // Tie-break facet labels are only in unicode
             // order with SortedSetDVFacets:
-            assertEquals(
-                "value @ idx=" + i, dimValues[dim][expectedOrd], fr.labelValues[i].label());
+            assertEquals("value @ idx=" + i, dimValues[dim][expectedOrd], fr.labelValues[i].label);
           }
         }
       } else {

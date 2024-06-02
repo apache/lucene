@@ -234,12 +234,12 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
     System.arraycopy(res.path, 0, childPath, 1, res.path.length); // reuse
 
     for (int i = 0; i < res.labelValues.length; i++) {
-      childPath[res.path.length + 1] = res.labelValues[i].label();
+      childPath[res.path.length + 1] = res.labelValues[i].label;
       String fullPath = FacetsConfig.pathToString(childPath, childPath.length);
       int max = reader.docFreq(new Term(dimConfig.indexFieldName, fullPath));
-      int correctedCount = (int) (res.labelValues[i].value().doubleValue() / samplingRate);
+      int correctedCount = (int) (res.labelValues[i].value.doubleValue() / samplingRate);
       correctedCount = Math.min(max, correctedCount);
-      fixedLabelValues[i] = new LabelAndValue(res.labelValues[i].label(), correctedCount);
+      fixedLabelValues[i] = new LabelAndValue(res.labelValues[i].label, correctedCount);
     }
 
     // cap the total count on the total number of non-deleted documents in the reader

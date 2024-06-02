@@ -1541,12 +1541,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                     LabelAndValue[] labelAndValues = result.labelValues;
                     boolean containsChild = false;
                     for (int k = 0; k < labelAndValues.length; k++) {
-                      if (labelAndValues[k].label().equals(child)) {
+                      if (labelAndValues[k].label.equals(child)) {
                         containsChild = true;
                         labelAndValues[k] =
                             new LabelAndValue(
-                                labelAndValues[k].label(),
-                                labelAndValues[k].value().intValue() + 1);
+                                labelAndValues[k].label, labelAndValues[k].value.intValue() + 1);
                         break;
                       }
                     }
@@ -1564,10 +1563,10 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                     Arrays.sort(
                         newLabelAndValues,
                         (o1, o2) -> {
-                          if (o1.value().equals(o2.value())) {
-                            return new BytesRef(o1.label()).compareTo(new BytesRef(o2.label()));
+                          if (o1.value.equals(o2.value)) {
+                            return new BytesRef(o1.label).compareTo(new BytesRef(o2.label));
                           } else {
-                            return o2.value().intValue() - o1.value().intValue();
+                            return o2.value.intValue() - o1.value.intValue();
                           }
                         });
                     FacetResult newResult =
@@ -1641,7 +1640,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                   ArrayDeque<String[]> stack = new ArrayDeque<>();
                   for (LabelAndValue labelAndValue : dimResult.labelValues) {
                     String[] path = new String[1];
-                    path[0] = labelAndValue.label();
+                    path[0] = labelAndValue.label;
                     stack.add(path);
                   }
                   while (stack.isEmpty() == false) {
@@ -1660,12 +1659,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                         Arrays.sort(
                             allChildrenResult.labelValues,
                             (a, b) -> {
-                              int cmp = a.label().compareTo(b.label()); // low-to-high
+                              int cmp = a.label.compareTo(b.label); // low-to-high
                               if (cmp == 0) {
                                 cmp =
                                     Long.compare(
-                                        b.value().longValue(),
-                                        a.value().longValue()); // low-to-high
+                                        b.value.longValue(), a.value.longValue()); // low-to-high
                               }
                               return cmp;
                             });
@@ -1674,12 +1672,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                         Arrays.sort(
                             expectedResult.labelValues,
                             (a, b) -> {
-                              int cmp = a.label().compareTo(b.label()); // low-to-high
+                              int cmp = a.label.compareTo(b.label); // low-to-high
                               if (cmp == 0) {
                                 cmp =
                                     Long.compare(
-                                        b.value().longValue(),
-                                        a.value().longValue()); // low-to-high
+                                        b.value.longValue(), a.value.longValue()); // low-to-high
                               }
                               return cmp;
                             });
@@ -1694,7 +1691,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                       for (LabelAndValue labelAndValue : actualResult.labelValues) {
                         String[] path = new String[currPath.length + 1];
                         System.arraycopy(currPath, 0, path, 0, currPath.length);
-                        path[path.length - 1] = labelAndValue.label();
+                        path[path.length - 1] = labelAndValue.label;
                         stack.add(path);
                       }
                     }

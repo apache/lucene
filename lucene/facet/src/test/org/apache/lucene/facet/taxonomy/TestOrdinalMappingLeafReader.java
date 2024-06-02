@@ -99,7 +99,7 @@ public class TestOrdinalMappingLeafReader extends FacetTestCase {
       if (VERBOSE) {
         System.out.println(lv);
       }
-      assertEquals(NUM_DOCS, lv.value().intValue());
+      assertEquals(NUM_DOCS, lv.value.intValue());
     }
 
     // id facets

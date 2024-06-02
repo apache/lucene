@@ -409,11 +409,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     FacetResult result = facets.getTopChildren(10, "a");
     assertEquals(1, result.labelValues.length);
-    assertEquals(1, result.labelValues[0].value().intValue());
+    assertEquals(1, result.labelValues[0].value.intValue());
 
     FacetResult allChildren = facets.getAllChildren("a");
     assertEquals(1, allChildren.labelValues.length);
-    assertEquals(1, allChildren.labelValues[0].value().intValue());
+    assertEquals(1, allChildren.labelValues[0].value.intValue());
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, dir, taxoDir);
@@ -557,8 +557,8 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(numLabels, result.labelValues.length);
     Set<String> allLabels = new HashSet<>();
     for (LabelAndValue labelValue : result.labelValues) {
-      allLabels.add(labelValue.label());
-      assertEquals(1, labelValue.value().intValue());
+      allLabels.add(labelValue.label);
+      assertEquals(1, labelValue.value.intValue());
     }
     assertEquals(numLabels, allLabels.size());
 
@@ -566,8 +566,8 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(numLabels, result.labelValues.length);
     Set<String> allChildrenLabels = new HashSet<>();
     for (LabelAndValue labelValue : allChildrenResult.labelValues) {
-      allChildrenLabels.add(labelValue.label());
-      assertEquals(1, labelValue.value().intValue());
+      allChildrenLabels.add(labelValue.label);
+      assertEquals(1, labelValue.value.intValue());
     }
     assertEquals(numLabels, allChildrenLabels.size());
 
@@ -951,14 +951,12 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     FacetResult result = facets.getTopChildren(10, "A");
     assertEquals("wrong number of children", 2, result.labelValues.length);
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(
-          "wrong weight for child " + labelValue.label(), 2, labelValue.value().intValue());
+      assertEquals("wrong weight for child " + labelValue.label, 2, labelValue.value.intValue());
     }
     FacetResult allChildrenResult = facets.getAllChildren("A");
     assertEquals("wrong number of children", 2, allChildrenResult.labelValues.length);
     for (LabelAndValue labelValue : allChildrenResult.labelValues) {
-      assertEquals(
-          "wrong weight for child " + labelValue.label(), 2, labelValue.value().intValue());
+      assertEquals("wrong weight for child " + labelValue.label, 2, labelValue.value.intValue());
     }
 
     IOUtils.close(indexReader, taxoReader, indexDir, taxoDir);

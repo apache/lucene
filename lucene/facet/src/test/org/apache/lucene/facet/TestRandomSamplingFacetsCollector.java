@@ -143,8 +143,8 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
       LabelAndValue sampled = random10Result.labelValues[i];
       // since numDocs may not divide by 10 exactly, allow for some slack in the amortized count
       assertEquals(
-          amortized.value().floatValue(),
-          Math.min(5 * sampled.value().floatValue(), numDocs / 10.f),
+          amortized.value.floatValue(),
+          Math.min(5 * sampled.value.floatValue(), numDocs / 10.f),
           1.0);
     }
 
