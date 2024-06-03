@@ -442,6 +442,11 @@ public final class SortingCodecReader extends FilterCodecReader {
   private StoredFieldsReader newStoredFieldsReader(StoredFieldsReader delegate) {
     return new StoredFieldsReader() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        delegate.prefetch(docMap.newToOld(docID));
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         delegate.document(docMap.newToOld(docID), visitor);
       }

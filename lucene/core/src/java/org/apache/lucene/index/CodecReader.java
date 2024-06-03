@@ -88,6 +88,13 @@ public abstract class CodecReader extends LeafReader {
     final StoredFields reader = getFieldsReader();
     return new StoredFields() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.prefetch(docID);
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         // Don't trust the codec to do proper checks
         Objects.checkIndex(docID, maxDoc());
