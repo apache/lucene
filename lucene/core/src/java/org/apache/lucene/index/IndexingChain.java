@@ -833,6 +833,11 @@ final class IndexingChain implements Accountable {
     }
     if (fieldType.docValuesType() != DocValuesType.NONE) {
       schema.setDocValues(fieldType.docValuesType(), fieldType.hasDocValuesSkipIndex());
+    } else if (fieldType.hasDocValuesSkipIndex()) {
+      throw new IllegalArgumentException(
+          "field '"
+              + schema.name
+              + "' cannot have docValuesSkipIndex set to true without doc values");
     }
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
@@ -1499,12 +1504,13 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setDocValues(DocValuesType newDocValuesType, boolean hasDocValuesSkipIndex) {
+    void setDocValues(DocValuesType newDocValuesType, boolean newHasDocValuesSkipIndex) {
       if (docValuesType == DocValuesType.NONE) {
         this.docValuesType = newDocValuesType;
-        this.hasDocValuesSkipIndex = hasDocValuesSkipIndex;
+        this.hasDocValuesSkipIndex = newHasDocValuesSkipIndex;
       } else {
         assertSame("doc values type", docValuesType, newDocValuesType);
+        assertSame("doc values skip index", hasDocValuesSkipIndex, newHasDocValuesSkipIndex);
       }
     }
 

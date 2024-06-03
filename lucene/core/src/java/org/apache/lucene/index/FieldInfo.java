@@ -247,6 +247,7 @@ public final class FieldInfo {
       verifySameStoreTermVectors(fieldName, this.storeTermVector, o.storeTermVector);
     }
     verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType);
+    verifySameDocValuesSkipIndex(fieldName, this.docValuesSkipIndex, o.docValuesSkipIndex);
     verifySamePointsOptions(
         fieldName,
         this.pointDimensionCount,
@@ -298,6 +299,24 @@ public final class FieldInfo {
               + docValuesType1
               + " to inconsistent doc values type="
               + docValuesType2);
+    }
+  }
+
+  /**
+   * Verify that the provided docValues type are the same
+   *
+   * @throws IllegalArgumentException if they are not the same
+   */
+  static void verifySameDocValuesSkipIndex(
+      String fieldName, boolean hasDocValuesSkipIndex1, boolean hasDocValuesSkipIndex2) {
+    if (hasDocValuesSkipIndex1 != hasDocValuesSkipIndex2) {
+      throw new IllegalArgumentException(
+          "cannot change field \""
+              + fieldName
+              + "\" from docValuesSkipIndex="
+              + hasDocValuesSkipIndex1
+              + " to inconsistent docValuesSkipIndex="
+              + hasDocValuesSkipIndex2);
     }
   }
 
