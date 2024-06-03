@@ -1552,6 +1552,7 @@ final class IndexingChain implements Accountable {
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
       assertSame("store term vector", fi.hasVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
+      assertSame("doc values skip index", fi.hasDocValuesSkipIndex(), hasDocValuesSkipIndex);
       assertSame(
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
