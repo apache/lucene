@@ -20,10 +20,10 @@ import java.io.IOException;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.internal.hppc.LongArrayList;
-import org.apache.lucene.internal.hppc.LongCursor;
 import org.apache.lucene.internal.hppc.LongObjectHashMap;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RefCount;
 
 /**
@@ -76,10 +76,12 @@ final class SegmentDocValues {
 
   /** Decrement the reference count of the given {@link DocValuesProducer} generations. */
   synchronized void decRef(LongArrayList dvProducersGens) throws IOException {
-    for (LongCursor gen : dvProducersGens) {
-      RefCount<DocValuesProducer> dvp = genDVProducers.get(gen.value);
-      assert dvp != null : "gen=" + gen;
-      dvp.decRef();
-    }
+    IOUtils.applyToAll(
+        dvProducersGens.stream().mapToObj(Long::valueOf).toList(),
+        gen -> {
+          RefCount<DocValuesProducer> dvp = genDVProducers.get(gen);
+          assert dvp != null : "gen=" + gen;
+          dvp.decRef();
+        });
   }
 }

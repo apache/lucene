@@ -131,6 +131,12 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public void prefetch(int docID) throws IOException {
+      assertThread("StoredFields", creationThread);
+      in.prefetch(docID);
+    }
+
+    @Override
     public void document(int docID, StoredFieldVisitor visitor) throws IOException {
       assertThread("StoredFields", creationThread);
       in.document(docID, visitor);

@@ -56,7 +56,7 @@ public class TestPoint extends LuceneTestCase {
     if (Double.compare(point.getLat(), otherPoint.getLat()) != 0
         || Double.compare(point.getLon(), otherPoint.getLon()) != 0) {
       assertNotEquals(point, otherPoint);
-      assertNotEquals(point.hashCode(), otherPoint.hashCode());
+      // it is possible to have hashcode collisions
     } else {
       assertEquals(point, otherPoint);
       assertEquals(point.hashCode(), otherPoint.hashCode());

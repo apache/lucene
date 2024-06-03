@@ -155,6 +155,12 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
+    public void prefetch(int docID) throws IOException {
+      int readerId = docIdToReaderId(docID);
+      readers[readerId].prefetch(docID - docStarts[readerId]);
+    }
+
+    @Override
     public void document(int docID, StoredFieldVisitor visitor) throws IOException {
       int readerId = docIdToReaderId(docID);
       readers[readerId].document(
