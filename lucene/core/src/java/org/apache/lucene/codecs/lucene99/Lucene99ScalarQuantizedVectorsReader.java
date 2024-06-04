@@ -346,9 +346,16 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       if (size > 0) {
         if (versionMeta < Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS) {
           int floatBits = input.readInt(); // confidenceInterval, unused
-          if (floatBits == -1) {
+          if (floatBits == -1) { // indicates a null confidence interval
             throw new CorruptIndexException(
                 "Missing confidence interval for scalar quantizer", input);
+          }
+          float confidenceInterval = Float.intBitsToFloat(floatBits);
+          // indicates a dynamic interval, which shouldn't be provided in this version
+          if (confidenceInterval
+              == Lucene99ScalarQuantizedVectorsFormat.DYNAMIC_CONFIDENCE_INTERVAL) {
+            throw new CorruptIndexException(
+                "Invalid confidence interval for scalar quantizer: " + confidenceInterval, input);
           }
           bits = (byte) 7;
           compress = false;

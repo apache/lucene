@@ -26,6 +26,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.AssociationAggregationFunction;
 import org.apache.lucene.facet.taxonomy.FloatAssociationFacetField;
 import org.apache.lucene.facet.taxonomy.IntAssociationFacetField;
@@ -165,5 +166,12 @@ public class AssociationsFacetsExample {
     List<FacetResult> results = new AssociationsFacetsExample().runSumAssociations();
     System.out.println("tags: " + results.get(0));
     System.out.println("genre: " + results.get(1));
+    System.out.println("-------------------------");
+    System.out.println("Counts per label are also available:");
+    for (FacetResult facetResult : results) {
+      for (LabelAndValue lv : facetResult.labelValues) {
+        System.out.println("\t" + lv.label + ": " + lv.count);
+      }
+    }
   }
 }

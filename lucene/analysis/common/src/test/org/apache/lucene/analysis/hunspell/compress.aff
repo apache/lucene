@@ -1,5 +1,3 @@
-FORBIDDENWORD *
-
 SFX G Y 1
 SFX G   0     ing/S      .
 
@@ -12,3 +10,47 @@ SFX S   0     s          .
 SFX X Y 2
 SFX X   0     s          .
 SFX X   0     x          .
+
+# Flags for f,fa,fb,fc
+
+SFX A Y 3
+SFX A 0 a .
+SFX A 0 b .
+SFX A 0 yy .
+
+SFX B Y 3
+SFX B 0 c .
+SFX B 0 b .
+SFX B 0 xx .
+
+SFX a Y 1
+SFX a 0 a .
+
+SFX b Y 1
+SFX b 0 b .
+
+SFX c Y 1
+SFX c 0 c .
+
+# Flags for f,fd,fe,ff with red herring -+* flags that bias the greedy heuristics to prefer the "fd" stem initially
+
+SFX d Y 1
+SFX d 0 d .
+
+SFX e Y 1
+SFX e 0 e .
+
+SFX f Y 1
+SFX f 0 f .
+
+SFX - Y 2
+SFX - d 0 d
+SFX - d e d
+
+SFX + Y 2
+SFX + d 0 d
+SFX + d e d
+
+SFX * Y 2
+SFX * d 0 d
+SFX * d e d
