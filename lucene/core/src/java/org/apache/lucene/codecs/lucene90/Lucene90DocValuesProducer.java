@@ -1740,13 +1740,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           minDocID = DocIdSetIterator.NO_MORE_DOCS;
           maxDocID = DocIdSetIterator.NO_MORE_DOCS;
         } else {
-          while (target > maxDocID) {
+          do {
             minDocID = input.readInt();
             maxDocID = input.readInt();
             minValue = input.readLong();
             maxValue = input.readLong();
             docCount = input.readInt();
-          }
+          } while (target > maxDocID);
         }
       }
 
