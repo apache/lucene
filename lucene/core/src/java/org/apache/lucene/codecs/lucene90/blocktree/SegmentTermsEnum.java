@@ -437,9 +437,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // rewind frame ord=" + lastFrame.ord);
         // }
 
-        // We got lastFrame by comparing target and term, and target less than last seeked term in
-        // currentFrame. If lastFrame's fp is same with currentFrame's fp, and finally we seek the
-        // same block, we can reduce entCount to nextEnt.
+        // We got lastFrame by comparing target and last seeked term(at this point, currentFrame is
+        // last seeked block), and less than last seeked term. If lastFrame's fp is same with
+        // currentFrame's fp, and finally we seek the same block, we can reduce entCount to nextEnt.
         boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
 
@@ -757,9 +757,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // rewind frame ord=" + lastFrame.ord);
         // }
 
-        // We got lastFrame by comparing target and term, and target less than last seeked term in
-        // currentFrame. If lastFrame's fp is same with currentFrame's fp, and finally we seek the
-        // same block, we can reduce entCount to nextEnt.
+        // We got lastFrame by comparing target and last seeked term(at this point, currentFrame is
+        // last seeked block), and less than last seeked term. If lastFrame's fp is same with
+        // currentFrame's fp, and finally we seek the same block, we can reduce entCount to nextEnt.
         boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
 
