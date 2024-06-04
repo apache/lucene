@@ -561,25 +561,15 @@ public class TieredMergePolicy extends MergePolicy {
           final long segBytes = segSizeDocs.sizeInBytes;
           int segDocCount = segSizeDocs.maxDoc - segSizeDocs.delCount;
           if (docCountThisMerge + segDocCount > allowedDocCount) {
-            // Handle singleton merges
-            if (candidate.size() == 0) {
-              // We should never have something coming in that _cannot_ be merged, so handle
-              // singleton merges
-              candidate.add(segSizeDocs.segInfo);
-            }
+            addSingletonMergeIfNeeded(candidate, segSizeDocs);
             // We don't want to merge segments that will produce more documents than
             // allowedDocCount, and
             //  also we don't want to merge segments of non-adjacent sizes. Stop looking for
             // segments to merge.
             break;
-          }
-          if (totAfterMergeBytes + segBytes > maxMergedSegmentBytes) {
+          } else if (totAfterMergeBytes + segBytes > maxMergedSegmentBytes) {
             hitTooLarge = true;
-            if (candidate.size() == 0) {
-              // We should never have something coming in that _cannot_ be merged, so handle
-              // singleton merges
-              candidate.add(segSizeDocs.segInfo);
-            }
+            addSingletonMergeIfNeeded(candidate, segSizeDocs);
             // NOTE: we continue, so that we can try
             // "packing" smaller segments into this merge
             // to see if we can get closer to the max
@@ -690,6 +680,15 @@ public class TieredMergePolicy extends MergePolicy {
       // whether we're going to return this list in the spec of not, we need to remove it from
       // consideration on the next loop.
       toBeMerged.addAll(best);
+    }
+  }
+
+  private static void addSingletonMergeIfNeeded(
+      List<SegmentCommitInfo> candidate, SegmentSizeAndDocs segSizeDocs) {
+    // We should never have something coming in that _cannot_ be merged, so handle
+    // singleton merges
+    if (candidate.size() == 0) {
+      candidate.add(segSizeDocs.segInfo);
     }
   }
 
