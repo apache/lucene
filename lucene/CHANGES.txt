@@ -249,7 +249,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#13439: Avoid unnecessary memory allocation in PackedLongValues#Iterator. (Zhang Chao)
 
 Bug Fixes
 ---------------------
