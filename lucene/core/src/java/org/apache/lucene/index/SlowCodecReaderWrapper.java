@@ -259,6 +259,11 @@ public final class SlowCodecReaderWrapper {
     }
     return new StoredFieldsReader() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        storedFields.prefetch(docID);
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         storedFields.document(docID, visitor);
       }
