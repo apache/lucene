@@ -84,7 +84,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     int mergeFactor = (int) Math.min(tmp.getSegmentsPerTier(), tmp.getMaxMergeAtOnce());
     while (true) {
       final double segCountLevel = bytesLeft / (double) levelSizeBytes;
-      if (segCountLevel < maxNumSegmentsOnHighestTier
+      if (segCountLevel <= maxNumSegmentsOnHighestTier
           || levelSizeBytes >= maxMergedSegmentBytes / 2) {
         allowedSegCount += Math.ceil(segCountLevel);
         break;
@@ -114,23 +114,18 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       }
     }
 
-    // There can be more segments if we can't merge docs - they are balanced between segments
-    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc());
+    // There can be more segments if we can't merge docs because they are balanced between segments.
+    // At least the
+    //  2 smallest segments should be mergeable.
+    // should be 2 segments to merge
+    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc() - totalDelCount);
     List<Integer> segmentDocs =
         infos.asList().stream()
             .map(info -> info.info.maxDoc() - info.getDelCount())
             .sorted()
             .toList();
-    int numEligible = 0;
-    int currentSum = 0;
-    for (int i = 0; i < segmentDocs.size(); i++) {
-      currentSum += segmentDocs.get(i);
-      if (currentSum > maxDocsPerSegment) {
-        break;
-      }
-      numEligible++;
-    }
-    boolean eligibleDocsMerge = numEligible > 1;
+    boolean eligibleDocsMerge =
+        segmentDocs.size() >= 2 && segmentDocs.get(0) + segmentDocs.get(1) < maxDocsPerSegment;
 
     int numSegments = infos.asList().size();
     assertTrue(
