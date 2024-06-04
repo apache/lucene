@@ -28,8 +28,6 @@ public class TestPositiveScoresOnlyCollector extends LuceneTestCase {
   private static final class SimpleScorer extends Scorer {
     private int idx = -1;
 
-    public SimpleScorer() {}
-
     @Override
     public float score() {
       return idx == scores.length ? Float.NaN : scores[idx];

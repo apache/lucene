@@ -29,8 +29,6 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     private int idx = 0;
     private int doc = -1;
 
-    public SimpleScorer() {}
-
     @Override
     public float score() {
       // advance idx on purpose, so that consecutive calls to score will get

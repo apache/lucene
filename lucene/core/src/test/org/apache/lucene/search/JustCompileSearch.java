@@ -164,9 +164,6 @@ final class JustCompileSearch {
   }
 
   static final class JustCompileScorer extends Scorer {
-
-    protected JustCompileScorer() {}
-
     @Override
     public float score() {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);

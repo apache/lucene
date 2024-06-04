@@ -25,7 +25,6 @@ import java.io.IOException;
  * increasing order of doc id.
  */
 public abstract class Scorer extends Scorable {
-  protected Scorer() {}
 
   /** Returns the doc ID that is currently being scored. */
   public abstract int docID();
