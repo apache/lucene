@@ -561,8 +561,17 @@ public class TieredMergePolicy extends MergePolicy {
           final long segBytes = segSizeDocs.sizeInBytes;
           int segDocCount = segSizeDocs.maxDoc - segSizeDocs.delCount;
           if (docCountThisMerge + segDocCount > allowedDocCount) {
-            // We don't want to merge segments that will produce more documents than allowedDocCount
-            continue;
+            // Handle singleton merges
+            if (candidate.size() == 0) {
+              // We should never have something coming in that _cannot_ be merged, so handle
+              // singleton merges
+              candidate.add(segSizeDocs.segInfo);
+            }
+            // We don't want to merge segments that will produce more documents than
+            // allowedDocCount, and
+            //  also we don't want to merge segments of non-adjacent sizes. Stop looking for
+            // segments to merge.
+            break;
           }
           if (totAfterMergeBytes + segBytes > maxMergedSegmentBytes) {
             hitTooLarge = true;
@@ -570,8 +579,6 @@ public class TieredMergePolicy extends MergePolicy {
               // We should never have something coming in that _cannot_ be merged, so handle
               // singleton merges
               candidate.add(segSizeDocs.segInfo);
-              bytesThisMerge += segBytes;
-              docCountThisMerge += segDocCount;
             }
             // NOTE: we continue, so that we can try
             // "packing" smaller segments into this merge
@@ -579,11 +586,11 @@ public class TieredMergePolicy extends MergePolicy {
             // size; this in general is not perfect since
             // this is really "bin packing" and we'd have
             // to try different permutations.
-            continue;
+          } else {
+            candidate.add(segSizeDocs.segInfo);
+            totAfterMergeBytes += segBytes;
           }
-          candidate.add(segSizeDocs.segInfo);
           bytesThisMerge += segBytes;
-          totAfterMergeBytes += segBytes;
           docCountThisMerge += segDocCount;
         }
 
