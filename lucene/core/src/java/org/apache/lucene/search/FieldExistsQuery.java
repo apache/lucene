@@ -283,12 +283,12 @@ public class FieldExistsQuery extends Query {
       case FLOAT32 -> {
         FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
         assert floatVectorValues != null : "unexpected null float vector values";
-        yield floatVectorValues == null ? 0 : floatVectorValues.size();
+        yield floatVectorValues.size();
       }
       case BYTE -> {
         ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
         assert byteVectorValues != null : "unexpected null byte vector values";
-        yield byteVectorValues == null ? 0 : byteVectorValues.size();
+        yield byteVectorValues.size();
       }
     };
   }
