@@ -35,7 +35,7 @@ jobs:
       - uses: ./.github/actions/prepare-for-build
 
       # Required for generateEmojiTokenizationTestChecksumLoad.
-      - run: sudo apt-get install libjson-perl
+      - run: sudo apt-get install libwww-perl
       - run: ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
 
       - run: ./gradlew testOpts
