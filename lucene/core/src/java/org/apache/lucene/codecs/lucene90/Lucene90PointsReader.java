@@ -71,7 +71,10 @@ public class Lucene90PointsReader extends PointsReader {
           readState.segmentSuffix);
       CodecUtil.retrieveChecksum(indexIn);
 
-      dataIn = readState.directory.openInput(dataFileName, readState.context);
+      // Points read whole ranges of bytes at once, so pass ReadAdvice.NORMAL to perform readahead.
+      dataIn =
+          readState.directory.openInput(
+              dataFileName, readState.context.withReadAdvice(ReadAdvice.NORMAL));
       CodecUtil.checkIndexHeader(
           dataIn,
           Lucene90PointsFormat.DATA_CODEC_NAME,

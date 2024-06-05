@@ -33,6 +33,7 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.IOUtils;
 
 /** Reader for {@link Lucene90NormsFormat} */
@@ -80,7 +81,8 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
 
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
-    data = state.directory.openInput(dataName, state.context);
+    // Norms have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform readahead.
+    data = state.directory.openInput(dataName, state.context.withReadAdvice(ReadAdvice.NORMAL));
     boolean success = false;
     try {
       final int version2 =
