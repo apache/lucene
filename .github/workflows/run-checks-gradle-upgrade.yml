@@ -34,10 +34,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-for-build
 
-      # Required for generateEmojiTokenizationTestChecksumLoad.
-      - run: sudo apt-get install libwww-perl
-      - run: ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
-      - run: git reset --hard && git clean -xfd .
+      - name: ./gradlew regenerate
+        run: |
+          # add this package for generateEmojiTokenizationTestChecksumLoad.
+          sudo apt-get install libwww-perl
+          ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
+          if [ ! -z "$(git status --porcelain)" ]; then 
+            echo ":warning: **regenerateleft local checkout in modified state**" >> $GITHUB_STEP_SUMMARY 
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            git status --porcelain >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            git reset --hard && git clean -xfd .
+          fi
 
       - run: ./gradlew testOpts
       - run: ./gradlew helpWorkflow
