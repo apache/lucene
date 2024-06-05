@@ -40,7 +40,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 
@@ -642,6 +644,39 @@ public class TestFieldExistsQuery extends LuceneTestCase {
         Query query = new FieldExistsQuery("vector");
         assertTrue(searcher.rewrite(query) instanceof MatchAllDocsQuery);
         assertEquals(100, searcher.count(query));
+      }
+    }
+  }
+
+  public void testDeleteKnnVector() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      final int numDocs = atLeast(100);
+
+      boolean allDocsHaveVector = random().nextBoolean();
+      BitSet docWithVector = new FixedBitSet(numDocs);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        if (allDocsHaveVector || random().nextBoolean()) {
+          doc.add(new KnnFloatVectorField("vector", randomVector(5)));
+          docWithVector.set(i);
+        }
+        doc.add(new StringField("id", Integer.toString(i), Store.NO));
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        final int numDeleted = random().nextInt(numDocs) + 1;
+        for (int i = 0; i < numDeleted; ++i) {
+          iw.deleteDocuments(new Term("id", Integer.toString(i)));
+          docWithVector.clear(i);
+        }
+      }
+
+      try (IndexReader reader = iw.getReader()) {
+        final IndexSearcher searcher = newSearcher(reader);
+
+        final int count = searcher.count(new FieldExistsQuery("vector"));
+        assertEquals(docWithVector.cardinality(), count);
       }
     }
   }
