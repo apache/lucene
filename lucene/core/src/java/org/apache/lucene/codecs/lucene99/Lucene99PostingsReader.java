@@ -2068,9 +2068,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         // make sure to include some skip data.
         docIn.prefetch(state.docStartFP, state.skipOffset + 1);
       } else {
-        // Default case: the postings list is long, instruct the index input to perform some
-        // read-ahead. We'll prefetch skip data when we have evidence that it is used.
-        docIn.readAhead(state.docStartFP, state.skipOffset);
+        // Default case: prefetch the page that holds the first byte of postings. We'll prefetch
+        // skip data when we have evidence that it is used.
+        docIn.prefetch(state.docStartFP, 1);
       }
     }
     // Note: we don't prefetch positions or offsets, which are less likely to be needed.

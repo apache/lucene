@@ -203,20 +203,4 @@ public abstract class IndexInput extends DataInput implements Closeable {
    * @param length the number of bytes to prefetch
    */
   public void prefetch(long offset, long length) throws IOException {}
-
-  /**
-   * Optional method: Give a hint to this input that some bytes will be read in the given range with
-   * a forward-only access pattern. Implementations may start reading the first bytes in the
-   * background immediately, and then dynamically read a few pages ahead of the current position to
-   * help make data available before it's needed.
-   *
-   * <p><b>NOTE</b>: This method may be called on long ranges of bytes. It is discouraged to
-   * prefetch everything at once.
-   *
-   * <p>The default implementation is a no-op.
-   *
-   * @param offset start offset
-   * @param length the number of bytes to prefetch
-   */
-  public void readAhead(long offset, long length) throws IOException {}
 }

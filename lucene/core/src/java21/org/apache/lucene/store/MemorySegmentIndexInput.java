@@ -371,16 +371,6 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
-  public void readAhead(long offset, long length) throws IOException {
-    // Start loading the first bytes in the background
-    if (length != 0) {
-      prefetch(offset, 1);
-    }
-    // TODO: Is there a hint we can give to the OS to let it optimize for our forward-only access
-    // pattern in the given range?
-  }
-
-  @Override
   public byte readByte(long pos) throws IOException {
     try {
       final int si = (int) (pos >> chunkSizePower);
