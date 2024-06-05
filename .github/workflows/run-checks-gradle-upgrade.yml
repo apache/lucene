@@ -1,0 +1,41 @@
+name: "Run checks: module gradle/ (gradle upgrades)"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - 'main'
+      - 'branch_9x'
+    paths:
+      - '.github/workflows/run-checks-gradle-upgrade.yml'
+      - 'gradle/wrapper/**'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_9x'
+    paths:
+      - '.github/workflows/run-checks-gradle-upgrade.yml'
+      - 'gradle/wrapper/**'
+
+env:
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  test:
+    name: Run all kinds of gradle tasks
+    timeout-minutes: 30
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - run: |
+        ./gradlew check -x test
+        ./gradlew licenses updateLicenses
+        ./gradlew tidy
+        ./gradlew assembleRelease mavenToLocal
+        ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
