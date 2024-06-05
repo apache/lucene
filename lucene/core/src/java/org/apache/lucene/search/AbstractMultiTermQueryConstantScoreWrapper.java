@@ -153,39 +153,28 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         List<TermAndState> collectedTerms)
         throws IOException;
 
-    private WeightOrDocIdSetIterator rewrite(LeafReaderContext context, Terms terms)
-        throws IOException {
-      assert terms != null;
-
-      final int fieldDocCount = terms.getDocCount();
-      final TermsEnum termsEnum = q.getTermsEnum(terms);
-      assert termsEnum != null;
-
-      final List<TermAndState> collectedTerms = new ArrayList<>();
-      if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
-        // build a boolean query
-        BooleanQuery.Builder bq = new BooleanQuery.Builder();
-        for (TermAndState t : collectedTerms) {
-          final TermStates termStates = new TermStates(searcher.getTopReaderContext());
-          termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
-          bq.add(new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
-        }
-        Query q = new ConstantScoreQuery(bq.build());
-        final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-        return new WeightOrDocIdSetIterator(weight);
+    private WeightOrDocIdSetIterator rewrite(
+        LeafReaderContext context, List<TermAndState> collectedTerms) throws IOException {
+      // build a boolean query
+      BooleanQuery.Builder bq = new BooleanQuery.Builder();
+      for (TermAndState t : collectedTerms) {
+        final TermStates termStates = new TermStates(searcher.getTopReaderContext());
+        termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
+        bq.add(new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
       }
-
-      // Too many terms to rewrite as a simple bq. Invoke rewriteInner logic to handle rewriting:
-      return rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
+      Query q = new ConstantScoreQuery(bq.build());
+      final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+      return new WeightOrDocIdSetIterator(weight);
     }
 
-    private boolean collectTerms(int fieldDocCount, TermsEnum termsEnum, List<TermAndState> terms)
+    private Boolean collectTerms(int fieldDocCount, TermsEnum termsEnum, List<TermAndState> terms)
         throws IOException {
       final int threshold =
           Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
       for (int i = 0; i < threshold; i++) {
         final BytesRef term = termsEnum.next();
         if (term == null) {
+          if (terms.size() == 0) return null;
           return true;
         }
         TermState state = termsEnum.termState();
@@ -232,12 +221,24 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       }
 
       final long cost = estimateCost(terms, q.getTermsCount());
+      final int fieldDocCount = terms.getDocCount();
+      final TermsEnum termsEnum = q.getTermsEnum(terms);
+      assert termsEnum != null;
+
+      final List<TermAndState> collectedTerms = new ArrayList<>();
+      Boolean collectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
+      if (collectResult == null) {
+        return null;
+      }
 
       final Weight weight = this;
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) throws IOException {
-          WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+          WeightOrDocIdSetIterator weightOrIterator =
+              collectResult
+                  ? rewrite(context, collectedTerms)
+                  : rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
           final Scorer scorer;
           if (weightOrIterator == null) {
             scorer = null;
@@ -258,7 +259,10 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
 
         @Override
         public BulkScorer bulkScorer() throws IOException {
-          WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+          WeightOrDocIdSetIterator weightOrIterator =
+              collectResult
+                  ? rewrite(context, collectedTerms)
+                  : rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
           final BulkScorer bulkScorer;
           if (weightOrIterator == null) {
             bulkScorer = null;
