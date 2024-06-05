@@ -37,7 +37,7 @@ jobs:
       # Required for generateEmojiTokenizationTestChecksumLoad.
       - run: sudo apt-get install libwww-perl
       - run: ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
-      - run: git reset --hard
+      - run: git reset --hard && git clean -xfd .
 
       - run: ./gradlew testOpts
       - run: ./gradlew helpWorkflow
