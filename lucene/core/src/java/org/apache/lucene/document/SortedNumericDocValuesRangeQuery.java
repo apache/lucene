@@ -26,6 +26,7 @@ import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -86,6 +87,9 @@ final class SortedNumericDocValuesRangeQuery extends Query {
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (lowerValue == Long.MIN_VALUE && upperValue == Long.MAX_VALUE) {
       return new FieldExistsQuery(field);
+    }
+    if (lowerValue > upperValue) {
+      return new MatchNoDocsQuery();
     }
     return super.rewrite(indexSearcher);
   }
