@@ -34,11 +34,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-for-build
 
+      - run: sudo apt-get install libjson-perl
+
+      - run: ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
       - run: ./gradlew testOpts
       - run: ./gradlew helpWorkflow
-      - run: ./gradlew check -x test
       - run: ./gradlew licenses updateLicenses
       - run: ./gradlew tidy
+      - run: ./gradlew check -x test
       - run: ./gradlew assembleRelease mavenToLocal
-      - run: ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
       - run: ./gradlew getGeoNames
