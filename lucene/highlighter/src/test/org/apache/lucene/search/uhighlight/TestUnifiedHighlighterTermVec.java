@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -75,7 +76,7 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
 
   public void testTermVecButNoPositions(String aaa, String bbb, String indexed, String expected)
       throws Exception {
-    final FieldType tvNoPosType = new FieldType(org.apache.lucene.document.TextField.TYPE_STORED);
+    final FieldType tvNoPosType = new FieldType(TextField.TYPE_STORED);
     tvNoPosType.setStoreTermVectors(true);
     tvNoPosType.setStoreTermVectorOffsets(true);
     tvNoPosType.freeze();
