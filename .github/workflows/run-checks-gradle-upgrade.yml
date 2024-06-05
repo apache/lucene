@@ -15,6 +15,7 @@ on:
     branches:
       - 'main'
       - 'branch_9x'
+      - 'run-misc-gradle-tasks-on-upgrade'
     paths:
       - '.github/workflows/run-checks-gradle-upgrade.yml'
       - 'gradle/wrapper/**'
