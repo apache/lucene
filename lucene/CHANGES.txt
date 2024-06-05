@@ -173,6 +173,9 @@ Bug Fixes
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
 
+* GITHUB#12431: Fix IndexOutOfBoundsException thrown in DefaultPassageFormatter
+  by unordered matches. (Stephane Campinas)
+
 Changes in Runtime Behavior
 ---------------------
 
