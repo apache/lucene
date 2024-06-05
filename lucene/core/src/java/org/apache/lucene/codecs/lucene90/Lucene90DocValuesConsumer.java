@@ -44,6 +44,7 @@ import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexOutput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -208,6 +209,14 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       maxDocID = docID;
       ++docCount;
     }
+
+    void writeTo(DataOutput output) throws IOException {
+      output.writeInt(maxDocID);
+      output.writeInt(minDocID);
+      output.writeLong(maxValue);
+      output.writeLong(minValue);
+      output.writeInt(docCount);
+    }
   }
 
   private void writeSkipIndex(FieldInfo field, DocValuesProducer valuesProducer)
@@ -235,11 +244,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         globalMinValue = Math.min(globalMinValue, accumulator.minValue);
         globalDocCount += accumulator.docCount;
         maxDocId = accumulator.maxDocID;
-        data.writeInt(accumulator.minDocID);
-        data.writeInt(accumulator.maxDocID);
-        data.writeLong(accumulator.minValue);
-        data.writeLong(accumulator.maxValue);
-        data.writeInt(accumulator.docCount);
+        accumulator.writeTo(data);
         counter = 0;
       }
     }
@@ -249,11 +254,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       globalMinValue = Math.min(globalMinValue, accumulator.minValue);
       globalDocCount += accumulator.docCount;
       maxDocId = accumulator.maxDocID;
-      data.writeInt(accumulator.minDocID);
-      data.writeInt(accumulator.maxDocID);
-      data.writeLong(accumulator.minValue);
-      data.writeLong(accumulator.maxValue);
-      data.writeInt(accumulator.docCount);
+      accumulator.writeTo(data);
     }
     meta.writeLong(start); // record the start in meta
     meta.writeLong(data.getFilePointer() - start); // record the length

@@ -91,7 +91,7 @@ public abstract class DocValuesSkipper {
   /**
    * Return the global maximum value.
    *
-   * <p><b>NOTE</b>: It is only guaranteed that values are greater than or equal the returned value.
+   * <p><b>NOTE</b>: It is only guaranteed that values are less than or equal the returned value.
    * There is no guarantee that one document actually has this value.
    */
   public abstract long maxValue();
