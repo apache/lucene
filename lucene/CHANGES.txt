@@ -468,8 +468,7 @@ API Changes
   IndexSearcher#search(Query, CollectorManager) for TopFieldCollectorManager
   and TopScoreDocCollectorManager. (Zach Chen, Adrien Grand, Michael McCandless, Greg Miller, Luca Cavanna)
 
-* GITHUB#12854: Mark DrillSideways#createDrillDownFacetsCollector as @
-Deprecated. (Greg Miller)
+* GITHUB#12854: Mark DrillSideways#createDrillDownFacetsCollector as @Deprecated. (Greg Miller)
 
 New Features
 ---------------------
