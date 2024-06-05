@@ -249,7 +249,11 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#13439: Avoid unnecessary memory allocation in PackedLongValues#Iterator. (Zhang Chao)
+
+* GITHUB##13425: Rewrite SortedNumericDocValuesRangeQuery to MatchNoDocsQuery when the upper bound is smaller than the
+  lower bound. (Ioana Tagirta)
 
 Bug Fixes
 ---------------------
