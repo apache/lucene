@@ -118,7 +118,13 @@ final class SortedNumericDocValuesRangeQuery extends Query {
           }
         }
 
-        SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
+        final SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
+        if (skipper != null) {
+          if (skipper.minValue() >= lowerValue && skipper.maxValue() <= upperValue) {
+            return new DefaultScorerSupplier(
+                new ConstantScoreScorer(this, score(), scoreMode, values));
+          }
+        }
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
         TwoPhaseIterator iterator;
         if (singleton != null) {
