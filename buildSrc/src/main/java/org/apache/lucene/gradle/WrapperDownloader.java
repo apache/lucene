@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URI;
 import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
@@ -60,8 +61,8 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.getRuntime().version().feature();
-    if (major < 11 || major > 21) {
-      throw new IllegalStateException("java version must be between 17 and 21, your version: " + major);
+    if (major < 11 || major > 22) {
+      throw new IllegalStateException("java version must be between 17 and 22, your version: " + major);
     }
   }
 
@@ -91,7 +92,7 @@ public class WrapperDownloader {
       }
     }
 
-    URL url = new URL("https://raw.githubusercontent.com/gradle/gradle/v" + wrapperVersion + "/gradle/wrapper/gradle-wrapper.jar");
+    URL url = URI.create("https://raw.githubusercontent.com/gradle/gradle/v" + wrapperVersion + "/gradle/wrapper/gradle-wrapper.jar").toURL();
     System.err.println("Downloading gradle-wrapper.jar from " + url);
 
     // Zero-copy save the jar to a temp file
