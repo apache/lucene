@@ -56,7 +56,8 @@ jobs:
           echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
           
           # Copy the JDK from its default location to /tmp so that it appears different to gradle.
-          rsync ${!RUNTIME_JAVA_HOME_VAR} ${{ env.ALT_JAVA_DIR }}
+          rsync -av ${!RUNTIME_JAVA_HOME_VAR} ${{ env.ALT_JAVA_DIR }}
+          ls ${{ env.ALT_JAVA_DIR }}
 
           # This sets the environment variable and makes it available for subsequent job steps.
           # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
