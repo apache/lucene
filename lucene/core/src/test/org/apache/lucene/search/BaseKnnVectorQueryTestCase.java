@@ -31,6 +31,7 @@ import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
@@ -746,6 +747,43 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         AbstractKnnVectorQuery query = getKnnVectorQuery("vector", randomVector(dim), numDocs);
         TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
+  // Test ghost fields, that have a field info but no values
+  public void testMergeAwayAllValues() throws IOException {
+    int dim = 30;
+    try (Directory dir = newDirectoryForTest();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new StringField("id", "0", Field.Store.NO));
+      w.addDocument(doc);
+      doc = new Document();
+      doc.add(new StringField("id", "1", Field.Store.NO));
+      doc.add(getKnnVectorField("field", randomVector(dim)));
+      w.addDocument(doc);
+      w.commit();
+      w.deleteDocuments(new Term("id", "1"));
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FieldInfo fi = leafReader.getFieldInfos().fieldInfo("field");
+        assertNotNull(fi);
+        DocIdSetIterator vectorValues;
+        switch (fi.getVectorEncoding()) {
+          case BYTE:
+            vectorValues = leafReader.getByteVectorValues("field");
+            break;
+          case FLOAT32:
+            vectorValues = leafReader.getFloatVectorValues("field");
+            break;
+          default:
+            throw new AssertionError();
+        }
+        assertNotNull(vectorValues);
+        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
       }
     }
   }
