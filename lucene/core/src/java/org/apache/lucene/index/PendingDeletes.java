@@ -105,6 +105,19 @@ class PendingDeletes {
     return didDelete;
   }
 
+  /** Delete all live documents in this segment and return deleted count. */
+  // TODO: Cant we just set this segment fully deleted, without keep the correct deleted count?
+  long deleteAll() throws IOException {
+    assert info.info.maxDoc() > 0;
+    FixedBitSet mutableBits = getMutableBits();
+    assert mutableBits != null;
+
+    int liveCount = mutableBits.cardinality();
+    mutableBits.clear();
+    pendingDeleteCount += liveCount;
+    return liveCount;
+  }
+
   /** Returns a snapshot of the current live docs. */
   Bits getLiveDocs() {
     // Prevent modifications to the returned live docs

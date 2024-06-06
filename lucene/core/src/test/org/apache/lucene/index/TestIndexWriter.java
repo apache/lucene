@@ -58,28 +58,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
-import org.apache.lucene.document.BinaryDocValuesField;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.document.SortedSetDocValuesField;
-import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
+import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.PhraseQuery;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.SearcherFactory;
-import org.apache.lucene.search.SearcherManager;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -198,6 +179,49 @@ public class TestIndexWriter extends LuceneTestCase {
     docStats = writer.getDocStats();
     assertEquals(0, docStats.maxDoc);
     assertEquals(0, docStats.numDocs);
+    writer.close();
+    dir.close();
+  }
+
+  public void testDeleteByQuery() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc;
+    for (int i = 0; i < 10; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    for (int i = 10; i < 20; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    for (int i = 20; i < 30; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+    writer.deleteDocuments(LongPoint.newRangeQuery("content", 10, 19));
+
+    DirectoryReader reader = DirectoryReader.open(writer);
+    IndexSearcher searcher = newSearcher(reader);
+    assertEquals(
+        0, searcher.search(LongPoint.newRangeQuery("content", 10, 19), 100).totalHits.value);
+    assertEquals(
+        20, searcher.search(LongPoint.newRangeQuery("content", 0, 30), 100).totalHits.value);
+
+    reader.close();
     writer.close();
     dir.close();
   }

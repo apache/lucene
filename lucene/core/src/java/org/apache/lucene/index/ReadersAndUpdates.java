@@ -197,6 +197,13 @@ final class ReadersAndUpdates {
     return pendingDeletes.delete(docID);
   }
 
+  public synchronized long deleteAll() throws IOException {
+    if (reader == null && pendingDeletes.mustInitOnDelete()) {
+      getReader(IOContext.DEFAULT).decRef(); // pass a reader to initialize the pending deletes
+    }
+    return pendingDeletes.deleteAll();
+  }
+
   // NOTE: removes callers ref
   public synchronized void dropReaders() throws IOException {
     // TODO: can we somehow use IOUtils here...?  problem is

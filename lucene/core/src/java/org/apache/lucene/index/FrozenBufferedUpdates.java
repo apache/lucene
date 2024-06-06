@@ -408,10 +408,19 @@ final class FrozenBufferedUpdates {
               }
             }
           } else {
-            int docID;
-            while ((docID = it.nextDoc()) < limit) {
-              if (segState.rld.delete(docID)) {
-                delCount++;
+            // TODO: Cant we just set this segment fully deleted, without keeping the correct
+            // deleted count?
+            // TODO: We just Implemented isMatchAll for PointRangeQuery, Does TermRangeQuery needs
+            // this?
+            if (scorer.isMatchAll()) {
+              delCount += segState.rld.deleteAll();
+              assert segState.rld.isFullyDeleted();
+            } else {
+              int docID;
+              while ((docID = it.nextDoc()) < limit) {
+                if (segState.rld.delete(docID)) {
+                  delCount++;
+                }
               }
             }
           }
@@ -468,6 +477,8 @@ final class FrozenBufferedUpdates {
         final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
         if (iterator != null) {
           int docID;
+          // It is unusual that one term matches all docs, so it is worthless to implement delete
+          // all.
           while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
             // NOTE: there is no limit check on the docID
             // when deleting by Term (unlike by Query)
