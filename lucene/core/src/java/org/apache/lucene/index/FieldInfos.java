@@ -643,12 +643,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
      *     {@code dvType} returns a new FieldInfo based based on the options in global field numbers
      */
     FieldInfo constructFieldInfo(String fieldName, DocValuesType dvType, int newFieldNumber) {
-      Integer fieldNumber;
+      FieldProperties fieldProperties;
       synchronized (this) {
-        fieldNumber = fieldProperties.get(fieldName).number;
+        fieldProperties = this.fieldProperties.get(fieldName);
       }
-      if (fieldNumber == null) return null;
-      FieldProperties fieldProperties = this.fieldProperties.get(fieldName);
       if (fieldProperties == null) return null;
       DocValuesType dvType0 = fieldProperties.docValuesType;
       if (dvType != dvType0) return null;
