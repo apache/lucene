@@ -42,7 +42,7 @@ jobs:
         with:
           java-version: ${{ matrix.java-version }}
 
-      - name: set up alt java
+      - name: Set up RUNTIME_JAVA_HOME variable
         if: ${{ matrix.uses-alt-java }}
         run: |
           echo "All installed JDKs:"
