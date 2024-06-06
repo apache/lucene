@@ -55,7 +55,7 @@ jobs:
           # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
           echo "RUNTIME_JAVA_HOME=${!RUNTIME_JAVA_HOME_VAR}" >> "$GITHUB_ENV"
 
-       - run: ./gradlew -p lucene/core check -x test
+      - run: ./gradlew -p lucene/core check -x test
 
 #      - name: ./gradlew regenerate
 #        run: |
