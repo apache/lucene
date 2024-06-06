@@ -64,23 +64,26 @@ jobs:
 
       - run: ./gradlew -p lucene/core check -x test
 
-#      - name: ./gradlew regenerate
-#        run: |
-#          # add this package for generateEmojiTokenizationTestChecksumLoad.
-#          sudo apt-get install libwww-perl
-#          ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
-#          if [ ! -z "$(git status --porcelain)" ]; then 
-#            echo ":warning: **regenerateleft local checkout in modified state**" >> $GITHUB_STEP_SUMMARY 
-#            echo '```' >> $GITHUB_STEP_SUMMARY
-#            git status --porcelain >> $GITHUB_STEP_SUMMARY
-#            echo '```' >> $GITHUB_STEP_SUMMARY
-#            git reset --hard && git clean -xfd .
-#          fi
-#
-#      - run: ./gradlew testOpts
-#      - run: ./gradlew helpWorkflow
-#      - run: ./gradlew licenses updateLicenses
-#      - run: ./gradlew tidy
-#      - run: ./gradlew check -x test
-#      - run: ./gradlew assembleRelease mavenToLocal
-#      - run: ./gradlew getGeoNames
+      - name: ./gradlew regenerate
+        run: |
+          # add this package for generateEmojiTokenizationTestChecksumLoad.
+          sudo apt-get install libwww-perl
+          ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
+          if [ ! -z "$(git status --porcelain)" ]; then 
+            echo ":warning: **regenerateleft local checkout in modified state**" >> $GITHUB_STEP_SUMMARY 
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            git status --porcelain >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            git reset --hard && git clean -xfd .
+          fi
+
+      - run: ./gradlew testOpts
+      - run: ./gradlew helpWorkflow
+      - run: ./gradlew licenses updateLicenses
+      - run: ./gradlew tidy
+      - run: ./gradlew check -x test
+      - run: ./gradlew assembleRelease mavenToLocal
+
+      # Conserve resources: only run these in non-alt-java mode.
+      - run: ./gradlew getGeoNames
+        if: ${{ !matrix.uses-alt-java }}
