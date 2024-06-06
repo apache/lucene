@@ -110,7 +110,6 @@ public final class MultiLeafKnnCollector implements KnnCollector {
         }
         assert updatesQueue.size() == 0;
         cachedGlobalMinSim = globalSimilarityQueue.offer(updatesScratch);
-        updatesQueue.clear();
         globalSimUpdated = true;
       }
     }
