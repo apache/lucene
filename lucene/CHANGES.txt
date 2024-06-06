@@ -263,7 +263,9 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* GITHUB#13459: Merges all immutable attributes in FieldInfos.FieldNumbers into one Hashmap saving
+  memory when writing big indices. Fixes an exotic bug when calling clear where not all attributes
+  were cleared. (Ignacio Vera)
 
 ======================== Lucene 9.11.0 =======================
 
