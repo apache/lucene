@@ -164,7 +164,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
 
       final List<TermAndState> collectedTerms = new ArrayList<>();
       boolean collectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
-      if (collectResult && collectedTerms.size() == 0) {
+      if (collectResult && collectedTerms.isEmpty()) {
         return null;
       }
       return () -> {
