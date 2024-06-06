@@ -255,6 +255,8 @@ Optimizations
 * GITHUB##13425: Rewrite SortedNumericDocValuesRangeQuery to MatchNoDocsQuery when the upper bound is smaller than the
   lower bound. (Ioana Tagirta)
 
+* GITHUB#13322: Implement Weight#count for vector values in the FieldExistsQuery. (Pan Guixin)
+
 Bug Fixes
 ---------------------
 (No changes)
