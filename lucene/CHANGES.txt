@@ -249,7 +249,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#13454: MultiTermQuery return null for ScoreSupplier (Mayya Sharipova)
 
 Bug Fixes
 ---------------------
