@@ -439,7 +439,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 fieldNumber,
                 fi.getIndexOptions(),
                 fi.getIndexOptions() != IndexOptions.NONE
-                    ? new IndexOptionsProperties(fi.hasVectors(), fi.hasNorms())
+                    ? new IndexOptionsProperties(fi.hasVectors(), fi.omitsNorms())
                     : null,
                 fi.getDocValuesType(),
                 new FieldDimensions(
