@@ -226,7 +226,9 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       if (terms == null) {
         return null;
       }
-      final WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+      IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier = rewrite(context, terms);
+      if (weightOrIteratorSupplier == null) return null;
+      WeightOrDocIdSetIterator weightOrIterator = weightOrIteratorSupplier.get();
       if (weightOrIterator == null) {
         return null;
       } else if (weightOrIterator.weight != null) {
