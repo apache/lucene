@@ -26,8 +26,7 @@ public abstract class IndriScorer extends Scorer {
 
   private float boost;
 
-  protected IndriScorer(Weight weight, float boost) {
-    super(weight);
+  protected IndriScorer(float boost) {
     this.boost = boost;
   }
 

@@ -158,7 +158,7 @@ class LatLonDocValuesQuery extends Query {
             throw new IllegalArgumentException(
                 "Invalid query relationship:[" + queryRelation + "]");
         }
-        final var scorer = new ConstantScoreScorer(this, boost, scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(boost, scoreMode, iterator);
         return new DefaultScorerSupplier(scorer);
       }
 

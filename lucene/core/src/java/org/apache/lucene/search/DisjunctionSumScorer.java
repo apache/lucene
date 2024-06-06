@@ -28,12 +28,10 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
   /**
    * Construct a <code>DisjunctionScorer</code>.
    *
-   * @param weight The weight to be used.
    * @param subScorers Array of at least two subscorers.
    */
-  DisjunctionSumScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
-      throws IOException {
-    super(weight, subScorers, scoreMode);
+  DisjunctionSumScorer(List<Scorer> subScorers, ScoreMode scoreMode) throws IOException {
+    super(subScorers, scoreMode);
     this.scorers = subScorers;
   }
 

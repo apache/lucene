@@ -110,6 +110,8 @@ API Changes
   I/O for top-level disjunctions. Weight#bulkScorer() still exists for compatibility, but delegates
   to ScorerSupplier#bulkScorer(). (Adrien Grand)
 
+* GITHUB#13410: Removed Scorer#getWeight (Sanjay Dutt, Adrien Grand)
+
 New Features
 ---------------------
 

@@ -180,8 +180,7 @@ class DrillSidewaysQuery extends Query {
           Scorer scorer = drillDowns[dim].scorer(context);
           if (scorer == null) {
             nullCount++;
-            scorer =
-                new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
+            scorer = new ConstantScoreScorer(0f, scoreMode, DocIdSetIterator.empty());
           }
 
           FacetsCollector sidewaysCollector = drillSidewaysCollectorManagers[dim].newCollector();
