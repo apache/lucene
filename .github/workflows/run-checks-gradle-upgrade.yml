@@ -36,6 +36,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      ALT_JAVA_DIR: /tmp/alt-java
+
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-for-build
@@ -51,10 +54,13 @@ jobs:
           echo "Gradle's 'RUNTIME_JAVA_HOME' JDK:"
           RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
           echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
+          
+          # Copy the JDK from its default location to /tmp so that it appears different to gradle.
+          rsync ${!RUNTIME_JAVA_HOME_VAR} ${{ env.ALT_JAVA_DIR }}
 
           # This sets the environment variable and makes it available for subsequent job steps.
           # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
-          echo "RUNTIME_JAVA_HOME=${!RUNTIME_JAVA_HOME_VAR}" >> "$GITHUB_ENV"
+          echo "RUNTIME_JAVA_HOME=${{ env.ALT_JAVA_DIR }}" >> "$GITHUB_ENV"
 
       - run: ./gradlew -p lucene/core check -x test
 
