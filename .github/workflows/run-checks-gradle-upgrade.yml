@@ -25,7 +25,7 @@ env:
 
 jobs:
   gradleSanityCheck:
-    name: Run all kinds of gradle tasks
+    name: "Run tasks (java: ${{ matrix.java-version }}, alt-java: ${{ matrix.uses-alt-java }})"
     timeout-minutes: 30
 
     strategy:
