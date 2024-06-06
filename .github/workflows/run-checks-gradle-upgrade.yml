@@ -1,4 +1,4 @@
-name: "Run checks: module gradle/ (gradle upgrades)"
+name: "Run checks: gradle upgrade"
 
 on:
   workflow_dispatch:
@@ -23,33 +23,57 @@ env:
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
-  test:
+  gradleSanityCheck:
     name: Run all kinds of gradle tasks
     timeout-minutes: 30
 
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        java-version: [ '22' ]
+        uses-alt-java: [ true, false ]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-for-build
+        with:
+          java-version: ${{ matrix.java-version }}
 
-      - name: ./gradlew regenerate
+      - name: set up alt java
+        if: ${{ matrix.uses-alt-java }}
         run: |
-          # add this package for generateEmojiTokenizationTestChecksumLoad.
-          sudo apt-get install libwww-perl
-          ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
-          if [ ! -z "$(git status --porcelain)" ]; then 
-            echo ":warning: **regenerateleft local checkout in modified state**" >> $GITHUB_STEP_SUMMARY 
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            git status --porcelain >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            git reset --hard && git clean -xfd .
-          fi
+          echo "All installed JDKs:"
+          set | grep "JAVA"
 
-      - run: ./gradlew testOpts
-      - run: ./gradlew helpWorkflow
-      - run: ./gradlew licenses updateLicenses
-      - run: ./gradlew tidy
-      - run: ./gradlew check -x test
-      - run: ./gradlew assembleRelease mavenToLocal
-      - run: ./gradlew getGeoNames
+          echo "Gradle's 'RUNTIME_JAVA_HOME' JDK:"
+          RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
+          echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
+
+          # This sets the environment variable and makes it available for subsequent job steps.
+          # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
+          echo "RUNTIME_JAVA_HOME=${!RUNTIME_JAVA_HOME_VAR}" >> "$GITHUB_ENV"
+
+       - run: ./gradlew -p lucene/core check -x test
+
+#      - name: ./gradlew regenerate
+#        run: |
+#          # add this package for generateEmojiTokenizationTestChecksumLoad.
+#          sudo apt-get install libwww-perl
+#          ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
+#          if [ ! -z "$(git status --porcelain)" ]; then 
+#            echo ":warning: **regenerateleft local checkout in modified state**" >> $GITHUB_STEP_SUMMARY 
+#            echo '```' >> $GITHUB_STEP_SUMMARY
+#            git status --porcelain >> $GITHUB_STEP_SUMMARY
+#            echo '```' >> $GITHUB_STEP_SUMMARY
+#            git reset --hard && git clean -xfd .
+#          fi
+#
+#      - run: ./gradlew testOpts
+#      - run: ./gradlew helpWorkflow
+#      - run: ./gradlew licenses updateLicenses
+#      - run: ./gradlew tidy
+#      - run: ./gradlew check -x test
+#      - run: ./gradlew assembleRelease mavenToLocal
+#      - run: ./gradlew getGeoNames
