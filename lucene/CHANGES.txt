@@ -259,6 +259,9 @@ Optimizations
 
 * GITHUB#13322: Implement Weight#count for vector values in the FieldExistsQuery. (Pan Guixin)
 
+* GITHUB#13454: MultiTermQuery returns null ScoreSupplier in cases where
+  no query terms are present in the index segment (Mayya Sharipova)
+
 Bug Fixes
 ---------------------
 (No changes)
