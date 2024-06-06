@@ -25,7 +25,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.ConstantScoreScorer;
-import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
@@ -59,7 +58,6 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
       LeafReader reader,
       SpatialVisitor spatialVisitor,
       ScoreMode scoreMode,
-      ConstantScoreWeight weight,
       float boost,
       float score)
       throws IOException {
@@ -89,7 +87,7 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
 
       @Override
       public Scorer get(long leadCost) {
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       }
 
       @Override

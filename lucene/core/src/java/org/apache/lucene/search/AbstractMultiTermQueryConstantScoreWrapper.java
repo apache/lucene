@@ -217,7 +217,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       if (iterator == null) {
         return null;
       }
-      return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+      return new ConstantScoreScorer(score(), scoreMode, iterator);
     }
 
     @Override
@@ -244,7 +244,6 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier = rewrite(context, terms);
       if (weightOrIteratorSupplier == null) return null;
 
-      final Weight weight = this;
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) throws IOException {
@@ -263,8 +262,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           // find that there are actually no hits, we need to return an empty Scorer as opposed
           // to null:
           return Objects.requireNonNullElseGet(
-              scorer,
-              () -> new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty()));
+              scorer, () -> new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty()));
         }
 
         @Override
@@ -278,7 +276,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           } else {
             bulkScorer =
                 new DefaultBulkScorer(
-                    new ConstantScoreScorer(weight, score(), scoreMode, weightOrIterator.iterator));
+                    new ConstantScoreScorer(score(), scoreMode, weightOrIterator.iterator));
           }
 
           // It's against the API contract to return a null scorer from a non-null ScoreSupplier.
@@ -289,8 +287,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
               bulkScorer,
               () ->
                   new DefaultBulkScorer(
-                      new ConstantScoreScorer(
-                          weight, score(), scoreMode, DocIdSetIterator.empty())));
+                      new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty())));
         }
 
         @Override

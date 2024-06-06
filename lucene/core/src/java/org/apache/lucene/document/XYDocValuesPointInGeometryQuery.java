@@ -130,7 +130,7 @@ public class XYDocValuesPointInGeometryQuery extends Query {
                 return 1000f; // TODO: what should it be?
               }
             };
-        final var scorer = new ConstantScoreScorer(this, boost, scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(boost, scoreMode, iterator);
         return new DefaultScorerSupplier(scorer);
       }
 

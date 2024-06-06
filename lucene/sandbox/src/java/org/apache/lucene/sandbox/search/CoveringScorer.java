@@ -26,7 +26,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 
 /** A {@link Scorer} whose number of matches is per-document. */
 final class CoveringScorer extends Scorer {
@@ -46,9 +45,7 @@ final class CoveringScorer extends Scorer {
 
   final long cost;
 
-  CoveringScorer(Weight weight, Collection<Scorer> scorers, LongValues minMatchValues, int maxDoc) {
-    super(weight);
-
+  CoveringScorer(Collection<Scorer> scorers, LongValues minMatchValues, int maxDoc) {
     this.numScorers = scorers.size();
     this.maxDoc = maxDoc;
     this.minMatchValues = minMatchValues;
