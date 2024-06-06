@@ -224,7 +224,7 @@ public class TestEdgeNGramTokenFilter extends BaseTokenStreamTestCase {
   public void testGraphs() throws IOException {
     TokenStream tk = new LetterTokenizer();
     ((Tokenizer) tk).setReader(new StringReader("abc d efgh ij klmno p q"));
-    tk = new ShingleFilter(tk);
+    tk = new ShingleFilter.Builder(tk).build();
     tk = new EdgeNGramTokenFilter(tk, 7, 10, false);
     assertTokenStreamContents(
         tk,

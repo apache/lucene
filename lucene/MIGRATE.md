@@ -779,3 +779,10 @@ to manage the indexed data on their own and create new `Facet` implementations t
 The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier 
 interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to 
 `Weight#scorerSupplier` for the scorer.
+
+### Removed ShingleFilter constructors and made fields final (GITHUB#13112)
+
+Fields that can be controlled through setters have been declared as final, and the respective setters have been removed. 
+To facilitate the creation of ShingleFilter instances, a static inner Builder class has been added. 
+The previous constructor for the ShingleFilter class has been removed, and a new constructor with a Builder 
+instance as an input parameter has been created.

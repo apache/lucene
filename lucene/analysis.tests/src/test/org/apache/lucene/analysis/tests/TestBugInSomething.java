@@ -329,7 +329,7 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new EdgeNGramTokenizer(2, 94);
             // TokenStream stream = new SopTokenFilter(tokenizer);
-            TokenStream stream = new ShingleFilter(tokenizer, 5);
+            TokenStream stream = new ShingleFilter.Builder(tokenizer, 5).build();
             // stream = new SopTokenFilter(stream);
             stream = new NGramTokenFilter(stream, 55, 83, false);
             // stream = new SopTokenFilter(stream);

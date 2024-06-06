@@ -154,13 +154,12 @@ public final class ShingleAnalyzerWrapper extends AnalyzerWrapper {
   protected TokenStreamComponents wrapComponents(
       String fieldName, TokenStreamComponents components) {
     ShingleFilter filter =
-        new ShingleFilter(components.getTokenStream(), minShingleSize, maxShingleSize);
-    filter.setMinShingleSize(minShingleSize);
-    filter.setMaxShingleSize(maxShingleSize);
-    filter.setTokenSeparator(tokenSeparator);
-    filter.setOutputUnigrams(outputUnigrams);
-    filter.setOutputUnigramsIfNoShingles(outputUnigramsIfNoShingles);
-    filter.setFillerToken(fillerToken);
+        new ShingleFilter.Builder(components.getTokenStream(), minShingleSize, maxShingleSize)
+            .tokenSeparator(tokenSeparator)
+            .outputUnigrams(outputUnigrams)
+            .outputUnigramsIfNoShingles(outputUnigramsIfNoShingles)
+            .fillerToken(fillerToken)
+            .build();
     return new TokenStreamComponents(components.getSource(), filter);
   }
 }
