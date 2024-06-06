@@ -1,0 +1,36 @@
+name: "Run checks: module lucene/distribution.tests"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - 'main'
+      - 'branch_9x'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_9x'
+
+env:
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  test:
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        # ubuntu-latest is checked as part of run-checks-everything.yml
+        # windows-latest is slow and sometimes flaky.
+        os: [ macos-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - name: Run 'gradlew lucene/distribution.tests test' (on ${{ matrix.os }})
+        run: ./gradlew -p lucene/distribution.tests test
