@@ -43,7 +43,9 @@ public class BKDReader extends PointValues {
   final int version;
   final long minLeafBlockFP;
 
-  final IndexInput packedIndex;
+  private final long indexStartPointer;
+  private final int numIndexBytes;
+  private final IndexInput indexIn;
   // if true, the tree is a legacy balanced tree
   private final boolean isTreeBalanced;
 
@@ -105,7 +107,9 @@ public class BKDReader extends PointValues {
       minLeafBlockFP = indexIn.readVLong();
       indexIn.seek(indexStartPointer);
     }
-    this.packedIndex = indexIn.slice("packedIndex", indexStartPointer, numIndexBytes);
+    this.indexStartPointer = indexStartPointer;
+    this.numIndexBytes = numIndexBytes;
+    this.indexIn = indexIn;
     this.in = dataIn;
     // for only one leaf, balanced and unbalanced trees can be handled the same way
     // we set it to unbalanced.
@@ -158,7 +162,7 @@ public class BKDReader extends PointValues {
   @Override
   public PointTree getPointTree() throws IOException {
     return new BKDPointTree(
-        packedIndex.clone(),
+        indexIn.slice("packedIndex", indexStartPointer, numIndexBytes),
         this.in.clone(),
         config,
         numLeaves,
