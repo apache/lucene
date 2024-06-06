@@ -97,8 +97,7 @@ public class BKDReader extends PointValues {
     pointCount = metaIn.readVLong();
     docCount = metaIn.readVInt();
 
-    int numIndexBytes = metaIn.readVInt();
-    long indexStartPointer;
+    numIndexBytes = metaIn.readVInt();
     if (version >= BKDWriter.VERSION_META_FILE) {
       minLeafBlockFP = metaIn.readLong();
       indexStartPointer = metaIn.readLong();
@@ -107,8 +106,6 @@ public class BKDReader extends PointValues {
       minLeafBlockFP = indexIn.readVLong();
       indexIn.seek(indexStartPointer);
     }
-    this.indexStartPointer = indexStartPointer;
-    this.numIndexBytes = numIndexBytes;
     this.indexIn = indexIn;
     this.in = dataIn;
     // for only one leaf, balanced and unbalanced trees can be handled the same way
