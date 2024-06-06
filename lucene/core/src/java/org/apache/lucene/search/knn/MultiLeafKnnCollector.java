@@ -41,6 +41,7 @@ public final class MultiLeafKnnCollector implements KnnCollector {
   private final float greediness;
   // the queue of the local similarities to periodically update with the global queue
   private final FloatHeap updatesQueue;
+  private final float[] updatesScratch;
   // interval to synchronize the local and global queues, as a number of visited vectors
   private final int interval = 0xff; // 255
   private boolean kResultsCollected = false;
@@ -62,6 +63,7 @@ public final class MultiLeafKnnCollector implements KnnCollector {
     this.globalSimilarityQueue = globalSimilarityQueue;
     this.nonCompetitiveQueue = new FloatHeap(Math.max(1, Math.round((1 - greediness) * k)));
     this.updatesQueue = new FloatHeap(k);
+    this.updatesScratch = new float[k];
   }
 
   @Override
@@ -103,7 +105,11 @@ public final class MultiLeafKnnCollector implements KnnCollector {
     if (kResultsCollected) {
       // as we've collected k results, we can start do periodic updates with the global queue
       if (firstKResultsCollected || (subCollector.visitedCount() & interval) == 0) {
-        cachedGlobalMinSim = globalSimilarityQueue.offer(updatesQueue.getHeap());
+        for (int i = 0; i < k(); i++) {
+          updatesScratch[i] = updatesQueue.poll();
+        }
+        assert updatesQueue.size() == 0;
+        cachedGlobalMinSim = globalSimilarityQueue.offer(updatesScratch);
         updatesQueue.clear();
         globalSimUpdated = true;
       }
