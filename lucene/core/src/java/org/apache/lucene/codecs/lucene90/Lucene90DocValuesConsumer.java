@@ -258,8 +258,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
     meta.writeLong(start); // record the start in meta
     meta.writeLong(data.getFilePointer() - start); // record the length
-    meta.writeLong(globalMinValue);
     meta.writeLong(globalMaxValue);
+    meta.writeLong(globalMinValue);
     meta.writeInt(globalDocCount);
     meta.writeInt(maxDocId);
   }

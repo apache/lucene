@@ -3867,20 +3867,20 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     return true;
   }
 
-  public void testNumericDocValuesWithSkipperSmall() throws IOException {
+  public void testNumericDocValuesWithSkipperSmall() throws Exception {
     doTestNumericDocValuesWithSkipper(random().nextInt(1, 1000));
   }
 
-  public void testNumericDocValuesWithSkipperMedium() throws IOException {
+  public void testNumericDocValuesWithSkipperMedium() throws Exception {
     doTestNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
   }
 
   @Nightly
-  public void testNumericDocValuesWithSkipperBig() throws IOException {
+  public void testNumericDocValuesWithSkipperBig() throws Exception {
     doTestNumericDocValuesWithSkipper(random().nextInt(50000, 100000));
   }
 
-  private void doTestNumericDocValuesWithSkipper(int totalDocs) throws IOException {
+  private void doTestNumericDocValuesWithSkipper(int totalDocs) throws Exception {
     assertDocValuesWithSkipper(
         totalDocs,
         new TestDocValueSkipper() {
@@ -3928,20 +3928,20 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         });
   }
 
-  public void testSortedNumericDocValuesWithSkipperSmall() throws IOException {
+  public void testSortedNumericDocValuesWithSkipperSmall() throws Exception {
     doTestSortedNumericDocValuesWithSkipper(random().nextInt(1, 1000));
   }
 
-  public void testSortedNumericDocValuesWithSkipperMedium() throws IOException {
+  public void testSortedNumericDocValuesWithSkipperMedium() throws Exception {
     doTestSortedNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
   }
 
   @Nightly
-  public void testSortedNumericDocValuesWithSkipperBig() throws IOException {
+  public void testSortedNumericDocValuesWithSkipperBig() throws Exception {
     doTestSortedNumericDocValuesWithSkipper(random().nextInt(50000, 100000));
   }
 
-  private void doTestSortedNumericDocValuesWithSkipper(int totalDocs) throws IOException {
+  private void doTestSortedNumericDocValuesWithSkipper(int totalDocs) throws Exception {
     assertDocValuesWithSkipper(
         totalDocs,
         new TestDocValueSkipper() {
@@ -4012,20 +4012,20 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         });
   }
 
-  public void testSortedDocValuesWithSkipperSmall() throws IOException {
+  public void testSortedDocValuesWithSkipperSmall() throws Exception {
     doTestSortedDocValuesWithSkipper(random().nextInt(1, 1000));
   }
 
-  public void testSortedDocValuesWithSkipperMedium() throws IOException {
+  public void testSortedDocValuesWithSkipperMedium() throws Exception {
     doTestSortedDocValuesWithSkipper(random().nextInt(1000, 20000));
   }
 
   @Nightly
-  public void testSortedDocValuesWithSkipperBig() throws IOException {
+  public void testSortedDocValuesWithSkipperBig() throws Exception {
     doTestSortedDocValuesWithSkipper(random().nextInt(50000, 100000));
   }
 
-  private void doTestSortedDocValuesWithSkipper(int totalDocs) throws IOException {
+  private void doTestSortedDocValuesWithSkipper(int totalDocs) throws Exception {
     assertDocValuesWithSkipper(
         totalDocs,
         new TestDocValueSkipper() {
@@ -4073,20 +4073,20 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         });
   }
 
-  public void testSortedSetDocValuesWithSkipperSmall() throws IOException {
+  public void testSortedSetDocValuesWithSkipperSmall() throws Exception {
     doTestSortedSetDocValuesWithSkipper(random().nextInt(1, 1000));
   }
 
-  public void testSortedSetDocValuesWithSkipperMedium() throws IOException {
+  public void testSortedSetDocValuesWithSkipperMedium() throws Exception {
     doTestSortedSetDocValuesWithSkipper(random().nextInt(10000, 20000));
   }
 
   @Nightly
-  public void testSortedSetDocValuesWithSkipperBig() throws IOException {
+  public void testSortedSetDocValuesWithSkipperBig() throws Exception {
     doTestSortedSetDocValuesWithSkipper(random().nextInt(50000, 100000));
   }
 
-  private void doTestSortedSetDocValuesWithSkipper(int totalDocs) throws IOException {
+  private void doTestSortedSetDocValuesWithSkipper(int totalDocs) throws Exception {
     assertDocValuesWithSkipper(
         totalDocs,
         new TestDocValueSkipper() {
@@ -4159,7 +4159,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
   }
 
   private void assertDocValuesWithSkipper(int totalDocs, TestDocValueSkipper testDocValueSkipper)
-      throws IOException {
+      throws Exception {
     Supplier<Boolean> booleanSupplier;
     switch (random().nextInt(3)) {
       case 0 -> booleanSupplier = () -> true;
@@ -4191,6 +4191,12 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     int readDocs = 0;
     for (LeafReaderContext readerContext : r.leaves()) {
       LeafReader reader = readerContext.reader();
+      ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
+      PrintStream infoStream = new PrintStream(bos, false, UTF_8);
+      DocValuesStatus status = CheckIndex.testDocValues((CodecReader) reader, infoStream, true);
+      if (status.error != null) {
+        throw new Exception(status.error);
+      }
       readDocs +=
           assertDocValuesSkipSequential(
               testDocValueSkipper.docValuesWrapper(reader),
