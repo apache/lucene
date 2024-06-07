@@ -355,7 +355,35 @@ public class TopDocs {
    * Reciprocal Rank Fusion method.
    * 
    */
-  public static TopDocs rrf(int topN, int k, TopDocs[] hits){
-	
+  public static TopDocs rrf(int TopN, int k, TopDocs[] hits){
+
+    Map<Integer, Float> rrfScore = new HashMap<>();
+    long minHits = Long.MAX_VALUE;
+    for (TopDocs topDoc : hits){
+      minHits = Math.min(minHits, topDoc.totalHits.value);
+      Map<Integer, Float> scoreMap = new HashMap<>();
+      for (ScoreDoc scoreDoc : topDoc.scoreDocs){
+        scoreMap.put(scoreDoc.doc, scoreDoc.score);
+      }
+
+      List<Map.Entry<Integer, Float>> scoreList = new ArrayList<>(scoreMap.entrySet());
+      scoreList.sort(Map.Entry.comparingByValue());
+
+      Float rank = 1.0f;
+      for (Map.Entry<Integer, Float> entry : scoreList){
+        rrfScore.put(entry.getKey(), rrfScore.getOrDefault(entry.getValue(), 0.0f) + 1 / (rank + k));
+        rank += 1.0f;
+      }
+    }
+
+    List<Map.Entry<Integer, Float>> rrfScoreRank = new ArrayList<>(rrfScore.entrySet());
+    rrfScoreRank.sort(Map.Entry.comparingByValue());
+
+    ScoreDoc[] rrfScoreDocs = new ArrayList<ScoreDoc>();
+    for (int i = 0; i < TopN; i++){
+      rrfScoreDocs.add(new ScoreDoc(rrfScoreRank[i].getKey(), rrfScoreRank[i].getValue()));
+    }
+
+    return new TopDocs(new TotalHits(minHits, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), rrfScoreDocs);
   }
 }
