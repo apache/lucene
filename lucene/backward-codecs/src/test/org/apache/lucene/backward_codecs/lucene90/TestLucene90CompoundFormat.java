@@ -14,22 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.lucene.backward_codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene100.Lucene100Codec;
-import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.index.BaseCompoundFormatTestCase;
 
-public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
+  private final Codec codec = new Lucene90RWCodec();
+
   @Override
   protected Codec getCodec() {
-    return new Lucene100Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene99RWHnswScalarQuantizationVectorsFormat();
-      }
-    };
+    return codec;
   }
 }

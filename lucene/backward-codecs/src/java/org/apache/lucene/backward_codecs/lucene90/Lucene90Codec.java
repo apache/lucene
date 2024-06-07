@@ -151,7 +151,7 @@ public class Lucene90Codec extends Codec {
   }
 
   @Override
-  public final CompoundFormat compoundFormat() {
+  public CompoundFormat compoundFormat() {
     return compoundFormat;
   }
 

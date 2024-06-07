@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_codecs.lucene90;
 
+import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
@@ -23,6 +24,7 @@ import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 
 public class Lucene90RWCodec extends Lucene90Codec {
 
+  private final CompoundFormat compoundFormat = new Lucene90RWCompoundFormat();
   private final SegmentInfoFormat segmentInfosFormat = new Lucene90RWSegmentInfoFormat();
 
   private final KnnVectorsFormat defaultKnnVectorsFormat;
@@ -40,6 +42,11 @@ public class Lucene90RWCodec extends Lucene90Codec {
         new Lucene90RWHnswVectorsFormat(
             Lucene90HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene90HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+  }
+
+  @Override
+  public CompoundFormat compoundFormat() {
+    return compoundFormat;
   }
 
   @Override

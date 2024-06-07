@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene100;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,7 +30,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.index.BaseCompoundFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
+public class TestLucene100CompoundFormat extends BaseCompoundFormatTestCase {
   private final Codec codec = TestUtil.getDefaultCodec();
 
   @Override
@@ -61,15 +61,15 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
 
     // entries file should contain files ordered by their size
     String entriesFileName =
-        IndexFileNames.segmentFileName(si.name, "", Lucene90CompoundFormat.ENTRIES_EXTENSION);
+        IndexFileNames.segmentFileName(si.name, "", Lucene100CompoundFormat.ENTRIES_EXTENSION);
     try (ChecksumIndexInput entriesStream = dir.openChecksumInput(entriesFileName)) {
       Throwable priorE = null;
       try {
         CodecUtil.checkIndexHeader(
             entriesStream,
-            Lucene90CompoundFormat.ENTRY_CODEC,
-            Lucene90CompoundFormat.VERSION_START,
-            Lucene90CompoundFormat.VERSION_CURRENT,
+            Lucene100CompoundFormat.ENTRY_CODEC,
+            Lucene100CompoundFormat.VERSION_START,
+            Lucene100CompoundFormat.VERSION_CURRENT,
             si.getId(),
             "");
         final int numEntries = entriesStream.readVInt();

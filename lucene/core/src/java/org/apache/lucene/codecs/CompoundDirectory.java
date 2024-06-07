@@ -18,6 +18,8 @@ package org.apache.lucene.codecs;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
@@ -50,6 +52,11 @@ public abstract class CompoundDirectory extends Directory {
   @Override
   public final void deleteFile(String name) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Set<String> getPendingDeletions() throws IOException {
+    return Collections.emptySet();
   }
 
   /**

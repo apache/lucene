@@ -38,7 +38,7 @@ import java.util.TimeZone;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
+import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
@@ -189,8 +189,8 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
         || ("random".equals(TEST_CODEC) && randomVal == 6 && !shouldAvoidCodec("Compressing"))) {
       codec = CompressingCodec.randomInstance(random);
     } else if ("Lucene99".equals(TEST_CODEC)
-        || ("random".equals(TEST_CODEC) && randomVal == 5 && !shouldAvoidCodec("Lucene99"))) {
-      codec = new Lucene99Codec(RandomPicks.randomFrom(random, Lucene99Codec.Mode.values()));
+        || ("random".equals(TEST_CODEC) && randomVal == 5 && !shouldAvoidCodec("Lucene100"))) {
+      codec = new Lucene100Codec(RandomPicks.randomFrom(random, Lucene100Codec.Mode.values()));
     } else if (!"random".equals(TEST_CODEC)) {
       codec = Codec.forName(TEST_CODEC);
     } else if ("random".equals(TEST_POSTINGSFORMAT)) {

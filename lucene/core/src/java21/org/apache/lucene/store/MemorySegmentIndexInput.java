@@ -28,6 +28,7 @@ import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.GroupVIntUtil;
+import org.apache.lucene.util.IOConsumer;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -334,13 +335,35 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
 
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+    advise(
+        offset,
+        length,
+        segment -> {
+          if (segment.isLoaded() == false) {
+            // We have a cache miss on at least one page, let's reset the counter.
+            consecutivePrefetchHitCount = 0;
+            nativeAccess.madviseWillNeed(segment);
+          }
+        });
+  }
+
+  void advise(long offset, long length, IOConsumer<MemorySegment> advice) throws IOException {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+
+    ensureOpen();
+
+    Objects.checkFromIndexSize(offset, length, length());
+
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
 
     try {
       final MemorySegment segment = segments[(int) (offset >> chunkSizePower)];
       offset &= chunkSizeMask;
-      // Compute the intersection of the current segment and the region that should be prefetched.
+      // Compute the intersection of the current segment and the region that should be advised.
       if (offset + length > segment.byteSize()) {
-        // Only prefetch bytes that are stored in the current segment. There may be bytes on the
+        // Only advise bytes that are stored in the current segment. There may be bytes on the
         // next segment but this case is rare enough that we don't try to optimize it and keep
         // things simple instead.
         length = segment.byteSize() - offset;
@@ -355,12 +378,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
         return;
       }
 
-      final MemorySegment prefetchSlice = segment.asSlice(offset, length);
-      if (prefetchSlice.isLoaded() == false) {
-        // We have a cache miss on at least one page, let's reset the counter.
-        consecutivePrefetchHitCount = 0;
-        nativeAccess.madviseWillNeed(prefetchSlice);
-      }
+      final MemorySegment advisedSlice = segment.asSlice(offset, length);
+      advice.accept(advisedSlice);
     } catch (
         @SuppressWarnings("unused")
         IndexOutOfBoundsException e) {
@@ -525,6 +544,22 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
 
     return buildSlice(sliceDescription, offset, length);
+  }
+
+  @Override
+  public final MemorySegmentIndexInput slice(
+      String sliceDescription, long offset, long length, ReadAdvice advice) throws IOException {
+    MemorySegmentIndexInput slice = slice(sliceDescription, offset, length);
+    if (NATIVE_ACCESS.isPresent()) {
+      final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+      slice.advise(
+          0,
+          slice.length,
+          segment -> {
+            nativeAccess.madvise(segment, advice);
+          });
+    }
+    return slice;
   }
 
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */

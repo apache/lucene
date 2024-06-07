@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
+import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 
 /** Lucene Core. */
 @SuppressWarnings("module") // the test framework is compiled after the core...
@@ -33,6 +33,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs.lucene94;
   exports org.apache.lucene.codecs.lucene95;
   exports org.apache.lucene.codecs.lucene99;
+  exports org.apache.lucene.codecs.lucene100;
   exports org.apache.lucene.codecs.perfield;
   exports org.apache.lucene.codecs;
   exports org.apache.lucene.document;
@@ -71,7 +72,7 @@ module org.apache.lucene.core {
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
   provides org.apache.lucene.codecs.Codec with
-      Lucene99Codec;
+      Lucene100Codec;
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
