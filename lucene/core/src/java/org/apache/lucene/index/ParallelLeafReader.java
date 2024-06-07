@@ -281,6 +281,13 @@ public class ParallelLeafReader extends LeafReader {
     }
     return new StoredFields() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        for (StoredFields reader : fields) {
+          reader.prefetch(docID);
+        }
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         for (StoredFields reader : fields) {
           reader.document(docID, visitor);

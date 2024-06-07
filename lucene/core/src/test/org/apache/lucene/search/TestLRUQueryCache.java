@@ -1369,16 +1369,16 @@ public class TestLRUQueryCache extends LuceneTestCase {
         }
 
         @Override
+        public BulkScorer bulkScorer() throws IOException {
+          bulkScorerCalled.set(true);
+          return in.bulkScorer(context);
+        }
+
+        @Override
         public long cost() {
           return scorer.iterator().cost();
         }
       };
-    }
-
-    @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      bulkScorerCalled.set(true);
-      return in.bulkScorer(context);
     }
   }
 
@@ -1629,8 +1629,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          final var scorer =
-              new ConstantScoreScorer(this, boost, scoreMode, DocIdSetIterator.all(1));
+          final var scorer = new ConstantScoreScorer(boost, scoreMode, DocIdSetIterator.all(1));
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
@@ -1722,13 +1721,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
       return new ConstantScoreWeight(this, 1) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          final Weight weight = this;
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
               scorerCreatedCount.incrementAndGet();
               return new ConstantScoreScorer(
-                  weight, 1, scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+                  1, scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
             }
 
             @Override

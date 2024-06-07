@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
-import com.carrotsearch.hppc.IntIntHashMap;
 import java.io.IOException;
 import java.util.Comparator;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 
 /** Base class for all taxonomy-based facets that aggregate to int. */
 abstract class IntTaxonomyFacets extends TaxonomyFacets {

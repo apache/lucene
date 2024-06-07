@@ -17,8 +17,8 @@
 package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.UnicodeUtil;
-import org.apache.lucene.util.hppc.IntHashSet;
 
 /**
  * Class to construct DFAs that match a word within some edit distance.

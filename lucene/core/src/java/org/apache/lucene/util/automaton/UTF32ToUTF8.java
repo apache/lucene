@@ -16,9 +16,8 @@
  */
 package org.apache.lucene.util.automaton;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 // TODO
 //   - do we really need the .bits...?  if not we can make util in UnicodeUtil to convert 1 char
@@ -297,7 +296,7 @@ public final class UTF32ToUTF8 {
     int[] map = new int[utf32.getNumStates()];
     Arrays.fill(map, -1);
 
-    List<Integer> pending = new ArrayList<>();
+    IntArrayList pending = new IntArrayList();
     int utf32State = 0;
     pending.add(utf32State);
     utf8 = new Automaton.Builder();
@@ -311,7 +310,7 @@ public final class UTF32ToUTF8 {
     Transition scratch = new Transition();
 
     while (pending.size() != 0) {
-      utf32State = pending.remove(pending.size() - 1);
+      utf32State = pending.removeLast();
       utf8State = map[utf32State];
       assert utf8State != -1;
 

@@ -23,7 +23,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
 
 /** A {@link BulkScorer}-backed scorer. */
 public class BulkScorerWrapperScorer extends Scorer {
@@ -39,8 +38,7 @@ public class BulkScorerWrapperScorer extends Scorer {
   private int bufferLength;
 
   /** Sole constructor. */
-  public BulkScorerWrapperScorer(Weight weight, BulkScorer scorer, int bufferSize) {
-    super(weight);
+  public BulkScorerWrapperScorer(BulkScorer scorer, int bufferSize) {
     this.scorer = scorer;
     docs = new int[bufferSize];
     scores = new float[bufferSize];

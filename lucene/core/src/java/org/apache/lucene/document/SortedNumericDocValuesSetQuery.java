@@ -150,7 +150,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
                 }
               };
         }
-        final var scorer = new ConstantScoreScorer(this, score(), scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
         return new DefaultScorerSupplier(scorer);
       }
     };

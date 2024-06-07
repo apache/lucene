@@ -185,6 +185,11 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
+        public void prefetch(long offset, long length) throws IOException {
+          slice.prefetch(offset, length);
+        }
+
+        @Override
         public String toString() {
           return "RandomAccessInput(" + IndexInput.this.toString() + ")";
         }

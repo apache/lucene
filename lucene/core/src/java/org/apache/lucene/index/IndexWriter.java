@@ -58,6 +58,8 @@ import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.MergePolicy.MergeReader;
 import org.apache.lucene.index.Sorter.DocMap;
+import org.apache.lucene.internal.hppc.LongObjectHashMap;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -90,8 +92,6 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.hppc.LongObjectHashMap;
-import org.apache.lucene.util.hppc.ObjectCursor;
 
 /**
  * An <code>IndexWriter</code> creates and maintains an index.

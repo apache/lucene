@@ -19,12 +19,12 @@ package org.apache.lucene.util.automaton;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.Sorter;
-import org.apache.lucene.util.hppc.IntHashSet;
 
 // TODO
 //   - could use packed int arrays instead
