@@ -59,7 +59,7 @@ public class IndriAndWeight extends Weight {
     }
     Scorer scorer = subScorers.get(0);
     if (subScorers.size() > 1) {
-      scorer = new IndriAndScorer(this, subScorers, scoreMode, boost);
+      scorer = new IndriAndScorer(subScorers, scoreMode, boost);
     }
     return scorer;
   }

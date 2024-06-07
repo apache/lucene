@@ -125,7 +125,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
       return new ConstantScoreWeight(this, boost) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          final var scorer = new ConstantScoreScorer(this, score(), scoreMode, disi);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, disi);
           return new DefaultScorerSupplier(scorer);
         }
 

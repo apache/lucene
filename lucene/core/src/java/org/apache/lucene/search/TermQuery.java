@@ -141,7 +141,6 @@ public class TermQuery extends Query {
                 topLevelScoringClause);
           } else {
             return new TermScorer(
-                TermWeight.this,
                 termsEnum.postings(
                     null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE),
                 scorer);

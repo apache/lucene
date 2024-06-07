@@ -111,11 +111,9 @@ final class SortedSetDocValuesRangeQuery extends Query {
     return new ConstantScoreWeight(this, boost) {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Weight weight = this;
         if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
-
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
 
@@ -153,10 +151,11 @@ final class SortedSetDocValuesRangeQuery extends Query {
             }
 
             // no terms matched in this segment
+            // no terms matched in this segment
             if (minOrd > maxOrd
                 || (skipper != null
                     && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()))) {
-              return new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty());
+              return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
             }
 
             final SortedDocValues singleton = DocValues.unwrapSingleton(values);
@@ -201,7 +200,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
             if (skipper != null) {
               iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd);
             }
-            return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+            return new ConstantScoreScorer(score(), scoreMode, iterator);
           }
 
           @Override

@@ -57,7 +57,6 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     private final DocIdSetIterator it;
 
     FakeScorer(long cost) {
-      super(new FakeWeight());
       this.it = DocIdSetIterator.all(Math.toIntExact(cost));
     }
 

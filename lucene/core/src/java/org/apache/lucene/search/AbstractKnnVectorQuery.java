@@ -388,7 +388,7 @@ abstract class AbstractKnnVectorQuery extends Query {
             return null;
           }
           final var scorer =
-              new Scorer(this) {
+              new Scorer() {
                 final int lower = segmentStarts[context.ord];
                 final int upper = segmentStarts[context.ord + 1];
                 int upTo = -1;

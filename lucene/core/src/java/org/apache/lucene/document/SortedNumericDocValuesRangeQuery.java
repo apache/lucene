@@ -118,7 +118,7 @@ final class SortedNumericDocValuesRangeQuery extends Query {
           }
         }
 
-        final SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
+        SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
         TwoPhaseIterator iterator;
         if (singleton != null) {
@@ -161,7 +161,7 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         if (skipper != null) {
           iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue);
         }
-        final var scorer = new ConstantScoreScorer(this, score(), scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
         return new DefaultScorerSupplier(scorer);
       }
     };

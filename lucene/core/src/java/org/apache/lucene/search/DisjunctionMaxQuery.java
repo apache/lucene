@@ -142,7 +142,6 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       } else if (scorerSuppliers.size() == 1) {
         return scorerSuppliers.get(0);
       } else {
-        final Weight thisWeight = this;
         return new ScorerSupplier() {
 
           private long cost = -1;
@@ -153,7 +152,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
             for (ScorerSupplier ss : scorerSuppliers) {
               scorers.add(ss.get(leadCost));
             }
-            return new DisjunctionMaxScorer(thisWeight, tieBreakerMultiplier, scorers, scoreMode);
+            return new DisjunctionMaxScorer(tieBreakerMultiplier, scorers, scoreMode);
           }
 
           @Override

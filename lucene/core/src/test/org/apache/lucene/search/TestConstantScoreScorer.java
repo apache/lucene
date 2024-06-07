@@ -205,10 +205,9 @@ public class TestConstantScoreScorer extends LuceneTestCase {
       Scorer scorer = weight.scorer(context);
 
       if (scorer.twoPhaseIterator() == null) {
-        return new ConstantScoreScorer(scorer.getWeight(), score, scoreMode, scorer.iterator());
+        return new ConstantScoreScorer(score, scoreMode, scorer.iterator());
       } else {
-        return new ConstantScoreScorer(
-            scorer.getWeight(), score, scoreMode, scorer.twoPhaseIterator());
+        return new ConstantScoreScorer(score, scoreMode, scorer.twoPhaseIterator());
       }
     }
 

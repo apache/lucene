@@ -24,7 +24,6 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSourceScorer;
 import org.apache.lucene.queries.function.docvalues.IntDocValues;
-import org.apache.lucene.search.Weight;
 
 /**
  * Obtains int field values from {@link org.apache.lucene.index.LeafReader#getNumericDocValues} and
@@ -135,7 +134,6 @@ public class EnumFieldSource extends FieldCacheSource {
 
       @Override
       public ValueSourceScorer getRangeScorer(
-          Weight weight,
           LeafReaderContext readerContext,
           String lowerVal,
           String upperVal,
@@ -161,7 +159,7 @@ public class EnumFieldSource extends FieldCacheSource {
         final int ll = lower;
         final int uu = upper;
 
-        return new ValueSourceScorer(weight, readerContext, this) {
+        return new ValueSourceScorer(readerContext, this) {
           @Override
           public boolean matches(int doc) throws IOException {
             if (!exists(doc)) return false;
