@@ -136,17 +136,6 @@ public final class ConstantScoreQuery extends Query {
     final Weight innerWeight = searcher.createWeight(query, innerScoreMode, 1f);
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost) {
-        @Override
-        public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-          if (scoreMode.isExhaustive() == false) {
-            return super.bulkScorer(context);
-          }
-          final BulkScorer innerScorer = innerWeight.bulkScorer(context);
-          if (innerScorer == null) {
-            return null;
-          }
-          return new ConstantBulkScorer(innerScorer, this, score());
-        }
 
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
@@ -160,11 +149,22 @@ public final class ConstantScoreQuery extends Query {
               final Scorer innerScorer = innerScorerSupplier.get(leadCost);
               final TwoPhaseIterator twoPhaseIterator = innerScorer.twoPhaseIterator();
               if (twoPhaseIterator == null) {
-                return new ConstantScoreScorer(
-                    innerWeight, score(), scoreMode, innerScorer.iterator());
+                return new ConstantScoreScorer(score(), scoreMode, innerScorer.iterator());
               } else {
-                return new ConstantScoreScorer(innerWeight, score(), scoreMode, twoPhaseIterator);
+                return new ConstantScoreScorer(score(), scoreMode, twoPhaseIterator);
               }
+            }
+
+            @Override
+            public BulkScorer bulkScorer() throws IOException {
+              if (scoreMode.isExhaustive() == false) {
+                return super.bulkScorer();
+              }
+              final BulkScorer innerScorer = innerScorerSupplier.bulkScorer();
+              if (innerScorer == null) {
+                return null;
+              }
+              return new ConstantBulkScorer(innerScorer, innerWeight, score());
             }
 
             @Override

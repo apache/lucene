@@ -39,8 +39,7 @@ public class SpanScorer extends Scorer {
   private int lastScoredDoc = -1; // last doc we called setFreqCurrentDoc() for
 
   /** Sole constructor. */
-  public SpanScorer(SpanWeight weight, Spans spans, LeafSimScorer docScorer) {
-    super(weight);
+  public SpanScorer(Spans spans, LeafSimScorer docScorer) {
     this.spans = Objects.requireNonNull(spans);
     this.docScorer = docScorer;
   }

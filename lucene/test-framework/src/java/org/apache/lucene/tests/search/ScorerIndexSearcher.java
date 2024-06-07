@@ -55,6 +55,7 @@ public class ScorerIndexSearcher extends IndexSearcher {
   @Override
   protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
       throws IOException {
+    collector.setWeight(weight);
     for (LeafReaderContext ctx : leaves) { // search each subreader
       // we force the use of Scorer (not BulkScorer) to make sure
       // that the scorer passed to LeafCollector.setScorer supports

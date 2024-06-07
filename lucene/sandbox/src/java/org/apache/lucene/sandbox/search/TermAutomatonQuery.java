@@ -30,6 +30,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Explanation;
@@ -54,7 +55,6 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 // TODO
 //    - compare perf to PhraseQuery exact and sloppy

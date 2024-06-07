@@ -21,6 +21,7 @@ description = '3D spatial planar geometry APIs'
 
 dependencies {
   moduleApi project(':lucene:core')
+
   moduleTestImplementation project(':lucene:test-framework')
 
   // We have to exclude ourselves because spatial-test-fixtures depend

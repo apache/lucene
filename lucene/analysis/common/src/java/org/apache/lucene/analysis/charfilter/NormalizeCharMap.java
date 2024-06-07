@@ -17,9 +17,9 @@
 package org.apache.lucene.analysis.charfilter;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import org.apache.lucene.internal.hppc.CharObjectHashMap;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.CharSequenceOutputs;
@@ -37,7 +37,7 @@ import org.apache.lucene.util.fst.Util;
 public class NormalizeCharMap {
 
   final FST<CharsRef> map;
-  final Map<Character, FST.Arc<CharsRef>> cachedRootArcs = new HashMap<>();
+  final CharObjectHashMap<FST.Arc<CharsRef>> cachedRootArcs = new CharObjectHashMap<>();
 
   // Use the builder to create:
   private NormalizeCharMap(FST<CharsRef> map) {
@@ -53,8 +53,7 @@ public class NormalizeCharMap {
           while (true) {
             assert scratchArc.label() != FST.END_LABEL;
             cachedRootArcs.put(
-                Character.valueOf((char) scratchArc.label()),
-                new FST.Arc<CharsRef>().copyFrom(scratchArc));
+                (char) scratchArc.label(), new FST.Arc<CharsRef>().copyFrom(scratchArc));
             if (scratchArc.isLast()) {
               break;
             }

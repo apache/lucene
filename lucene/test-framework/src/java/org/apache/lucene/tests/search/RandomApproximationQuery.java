@@ -107,7 +107,6 @@ public class RandomApproximationQuery extends Query {
     private final RandomTwoPhaseView twoPhaseView;
 
     RandomApproximationScorer(Scorer scorer, Random random) {
-      super(scorer.getWeight());
       this.scorer = scorer;
       this.twoPhaseView = new RandomTwoPhaseView(random, scorer.iterator());
     }
@@ -149,13 +148,18 @@ public class RandomApproximationQuery extends Query {
     }
   }
 
-  private static class RandomTwoPhaseView extends TwoPhaseIterator {
+  /**
+   * A wrapper around a {@link DocIdSetIterator} that matches the same documents, but introduces
+   * false positives that need to be verified via {@link TwoPhaseIterator#matches()}.
+   */
+  public static class RandomTwoPhaseView extends TwoPhaseIterator {
 
     private final DocIdSetIterator disi;
     private int lastDoc = -1;
     private final float randomMatchCost;
 
-    RandomTwoPhaseView(Random random, DocIdSetIterator disi) {
+    /** Constructor. */
+    public RandomTwoPhaseView(Random random, DocIdSetIterator disi) {
       super(new RandomApproximation(random, disi));
       this.disi = disi;
       this.randomMatchCost = random.nextFloat() * 200; // between 0 and 200
