@@ -372,7 +372,7 @@ public class TopDocs {
       List<Map.Entry<Integer, Float>> scoreList = new ArrayList<>(scoreMap.entrySet());
       scoreList.sort(Map.Entry.comparingByValue());
 
-      Float rank = 1.0f;
+      float rank = 1.0f;
       for (Map.Entry<Integer, Float> entry : scoreList){
         rrfScore.put(entry.getKey(), rrfScore.getOrDefault(entry.getValue(), 0.0f) + 1 / (rank + k));
         rank += 1.0f;
