@@ -16,12 +16,12 @@
  */
 package org.apache.lucene.search;
 
+import java.util.ArrayList;
 import java.util.Comparator;
-import org.apache.lucene.util.PriorityQueue;
-import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.Map;
+import org.apache.lucene.util.PriorityQueue;
 
 /** Represents hits returned by {@link IndexSearcher#search(Query,int)}. */
 public class TopDocs {
@@ -354,18 +354,15 @@ public class TopDocs {
       return new TopFieldDocs(totalHits, hits, sort.getSort());
     }
   }
-  
-  /**
-   * Reciprocal Rank Fusion method.
-   * 
-   */
-  public static TopDocs rrf(int TopN, int k, TopDocs[] hits){
+
+  /** Reciprocal Rank Fusion method. */
+  public static TopDocs rrf(int TopN, int k, TopDocs[] hits) {
     Map<Integer, Float> rrfScore = new HashMap<>();
     long minHits = Long.MAX_VALUE;
-    for (TopDocs topDoc : hits){
+    for (TopDocs topDoc : hits) {
       minHits = Math.min(minHits, topDoc.totalHits.value);
       Map<Integer, Float> scoreMap = new HashMap<>();
-      for (ScoreDoc scoreDoc : topDoc.scoreDocs){
+      for (ScoreDoc scoreDoc : topDoc.scoreDocs) {
         scoreMap.put(scoreDoc.doc, scoreDoc.score);
       }
 
@@ -380,13 +377,15 @@ public class TopDocs {
     }
 
     List<Map.Entry<Integer, Float>> rrfScoreRank = new ArrayList<>(rrfScore.entrySet());
-    rrfScoreRank.sort(Map.Entry.<Integer, Float>comparingByValue().reversed()); // Sort in descending order
+    rrfScoreRank.sort(
+        Map.Entry.<Integer, Float>comparingByValue().reversed()); // Sort in descending order
 
     ScoreDoc[] rrfScoreDocs = new ScoreDoc[Math.min(TopN, rrfScoreRank.size())];
     for (int i = 0; i < rrfScoreDocs.length; i++) {
       rrfScoreDocs[i] = new ScoreDoc(rrfScoreRank.get(i).getKey(), rrfScoreRank.get(i).getValue());
     }
-    
-    return new TopDocs(new TotalHits(minHits, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), rrfScoreDocs);
+
+    return new TopDocs(
+        new TotalHits(minHits, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), rrfScoreDocs);
   }
 }
