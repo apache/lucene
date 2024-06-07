@@ -17,22 +17,22 @@
 
 package org.apache.lucene.codecs.hnsw;
 
-import java.io.Closeable;
-import java.io.IOException;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+
+import java.io.IOException;
 
 /**
  * Vectors' writer for a field that allows additional indexing logic to be implemented by the caller
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsWriter implements Accountable, Closeable {
+public abstract class FlatVectorsWriter extends KnnVectorsWriter {
   /** Scorer for flat vectors */
   protected final FlatVectorsScorer vectorsScorer;
 
@@ -59,6 +59,11 @@ public abstract class FlatVectorsWriter implements Accountable, Closeable {
    */
   public abstract FlatFieldVectorsWriter<?> addField(
       FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException;
+
+  @Override
+  public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+    return addField(fieldInfo, null);
+  }
 
   /**
    * Write the field for merging, providing a scorer over the newly merged flat vectors. This way

@@ -19,6 +19,8 @@ package org.apache.lucene.codecs.hnsw;
 
 import java.io.Closeable;
 import java.io.IOException;
+
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -39,7 +41,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsReader implements Closeable, Accountable {
+public abstract class FlatVectorsReader extends KnnVectorsReader implements Accountable {
 
   /** Scorer for flat vectors */
   protected final FlatVectorsScorer vectorScorer;

@@ -79,7 +79,8 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   private final FlatVectorsScorer vectorsScorer;
 
   /** Constructs a format */
-  public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
+  public Lucene99FlatVectorsFormat(String name, FlatVectorsScorer vectorsScorer) {
+    super(name);
     this.vectorsScorer = vectorsScorer;
   }
 

@@ -49,7 +49,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veq";
 
   private static final FlatVectorsFormat rawVectorFormat =
-      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+      new Lucene99FlatVectorsFormat("Lucene99FlatVectorsFormat", FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** The minimum confidence interval */
   private static final float MINIMUM_CONFIDENCE_INTERVAL = 0.9f;
@@ -89,6 +89,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    */
   public Lucene99ScalarQuantizedVectorsFormat(
       Float confidenceInterval, int bits, boolean compress) {
+    super("Lucene99ScalarQuantizedVectorsFormat");
     if (confidenceInterval != null
         && confidenceInterval != DYNAMIC_CONFIDENCE_INTERVAL
         && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL

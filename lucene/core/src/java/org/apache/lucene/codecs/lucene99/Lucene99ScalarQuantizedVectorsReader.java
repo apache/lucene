@@ -36,11 +36,13 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -187,6 +189,18 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return rawVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    // nocommit implement me using scanning
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    // nocommit implement me using scanning
+    throw new UnsupportedOperationException();
   }
 
   private static IndexInput openDataInput(
