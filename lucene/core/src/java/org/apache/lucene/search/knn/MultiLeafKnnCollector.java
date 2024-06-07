@@ -105,6 +105,9 @@ public final class MultiLeafKnnCollector implements KnnCollector {
     if (kResultsCollected) {
       // as we've collected k results, we can start do periodic updates with the global queue
       if (firstKResultsCollected || (subCollector.visitedCount() & interval) == 0) {
+        // BlockingFloatHeap#offer requires input to be sorted in ascending order, so we can't
+        // pass in the underlying updatesQueue array as-is since it is only partially ordered
+        // (see GH#13462):
         for (int i = 0; i < k(); i++) {
           updatesScratch[i] = updatesQueue.poll();
         }
