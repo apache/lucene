@@ -133,7 +133,10 @@ allprojects {
         jvmArgs '--add-modules', 'jdk.incubator.vector'
       }
       
-      jvmArgs '--enable-native-access=' + (project.path == ':lucene:core' ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
+      jvmArgs '--enable-native-access=' + (project.path in [
+              ':lucene:core',
+              ':lucene:codecs'
+      ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
 
       def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
       def tempDir = layout.projectDirectory.dir(testsTmpDir.toString())
