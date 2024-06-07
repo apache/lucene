@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -50,6 +51,7 @@ public class TestCodecLoadingDeadlock extends Assert {
   private static final int MAX_TIME_SECONDS = 30;
 
   @Test
+  @SuppressForbidden(reason = "Uses Path.toFile because ProcessBuilder requires it.")
   public void testDeadlock() throws Exception {
     // pick random codec names for stress test in separate process:
     final Random rnd = RandomizedContext.current().getRandom();
