@@ -126,14 +126,28 @@ public final class Lucene100CompoundFormat extends CompoundFormat {
     entries.writeVInt(numFiles);
     // first put files in ascending size order so small files fit more likely into one page
     SizedFileQueue pq = new SizedFileQueue(numFiles);
+    long totalSize = 0;
     for (String filename : si.files()) {
-      pq.add(new SizedFile(filename, dir.fileLength(filename)));
+      long fileSize = dir.fileLength(filename);
+      pq.add(new SizedFile(filename, fileSize));
+      totalSize += fileSize;
     }
     while (pq.size() > 0) {
       SizedFile sizedFile = pq.pop();
       String file = sizedFile.name;
       // align file start offset
-      long startOffset = data.alignFilePointer(ASSUMED_PAGE_SIZE_IN_BYTES);
+      long startOffset;
+      if (totalSize >= ASSUMED_PAGE_SIZE_IN_BYTES * 100L) {
+        // Align the start offset with the start of a page so that sub files can get independent
+        // read advices.
+        // Only do this if it increases segment size by less than 1%, ie. segments that are 40kB or
+        // more.
+        startOffset = data.alignFilePointer(ASSUMED_PAGE_SIZE_IN_BYTES);
+      } else {
+        // Align start offset with Long.BYTES so that files that try to avoid unaligned reads don't
+        // get this invariant broken through compound files.
+        startOffset = data.alignFilePointer(Long.BYTES);
+      }
       // write bytes for file
       try (ChecksumIndexInput in = dir.openChecksumInput(file)) {
 
