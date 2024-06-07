@@ -108,12 +108,15 @@ public final class MultiLeafKnnCollector implements KnnCollector {
         // BlockingFloatHeap#offer requires input to be sorted in ascending order, so we can't
         // pass in the underlying updatesQueue array as-is since it is only partially ordered
         // (see GH#13462):
-        for (int i = 0; i < k(); i++) {
-          updatesScratch[i] = updatesQueue.poll();
+        int len = updatesQueue.size();
+        if (len > 0) {
+          for (int i = 0; i < len; i++) {
+            updatesScratch[i] = updatesQueue.poll();
+          }
+          assert updatesQueue.size() == 0;
+          cachedGlobalMinSim = globalSimilarityQueue.offer(updatesScratch, len);
+          globalSimUpdated = true;
         }
-        assert updatesQueue.size() == 0;
-        cachedGlobalMinSim = globalSimilarityQueue.offer(updatesScratch);
-        globalSimUpdated = true;
       }
     }
     return localSimUpdated || globalSimUpdated;
