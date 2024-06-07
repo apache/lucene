@@ -234,11 +234,8 @@ public class TestTaskExecutor extends LuceneTestCase {
     TaskExecutor taskExecutor =
         new TaskExecutor(
             command -> {
-              executorService.execute(
-                  () -> {
-                    tasksStarted.incrementAndGet();
-                    command.run();
-                  });
+              tasksStarted.incrementAndGet();
+              command.run();
             });
     AtomicInteger tasksExecuted = new AtomicInteger(0);
     List<Callable<Void>> callables = new ArrayList<>();
@@ -258,7 +255,8 @@ public class TestTaskExecutor extends LuceneTestCase {
     expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
     assertEquals(1, tasksExecuted.get());
     // the callables are technically all run, but the cancelled ones will be no-op
-    assertEquals(100, tasksStarted.get());
+    // add one for the task the gets executed on the current thread
+    assertEquals(100, tasksStarted.get() + 1);
   }
 
   /**
@@ -308,7 +306,7 @@ public class TestTaskExecutor extends LuceneTestCase {
   }
 
   public void testCancelTasksOnException() {
-    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    TaskExecutor taskExecutor = new TaskExecutor(Runnable::run);
     final int numTasks = random().nextInt(10, 50);
     final int throwingTask = random().nextInt(numTasks);
     boolean error = random().nextBoolean();

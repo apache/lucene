@@ -286,7 +286,7 @@ public class TestIndexSearcher extends LuceneTestCase {
           }
         };
     searcher.search(new MatchAllDocsQuery(), 10);
-    assertEquals(leaves.size(), numExecutions.get());
+    assertEquals(leaves.size(), numExecutions.get() + 1);
   }
 
   public void testNullExecutorNonNullTaskExecutor() {
