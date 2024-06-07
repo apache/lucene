@@ -135,7 +135,9 @@ allprojects {
       
       jvmArgs '--enable-native-access=' + (project.path in [
               ':lucene:core',
-              ':lucene:codecs'
+              ':lucene:codecs',
+              ":lucene:distribution.tests",
+              ":lucene:test-framework"
       ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
 
       def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
