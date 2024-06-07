@@ -204,6 +204,10 @@ Changes in Backwards Compatibility Policy
 Other
 ---------------------
 
+* GITHUB#13459: Merges all immutable attributes in FieldInfos.FieldNumbers into one Hashmap saving
+  memory when writing big indices. Fixes an exotic bug when calling clear where not all attributes
+  were cleared. (Ignacio Vera)
+
 * LUCENE-10376: Roll up the loop in VInt/VLong in DataInput. (Guo Feng)
 
 * LUCENE-10253: The @BadApple annotation has been removed from the test
@@ -267,10 +271,8 @@ Bug Fixes
 (No changes)
 
 Other
----------------------
-* GITHUB#13459: Merges all immutable attributes in FieldInfos.FieldNumbers into one Hashmap saving
-  memory when writing big indices. Fixes an exotic bug when calling clear where not all attributes
-  were cleared. (Ignacio Vera)
+--------------------
+(No changes)
 
 ======================== Lucene 9.11.0 =======================
 
