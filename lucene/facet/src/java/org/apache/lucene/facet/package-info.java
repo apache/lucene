@@ -45,9 +45,5 @@
  * hit). Then, instantiate whichever facet methods you'd like to use to compute aggregates. Finally,
  * all methods implement a common {@link org.apache.lucene.facet.Facets} base API that you use to
  * obtain specific facet counts.
- *
- * <p>The various {@link org.apache.lucene.facet.FacetsCollector#search} utility methods are useful
- * for doing an "ordinary" search (sorting by score, or by a specified Sort) but also collecting
- * into a {@link org.apache.lucene.facet.FacetsCollector} for subsequent faceting.
  */
 package org.apache.lucene.facet;

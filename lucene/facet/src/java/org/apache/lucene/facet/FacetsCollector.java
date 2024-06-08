@@ -21,10 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MultiCollector;
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
@@ -155,13 +157,27 @@ public class FacetsCollector extends SimpleCollector {
     context = null;
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
+   *     CollectorManager)} due to its support for concurrency in IndexSearcher. {@link
+   *     MultiCollectorManager} might be used to combine multiple collection logic.
+   */
+  @Deprecated
   public static TopDocs search(IndexSearcher searcher, Query q, int n, Collector fc)
       throws IOException {
     return doSearch(searcher, null, q, n, null, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
+   *     CollectorManager)} due to its support for concurrency in IndexSearcher. {@link
+   *     MultiCollectorManager} might be used to combine multiple collection logic.
+   */
+  @Deprecated
   public static TopFieldDocs search(IndexSearcher searcher, Query q, int n, Sort sort, Collector fc)
       throws IOException {
     if (sort == null) {
@@ -170,7 +186,14 @@ public class FacetsCollector extends SimpleCollector {
     return (TopFieldDocs) doSearch(searcher, null, q, n, sort, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
+   *     CollectorManager)} due to its support for concurrency in IndexSearcher. {@link
+   *     MultiCollectorManager} might be used to combine multiple collection logic.
+   */
+  @Deprecated
   public static TopFieldDocs search(
       IndexSearcher searcher, Query q, int n, Sort sort, boolean doDocScores, Collector fc)
       throws IOException {
@@ -180,13 +203,27 @@ public class FacetsCollector extends SimpleCollector {
     return (TopFieldDocs) doSearch(searcher, null, q, n, sort, doDocScores, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
+   *     CollectorManager)} due to its support for concurrency in IndexSearcher. {@link
+   *     MultiCollectorManager} might be used to combine multiple collection logic.
+   */
+  @Deprecated
   public static TopDocs searchAfter(
       IndexSearcher searcher, ScoreDoc after, Query q, int n, Collector fc) throws IOException {
     return doSearch(searcher, after, q, n, null, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
+   *     CollectorManager)} due to its support for concurrency in IndexSearcher. {@link
+   *     MultiCollectorManager} might be used to combine multiple collection logic.
+   */
+  @Deprecated
   public static TopDocs searchAfter(
       IndexSearcher searcher, ScoreDoc after, Query q, int n, Sort sort, Collector fc)
       throws IOException {
@@ -196,7 +233,14 @@ public class FacetsCollector extends SimpleCollector {
     return doSearch(searcher, after, q, n, sort, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
+   *     CollectorManager)} due to its support for concurrency in IndexSearcher. {@link
+   *     MultiCollectorManager} might be used to combine multiple collection logic.
+   */
+  @Deprecated
   public static TopDocs searchAfter(
       IndexSearcher searcher,
       ScoreDoc after,

@@ -47,9 +47,11 @@ import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -333,10 +335,15 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector fc = new FacetsCollector(true);
     BoostQuery csq = new BoostQuery(new ConstantScoreQuery(new MatchAllDocsQuery()), 2f);
 
-    TopDocs td = FacetsCollector.search(newSearcher(r), csq, 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager(true);
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results = newSearcher(r).search(csq, new MultiCollectorManager(tsdcm, fcm));
+
+    TopDocs td = (TopDocs) results[0];
+    FacetsCollector fc = (FacetsCollector) results[1];
 
     // Test SUM:
     Facets facets =
@@ -427,11 +434,16 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector fc = new FacetsCollector(true);
     // score documents by their 'price' field - makes asserting the correct counts for the
     // categories easier
     Query q = new FunctionQuery(new LongFieldSource("price"));
-    FacetsCollector.search(newSearcher(r), q, 10, fc);
+
+    FacetsCollectorManager fcm = new FacetsCollectorManager(true);
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results = newSearcher(r).search(q, new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) results[1];
 
     // Test SUM:
     Facets facets =
@@ -526,7 +538,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
       DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
       FacetsCollector sfc =
-          newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+          newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager(true));
 
       TaxonomyFacets facets =
           new TaxonomyFacetFloatAssociations(
@@ -564,8 +576,13 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector fc = new FacetsCollector(true);
-    FacetsCollector.search(newSearcher(r), new MatchAllDocsQuery(), 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager(true);
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results =
+        newSearcher(r).search(new MatchAllDocsQuery(), new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) results[1];
 
     Facets facets1 = getTaxonomyFacetCounts(taxoReader, config, fc);
     Facets facets2 =
@@ -619,8 +636,16 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
       if (VERBOSE) {
         System.out.println("\nTEST: iter content=" + searchToken);
       }
-      FacetsCollector fc = new FacetsCollector();
-      FacetsCollector.search(searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+
+      FacetsCollectorManager fcm = new FacetsCollectorManager();
+      TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+      Object[] results =
+          searcher.search(
+              new TermQuery(new Term("content", searchToken)),
+              new MultiCollectorManager(tsdcm, fcm));
+
+      FacetsCollector fc = (FacetsCollector) results[1];
 
       checkResults(
           numDims,

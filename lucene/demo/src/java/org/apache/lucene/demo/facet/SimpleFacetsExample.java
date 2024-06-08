@@ -40,6 +40,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
@@ -99,12 +101,16 @@ public class SimpleFacetsExample {
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
 
-    FacetsCollector fc = new FacetsCollector();
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] searchResults =
+        searcher.search(new MatchAllDocsQuery(), new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) searchResults[1];
 
     // Retrieve results
     List<FacetResult> results = new ArrayList<>();
@@ -156,8 +162,13 @@ public class SimpleFacetsExample {
 
     // Now user drills down on Publish Date/2010:
     q.add("Publish Date", "2010");
-    FacetsCollector fc = new FacetsCollector();
-    FacetsCollector.search(searcher, q, 10, fc);
+
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    TopScoreDocCollectorManager tsdcm = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE);
+
+    Object[] results = searcher.search(q, new MultiCollectorManager(tsdcm, fcm));
+
+    FacetsCollector fc = (FacetsCollector) results[1];
 
     // Retrieve results
     Facets facets = new FastTaxonomyFacetCounts(taxoReader, config, fc);

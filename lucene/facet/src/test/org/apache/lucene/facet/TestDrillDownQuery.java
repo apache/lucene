@@ -30,10 +30,12 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -184,16 +186,21 @@ public class TestDrillDownQuery extends FacetTestCase {
     assertEquals(10, docs.totalHits.value);
   }
 
-  public void testZeroLimit() throws IOException {
+  public void testFacetSearch() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("b", "1");
-    int limit = 0;
-    FacetsCollector facetCollector = new FacetsCollector();
-    FacetsCollector.search(searcher, q, limit, facetCollector);
+
+    FacetsCollectorManager facetsCollectorManager = new FacetsCollectorManager();
+    TotalHitCountCollectorManager totalHitCountCollectorManager =
+        new TotalHitCountCollectorManager();
+    Object[] results =
+        searcher.search(
+            q, new MultiCollectorManager(totalHitCountCollectorManager, facetsCollectorManager));
+
     Facets facets =
         getTaxonomyFacetCounts(
-            taxo, config, facetCollector, config.getDimConfig("b").indexFieldName);
+            taxo, config, (FacetsCollector) results[1], config.getDimConfig("b").indexFieldName);
     assertNotNull(facets.getTopChildren(10, "b"));
   }
 
