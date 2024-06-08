@@ -355,8 +355,17 @@ public class TopDocs {
     }
   }
 
-  /** Reciprocal Rank Fusion method. */
-  public static TopDocs rrf(int TopN, int k, TopDocs[] hits) {
+  /** Reciprocal Rank Fusion method.
+   * <p>
+   * This method combines different search results into a single ranked list.
+   * @param topN the top N results to be returned
+   * @param k a constant determines how much influence documents in individual rankings have on the final
+   *          result. A higher value gives lower rank documents more influence. k should be greater than or equal to 1.
+   * @param hits a list of TopDocs to apply RRF on
+   *
+   * @return a TopDocs contains the top N ranked results.
+   * */
+  public static TopDocs rrf(int topN, int k, TopDocs[] hits) {
     Map<Integer, Float> rrfScore = new HashMap<>();
     long minHits = Long.MAX_VALUE;
     for (TopDocs topDoc : hits) {
@@ -380,7 +389,7 @@ public class TopDocs {
     rrfScoreRank.sort(
         Map.Entry.<Integer, Float>comparingByValue().reversed()); // Sort in descending order
 
-    ScoreDoc[] rrfScoreDocs = new ScoreDoc[Math.min(TopN, rrfScoreRank.size())];
+    ScoreDoc[] rrfScoreDocs = new ScoreDoc[Math.min(topN, rrfScoreRank.size())];
     for (int i = 0; i < rrfScoreDocs.length; i++) {
       rrfScoreDocs[i] = new ScoreDoc(rrfScoreRank.get(i).getKey(), rrfScoreRank.get(i).getValue());
     }
