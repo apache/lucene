@@ -16,6 +16,14 @@
  */
 package org.apache.lucene.codecs.lucene99;
 
+import static java.lang.String.format;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -31,26 +39,12 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 import org.junit.Before;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-
-import static java.lang.String.format;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.oneOf;
 
 public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
@@ -81,9 +75,28 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     };
   }
 
-  // nocommit implement
-  public void testSearchUnsupported() {
-
+  public void testSearchUnsupported() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      // randomly reuse a vector, this ensures the underlying codec doesn't rely on the array
+      // reference
+      doc.add(
+          new KnnFloatVectorField("f", new float[] {0, 1}, VectorSimilarityFunction.DOT_PRODUCT));
+      w.addDocument(doc);
+      w.commit();
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        if (r instanceof CodecReader codecReader) {
+          KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
+          expectThrows(
+              UnsupportedOperationException.class,
+              () -> knnVectorsReader.search("f", new float[] {1, 0}, null, null));
+        } else {
+          fail("reader is not CodecReader");
+        }
+      }
+    }
   }
 
   public void testQuantizedVectorsWriteAndRead() throws Exception {
@@ -204,14 +217,14 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         IllegalArgumentException.class,
         () -> new Lucene99ScalarQuantizedVectorsFormat(1.1f, 7, false));
     expectThrows(
-            IllegalArgumentException.class,
-            () -> new Lucene99ScalarQuantizedVectorsFormat(null, -1, false));
+        IllegalArgumentException.class,
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, -1, false));
     expectThrows(
-            IllegalArgumentException.class,
-            () -> new Lucene99ScalarQuantizedVectorsFormat(null, 5, false));
+        IllegalArgumentException.class,
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 5, false));
     expectThrows(
-            IllegalArgumentException.class,
-            () -> new Lucene99ScalarQuantizedVectorsFormat(null, 9, false));
+        IllegalArgumentException.class,
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 9, false));
   }
 
   @Override

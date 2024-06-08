@@ -192,14 +192,14 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
-    // nocommit implement me using scanning
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
-    // nocommit implement me using scanning
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 

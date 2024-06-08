@@ -2763,11 +2763,13 @@ public final class CheckIndex implements Closeable {
       if (values.docID() % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
-          codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
+          codecReader
+              .getVectorReader()
+              .search(fieldInfo.name, values.vectorValue(), collector, null);
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
-                    "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+                "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
           }
         }
       }

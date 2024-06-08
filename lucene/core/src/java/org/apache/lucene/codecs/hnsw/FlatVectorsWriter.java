@@ -17,15 +17,12 @@
 
 package org.apache.lucene.codecs.hnsw;
 
+import java.io.IOException;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
-import org.apache.lucene.index.Sorter;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
-
-import java.io.IOException;
 
 /**
  * Vectors' writer for a field that allows additional indexing logic to be implemented by the caller
@@ -77,15 +74,4 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
    */
   public abstract CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException;
-
-  /** Write field for merging */
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    IOUtils.close(mergeOneFieldToIndex(fieldInfo, mergeState));
-  }
-
-  /** Called once at the end before close */
-  public abstract void finish() throws IOException;
-
-  /** Flush all buffered data on disk * */
-  public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 }
