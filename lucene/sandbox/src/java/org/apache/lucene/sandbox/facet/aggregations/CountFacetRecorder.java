@@ -21,6 +21,12 @@ import static org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator.NO_MORE_
 
 /**
  * {@link FacetRecorder} to count facets.
+ * TODO: add an option to keep counts in an array, to improve performance for facets with small number of ordinals
+ *       e.g. range facets. Options:
+ *  - first 100/1k counts in array, the rest - in a map; the limit can also be provided in a constructor?
+ *    It is similar to what LongValuesFacetCounts do today.
+ *  - have a constructor option expeted max ordinal, and if it is set and below some threshold - use array
+ *    only?
  */
 public class CountFacetRecorder implements FacetRecorder {
 
@@ -45,6 +51,8 @@ public class CountFacetRecorder implements FacetRecorder {
         // TODO: useSyncMap param is temporary, we should run performance tests and understand what is faster -
         //  - collecting in a sync map,
         //  - collecting in a map per leaf, and then merge at reduce.
+        //  - collecting in a map per Collector (same map withing work slice). Merge at reduce.
+        //    This option expect all leafs within a slice to be collected sequentially, which is the case today?
         if (useSyncMap) {
             values = new SafeIntIntHashMap();
         } else {

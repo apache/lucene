@@ -51,6 +51,7 @@ public class ReducingLongAggregationsFacetRecorder extends LongAggregationsFacet
         IntObjectHashMap<long[]> first = leafValues.get(0);
         int[] recordedOrds = first.keys;
         long[] values;
+        // TODO: fix: some values might be missing if they are not in the first leaf?
         for (int ord: recordedOrds) {
             values = new long[longValuesSources.length];
             long[] leafValuesForOrd;
@@ -63,6 +64,9 @@ public class ReducingLongAggregationsFacetRecorder extends LongAggregationsFacet
                 }
             }
             perOrdinalValues.put(ord, values);
+        }
+        if (facetRollup != null && facetRollup.getDimOrdsToRollup().nextOrd() != OrdinalIterator.NO_MORE_ORDS) {
+            throw new UnsupportedOperationException("Rollup is required, but not implemented");
         }
     }
     @Override

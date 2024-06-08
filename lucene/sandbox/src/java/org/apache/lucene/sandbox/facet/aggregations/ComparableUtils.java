@@ -20,6 +20,31 @@ public class ComparableUtils {
         }
     }
 
+    /** Result of */
+    public static class OrdComparable extends SkeletalGetOrd implements Comparable<OrdComparable> {
+        @Override
+        public int compareTo(OrdComparable o) {
+            return Integer.compare(o.ord, ord);
+        }
+    }
+
+    /**
+     * To sort facet ords by count (descending) with ord as a tie-break (ascending) using
+     * provided {@link CountFacetRecorder}.
+     */
+    public static OrdToComparable<OrdComparable> ordToComparable() {
+        return new OrdToComparable<>() {
+            @Override
+            public OrdComparable getComparable(int ord, OrdComparable reuse) {
+                if (reuse == null) {
+                    reuse = new OrdComparable();
+                }
+                reuse.ord = ord;
+                return reuse;
+            }
+        };
+    }
+
     /** Result of {@link #countOrdToComparable} method below */
     public static class IntOrdComparable extends SkeletalGetOrd implements Comparable<IntOrdComparable> {
         private IntOrdComparable() {};
