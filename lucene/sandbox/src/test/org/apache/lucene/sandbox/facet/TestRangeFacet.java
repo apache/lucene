@@ -143,9 +143,16 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     SortedNumericDocValuesField field2 = new SortedNumericDocValuesField("field", 0L);
     doc.add(field1);
     doc.add(field2);
-    for (long l = 0; l < 100; l++) {
+    for (long l = 100; l < 200; l++) {
       field1.setLongValue(l);
-      field2.setLongValue(l);
+      // Make second value sometimes smaller, sometimes bigger, and sometimes equal
+      if (l % 3 == 0) {
+        field2.setLongValue(l-100);
+      } else if (l % 3 == 1) {
+        field2.setLongValue(l+100);
+      } else {
+        field2.setLongValue(l);
+      }
       w.addDocument(doc);
     }
 
@@ -158,14 +165,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
+    ////////// Not overlapping ranges
     LongRange[] inputRanges = new LongRange[] {
-            new LongRange("less than 10", 0L, true, 10L, false),
-            new LongRange("less than or equal to 10", 0L, true, 10L, true),
-            new LongRange("over 90", 90L, false, 100L, false),
-            new LongRange("90 or above", 90L, true, 100L, false),
-            new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, true)
+            new LongRange("110-120", 110L, true, 120L, true),
+            new LongRange("121-130", 121L, true, 130L, true),
     };
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
@@ -178,7 +182,57 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
 
     assertEquals(
-            "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
+            "dim=field path=[] value=-5 childCount=2\n" +
+                    "  110-120 (11)\n" +
+                    "  121-130 (10)\n",
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+
+    ///////// Overlapping ranges
+    inputRanges = new LongRange[] {
+            new LongRange("110-120", 110L, true, 120L, true),
+            new LongRange("115-125", 115L, true, 125L, true),
+    };
+
+    valuesSource = MultiLongValuesSource.fromLongField("field");
+    longRangeFacetCutter = LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+    countRecorder = new CountFacetRecorder(random().nextBoolean());
+
+    collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+            null, countRecorder);
+    s.search(new MatchAllDocsQuery(), collectorManager);
+    ordToLabels = new RangeOrdToLabels(inputRanges);
+
+    assertEquals(
+            "dim=field path=[] value=-5 childCount=2\n" +
+                    "  110-120 (11)\n" +
+                    "  115-125 (11)\n",
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+
+    ////////// Multiple ranges (similar to original test)
+    inputRanges = new LongRange[] {
+            new LongRange("[100-110)", 100L, true, 110L, false),
+            new LongRange("[100-110]", 100L, true, 110L, true),
+            new LongRange("(190-200)", 190L, false, 200L, false),
+            new LongRange("[190-200]", 190L, true, 200L, false),
+            new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, true)
+    };
+
+    valuesSource = MultiLongValuesSource.fromLongField("field");
+    longRangeFacetCutter = LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+    countRecorder = new CountFacetRecorder(random().nextBoolean());
+
+    collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+            null, countRecorder);
+    s.search(new MatchAllDocsQuery(), collectorManager);
+    ordToLabels = new RangeOrdToLabels(inputRanges);
+
+    assertEquals(
+            "dim=field path=[] value=-5 childCount=5\n" +
+                    "  [100-110) (10)\n" +
+                    "  [100-110] (11)\n" +
+                    "  (190-200) (9)\n" +
+                    "  [190-200] (10)\n" +
+                    "  over 1000 (1)\n",
             getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
 
     r.close();

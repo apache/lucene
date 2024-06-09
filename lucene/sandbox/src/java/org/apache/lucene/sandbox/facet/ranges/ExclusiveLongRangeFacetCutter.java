@@ -59,11 +59,16 @@ public class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
             if (elementaryIntervalTracker == null) {
                 return NO_MORE_ORDS;
             }
-            int ordinal = elementaryIntervalTracker.nextOrd();
-            if (ordinal == NO_MORE_ORDS) {
-                return NO_MORE_ORDS;
+            while (true) {
+                int ordinal = elementaryIntervalTracker.nextOrd();
+                if (ordinal == NO_MORE_ORDS) {
+                    return NO_MORE_ORDS;
+                }
+                int result = pos[ordinal];
+                if (result != SKIP_INTERVAL_POSITION) {
+                    return result;
+                }
             }
-            return pos[ordinal];
         }
     }
 }

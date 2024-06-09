@@ -24,6 +24,10 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     long[] boundaries;
     int[] pos;
 
+    // Default interval position, when elementary interval is mapped to this interval
+    // it is skipped.
+    static final int SKIP_INTERVAL_POSITION = -1;
+
     // Temporary callers should ensure that passed in single values sources are wrapped
     // TODO: make a common interface for all ValueSources - Long, Double, Multi
     /** add doc **/
@@ -53,7 +57,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
         // range they map back to (and -1 when they map to a "gap" range in case of ExclusiveRanges):
         boundaries = new long[elementaryIntervals.size()];
         pos = new int[elementaryIntervals.size()];
-        Arrays.fill(pos, -1);
+        Arrays.fill(pos, SKIP_INTERVAL_POSITION);
         int currRange = 0;
         for (int i = 0; i < boundaries.length; i++) {
             boundaries[i] = elementaryIntervals.get(i).end;
