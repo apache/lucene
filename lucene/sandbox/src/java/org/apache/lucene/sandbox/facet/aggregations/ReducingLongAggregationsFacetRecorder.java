@@ -1,7 +1,11 @@
 package org.apache.lucene.sandbox.facet.aggregations;
 
+import com.carrotsearch.hppc.IntIntHashMap;
+import com.carrotsearch.hppc.IntIntMap;
 import com.carrotsearch.hppc.IntObjectHashMap;
 import com.carrotsearch.hppc.cursors.IntCursor;
+import com.carrotsearch.hppc.cursors.IntIntCursor;
+import com.carrotsearch.hppc.cursors.IntObjectCursor;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 import org.apache.lucene.search.LongValues;
@@ -48,22 +52,27 @@ public class ReducingLongAggregationsFacetRecorder extends LongAggregationsFacet
 
     @Override
     public void reduce(FacetRollup facetRollup) throws IOException {
-        IntObjectHashMap<long[]> first = leafValues.get(0);
-        int[] recordedOrds = first.keys;
-        long[] values;
-        // TODO: fix: some values might be missing if they are not in the first leaf?
-        for (int ord: recordedOrds) {
-            values = new long[longValuesSources.length];
-            long[] leafValuesForOrd;
-            for (IntObjectHashMap<long[]> leafValue : leafValues) {
-                leafValuesForOrd = leafValue.get(ord);
-                if (leafValuesForOrd != null) {
-                    for (int i = 0; i < longValuesSources.length; i++) {
-                        values[i] = reducers[i].reduce(values[i], leafValuesForOrd[i]);
+        boolean firstElement = true;
+        for (IntObjectHashMap<long[]> leafValue : leafValues) {
+            if (firstElement) {
+                perOrdinalValues = leafValue;
+                firstElement = false;
+            } else {
+                for(IntObjectCursor<long[]> elem: leafValue) {
+                    long[] vals = perOrdinalValues.get(elem.key);
+                    if (vals == null) {
+                        perOrdinalValues.put(elem.key, elem.value);
+                    } else {
+                        for (int i = 0; i < longValuesSources.length; i++) {
+                            vals[i] = reducers[i].reduce(vals[i], elem.value[i]);
+                        }
                     }
                 }
             }
-            perOrdinalValues.put(ord, values);
+        }
+        if (firstElement) {
+            // TODO: do we need empty map by default?
+            perOrdinalValues = new IntObjectHashMap<>();
         }
         if (facetRollup != null && facetRollup.getDimOrdsToRollup().nextOrd() != OrdinalIterator.NO_MORE_ORDS) {
             throw new UnsupportedOperationException("Rollup is required, but not implemented");
