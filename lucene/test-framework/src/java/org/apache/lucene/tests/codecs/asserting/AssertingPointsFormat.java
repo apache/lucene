@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
@@ -64,14 +65,13 @@ public final class AssertingPointsFormat extends PointsFormat {
     private final int maxDoc;
     private final FieldInfos fis;
     private final boolean merging;
-    private final Thread creationThread;
+    private final AtomicReference<Thread> creationThread = new AtomicReference<>();
 
     AssertingPointsReader(int maxDoc, PointsReader in, FieldInfos fis, boolean merging) {
       this.in = in;
       this.maxDoc = maxDoc;
       this.fis = fis;
       this.merging = merging;
-      this.creationThread = Thread.currentThread();
       // do a few simple checks on init
       assert toString() != null;
     }
@@ -87,7 +87,8 @@ public final class AssertingPointsFormat extends PointsFormat {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null && fi.getPointDimensionCount() > 0;
       if (merging) {
-        AssertingCodec.assertThread("PointsReader", creationThread);
+        creationThread.compareAndExchange(null, Thread.currentThread());
+        AssertingCodec.assertThread("PointsReader", creationThread.get());
       }
       PointValues values = this.in.getValues(field);
       if (values == null) {
