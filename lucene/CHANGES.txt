@@ -251,7 +251,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
 
 Optimizations
 ---------------------
