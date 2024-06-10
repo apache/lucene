@@ -58,7 +58,7 @@ In case your contribution fixes a bug, please create a new test case that fails 
 
 ### IDE support
 
-- *IntelliJ* - IntelliJ idea can import and build gradle-based projects out of the box.
+- *IntelliJ* - IntelliJ idea can import and build gradle-based projects out of the box. However please note that it will default to running tests by calling the gradle wrapper, and while this works, it is for some reason quite slow. Instead we recommend configuring IntelliJ to use its own built-in test runner. You can modify this config (in 2024 version) by navigating to settings for Build Execution & Deployment/Build Tools/Gradle (under File/Settings menu on some platforms) and selecting "Build and Run using: IntelliJ IDEA" and "Run Tests using: IntelliJ IDEA".
 - *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
 - *Netbeans* - Not tested.
 
