@@ -1194,7 +1194,6 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public int minDocID(int level) {
       assertThread("Doc values skipper", creationThread);
-      /// assert iterating() : "Unpositioned iterator";
       Objects.checkIndex(level, numLevels());
       int minDocID = in.minDocID(level);
       assert minDocID <= in.maxDocID(level);
@@ -1207,7 +1206,6 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public int maxDocID(int level) {
       assertThread("Doc values skipper", creationThread);
-      // assert iterating() : "Unpositioned iterator";
       Objects.checkIndex(level, numLevels());
       int maxDocID = in.maxDocID(level);
 
