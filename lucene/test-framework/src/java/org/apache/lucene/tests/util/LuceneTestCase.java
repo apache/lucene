@@ -963,7 +963,8 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       // Always use consistent settings, else CMS's dynamic (SSD or not)
       // defaults can change, hurting reproducibility:
-      ConcurrentMergeScheduler cms = new TestConcurrentMergeScheduler();
+      ConcurrentMergeScheduler cms =
+          randomBoolean() ? new TestConcurrentMergeScheduler() : new ConcurrentMergeScheduler();
 
       // Only 1 thread can run at once (should maybe help reproducibility),
       // with up to 3 pending merges before segment-producing threads are
