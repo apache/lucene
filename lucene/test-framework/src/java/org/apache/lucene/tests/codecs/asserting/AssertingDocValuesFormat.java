@@ -19,7 +19,6 @@ package org.apache.lucene.tests.codecs.asserting;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -215,12 +214,13 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     private final DocValuesProducer in;
     private final int maxDoc;
     private final boolean merging;
-    private final AtomicReference<Thread> creationThread = new AtomicReference<>();
+    private final Thread creationThread;
 
     AssertingDocValuesProducer(DocValuesProducer in, int maxDoc, boolean merging) {
       this.in = in;
       this.maxDoc = maxDoc;
       this.merging = merging;
+      this.creationThread = Thread.currentThread();
       // do a few simple checks on init
       assert toString() != null;
     }
@@ -228,8 +228,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     @Override
     public NumericDocValues getNumeric(FieldInfo field) throws IOException {
       if (merging) {
-        creationThread.compareAndExchange(null, Thread.currentThread());
-        AssertingCodec.assertThread("DocValuesProducer", creationThread.get());
+        AssertingCodec.assertThread("DocValuesProducer", creationThread);
       }
       assert field.getDocValuesType() == DocValuesType.NUMERIC;
       NumericDocValues values = in.getNumeric(field);
@@ -240,8 +239,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     @Override
     public BinaryDocValues getBinary(FieldInfo field) throws IOException {
       if (merging) {
-        creationThread.compareAndExchange(null, Thread.currentThread());
-        AssertingCodec.assertThread("DocValuesProducer", creationThread.get());
+        AssertingCodec.assertThread("DocValuesProducer", creationThread);
       }
       assert field.getDocValuesType() == DocValuesType.BINARY;
       BinaryDocValues values = in.getBinary(field);
@@ -252,8 +250,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     @Override
     public SortedDocValues getSorted(FieldInfo field) throws IOException {
       if (merging) {
-        creationThread.compareAndExchange(null, Thread.currentThread());
-        AssertingCodec.assertThread("DocValuesProducer", creationThread.get());
+        AssertingCodec.assertThread("DocValuesProducer", creationThread);
       }
       assert field.getDocValuesType() == DocValuesType.SORTED;
       SortedDocValues values = in.getSorted(field);
@@ -264,8 +261,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     @Override
     public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
       if (merging) {
-        creationThread.compareAndExchange(null, Thread.currentThread());
-        AssertingCodec.assertThread("DocValuesProducer", creationThread.get());
+        AssertingCodec.assertThread("DocValuesProducer", creationThread);
       }
       assert field.getDocValuesType() == DocValuesType.SORTED_NUMERIC;
       SortedNumericDocValues values = in.getSortedNumeric(field);
@@ -276,8 +272,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     @Override
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
       if (merging) {
-        creationThread.compareAndExchange(null, Thread.currentThread());
-        AssertingCodec.assertThread("DocValuesProducer", creationThread.get());
+        AssertingCodec.assertThread("DocValuesProducer", creationThread);
       }
       assert field.getDocValuesType() == DocValuesType.SORTED_SET;
       SortedSetDocValues values = in.getSortedSet(field);

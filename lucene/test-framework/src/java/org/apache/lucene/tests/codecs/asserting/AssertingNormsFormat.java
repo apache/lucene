@@ -19,7 +19,6 @@ package org.apache.lucene.tests.codecs.asserting;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
@@ -85,12 +84,13 @@ public class AssertingNormsFormat extends NormsFormat {
     private final NormsProducer in;
     private final int maxDoc;
     private final boolean merging;
-    private final AtomicReference<Thread> creationThread = new AtomicReference<>();
+    private final Thread creationThread;
 
     AssertingNormsProducer(NormsProducer in, int maxDoc, boolean merging) {
       this.in = in;
       this.maxDoc = maxDoc;
       this.merging = merging;
+      this.creationThread = Thread.currentThread();
       // do a few simple checks on init
       assert toString() != null;
     }
@@ -98,8 +98,7 @@ public class AssertingNormsFormat extends NormsFormat {
     @Override
     public NumericDocValues getNorms(FieldInfo field) throws IOException {
       if (merging) {
-        creationThread.compareAndExchange(null, Thread.currentThread());
-        AssertingCodec.assertThread("NormsProducer", creationThread.get());
+        AssertingCodec.assertThread("NormsProducer", creationThread);
       }
       assert field.hasNorms();
       NumericDocValues values = in.getNorms(field);

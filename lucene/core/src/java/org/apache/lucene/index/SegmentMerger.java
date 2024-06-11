@@ -137,25 +137,15 @@ final class SegmentMerger {
 
     TaskExecutor taskExecutor = new TaskExecutor(mergeState.intraMergeTaskExecutor);
     List<Callable<Void>> mergingTasks = new ArrayList<>();
-    mergingTasks.add(
-        () -> {
-          if (mergeState.mergeFieldInfos.hasNorms()) {
-            mergeWithLogging(
-                this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
-          }
+    if (mergeState.mergeFieldInfos.hasNorms()) {
+      mergeWithLogging(this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
+    }
 
-          mergeWithLogging(
-              this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
-          return null;
-        });
+    mergeWithLogging(this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
 
     if (mergeState.mergeFieldInfos.hasDocValues()) {
-      mergingTasks.add(
-          () -> {
-            mergeWithLogging(
-                this::mergeDocValues, segmentWriteState, segmentReadState, "doc values", numMerged);
-            return null;
-          });
+      mergeWithLogging(
+          this::mergeDocValues, segmentWriteState, segmentReadState, "doc values", numMerged);
     }
 
     if (mergeState.mergeFieldInfos.hasPointValues()) {
