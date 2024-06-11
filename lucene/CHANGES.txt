@@ -243,7 +243,8 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#13281: Mark COSINE VectorSimilarityFunction as deprecated. (Pulkit Gupta)
 
 New Features
 ---------------------
