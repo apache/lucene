@@ -266,6 +266,8 @@ Optimizations
 * GITHUB#13454: MultiTermQuery returns null ScoreSupplier in cases where
   no query terms are present in the index segment (Mayya Sharipova)
 
+* GITHUB#13431: Replace TreeMap and use compiled Patterns in Japanese UserDictionary. (Bruno Roustant)
+
 Bug Fixes
 ---------------------
 (No changes)
