@@ -164,6 +164,15 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     StoredFields[] subFields = new StoredFields[subReaders.length];
     return new StoredFields() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        if (subFields[i] == null) {
+          subFields[i] = subReaders[i].storedFields();
+        }
+        subFields[i].prefetch(docID - starts[i]);
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         final int i = readerIndex(docID); // find subreader num
         // dispatch to subreader, reusing if possible

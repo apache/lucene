@@ -1314,7 +1314,6 @@ public class TestDrillSideways extends FacetTestCase {
                         DocIdSetIterator.all(context.reader().maxDoc());
                     final var scorer =
                         new ConstantScoreScorer(
-                            this,
                             score(),
                             scoreMode,
                             new TwoPhaseIterator(approximation) {

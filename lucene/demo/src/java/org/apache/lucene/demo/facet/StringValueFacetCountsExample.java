@@ -95,7 +95,7 @@ public class StringValueFacetCountsExample {
     StringDocValuesReaderState publishState =
         new StringDocValuesReaderState(indexReader, "Publish Year");
 
-    // Aggregatses the facet counts
+    // Aggregates the facet counts
     FacetsCollector fc = new FacetsCollector();
 
     // MatchAllDocsQuery is for "browsing" (counts facets

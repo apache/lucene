@@ -145,7 +145,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     return new ConstantScoreWeight(this, boost) {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Weight weight = this;
         LeafReader reader = context.reader();
 
         PointValues values = reader.getPointValues(field);
@@ -184,7 +183,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
               DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
               values.intersect(new MergePointVisitor(sortedPackedPoints, result));
               DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override
@@ -221,7 +220,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                 visitor.setPoint(point);
                 values.intersect(visitor);
               }
-              return new ConstantScoreScorer(weight, score(), scoreMode, result.build().iterator());
+              return new ConstantScoreScorer(score(), scoreMode, result.build().iterator());
             }
 
             @Override

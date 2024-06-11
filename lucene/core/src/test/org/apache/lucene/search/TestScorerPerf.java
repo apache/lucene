@@ -162,10 +162,7 @@ public class TestScorerPerf extends LuceneTestCase {
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           final var scorer =
               new ConstantScoreScorer(
-                  this,
-                  score(),
-                  scoreMode,
-                  new BitSetIterator(docs, docs.approximateCardinality()));
+                  score(), scoreMode, new BitSetIterator(docs, docs.approximateCardinality()));
           return new DefaultScorerSupplier(scorer);
         }
 

@@ -309,9 +309,9 @@ public final class SynonymQuery extends Query {
       if (iterators.size() == 1) {
         final TermScorer scorer;
         if (scoreMode == ScoreMode.TOP_SCORES) {
-          scorer = new TermScorer(this, impacts.get(0), simScorer);
+          scorer = new TermScorer(impacts.get(0), simScorer);
         } else {
-          scorer = new TermScorer(this, iterators.get(0), simScorer);
+          scorer = new TermScorer(iterators.get(0), simScorer);
         }
         float boost = termBoosts.get(0);
         synonymScorer =
@@ -324,7 +324,7 @@ public final class SynonymQuery extends Query {
         DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
         for (int i = 0; i < iterators.size(); i++) {
           PostingsEnum postings = iterators.get(i);
-          final TermScorer termScorer = new TermScorer(this, postings, simScorer);
+          final TermScorer termScorer = new TermScorer(postings, simScorer);
           float boost = termBoosts.get(i);
           final DisiWrapperFreq wrapper = new DisiWrapperFreq(termScorer, boost);
           queue.add(wrapper);
@@ -348,7 +348,7 @@ public final class SynonymQuery extends Query {
           iterator = impactsDisi;
         }
 
-        synonymScorer = new SynonymScorer(this, queue, iterator, impactsDisi, simScorer);
+        synonymScorer = new SynonymScorer(queue, iterator, impactsDisi, simScorer);
       }
       return new DefaultScorerSupplier(synonymScorer);
     }
@@ -536,12 +536,10 @@ public final class SynonymQuery extends Query {
     private final LeafSimScorer simScorer;
 
     SynonymScorer(
-        Weight weight,
         DisiPriorityQueue queue,
         DocIdSetIterator iterator,
         ImpactsDISI impactsDisi,
         LeafSimScorer simScorer) {
-      super(weight);
       this.queue = queue;
       this.iterator = iterator;
       this.maxScoreCache = impactsDisi.getMaxScoreCache();

@@ -28,6 +28,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -153,7 +154,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         List<TermAndState> collectedTerms)
         throws IOException;
 
-    private WeightOrDocIdSetIterator rewrite(LeafReaderContext context, Terms terms)
+    private IOSupplier<WeightOrDocIdSetIterator> rewrite(LeafReaderContext context, Terms terms)
         throws IOException {
       assert terms != null;
 
@@ -162,21 +163,29 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       assert termsEnum != null;
 
       final List<TermAndState> collectedTerms = new ArrayList<>();
-      if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
-        // build a boolean query
-        BooleanQuery.Builder bq = new BooleanQuery.Builder();
-        for (TermAndState t : collectedTerms) {
-          final TermStates termStates = new TermStates(searcher.getTopReaderContext());
-          termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
-          bq.add(new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
-        }
-        Query q = new ConstantScoreQuery(bq.build());
-        final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-        return new WeightOrDocIdSetIterator(weight);
+      boolean collectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
+      if (collectResult && collectedTerms.isEmpty()) {
+        return null;
       }
-
-      // Too many terms to rewrite as a simple bq. Invoke rewriteInner logic to handle rewriting:
-      return rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
+      return () -> {
+        if (collectResult) {
+          // build a boolean query
+          BooleanQuery.Builder bq = new BooleanQuery.Builder();
+          for (TermAndState t : collectedTerms) {
+            final TermStates termStates = new TermStates(searcher.getTopReaderContext());
+            termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
+            bq.add(
+                new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
+          }
+          Query q = new ConstantScoreQuery(bq.build());
+          final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+          return new WeightOrDocIdSetIterator(weight);
+        } else {
+          // Too many terms to rewrite as a simple bq.
+          // Invoke rewriteInner logic to handle rewriting:
+          return rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
+        }
+      };
     }
 
     private boolean collectTerms(int fieldDocCount, TermsEnum termsEnum, List<TermAndState> terms)
@@ -208,7 +217,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       if (iterator == null) {
         return null;
       }
-      return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+      return new ConstantScoreScorer(score(), scoreMode, iterator);
     }
 
     @Override
@@ -232,12 +241,13 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       }
 
       final long cost = estimateCost(terms, q.getTermsCount());
+      IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier = rewrite(context, terms);
+      if (weightOrIteratorSupplier == null) return null;
 
-      final Weight weight = this;
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) throws IOException {
-          WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+          WeightOrDocIdSetIterator weightOrIterator = weightOrIteratorSupplier.get();
           final Scorer scorer;
           if (weightOrIterator == null) {
             scorer = null;
@@ -252,13 +262,12 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           // find that there are actually no hits, we need to return an empty Scorer as opposed
           // to null:
           return Objects.requireNonNullElseGet(
-              scorer,
-              () -> new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty()));
+              scorer, () -> new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty()));
         }
 
         @Override
         public BulkScorer bulkScorer() throws IOException {
-          WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+          WeightOrDocIdSetIterator weightOrIterator = weightOrIteratorSupplier.get();
           final BulkScorer bulkScorer;
           if (weightOrIterator == null) {
             bulkScorer = null;
@@ -267,7 +276,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           } else {
             bulkScorer =
                 new DefaultBulkScorer(
-                    new ConstantScoreScorer(weight, score(), scoreMode, weightOrIterator.iterator));
+                    new ConstantScoreScorer(score(), scoreMode, weightOrIterator.iterator));
           }
 
           // It's against the API contract to return a null scorer from a non-null ScoreSupplier.
@@ -278,8 +287,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
               bulkScorer,
               () ->
                   new DefaultBulkScorer(
-                      new ConstantScoreScorer(
-                          weight, score(), scoreMode, DocIdSetIterator.empty())));
+                      new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty())));
         }
 
         @Override

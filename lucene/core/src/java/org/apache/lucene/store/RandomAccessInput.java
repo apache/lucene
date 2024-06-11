@@ -70,4 +70,11 @@ public interface RandomAccessInput {
    * @see BitUtil#VH_LE_LONG
    */
   long readLong(long pos) throws IOException;
+
+  /**
+   * Prefetch data in the background.
+   *
+   * @see IndexInput#prefetch
+   */
+  default void prefetch(long offset, long length) throws IOException {}
 }

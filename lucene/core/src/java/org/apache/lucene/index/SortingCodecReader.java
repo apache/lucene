@@ -431,6 +431,11 @@ public final class SortingCodecReader extends FilterCodecReader {
   private StoredFieldsReader newStoredFieldsReader(StoredFieldsReader delegate) {
     return new StoredFieldsReader() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        delegate.prefetch(docMap.newToOld(docID));
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         delegate.document(docMap.newToOld(docID), visitor);
       }
@@ -720,10 +725,14 @@ public final class SortingCodecReader extends FilterCodecReader {
     if (timesCached > 1) {
       assert norms == false : "[" + field + "] norms must not be cached twice";
       boolean isSortField = false;
-      for (SortField sf : metaData.sort().getSort()) {
-        if (field.equals(sf.getField())) {
-          isSortField = true;
-          break;
+      // For things that aren't sort fields, it's possible for sort to be null here
+      // In the event that we accidentally cache twice, its better not to throw an NPE
+      if (metaData.sort() != null) {
+        for (SortField sf : metaData.sort().getSort()) {
+          if (field.equals(sf.getField())) {
+            isSortField = true;
+            break;
+          }
         }
       }
       assert timesCached == 2

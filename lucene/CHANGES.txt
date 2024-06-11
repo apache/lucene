@@ -110,6 +110,8 @@ API Changes
   I/O for top-level disjunctions. Weight#bulkScorer() still exists for compatibility, but delegates
   to ScorerSupplier#bulkScorer(). (Adrien Grand)
 
+* GITHUB#13410: Removed Scorer#getWeight (Sanjay Dutt, Adrien Grand)
+
 New Features
 ---------------------
 
@@ -202,6 +204,10 @@ Changes in Backwards Compatibility Policy
 Other
 ---------------------
 
+* GITHUB#13459: Merges all immutable attributes in FieldInfos.FieldNumbers into one Hashmap saving
+  memory when writing big indices. Fixes an exotic bug when calling clear where not all attributes
+  were cleared. (Ignacio Vera)
+
 * LUCENE-10376: Roll up the loop in VInt/VLong in DataInput. (Guo Feng)
 
 * LUCENE-10253: The @BadApple annotation has been removed from the test
@@ -237,7 +243,8 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#13281: Mark COSINE VectorSimilarityFunction as deprecated. (Pulkit Gupta)
 
 New Features
 ---------------------
@@ -249,14 +256,25 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#13439: Avoid unnecessary memory allocation in PackedLongValues#Iterator. (Zhang Chao)
+
+* GITHUB##13425: Rewrite SortedNumericDocValuesRangeQuery to MatchNoDocsQuery when the upper bound is smaller than the
+  lower bound. (Ioana Tagirta)
+
+* GITHUB#13322: Implement Weight#count for vector values in the FieldExistsQuery. (Pan Guixin)
+
+* GITHUB#13454: MultiTermQuery returns null ScoreSupplier in cases where
+  no query terms are present in the index segment (Mayya Sharipova)
+
+* GITHUB#13431: Replace TreeMap and use compiled Patterns in Japanese UserDictionary. (Bruno Roustant)
 
 Bug Fixes
 ---------------------
 (No changes)
 
 Other
----------------------
+--------------------
 (No changes)
 
 ======================== Lucene 9.11.0 =======================
@@ -389,15 +407,17 @@ Optimizations
 
 * GITHUB#13327: Reduce memory usage of field maps in FieldInfos and BlockTree TermsReader. (Bruno Roustant, David Smiley)
 
+* GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
+
 * GITHUB#13368: Replace Map<Integer, Object> by primitive IntObjectHashMap. (Bruno Roustant)
 
 * GITHUB#13392: Replace Map<Long, Object> by primitive LongObjectHashMap. (Bruno Roustant)
 
-* GITHUB#13339: Add a MemorySegment Vector scorer - for scoring without copying on-heap (Chris Hegarty)
-
 * GITHUB#13400: Replace Set<Integer> by IntHashSet and Set<Long> by LongHashSet. (Bruno Roustant)
 
 * GITHUB#13406: Replace List<Integer> by IntArrayList and List<Long> by LongArrayList. (Bruno Roustant)
+
+* GITHUB#13420: Replace Map<Character> by CharObjectHashMap and Set<Character> by CharHashSet. (Bruno Roustant)
 
 Bug Fixes
 ---------------------

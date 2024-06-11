@@ -41,6 +41,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -78,7 +79,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99PostingsFormat.DOC_EXTENSION);
     try {
-      docIn = state.directory.openInput(docName, state.context);
+      // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
+      // readahead.
+      docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
       version =
           CodecUtil.checkIndexHeader(
               docIn,
