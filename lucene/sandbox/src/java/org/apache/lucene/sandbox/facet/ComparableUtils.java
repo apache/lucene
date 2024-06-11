@@ -1,7 +1,9 @@
-package org.apache.lucene.sandbox.facet.aggregations;
+package org.apache.lucene.sandbox.facet;
 
 import org.apache.lucene.sandbox.facet.abstracts.GetOrd;
 import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
+import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 
 /**
  * Collection of static methods to provide most common comparables for sandbox faceting.

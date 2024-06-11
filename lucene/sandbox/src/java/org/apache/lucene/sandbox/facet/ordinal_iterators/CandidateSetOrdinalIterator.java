@@ -1,4 +1,4 @@
-package org.apache.lucene.sandbox.facet.taxonomy;
+package org.apache.lucene.sandbox.facet.ordinal_iterators;
 
 import com.carrotsearch.hppc.IntSet;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;

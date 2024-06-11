@@ -1,6 +1,6 @@
 package org.apache.lucene.sandbox.facet.taxonomy;
 
-import org.apache.lucene.sandbox.facet.abstracts.OrdToLabels;
+import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 
@@ -10,12 +10,12 @@ import java.io.IOException;
  * Get labels for taxonomy ordinals;
  * TODO: implement!
  */
-public class TaxonomyOrdLabels implements OrdToLabels {
+public class TaxonomyOrdLabelBiMap implements OrdLabelBiMap {
 
     private final TaxonomyReader taxoReader;
 
     /** Construct */
-    public TaxonomyOrdLabels(TaxonomyReader taxoReader) {
+    public TaxonomyOrdLabelBiMap(TaxonomyReader taxoReader) {
         this.taxoReader = taxoReader;
     }
 

@@ -6,7 +6,7 @@ import com.carrotsearch.hppc.LongIntHashMap;
 import com.carrotsearch.hppc.cursors.LongCursor;
 import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToLabels;
+import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * TODO: add doc
  * This class is quite inefficient. Will optimise later.
  */
-public class LongValueFacetCutter implements FacetCutter, OrdToLabels {
+public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
     private final String field;
     // TODO: consider alternatives if this is a bottleneck
     private final LongIntHashMap valueToOrdMap;

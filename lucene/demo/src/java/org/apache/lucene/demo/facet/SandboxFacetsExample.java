@@ -34,20 +34,20 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.sandbox.facet.FacetFieldCollector;
 import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
-import org.apache.lucene.sandbox.facet.MultiFacetsRecorder;
+import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToLabels;
+import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
-import org.apache.lucene.sandbox.facet.aggregations.ComparableUtils;
-import org.apache.lucene.sandbox.facet.aggregations.CountFacetRecorder;
-import org.apache.lucene.sandbox.facet.aggregations.LongAggregationsFacetRecorder;
-import org.apache.lucene.sandbox.facet.aggregations.Reducer;
-import org.apache.lucene.sandbox.facet.aggregations.TopnOrdinalIterator;
+import org.apache.lucene.sandbox.facet.ComparableUtils;
+import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
+import org.apache.lucene.sandbox.facet.abstracts.Reducer;
+import org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.ranges.LongRangeFacetCutter;
-import org.apache.lucene.sandbox.facet.ranges.RangeOrdToLabels;
+import org.apache.lucene.sandbox.facet.ranges.RangeOrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyChildrenOrdinalIterator;
 import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyFacetsCutter;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabels;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -69,7 +69,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 
 import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
-import static org.apache.lucene.sandbox.facet.aggregations.ComparableUtils.rankCountOrdToComparable;
+import static org.apache.lucene.sandbox.facet.ComparableUtils.rankCountOrdToComparable;
 
 /** Demo for sandbox faceting. */
 public class SandboxFacetsExample {
@@ -169,7 +169,7 @@ public class SandboxFacetsExample {
     // Here we just want to demo that we can still do FacetResult as well
     List<FacetResult> results = new ArrayList<>(2);
     // This object provides labels for ordinals.
-    OrdToLabels ordLabels = new TaxonomyOrdLabels(taxoReader);
+    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     for (String dimension: List.of("Author", "Publish Date")) {
       //// (4.1) Chain two ordinal iterators to get top N children
       OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(defaultRecorder.recordedOrds(), taxoReader.getParallelTaxonomyArrays()
@@ -211,7 +211,7 @@ public class SandboxFacetsExample {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     CountFacetRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
-    RangeOrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    RangeOrdLabelBiMap ordToLabels = new RangeOrdLabelBiMap(inputRanges);
 
     OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
             countRecorder);
@@ -251,7 +251,7 @@ public class SandboxFacetsExample {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     CountFacetRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
-    RangeOrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    RangeOrdLabelBiMap ordToLabels = new RangeOrdLabelBiMap(inputRanges);
 
     OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
             countRecorder);
@@ -307,7 +307,7 @@ public class SandboxFacetsExample {
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, multiFacetsRecorder);
     MultiFacetsRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
-    RangeOrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    RangeOrdLabelBiMap ordToLabels = new RangeOrdLabelBiMap(inputRanges);
 
     // Get recorded ords - use either count/aggregations recorder
     OrdinalIterator recordedOrds = longAggregationsFacetRecorder.recordedOrds();
@@ -384,7 +384,7 @@ public class SandboxFacetsExample {
     // Here we just want to demo that we can still do FacetResult as well
     List<FacetResult> facetResults = new ArrayList<>(2);
     // This object provides labels for ordinals.
-    OrdToLabels ordLabels = new TaxonomyOrdLabels(taxoReader);
+    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     for (String dimension: List.of("Author", "Publish Date")) {
       //// (4.1) Chain two ordinal iterators to get top N children
       OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(defaultRecorder.recordedOrds(), taxoReader.getParallelTaxonomyArrays()
@@ -435,7 +435,7 @@ public class SandboxFacetsExample {
             defaultRecorder);
 
     // This object provides labels for ordinals.
-    OrdToLabels ordLabels = new TaxonomyOrdLabels(taxoReader);
+    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     String dimension = "Author";
     //// (4.1) Chain two ordinal iterators to get top N children
     OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(defaultRecorder.recordedOrds(),
@@ -496,7 +496,7 @@ public class SandboxFacetsExample {
     //// (4) Get top 10 results by count for Author
     List<FacetResult> facetResults = new ArrayList<>(2);
     // This object provides labels for ordinals.
-    OrdToLabels ordLabels = new TaxonomyOrdLabels(taxoReader);
+    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     // This object is used to get topN results by count
     OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
             drillDownRecorder);

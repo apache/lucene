@@ -1,12 +1,10 @@
-package org.apache.lucene.sandbox.facet.aggregations;
+package org.apache.lucene.sandbox.facet.recorders;
 
-import com.carrotsearch.hppc.IntLongHashMap;
-import com.carrotsearch.hppc.IntObjectHashMap;
-import com.carrotsearch.hppc.cursors.IntCursor;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.sandbox.facet.abstracts.Reducer;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 

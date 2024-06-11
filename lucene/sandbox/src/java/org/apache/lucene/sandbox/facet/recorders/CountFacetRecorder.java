@@ -1,4 +1,4 @@
-package org.apache.lucene.sandbox.facet.aggregations;
+package org.apache.lucene.sandbox.facet.recorders;
 
 import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.IntIntMap;

@@ -10,7 +10,7 @@ import java.io.IOException;
  * TODO: move FacetLabel out of taxonomy folder to use it for any facets, not just taxonomy?
  * TODO: there is some overlap with {@link org.apache.lucene.facet.taxonomy.writercache.LabelToOrdinal}, can we reuse something?
  */
-public interface OrdToLabels {
+public interface OrdLabelBiMap {
 
     /** Ordinal to return if facet label doesn't exist in {@link #getOrd(FacetLabel)}
      * and {@link #getOrds(FacetLabel[])} */

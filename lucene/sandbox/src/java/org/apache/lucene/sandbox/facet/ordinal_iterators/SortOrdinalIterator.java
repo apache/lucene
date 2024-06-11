@@ -1,4 +1,4 @@
-package org.apache.lucene.sandbox.facet.aggregations;
+package org.apache.lucene.sandbox.facet.ordinal_iterators;
 
 import org.apache.lucene.sandbox.facet.abstracts.GetOrd;
 import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;

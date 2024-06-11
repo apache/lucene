@@ -25,21 +25,14 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.DrillSideways;
-import org.apache.lucene.facet.DrillSideways.DrillSidewaysResult;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetResult;
-import org.apache.lucene.facet.Facets;
-import org.apache.lucene.facet.FacetsCollector;
-import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.MultiDoubleValuesSource;
-import org.apache.lucene.facet.MultiFacets;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.DoubleRange;
-import org.apache.lucene.facet.range.DoubleRangeFacetCounts;
 import org.apache.lucene.facet.range.LongRange;
-import org.apache.lucene.facet.range.LongRangeFacetCounts;
 import org.apache.lucene.facet.range.Range;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -47,38 +40,35 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToLabels;
-import org.apache.lucene.sandbox.facet.aggregations.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.ranges.DoubleRangeFacetCutter;
 import org.apache.lucene.sandbox.facet.ranges.LongRangeFacetCutter;
-import org.apache.lucene.sandbox.facet.ranges.RangeOrdToLabels;
+import org.apache.lucene.sandbox.facet.ranges.RangeOrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyFacetsCutter;
 import org.apache.lucene.search.CollectorOwner;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiCollectorManager;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryVisitor;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
 
+/**
+ * Test sandbox facet ranges. Mostly test cases from LongRangeFacetCounts adopted for sandbox faceting.
+ */
 public class TestRangeFacet extends SandboxFacetTestCase {
 
   public void testBasicLong() throws Exception {
@@ -115,18 +105,18 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
         "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     r.close();
     d.close();
   }
 
   private int[] getRangeOrdinals(Range[] inputRanges) {
-    // TODO: this is hack, we need a better way of getting all ordinals for provided ranges
+    // TODO: it can be fragile, we need better way of getting all ordinals for provided ranges?
     int[] result = new int[inputRanges.length];
     for (int i = 0; i < inputRanges.length; i++) {
       result[i] = i;
@@ -179,13 +169,13 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=2\n" +
                     "  110-120 (11)\n" +
                     "  121-130 (10)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     ///////// Overlapping ranges
     inputRanges = new LongRange[] {
@@ -200,13 +190,13 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    ordToLabels = new RangeOrdToLabels(inputRanges);
+    ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=2\n" +
                     "  110-120 (11)\n" +
                     "  115-125 (11)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     ////////// Multiple ranges (similar to original test)
     inputRanges = new LongRange[] {
@@ -224,7 +214,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    ordToLabels = new RangeOrdToLabels(inputRanges);
+    ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=5\n" +
@@ -233,7 +223,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
                     "  (190-200) (9)\n" +
                     "  [190-200] (10)\n" +
                     "  over 1000 (1)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     r.close();
     d.close();
@@ -284,11 +274,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     r.close();
     d.close();
@@ -328,11 +318,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=6\n  min (1)\n  max (1)\n  all0 (3)\n  all1 (2)\n  all2 (2)\n  all3 (1)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     r.close();
     d.close();
@@ -370,11 +360,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=4\n  0-10 (11)\n  10-20 (11)\n  20-30 (11)\n  30-40 (11)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     r.close();
     d.close();
@@ -405,11 +395,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=0\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     r.close();
     d.close();
@@ -443,11 +433,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=0\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     r.close();
     d.close();
@@ -491,7 +481,12 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       System.out.println("TEST: searcher=" + s);
     }
 
-    DrillSideways ds = new DrillSideways(s, config, tr);
+    DrillSideways ds = new DrillSideways(s, config, tr) {
+      @Override
+      protected boolean scoreSubDocsAtOnce() {
+        return random().nextBoolean();
+      }
+    };
 
     // Data for range facets
     LongRange[] inputRanges = new LongRange[] {
@@ -506,7 +501,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     CountFacetRecorder fieldCountRecorder = new CountFacetRecorder(random().nextBoolean());
     FacetFieldCollectorManager<CountFacetRecorder> fieldCollectorManager = new FacetFieldCollectorManager<>(fieldCutter,
             null, fieldCountRecorder);
-    OrdToLabels fieldOrdToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap fieldOrdLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     // Data for taxonomy facets
     TaxonomyFacetsCutter dimCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, tr);
@@ -526,7 +521,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
     assertEquals(
         "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-        getAllSortByOrd(getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdToLabels).toString());
+        getAllSortByOrd(getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdLabelBiMap).toString());
 
     ////// Second search, drill down on dim=b:
     fieldCountRecorder = new CountFacetRecorder(random().nextBoolean());
@@ -543,7 +538,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
             getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
     assertEquals(
             "dim=field path=[] value=-5 childCount=5\n  less than 10 (7)\n  less than or equal to 10 (8)\n  over 90 (7)\n  90 or above (8)\n  over 1000 (0)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdLabelBiMap).toString());
 
     ////// Third search, drill down on "less than or equal to 10":
     fieldCountRecorder = new CountFacetRecorder(random().nextBoolean());
@@ -560,7 +555,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
             getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
     assertEquals(
             "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdLabelBiMap).toString());
 
     w.close();
     IOUtils.close(tw, tr, td, r, d);
@@ -595,11 +590,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(doubleRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     w.close();
     IOUtils.close(r, d);
@@ -638,11 +633,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(doubleRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     w.close();
     IOUtils.close(r, d);
@@ -693,11 +688,11 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(doubleRangeFacetCutter,
             null, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
-    OrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
             "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordToLabels).toString());
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
     r.close();
     d.close();
   }
@@ -836,8 +831,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
               null, countRecorder);
       s.search(new MatchAllDocsQuery(), collectorManager);
 
-      OrdToLabels ordToLabels = new RangeOrdToLabels(ranges);
-      FacetResult result = getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordToLabels);
+      OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(ranges);
+      FacetResult result = getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap);
       assertEquals(numRange, result.labelValues.length);
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
         if (VERBOSE) {
@@ -997,8 +992,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
               null, countRecorder);
       s.search(new MatchAllDocsQuery(), collectorManager);
 
-      OrdToLabels ordToLabels = new RangeOrdToLabels(ranges);
-      FacetResult result = getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordToLabels);
+      OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(ranges);
+      FacetResult result = getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap);
       assertEquals(numRange, result.labelValues.length);
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
         if (VERBOSE) {
@@ -1026,8 +1021,6 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     w.close();
     IOUtils.close(r, dir);
   }
-
-  /// TODO: continue from here
 
   public void testRandomDoublesSingleValued() throws Exception {
     Directory dir = newDirectory();
@@ -1131,8 +1124,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         }
       }
 
-      FacetsCollector sfc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-      Query fastMatchFilter;
+      // TODO: fastMatchQuery functionality is not implemented for sandbox faceting yet, do we need it?
+      /*Query fastMatchFilter;
       if (random().nextBoolean()) {
         if (random().nextBoolean()) {
           fastMatchFilter = DoublePoint.newRangeQuery("field", minValue, maxValue);
@@ -1141,24 +1134,25 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         }
       } else {
         fastMatchFilter = null;
-      }
-      DoubleValuesSource vs = DoubleValuesSource.fromDoubleField("field");
-      MultiDoubleValuesSource mvs = MultiDoubleValuesSource.fromDoubleField("field");
-      Facets facets;
+      }*/
+
+      final MultiDoubleValuesSource mvs;
       if (random().nextBoolean()) {
-        facets = new DoubleRangeFacetCounts("field", vs, sfc, fastMatchFilter, ranges);
-      } else if (random().nextBoolean()) {
-        facets =
-            new DoubleRangeFacetCounts(
-                "field",
-                MultiDoubleValuesSource.fromSingleValued(vs),
-                sfc,
-                fastMatchFilter,
-                ranges);
+        DoubleValuesSource vs = DoubleValuesSource.fromDoubleField("field");
+        mvs = MultiDoubleValuesSource.fromSingleValued(vs);
       } else {
-        facets = new DoubleRangeFacetCounts("field", mvs, sfc, fastMatchFilter, ranges);
+        mvs = MultiDoubleValuesSource.fromDoubleField("field");
       }
-      FacetResult result = facets.getAllChildren("field");
+
+      DoubleRangeFacetCutter doubleRangeFacetCutter = new DoubleRangeFacetCutter("field", mvs, ranges);
+      CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+
+      FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(doubleRangeFacetCutter,
+              null, countRecorder);
+      s.search(new MatchAllDocsQuery(), collectorManager);
+
+      OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(ranges);
+      FacetResult result = getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap);
       assertEquals(numRange, result.labelValues.length);
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
         if (VERBOSE) {
@@ -1172,13 +1166,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
         // Test drill-down:
         DrillDownQuery ddq = new DrillDownQuery(config);
-        if (random().nextBoolean()) {
-          ddq.add("field", DoublePoint.newRangeQuery("field", range.min, range.max));
-        } else if (random().nextBoolean()) {
-          ddq.add("field", range.getQuery(fastMatchFilter, vs));
-        } else {
-          ddq.add("field", range.getQuery(fastMatchFilter, mvs));
-        }
+        ddq.add("field", DoublePoint.newRangeQuery("field", range.min, range.max));
 
         assertEquals(expectedCounts[rangeID], s.count(ddq));
       }
@@ -1299,9 +1287,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
           }
         }
       }
-
-      FacetsCollector sfc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-      Query fastMatchFilter;
+      // TODO: fastMatchQuery functionality is not implemented for sandbox faceting yet, do we need it?
+      /*Query fastMatchFilter;
       if (random().nextBoolean()) {
         if (random().nextBoolean()) {
           fastMatchFilter = DoublePoint.newRangeQuery("field", minValue, maxValue);
@@ -1310,22 +1297,16 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         }
       } else {
         fastMatchFilter = null;
-      }
-      Facets facets;
-      if (random().nextBoolean()) {
-        facets =
-            new DoubleRangeFacetCounts(
-                "field",
-                MultiDoubleValuesSource.fromDoubleField("field"),
-                sfc,
-                fastMatchFilter,
-                ranges);
-      } else {
-        facets =
-            new DoubleRangeFacetCounts(
-                "field", (MultiDoubleValuesSource) null, sfc, fastMatchFilter, ranges);
-      }
-      FacetResult result = facets.getAllChildren("field");
+      }*/
+      final MultiDoubleValuesSource mvs = MultiDoubleValuesSource.fromDoubleField("field");
+      DoubleRangeFacetCutter doubleRangeFacetCutter = new DoubleRangeFacetCutter("field", mvs, ranges);
+      CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+      FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(doubleRangeFacetCutter,
+              null, countRecorder);
+      s.search(new MatchAllDocsQuery(), collectorManager);
+
+      OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(ranges);
+      FacetResult result = getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap);
       assertEquals(numRange, result.labelValues.length);
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
         if (VERBOSE) {
@@ -1376,20 +1357,26 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     IndexReader r = w.getReader();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-    Facets facets =
-        new LongRangeFacetCounts(
-            "field",
-            fc,
-            new LongRange("less than 10", 0L, true, 10L, false),
-            new LongRange("less than or equal to 10", 0L, true, 10L, true),
-            new LongRange("over 90", 90L, false, 100L, false),
-            new LongRange("90 or above", 90L, true, 100L, false),
-            new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, false));
+    LongRange[] inputRanges = new LongRange[] {
+      new LongRange("less than 10", 0L, true, 10L, false),
+      new LongRange("less than or equal to 10", 0L, true, 10L, true),
+      new LongRange("over 90", 90L, false, 100L, false),
+      new LongRange("90 or above", 90L, true, 100L, false),
+      new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, false)
+    };
+
+    MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
+    LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+    CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+            null, countRecorder);
+    s.search(new MatchAllDocsQuery(), collectorManager);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=16 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
-        facets.getAllChildren("field").toString());
+        "dim=field path=[] value=-5 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     w.close();
     IOUtils.close(r, d);
@@ -1418,77 +1405,32 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     IndexReader r = w.getReader();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-    Facets facets =
-        new LongRangeFacetCounts(
-            "field",
-            fc,
-            new LongRange("less than 10", 0L, true, 10L, false),
-            new LongRange("less than or equal to 10", 0L, true, 10L, true),
-            new LongRange("over 90", 90L, false, 100L, false),
-            new LongRange("90 or above", 90L, true, 100L, false),
-            new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, false));
+    LongRange[] inputRanges = new LongRange[] {
+      new LongRange("less than 10", 0L, true, 10L, false),
+      new LongRange("less than or equal to 10", 0L, true, 10L, true),
+      new LongRange("over 90", 90L, false, 100L, false),
+      new LongRange("90 or above", 90L, true, 100L, false),
+      new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, false)
+    };
+
+    MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
+    LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+    CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+            null, countRecorder);
+    s.search(new MatchAllDocsQuery(), collectorManager);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=16 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
-        facets.getAllChildren("field").toString());
+        "dim=field path=[] value=-5 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
+            getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap).toString());
 
     w.close();
     IOUtils.close(r, d);
   }
 
-  private static class UsedQuery extends Query {
-
-    private final AtomicBoolean used;
-    private final Query in;
-
-    UsedQuery(Query in, AtomicBoolean used) {
-      this.in = in;
-      this.used = used;
-    }
-
-    @Override
-    public boolean equals(Object other) {
-      return sameClassAs(other) && in.equals(((UsedQuery) other).in);
-    }
-
-    @Override
-    public int hashCode() {
-      return classHash() + in.hashCode();
-    }
-
-    @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-      final Query inRewritten = in.rewrite(indexSearcher);
-      if (in != inRewritten) {
-        return new UsedQuery(inRewritten, used);
-      }
-      return super.rewrite(indexSearcher);
-    }
-
-    @Override
-    public void visit(QueryVisitor visitor) {
-      in.visit(visitor);
-    }
-
-    @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
-      final Weight in = this.in.createWeight(searcher, scoreMode, boost);
-      return new FilterWeight(in) {
-        @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          used.set(true);
-          return in.scorer(context);
-        }
-      };
-    }
-
-    @Override
-    public String toString(String field) {
-      return "UsedQuery(" + in + ")";
-    }
-  }
+  /// TODO: continue from here
 
   private static class PlusOneValuesSource extends DoubleValuesSource {
 
@@ -1569,7 +1511,6 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     final DoubleRange[] ranges =
         new DoubleRange[] {
@@ -1581,7 +1522,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
           new DoubleRange("< 50", 0.0, true, 50.0, false)
         };
 
-    final Query fastMatchFilter;
+    // TODO: fastMatchQuery functionality is not implemented for sandbox faceting yet, do we need it?
+    /*final Query fastMatchFilter;
     final AtomicBoolean filterWasUsed = new AtomicBoolean();
     if (random().nextBoolean()) {
       // Sort of silly:
@@ -1593,107 +1535,57 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     if (VERBOSE) {
       System.out.println("TEST: fastMatchFilter=" + fastMatchFilter);
-    }
+    }*/
 
-    Facets facets;
-    if (random().nextBoolean()) {
-      facets = new DoubleRangeFacetCounts("field", vs, fc, fastMatchFilter, ranges);
-    } else {
-      facets =
-          new DoubleRangeFacetCounts(
-              "field", MultiDoubleValuesSource.fromSingleValued(vs), fc, fastMatchFilter, ranges);
-    }
+    MultiDoubleValuesSource valuesSource = MultiDoubleValuesSource.fromSingleValued(vs);
+    DoubleRangeFacetCutter doubleRangeFacetCutter = new DoubleRangeFacetCutter("field", valuesSource, ranges);
+    CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(doubleRangeFacetCutter,
+            null, countRecorder);
+    s.search(new MatchAllDocsQuery(), collectorManager);
+    OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(ranges);
 
     assertEquals(
-        "dim=field path=[] value=3 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
-        facets.getAllChildren("field").toString());
-    assertTrue(fastMatchFilter == null || filterWasUsed.get());
+        "dim=field path=[] value=-5 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
+            getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap).toString());
+    //assertTrue(fastMatchFilter == null || filterWasUsed.get());
 
     DrillDownQuery ddq = new DrillDownQuery(config);
     if (random().nextBoolean()) {
-      ddq.add("field", ranges[1].getQuery(fastMatchFilter, vs));
+      ddq.add("field", ranges[1].getQuery(null, vs));
     } else {
       ddq.add(
           "field",
-          ranges[1].getQuery(fastMatchFilter, MultiDoubleValuesSource.fromSingleValued(vs)));
+          ranges[1].getQuery(null, MultiDoubleValuesSource.fromSingleValued(vs)));
     }
 
     // Test simple drill-down:
     assertEquals(1, s.search(ddq, 10).totalHits.value);
 
     // Test drill-sideways after drill-down
-    DrillSideways ds =
-        new DrillSideways(s, config, (TaxonomyReader) null) {
+    DrillSideways ds = new DrillSideways(s, config, (TaxonomyReader) null) {
+      @Override
+      protected boolean scoreSubDocsAtOnce() {
+        return random().nextBoolean();
+      }
+    };
 
-          @Override
-          protected Facets buildFacetsResult(
-              FacetsCollector drillDowns,
-              FacetsCollector[] drillSideways,
-              String[] drillSidewaysDims)
-              throws IOException {
-            assert drillSideways.length == 1;
-            return new DoubleRangeFacetCounts(
-                "field",
-                MultiDoubleValuesSource.fromSingleValued(vs),
-                drillSideways[0],
-                fastMatchFilter,
-                ranges);
-          }
+    countRecorder = new CountFacetRecorder(random().nextBoolean());
 
-          @Override
-          protected boolean scoreSubDocsAtOnce() {
-            return random().nextBoolean();
-          }
-        };
-
-    DrillSidewaysResult dsr = ds.search(ddq, 10);
-    assertEquals(1, dsr.hits.totalHits.value);
+    CollectorOwner<DummyTotalHitCountCollector, Integer> totalHitsCollectorOwner = CollectorOwner.hire(
+            DummyTotalHitCountCollector.createManager());
+    CollectorOwner<FacetFieldCollector, CountFacetRecorder> drillSidewaysCollectorOwner = CollectorOwner.hire(
+            new FacetFieldCollectorManager<>(doubleRangeFacetCutter,
+                    null, countRecorder));
+    ds.search(ddq, totalHitsCollectorOwner, List.of(drillSidewaysCollectorOwner), false);
+    assertEquals(1, totalHitsCollectorOwner.reduce().intValue());
+    drillSidewaysCollectorOwner.reduce();
     assertEquals(
-        "dim=field path=[] value=3 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
-        dsr.facets.getAllChildren("field").toString());
+        "dim=field path=[] value=-5 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
+            getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap).toString());
 
     writer.close();
     IOUtils.close(r, dir);
-  }
-
-  public void testLongRangeEquals() throws Exception {
-    assertEquals(
-        new LongRange("field", -7, true, 17, false), new LongRange("field", -7, true, 17, false));
-    assertEquals(
-        new LongRange("field", -7, true, 17, false).hashCode(),
-        new LongRange("field", -7, true, 17, false).hashCode());
-    assertFalse(
-        new LongRange("field", -7, true, 17, false)
-            .equals(new LongRange("field", -7, true, 17, true)));
-    assertFalse(
-        new LongRange("field", -7, true, 17, false).hashCode()
-            == new LongRange("field", -7, true, 17, true).hashCode());
-    assertFalse(
-        new LongRange("field", -7, true, 17, false)
-            .equals(new LongRange("field", -7, true, 18, false)));
-    assertFalse(
-        new LongRange("field", -7, true, 17, false).hashCode()
-            == new LongRange("field", -7, true, 18, false).hashCode());
-  }
-
-  public void testDoubleRangeEquals() throws Exception {
-    assertEquals(
-        new DoubleRange("field", -7d, true, 17d, false),
-        new DoubleRange("field", -7d, true, 17d, false));
-    assertEquals(
-        new DoubleRange("field", -7d, true, 17d, false).hashCode(),
-        new DoubleRange("field", -7d, true, 17d, false).hashCode());
-    assertFalse(
-        new DoubleRange("field", -7d, true, 17d, false)
-            .equals(new DoubleRange("field", -7d, true, 17d, true)));
-    assertFalse(
-        new DoubleRange("field", -7d, true, 17d, false).hashCode()
-            == new DoubleRange("field", -7d, true, 17d, true).hashCode());
-    assertFalse(
-        new DoubleRange("field", -7d, true, 17d, false)
-            .equals(new DoubleRange("field", -7d, true, 18d, false)));
-    assertFalse(
-        new DoubleRange("field", -7d, true, 17d, false).hashCode()
-            == new DoubleRange("field", -7d, true, 18, false).hashCode());
   }
 }

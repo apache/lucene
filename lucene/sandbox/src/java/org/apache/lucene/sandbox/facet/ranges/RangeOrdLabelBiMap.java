@@ -1,24 +1,24 @@
 package org.apache.lucene.sandbox.facet.ranges;
 
 import org.apache.lucene.facet.range.Range;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToLabels;
+import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 
 import java.io.IOException;
 import java.util.List;
 
 /**TODO: add doc**/
-public class RangeOrdToLabels implements OrdToLabels {
+public class RangeOrdLabelBiMap implements OrdLabelBiMap {
 
     Range[] ranges;
 
     /**TODO: add doc**/
-    public RangeOrdToLabels(Range[] inputRanges) {
+    public RangeOrdLabelBiMap(Range[] inputRanges) {
         ranges = inputRanges;
     }
 
     /**TODO: add doc**/
-    public RangeOrdToLabels(List<? extends Range> inputRanges) {
+    public RangeOrdLabelBiMap(List<? extends Range> inputRanges) {
         ranges = inputRanges.toArray(new Range[0]);
     }
     @Override

@@ -1,4 +1,4 @@
-package org.apache.lucene.sandbox.facet;
+package org.apache.lucene.sandbox.facet.recorders;
 
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;

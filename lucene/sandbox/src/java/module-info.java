@@ -31,9 +31,11 @@ module org.apache.lucene.sandbox {
 
   exports org.apache.lucene.sandbox.facet;
   exports org.apache.lucene.sandbox.facet.taxonomy;
-  exports org.apache.lucene.sandbox.facet.aggregations;
+  exports org.apache.lucene.sandbox.facet.recorders;
   exports org.apache.lucene.sandbox.facet.abstracts;
   exports org.apache.lucene.sandbox.facet.ranges;
+    exports org.apache.lucene.sandbox.facet.ordinal_iterators;
+  exports org.apache.lucene.sandbox.facet.misc;
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;

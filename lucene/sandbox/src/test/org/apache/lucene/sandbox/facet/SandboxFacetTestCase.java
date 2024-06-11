@@ -32,13 +32,12 @@ import org.apache.lucene.facet.taxonomy.TaxonomyFacetLabels;
 import org.apache.lucene.facet.taxonomy.TaxonomyFacetLabels.FacetLabelReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToLabels;
+import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
-import org.apache.lucene.sandbox.facet.aggregations.ComparableUtils;
-import org.apache.lucene.sandbox.facet.aggregations.CountFacetRecorder;
-import org.apache.lucene.sandbox.facet.aggregations.TopnOrdinalIterator;
+import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyChildrenOrdinalIterator;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabels;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -329,7 +328,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
                                     String dimension, String... path) throws IOException {
     OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
             countFacetRecorder);
-    OrdToLabels ordLabels = new TaxonomyOrdLabels(taxoReader);
+    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
     int parentOrdinal = ordLabels.getOrd(parentLabel);
     OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(countFacetRecorder.recordedOrds(),
@@ -353,7 +352,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
   }
 
   FacetResult getAllChildren(CountFacetRecorder countFacetRecorder, TaxonomyReader taxoReader, String dimension, String... path) throws IOException {
-    OrdToLabels ordLabels = new TaxonomyOrdLabels(taxoReader);
+    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
     int parentOrdinal = ordLabels.getOrd(parentLabel);
     OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(countFacetRecorder.recordedOrds(),
@@ -375,7 +374,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
     return new FacetResult(dimension, path, VALUE_CANT_BE_COMPUTED, labelsAndValues.toArray(new LabelAndValue[0]), childCount);
   }
 
-  FacetResult getAllSortByOrd(int[] resultOrdinals, CountFacetRecorder countFacetRecorder, String dimension, OrdToLabels ordLabels) throws IOException {
+  FacetResult getAllSortByOrd(int[] resultOrdinals, CountFacetRecorder countFacetRecorder, String dimension, OrdLabelBiMap ordLabels) throws IOException {
     FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     int childCount = 0;
@@ -390,7 +389,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
 
   int getSpecificValue(CountFacetRecorder countFacetRecorder, TaxonomyReader taxoReader, String... path) throws
           IOException {
-    OrdToLabels ordLabels = new TaxonomyOrdLabels(taxoReader);
+    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel label = new FacetLabel(path);
     int facetOrd = ordLabels.getOrd(label);
     return countFacetRecorder.getCount(facetOrd);
