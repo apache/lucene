@@ -1,0 +1,11 @@
+- locate all other dependencies in build scripts and move them to toml.
+- min java version -> toml
+
+- reuse version catalog from composite builds
+
+- configure configuration groups for versions.lock, add documentation to help/
+- configure and document updateVersions/ tidy versions file.
+
+- apply spotless to composite builds
+
+- upgrade spotless and other plugins

@@ -48,7 +48,7 @@ import java.util.Locale;
 public class Checksum extends DefaultTask {
   private FileCollection files;
   private File outputDir;
-  private Algorithm algorithm;
+  private Algorithm algorithm = Algorithm.SHA512;
 
   public enum Algorithm {
     MD5(new DigestUtils(DigestUtils.getMd5Digest())),

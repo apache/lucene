@@ -20,6 +20,8 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+
+    includeBuild("build-tools/build-infra")
 }
 
 plugins {
@@ -40,7 +42,7 @@ apply from: file('gradle/ge.gradle')
 
 rootProject.name = "lucene-root"
 
-includeBuild("dev-tools/missing-doclet")
+includeBuild("build-tools/missing-doclet")
 
 include "lucene:analysis:common"
 include "lucene:analysis:icu"
