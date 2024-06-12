@@ -24,18 +24,21 @@ googleJavaFormat = "1.22.0"
 greclipse = "4.26"
 # @keep This is the minimum required Java version.
 minJava = "11"
-jopt = "5.0.4"
 jmh = "1.37"
+jgit = "5.13.1.202206130422-r"
+javacc = "7.0.12"
+jflex = "1.8.2"
+flexmark = "0.61.24"
+ecj = "3.36.0"
+rat = "0.14"
 
 [libraries]
 randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
-# @keep This is used in gitinfo.gradle
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
 s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
 junit = { module = "junit:junit", version.ref = "junit" }
-jopt-simple = { module = "net.sf.jopt-simple:jopt-simple", version.ref = "jopt" }
 nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekohtml" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 asm-core = { module = "org.ow2.asm:asm", version.ref = "asm" }
@@ -53,6 +56,16 @@ procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork"}
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
+jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
+javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
+jflex = { module = "de.jflex:jflex", version.ref = "jflex" }
+flexmark-core = { module = "com.vladsch.flexmark:flexmark", version.ref = "flexmark" }
+flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbreviation", version.ref = "flexmark" }
+flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attributes", version.ref = "flexmark" }
+flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
+flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
+ecj = { module = "org.eclipse.jdt:ecj", version.ref = "ecj" }
+rat = { module = "org.apache.rat:apache-rat", version.ref = "rat" }
 
 [plugins]
 forbiddenapis = "de.thetaphi.forbiddenapis:3.7"
