@@ -379,7 +379,7 @@ final class FrozenBufferedUpdates {
 
     long delCount = 0;
     for (int docID : deleteDocs) {
-      //      ReaderUtil.subIndex(docID, segStates);
+            ReaderUtil.subIndex(docID, segStates);
     }
     for (BufferedUpdatesStream.SegmentState segState : segStates) {
 

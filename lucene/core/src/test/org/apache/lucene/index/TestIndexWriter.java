@@ -115,87 +115,6 @@ public class TestIndexWriter extends LuceneTestCase {
 
   private static final FieldType storedTextType = new FieldType(TextField.TYPE_NOT_STORED);
 
-  public void testUpdateByQueries() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter writer =
-        new IndexWriter(
-            dir,
-            new IndexWriterConfig(new MockAnalyzer(random()))
-                .setMergePolicy(NoMergePolicy.INSTANCE));
-
-    Document doc;
-    for (int i = 0; i < 10; i++) {
-      doc = new Document();
-      doc.add(new LongField("long", i, Field.Store.YES));
-      doc.add(new KeywordField("keyword", i + "", Field.Store.YES));
-      writer.addDocument(doc);
-    }
-    writer.flush();
-
-    Document doc1 = new Document();
-    doc1.add(new KeywordField("foo", "nana", Field.Store.YES));
-    doc1.add(new KeywordField("goo", "gogo1", Field.Store.YES));
-
-    Document doc2 = new Document();
-    doc2.add(new KeywordField("foo", "nana", Field.Store.YES));
-    doc2.add(new KeywordField("goo", "gogo2", Field.Store.YES));
-
-    List<Document> docs = new ArrayList<>();
-    docs.add(doc1);
-    docs.add(doc2);
-    writer.updateDocuments(new Term("keyword", "3"), docs);
-
-    DirectoryReader reader = DirectoryReader.open(writer);
-    IndexSearcher searcher = newSearcher(reader);
-    ScoreDoc[] scoreDocs = searcher.search(new TermQuery(new Term("foo", "nana")), 10).scoreDocs;
-
-    Document document1 = reader.storedFields().document(scoreDocs[0].doc);
-    Document document2 = reader.storedFields().document(scoreDocs[1].doc);
-
-    reader.close();
-    writer.close();
-    dir.close();
-  }
-
-  public void testUpdateByTerms() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter writer =
-        new IndexWriter(
-            dir,
-            new IndexWriterConfig(new MockAnalyzer(random()))
-                .setMergePolicy(NoMergePolicy.INSTANCE));
-
-    Document doc;
-    doc = new Document();
-    doc.add(new TextField("f", "foo bar tea", Field.Store.NO));
-    writer.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new TextField("f", "foo bar", Field.Store.NO));
-    writer.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new TextField("f", "foo tea", Field.Store.NO));
-    writer.addDocument(doc);
-
-    writer.flush();
-
-    Term[] delTerms = new Term[3];
-    delTerms[0] = new Term("f", "foo");
-    delTerms[1] = new Term("f", "bar");
-    delTerms[2] = new Term("f", "tea");
-
-    writer.deleteDocuments(delTerms);
-
-    DirectoryReader reader = DirectoryReader.open(writer);
-    IndexSearcher searcher = newSearcher(reader);
-    assertEquals(0, searcher.search(new MatchAllDocsQuery(), 10).totalHits.value);
-
-    reader.close();
-    writer.close();
-    dir.close();
-  }
-
   public void testDocCount() throws IOException {
     Directory dir = newDirectory();
 
@@ -268,6 +187,89 @@ public class TestIndexWriter extends LuceneTestCase {
     docStats = writer.getDocStats();
     assertEquals(0, docStats.maxDoc);
     assertEquals(0, docStats.numDocs);
+    writer.close();
+    dir.close();
+  }
+
+  public void testDeleteByQueries() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc;
+    for (int i = 0; i < 10; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    for (int i = 10; i < 20; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    for (int i = 20; i < 30; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+    writer.deleteDocuments(
+        LongPoint.newRangeQuery("content", 10, 19), LongPoint.newRangeQuery("content", 12, 15));
+
+    DirectoryReader reader = DirectoryReader.open(writer);
+    IndexSearcher searcher = newSearcher(reader);
+    assertEquals(
+        0, searcher.search(LongPoint.newRangeQuery("content", 10, 19), 100).totalHits.value);
+    assertEquals(
+        20, searcher.search(LongPoint.newRangeQuery("content", 0, 30), 100).totalHits.value);
+
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  public void testDeleteByTerms() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc;
+    doc = new Document();
+    doc.add(new TextField("f", "foo bar tea", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new TextField("f", "foo bar", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new TextField("f", "foo tea", Field.Store.NO));
+    writer.addDocument(doc);
+
+    writer.flush();
+
+    Term[] delTerms = new Term[3];
+    delTerms[0] = new Term("f", "foo");
+    delTerms[1] = new Term("f", "bar");
+    delTerms[2] = new Term("f", "tea");
+
+    writer.deleteDocuments(delTerms);
+
+    DirectoryReader reader = DirectoryReader.open(writer);
+    IndexSearcher searcher = newSearcher(reader);
+    assertEquals(0, searcher.search(new MatchAllDocsQuery(), 10).totalHits.value);
+
+    reader.close();
     writer.close();
     dir.close();
   }

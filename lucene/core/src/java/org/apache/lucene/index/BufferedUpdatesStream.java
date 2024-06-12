@@ -271,6 +271,7 @@ final class BufferedUpdatesStream implements Accountable {
   static final class SegmentState implements Closeable {
     final long delGen;
     final ReadersAndUpdates rld;
+    final int docBase;
     final SegmentReader reader;
     final int startDelCount;
     private final IOConsumer<ReadersAndUpdates> onClose;
@@ -280,12 +281,13 @@ final class BufferedUpdatesStream implements Accountable {
     BytesRef term;
 
     SegmentState(
-        ReadersAndUpdates rld, IOConsumer<ReadersAndUpdates> onClose, SegmentCommitInfo info)
+        ReadersAndUpdates rld, IOConsumer<ReadersAndUpdates> onClose, SegmentCommitInfo info, int docBase)
         throws IOException {
       this.rld = rld;
       reader = rld.getReader(IOContext.DEFAULT);
       startDelCount = rld.getDelCount();
       delGen = info.getBufferedDeletesGen();
+      this.docBase = docBase;
       this.onClose = onClose;
     }
 

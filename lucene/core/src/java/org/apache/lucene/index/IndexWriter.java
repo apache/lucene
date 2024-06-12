@@ -6475,13 +6475,17 @@ public class IndexWriter
       throws IOException {
     List<BufferedUpdatesStream.SegmentState> segStates = new ArrayList<>();
     try {
+      // TODO: We will not get all segments when privateSegment is not null in getInfosToApply.
+      // In which case, we can't set docBase here.
+      int docBase = 0;
       for (SegmentCommitInfo info : infos) {
         if (info.getBufferedDeletesGen() <= delGen && alreadySeenSegments.contains(info) == false) {
           segStates.add(
               new BufferedUpdatesStream.SegmentState(
-                  getPooledInstance(info, true), this::release, info));
+                  getPooledInstance(info, true), this::release, info, docBase));
           alreadySeenSegments.add(info);
         }
+        docBase += info.info.maxDoc();
       }
     } catch (Throwable t) {
       try {
