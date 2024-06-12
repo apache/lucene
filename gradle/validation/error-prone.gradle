@@ -40,16 +40,8 @@ allprojects { prj ->
     // LUCENE-9650: Errorprone on master/gradle does not work when running as plugin
     // inside a forked Javac process. Javac running inside Gradle works, because we have
     // additional module system opens in place.
-    // This is a hack to keep the dependency (so that palantir's version check doesn't complain)
-    // but don't include the plugin (which fails on JDK16+).
     if (skipReason) {
       tasks.withType(JavaCompile) { task -> task.dependsOn ":errorProneSkipped" }
-      configurations {
-        errorprone
-      }
-      dependencies {
-        errorprone("com.google.errorprone:error_prone_core")
-      }
     } else {
       prj.apply plugin: 'net.ltgt.errorprone'
 
