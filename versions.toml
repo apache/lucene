@@ -52,6 +52,7 @@ jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.
 procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork"}
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+errorprone = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 
 [plugins]
 forbiddenapis = "de.thetaphi.forbiddenapis:3.7"

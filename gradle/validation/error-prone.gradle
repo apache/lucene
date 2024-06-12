@@ -43,10 +43,10 @@ allprojects { prj ->
     if (skipReason) {
       tasks.withType(JavaCompile) { task -> task.dependsOn ":errorProneSkipped" }
     } else {
-      prj.apply plugin: 'net.ltgt.errorprone'
+      prj.apply plugin: deps.plugins.errorprone.get().pluginId
 
       dependencies {
-        errorprone("com.google.errorprone:error_prone_core")
+        errorprone deps.errorprone
       }
 
       tasks.withType(JavaCompile) { task ->
