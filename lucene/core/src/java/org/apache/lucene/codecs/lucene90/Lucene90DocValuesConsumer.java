@@ -164,9 +164,14 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
     /** Accumulate state from another tracker. */
     void update(MinMaxTracker other) {
-      min = Math.min(min, other.min);
-      max = Math.max(max, other.max);
-      numValues += other.numValues;
+      update(other.min, other.max, other.numValues);
+    }
+
+    /** Accumulate pre-aggregated state. */
+    void update(long min, long max, long numValues) {
+      this.min = Math.min(min, this.min);
+      this.max = Math.max(max, this.max);
+      this.numValues += numValues;
     }
 
     /** Update the required space. */
@@ -231,6 +236,22 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     minMax.finish();
     blockMinMax.finish();
 
+    writeValues(
+        field, valuesProducer, ords, minMax, blockMinMax, gcd, uniqueValues, numDocsWithValue);
+
+    return new long[] {numDocsWithValue, minMax.numValues};
+  }
+
+  private void writeValues(
+      FieldInfo field,
+      DocValuesProducer valuesProducer,
+      boolean ords,
+      MinMaxTracker minMax,
+      MinMaxTracker blockMinMax,
+      long gcd,
+      Set<Long> uniqueValues,
+      int numDocsWithValue)
+      throws IOException {
     if (ords && minMax.numValues > 0) {
       if (minMax.min != 0) {
         throw new IllegalStateException(
@@ -260,7 +281,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     } else { // meta[data.offset, data.length]: IndexedDISI structure for documents with values
       long offset = data.getFilePointer();
       meta.writeLong(offset); // docsWithFieldOffset
-      values = valuesProducer.getSortedNumeric(field);
+      SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
       final short jumpTableEntryCount =
           IndexedDISI.writeBitSet(values, data, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
       meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
@@ -328,7 +349,6 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
     meta.writeLong(data.getFilePointer() - startOffset); // valuesLength
     meta.writeLong(jumpTableOffset);
-    return new long[] {numDocsWithValue, numValues};
   }
 
   private void writeValuesSingleBlock(
@@ -494,6 +514,25 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private void doAddSortedField(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
+
+    int numDocsWithValue = 0;
+    MinMaxTracker blockMinMax = new MinMaxTracker();
+
+    SortedDocValues sorted = valuesProducer.getSorted(field);
+    for (int doc = sorted.nextDoc(); doc < DocIdSetIterator.NO_MORE_DOCS; doc = sorted.nextDoc()) {
+      final int v = sorted.ordValue();
+      blockMinMax.update(v);
+      if (blockMinMax.numValues == NUMERIC_BLOCK_SIZE) {
+        blockMinMax.nextBlock();
+      }
+      numDocsWithValue++;
+    }
+    blockMinMax.finish();
+
+    MinMaxTracker minMax = new MinMaxTracker();
+    minMax.update(0L, sorted.getValueCount() - 1, numDocsWithValue);
+    minMax.finish();
+
     writeValues(
         field,
         new EmptyDocValuesProducer() {
@@ -535,7 +574,13 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             return DocValues.singleton(sortedOrds);
           }
         },
-        true);
+        true,
+        minMax,
+        blockMinMax,
+        1L,
+        null,
+        numDocsWithValue);
+
     addTermsDict(DocValues.singleton(valuesProducer.getSorted(field)));
   }
 
