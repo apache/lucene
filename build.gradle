@@ -20,11 +20,17 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   id "base"
+
+  alias(deps.plugins.dependencychecks)
+  alias(deps.plugins.spotless) apply false
+  alias(deps.plugins.benmanes.versions)
+  alias(deps.plugins.forbiddenapis) apply false
+  alias(deps.plugins.versionCatalogUpdate) apply false
+  alias(deps.plugins.randomizedtesting) apply false
+
   id "org.owasp.dependencycheck" version "7.2.0"
-  id 'de.thetaphi.forbiddenapis' version '3.7' apply false
   id "de.undercouch.download" version "5.2.0" apply false
   id "net.ltgt.errorprone" version "3.1.0" apply false
-  id 'com.diffplug.spotless' version "6.5.2" apply false
   id 'org.barfuin.gradle.jacocolog' version "3.1.0" apply false
 }
 
@@ -139,7 +145,6 @@ apply from: file('gradle/validation/precommit.gradle')
 apply from: file('gradle/validation/forbidden-apis.gradle')
 apply from: file('gradle/validation/jar-checks.gradle')
 apply from: file('gradle/validation/git-status.gradle')
-apply from: file('gradle/validation/versions-props-sorted.gradle')
 apply from: file('gradle/validation/validate-source-patterns.gradle')
 apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')

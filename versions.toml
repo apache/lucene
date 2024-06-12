@@ -54,10 +54,9 @@ hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 [plugins]
+forbiddenapis = "de.thetaphi.forbiddenapis:3.7"
 benmanes-versions = "com.github.ben-manes.versions:0.51.0"
 dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.0.9"
-forbiddenapis = "de.thetaphi.forbiddenapis:3.7"
-jmh = "me.champeau.jmh:0.7.2"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:6.25.0"
+spotless = "com.diffplug.spotless:6.5.2"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:0.8.4"

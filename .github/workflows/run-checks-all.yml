@@ -11,6 +11,7 @@ on:
     branches:
       - 'main'
       - 'branch_9x'
+      - 'versions'
 
 env:
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
