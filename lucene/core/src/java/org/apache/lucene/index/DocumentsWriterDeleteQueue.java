@@ -146,6 +146,10 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
     return new QueryNode(query);
   }
 
+  static Node<Integer> newNode(int docID) {
+    return new DocNode(docID);
+  }
+
   static Node<DocValuesUpdate[]> newNode(DocValuesUpdate... updates) {
     return new DocValuesUpdatesNode(updates);
   }
@@ -451,6 +455,23 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
     @Override
     void apply(BufferedUpdates bufferedDeletes, int docIDUpto) {
       bufferedDeletes.addQuery(item, docIDUpto);
+    }
+
+    @Override
+    public String toString() {
+      return "del=" + item;
+    }
+  }
+
+  private static final class DocNode extends Node<Integer> {
+
+    DocNode(Integer doc) {
+      super(doc);
+    }
+
+    @Override
+    void apply(BufferedUpdates bufferedDeletes, int docIDUpto) {
+      bufferedDeletes.addDoc(item, docIDUpto);
     }
 
     @Override

@@ -62,6 +62,7 @@ class BufferedUpdates implements Accountable {
 
   final DeletedTerms deleteTerms = new DeletedTerms();
   final Map<Query, Integer> deleteQueries = new HashMap<>();
+  final Map<Integer, Integer> deleteDocs = new HashMap<>();
 
   final Map<String, FieldUpdatesBuffer> fieldUpdates = new HashMap<>();
 
@@ -80,6 +81,7 @@ class BufferedUpdates implements Accountable {
     this.segmentName = segmentName;
   }
 
+  // TODO: add delDocs
   @Override
   public String toString() {
     if (VERBOSE_DELETES) {
@@ -107,7 +109,26 @@ class BufferedUpdates implements Accountable {
     }
   }
 
+  // TODO: docIDUpto is useless?
+  public void addDoc(int docID, int docIDUpto) {
+    int current = deleteDocs.get(docID);
+    if (current != -1 && docIDUpto < current) {
+      // Only record the new number if it's greater than the
+      // current one.  This is important because if multiple
+      // threads are replacing the same doc at nearly the
+      // same time, it's possible that one thread that got a
+      // higher docID is scheduled before the other
+      // threads.  If we blindly replace than we can
+      // incorrectly get both docs indexed.
+      return;
+    }
+
+    // TODO: no need to calculate bytesUsed like addQuery?
+    deleteDocs.put(docID, docIDUpto);
+  }
+
   public void addQuery(Query query, int docIDUpto) {
+    // TODO: no need to compare current and docIDUpto like addTerm?
     Integer current = deleteQueries.put(query, docIDUpto);
     // increment bytes used only if the query wasn't added so far.
     if (current == null) {
@@ -128,6 +149,7 @@ class BufferedUpdates implements Accountable {
       return;
     }
 
+    // TODO: no need to calculate bytesUsed like addQuery?
     deleteTerms.put(term, docIDUpto);
   }
 

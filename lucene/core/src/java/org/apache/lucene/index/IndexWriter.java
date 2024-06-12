@@ -1536,6 +1536,17 @@ public class IndexWriter
    * @lucene.experimental
    */
   public long updateDocuments(
+      int docID, Iterable<? extends Iterable<? extends IndexableField>> docs) throws IOException {
+    return updateDocuments(docID >= 0 ? null : DocumentsWriterDeleteQueue.newNode(docID), docs);
+  }
+
+  /**
+   * Similar to {@link #updateDocuments(Term, Iterable)}, but take a query instead of a term to
+   * identify the documents to be updated
+   *
+   * @lucene.experimental
+   */
+  public long updateDocuments(
       Query delQuery, Iterable<? extends Iterable<? extends IndexableField>> docs)
       throws IOException {
     return updateDocuments(

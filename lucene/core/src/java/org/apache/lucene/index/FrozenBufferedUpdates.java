@@ -58,6 +58,11 @@ final class FrozenBufferedUpdates {
   final Query[] deleteQueries;
   final int[] deleteQueryLimits;
 
+  // Parallel array of deleted doc, and the docIDUpto for each
+  final int[] deleteDocs;
+  // TODO: may useless.
+  final int[] deleteDocLimits;
+
   /** Counts down once all deletes/updates have been applied */
   public final CountDownLatch applied = new CountDownLatch(1);
 
@@ -97,6 +102,16 @@ final class FrozenBufferedUpdates {
       deleteQueryLimits[upto] = ent.getValue();
       upto++;
     }
+
+    deleteDocs = new int[updates.deleteDocs.size()];
+    deleteDocLimits = new int[updates.deleteDocs.size()];
+    upto = 0;
+    for (Map.Entry<Integer, Integer> ent : updates.deleteDocs.entrySet()) {
+      deleteDocs[upto] = ent.getKey();
+      deleteDocLimits[upto] = ent.getValue();
+      upto++;
+    }
+
     // TODO if a Term affects multiple fields, we could keep the updates key'd by Term
     // so that it maps to all fields it affects, sorted by their docUpto, and traverse
     // that Term only once, applying the update to all fields that still need to be
@@ -149,8 +164,8 @@ final class FrozenBufferedUpdates {
   }
 
   /**
-   * Applies pending delete-by-term, delete-by-query and doc values updates to all segments in the
-   * index, returning the number of new deleted or updated documents.
+   * Applies pending delete-by-term, delete-by-query, delete-by-doc and doc values updates to all
+   * segments in the index, returning the number of new deleted or updated documents.
    */
   long apply(BufferedUpdatesStream.SegmentState[] segStates) throws IOException {
     assert applyLock.isHeldByCurrentThread();
@@ -169,6 +184,7 @@ final class FrozenBufferedUpdates {
 
     totalDelCount += applyTermDeletes(segStates);
     totalDelCount += applyQueryDeletes(segStates);
+    totalDelCount += applyDocDeletes(segStates);
     totalDelCount += applyDocValuesUpdates(segStates);
 
     return totalDelCount;
@@ -350,6 +366,90 @@ final class FrozenBufferedUpdates {
     }
 
     return updateCount;
+  }
+
+  // Delete by docID
+  private long applyDocDeletes(BufferedUpdatesStream.SegmentState[] segStates) throws IOException {
+
+    if (deleteDocs.length == 0) {
+      return 0;
+    }
+
+    long startNS = System.nanoTime();
+
+    long delCount = 0;
+    for (int docID : deleteDocs) {
+      //      ReaderUtil.subIndex(docID, segStates);
+    }
+    for (BufferedUpdatesStream.SegmentState segState : segStates) {
+
+      if (delGen < segState.delGen) {
+        // segment is newer than this deletes packet
+        continue;
+      }
+
+      if (segState.rld.refCount() == 1) {
+        // This means we are the only remaining reference to this segment, meaning
+        // it was merged away while we were running, so we can safely skip running
+        // because we will run on the newly merged segment next:
+        continue;
+      }
+
+      final LeafReaderContext readerContext = segState.reader.getContext();
+      for (int i = 0; i < deleteQueries.length; i++) {
+        Query query = deleteQueries[i];
+        int limit;
+        if (delGen == segState.delGen) {
+          assert privateSegment != null;
+          limit = deleteQueryLimits[i];
+        } else {
+          limit = Integer.MAX_VALUE;
+        }
+        final IndexSearcher searcher = new IndexSearcher(readerContext.reader());
+        searcher.setQueryCache(null);
+        query = searcher.rewrite(query);
+        final Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
+        final Scorer scorer = weight.scorer(readerContext);
+        if (scorer != null) {
+          final DocIdSetIterator it = scorer.iterator();
+          if (segState.rld.sortMap != null && limit != Integer.MAX_VALUE) {
+            assert privateSegment != null;
+            // This segment was sorted on flush; we must apply seg-private deletes carefully in this
+            // case:
+            int docID;
+            while ((docID = it.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+              // The limit is in the pre-sorted doc space:
+              if (segState.rld.sortMap.newToOld(docID) < limit) {
+                if (segState.rld.delete(docID)) {
+                  delCount++;
+                }
+              }
+            }
+          } else {
+            int docID;
+            while ((docID = it.nextDoc()) < limit) {
+              if (segState.rld.delete(docID)) {
+                delCount++;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (infoStream.isEnabled("BD")) {
+      infoStream.message(
+          "BD",
+          String.format(
+              Locale.ROOT,
+              "applyQueryDeletes took %.2f msec for %d segments and %d queries; %d new deletions",
+              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+              segStates.length,
+              deleteQueries.length,
+              delCount));
+    }
+
+    return delCount;
   }
 
   // Delete by query
