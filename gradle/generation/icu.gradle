@@ -33,18 +33,11 @@ def resources = scriptResources(buildscript)
 // Configure different icu4j dependencies.
 configure(rootProject) {
   configurations {
-    // icu_xyz
     icu_current
   }
 
   dependencies {
-    // icu_xyz "com.ibm.icu:icu4j:xyz"
-    icu_current 'com.ibm.icu:icu4j'
-  }
-
-  // Exclude explicit ICU configs from palantir's version unification.
-  versionRecommendations {
-    // excludeConfigurations "icu_xyz"
+    icu_current deps.icu4j
   }
 }
 

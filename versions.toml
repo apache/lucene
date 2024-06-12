@@ -1,0 +1,63 @@
+[versions]
+randomizedtesting = "2.8.1"
+icu4j = "74.2"
+commons-codec = "1.13"
+commons-compress = "1.19"
+procfork = "1.0.6"
+errorprone = "2.18.0"
+s2-geometry = "1.0.0"
+junit = "4.13.1"
+nekohtml = "1.9.17"
+antlr = "4.11.1"
+opennlp = "2.3.2"
+assertj ="3.21.0"
+morfologik = "2.1.9"
+hamcrest = "2.2"
+jts = "1.17.0"
+spatial4j = "0.8"
+asm = "9.6"
+morfologik-ukrainian = "4.9.1"
+xerces = "2.12.0"
+# @keep This is GJF version for spotless/ tidy.
+googleJavaFormat = "1.22.0"
+# @keep spotless formatting of groovy/gradle files
+greclipse = "4.26"
+# @keep This is the minimum required Java version.
+minJava = "11"
+jopt = "5.0.4"
+jmh = "1.37"
+
+[libraries]
+randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
+icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
+# @keep This is used in gitinfo.gradle
+commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
+junit = { module = "junit:junit", version.ref = "junit" }
+jopt-simple = { module = "net.sf.jopt-simple:jopt-simple", version.ref = "jopt" }
+nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekohtml" }
+antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
+asm-core = { module = "org.ow2.asm:asm", version.ref = "asm" }
+asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
+spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
+jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
+morfologik-polish = { module = "org.carrot2:morfologik-polish", version.ref = "morfologik" }
+morfologik-stemming = { module = "org.carrot2:morfologik-stemming", version.ref = "morfologik" }
+morfologik-ukrainian = { module = "ua.net.nlp:morfologik-ukrainian-search", version.ref = "morfologik-ukrainian" }
+opennlp-tools = { module = "org.apache.opennlp:opennlp-tools", version.ref = "opennlp" }
+xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
+jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
+jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
+procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork"}
+hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
+assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+
+[plugins]
+benmanes-versions = "com.github.ben-manes.versions:0.51.0"
+dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.0.9"
+forbiddenapis = "de.thetaphi.forbiddenapis:3.7"
+jmh = "me.champeau.jmh:0.7.2"
+randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
+spotless = "com.diffplug.spotless:6.25.0"
+versionCatalogUpdate = "nl.littlerobots.version-catalog-update:0.8.4"
