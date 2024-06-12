@@ -82,6 +82,11 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
+      public DataInputDocValues getDataInputDocValues(String field) {
+        return null;
+      }
+
+      @Override
       public SortedDocValues getSortedDocValues(String field) {
         return null;
       }

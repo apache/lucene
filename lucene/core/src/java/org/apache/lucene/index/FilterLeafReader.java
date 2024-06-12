@@ -424,6 +424,12 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
+  public DataInputDocValues getDataInputDocValues(String field) throws IOException {
+    ensureOpen();
+    return in.getDataInputDocValues(field);
+  }
+
+  @Override
   public SortedDocValues getSortedDocValues(String field) throws IOException {
     ensureOpen();
     return in.getSortedDocValues(field);
