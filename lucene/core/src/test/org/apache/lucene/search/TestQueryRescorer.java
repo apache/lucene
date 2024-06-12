@@ -453,8 +453,8 @@ public class TestQueryRescorer extends LuceneTestCase {
               } else if (bv < av) {
                 return reverseInt;
               } else {
-                // Tie break by docID, ascending
-                return a - b;
+                // use original order if scores are the same
+                return 0;
               }
             } catch (IOException ioe) {
               throw new RuntimeException(ioe);
@@ -464,8 +464,7 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     boolean fail = false;
     for (int i = 0; i < numHits; i++) {
-      // System.out.println("expected=" + expected[i] + " vs " + hits2.scoreDocs[i].doc + " v=" +
-      // idToNum[Integer.parseInt(r.storedFields().document(expected[i]).get("id"))]);
+      // System.out.println("expected=" + expected[i] + " vs " + hits2.scoreDocs[i].toString());
       if (expected[i].intValue() != hits2.scoreDocs[i].doc) {
         // System.out.println("  diff!");
         fail = true;
