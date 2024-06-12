@@ -105,8 +105,8 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public void addSortedField(FieldInfo field, DocValuesProducer valuesProducer)
-        throws IOException {
+    public void addSortedField(
+        FieldInfo field, DocValuesProducer valuesProducer, boolean primarySort) throws IOException {
       SortedDocValues values = valuesProducer.getSorted(field);
 
       int valueCount = values.getValueCount();
@@ -136,7 +136,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
       }
 
       assert seenOrds.cardinality() == valueCount;
-      in.addSortedField(field, valuesProducer);
+      in.addSortedField(field, valuesProducer, primarySort);
     }
 
     @Override

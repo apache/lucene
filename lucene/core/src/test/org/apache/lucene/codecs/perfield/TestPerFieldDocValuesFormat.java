@@ -258,8 +258,9 @@ public class TestPerFieldDocValuesFormat extends BaseDocValuesFormatTestCase {
         }
 
         @Override
-        public void addSortedField(FieldInfo field, DocValuesProducer values) throws IOException {
-          consumer.addSortedField(field, values);
+        public void addSortedField(FieldInfo field, DocValuesProducer values, boolean primarySort)
+            throws IOException {
+          consumer.addSortedField(field, values, primarySort);
         }
 
         @Override
