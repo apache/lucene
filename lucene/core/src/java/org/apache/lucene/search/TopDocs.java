@@ -355,16 +355,18 @@ public class TopDocs {
     }
   }
 
-  /** Reciprocal Rank Fusion method.
-   * <p>
-   * This method combines different search results into a single ranked list.
-   * @param topN the top N results to be returned
-   * @param k a constant determines how much influence documents in individual rankings have on the final
-   *          result. A higher value gives lower rank documents more influence. k should be greater than or equal to 1.
-   * @param hits a list of TopDocs to apply RRF on
+  /**
+   * Reciprocal Rank Fusion method.
    *
+   * <p>This method combines different search results into a single ranked list.
+   *
+   * @param topN the top N results to be returned
+   * @param k a constant determines how much influence documents in individual rankings have on the
+   *     final result. A higher value gives lower rank documents more influence. k should be greater
+   *     than or equal to 1.
+   * @param hits a list of TopDocs to apply RRF on
    * @return a TopDocs contains the top N ranked results.
-   * */
+   */
   public static TopDocs rrf(int topN, int k, TopDocs[] hits) {
     Map<Integer, Float> rrfScore = new HashMap<>();
     long minHits = Long.MAX_VALUE;
