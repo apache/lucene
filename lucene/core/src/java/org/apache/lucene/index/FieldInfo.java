@@ -65,6 +65,12 @@ public final class FieldInfo {
   private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
 
+  // if it is a positive value, it means this field indexes tensors
+  private final int tensorDimension;
+  private final int tensorRank;
+  private final VectorEncoding tensorEncoding;
+  private final TensorSimilarityFunction tensorSimilarityFunction;
+
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
 
@@ -92,6 +98,10 @@ public final class FieldInfo {
       int vectorDimension,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
+      int tensorDimension,
+      int tensorRank,
+      VectorEncoding tensorEncoding,
+      TensorSimilarityFunction tensorSimilarityFunction,
       boolean softDeletesField,
       boolean isParentField) {
     this.name = Objects.requireNonNull(name);
@@ -120,6 +130,10 @@ public final class FieldInfo {
     this.vectorDimension = vectorDimension;
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
+    this.tensorDimension = tensorDimension;
+    this.tensorRank = tensorRank;
+    this.tensorEncoding = tensorEncoding;
+    this.tensorSimilarityFunction = tensorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.isParentField = isParentField;
     this.checkConsistency();
@@ -223,6 +237,15 @@ public final class FieldInfo {
     if (vectorDimension < 0) {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
+    }
+
+    if (tensorDimension < 0) {
+      throw new IllegalArgumentException(
+          "tensorDimension must be >=0; got " + tensorDimension + " (field: '" + name + "')");
+    }
+    if (tensorSimilarityFunction == null) {
+      throw new IllegalArgumentException(
+          "Tensor similarity function must not be null (field: '" + name + "')");
     }
 
     if (softDeletesField && isParentField) {
@@ -534,6 +557,26 @@ public final class FieldInfo {
   /** Returns {@link VectorSimilarityFunction} for the field */
   public VectorSimilarityFunction getVectorSimilarityFunction() {
     return vectorSimilarityFunction;
+  }
+
+  /** Returns the number of dimensions for each vector in the tensor */
+  public int getTensorDimension() {
+    return tensorDimension;
+  }
+
+  /** Returns rank of the tensor field */
+  public int getTensorRank() {
+    return tensorRank;
+  }
+
+  /** Returns {@link VectorEncoding} for each vector in the tensor */
+  public VectorEncoding getTensorEncoding() {
+    return tensorEncoding;
+  }
+
+  /** Returns {@link TensorSimilarityFunction} for the field */
+  public TensorSimilarityFunction getTensorSimilarityFunction() {
+    return tensorSimilarityFunction;
   }
 
   /** Record that this field is indexed with docvalues, with the specified type */
