@@ -390,7 +390,6 @@ final class FrozenBufferedUpdates {
         continue;
       }
 
-      // TODO: If we get both merged away segment(stale) and newly merged segment, we will get incorrect docBase?
       if (segStates[i].rld.refCount() == 1) {
         // This means we are the only remaining reference to this segment, meaning
         // it was merged away while we were running, so we can safely skip running
