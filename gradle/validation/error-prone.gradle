@@ -37,11 +37,20 @@ if (skipReason) {
 
 allprojects { prj ->
   plugins.withType(JavaPlugin) {
-    // LUCENE-9650: Errorprone on master/gradle does not work when running as plugin
-    // inside a forked Javac process. Javac running inside Gradle works, because we have
-    // additional module system opens in place.
+    // LUCENE-9650: Errorprone does not work when running as a plugin inside a forked Javac process.
+    // Javac running inside Gradle works, because we have additional module system opens in place.
     if (skipReason) {
       tasks.withType(JavaCompile) { task -> task.dependsOn ":errorProneSkipped" }
+
+      // Error prone plugin adds error prone to test classpath. We need to add it here too (manually) so that
+      // versions.lock is consistent with or without error prone.
+      configurations {
+        errorprone
+      }
+      dependencies {
+        errorprone deps.errorprone
+      }
+      configurations.annotationProcessor.extendsFrom(configurations.errorprone)
     } else {
       prj.apply plugin: deps.plugins.errorprone.get().pluginId
 
