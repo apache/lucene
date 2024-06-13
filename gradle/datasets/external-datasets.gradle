@@ -23,7 +23,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "com.github.luben:zstd-jni:1.5.5-11"
+    classpath deps.zstd
   }
 }
 
@@ -38,7 +38,7 @@ def unzstd(java.nio.file.Path src, java.nio.file.Path dst) {
 // TODO: not sure whether this should live in benchmarks, but for now let it be.
 configure(project(":lucene:benchmark")) {
   apply plugin: "java"
-  apply plugin: "de.undercouch.download"
+  apply plugin: deps.plugins.undercouch.download.get().pluginId
 
   ext {
     dataDir = file("work")

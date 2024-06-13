@@ -19,11 +19,13 @@ asm = "9.6"
 morfologik-ukrainian = "4.9.1"
 xerces = "2.12.0"
 # @keep This is GJF version for spotless/ tidy.
-googleJavaFormat = "1.22.0"
+googleJavaFormat = "1.18.1"
 # @keep spotless formatting of groovy/gradle files
 greclipse = "4.26"
 # @keep This is the minimum required Java version.
-minJava = "11"
+minJava = "21"
+# @keep Minimum gradle version to run the build
+minGradle = "8.8"
 jmh = "1.37"
 jgit = "5.13.1.202206130422-r"
 javacc = "7.0.12"
@@ -31,6 +33,7 @@ jflex = "1.8.2"
 flexmark = "0.61.24"
 ecj = "3.36.0"
 rat = "0.14"
+zstd = "1.5.5-11"
 
 [libraries]
 randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
@@ -40,6 +43,7 @@ commons-compress = { module = "org.apache.commons:commons-compress", version.ref
 s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
 junit = { module = "junit:junit", version.ref = "junit" }
 nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekohtml" }
+antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 asm-core = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
@@ -66,6 +70,7 @@ flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink",
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
 ecj = { module = "org.eclipse.jdt:ecj", version.ref = "ecj" }
 rat = { module = "org.apache.rat:apache-rat", version.ref = "rat" }
+zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
 forbiddenapis = "de.thetaphi.forbiddenapis:3.7"

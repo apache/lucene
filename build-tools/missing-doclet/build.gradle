@@ -23,10 +23,12 @@ version = "1.0.0-SNAPSHOT"
 group = "org.apache.lucene.tools"
 description = 'Doclet-based javadoc validation'
 
-sourceCompatibility = JavaVersion.VERSION_21
-targetCompatibility = JavaVersion.VERSION_21
+java {
+  sourceCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
+  targetCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
+}
 
-tasks.withType(JavaCompile) {
-  options.compilerArgs += ["--release", targetCompatibility.toString()]
+tasks.withType(JavaCompile).configureEach {
+  options.compilerArgs += ["--release", java.targetCompatibility.toString()]
   options.encoding = "UTF-8"
 }

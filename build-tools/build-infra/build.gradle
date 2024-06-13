@@ -23,11 +23,14 @@ repositories {
   mavenCentral()
 }
 
-group = "org.apache.lucene"
+group = "org.apache"
 
-ext {
-  // Minimum Java version required to compile.
-  minJavaVersion = JavaVersion.VERSION_21
+// Make sure the build environment is consistent.
+apply from: file('../../gradle/validation/check-environment.gradle')
+
+java {
+  sourceCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
+  targetCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
 }
 
 gradlePlugin {
@@ -41,16 +44,12 @@ gradlePlugin {
   }
 }
 
-// Make sure the build environment is consistent.
-// apply from: file('../gradle/validation/check-environment.gradle')
-
 dependencies {
   implementation gradleApi()
   implementation localGroovy()
-  implementation "commons-codec:commons-codec:1.13"
+  implementation deps.commons.codec
 }
 
-def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map(this.class.module::canRead).orElse(false)
 if (!hasJavaFlightRecorder) {
   logger.warn('Module jdk.jfr is not available; skipping compilation of Java Flight Recorder support.')
   tasks.named('compileJava').configure {

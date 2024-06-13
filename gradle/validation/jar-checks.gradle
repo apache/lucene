@@ -134,7 +134,7 @@ subprojects {
                   jarName        : file.toPath().getFileName().toString(),
                   path           : file,
                   module         : resolvedArtifact.moduleVersion,
-                  checksum       : provider { buildinfra.sha1Digest.digestAsHex(file).trim() },
+                  checksum       : provider { buildinfra.sha1Digest().digestAsHex(file).trim() },
                   // We keep track of the files referenced by this dependency (sha, license, notice, etc.)
                   // so that we can determine unused dangling files later on.
                   referencedFiles: []
