@@ -104,6 +104,7 @@ import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -3294,11 +3295,16 @@ public abstract class LuceneTestCase extends Assert {
     return true;
   }
 
+  private static boolean supportsVectorSearch(KnnVectorsFormat format) {
+    return (format instanceof FlatVectorsFormat) == false;
+  }
+
   protected static KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
     KnnVectorsFormat[] availableFormats =
         KnnVectorsFormat.availableKnnVectorsFormats().stream()
             .map(KnnVectorsFormat::forName)
             .filter(format -> supportsVectorEncoding(format, vectorEncoding))
+            .filter(format -> supportsVectorSearch(format))
             .toArray(KnnVectorsFormat[]::new);
     return RandomPicks.randomFrom(random(), availableFormats);
   }
