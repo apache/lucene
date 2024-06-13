@@ -158,6 +158,9 @@ rootProject.tasks.named("tidy").configure {
 rootProject.tasks.named("clean").configure {
   dependsOn gradle.includedBuilds*.task(":clean")
 }
+rootProject.tasks.named("check").configure {
+  dependsOn gradle.includedBuilds*.task(":forbiddenApis")
+}
 
 // Source or data regeneration tasks
 apply from: file('gradle/generation/regenerate.gradle')

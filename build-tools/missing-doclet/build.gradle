@@ -18,6 +18,7 @@
 plugins {
   id 'java-library'
   alias(deps.plugins.spotless) apply false
+  alias(deps.plugins.forbiddenapis) apply false
 }
 
 repositories {
@@ -35,6 +36,7 @@ apply from: file('../../gradle/validation/check-environment.gradle')
 // Add spotless/ tidy.
 tasks.register("checkJdkInternalsExportedToGradle") {}
 apply from: file('../../gradle/validation/spotless.gradle')
+apply from: file('../../gradle/validation/forbidden-apis.gradle')
 
 java {
   sourceCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())

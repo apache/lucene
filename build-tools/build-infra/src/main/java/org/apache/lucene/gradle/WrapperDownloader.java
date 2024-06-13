@@ -21,6 +21,10 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -112,7 +116,7 @@ public class WrapperDownloader {
             // Retry after a short delay
             System.err.println(
                 "Error connecting to server: " + e + ", will retry in " + retryDelay + " seconds.");
-            Thread.sleep(TimeUnit.SECONDS.toMillis(retryDelay));
+            sleep(TimeUnit.SECONDS.toMillis(retryDelay));
             continue;
           }
         }
@@ -129,7 +133,7 @@ public class WrapperDownloader {
                       + ", will retry in "
                       + retryDelay
                       + " seconds.");
-              Thread.sleep(TimeUnit.SECONDS.toMillis(retryDelay));
+              sleep(TimeUnit.SECONDS.toMillis(retryDelay));
               continue;
             }
         }
@@ -169,6 +173,11 @@ public class WrapperDownloader {
     }
   }
 
+  @SuppressForbidden(reason = "Correct use of thread.sleep.")
+  private static void sleep(long millis) throws InterruptedException {
+    Thread.sleep(millis);
+  }
+
   private String checksum(MessageDigest messageDigest, Path path) throws IOException {
     try {
       char[] hex = "0123456789abcdef".toCharArray();
@@ -182,5 +191,12 @@ public class WrapperDownloader {
       throw new IOException(
           "Could not compute digest of file: " + path + " (" + e.getMessage() + ")");
     }
+  }
+
+  @Retention(RetentionPolicy.CLASS)
+  @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
+  public @interface SuppressForbidden {
+    /** A reason for suppressing should always be given. */
+    String reason();
   }
 }

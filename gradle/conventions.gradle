@@ -21,3 +21,13 @@ configure(allprojects) {
     group "verification"
   }
 }
+
+// Locate script-relative resource folder. This is context-sensitive so pass
+// the right buildscript (top-level).
+configure(rootProject) {
+  ext {
+    scriptResources = { buildscript ->
+      return file(buildscript.sourceFile.absolutePath.replaceAll('.gradle$', ""))
+    }
+  }
+}

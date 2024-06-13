@@ -132,10 +132,10 @@ public class ProfileResults {
     }
   }
 
-  /** format a value, if its huge, we show millions */
+  /** format a value, if it's huge, we show millions */
   static String formatValue(long value) {
     if (value > 1_000_000) {
-      return String.format("%dM", value / 1_000_000);
+      return String.format(Locale.ROOT, "%dM", value / 1_000_000);
     } else {
       return Long.toString(value);
     }
@@ -216,7 +216,8 @@ public class ProfileResults {
       if (seen++ == count) {
         break;
       }
-      String percent = String.format("%2.2f%%", 100 * (c.getValue() / (float) sumValues));
+      String percent =
+          String.format(Locale.ROOT, "%2.2f%%", 100 * (c.getValue() / (float) sumValues));
       System.out.printf(
           Locale.ROOT, "%s%s%s\n", pad(percent), pad(formatValue(c.getValue())), c.getKey());
     }

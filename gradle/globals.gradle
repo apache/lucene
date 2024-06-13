@@ -59,12 +59,6 @@ allprojects {
       return propertyOrDefault(propName, envOrDefault(envName, defValue));
     }
 
-    // Locate script-relative resource folder. This is context-sensitive so pass
-    // the right buildscript (top-level).
-    scriptResources = { buildscript ->
-      return file(buildscript.sourceFile.absolutePath.replaceAll('.gradle$', ""))
-    }
-
     // Utility function similar to project.exec but not emitting
     // any output unless an error code is returned from the executed command.
     quietExec = { closure ->
