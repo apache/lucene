@@ -54,7 +54,7 @@ class Lucene99RWHnswScalarQuantizationVectorsFormat
 
   static class Lucene99RWScalarQuantizedFormat extends Lucene99ScalarQuantizedVectorsFormat {
     private static final FlatVectorsFormat rawVectorFormat =
-        new Lucene99FlatVectorsFormat("FlatVectorsFormat", new DefaultFlatVectorScorer());
+        new Lucene99FlatVectorsFormat(new DefaultFlatVectorScorer());
 
     @Override
     public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {

@@ -54,7 +54,6 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 public final class HnswBitVectorsFormat extends KnnVectorsFormat {
 
   public static final String NAME = "HnswBitVectorsFormat";
-  public static final String NAME_FLAT = "HnswBitVectorsFlatFormat";
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
@@ -129,7 +128,7 @@ public final class HnswBitVectorsFormat extends KnnVectorsFormat {
     } else {
       this.mergeExec = null;
     }
-    this.flatVectorsFormat = new Lucene99FlatVectorsFormat(NAME_FLAT, new FlatBitVectorsScorer());
+    this.flatVectorsFormat = new Lucene99FlatVectorsFormat(new FlatBitVectorsScorer());
   }
 
   @Override

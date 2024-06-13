@@ -139,8 +139,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   /** The format for storing, reading, merging vectors on disk */
   private static final FlatVectorsFormat flatVectorsFormat =
-      new Lucene99FlatVectorsFormat(
-          "Lucene99FlatVectorsFormat", FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;

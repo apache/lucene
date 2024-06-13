@@ -38,12 +38,10 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -217,18 +215,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
         vectorData);
-  }
-
-  @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
-      throws IOException {
-    // don't scan stored field data. If we didn't index it, produce no search results
-  }
-
-  @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
-      throws IOException {
-    // don't scan stored field data. If we didn't index it, produce no search results
   }
 
   @Override

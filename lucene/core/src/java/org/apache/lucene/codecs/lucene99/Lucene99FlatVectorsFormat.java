@@ -67,6 +67,7 @@ import org.apache.lucene.store.IndexOutput;
  */
 public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
 
+  static final String NAME = "Lucene99FlatVectorsFormat";
   static final String META_CODEC_NAME = "Lucene99FlatVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene99FlatVectorsFormatData";
   static final String META_EXTENSION = "vemf";
@@ -79,8 +80,8 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   private final FlatVectorsScorer vectorsScorer;
 
   /** Constructs a format */
-  public Lucene99FlatVectorsFormat(String name, FlatVectorsScorer vectorsScorer) {
-    super(name);
+  public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
+    super(NAME);
     this.vectorsScorer = vectorsScorer;
   }
 
