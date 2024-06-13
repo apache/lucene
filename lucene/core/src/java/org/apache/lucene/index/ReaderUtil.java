@@ -108,6 +108,7 @@ public final class ReaderUtil {
       } else if (n > midValue) {
         lo = mid + 1;
       } else { // found a match
+        // TODO: segments have same docBase? maxDoc is 0?
         while (mid + 1 < size && segStates[mid + 1].docBase == midValue) {
           mid++; // scan to last match
         }

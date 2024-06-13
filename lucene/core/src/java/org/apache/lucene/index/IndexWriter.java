@@ -1530,7 +1530,7 @@ public class IndexWriter
   }
 
   /**
-   * Similar to {@link #updateDocuments(Term, Iterable)}, but take a query instead of a term to
+   * Similar to {@link #updateDocuments(Term, Iterable)}, but take a docID instead of a term to
    * identify the documents to be updated
    *
    * @lucene.experimental

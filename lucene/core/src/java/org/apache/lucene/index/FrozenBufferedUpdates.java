@@ -375,65 +375,31 @@ final class FrozenBufferedUpdates {
       return 0;
     }
 
+    // We apply segment-private deletes on flush:
+    assert privateSegment == null;
+
     long startNS = System.nanoTime();
 
     long delCount = 0;
     for (int docID : deleteDocs) {
-            ReaderUtil.subIndex(docID, segStates);
-    }
-    for (BufferedUpdatesStream.SegmentState segState : segStates) {
-
-      if (delGen < segState.delGen) {
-        // segment is newer than this deletes packet
+      int i = ReaderUtil.subIndex(docID, segStates);
+      assert segStates[i].delGen != delGen
+          : "segState.delGen=" + segStates[i].delGen + " vs this.gen=" + delGen;
+      if (segStates[i].delGen > delGen) {
+        // our deletes don't apply to this segment
         continue;
       }
 
-      if (segState.rld.refCount() == 1) {
+      // TODO: If we get both merged away segment(stale) and newly merged segment, we will get incorrect docBase?
+      if (segStates[i].rld.refCount() == 1) {
         // This means we are the only remaining reference to this segment, meaning
         // it was merged away while we were running, so we can safely skip running
         // because we will run on the newly merged segment next:
         continue;
       }
 
-      final LeafReaderContext readerContext = segState.reader.getContext();
-      for (int i = 0; i < deleteQueries.length; i++) {
-        Query query = deleteQueries[i];
-        int limit;
-        if (delGen == segState.delGen) {
-          assert privateSegment != null;
-          limit = deleteQueryLimits[i];
-        } else {
-          limit = Integer.MAX_VALUE;
-        }
-        final IndexSearcher searcher = new IndexSearcher(readerContext.reader());
-        searcher.setQueryCache(null);
-        query = searcher.rewrite(query);
-        final Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
-        final Scorer scorer = weight.scorer(readerContext);
-        if (scorer != null) {
-          final DocIdSetIterator it = scorer.iterator();
-          if (segState.rld.sortMap != null && limit != Integer.MAX_VALUE) {
-            assert privateSegment != null;
-            // This segment was sorted on flush; we must apply seg-private deletes carefully in this
-            // case:
-            int docID;
-            while ((docID = it.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-              // The limit is in the pre-sorted doc space:
-              if (segState.rld.sortMap.newToOld(docID) < limit) {
-                if (segState.rld.delete(docID)) {
-                  delCount++;
-                }
-              }
-            }
-          } else {
-            int docID;
-            while ((docID = it.nextDoc()) < limit) {
-              if (segState.rld.delete(docID)) {
-                delCount++;
-              }
-            }
-          }
-        }
+      if (segStates[i].rld.delete(docID)) {
+        delCount++;
       }
     }
 
@@ -442,7 +408,7 @@ final class FrozenBufferedUpdates {
           "BD",
           String.format(
               Locale.ROOT,
-              "applyQueryDeletes took %.2f msec for %d segments and %d queries; %d new deletions",
+              "applyDocDeletes took %.2f msec for %d segments and %d docs; %d new deletions",
               (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
               segStates.length,
               deleteQueries.length,
