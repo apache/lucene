@@ -67,6 +67,6 @@ public class GradlePropertiesGenerator {
       fileContent = fileContent.replace(entry.getKey(), String.valueOf(entry.getValue()));
     }
     Files.writeString(
-            destination, fileContent, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
+        destination, fileContent, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
   }
 }

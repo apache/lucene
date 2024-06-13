@@ -20,13 +20,12 @@ package org.apache.lucene.gradle;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedFrame;
@@ -36,15 +35,12 @@ import jdk.jfr.consumer.RecordedThread;
 import jdk.jfr.consumer.RecordingFile;
 
 /**
- * Processes an array of recording files (from tests), and prints a simple histogram.
- * Inspired by the JFR example code.
- * Whole stacks are deduplicated (with the default stacksize being 1): you can drill deeper
- * by adjusting the parameters.
+ * Processes an array of recording files (from tests), and prints a simple histogram. Inspired by
+ * the JFR example code. Whole stacks are deduplicated (with the default stacksize being 1): you can
+ * drill deeper by adjusting the parameters.
  */
 public class ProfileResults {
-  /**
-   * Formats a frame to a formatted line. This is deduplicated on!
-   */
+  /** Formats a frame to a formatted line. This is deduplicated on! */
   static String frameToString(RecordedFrame frame, boolean lineNumbers) {
     StringBuilder builder = new StringBuilder();
     RecordedMethod method = frame.getMethod();
@@ -84,29 +80,32 @@ public class ProfileResults {
 
   /**
    * Driver method, for testing standalone.
+   *
    * <pre>
    * java -Dtests.profile.count=5 buildSrc/src/main/java/org/apache/lucene/gradle/ProfileResults.java \
    *   ./lucene/core/build/tmp/tests-cwd/somefile.jfr ...
    * </pre>
    */
   public static void main(String[] args) throws IOException {
-    printReport(Arrays.asList(args),
-                System.getProperty(MODE_KEY, MODE_DEFAULT),
-                Integer.parseInt(System.getProperty(STACKSIZE_KEY, STACKSIZE_DEFAULT)),
-                Integer.parseInt(System.getProperty(COUNT_KEY, COUNT_DEFAULT)),
-                Boolean.parseBoolean(System.getProperty(LINENUMBERS_KEY, LINENUMBERS_DEFAULT)));
+    printReport(
+        Arrays.asList(args),
+        System.getProperty(MODE_KEY, MODE_DEFAULT),
+        Integer.parseInt(System.getProperty(STACKSIZE_KEY, STACKSIZE_DEFAULT)),
+        Integer.parseInt(System.getProperty(COUNT_KEY, COUNT_DEFAULT)),
+        Boolean.parseBoolean(System.getProperty(LINENUMBERS_KEY, LINENUMBERS_DEFAULT)));
   }
 
   /** true if we care about this event */
   static boolean isInteresting(String mode, RecordedEvent event) {
     String name = event.getEventType().getName();
-    switch(mode) {
+    switch (mode) {
       case "cpu":
-        return (name.equals("jdk.ExecutionSample") || name.equals("jdk.NativeMethodSample")) &&
-            !isGradlePollThread(event.getThread("sampledThread"));
+        return (name.equals("jdk.ExecutionSample") || name.equals("jdk.NativeMethodSample"))
+            && !isGradlePollThread(event.getThread("sampledThread"));
       case "heap":
-        return (name.equals("jdk.ObjectAllocationInNewTLAB") || name.equals("jdk.ObjectAllocationOutsideTLAB")) &&
-            !isGradlePollThread(event.getThread("eventThread"));
+        return (name.equals("jdk.ObjectAllocationInNewTLAB")
+                || name.equals("jdk.ObjectAllocationOutsideTLAB"))
+            && !isGradlePollThread(event.getThread("eventThread"));
       default:
         throw new UnsupportedOperationException(event.toString());
     }
@@ -119,7 +118,7 @@ public class ProfileResults {
 
   /** value we accumulate for this event */
   static long getValue(RecordedEvent event) {
-    switch(event.getEventType().getName()) {
+    switch (event.getEventType().getName()) {
       case "jdk.ObjectAllocationInNewTLAB":
         return event.getLong("tlabSize");
       case "jdk.ObjectAllocationOutsideTLAB":
@@ -144,15 +143,17 @@ public class ProfileResults {
 
   /** fixed width used for printing the different columns */
   private static final int COLUMN_SIZE = 14;
+
   private static final String COLUMN_PAD = "%-" + COLUMN_SIZE + "s";
+
   private static String pad(String input) {
     return String.format(Locale.ROOT, COLUMN_PAD, input);
   }
 
-  /**
-   * Process all the JFR files passed in args and print a merged summary.
-   */
-  public static void printReport(List<String> files, String mode, int stacksize, int count, boolean lineNumbers) throws IOException {
+  /** Process all the JFR files passed in args and print a merged summary. */
+  public static void printReport(
+      List<String> files, String mode, int stacksize, int count, boolean lineNumbers)
+      throws IOException {
     if (!"cpu".equals(mode) && !"heap".equals(mode)) {
       throw new IllegalArgumentException("tests.profile.mode must be one of (cpu,heap)");
     }
@@ -178,14 +179,13 @@ public class ProfileResults {
             StringBuilder stack = new StringBuilder();
             for (int i = 0; i < Math.min(stacksize, trace.getFrames().size()); i++) {
               if (stack.length() > 0) {
-                stack.append("\n")
-                     .append(framePadding)
-                     .append("  at ");
+                stack.append("\n").append(framePadding).append("  at ");
               }
               stack.append(frameToString(trace.getFrames().get(i), lineNumbers));
             }
             String line = stack.toString();
-            SimpleEntry<String,Long> entry = histogram.computeIfAbsent(line, u -> new SimpleEntry<String, Long>(line, 0L));
+            SimpleEntry<String, Long> entry =
+                histogram.computeIfAbsent(line, u -> new SimpleEntry<String, Long>(line, 0L));
             long value = getValue(event);
             entry.setValue(entry.getValue() + value);
             totalEvents++;
@@ -195,12 +195,20 @@ public class ProfileResults {
       }
     }
     // print summary from histogram
-    System.out.printf(Locale.ROOT, "PROFILE SUMMARY from %d events (total: %s)\n", totalEvents, formatValue(sumValues));
+    System.out.printf(
+        Locale.ROOT,
+        "PROFILE SUMMARY from %d events (total: %s)\n",
+        totalEvents,
+        formatValue(sumValues));
     System.out.printf(Locale.ROOT, "  tests.profile.mode=%s\n", mode);
     System.out.printf(Locale.ROOT, "  tests.profile.count=%d\n", count);
     System.out.printf(Locale.ROOT, "  tests.profile.stacksize=%d\n", stacksize);
     System.out.printf(Locale.ROOT, "  tests.profile.linenumbers=%b\n", lineNumbers);
-    System.out.printf(Locale.ROOT, "%s%sSTACK\n", pad("PERCENT"), pad(mode.toUpperCase(Locale.ROOT) + " SAMPLES"));
+    System.out.printf(
+        Locale.ROOT,
+        "%s%sSTACK\n",
+        pad("PERCENT"),
+        pad(mode.toUpperCase(Locale.ROOT) + " SAMPLES"));
     List<SimpleEntry<String, Long>> entries = new ArrayList<>(histogram.values());
     entries.sort((u, v) -> v.getValue().compareTo(u.getValue()));
     int seen = 0;
@@ -209,7 +217,8 @@ public class ProfileResults {
         break;
       }
       String percent = String.format("%2.2f%%", 100 * (c.getValue() / (float) sumValues));
-      System.out.printf(Locale.ROOT, "%s%s%s\n", pad(percent), pad(formatValue(c.getValue())), c.getKey());
+      System.out.printf(
+          Locale.ROOT, "%s%s%s\n", pad(percent), pad(formatValue(c.getValue())), c.getKey());
     }
   }
 }

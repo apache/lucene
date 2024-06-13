@@ -16,47 +16,44 @@
  */
 package org.apache.lucene.gradle.buildinfra;
 
+import java.nio.file.Path;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.lucene.gradle.Checksum;
 import org.apache.lucene.gradle.ErrorReportingTestListener;
 import org.apache.lucene.gradle.datasets.ExtractReuters;
-import org.gradle.api.tasks.testing.TestDescriptor;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.tasks.testing.TestDescriptor;
 import org.gradle.api.tasks.testing.logging.TestLogging;
-import java.nio.file.Path;
-import org.apache.commons.codec.digest.DigestUtils;
 
 public class BuildInfraPlugin implements Plugin<Project> {
-    @Override
-    public void apply(Project project) {
-      project
-        .getExtensions()
-        .create(
-            BuildInfraExtension.NAME,
-            BuildInfraExtension.class);
+  @Override
+  public void apply(Project project) {
+    project.getExtensions().create(BuildInfraExtension.NAME, BuildInfraExtension.class);
+  }
+
+  public static class BuildInfraExtension {
+    public static final String NAME = "buildinfra";
+
+    public ErrorReportingTestListener newErrorReportingTestListener(
+        TestLogging testLogging, Path spillDir, Path outputsDir, boolean verboseMode) {
+      return new ErrorReportingTestListener(testLogging, spillDir, outputsDir, verboseMode);
     }
-    
-    public static class BuildInfraExtension {
-      public static final String NAME = "buildinfra";
 
-      public ErrorReportingTestListener newErrorReportingTestListener(TestLogging testLogging, Path spillDir, Path outputsDir, boolean verboseMode) {
-          return new ErrorReportingTestListener(testLogging, spillDir, outputsDir, verboseMode);
-      }
-
-      public DigestUtils sha1Digest() {
-          return new DigestUtils(DigestUtils.getSha1Digest());
-      }
-
-      public void extractReuters(String reutersDir, String outputDir) throws Exception {
-          ExtractReuters.main(new String [] { reutersDir, outputDir } );
-      }
-
-      public String getOutputLogName(TestDescriptor suite) {
-          return ErrorReportingTestListener.getOutputLogName(suite);
-      }
-
-      public Class<?> checksumClass() {
-          return Checksum.class;
-      }
+    public DigestUtils sha1Digest() {
+      return new DigestUtils(DigestUtils.getSha1Digest());
     }
+
+    public void extractReuters(String reutersDir, String outputDir) throws Exception {
+      ExtractReuters.main(new String[] {reutersDir, outputDir});
+    }
+
+    public String getOutputLogName(TestDescriptor suite) {
+      return ErrorReportingTestListener.getOutputLogName(suite);
+    }
+
+    public Class<?> checksumClass() {
+      return Checksum.class;
+    }
+  }
 }

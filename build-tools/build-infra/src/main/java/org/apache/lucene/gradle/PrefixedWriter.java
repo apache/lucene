@@ -20,12 +20,13 @@ import java.io.IOException;
 import java.io.Writer;
 
 /**
- * Prefixes every new line with a given string, synchronizing multiple streams to emit consistent lines.
+ * Prefixes every new line with a given string, synchronizing multiple streams to emit consistent
+ * lines.
  */
 public class PrefixedWriter extends Writer {
   Writer sink;
 
-  private final static char LF = '\n';
+  private static final char LF = '\n';
   private final String prefix;
   private final StringBuilder lineBuffer = new StringBuilder();
   private final int maxLineLength;
@@ -45,7 +46,7 @@ public class PrefixedWriter extends Writer {
       sink.write(LF);
 
       lineBuffer.setLength(0);
-      if (c != LF) { 
+      if (c != LF) {
         lineBuffer.append((char) c);
       }
     } else {
@@ -70,9 +71,7 @@ public class PrefixedWriter extends Writer {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * Complete the current line (emit LF if not at the start of the line already).
-   */
+  /** Complete the current line (emit LF if not at the start of the line already). */
   public void completeLine() throws IOException {
     if (lineBuffer.length() > 0) {
       write(LF);

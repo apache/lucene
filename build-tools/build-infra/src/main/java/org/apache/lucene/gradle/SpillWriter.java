@@ -26,7 +26,7 @@ import java.nio.file.Path;
 import java.util.function.Supplier;
 
 public class SpillWriter extends Writer {
-  private final static int MAX_BUFFERED = 2 * 1024;
+  private static final int MAX_BUFFERED = 2 * 1024;
   private final StringWriter buffer = new StringWriter(MAX_BUFFERED);
 
   private final Supplier<Path> spillPathSupplier;

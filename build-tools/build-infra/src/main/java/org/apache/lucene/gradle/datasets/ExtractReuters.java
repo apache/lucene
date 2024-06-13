@@ -30,8 +30,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Split the Reuters SGML documents into Simple Text files containing:
- * Title, Date, Dateline, Body
+ * Split the Reuters SGML documents into Simple Text files containing: Title, Date, Dateline, Body
  */
 public class ExtractReuters {
   private final Path reutersDir;
@@ -67,7 +66,9 @@ public class ExtractReuters {
 
   private static final String[] META_CHARS = {"&", "<", ">", "\"", "'"};
 
-  private static final String[] META_CHARS_SERIALIZATIONS = {"&amp;", "&lt;", "&gt;", "&quot;", "&apos;"};
+  private static final String[] META_CHARS_SERIALIZATIONS = {
+    "&amp;", "&lt;", "&gt;", "&quot;", "&apos;"
+  };
 
   /** Override if you wish to change what is extracted */
   protected void extractFile(Path sgmFile) throws IOException {

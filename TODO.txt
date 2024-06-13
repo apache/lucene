@@ -1,5 +1,3 @@
-- configure and document updateVersions/ tidy versions file.
-
 - apply spotless to composite builds
 
 - upgrade spotless and other plugins

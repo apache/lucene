@@ -16,12 +16,14 @@
  */
 package org.apache.lucene.gradle;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,12 +33,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-
 /**
  * Standalone class that can be used to download a gradle-wrapper.jar
- * <p>
- * Has no dependencies outside of standard java libraries
+ *
+ * <p>Has no dependencies outside of standard java libraries
  */
 public class WrapperDownloader {
   public static void main(String[] args) {
@@ -62,13 +62,15 @@ public class WrapperDownloader {
   }
 
   public void run(Path destination) throws IOException, NoSuchAlgorithmException {
-    Path checksumPath = destination.resolveSibling(destination.getFileName().toString() + ".sha256");
+    Path checksumPath =
+        destination.resolveSibling(destination.getFileName().toString() + ".sha256");
     if (!Files.exists(checksumPath)) {
       throw new IOException("Checksum file not found: " + checksumPath);
     }
     String expectedChecksum = Files.readString(checksumPath, StandardCharsets.UTF_8).trim();
 
-    Path versionPath = destination.resolveSibling(destination.getFileName().toString() + ".version");
+    Path versionPath =
+        destination.resolveSibling(destination.getFileName().toString() + ".version");
     if (!Files.exists(versionPath)) {
       throw new IOException("Wrapper version file not found: " + versionPath);
     }
@@ -87,7 +89,12 @@ public class WrapperDownloader {
       }
     }
 
-    URL url = URI.create("https://raw.githubusercontent.com/gradle/gradle/v" + wrapperVersion + "/gradle/wrapper/gradle-wrapper.jar").toURL();
+    URL url =
+        URI.create(
+                "https://raw.githubusercontent.com/gradle/gradle/v"
+                    + wrapperVersion
+                    + "/gradle/wrapper/gradle-wrapper.jar")
+            .toURL();
     System.err.println("Downloading gradle-wrapper.jar from " + url);
 
     // Zero-copy save the jar to a temp file
@@ -103,7 +110,8 @@ public class WrapperDownloader {
         } catch (IOException e) {
           if (retries-- > 0) {
             // Retry after a short delay
-            System.err.println("Error connecting to server: " + e + ", will retry in " + retryDelay + " seconds.");
+            System.err.println(
+                "Error connecting to server: " + e + ", will retry in " + retryDelay + " seconds.");
             Thread.sleep(TimeUnit.SECONDS.toMillis(retryDelay));
             continue;
           }
@@ -115,7 +123,12 @@ public class WrapperDownloader {
           case HttpURLConnection.HTTP_BAD_GATEWAY:
             if (retries-- > 0) {
               // Retry after a short delay.
-              System.err.println("Server returned HTTP " + connection.getResponseCode() + ", will retry in " + retryDelay + " seconds.");
+              System.err.println(
+                  "Server returned HTTP "
+                      + connection.getResponseCode()
+                      + ", will retry in "
+                      + retryDelay
+                      + " seconds.");
               Thread.sleep(TimeUnit.SECONDS.toMillis(retryDelay));
               continue;
             }
@@ -126,13 +139,15 @@ public class WrapperDownloader {
       }
 
       try (InputStream is = connection.getInputStream();
-           OutputStream out = Files.newOutputStream(temp)){
+          OutputStream out = Files.newOutputStream(temp)) {
         is.transferTo(out);
       }
 
       String checksum = checksum(digest, temp);
       if (!checksum.equalsIgnoreCase(expectedChecksum)) {
-        throw new IOException(String.format(Locale.ROOT,
+        throw new IOException(
+            String.format(
+                Locale.ROOT,
                 "Checksum mismatch on downloaded gradle-wrapper.jar (was: %s, expected: %s).",
                 checksum,
                 expectedChecksum));
@@ -141,8 +156,12 @@ public class WrapperDownloader {
       Files.move(temp, destination, REPLACE_EXISTING);
       temp = null;
     } catch (IOException | InterruptedException e) {
-      throw new IOException("Could not download gradle-wrapper.jar (" +
-          e.getClass().getSimpleName() + ": " + e.getMessage() + ").");
+      throw new IOException(
+          "Could not download gradle-wrapper.jar ("
+              + e.getClass().getSimpleName()
+              + ": "
+              + e.getMessage()
+              + ").");
     } finally {
       if (temp != null) {
         Files.deleteIfExists(temp);
@@ -160,7 +179,8 @@ public class WrapperDownloader {
       }
       return sb.toString();
     } catch (IOException e) {
-      throw new IOException("Could not compute digest of file: " + path + " (" + e.getMessage() + ")");
+      throw new IOException(
+          "Could not compute digest of file: " + path + " (" + e.getMessage() + ")");
     }
   }
 }

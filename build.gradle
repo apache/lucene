@@ -111,7 +111,7 @@ dependencies {
 // The order of inclusion of these files shouldn't matter (but may
 // if the build file is incorrectly written and evaluates something
 // eagerly).
-
+apply from: file('gradle/conventions.gradle')
 apply from: file('gradle/generation/local-settings.gradle')
 
 // Make sure the build environment is consistent.
@@ -150,6 +150,14 @@ apply from: file('gradle/validation/ecj-lint.gradle')
 apply from: file('gradle/validation/gradlew-scripts-tweaked.gradle')
 apply from: file('gradle/validation/dependencies.gradle')
 apply from: file('gradle/validation/spotless.gradle')
+
+// Wire up included builds to some validation tasks.
+rootProject.tasks.named("tidy").configure {
+  dependsOn gradle.includedBuilds*.task(":tidy")
+}
+rootProject.tasks.named("clean").configure {
+  dependsOn gradle.includedBuilds*.task(":clean")
+}
 
 // Source or data regeneration tasks
 apply from: file('gradle/generation/regenerate.gradle')
