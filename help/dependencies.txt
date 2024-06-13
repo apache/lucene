@@ -50,8 +50,8 @@ dependencies {
 The "moduleImplementation" here is a named configuration explained in the
 section above. The "deps.baz" refers to the version catalog named "deps",
 in which the dependency "baz" should be declared. If this is the first
-reference to this library, then we have to add its entry to
-"versions.toml" file. We place the version under the "versions" and module coordinates
+reference to this library, then we have to add it to "versions.toml" catalog:
+the version goes under the "versions" and module coordinates
 under the "libraries" section:
 
 [versions]
@@ -61,14 +61,19 @@ baz = "1.2"
 baz = { module = "foo.bar:baz", version.ref = "baz" }
 
 The version defined in the "versions" section is the preferred version of the library
-we wish to use. Gradle will try to consolidate different versions across different
+we wish to use. Finally, run tidy to sort all entries in versions.toml:
+
+gradlew tidy
+
+Gradle will try to consolidate different versions across different
 configurations to make sure they're compatible and may complain if it encounters
-conflicting versions in the dependency tree. We want all dependencies to be consistent
+conflicting versions in the dependency tree. We want all dependencies to be consistent,
 so we use an additional build plugin to ensure no accidental version changes
 occur. Whenever we add or remove dependencies, we have to follow-up with lock file
 regeneration:
 
 gradlew writeLocks
+git diff versions.*
 
 IMPORTANT: The versions.lock file will contain a list of actual library versions
 and configurations they occurred in.

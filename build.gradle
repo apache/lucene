@@ -103,7 +103,7 @@ configurations {
 
 dependencies {
   // Use a newer groovy that doesn't have illegal reflective accesses.
-  groovy "org.codehaus.groovy:groovy-all:3.0.21"
+  groovy deps.groovy
 }
 
 // Include smaller chunks configuring dedicated build areas.
@@ -148,7 +148,7 @@ apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')
 apply from: file('gradle/validation/ecj-lint.gradle')
 apply from: file('gradle/validation/gradlew-scripts-tweaked.gradle')
-
+apply from: file('gradle/validation/dependencies.gradle')
 apply from: file('gradle/validation/spotless.gradle')
 
 // Source or data regeneration tasks

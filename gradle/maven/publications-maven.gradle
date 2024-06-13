@@ -61,18 +61,6 @@ configure(rootProject.ext.mavenProjects) { Project project ->
 
             artifact sourcesJar
             artifact javadocJar
-
-            // LUCENE-9561:
-            // Remove dependencyManagement section created by a combination of
-            // Palantir and the publishing plugin.
-            //
-            // https://github.com/palantir/gradle-consistent-versions/issues/550
-            pom({
-              withXml {
-                def dm = asNode().dependencyManagement
-                if (dm) dm.replaceNode {}
-              }
-            })
           }
         }
       }
