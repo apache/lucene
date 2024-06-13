@@ -130,7 +130,7 @@ public class KnnFloatTensorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnFloatTensorField(String name, List<float[]> tensor) {
-    this(name, tensor, TensorSimilarityFunction.MAX_EUCLIDEAN);
+    this(name, tensor, TensorSimilarityFunction.SUM_MAX_EUCLIDEAN);
   }
 
   /**

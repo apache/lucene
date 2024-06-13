@@ -119,7 +119,7 @@ public enum TensorSimilarityFunction {
 //  public abstract float compare(byte[] v1, byte[] v2);
 
   /**
-   * Compute MaxSumSimilarity between two tensors.
+   * Compute SumMaxSimilarity between two tensors.
    * Returns the sum of maximum similarity found for each vector in the outer tensor against all vectors
    * in the inner tensor. Uses {@param vectorSimilarityFunction} to compute similarity between two vectors.
    *

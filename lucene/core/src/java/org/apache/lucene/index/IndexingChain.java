@@ -42,6 +42,7 @@ import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatTensorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -669,6 +670,13 @@ final class IndexingChain implements Accountable {
           s.vectorDimension,
           indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions(pf.fieldName));
     }
+    if (s.tensorDimension > 0) {
+      // TODO: Do we need a different codec for Tensors?
+      validateMaxVectorDimension(
+          pf.fieldName,
+          s.tensorDimension,
+          indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions(pf.fieldName));
+    }
     FieldInfo fi =
         fieldInfos.add(
             new FieldInfo(
@@ -689,6 +697,10 @@ final class IndexingChain implements Accountable {
                 s.vectorDimension,
                 s.vectorEncoding,
                 s.vectorSimilarityFunction,
+                s.tensorDimension,
+                s.tensorRank,
+                s.tensorEncoding,
+                s.tensorSimilarityFunction,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName()),
                 pf.fieldName.equals(fieldInfos.getParentFieldName())));
     pf.setFieldInfo(fi);
@@ -721,6 +733,15 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
     if (fi.getVectorDimension() != 0) {
+      try {
+        pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
+      } catch (Throwable th) {
+        onAbortingException(th);
+        throw th;
+      }
+    }
+    if (fi.getTensorDimension() != 0) {
+      // TODO: Change to use a tensor writer.
       try {
         pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
       } catch (Throwable th) {
@@ -850,6 +871,12 @@ final class IndexingChain implements Accountable {
           fieldType.vectorEncoding(),
           fieldType.vectorSimilarityFunction(),
           fieldType.vectorDimension());
+    }
+    if (fieldType.tensorDimension() > 0) {
+      schema.setTensors(fieldType.tensorRank(),
+          fieldType.tensorDimension(),
+          fieldType.tensorEncoding(),
+          fieldType.tensorSimilarityFunction());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1038,6 +1065,16 @@ final class IndexingChain implements Accountable {
           .addValue(docID, ((KnnByteVectorField) field).vectorValue());
       case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
           .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+    }
+  }
+
+  private void indexTensorValue(int docID, PerField pf, VectorEncoding tensorEncoding, IndexableField field)
+      throws IOException {
+    switch (tensorEncoding) {
+//      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+//          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 -> ((KnnFieldVectorsWriter<List<float[]>>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnFloatTensorField) field).vectorValue());
     }
   }
 
@@ -1445,6 +1482,10 @@ final class IndexingChain implements Accountable {
     private int vectorDimension = 0;
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    private int tensorRank = 0;
+    private int tensorDimension = 0;
+    private VectorEncoding tensorEncoding = VectorEncoding.FLOAT32;
+    private TensorSimilarityFunction tensorSimilarityFunction = TensorSimilarityFunction.SUM_MAX_EUCLIDEAN;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1539,6 +1580,20 @@ final class IndexingChain implements Accountable {
       }
     }
 
+    void setTensors(int rank, int dimension, VectorEncoding encoding, TensorSimilarityFunction similarityFunction) {
+      if (tensorDimension == 0) {
+        this.tensorRank = rank;
+        this.tensorDimension = dimension;
+        this.tensorEncoding = encoding;
+        this.tensorSimilarityFunction = similarityFunction;
+      } else {
+        assertSame("tensor rank", tensorRank, rank);
+        assertSame("tensor dimension", tensorDimension, dimension);
+        assertSame("tensor encoding", tensorEncoding, encoding);
+        assertSame("tensor similarity", tensorSimilarityFunction, similarityFunction);
+      }
+    }
+
     void reset(int doc) {
       docID = doc;
       omitNorms = false;
@@ -1563,6 +1618,10 @@ final class IndexingChain implements Accountable {
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
+      assertSame("tensor rank", fi.getTensorRank(), tensorRank);
+      assertSame("tensor dimension", fi.getTensorDimension(), tensorDimension);
+      assertSame("tensor encoding", fi.getTensorEncoding(), tensorEncoding);
+      assertSame("tensor similarity function", fi.getTensorSimilarityFunction(), tensorSimilarityFunction);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);
