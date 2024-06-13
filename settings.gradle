@@ -38,7 +38,9 @@ dependencyResolutionManagement {
     }
 }
 
-apply from: file('gradle/ge.gradle')
+if (Boolean.parseBoolean(providers.gradleProperty("gradle.ge").orElse("true").get())) {
+    apply from: file('gradle/ge.gradle')
+}
 
 rootProject.name = "lucene-root"
 

@@ -1,4 +1,0 @@
-- apply spotless to composite builds
-
-- upgrade spotless and other plugins
-- add gradle script formatting
