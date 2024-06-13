@@ -186,6 +186,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     storePayloads,
                     indexOptions,
                     docValuesType,
+                    false,
                     dvGen,
                     attributes,
                     pointDataDimensionCount,

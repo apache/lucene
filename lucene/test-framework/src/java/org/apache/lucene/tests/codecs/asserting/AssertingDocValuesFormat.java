@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.NumericDocValues;
@@ -278,6 +279,14 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
       SortedSetDocValues values = in.getSortedSet(field);
       assert values != null;
       return AssertingLeafReader.AssertingSortedSetDocValues.create(values, maxDoc);
+    }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      assert field.hasDocValuesSkipIndex();
+      DocValuesSkipper skipper = in.getSkipper(field);
+      assert skipper != null;
+      return new AssertingLeafReader.AssertingDocValuesSkipper(skipper);
     }
 
     @Override

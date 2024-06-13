@@ -129,6 +129,10 @@ New Features
 
 * GITHUB#13233: Add RomanianNormalizationFilter (Trey Jones, Robert Muir)
 
+* GITHUB#13449: Sparse index: optional skip list on top of doc values which is exposed via the
+  DocValuesSkipper abstraction. A new flag is added to FieldType.java that configures whether
+  to create a "skip index" for doc values. (Ignacio Vera)
+
 Improvements
 ---------------------
 
