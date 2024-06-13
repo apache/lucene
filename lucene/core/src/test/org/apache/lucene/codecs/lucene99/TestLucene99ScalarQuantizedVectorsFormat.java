@@ -89,7 +89,8 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          // if this search found any results it would raise NPE attempting to collect them in our null collector
+          // if this search found any results it would raise NPE attempting to collect them in our
+          // null collector
           knnVectorsReader.search("f", new float[] {1, 0}, null, null);
         } else {
           fail("reader is not CodecReader");
