@@ -75,7 +75,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     };
   }
 
-  public void testSearchUnsupported() throws Exception {
+  public void testSearch() throws Exception {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
@@ -89,9 +89,8 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          expectThrows(
-              UnsupportedOperationException.class,
-              () -> knnVectorsReader.search("f", new float[] {1, 0}, null, null));
+          // if this search found any results it would raise NPE attempting to collect them in our null collector
+          knnVectorsReader.search("f", new float[] {1, 0}, null, null);
         } else {
           fail("reader is not CodecReader");
         }

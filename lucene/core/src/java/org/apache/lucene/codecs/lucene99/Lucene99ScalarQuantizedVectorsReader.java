@@ -194,13 +194,13 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    throw new UnsupportedOperationException();
+    // don't scan stored field data. If we didn't index it, produce no search results
   }
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    throw new UnsupportedOperationException();
+    // don't scan stored field data. If we didn't index it, produce no search results
   }
 
   private static IndexInput openDataInput(
