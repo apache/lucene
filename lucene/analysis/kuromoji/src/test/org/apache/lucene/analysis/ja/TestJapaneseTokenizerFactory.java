@@ -51,6 +51,18 @@ public class TestJapaneseTokenizerFactory extends BaseTokenStreamTestCase {
         new int[] {3, 5, 8, 10, 12});
   }
 
+  public void testMe2() throws IOException {
+    JapaneseTokenizerFactory factory = new JapaneseTokenizerFactory(new HashMap<String, String>());
+    factory.inform(new StringMockResourceLoader(""));
+    TokenStream ts = factory.create(newAttributeFactory());
+    ((Tokenizer) ts).setReader(new StringReader("フェラあり､なんでもあり"));
+    assertTokenStreamContents(
+        ts,
+        new String[] {"フェラ", "あり", "な", "ん", "で", "も", "あり"},
+        new int[] {0, 3, 6, 7, 8, 9, 10},
+        new int[] {3, 5, 7, 8, 9, 10, 12});
+  }
+
   /** Test that search mode is enabled and working by default */
   public void testDefaults() throws IOException {
     JapaneseTokenizerFactory factory = new JapaneseTokenizerFactory(new HashMap<String, String>());
