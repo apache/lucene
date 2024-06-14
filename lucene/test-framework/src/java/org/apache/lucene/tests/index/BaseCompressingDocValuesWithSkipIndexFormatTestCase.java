@@ -30,8 +30,9 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.packed.PackedInts;
 
-/** Extends {@link BaseDocValuesFormatTestCase} to add compression checks. */
-public abstract class BaseCompressingDocValuesFormatTestCase extends BaseDocValuesFormatTestCase {
+/** Extends {@link BaseDocValuesFormatWithSkipIndexTestCase} to add compression checks. */
+public abstract class BaseCompressingDocValuesWithSkipIndexFormatTestCase
+    extends BaseDocValuesFormatWithSkipIndexTestCase {
 
   static long dirSize(Directory d) throws IOException {
     long size = 0;

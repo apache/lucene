@@ -66,7 +66,7 @@ import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
-import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
+import org.apache.lucene.tests.index.BaseCompressingDocValuesWithSkipIndexFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
@@ -74,7 +74,8 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CollectionUtil;
 
 /** Tests Lucene90DocValuesFormat */
-public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
+public class TestLucene90DocValuesFormat
+    extends BaseCompressingDocValuesWithSkipIndexFormatTestCase {
   private final Codec codec = TestUtil.getDefaultCodec();
 
   @Override

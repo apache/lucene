@@ -17,10 +17,11 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
+import org.apache.lucene.tests.index.BaseCompressingDocValuesWithSkipIndexFormatTestCase;
 
 /** Test AssertingDocValuesFormat directly */
-public class TestAssertingDocValuesFormat extends BaseDocValuesFormatTestCase {
+public class TestAssertingDocValuesFormat
+    extends BaseCompressingDocValuesWithSkipIndexFormatTestCase {
   private final Codec codec = new AssertingCodec();
 
   @Override
