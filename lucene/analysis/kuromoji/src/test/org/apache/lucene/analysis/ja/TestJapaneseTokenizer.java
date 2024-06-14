@@ -162,6 +162,10 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     assertAnalyzesTo(analyzerNormal, "シニアソフトウェアエンジニア", new String[] {"シニアソフトウェアエンジニア"});
   }
 
+  public void testMe() throws Exception {
+    assertAnalyzesTo(analyzerNormal, "フェラあり、なんでもあり", new String[] {"フェラ", "あり", "、", "なん", "でも", "あり"});
+  }
+
   public void testNormalModeNbest() throws Exception {
     JapaneseTokenizer t = makeTokenizer(true, Mode.NORMAL);
     Analyzer a = makeAnalyzer(t);
