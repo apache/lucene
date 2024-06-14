@@ -53,6 +53,7 @@ final class FreqProxTermsWriter extends TermsHash {
   private void applyDeletes(SegmentWriteState state, Fields fields) throws IOException {
     // Process any pending Term deletes for this newly
     // flushed segment:
+    // TODO: Handle state.segUpdates.deleteUniqueTerms.
     if (state.segUpdates != null && state.segUpdates.deleteTerms.size() > 0) {
 
       BufferedUpdates.DeletedTerms segDeletes = state.segUpdates.deleteTerms;

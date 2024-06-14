@@ -58,18 +58,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
-import org.apache.lucene.document.BinaryDocValuesField;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.document.SortedSetDocValuesField;
-import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
+import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -198,6 +187,80 @@ public class TestIndexWriter extends LuceneTestCase {
     docStats = writer.getDocStats();
     assertEquals(0, docStats.maxDoc);
     assertEquals(0, docStats.numDocs);
+    writer.close();
+    dir.close();
+  }
+
+  public void testUpdateUID() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc;
+    // Keep segment alive.
+    doc = new Document();
+    doc.add(new KeywordField("foo", "1", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("_id", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "1", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("_id", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "2", Field.Store.NO));
+    writer.updateDocument(new Term("_id", "1"), doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("_id", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "3", Field.Store.NO));
+    writer.updateDocument(new Term("_id", "1"), doc);
+    // Doc 0, 1 will be deleted FreqProxTermsWriter.applyDeletes.
+    writer.flush(); // seg0.
+
+    // Keep segment alive.
+    doc = new Document();
+    doc.add(new KeywordField("foo", "1", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("_id", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "4", Field.Store.NO));
+    writer.updateDocument(new Term("_id", "1"), doc);
+    writer.flush(); // seg1.
+
+    // Keep segment alive.
+    doc = new Document();
+    doc.add(new KeywordField("foo", "1", Field.Store.NO));
+    writer.addDocument(doc);
+    doc = new Document();
+    doc.add(new KeywordField("_id", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "5", Field.Store.NO));
+    writer.updateDocument(new Term("_id", "1"), doc);
+    // We must applyDeletes for flushed seg0, seg1 in FrozenBufferedUpdates.
+    writer.flush(); // seg2.
+
+    doc = new Document();
+    doc.add(new KeywordField("_id", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "6", Field.Store.NO));
+    writer.updateDocument(new Term("_id", "1"), true, doc);
+    // Test continue to nextDelTerm.
+    doc = new Document();
+    doc.add(new KeywordField("foo", "aa", Field.Store.NO));
+    writer.updateDocument(new Term("foo", "aa"), true, doc);
+    // Set unique, terminate when we deleted one doc in seg 0, 1, 2.
+    writer.flush();
+
+    DirectoryReader reader = writer.getReader(true, false);
+    IndexSearcher searcher = newSearcher(reader);
+    assertEquals(1, searcher.search(new TermQuery(new Term("_id", "1")), 10).totalHits.value);
+    reader.close();
+
+    reader.close();
     writer.close();
     dir.close();
   }
