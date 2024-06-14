@@ -694,7 +694,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
                 "dim" + i,
                 new String[0],
                 aggregatedValue,
-                labelValues.toArray(new LabelAndValue[labelValues.size()]),
+                labelValues.toArray(new LabelAndValue[0]),
                 labelValues.size()));
       }
     }
@@ -718,8 +718,8 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     sortTies(actual);
 
     if (VERBOSE) {
-      System.out.println("expected=\n" + expected.toString());
-      System.out.println("actual=\n" + actual.toString());
+      System.out.println("expected=\n" + expected);
+      System.out.println("actual=\n" + actual);
     }
 
     assertFloatValuesEquals(expected, actual);

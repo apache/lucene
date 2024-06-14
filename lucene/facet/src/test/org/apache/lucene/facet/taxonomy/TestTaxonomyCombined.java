@@ -150,7 +150,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     if (path.length == 0) {
       return "<empty>";
     }
-    return "<" + path.toString() + ">";
+    return "<" + path + ">";
   }
 
   /**

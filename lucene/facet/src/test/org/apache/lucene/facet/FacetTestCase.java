@@ -85,7 +85,8 @@ public abstract class FacetTestCase extends LuceneTestCase {
    * @param docId docId for which facet labels are needed.
    * @param dimension Retain facet labels for supplied dimension only. A null value fetches all
    *     facet labels.
-   * @param facetLabelReader {@FacetLabelReader} instance use to get facet labels for input docId.
+   * @param facetLabelReader {@link FacetLabelReader} instance use to get facet labels for input
+   *     docId.
    * @return {@code List<FacetLabel>} containing matching facet labels.
    * @throws IOException when a low-level IO issue occurs while reading facet labels.
    */

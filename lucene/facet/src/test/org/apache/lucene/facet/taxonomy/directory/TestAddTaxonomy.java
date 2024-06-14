@@ -83,11 +83,9 @@ public class TestAddTaxonomy extends FacetTestCase {
   }
 
   private void validate(Directory dest, Directory src, OrdinalMap ordMap) throws Exception {
-    DirectoryTaxonomyReader destTR = new DirectoryTaxonomyReader(dest);
-    try {
+    try (DirectoryTaxonomyReader destTR = new DirectoryTaxonomyReader(dest)) {
       final int destSize = destTR.getSize();
-      DirectoryTaxonomyReader srcTR = new DirectoryTaxonomyReader(src);
-      try {
+      try (DirectoryTaxonomyReader srcTR = new DirectoryTaxonomyReader(src)) {
         int[] map = ordMap.getMap();
 
         // validate taxo sizes
@@ -107,11 +105,7 @@ public class TestAddTaxonomy extends FacetTestCase {
           assertTrue(cp + " not found in destination", destOrdinal > 0);
           assertEquals(destOrdinal, map[j]);
         }
-      } finally {
-        srcTR.close();
       }
-    } finally {
-      destTR.close();
     }
   }
 

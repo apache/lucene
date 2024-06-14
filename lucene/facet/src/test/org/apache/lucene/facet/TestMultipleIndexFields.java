@@ -86,7 +86,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     // Obtain facets results and hand-test them
     assertCorrectResults(getTaxonomyFacetCounts(tr, config, sfc));
@@ -124,7 +124,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     Map<String, Facets> facetsMap = new HashMap<>();
     facetsMap.put("Author", getTaxonomyFacetCounts(tr, config, sfc, "$author"));
@@ -168,7 +168,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     Map<String, Facets> facetsMap = new HashMap<>();
     Facets facets2 = getTaxonomyFacetCounts(tr, config, sfc, "$music");
@@ -225,7 +225,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     Map<String, Facets> facetsMap = new HashMap<>();
     facetsMap.put("Band", getTaxonomyFacetCounts(tr, config, sfc, "$bands"));
@@ -271,7 +271,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     Map<String, Facets> facetsMap = new HashMap<>();
     Facets facets2 = getTaxonomyFacetCounts(tr, config, sfc, "$music");
@@ -335,8 +335,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
         });
   }
 
-  private FacetsCollector performSearch(TaxonomyReader tr, IndexReader ir, IndexSearcher searcher)
-      throws IOException {
+  private FacetsCollector performSearch(IndexSearcher searcher) throws IOException {
     FacetsCollector fc = new FacetsCollector();
     FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
     return fc;
