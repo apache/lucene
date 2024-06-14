@@ -445,6 +445,44 @@ public final class FieldInfo {
   }
 
   /**
+   * Verify that the provided tensor indexing options are the same
+   *
+   * @throws IllegalArgumentException if they are not the same
+   */
+  static void verifySameTensorOptions(
+      String fieldName,
+      int td1,
+      int tr1,
+      VectorEncoding te1,
+      TensorSimilarityFunction tsf1,
+      int td2,
+      int tr2,
+      VectorEncoding te2,
+      TensorSimilarityFunction tsf2) {
+    if (td1 != td2 || tr1 != tr2 || tsf1 != tsf2 || te1 != te2) {
+      throw new IllegalArgumentException(
+          "cannot change field \""
+              + fieldName
+              + "\" from tensor dimension="
+              + td1
+              + ", tensor rank="
+              + tr1
+              + ", tensor encoding="
+              + te1
+              + ", tensor similarity function="
+              + tsf1
+              + " to inconsistent tensor dimension="
+              + td2
+              + ", tensor rank="
+              + tr2
+              + ", tensor encoding="
+              + te2
+              + ", tensor similarity function="
+              + tsf2);
+    }
+  }
+
+  /**
    * Record that this field is indexed with points, with the specified number of dimensions and
    * bytes per dimension.
    */
@@ -691,6 +729,11 @@ public final class FieldInfo {
   /** Returns whether any (numeric) vector values exist for this field */
   public boolean hasVectorValues() {
     return vectorDimension > 0;
+  }
+
+  /** Returns whether any (numeric) tensor values exist for this field */
+  public boolean hasTensorValues() {
+    return tensorDimension > 0;
   }
 
   /** Get a codec attribute value, or null if it does not exist */
