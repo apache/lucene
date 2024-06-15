@@ -273,6 +273,8 @@ Optimizations
 
 * GITHUB#13431: Replace TreeMap and use compiled Patterns in Japanese UserDictionary. (Bruno Roustant)
 
+* GITHUB#12941: Don't preserve auxiliary buffer contents in LSBRadixSorter if it grows. (Stefan Vodita)
+
 Bug Fixes
 ---------------------
 (No changes)
