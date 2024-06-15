@@ -273,7 +273,7 @@ Optimizations
 
 * GITHUB#13431: Replace TreeMap and use compiled Patterns in Japanese UserDictionary. (Bruno Roustant)
 
-* GITHUB#13175: Stop double-checking priority queue inserts. (Jakub Slowinski)
+* GITHUB#13175: Stop double-checking priority queue inserts in some FacetCount classes. (Jakub Slowinski)
 
 Bug Fixes
 ---------------------
