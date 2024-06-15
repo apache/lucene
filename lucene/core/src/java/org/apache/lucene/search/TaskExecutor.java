@@ -85,7 +85,6 @@ public final class TaskExecutor {
    */
   private static final class TaskGroup<T> {
     private final List<RunnableFuture<T>> futures;
-    private final AtomicInteger taskId;
 
     TaskGroup(Collection<Callable<T>> callables) {
       List<RunnableFuture<T>> tasks = new ArrayList<>(callables.size());
@@ -93,7 +92,6 @@ public final class TaskExecutor {
         tasks.add(createTask(callable));
       }
       this.futures = Collections.unmodifiableList(tasks);
-      this.taskId = new AtomicInteger(0);
     }
 
     RunnableFuture<T> createTask(Callable<T> callable) {
@@ -130,18 +128,28 @@ public final class TaskExecutor {
 
     List<T> invokeAll(Executor executor) throws IOException {
       final int count = futures.size();
-      for (int j = 0; j < count - 1; j++) {
-        executor.execute(
+      // taskId provides the first index of an un-executed task in #futures
+      final AtomicInteger taskId = new AtomicInteger(0);
+      // we fork execution count - 1 times and execute the last task on the current thread
+      if (count > 1) {
+        final Runnable work =
             () -> {
               int id = taskId.getAndIncrement();
               if (id < count) {
                 futures.get(id).run();
               }
-            });
+            };
+        for (int j = 0; j < count - 1; j++) {
+          executor.execute(work);
+        }
       }
       int id;
       while ((id = taskId.getAndIncrement()) < count) {
         futures.get(id).run();
+        if (id == count - 1) {
+          // save redundant CAS in case this was the last task
+          break;
+        }
       }
       Throwable exc = null;
       List<T> results = new ArrayList<>(count);
