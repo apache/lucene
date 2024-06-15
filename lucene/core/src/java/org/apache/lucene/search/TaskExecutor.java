@@ -130,7 +130,8 @@ public final class TaskExecutor {
       final int count = futures.size();
       // taskId provides the first index of an un-executed task in #futures
       final AtomicInteger taskId = new AtomicInteger(0);
-      // we fork execution count - 1 times and execute the last task on the current thread
+      // we fork execution count - 1 tasks to execute at least one task on the current thread to
+      // minimize needless forking and blocking of the current thread
       if (count > 1) {
         final Runnable work =
             () -> {
@@ -143,10 +144,14 @@ public final class TaskExecutor {
           executor.execute(work);
         }
       }
+      // try to execute as many tasks as possible on the current thread to minimize context
+      // switching in case of long running concurrent
+      // tasks as well as dead-locking if the current thread is part of #executor for executors that
+      // have limited or no parallelism
       int id;
       while ((id = taskId.getAndIncrement()) < count) {
         futures.get(id).run();
-        if (id == count - 1) {
+        if (id >= count - 1) {
           // save redundant CAS in case this was the last task
           break;
         }
