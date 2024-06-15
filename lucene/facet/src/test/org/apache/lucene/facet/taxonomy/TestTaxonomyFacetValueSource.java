@@ -134,11 +134,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     // test getTopChildren(0, dim)
     final Facets f = facets;
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          f.getTopChildren(0, "Author");
-        });
+    expectThrows(IllegalArgumentException.class, () -> f.getTopChildren(0, "Author"));
 
     taxoReader.close();
     searcher.getIndexReader().close();
@@ -207,11 +203,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     List<FacetResult> results = facets.getAllDims(10);
 
     // test getAllDims(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllDims(0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
     assertEquals(3, results.size());
     assertEquals(
@@ -236,18 +228,10 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     assertEquals(results, allDimsResults);
 
     // test getTopDims(0, 1)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopDims(0, 1);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopDims(0, 1));
 
     // test getTopDims(1, 0) with topNChildren = 0
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopDims(1, 0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopDims(1, 0));
 
     IOUtils.close(searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }
@@ -297,17 +281,9 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     // test default implementation of getTopDims
     List<FacetResult> topDimsResults = facets.getTopDims(10, 10);
     assertTrue(topDimsResults.isEmpty());
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getSpecificValue("a");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("a"));
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(10, "a");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(10, "a"));
 
     IOUtils.close(searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }

@@ -525,21 +525,10 @@ public class TestTaxonomyCombined extends FacetTestCase {
     }
 
     // check parent of of invalid ordinals:
+    expectThrows(IndexOutOfBoundsException.class, () -> tw.getParent(-1));
     expectThrows(
-        IndexOutOfBoundsException.class,
-        () -> {
-          tw.getParent(-1);
-        });
-    expectThrows(
-        IndexOutOfBoundsException.class,
-        () -> {
-          tw.getParent(TaxonomyReader.INVALID_ORDINAL);
-        });
-    expectThrows(
-        IndexOutOfBoundsException.class,
-        () -> {
-          tw.getParent(tr.getSize());
-        });
+        IndexOutOfBoundsException.class, () -> tw.getParent(TaxonomyReader.INVALID_ORDINAL));
+    expectThrows(IndexOutOfBoundsException.class, () -> tw.getParent(tr.getSize()));
   }
 
   /**

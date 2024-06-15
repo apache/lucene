@@ -112,11 +112,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
@@ -169,11 +165,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
@@ -287,37 +279,19 @@ public class TestRangeFacetCounts extends FacetTestCase {
     assertEquals(0, topNDimsResult.size());
 
     // test getAllDims(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllDims(0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
     r.close();
     d.close();
   }
 
   public void testUselessRange() {
+    expectThrows(IllegalArgumentException.class, () -> new LongRange("useless", 7, true, 6, true));
+    expectThrows(IllegalArgumentException.class, () -> new LongRange("useless", 7, true, 7, false));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", 7, true, 6, true);
-        });
+        IllegalArgumentException.class, () -> new DoubleRange("useless", 7.0, true, 6.0, true));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", 7, true, 7, false);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", 7.0, true, 6.0, true);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", 7.0, true, 7.0, false);
-        });
+        IllegalArgumentException.class, () -> new DoubleRange("useless", 7.0, true, 7.0, false));
   }
 
   public void testLongMinMax() throws Exception {

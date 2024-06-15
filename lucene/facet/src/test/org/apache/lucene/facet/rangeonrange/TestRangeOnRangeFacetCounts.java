@@ -100,11 +100,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
@@ -160,11 +156,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
@@ -224,11 +216,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     assertEquals(0, topNDimsResult.size());
 
     // test getAllDims(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllDims(0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
     r.close();
     d.close();
@@ -289,60 +277,34 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.get(0).toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
   }
 
   public void testUselessRangeSingleDim() {
+    expectThrows(IllegalArgumentException.class, () -> new LongRange("useless", 7, true, 6, true));
+    expectThrows(IllegalArgumentException.class, () -> new LongRange("useless", 7, true, 7, false));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", 7, true, 6, true);
-        });
+        IllegalArgumentException.class, () -> new DoubleRange("useless", 7.0, true, 6.0, true));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", 7, true, 7, false);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", 7.0, true, 6.0, true);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", 7.0, true, 7.0, false);
-        });
+        IllegalArgumentException.class, () -> new DoubleRange("useless", 7.0, true, 7.0, false));
   }
 
   public void testUselessMultiDimRange() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", longArray(7L, 7L), longArray(6L, 6L));
-        });
+        () -> new LongRange("useless", longArray(7L, 7L), longArray(6L, 6L)));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", longArray(7L, 7L), longArray(7L, 6L));
-        });
+        () -> new LongRange("useless", longArray(7L, 7L), longArray(7L, 6L)));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(6.0, 6.0));
-        });
+        () -> new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(6.0, 6.0)));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(7.0, 6.0));
-        });
+        () -> new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(7.0, 6.0)));
   }
 
   public void testSingleDimLongMinMax() throws Exception {
@@ -769,11 +731,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     IOUtils.close(r, d);
   }
@@ -830,11 +788,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     IOUtils.close(r, d);
   }
