@@ -111,9 +111,15 @@ public class ParallelLeafReader extends LeafReader {
             .filter(Objects::nonNull)
             .findAny()
             .orElse(null);
+    final String parentField =
+        completeReaderSet.stream()
+            .map(r -> r.getFieldInfos().getParentField())
+            .filter(Objects::nonNull)
+            .findAny()
+            .orElse(null);
     // TODO: make this read-only in a cleaner way?
     FieldInfos.Builder builder =
-        new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesField));
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesField, parentField));
 
     Sort indexSort = null;
     int createdVersionMajor = -1;
@@ -275,6 +281,13 @@ public class ParallelLeafReader extends LeafReader {
     }
     return new StoredFields() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        for (StoredFields reader : fields) {
+          reader.prefetch(docID);
+        }
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         for (StoredFields reader : fields) {
           reader.document(docID, visitor);
@@ -384,6 +397,13 @@ public class ParallelLeafReader extends LeafReader {
     ensureOpen();
     LeafReader reader = fieldToReader.get(field);
     return reader == null ? null : reader.getSortedSetDocValues(field);
+  }
+
+  @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(field);
+    return reader == null ? null : reader.getDocValuesSkipper(field);
   }
 
   @Override

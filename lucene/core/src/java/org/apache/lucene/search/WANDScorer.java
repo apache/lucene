@@ -120,7 +120,7 @@ final class WANDScorer extends Scorer {
 
   private final int scalingFactor;
   // scaled min competitive score
-  private long minCompetitiveScore = 0;
+  private long minCompetitiveScore;
 
   private final Scorer[] allScorers;
 
@@ -150,9 +150,8 @@ final class WANDScorer extends Scorer {
 
   final ScoreMode scoreMode;
 
-  WANDScorer(Weight weight, Collection<Scorer> scorers, int minShouldMatch, ScoreMode scoreMode)
+  WANDScorer(Collection<Scorer> scorers, int minShouldMatch, ScoreMode scoreMode)
       throws IOException {
-    super(weight);
 
     if (minShouldMatch >= scorers.size()) {
       throw new IllegalArgumentException("minShouldMatch should be < the number of scorers");

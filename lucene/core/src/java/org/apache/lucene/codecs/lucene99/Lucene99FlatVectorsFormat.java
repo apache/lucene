@@ -18,9 +18,10 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.FlatVectorsFormat;
-import org.apache.lucene.codecs.FlatVectorsReader;
-import org.apache.lucene.codecs.FlatVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -66,6 +67,7 @@ import org.apache.lucene.store.IndexOutput;
  */
 public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
 
+  static final String NAME = "Lucene99FlatVectorsFormat";
   static final String META_CODEC_NAME = "Lucene99FlatVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene99FlatVectorsFormatData";
   static final String META_EXTENSION = "vemf";
@@ -75,24 +77,26 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   public static final int VERSION_CURRENT = VERSION_START;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+  private final FlatVectorsScorer vectorsScorer;
 
   /** Constructs a format */
-  public Lucene99FlatVectorsFormat() {
-    super();
+  public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
+    super(NAME);
+    this.vectorsScorer = vectorsScorer;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene99FlatVectorsWriter(state);
+    return new Lucene99FlatVectorsWriter(state, vectorsScorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99FlatVectorsReader(state);
+    return new Lucene99FlatVectorsReader(state, vectorsScorer);
   }
 
   @Override
   public String toString() {
-    return "Lucene99FlatVectorsFormat()";
+    return "Lucene99FlatVectorsFormat(" + "vectorsScorer=" + vectorsScorer + ')';
   }
 }

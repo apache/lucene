@@ -19,18 +19,17 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Map;
-import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 
@@ -162,7 +161,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       case FLOAT32 -> initializerIterator = initReader.getFloatVectorValues(fieldInfo.name);
     }
 
-    Map<Integer, Integer> newIdToOldOrdinal = CollectionUtil.newHashMap(initGraphSize);
+    IntIntHashMap newIdToOldOrdinal = new IntIntHashMap(initGraphSize);
     int oldOrd = 0;
     int maxNewDocID = -1;
     for (int oldId = initializerIterator.nextDoc();
@@ -182,9 +181,10 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     for (int newDocId = mergedVectorIterator.nextDoc();
         newDocId <= maxNewDocID;
         newDocId = mergedVectorIterator.nextDoc()) {
-      if (newIdToOldOrdinal.containsKey(newDocId)) {
+      int hashDocIndex = newIdToOldOrdinal.indexOf(newDocId);
+      if (newIdToOldOrdinal.indexExists(hashDocIndex)) {
         initializedNodes.set(newOrd);
-        oldToNewOrdinalMap[newIdToOldOrdinal.get(newDocId)] = newOrd;
+        oldToNewOrdinalMap[newIdToOldOrdinal.indexGet(hashDocIndex)] = newOrd;
       }
       newOrd++;
     }

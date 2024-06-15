@@ -18,21 +18,24 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsWriter;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
@@ -72,7 +75,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  Lucene99HnswVectorsWriter(
+  public Lucene99HnswVectorsWriter(
       SegmentWriteState state,
       int M,
       int beamWidth,
@@ -125,7 +128,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     FieldWriter<?> newField =
-        FieldWriter.create(fieldInfo, M, beamWidth, segmentWriteState.infoStream);
+        FieldWriter.create(
+            flatVectorWriter.getFlatVectorScorer(),
+            fieldInfo,
+            M,
+            beamWidth,
+            segmentWriteState.infoStream);
     fields.add(newField);
     return flatVectorWriter.addField(fieldInfo, newField);
   }
@@ -350,7 +358,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int[][] vectorIndexNodeOffsets = null;
       if (scorerSupplier.totalVectorCount() > 0) {
         // build graph
-        HnswGraphMerger merger = createGraphMerger(fieldInfo, scorerSupplier);
+        HnswGraphMerger merger =
+            createGraphMerger(
+                fieldInfo,
+                scorerSupplier,
+                mergeState.intraMergeTaskExecutor == null
+                    ? null
+                    : new TaskExecutor(mergeState.intraMergeTaskExecutor),
+                numMergeWorkers);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
           merger.addReader(
               mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
@@ -436,7 +451,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
-    meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeInt(distFuncToOrd(field.getVectorSimilarityFunction()));
     meta.writeVLong(vectorIndexOffset);
     meta.writeVLong(vectorIndexLength);
     meta.writeVInt(field.getVectorDimension());
@@ -487,10 +502,22 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private HnswGraphMerger createGraphMerger(
-      FieldInfo fieldInfo, RandomVectorScorerSupplier scorerSupplier) {
+      FieldInfo fieldInfo,
+      RandomVectorScorerSupplier scorerSupplier,
+      TaskExecutor parallelMergeTaskExecutor,
+      int numParallelMergeWorkers) {
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
           fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);
+    }
+    if (parallelMergeTaskExecutor != null) {
+      return new ConcurrentHnswMerger(
+          fieldInfo,
+          scorerSupplier,
+          M,
+          beamWidth,
+          parallelMergeTaskExecutor,
+          numParallelMergeWorkers);
     }
     return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
   }
@@ -498,6 +525,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void close() throws IOException {
     IOUtils.close(meta, vectorIndex, flatVectorWriter);
+  }
+
+  static int distFuncToOrd(VectorSimilarityFunction func) {
+    for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
+      if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
+        return (byte) i;
+      }
+    }
+    throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
   private static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {
@@ -512,29 +548,32 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private int lastDocID = -1;
     private int node = 0;
 
-    static FieldWriter<?> create(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
+    static FieldWriter<?> create(
+        FlatVectorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> new FieldWriter<byte[]>(fieldInfo, M, beamWidth, infoStream);
-        case FLOAT32 -> new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream);
+        case BYTE -> new FieldWriter<byte[]>(scorer, fieldInfo, M, beamWidth, infoStream);
+        case FLOAT32 -> new FieldWriter<float[]>(scorer, fieldInfo, M, beamWidth, infoStream);
       };
     }
 
     @SuppressWarnings("unchecked")
-    FieldWriter(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
+    FieldWriter(
+        FlatVectorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      RAVectorValues<T> raVectors = new RAVectorValues<>(vectors, fieldInfo.getVectorDimension());
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> RandomVectorScorerSupplier.createBytes(
-                (RandomAccessVectorValues<byte[]>) raVectors,
-                fieldInfo.getVectorSimilarityFunction());
-            case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
-                (RandomAccessVectorValues<float[]>) raVectors,
-                fieldInfo.getVectorSimilarityFunction());
+            case BYTE -> scorer.getRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(),
+                RandomAccessVectorValues.fromBytes(
+                    (List<byte[]>) vectors, fieldInfo.getVectorDimension()));
+            case FLOAT32 -> scorer.getRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(),
+                RandomAccessVectorValues.fromFloats(
+                    (List<float[]>) vectors, fieldInfo.getVectorDimension()));
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -577,36 +616,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           + (long) vectors.size()
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
           + hnswGraphBuilder.getGraph().ramBytesUsed();
-    }
-  }
-
-  private static class RAVectorValues<T> implements RandomAccessVectorValues<T> {
-    private final List<T> vectors;
-    private final int dim;
-
-    RAVectorValues(List<T> vectors, int dim) {
-      this.vectors = vectors;
-      this.dim = dim;
-    }
-
-    @Override
-    public int size() {
-      return vectors.size();
-    }
-
-    @Override
-    public int dimension() {
-      return dim;
-    }
-
-    @Override
-    public T vectorValue(int targetOrd) throws IOException {
-      return vectors.get(targetOrd);
-    }
-
-    @Override
-    public RandomAccessVectorValues<T> copy() throws IOException {
-      return this;
     }
   }
 }

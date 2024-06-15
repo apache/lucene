@@ -30,9 +30,8 @@ public abstract class IndriDisjunctionScorer extends IndriScorer {
   private final DisiPriorityQueue subScorers;
   private final DocIdSetIterator approximation;
 
-  protected IndriDisjunctionScorer(
-      Weight weight, List<Scorer> subScorersList, ScoreMode scoreMode, float boost) {
-    super(weight, boost);
+  protected IndriDisjunctionScorer(List<Scorer> subScorersList, ScoreMode scoreMode, float boost) {
+    super(boost);
     this.subScorersList = subScorersList;
     this.subScorers = new DisiPriorityQueue(subScorersList.size());
     for (Scorer scorer : subScorersList) {

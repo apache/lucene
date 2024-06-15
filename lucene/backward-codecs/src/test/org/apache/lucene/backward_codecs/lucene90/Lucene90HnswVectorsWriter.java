@@ -133,7 +133,10 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
       // build the graph using the temporary vector data
       Lucene90HnswVectorsReader.OffHeapFloatVectorValues offHeapVectors =
           new Lucene90HnswVectorsReader.OffHeapFloatVectorValues(
-              floatVectorValues.dimension(), docIds, vectorDataInput);
+              floatVectorValues.dimension(),
+              docIds,
+              fieldInfo.getVectorSimilarityFunction(),
+              vectorDataInput);
 
       long[] offsets = new long[docIds.length];
       long vectorIndexOffset = vectorIndex.getFilePointer();
@@ -231,7 +234,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValues<float[]> vectorValues,
+      RandomAccessVectorValues.Floats vectorValues,
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,

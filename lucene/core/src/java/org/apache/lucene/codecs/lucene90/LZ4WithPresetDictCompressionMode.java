@@ -128,10 +128,12 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       }
 
       // Read blocks that intersect with the interval we need
+      if (offsetInBlock < offset + length) {
+        bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + offset + length - offsetInBlock);
+      }
       while (offsetInBlock < offset + length) {
         final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
         LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
-        bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + bytesToDecompress);
         System.arraycopy(buffer, dictLength, bytes.bytes, bytes.length, bytesToDecompress);
         bytes.length += bytesToDecompress;
         offsetInBlock += blockLength;
@@ -169,7 +171,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
     @Override
     public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
-      final int len = (int) (buffersInput.size() - buffersInput.position());
+      final int len = (int) (buffersInput.length() - buffersInput.position());
       final int dictLength = Math.min(LZ4.MAX_DISTANCE, len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR));
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
       buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);

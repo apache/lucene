@@ -21,9 +21,10 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 
@@ -75,19 +76,34 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitedLimit,
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
-    TopDocs results =
-        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
+    ByteVectorValues byteVectorValues = context.reader().getByteVectorValues(field);
+    if (byteVectorValues == null) {
+      ByteVectorValues.checkField(context.reader(), field);
+      return NO_RESULTS;
+    }
+    if (Math.min(knnCollector.k(), byteVectorValues.size()) == 0) {
+      return NO_RESULTS;
+    }
+    context.reader().searchNearestVectors(field, target, knnCollector, acceptDocs);
+    TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
   }
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    if (fi.getVectorEncoding() != VectorEncoding.BYTE) {
+    ByteVectorValues vectorValues = context.reader().getByteVectorValues(field);
+    if (vectorValues == null) {
+      ByteVectorValues.checkField(context.reader(), field);
       return null;
     }
-    return VectorScorer.create(context, fi, target);
+    return vectorValues.scorer(target);
   }
 
   @Override
@@ -112,6 +128,6 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @return the target query vector of the search. Each vector element is a byte.
    */
   public byte[] getTargetCopy() {
-    return ArrayUtil.copyOfSubArray(target, 0, target.length);
+    return ArrayUtil.copyArray(target);
   }
 }

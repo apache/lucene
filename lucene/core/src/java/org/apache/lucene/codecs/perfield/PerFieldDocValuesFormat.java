@@ -24,11 +24,11 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
@@ -148,13 +148,8 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
 
       // Delegate the merge to the appropriate consumer
-      PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
-      try {
-        for (Map.Entry<DocValuesConsumer, Collection<String>> e : consumersToField.entrySet()) {
-          e.getKey().merge(pfMergeState.apply(e.getValue()));
-        }
-      } finally {
-        pfMergeState.reset();
+      for (Map.Entry<DocValuesConsumer, Collection<String>> e : consumersToField.entrySet()) {
+        e.getKey().merge(PerFieldMergeState.restrictFields(mergeState, e.getValue()));
       }
     }
 
@@ -264,7 +259,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
 
   private class FieldsReader extends DocValuesProducer {
 
-    private final Map<String, DocValuesProducer> fields = new TreeMap<>();
+    private final Map<String, DocValuesProducer> fields = new HashMap<>();
     private final Map<String, DocValuesProducer> formats = new HashMap<>();
 
     // clone for merge
@@ -350,6 +345,12 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
       DocValuesProducer producer = fields.get(field.name);
       return producer == null ? null : producer.getSortedSet(field);
+    }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      DocValuesProducer producer = fields.get(field.name);
+      return producer == null ? null : producer.getSkipper(field);
     }
 
     @Override

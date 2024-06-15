@@ -40,6 +40,7 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -58,6 +59,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -70,6 +72,9 @@ import org.apache.lucene.util.LongsRef;
  * @lucene.experimental
  */
 public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsReader {
+
+  private static final int PREFETCH_CACHE_SIZE = 1 << 4;
+  private static final int PREFETCH_CACHE_MASK = PREFETCH_CACHE_SIZE - 1;
 
   private final int version;
   private final FieldInfos fieldInfos;
@@ -85,6 +90,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long numChunks; // number of written blocks
   private final long numDirtyChunks; // number of incomplete compressed blocks written
   private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
+  // Cache of recently prefetched block IDs. This helps reduce chances of prefetching the same block
+  // multiple times, which is otherwise likely due to index sorting or recursive graph bisection
+  // clustering similar documents together. NOTE: this cache must be small since it's fully scanned.
+  private final long[] prefetchedBlockIDCache;
+  private int prefetchedBlockIDCacheIndex;
   private boolean closed;
 
   // used by clone
@@ -102,6 +112,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
     this.numDirtyDocs = reader.numDirtyDocs;
+    this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
+    Arrays.fill(prefetchedBlockIDCache, -1);
     this.merging = merging;
     this.state = new BlockState();
     this.closed = false;
@@ -128,7 +140,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      fieldsStream = d.openInput(fieldsStreamFN, context);
+      fieldsStream = d.openInput(fieldsStreamFN, context.withReadAdvice(ReadAdvice.RANDOM));
       version =
           CodecUtil.checkIndexHeader(
               fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -149,6 +161,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       chunkSize = metaIn.readVInt();
 
       decompressor = compressionMode.newDecompressor();
+      this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
+      Arrays.fill(prefetchedBlockIDCache, -1);
       this.merging = false;
       this.state = new BlockState();
 
@@ -163,7 +177,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       FieldsIndexReader fieldsIndexReader =
           new FieldsIndexReader(
-              d, si.name, segmentSuffix, INDEX_EXTENSION, INDEX_CODEC_NAME, si.getId(), metaIn);
+              d,
+              si.name,
+              segmentSuffix,
+              INDEX_EXTENSION,
+              INDEX_CODEC_NAME,
+              si.getId(),
+              metaIn,
+              context);
       indexReader = fieldsIndexReader;
       maxPointer = fieldsIndexReader.getMaxPointer();
 
@@ -599,6 +620,23 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       return new SerializedDocument(documentInput, length, numStoredFields);
     }
+  }
+
+  @Override
+  public void prefetch(int docID) throws IOException {
+    final long blockID = indexReader.getBlockID(docID);
+
+    for (long prefetchedBlockID : prefetchedBlockIDCache) {
+      if (prefetchedBlockID == blockID) {
+        return;
+      }
+    }
+
+    final long blockStartPointer = indexReader.getBlockStartPointer(blockID);
+    final long blockLength = indexReader.getBlockLength(blockID);
+    fieldsStream.prefetch(blockStartPointer, blockLength);
+
+    prefetchedBlockIDCache[prefetchedBlockIDCacheIndex++ & PREFETCH_CACHE_MASK] = blockID;
   }
 
   SerializedDocument serializedDocument(int docID) throws IOException {

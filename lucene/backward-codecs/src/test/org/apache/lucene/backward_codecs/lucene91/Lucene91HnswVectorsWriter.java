@@ -138,7 +138,11 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
       // TODO: separate random access vector values from DocIdSetIterator?
       Lucene91HnswVectorsReader.OffHeapFloatVectorValues offHeapVectors =
           new Lucene91HnswVectorsReader.OffHeapFloatVectorValues(
-              floatVectorValues.dimension(), docsWithField.cardinality(), null, vectorDataInput);
+              floatVectorValues.dimension(),
+              docsWithField.cardinality(),
+              null,
+              fieldInfo.getVectorSimilarityFunction(),
+              vectorDataInput);
       Lucene91OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
@@ -239,7 +243,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private Lucene91OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues<float[]> vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValues.Floats vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph

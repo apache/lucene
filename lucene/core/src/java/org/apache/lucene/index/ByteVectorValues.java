@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -54,4 +55,35 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
    * @return the vector value
    */
   public abstract byte[] vectorValue() throws IOException;
+
+  /**
+   * Checks the Vector Encoding of a field
+   *
+   * @throws IllegalStateException if {@code field} has vectors, but using a different encoding
+   * @lucene.internal
+   * @lucene.experimental
+   */
+  public static void checkField(LeafReader in, String field) {
+    FieldInfo fi = in.getFieldInfos().fieldInfo(field);
+    if (fi != null && fi.hasVectorValues() && fi.getVectorEncoding() != VectorEncoding.BYTE) {
+      throw new IllegalStateException(
+          "Unexpected vector encoding ("
+              + fi.getVectorEncoding()
+              + ") for field "
+              + field
+              + "(expected="
+              + VectorEncoding.BYTE
+              + ")");
+    }
+  }
+
+  /**
+   * Return a {@link VectorScorer} for the given query vector. The iterator for the scorer is not
+   * the same instance as the iterator for this {@link ByteVectorValues}. It is a copy, and
+   * iteration over the scorer will not affect the iteration of this {@link ByteVectorValues}.
+   *
+   * @param query the query vector
+   * @return a {@link VectorScorer} instance or null
+   */
+  public abstract VectorScorer scorer(byte[] query) throws IOException;
 }

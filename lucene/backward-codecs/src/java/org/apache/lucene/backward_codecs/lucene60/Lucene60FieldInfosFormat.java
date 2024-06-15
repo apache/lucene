@@ -209,6 +209,7 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
                 storePayloads,
                 indexOptions,
                 docValuesType,
+                false,
                 dvGen,
                 attributes,
                 pointDataDimensionCount,
@@ -217,7 +218,8 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
-                isSoftDeletesField);
+                isSoftDeletesField,
+                false);
       } catch (IllegalStateException e) {
         throw new CorruptIndexException(
             "invalid fieldinfo for field: " + name + ", fieldNumber=" + fieldNumber, input, e);

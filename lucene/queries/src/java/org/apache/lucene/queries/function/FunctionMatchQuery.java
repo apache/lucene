@@ -30,7 +30,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -88,7 +88,7 @@ public final class FunctionMatchQuery extends Query {
     DoubleValuesSource vs = source.rewrite(searcher);
     return new ConstantScoreWeight(this, boost) {
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         DoubleValues values = vs.getValues(context, null);
         DocIdSetIterator approximation = DocIdSetIterator.all(context.reader().maxDoc());
         TwoPhaseIterator twoPhase =
@@ -104,7 +104,8 @@ public final class FunctionMatchQuery extends Query {
                 return matchCost; // TODO maybe DoubleValuesSource should have a matchCost?
               }
             };
-        return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

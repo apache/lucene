@@ -417,7 +417,7 @@ public class CheckHits {
     if (descr.startsWith("score based on ") && descr.contains("child docs in range")) {
       assertTrue("Child doc explanations are missing", detail.length > 0);
     }
-    if (detail.length > 0) {
+    if (detail.length > 0 && expl.isMatch()) {
       if (detail.length == 1 && COMPUTED_FROM_PATTERN.matcher(descr).matches() == false) {
         // simple containment, unless it's a freq of: (which lets a query explain how the freq is
         // calculated),
@@ -444,7 +444,7 @@ public class CheckHits {
           int k1 = descr.indexOf("max plus ");
           if (k1 >= 0) {
             k1 += "max plus ".length();
-            int k2 = descr.indexOf(" ", k1);
+            int k2 = descr.indexOf(' ', k1);
             try {
               x = Float.parseFloat(descr.substring(k1, k2).trim());
               if (descr.substring(k2).trim().equals("times others of:")) {
@@ -733,6 +733,10 @@ public class CheckHits {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
       }
+      if (s2 == null) {
+        assertTrue(s1.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
+        continue;
+      }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();
       TwoPhaseIterator twoPhase2 = s2.twoPhaseIterator();
       DocIdSetIterator approx1 = twoPhase1 == null ? s1.iterator() : twoPhase1.approximation();
@@ -787,6 +791,10 @@ public class CheckHits {
       }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
+        continue;
+      }
+      if (s2 == null) {
+        assertTrue(s1.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
       }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();

@@ -25,15 +25,21 @@ First of all, you need the Lucene source code.
 
 Get the source code using: `git clone https://github.com/apache/lucene`
 
-### Notes for required Java version
+Please note that it is important to preserve the files' original line breaks - some of them have their checksums verified during build.
+If you are using Windows you might want to override the default Git configuration when cloning the repository:
+`git clone --config core.autocrlf=false https://github.com/apache/lucene`
+
+### Pre-requisites
 
 Be sure that you are using an appropriate version of the JDK. Please check [README](./README.md) for the required JDK version for current main branch.
+
+Some build tasks (in particular `./gradlew check`) require Perl and Python 3.
 
 ### Building with Gradle
 
 Lucene uses [Gradle](https://gradle.org/) for build control. Gradle is itself Java-based and may be incompatible with newer Java versions; you can still build and test Lucene with these Java releases, see [jvms.txt](./help/jvms.txt) for more information.
 
-NOTE: DO NOT use the `gradle` command that is perhaps installed on your machine. This may result in using a different gradle version than the project requires and this is known to lead to very cryptic errors. The "gradle wrapper" (gradlew script) does everything required to build the project from scratch: it downloads the correct version of gradle, sets up sane local configurations and is tested on multiple environments.
+NOTE: DO NOT use the `gradle` command that is perhaps installed on your machine. This may result in using a different gradle version than the project requires and this is known to lead to very cryptic errors. The "gradle wrapper" (`gradlew` script) does everything required to build the project from scratch: it downloads the correct version of gradle, sets up sane local configurations and is tested on multiple environments.
 
 The first time you run gradlew, it will create a file "gradle.properties" that contains machine-specific settings. Normally you can use this file as-is, but it can be modified if necessary.
 
@@ -52,7 +58,7 @@ In case your contribution fixes a bug, please create a new test case that fails 
 
 ### IDE support
 
-- *IntelliJ* - IntelliJ idea can import and build gradle-based projects out of the box.
+- *IntelliJ* - IntelliJ idea can import and build gradle-based projects out of the box. It will default to running tests by calling the gradle wrapper, and while this works, it is can be a bit slow. If instead you configure IntelliJ to use its own built-in test runner by (in 2024 version) navigating to settings for Build Execution & Deployment/Build Tools/Gradle (under File/Settings menu on some platforms) and selecting "Build and Run using: IntelliJ IDEA" and "Run Tests using: IntelliJ IDEA", then some tests will run faster. However some other tests will not run using this configuration.
 - *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
 - *Netbeans* - Not tested.
 

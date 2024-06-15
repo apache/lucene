@@ -24,7 +24,10 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -33,7 +36,8 @@ import org.apache.lucene.util.ArrayUtil;
  * chunkSizePower</code>).
  */
 @SuppressWarnings("preview")
-abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
+abstract class MemorySegmentIndexInput extends IndexInput
+    implements RandomAccessInput, MemorySegmentAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -43,6 +47,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+  private static final Optional<NativeAccess> NATIVE_ACCESS = NativeAccess.getImplementation();
 
   final long length;
   final long chunkSizeMask;
@@ -54,6 +59,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   MemorySegment
       curSegment; // redundant for speed: segments[curSegmentIndex], also marker if closed!
   long curPosition; // relative to curSegment, not globally
+  int consecutivePrefetchHitCount;
 
   public static MemorySegmentIndexInput newInstance(
       String resourceDescription,
@@ -107,10 +113,16 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     if (this.curSegment == null) {
       return new AlreadyClosedException("Already closed: " + this);
     }
-    // ISE can be thrown by MemorySegment and contains "closed" in message:
+    // in Java 22 or later we can check the isAlive status of all segments
+    // (see https://bugs.openjdk.org/browse/JDK-8310644):
+    if (Arrays.stream(segments).allMatch(s -> s.scope().isAlive()) == false) {
+      return new AlreadyClosedException("Already closed: " + this);
+    }
+    // fallback for Java 21: ISE can be thrown by MemorySegment and contains "closed" in message:
     if (e instanceof IllegalStateException
         && e.getMessage() != null
         && e.getMessage().contains("closed")) {
+      // the check is on message only, so preserve original cause for debugging:
       return new AlreadyClosedException("Already closed: " + this, e);
     }
     // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
@@ -252,6 +264,18 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   }
 
   @Override
+  public final int readVInt() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVInt();
+  }
+
+  @Override
+  public final long readVLong() throws IOException {
+    // this can make JVM less confused (see LUCENE-10366)
+    return super.readVLong();
+  }
+
+  @Override
   public final long readLong() throws IOException {
     try {
       final long v = curSegment.get(LAYOUT_LE_LONG, curPosition);
@@ -292,12 +316,84 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   }
 
   @Override
+  public void prefetch(long offset, long length) throws IOException {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+
+    ensureOpen();
+
+    Objects.checkFromIndexSize(offset, length, length());
+
+    if (BitUtil.isZeroOrPowerOfTwo(consecutivePrefetchHitCount++) == false) {
+      // We've had enough consecutive hits on the page cache that this number is neither zero nor a
+      // power of two. There is a good chance that a good chunk of this index input is cached in
+      // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
+      // on the next power of two of the counter.
+      return;
+    }
+
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+
+    try {
+      final MemorySegment segment = segments[(int) (offset >> chunkSizePower)];
+      offset &= chunkSizeMask;
+      // Compute the intersection of the current segment and the region that should be prefetched.
+      if (offset + length > segment.byteSize()) {
+        // Only prefetch bytes that are stored in the current segment. There may be bytes on the
+        // next segment but this case is rare enough that we don't try to optimize it and keep
+        // things simple instead.
+        length = segment.byteSize() - offset;
+      }
+      // Now align offset with the page size, this is required for madvise.
+      // Compute the offset of the current position in the OS's page.
+      final long offsetInPage = (segment.address() + offset) % nativeAccess.getPageSize();
+      offset -= offsetInPage;
+      length += offsetInPage;
+      if (offset < 0) {
+        // The start of the page is outside of this segment, ignore.
+        return;
+      }
+
+      final MemorySegment prefetchSlice = segment.asSlice(offset, length);
+      if (prefetchSlice.isLoaded() == false) {
+        // We have a cache miss on at least one page, let's reset the counter.
+        consecutivePrefetchHitCount = 0;
+        nativeAccess.madviseWillNeed(prefetchSlice);
+      }
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException e) {
+      throw new EOFException("Read past EOF: " + this);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
   public byte readByte(long pos) throws IOException {
     try {
       final int si = (int) (pos >> chunkSizePower);
       return segments[si].get(LAYOUT_BYTE, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException ioobe) {
       throw handlePositionalIOOBE(ioobe, "read", pos);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
+  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+    try {
+      final int len =
+          GroupVIntUtil.readGroupVInt(
+              this,
+              curSegment.byteSize() - curPosition,
+              p -> curSegment.get(LAYOUT_LE_INT, p),
+              curPosition,
+              dst,
+              offset);
+      curPosition += len;
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
@@ -467,6 +563,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
+  static boolean checkIndex(long index, long length) {
+    return index >= 0 && index < length;
+  }
+
   @Override
   public final void close() throws IOException {
     if (curSegment == null) {
@@ -578,6 +678,16 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         throw alreadyClosed(e);
       }
     }
+
+    @Override
+    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+      try {
+        Objects.checkIndex(pos + len, this.length + 1);
+        return curSegment.asSlice(pos, len);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "segmentSliceOrNull", pos);
+      }
+    }
   }
 
   /** This class adds offset support to MemorySegmentIndexInput, which is needed for slices. */
@@ -641,6 +751,20 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     @Override
     public long readLong(long pos) throws IOException {
       return super.readLong(pos + offset);
+    }
+
+    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+      if (pos + len > length) {
+        throw handlePositionalIOOBE(null, "segmentSliceOrNull", pos);
+      }
+      pos = pos + offset;
+      final int si = (int) (pos >> chunkSizePower);
+      final MemorySegment seg = segments[si];
+      final long segOffset = pos & chunkSizeMask;
+      if (checkIndex(segOffset + len, seg.byteSize() + 1)) {
+        return seg.asSlice(segOffset, len);
+      }
+      return null;
     }
 
     @Override

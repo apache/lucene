@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -95,6 +96,7 @@ public class TermVectorLeafReader extends LeafReader {
             terms.hasPayloads(),
             indexOptions,
             DocValuesType.NONE,
+            false,
             -1,
             Collections.emptyMap(),
             0,
@@ -103,6 +105,7 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
+            false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
@@ -137,6 +140,11 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public SortedSetDocValues getSortedSetDocValues(String field) throws IOException {
+    return null;
+  }
+
+  @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
     return null;
   }
 

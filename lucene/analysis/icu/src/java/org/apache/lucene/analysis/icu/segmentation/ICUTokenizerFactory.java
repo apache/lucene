@@ -24,10 +24,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.analysis.TokenizerFactory;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ResourceLoader;
@@ -74,7 +74,7 @@ public class ICUTokenizerFactory extends TokenizerFactory implements ResourceLoa
   public static final String NAME = "icu";
 
   static final String RULEFILES = "rulefiles";
-  private final Map<Integer, String> tailored;
+  private final IntObjectHashMap<String> tailored;
   private ICUTokenizerConfig config;
   private final boolean cjkAsWords;
   private final boolean myanmarAsWords;
@@ -82,12 +82,12 @@ public class ICUTokenizerFactory extends TokenizerFactory implements ResourceLoa
   /** Creates a new ICUTokenizerFactory */
   public ICUTokenizerFactory(Map<String, String> args) {
     super(args);
-    tailored = new HashMap<>();
+    tailored = new IntObjectHashMap<>();
     String rulefilesArg = get(args, RULEFILES);
     if (rulefilesArg != null) {
       List<String> scriptAndResourcePaths = splitFileNames(rulefilesArg);
       for (String scriptAndResourcePath : scriptAndResourcePaths) {
-        int colonPos = scriptAndResourcePath.indexOf(":");
+        int colonPos = scriptAndResourcePath.indexOf(':');
         String scriptCode = scriptAndResourcePath.substring(0, colonPos).trim();
         String resourcePath = scriptAndResourcePath.substring(colonPos + 1).trim();
         tailored.put(UCharacter.getPropertyValueEnum(UProperty.SCRIPT, scriptCode), resourcePath);
@@ -113,9 +113,9 @@ public class ICUTokenizerFactory extends TokenizerFactory implements ResourceLoa
     } else {
       final BreakIterator[] breakers =
           new BreakIterator[1 + UCharacter.getIntPropertyMaxValue(UProperty.SCRIPT)];
-      for (Map.Entry<Integer, String> entry : tailored.entrySet()) {
-        int code = entry.getKey();
-        String resourcePath = entry.getValue();
+      for (IntObjectHashMap.IntObjectCursor<String> entry : tailored) {
+        int code = entry.key;
+        String resourcePath = entry.value;
         breakers[code] = parseRules(resourcePath, loader);
       }
       config =

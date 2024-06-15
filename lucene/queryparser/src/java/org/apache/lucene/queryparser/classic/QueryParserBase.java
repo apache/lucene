@@ -246,8 +246,8 @@ public abstract class QueryParserBase extends QueryBuilder
    * Sets the boolean operator of the QueryParser. In default mode (<code>OR_OPERATOR</code>) terms
    * without any modifiers are considered optional: for example <code>capital of Hungary</code> is
    * equal to <code>capital OR of OR Hungary</code>.<br>
-   * In <code>AND_OPERATOR</code> mode terms are considered to be in conjunction: the above
-   * mentioned query is parsed as <code>capital AND of AND Hungary</code>
+   * In <code>AND_OPERATOR</code> mode terms are considered to be in conjunction: the
+   * above-mentioned query is parsed as <code>capital AND of AND Hungary</code>
    */
   public void setDefaultOperator(Operator op) {
     this.operator = op;
@@ -371,17 +371,17 @@ public abstract class QueryParserBase extends QueryBuilder
     if (clauses.size() > 0 && conj == CONJ_AND) {
       BooleanClause c = clauses.get(clauses.size() - 1);
       if (!c.isProhibited())
-        clauses.set(clauses.size() - 1, new BooleanClause(c.getQuery(), Occur.MUST));
+        clauses.set(clauses.size() - 1, new BooleanClause(c.query(), Occur.MUST));
     }
 
     if (clauses.size() > 0 && operator == AND_OPERATOR && conj == CONJ_OR) {
       // If this term is introduced by OR, make the preceding term optional,
       // unless it's prohibited (that means we leave -a OR b but +a OR b-->a OR b)
       // notice if the input is a OR b, first term is parsed as required; without
-      // this modification a OR b would parsed as +a OR b
+      // this modification a OR b would be parsed as +a OR b
       BooleanClause c = clauses.get(clauses.size() - 1);
       if (!c.isProhibited())
-        clauses.set(clauses.size() - 1, new BooleanClause(c.getQuery(), Occur.SHOULD));
+        clauses.set(clauses.size() - 1, new BooleanClause(c.query(), Occur.SHOULD));
     }
 
     // We might have been passed a null query; the term might have been
@@ -428,7 +428,7 @@ public abstract class QueryParserBase extends QueryBuilder
     if (q instanceof BooleanQuery) {
       allNestedTermQueries = true;
       for (BooleanClause clause : ((BooleanQuery) q).clauses()) {
-        if (!(clause.getQuery() instanceof TermQuery)) {
+        if (!(clause.query() instanceof TermQuery)) {
           allNestedTermQueries = false;
           break;
         }
@@ -441,7 +441,7 @@ public abstract class QueryParserBase extends QueryBuilder
           operator == OR_OPERATOR ? BooleanClause.Occur.SHOULD : BooleanClause.Occur.MUST;
       if (q instanceof BooleanQuery) {
         for (BooleanClause clause : ((BooleanQuery) q).clauses()) {
-          clauses.add(newBooleanClause(clause.getQuery(), occur));
+          clauses.add(newBooleanClause(clause.query(), occur));
         }
       } else {
         clauses.add(newBooleanClause(q, occur));
@@ -659,7 +659,7 @@ public abstract class QueryParserBase extends QueryBuilder
    *     disallow
    */
   protected Query getBooleanQuery(List<BooleanClause> clauses) throws ParseException {
-    if (clauses.size() == 0) {
+    if (clauses.isEmpty()) {
       return null; // all clause words were filtered away by the analyzer.
     }
     BooleanQuery.Builder query = newBooleanQuery();
@@ -902,8 +902,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * Returns a String where the escape char has been removed, or kept only once if there was a
    * double escape.
    *
-   * <p>Supports escaped unicode characters, e. g. translates <code>\\u0041</code> to <code>A</code>
-   * .
+   * <p>Supports escaped Unicode characters, e.g. translates {@code \u005Cu0041} to {@code A}.
    */
   String discardEscapeChar(String input) throws ParseException {
     // Create char array to hold unescaped char sequence
@@ -919,7 +918,7 @@ public abstract class QueryParserBase extends QueryBuilder
     boolean lastCharWasEscapeChar = false;
 
     // The multiplier the current unicode digit must be multiplied with.
-    // E. g. the first digit must be multiplied with 16^3, the second with 16^2...
+    // E.g. the first digit must be multiplied with 16^3, the second with 16^2...
     int codePointMultiplier = 0;
 
     // Used to calculate the codepoint of the escaped unicode character
@@ -955,7 +954,7 @@ public abstract class QueryParserBase extends QueryBuilder
     }
 
     if (codePointMultiplier > 0) {
-      throw new ParseException("Truncated unicode escape sequence.");
+      throw new ParseException("Truncated Unicode escape sequence.");
     }
 
     if (lastCharWasEscapeChar) {
@@ -966,7 +965,7 @@ public abstract class QueryParserBase extends QueryBuilder
   }
 
   /** Returns the numeric value of the hexadecimal character */
-  static final int hexToInt(char c) throws ParseException {
+  static int hexToInt(char c) throws ParseException {
     if ('0' <= c && c <= '9') {
       return c - '0';
     } else if ('a' <= c && c <= 'f') {

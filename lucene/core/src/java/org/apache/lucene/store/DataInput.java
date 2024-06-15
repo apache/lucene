@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing read operations of Lucene's low-level data types.
@@ -96,6 +97,32 @@ public abstract class DataInput implements Cloneable {
     final byte b3 = readByte();
     final byte b4 = readByte();
     return ((b4 & 0xFF) << 24) | ((b3 & 0xFF) << 16) | ((b2 & 0xFF) << 8) | (b1 & 0xFF);
+  }
+
+  /**
+   * Read all the group varints, including the tail vints. we need a long[] because this is what
+   * postings are using, all longs are actually required to be integers.
+   *
+   * @param dst the array to read ints into.
+   * @param limit the number of int values to read.
+   * @lucene.experimental
+   */
+  public final void readGroupVInts(long[] dst, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      readGroupVInt(dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = readVInt() & 0xFFFFFFFFL;
+    }
+  }
+
+  /**
+   * Override if you have a efficient implementation. In general this is when the input supports
+   * random access.
+   */
+  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+    GroupVIntUtil.readGroupVInt(this, dst, offset);
   }
 
   /**

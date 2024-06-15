@@ -17,9 +17,8 @@
 package org.apache.lucene.spatial.util;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.internal.hppc.IntDoubleHashMap;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
@@ -33,11 +32,11 @@ import org.apache.lucene.search.IndexSearcher;
 public class CachingDoubleValueSource extends DoubleValuesSource {
 
   final DoubleValuesSource source;
-  final Map<Integer, Double> cache;
+  final IntDoubleHashMap cache;
 
   public CachingDoubleValueSource(DoubleValuesSource source) {
     this.source = source;
-    cache = new HashMap<>();
+    cache = new IntDoubleHashMap();
   }
 
   @Override
@@ -54,11 +53,14 @@ public class CachingDoubleValueSource extends DoubleValuesSource {
 
       @Override
       public double doubleValue() throws IOException {
+        double v;
         int key = base + doc;
-        Double v = cache.get(key);
-        if (v == null) {
+        int index = cache.indexOf(key);
+        if (index < 0) {
           v = vals.doubleValue();
-          cache.put(key, v);
+          cache.indexInsert(index, key, v);
+        } else {
+          v = cache.indexGet(index);
         }
         return v;
       }

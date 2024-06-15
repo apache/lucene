@@ -106,16 +106,6 @@ public class BlockJoinSelector {
    * Wraps the provided {@link SortedDocValues} in order to only select one value per parent among
    * its {@code children} using the configured {@code selection} type.
    */
-  @Deprecated
-  public static SortedDocValues wrap(
-      final SortedDocValues values, Type selection, BitSet parents, BitSet children) {
-    return wrap(values, selection, parents, toIter(children));
-  }
-
-  /**
-   * Wraps the provided {@link SortedDocValues} in order to only select one value per parent among
-   * its {@code children} using the configured {@code selection} type.
-   */
   public static SortedDocValues wrap(
       final SortedDocValues values, Type selection, BitSet parents, DocIdSetIterator children) {
     if (values.docID() != -1) {
@@ -123,16 +113,6 @@ public class BlockJoinSelector {
           "values iterator was already consumed: values.docID=" + values.docID());
     }
     return ToParentDocValues.wrap(values, selection, parents, children);
-  }
-
-  /**
-   * Wraps the provided {@link SortedNumericDocValues} in order to only select one value per parent
-   * among its {@code children} using the configured {@code selection} type.
-   */
-  @Deprecated
-  public static NumericDocValues wrap(
-      SortedNumericDocValues sortedNumerics, Type selection, BitSet parents, BitSet children) {
-    return wrap(sortedNumerics, selection, parents, toIter(children));
   }
 
   /** creates an iterator for the given bitset */
@@ -165,17 +145,6 @@ public class BlockJoinSelector {
         throw new AssertionError();
     }
     return wrap(values, selection, parents, children);
-  }
-
-  /**
-   * Wraps the provided {@link NumericDocValues}, iterating over only child documents, in order to
-   * only select one value per parent among its {@code children} using the configured {@code
-   * selection} type.
-   */
-  @Deprecated
-  public static NumericDocValues wrap(
-      final NumericDocValues values, Type selection, BitSet parents, BitSet children) {
-    return wrap(values, selection, parents, toIter(children));
   }
 
   /**

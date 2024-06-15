@@ -159,8 +159,13 @@ configure(project(":lucene:analysis:icu")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFilesInternal, [ ignoreWithSource: icuCompileTask ])
-  regenerate.dependsOn wrapWithPersistentChecksums(genRbbiInternal)
+  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFilesInternal, [
+    ignoreWithSource: icuCompileTask,
+    mustRunBefore: [ "compileJava" ]
+  ])
+  regenerate.dependsOn wrapWithPersistentChecksums(genRbbiInternal, [
+    mustRunBefore: [ "compileJava" ]
+  ])
 
   task compileIcuWindows() {
     doFirst {
@@ -281,5 +286,8 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 }

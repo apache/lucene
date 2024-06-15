@@ -18,7 +18,6 @@ package org.apache.lucene.util.bkd;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,6 +28,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
@@ -40,6 +40,7 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.PriorityQueue;
@@ -423,7 +424,7 @@ public class BKDWriter implements Closeable {
    * before writing them to disk. This method does not use transient disk in order to reorder
    * points.
    */
-  public Runnable writeField(
+  public IORunnable writeField(
       IndexOutput metaOut,
       IndexOutput indexOut,
       IndexOutput dataOut,
@@ -492,7 +493,7 @@ public class BKDWriter implements Closeable {
 
   /* In the 2+D case, we recursively pick the split dimension, compute the
    * median value and partition other values around it. */
-  private Runnable writeFieldNDims(
+  private IORunnable writeFieldNDims(
       IndexOutput metaOut,
       IndexOutput indexOut,
       IndexOutput dataOut,
@@ -512,6 +513,10 @@ public class BKDWriter implements Closeable {
     finished = true;
 
     pointCount = values.size();
+
+    if (pointCount == 0) {
+      return null;
+    }
 
     final int numLeaves =
         Math.toIntExact((pointCount + config.maxPointsInLeafNode - 1) / config.maxPointsInLeafNode);
@@ -556,7 +561,7 @@ public class BKDWriter implements Closeable {
 
   /* In the 1D case, we can simply sort points in ascending order and use the
    * same writing logic as we use at merge time. */
-  private Runnable writeField1Dim(
+  private IORunnable writeField1Dim(
       IndexOutput metaOut,
       IndexOutput indexOut,
       IndexOutput dataOut,
@@ -595,7 +600,7 @@ public class BKDWriter implements Closeable {
    * already sorted values and currently only works when numDims==1. This returns -1 if all
    * documents containing dimensional values were deleted.
    */
-  public Runnable merge(
+  public IORunnable merge(
       IndexOutput metaOut,
       IndexOutput indexOut,
       IndexOutput dataOut,
@@ -646,7 +651,7 @@ public class BKDWriter implements Closeable {
 
     final IndexOutput metaOut, indexOut, dataOut;
     final long dataStartFP;
-    final List<Long> leafBlockFPs = new ArrayList<>();
+    final LongArrayList leafBlockFPs = new LongArrayList();
     final List<byte[]> leafBlockStartValues = new ArrayList<>();
     final byte[] leafValues = new byte[config.maxPointsInLeafNode * config.packedBytesLength];
     final int[] leafDocs = new int[config.maxPointsInLeafNode];
@@ -723,7 +728,7 @@ public class BKDWriter implements Closeable {
       assert (lastDocID = docID) >= 0; // only assign when asserts are enabled
     }
 
-    public Runnable finish() throws IOException {
+    public IORunnable finish() throws IOException {
       if (leafCount > 0) {
         writeLeafBlock(leafCardinality);
         leafCardinality = 0;
@@ -763,11 +768,7 @@ public class BKDWriter implements Closeable {
             }
           };
       return () -> {
-        try {
-          writeIndex(metaOut, indexOut, config.maxPointsInLeafNode, leafNodes, dataStartFP);
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
+        writeIndex(metaOut, indexOut, config.maxPointsInLeafNode, leafNodes, dataStartFP);
       };
     }
 
@@ -879,7 +880,7 @@ public class BKDWriter implements Closeable {
    * Writes the BKD tree to the provided {@link IndexOutput}s and returns a {@link Runnable} that
    * writes the index of the tree if at least one point has been added, or {@code null} otherwise.
    */
-  public Runnable finish(IndexOutput metaOut, IndexOutput indexOut, IndexOutput dataOut)
+  public IORunnable finish(IndexOutput metaOut, IndexOutput indexOut, IndexOutput dataOut)
       throws IOException {
     // System.out.println("\nBKDTreeWriter.finish pointCount=" + pointCount + " out=" + out + "
     // heapWriter=" + heapPointWriter);
@@ -974,7 +975,7 @@ public class BKDWriter implements Closeable {
     return makeWriter(metaOut, indexOut, splitDimensionValues, leafBlockFPs, dataStartFP);
   }
 
-  private Runnable makeWriter(
+  private IORunnable makeWriter(
       IndexOutput metaOut,
       IndexOutput indexOut,
       byte[] splitDimensionValues,
@@ -1006,11 +1007,7 @@ public class BKDWriter implements Closeable {
 
     return () -> {
       // Write index:
-      try {
-        writeIndex(metaOut, indexOut, config.maxPointsInLeafNode, leafNodes, dataStartFP);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
+      writeIndex(metaOut, indexOut, config.maxPointsInLeafNode, leafNodes, dataStartFP);
     };
   }
 

@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -73,6 +72,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
@@ -211,7 +211,7 @@ public class TestDrillSideways extends FacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     ddq.add("Color", "Blue");
 
-    // Setup an IndexSearcher that will try to cache queries aggressively:
+    // Set up an IndexSearcher that will try to cache queries aggressively:
     IndexSearcher searcher = getNewSearcher(writer.getReader());
     searcher.setQueryCachingPolicy(
         new QueryCachingPolicy() {
@@ -224,7 +224,7 @@ public class TestDrillSideways extends FacetTestCase {
           }
         });
 
-    // Setup a DS instance for searching:
+    // Set up a DS instance for searching:
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     DrillSideways ds = getNewDrillSideways(searcher, config, taxoReader);
 
@@ -250,10 +250,7 @@ public class TestDrillSideways extends FacetTestCase {
 
     // test getTopChildren(0, dim)
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          concurrentResult.facets.getTopChildren(0, "Color");
-        });
+        IllegalArgumentException.class, () -> concurrentResult.facets.getTopChildren(0, "Color"));
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
@@ -491,11 +488,7 @@ public class TestDrillSideways extends FacetTestCase {
 
     // test getAllDims(0)
     DrillSidewaysResult finalR1 = r;
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          finalR1.facets.getAllDims(0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> finalR1.facets.getAllDims(0));
 
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
@@ -585,11 +578,7 @@ public class TestDrillSideways extends FacetTestCase {
 
     // test getTopChildren(0, dim)
     DrillSidewaysResult finalR = r;
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          finalR.facets.getTopChildren(0, "Author");
-        });
+    expectThrows(IllegalArgumentException.class, () -> finalR.facets.getTopChildren(0, "Author"));
   }
 
   public void testBasicWithCollectorManager() throws Exception {
@@ -1003,7 +992,7 @@ public class TestDrillSideways extends FacetTestCase {
     int[] dims;
 
     // 2nd value per dim for the doc (so we test
-    // multi-valued fields):
+    // multivalued fields):
     int[] dims2;
     boolean deleted;
 
@@ -1084,7 +1073,7 @@ public class TestDrillSideways extends FacetTestCase {
           values.add(s);
         }
       }
-      dimValues[dim] = values.toArray(new String[values.size()]);
+      dimValues[dim] = values.toArray(new String[0]);
       valueCount *= 2;
     }
 
@@ -1318,31 +1307,36 @@ public class TestDrillSideways extends FacetTestCase {
               public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
                   throws IOException {
                 return new ConstantScoreWeight(this, boost) {
-
                   @Override
-                  public Scorer scorer(LeafReaderContext context) throws IOException {
+                  public ScorerSupplier scorerSupplier(LeafReaderContext context)
+                      throws IOException {
                     DocIdSetIterator approximation =
                         DocIdSetIterator.all(context.reader().maxDoc());
-                    return new ConstantScoreScorer(
-                        this,
-                        score(),
-                        scoreMode,
-                        new TwoPhaseIterator(approximation) {
+                    final var scorer =
+                        new ConstantScoreScorer(
+                            score(),
+                            scoreMode,
+                            new TwoPhaseIterator(approximation) {
 
-                          @Override
-                          public boolean matches() throws IOException {
-                            int docID = approximation.docID();
-                            return (Integer.parseInt(
-                                        context.reader().storedFields().document(docID).get("id"))
-                                    & 1)
-                                == 0;
-                          }
+                              @Override
+                              public boolean matches() throws IOException {
+                                int docID = approximation.docID();
+                                return (Integer.parseInt(
+                                            context
+                                                .reader()
+                                                .storedFields()
+                                                .document(docID)
+                                                .get("id"))
+                                        & 1)
+                                    == 0;
+                              }
 
-                          @Override
-                          public float matchCost() {
-                            return 1000f;
-                          }
-                        });
+                              @Override
+                              public float matchCost() {
+                                return 1000f;
+                              }
+                            });
+                    return new DefaultScorerSupplier(scorer);
                   }
 
                   @Override
@@ -1657,7 +1651,7 @@ public class TestDrillSideways extends FacetTestCase {
           .sorted(comparator)
           .map(cr -> new DocAndScore(cr.docAndScore))
           .limit(numDocs)
-          .collect(Collectors.toList());
+          .toList();
     }
   }
 
@@ -1927,8 +1921,7 @@ public class TestDrillSideways extends FacetTestCase {
         if (VERBOSE) {
           idx = 0;
           System.out.println("      expected (sorted)");
-          for (int i = 0; i < topNIDs.length; i++) {
-            int expectedOrd = topNIDs[i];
+          for (int expectedOrd : topNIDs) {
             String value = dimValues[dim][expectedOrd];
             System.out.println(
                 "        "
@@ -2113,11 +2106,7 @@ public class TestDrillSideways extends FacetTestCase {
         topNDimsResult.get(0).toString());
 
     // test getAllDims(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllDims(0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
@@ -2140,7 +2129,7 @@ public class TestDrillSideways extends FacetTestCase {
   }
 
   public void testScorer() throws Exception {
-    // LUCENE-6001 some scorers, eg ReqExlScorer, can hit NPE if cost is called after nextDoc
+    // LUCENE-6001 some scorers, e.g. ReqExlScorer, can hit NPE if cost is called after nextDoc
     Directory dir = newDirectory();
     Directory taxoDir = newDirectory();
 
@@ -2235,7 +2224,7 @@ public class TestDrillSideways extends FacetTestCase {
       facets = new MultiFacets(drillSidewaysFacets, drillDownFacets);
     }
 
-    // Facets computed using FacetsCollecter exposed in DrillSidewaysResult
+    // Facets computed using FacetsCollector exposed in DrillSidewaysResult
     // should match the Facets computed by {@link DrillSideways#buildFacetsResult}
     FacetResult facetResultActual = facets.getTopChildren(2, "dim");
     FacetResult facetResultExpected = r.facets.getTopChildren(2, "dim");
@@ -2251,7 +2240,7 @@ public class TestDrillSideways extends FacetTestCase {
 
   @Test
   public void testDrillSidewaysSearchUseCorrectIterator() throws Exception {
-    // This test reproduces an issue (see github #12211) where DrillSidewaysScorer would ultimately
+    // This test reproduces an issue (see GitHub #12211) where DrillSidewaysScorer would ultimately
     // cause multiple consecutive calls to TwoPhaseIterator::matches, which results in a failed
     // assert in the PostingsReaderBase implementation (or a failing to match a document that should
     // have matched, if asserts are disabled).

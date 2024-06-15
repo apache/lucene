@@ -148,7 +148,7 @@ public class TestScorerPerf extends LuceneTestCase {
 
       pos = answer.nextSetBit(pos + 1);
       if (pos != doc + docBase) {
-        throw new RuntimeException("Expected doc " + pos + " but got " + doc + docBase);
+        throw new RuntimeException("Expected doc " + pos + " but got " + (doc + docBase));
       }
       super.collect(doc);
     }
@@ -167,9 +167,11 @@ public class TestScorerPerf extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          return new ConstantScoreScorer(
-              this, score(), scoreMode, new BitSetIterator(docs, docs.approximateCardinality()));
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorer =
+              new ConstantScoreScorer(
+                  score(), scoreMode, new BitSetIterator(docs, docs.approximateCardinality()));
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

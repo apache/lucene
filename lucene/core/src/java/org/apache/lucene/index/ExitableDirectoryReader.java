@@ -22,6 +22,7 @@ import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -31,8 +32,6 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * {@link QueryTimeout} implementation object to be checked periodically to see if the thread should
  * exit or not. If {@link QueryTimeout#shouldExit()} returns true, an {@link ExitingReaderException}
  * is thrown.
- *
- * @see org.apache.lucene.search.TimeLimitingCollector
  */
 public class ExitableDirectoryReader extends FilterDirectoryReader {
 
@@ -478,6 +477,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
         return vectorValues.size();
       }
 
+      @Override
+      public VectorScorer scorer(float[] target) throws IOException {
+        return vectorValues.scorer(target);
+      }
+
       /**
        * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
        * if {@link Thread#interrupted()} returns true.
@@ -543,6 +547,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       @Override
       public byte[] vectorValue() throws IOException {
         return vectorValues.vectorValue();
+      }
+
+      @Override
+      public VectorScorer scorer(byte[] target) throws IOException {
+        return vectorValues.scorer(target);
       }
 
       /**

@@ -198,6 +198,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         true,
         IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
         DocValuesType.NONE,
+        false,
         -1,
         Collections.emptyMap(),
         0,
@@ -206,6 +207,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
+        false,
         false);
   }
 

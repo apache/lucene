@@ -33,6 +33,7 @@ import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
@@ -136,13 +137,24 @@ public abstract class SpanWeight extends Weight {
       throws IOException;
 
   @Override
-  public SpanScorer scorer(LeafReaderContext context) throws IOException {
+  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
     final Spans spans = getSpans(context, Postings.POSITIONS);
     if (spans == null) {
       return null;
     }
     final LeafSimScorer docScorer = getSimScorer(context);
-    return new SpanScorer(this, spans, docScorer);
+    final var scorer = new SpanScorer(spans, docScorer);
+    return new ScorerSupplier() {
+      @Override
+      public SpanScorer get(long leadCost) throws IOException {
+        return scorer;
+      }
+
+      @Override
+      public long cost() {
+        return scorer.iterator().cost();
+      }
+    };
   }
 
   /**
@@ -158,7 +170,7 @@ public abstract class SpanWeight extends Weight {
 
   @Override
   public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-    SpanScorer scorer = scorer(context);
+    SpanScorer scorer = (SpanScorer) scorer(context);
     if (scorer != null) {
       int newDoc = scorer.iterator().advance(doc);
       if (newDoc == doc) {

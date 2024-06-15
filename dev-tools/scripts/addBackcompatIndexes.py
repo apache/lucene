@@ -40,21 +40,19 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
       'cfs': 'index',
       'nocfs': 'index',
       'sorted': 'sorted',
+      'int8_hnsw': 'int8_hnsw',
       'moreterms': 'moreterms',
       'dvupdates': 'dvupdates',
       'emptyIndex': 'empty'
     }[indextype]
   if indextype in ('cfs', 'nocfs'):
-    dirname = 'index.%s' % indextype
     filename = '%s.%s-%s.zip' % (prefix, index_version, indextype)
   else:
-    dirname = indextype
     filename = '%s.%s.zip' % (prefix, index_version)
   
   print('  creating %s...' % filename, end='', flush=True)
   module = 'backward-codecs'
   index_dir = os.path.join('lucene', module, 'src/test/org/apache/lucene/backward_index')
-  test_file = os.path.join(index_dir, filename)
   if os.path.exists(os.path.join(index_dir, filename)):
     print('uptodate')
     return
@@ -63,6 +61,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     'cfs': 'testCreateCFS',
     'nocfs': 'testCreateNoCFS',
     'sorted': 'testCreateSortedIndex',
+    'int8_hnsw': 'testCreateInt8HNSWIndices',
     'moreterms': 'testCreateMoreTermsIndex',
     'dvupdates': 'testCreateIndexWithDocValuesUpdates',
     'emptyIndex': 'testCreateEmptyIndex'
@@ -71,41 +70,36 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     '-Ptests.useSecurityManager=false',
     '-p lucene/%s' % module,
     'test',
-    '--tests TestBackwardsCompatibility.%s' % test,
+    '--tests TestGenerateBwcIndices.%s' % test,
     '-Dtests.bwcdir=%s' % temp_dir,
     '-Dtests.codec=default'
   ])
   base_dir = os.getcwd()
-  bc_index_dir = os.path.join(temp_dir, dirname)
-  bc_index_file = os.path.join(bc_index_dir, filename)
+  bc_index_file = os.path.join(temp_dir, filename)
   
   if os.path.exists(bc_index_file):
     print('alreadyexists')
   else:
-    if os.path.exists(bc_index_dir):
-      shutil.rmtree(bc_index_dir)
     os.chdir(source)
     scriptutil.run('./gradlew %s' % gradle_args)
-    os.chdir(bc_index_dir)
-    scriptutil.run('zip %s *' % filename)
+    if not os.path.exists(bc_index_file):
+      raise Exception("Expected file can't be found: %s" %bc_index_file)
     print('done')
   
   print('  adding %s...' % filename, end='', flush=True)
   scriptutil.run('cp %s %s' % (bc_index_file, os.path.join(base_dir, index_dir)))
   os.chdir(base_dir)
-  scriptutil.run('rm -rf %s' % bc_index_dir)
   print('done')
 
-def update_backcompat_tests(types, index_version, current_version):
-  print('  adding new indexes %s to backcompat tests...' % types, end='', flush=True)
+def update_backcompat_tests(index_version, current_version):
+  print('  adding new indexes to backcompat tests...', end='', flush=True)
   module = 'lucene/backward-codecs'
-  filename = '%s/src/test/org/apache/lucene/backward_index/TestBackwardsCompatibility.java' % module
+
+  filename = None
   if not current_version.is_back_compat_with(index_version):
-    matcher = re.compile(r'final String\[\] unsupportedNames = {|};')
-  elif 'sorted' in types:
-    matcher = re.compile(r'static final String\[\] oldSortedNames = {|};')
+    filename = '%s/src/test/org/apache/lucene/backward_index/unsupported_versions.txt' % module
   else:
-    matcher = re.compile(r'static final String\[\] oldNames = {|};')
+    filename = '%s/src/test/org/apache/lucene/backward_index/versions.txt' % module
 
   strip_dash_suffix_re = re.compile(r'-.*')
 
@@ -114,58 +108,30 @@ def update_backcompat_tests(types, index_version, current_version):
     x = re.sub(strip_dash_suffix_re, '', x) # remove the -suffix if any
     return scriptutil.Version.parse(x)
 
-  class Edit(object):
-    start = None
-    def __call__(self, buffer, match, line):
-      if self.start:
-        # find where this version should exist
-        i = len(buffer) - 1
-        previous_version_exists = not ('};' in line and buffer[-1].strip().endswith("{"))
-        if previous_version_exists: # Only look if there is a version here
-          v = find_version(buffer[i])
-          while i >= self.start and v.on_or_after(index_version):
-            i -= 1
-            v = find_version(buffer[i])
-        i += 1 # readjust since we skipped past by 1
+  def edit(buffer, match, line):
+    v = find_version(line)
+    changed = False
+    if v.on_or_after(index_version):
+       if not index_version.on_or_after(v):
+         buffer.append(('%s\n') % index_version)
+       changed = True
+    buffer.append(line)
+    return changed
 
-        # unfortunately python doesn't have a range remove from list...
-        # here we want to remove any previous references to the version we are adding
-        while i < len(buffer) and index_version.on_or_after(find_version(buffer[i])):
-          buffer.pop(i)
-
-        if i == len(buffer) and previous_version_exists and not buffer[-1].strip().endswith(","):
-          # add comma
-          buffer[-1] = buffer[-1].rstrip() + ",\n" 
-
-        if previous_version_exists:
-          last = buffer[-1]
-          spaces = ' ' * (len(last) - len(last.lstrip()))
-        else:
-          spaces = '    '
-        for (j, t) in enumerate(types):
-          if t == 'sorted':
-            newline = spaces + ('"sorted.%s"') % index_version
-          else:
-            newline = spaces + ('"%s-%s"' % (index_version, t))
-          if j < len(types) - 1 or i < len(buffer):
-            newline += ','
-          buffer.insert(i, newline + '\n')
-          i += 1
-
-        buffer.append(line)
-        return True
-
-      if 'Names = {' in line:
-        self.start = len(buffer) # location of first index name
-      buffer.append(line)
-      return False
+  def append(buffer, changed):
+    if changed:
+      return changed
+    if not buffer[len(buffer)-1].endswith('\n'):
+      buffer.append('\n')
+    buffer.append(('%s\n') % index_version)
+    return True
         
-  changed = scriptutil.update_file(filename, matcher, Edit())
+  changed = scriptutil.update_file(filename, re.compile(r'.*'), edit, append)
   print('done' if changed else 'uptodate')
 
 def check_backcompat_tests():
   print('  checking backcompat tests...', end='', flush=True)
-  scriptutil.run('./gradlew -p lucene/backward-codecs test --tests TestBackwardsCompatibility')
+  scriptutil.run('./gradlew -p lucene/backward-codecs test --tests TestGenerateBwcIndices')
   print('ok')
 
 def download_from_cdn(version, remotename, localname):
@@ -240,6 +206,7 @@ def main():
   current_version = scriptutil.Version.parse(scriptutil.find_current_version())
   create_and_add_index(source, 'cfs', c.version, current_version, c.temp_dir)
   create_and_add_index(source, 'nocfs', c.version, current_version, c.temp_dir)
+  create_and_add_index(source, 'int8_hnsw', c.version, current_version, c.temp_dir)
   should_make_sorted =     current_version.is_back_compat_with(c.version) \
                        and (c.version.major > 6 or (c.version.major == 6 and c.version.minor >= 2))
   if should_make_sorted:
@@ -248,12 +215,11 @@ def main():
     create_and_add_index(source, 'moreterms', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'dvupdates', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'emptyIndex', c.version, current_version, c.temp_dir)
-    print ('\nMANUAL UPDATE REQUIRED: edit TestBackwardsCompatibility to enable moreterms, dvupdates, and empty index testing')
+    print ('\nMANUAL UPDATE REQUIRED: edit TestGenerateBwcIndices to enable moreterms, dvupdates, and empty index testing')
     
   print('\nAdding backwards compatibility tests')
-  update_backcompat_tests(['cfs', 'nocfs'], c.version, current_version)
-  if should_make_sorted:
-    update_backcompat_tests(['sorted'], c.version, current_version)
+  update_backcompat_tests(c.version, current_version)
+
 
   print('\nTesting changes')
   check_backcompat_tests()

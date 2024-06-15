@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
@@ -36,7 +37,9 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.hnsw.HnswTestUtil;
 
+@LuceneTestCase.SuppressCodecs("SimpleText")
 abstract class BaseVectorSimilarityQueryTestCase<
         V, F extends Field, Q extends AbstractVectorSimilarityQuery>
     extends LuceneTestCase {
@@ -163,6 +166,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
         IndexReader reader = DirectoryReader.open(indexStore)) {
+      assumeTrue("graph is disconnected", HnswTestUtil.graphIsConnected(reader, vectorField));
       IndexSearcher searcher = newSearcher(reader);
 
       Query query =
@@ -287,6 +291,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(indexStore)) {
+        assumeTrue("graph is disconnected", HnswTestUtil.graphIsConnected(reader, vectorField));
         IndexSearcher searcher = newSearcher(reader);
 
         Query query =
@@ -355,11 +360,18 @@ abstract class BaseVectorSimilarityQueryTestCase<
       Query query2 = new BoostQuery(query1, boost);
       ScoreDoc[] scoreDocs2 = searcher.search(query2, numDocs).scoreDocs;
 
-      // Check that all docs are identical, with boosted scores
+      // Check that original scores and boosted scores are equal considering the delta to account
+      // for floating point precision limitations. Don't take the exact result order into
+      // consideration as for small original scores with tiny differences
+      // the boosted scores can be become the same, which might affect the result order.
       assertEquals(scoreDocs1.length, scoreDocs2.length);
       for (int i = 0; i < scoreDocs1.length; i++) {
-        assertEquals(scoreDocs1[i].doc, scoreDocs2[i].doc);
-        assertEquals(boost * scoreDocs1[i].score, scoreDocs2[i].score, delta);
+        int idx = i;
+        Optional<ScoreDoc> boostedDoc =
+            Arrays.stream(scoreDocs2).filter(d -> d.doc == scoreDocs1[idx].doc).findFirst();
+
+        assertTrue(boostedDoc.isPresent());
+        assertEquals(boost * scoreDocs1[i].score, boostedDoc.get().score, delta);
       }
     }
   }

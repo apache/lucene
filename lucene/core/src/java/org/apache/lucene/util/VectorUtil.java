@@ -70,7 +70,9 @@ public final class VectorUtil {
    * Returns the cosine similarity between the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
+   * @deprecated use dot-product instead using normalized vectors
    */
+  @Deprecated
   public static float cosine(float[] a, float[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -80,7 +82,12 @@ public final class VectorUtil {
     return r;
   }
 
-  /** Returns the cosine similarity between the two vectors. */
+  /**
+   * Returns the cosine similarity between the two vectors.
+   *
+   * @deprecated use dot-product instead using normalized vectors
+   */
+  @Deprecated
   public static float cosine(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -173,6 +180,60 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     return IMPL.dotProduct(a, b);
+  }
+
+  public static int int4DotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4DotProduct(a, false, b, false);
+  }
+
+  /**
+   * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
+   * "packed" (i.e. every byte representing two values). The following packing is assumed:
+   *
+   * <pre class="prettyprint lang-java">
+   *   packed[0] = (raw[0] * 16) | raw[packed.length];
+   *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
+   *   ...
+   *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
+   * </pre>
+   *
+   * @param unpacked the unpacked vector, of even length
+   * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
+   * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+    if (packed.length != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+    }
+    return IMPL.int4DotProduct(unpacked, false, packed, true);
+  }
+
+  /**
+   * XOR bit count computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the XOR bit count of the two vectors
+   */
+  public static int xorBitCount(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & ~(Long.BYTES - 1); i < upperBound; i += Long.BYTES) {
+      distance +=
+          Long.bitCount(
+              (long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
   }
 
   /**

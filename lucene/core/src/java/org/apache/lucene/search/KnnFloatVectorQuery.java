@@ -22,8 +22,9 @@ import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
@@ -76,19 +77,34 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitedLimit,
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
-    TopDocs results =
-        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
+    FloatVectorValues floatVectorValues = context.reader().getFloatVectorValues(field);
+    if (floatVectorValues == null) {
+      FloatVectorValues.checkField(context.reader(), field);
+      return NO_RESULTS;
+    }
+    if (Math.min(knnCollector.k(), floatVectorValues.size()) == 0) {
+      return NO_RESULTS;
+    }
+    context.reader().searchNearestVectors(field, target, knnCollector, acceptDocs);
+    TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
   }
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+    FloatVectorValues vectorValues = context.reader().getFloatVectorValues(field);
+    if (vectorValues == null) {
+      FloatVectorValues.checkField(context.reader(), field);
       return null;
     }
-    return VectorScorer.create(context, fi, target);
+    return vectorValues.scorer(target);
   }
 
   @Override
@@ -115,6 +131,6 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    * @return the target query vector of the search. Each vector element is a float.
    */
   public float[] getTargetCopy() {
-    return ArrayUtil.copyOfSubArray(target, 0, target.length);
+    return ArrayUtil.copyArray(target);
   }
 }

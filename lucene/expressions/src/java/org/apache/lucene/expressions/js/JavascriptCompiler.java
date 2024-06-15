@@ -97,7 +97,7 @@ public final class JavascriptCompiler {
 
   private static final Lookup LOOKUP = MethodHandles.lookup();
 
-  private static final int CLASSFILE_VERSION = Opcodes.V17;
+  private static final int CLASSFILE_VERSION = Opcodes.V21;
 
   private static final MethodType MT_EXPRESSION_CTOR_LOOKUP =
       MethodType.methodType(void.class, String.class, String[].class);
@@ -820,7 +820,7 @@ public final class JavascriptCompiler {
    */
   public static final Map<String, MethodHandle> DEFAULT_FUNCTIONS = loadDefaultFunctions();
 
-  private static final Map<String, MethodHandle> loadDefaultFunctions() {
+  private static Map<String, MethodHandle> loadDefaultFunctions() {
     final Map<String, MethodHandle> map = new HashMap<>();
     final Lookup publicLookup = MethodHandles.publicLookup();
     try {
@@ -852,7 +852,7 @@ public final class JavascriptCompiler {
     } catch (ReflectiveOperationException | IOException e) {
       throw new Error("Cannot resolve function", e);
     }
-    return Map.copyOf(map);
+    return Collections.unmodifiableMap(map);
   }
 
   /** Check Method signature for compatibility. */

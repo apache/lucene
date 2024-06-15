@@ -127,15 +127,6 @@ public class ToParentBlockJoinQuery extends Query {
       this.scoreMode = scoreMode;
     }
 
-    @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      final ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
-    }
-
     // NOTE: acceptDocs applies (and is checked) only in the
     // parent document space
     @Override
@@ -157,8 +148,7 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public Scorer get(long leadCost) throws IOException {
-          return new BlockJoinScorer(
-              BlockJoinWeight.this, childScorerSupplier.get(leadCost), parents, scoreMode);
+          return new BlockJoinScorer(childScorerSupplier.get(leadCost), parents, scoreMode);
         }
 
         @Override
@@ -283,9 +273,7 @@ public class ToParentBlockJoinQuery extends Query {
     private final ParentTwoPhase parentTwoPhase;
     private float score;
 
-    public BlockJoinScorer(
-        Weight weight, Scorer childScorer, BitSet parentBits, ScoreMode scoreMode) {
-      super(weight);
+    public BlockJoinScorer(Scorer childScorer, BitSet parentBits, ScoreMode scoreMode) {
       // System.out.println("Q.init firstChildDoc=" + firstChildDoc);
       this.parentBits = parentBits;
       this.childScorer = childScorer;

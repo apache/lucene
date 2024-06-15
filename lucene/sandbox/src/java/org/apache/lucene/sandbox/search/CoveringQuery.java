@@ -37,6 +37,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -234,7 +235,7 @@ public final class CoveringQuery extends Query implements Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       Collection<Scorer> scorers = new ArrayList<>();
       for (Weight w : weights) {
         Scorer s = w.scorer(context);
@@ -245,8 +246,10 @@ public final class CoveringQuery extends Query implements Accountable {
       if (scorers.isEmpty()) {
         return null;
       }
-      return new CoveringScorer(
-          this, scorers, minimumNumberMatch.getValues(context, null), context.reader().maxDoc());
+      final var scorer =
+          new CoveringScorer(
+              scorers, minimumNumberMatch.getValues(context, null), context.reader().maxDoc());
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

@@ -43,6 +43,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
@@ -239,7 +240,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
   }
 
   // Test data - format is artist, song, weeks at top of charts
-  private static String[] hitsOfThe60s = {
+  private static final String[] hitsOfThe60s = {
     "1966\tSPENCER DAVIS GROUP\tKEEP ON RUNNING\t1",
     "1966\tOVERLANDERS\tMICHELLE\t3",
     "1966\tNANCY SINATRA\tTHESE BOOTS ARE MADE FOR WALKIN'\t4",
@@ -317,7 +318,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     "1969\tARCHIES\tSUGAR, SUGAR\t4"
   };
 
-  private static final Map<String, Record> parsedRecords = new HashMap<String, Record>();
+  private static final Map<String, Record> parsedRecords = new HashMap<>();
   private Directory dir;
   private IndexReader reader;
   private IndexSearcher searcher;
@@ -452,7 +453,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
 
   private int getMaxNumRecordsPerArtist(ScoreDoc[] sd) throws IOException {
     int result = 0;
-    HashMap<String, Integer> artistCounts = new HashMap<String, Integer>();
+    HashMap<String, Integer> artistCounts = new HashMap<>();
     for (int i = 0; i < sd.length; i++) {
       Document doc = reader.storedFields().document(sd[i].doc);
       Record record = parsedRecords.get(doc.get("id"));
@@ -527,34 +528,38 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          Scorer innerScorer = inner.scorer(context);
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorerSupplier = inner.scorerSupplier(context);
+          if (scorerSupplier == null) return null;
+          final var innerScorer = scorerSupplier.get(Long.MAX_VALUE);
           NumericDocValues scoreFactors = DocValues.getNumeric(context.reader(), scoreField);
-          return new Scorer(this) {
+          final var scorer =
+              new Scorer() {
 
-            @Override
-            public float score() throws IOException {
-              if (scoreFactors.advanceExact(docID())) {
-                return Float.intBitsToFloat((int) scoreFactors.longValue());
-              }
-              return 0;
-            }
+                @Override
+                public float score() throws IOException {
+                  if (scoreFactors.advanceExact(docID())) {
+                    return Float.intBitsToFloat((int) scoreFactors.longValue());
+                  }
+                  return 0;
+                }
 
-            @Override
-            public float getMaxScore(int upTo) throws IOException {
-              return Float.POSITIVE_INFINITY;
-            }
+                @Override
+                public float getMaxScore(int upTo) throws IOException {
+                  return Float.POSITIVE_INFINITY;
+                }
 
-            @Override
-            public DocIdSetIterator iterator() {
-              return innerScorer.iterator();
-            }
+                @Override
+                public DocIdSetIterator iterator() {
+                  return innerScorer.iterator();
+                }
 
-            @Override
-            public int docID() {
-              return innerScorer.docID();
-            }
-          };
+                @Override
+                public int docID() {
+                  return innerScorer.docID();
+                }
+              };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

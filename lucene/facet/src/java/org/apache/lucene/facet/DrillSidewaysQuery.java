@@ -34,6 +34,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /** Only purpose is to punch through and return a DrillSidewaysScorer */
@@ -152,26 +153,8 @@ class DrillSidewaysQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        // We can only run as a top scorer:
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public boolean isCacheable(LeafReaderContext ctx) {
-        // We can never cache DSQ instances. It's critical that the BulkScorer produced by this
-        // Weight runs through the "normal" execution path so that it has access to an
-        // "acceptDocs" instance that accurately reflects deleted docs. During caching,
-        // "acceptDocs" is null so that caching over-matches (since the final BulkScorer would
-        // account for deleted docs). The problem is that this BulkScorer has a side-effect of
-        // populating the "sideways" FacetsCollectors, so it will use deleted docs in its
-        // sideways counting if caching kicks in. See LUCENE-10060:
-        return false;
-      }
-
-      @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        Scorer baseScorer = baseWeight.scorer(context);
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        ScorerSupplier baseScorerSupplier = baseWeight.scorerSupplier(context);
 
         int drillDownCount = drillDowns.length;
 
@@ -197,8 +180,7 @@ class DrillSidewaysQuery extends Query {
           Scorer scorer = drillDowns[dim].scorer(context);
           if (scorer == null) {
             nullCount++;
-            scorer =
-                new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
+            scorer = new ConstantScoreScorer(0f, scoreMode, DocIdSetIterator.empty());
           }
 
           FacetsCollector sidewaysCollector = drillSidewaysCollectorManagers[dim].newCollector();
@@ -212,7 +194,7 @@ class DrillSidewaysQuery extends Query {
         // If baseScorer is null or the dim nullCount > 1, then we have nothing to score. We return
         // a null scorer in this case, but we need to make sure #finish gets called on all facet
         // collectors since IndexSearcher won't handle this for us:
-        if (baseScorer == null || nullCount > 1) {
+        if (baseScorerSupplier == null || nullCount > 1) {
           if (drillDownCollector != null) {
             drillDownCollector.finish();
           }
@@ -225,8 +207,40 @@ class DrillSidewaysQuery extends Query {
         // Sort drill-downs by most restrictive first:
         Arrays.sort(dims, Comparator.comparingLong(o -> o.approximation.cost()));
 
-        return new DrillSidewaysScorer(
-            context, baseScorer, drillDownLeafCollector, dims, scoreSubDocsAtOnce);
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            // We can only run as a top scorer:
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public BulkScorer bulkScorer() throws IOException {
+            return new DrillSidewaysScorer(
+                context,
+                baseScorerSupplier.get(Long.MAX_VALUE),
+                drillDownLeafCollector,
+                dims,
+                scoreSubDocsAtOnce);
+          }
+
+          @Override
+          public long cost() {
+            throw new UnsupportedOperationException();
+          }
+        };
+      }
+
+      @Override
+      public boolean isCacheable(LeafReaderContext ctx) {
+        // We can never cache DSQ instances. It's critical that the BulkScorer produced by this
+        // Weight runs through the "normal" execution path so that it has access to an
+        // "acceptDocs" instance that accurately reflects deleted docs. During caching,
+        // "acceptDocs" is null so that caching over-matches (since the final BulkScorer would
+        // account for deleted docs). The problem is that this BulkScorer has a side-effect of
+        // populating the "sideways" FacetsCollectors, so it will use deleted docs in its
+        // sideways counting if caching kicks in. See LUCENE-10060:
+        return false;
       }
     };
   }

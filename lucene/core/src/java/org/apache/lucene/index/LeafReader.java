@@ -203,6 +203,13 @@ public abstract non-sealed class LeafReader extends IndexReader {
   public abstract NumericDocValues getNormValues(String field) throws IOException;
 
   /**
+   * Returns a {@link DocValuesSkipper} allowing skipping ranges of doc IDs that are not of
+   * interest, or {@code null} if a skip index was not indexed. The returned instance should be
+   * confined to the thread that created it.
+   */
+  public abstract DocValuesSkipper getDocValuesSkipper(String field) throws IOException;
+
+  /**
    * Returns {@link FloatVectorValues} for this field, or null if no {@link FloatVectorValues} were
    * indexed. The returned instance should only be used by a single thread.
    *
@@ -247,10 +254,13 @@ public abstract non-sealed class LeafReader extends IndexReader {
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    k = Math.min(k, getFloatVectorValues(fi.name).size());
+    FloatVectorValues floatVectorValues = getFloatVectorValues(fi.name);
+    if (floatVectorValues == null) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    k = Math.min(k, floatVectorValues.size());
     if (k == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
@@ -288,10 +298,13 @@ public abstract non-sealed class LeafReader extends IndexReader {
       String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
-    k = Math.min(k, getByteVectorValues(fi.name).size());
+    ByteVectorValues byteVectorValues = getByteVectorValues(fi.name);
+    if (byteVectorValues == null) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    k = Math.min(k, byteVectorValues.size());
     if (k == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }

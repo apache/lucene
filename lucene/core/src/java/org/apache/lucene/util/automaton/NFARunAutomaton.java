@@ -20,8 +20,8 @@ package org.apache.lucene.util.automaton;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.internal.hppc.BitMixer;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.hppc.BitMixer;
 
 /**
  * A RunAutomaton that does not require DFA. It will lazily determinize on-demand, memorizing the
@@ -193,8 +193,12 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
       // numTransitions times
     }
     assert dStates[t.source].transitions[t.transitionUpto] != NOT_COMPUTED;
-    t.dest = dStates[t.source].transitions[t.transitionUpto];
 
+    setTransitionAccordingly(t);
+  }
+
+  private void setTransitionAccordingly(Transition t) {
+    t.dest = dStates[t.source].transitions[t.transitionUpto];
     t.min = points[t.transitionUpto];
     if (t.transitionUpto == points.length - 1) {
       t.max = alphabetSize - 1;
@@ -222,12 +226,7 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
     }
     assert outgoingTransitions == index;
 
-    t.min = points[t.transitionUpto];
-    if (t.transitionUpto == points.length - 1) {
-      t.max = alphabetSize - 1;
-    } else {
-      t.max = points[t.transitionUpto + 1] - 1;
-    }
+    setTransitionAccordingly(t);
   }
 
   private class DState {

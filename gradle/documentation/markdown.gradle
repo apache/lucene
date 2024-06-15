@@ -103,6 +103,8 @@ class MarkdownFilter extends FilterReader {
     // first replace LUCENE and SOLR issue numbers with a markdown link
     markdownSource = markdownSource.replaceAll(/(?s)\b(LUCENE|SOLR)\-\d+\b/,
       '[$0](https://issues.apache.org/jira/browse/$0)');
+    markdownSource = markdownSource.replaceAll(/(?s)\b(GITHUB#|GH-)(\d+)\b/,
+      '[$0](https://github.com/apache/lucene/issues/$2)');
   
     // convert the markdown
     MutableDataSet options = new MutableDataSet();

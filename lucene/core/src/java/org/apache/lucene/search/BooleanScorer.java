@@ -194,11 +194,7 @@ final class BooleanScorer extends BulkScorer {
 
   private final DocIdStreamView docIdStreamView = new DocIdStreamView();
 
-  BooleanScorer(
-      BooleanWeight weight,
-      Collection<BulkScorer> scorers,
-      int minShouldMatch,
-      boolean needsScores) {
+  BooleanScorer(Collection<BulkScorer> scorers, int minShouldMatch, boolean needsScores) {
     if (minShouldMatch < 1 || minShouldMatch > scorers.size()) {
       throw new IllegalArgumentException(
           "minShouldMatch should be within 1..num_scorers. Got " + minShouldMatch);

@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.facet;
 
-import com.carrotsearch.hppc.IntIntHashMap;
-import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +29,7 @@ import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -150,9 +149,9 @@ public class StringValueFacetCounts extends Facets {
     List<LabelAndValue> labelValues = new ArrayList<>();
 
     if (sparseCounts != null) {
-      for (IntIntCursor cursor : sparseCounts) {
-        int count = cursor.value;
-        final BytesRef term = docValues.lookupOrd(cursor.key);
+      for (IntIntHashMap.IntIntCursor sparseCount : sparseCounts) {
+        int count = sparseCount.value;
+        final BytesRef term = docValues.lookupOrd(sparseCount.key);
         labelValues.add(new LabelAndValue(term.utf8ToString(), count));
       }
     } else {
@@ -180,29 +179,29 @@ public class StringValueFacetCounts extends Facets {
 
     topN = Math.min(topN, cardinality);
     TopOrdAndIntQueue q = null;
-    TopOrdAndIntQueue.OrdAndValue reuse = null;
+    TopOrdAndIntQueue.OrdAndInt reuse = null;
     int bottomCount = 0;
     int bottomOrd = Integer.MAX_VALUE;
     int childCount = 0; // total number of labels with non-zero count
 
     if (sparseCounts != null) {
-      for (IntIntCursor cursor : sparseCounts) {
+      for (IntIntHashMap.IntIntCursor sparseCount : sparseCounts) {
         childCount++; // every count in sparseValues should be non-zero
-        int ord = cursor.key;
-        int count = cursor.value;
+        int ord = sparseCount.key;
+        int count = sparseCount.value;
         if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
-          if (reuse == null) {
-            reuse = new TopOrdAndIntQueue.OrdAndValue();
-          }
-          reuse.ord = ord;
-          reuse.value = count;
           if (q == null) {
             // Lazy init for sparse case:
             q = new TopOrdAndIntQueue(topN);
           }
-          reuse = q.insertWithOverflow(reuse);
+          if (reuse == null) {
+            reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+          }
+          reuse.ord = ord;
+          reuse.value = count;
+          reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
           if (q.size() == topN) {
-            bottomCount = q.top().value;
+            bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
             bottomOrd = q.top().ord;
           }
         }
@@ -213,18 +212,18 @@ public class StringValueFacetCounts extends Facets {
         if (count != 0) {
           childCount++;
           if (count > bottomCount || (count == bottomCount && i < bottomOrd)) {
-            if (reuse == null) {
-              reuse = new TopOrdAndIntQueue.OrdAndValue();
-            }
-            reuse.ord = i;
-            reuse.value = count;
             if (q == null) {
               // Lazy init for sparse case:
               q = new TopOrdAndIntQueue(topN);
             }
-            reuse = q.insertWithOverflow(reuse);
+            if (reuse == null) {
+              reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+            }
+            reuse.ord = i;
+            reuse.value = count;
+            reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
             if (q.size() == topN) {
-              bottomCount = q.top().value;
+              bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
               bottomOrd = q.top().ord;
             }
           }
@@ -235,7 +234,7 @@ public class StringValueFacetCounts extends Facets {
     int resultCount = q == null ? 0 : q.size();
     LabelAndValue[] labelValues = new LabelAndValue[resultCount];
     for (int i = labelValues.length - 1; i >= 0; i--) {
-      TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
+      TopOrdAndIntQueue.OrdAndInt ordAndValue = (TopOrdAndIntQueue.OrdAndInt) q.pop();
       final BytesRef term = docValues.lookupOrd(ordAndValue.ord);
       labelValues[i] = new LabelAndValue(term.utf8ToString(), ordAndValue.value);
     }

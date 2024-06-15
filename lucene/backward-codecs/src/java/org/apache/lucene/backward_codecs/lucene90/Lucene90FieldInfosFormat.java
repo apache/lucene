@@ -186,6 +186,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     storePayloads,
                     indexOptions,
                     docValuesType,
+                    false,
                     dvGen,
                     attributes,
                     pointDataDimensionCount,
@@ -194,7 +195,8 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     vectorDimension,
                     VectorEncoding.FLOAT32,
                     vectorDistFunc,
-                    isSoftDeletesField);
+                    isSoftDeletesField,
+                    false);
             infos[i].checkConsistency();
           } catch (IllegalStateException e) {
             throw new CorruptIndexException(

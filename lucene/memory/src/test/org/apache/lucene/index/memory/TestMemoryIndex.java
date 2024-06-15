@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.index.memory;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.core.StringContains.containsString;
 
 import java.io.IOException;
@@ -86,6 +84,7 @@ import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -105,38 +104,30 @@ public class TestMemoryIndex extends LuceneTestCase {
     MemoryIndex mi = new MemoryIndex();
     mi.addField("f1", "some text", analyzer);
 
-    assertThat(mi.search(new MatchAllDocsQuery()), not(is(0.0f)));
-    assertThat(mi.search(new TermQuery(new Term("f1", "some"))), not(is(0.0f)));
+    assertNotEquals(0.0f, mi.search(new MatchAllDocsQuery()));
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))));
 
     // check we can add a new field after searching
     mi.addField("f2", "some more text", analyzer);
-    assertThat(mi.search(new TermQuery(new Term("f2", "some"))), not(is(0.0f)));
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f2", "some"))));
 
     // freeze!
     mi.freeze();
 
     RuntimeException expected =
-        expectThrows(
-            RuntimeException.class,
-            () -> {
-              mi.addField("f3", "and yet more", analyzer);
-            });
-    assertThat(expected.getMessage(), containsString("frozen"));
+        expectThrows(RuntimeException.class, () -> mi.addField("f3", "and yet more", analyzer));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("frozen"));
 
     expected =
-        expectThrows(
-            RuntimeException.class,
-            () -> {
-              mi.setSimilarity(new BM25Similarity(1, 1));
-            });
-    assertThat(expected.getMessage(), containsString("frozen"));
+        expectThrows(RuntimeException.class, () -> mi.setSimilarity(new BM25Similarity(1, 1)));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("frozen"));
 
-    assertThat(mi.search(new TermQuery(new Term("f1", "some"))), not(is(0.0f)));
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))));
 
     mi.reset();
     mi.addField("f1", "wibble", analyzer);
-    assertThat(mi.search(new TermQuery(new Term("f1", "some"))), is(0.0f));
-    assertThat(mi.search(new TermQuery(new Term("f1", "wibble"))), not(is(0.0f)));
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))), 0);
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "wibble"))));
 
     // check we can set the Similarity again
     mi.setSimilarity(new ClassicSimilarity());
@@ -256,14 +247,14 @@ public class TestMemoryIndex extends LuceneTestCase {
 
     MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer);
 
-    assertThat(mi.search(new TermQuery(new Term("field1", "text"))), not(0.0f));
-    assertThat(mi.search(new TermQuery(new Term("field2", "text"))), is(0.0f));
-    assertThat(mi.search(new TermQuery(new Term("field2", "untokenized text"))), not(0.0f));
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("field1", "text"))));
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("field2", "text"))), 0);
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("field2", "untokenized text"))));
 
-    assertThat(mi.search(new TermQuery(new Term("field1", "some more text"))), is(0.0f));
-    assertThat(mi.search(new PhraseQuery("field1", "some", "more", "text")), not(0.0f));
-    assertThat(mi.search(new PhraseQuery("field1", "some", "text")), not(0.0f));
-    assertThat(mi.search(new PhraseQuery("field1", "text", "some")), is(0.0f));
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("field1", "some more text"))), 0);
+    assertNotEquals(0.0f, mi.search(new PhraseQuery("field1", "some", "more", "text")));
+    assertNotEquals(0.0f, mi.search(new PhraseQuery("field1", "some", "text")));
+    assertEquals(0.0f, mi.search(new PhraseQuery("field1", "text", "some")), 0);
   }
 
   public void testDocValues() throws Exception {

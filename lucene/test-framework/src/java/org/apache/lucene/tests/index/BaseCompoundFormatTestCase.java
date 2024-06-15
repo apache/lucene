@@ -146,7 +146,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   // LUCENE-5724: things like NRTCachingDir rely upon IOContext being properly passed down
   public void testPassIOContext() throws IOException {
     final String testfile = "_123.test";
-    final IOContext myContext = new IOContext();
+    final IOContext myContext = IOContext.DEFAULT;
 
     Directory dir =
         new FilterDirectory(newDirectory()) {
@@ -899,7 +899,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
 
     ReadBytesDirectoryWrapper readTrackingDir = new ReadBytesDirectoryWrapper(dir);
     CompoundDirectory compoundDir =
-        si.getCodec().compoundFormat().getCompoundReader(readTrackingDir, si, IOContext.READ);
+        si.getCodec().compoundFormat().getCompoundReader(readTrackingDir, si, IOContext.DEFAULT);
     compoundDir.checkIntegrity();
     Map<String, FixedBitSet> readBytes = readTrackingDir.getReadBytes();
     assertEquals(createdFiles, readBytes.keySet());

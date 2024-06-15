@@ -1289,6 +1289,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 fi.getDocValuesType(),
+                fi.hasDocValuesSkipIndex(),
                 fi.getDocValuesGen(),
                 fi.attributes(),
                 0,
@@ -1297,7 +1298,8 @@ public class TestSortOptimization extends LuceneTestCase {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.DOT_PRODUCT,
-                fi.isSoftDeletesField());
+                fi.isSoftDeletesField(),
+                fi.isParentField());
         newInfos[i] = noIndexFI;
         i++;
       }

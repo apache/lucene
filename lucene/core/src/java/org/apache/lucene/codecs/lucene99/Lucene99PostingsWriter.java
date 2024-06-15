@@ -92,7 +92,6 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
   private final PForUtil pforUtil;
   private final ForDeltaUtil forDeltaUtil;
   private final Lucene99SkipWriter skipWriter;
-  private final GroupVIntWriter docGroupVIntWriter;
 
   private boolean fieldHasNorms;
   private NumericDocValues norms;
@@ -173,7 +172,6 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     skipWriter =
         new Lucene99SkipWriter(
             MAX_SKIP_LEVELS, BLOCK_SIZE, state.segmentInfo.maxDoc(), docOut, posOut, payOut);
-    docGroupVIntWriter = new GroupVIntWriter();
   }
 
   @Override
@@ -373,20 +371,7 @@ public final class Lucene99PostingsWriter extends PushPostingsWriterBase {
     } else {
       singletonDocID = -1;
       // Group vInt encode the remaining doc deltas and freqs:
-      if (writeFreqs) {
-        for (int i = 0; i < docBufferUpto; i++) {
-          docDeltaBuffer[i] = (docDeltaBuffer[i] << 1) | (freqBuffer[i] == 1 ? 1 : 0);
-        }
-      }
-      docGroupVIntWriter.writeValues(docOut, docDeltaBuffer, docBufferUpto);
-      if (writeFreqs) {
-        for (int i = 0; i < docBufferUpto; i++) {
-          final int freq = (int) freqBuffer[i];
-          if (freq != 1) {
-            docOut.writeVInt(freq);
-          }
-        }
-      }
+      PostingsUtil.writeVIntBlock(docOut, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
     }
 
     final long lastPosBlockOffset;

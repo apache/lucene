@@ -19,6 +19,7 @@ package org.apache.lucene.tests.index;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -68,7 +69,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -96,7 +97,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     fi.putAttribute("foo", "bar");
     fi.putAttribute("bar", "baz");
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -136,7 +137,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     fail.setDoFail();
     expectThrows(
@@ -171,7 +172,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     fail.setDoFail();
     expectThrows(
@@ -206,7 +207,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -243,7 +244,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfo fi = createFieldInfo();
     addAttributes(fi);
 
-    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null).add(fi).finish();
+    FieldInfos infos = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(null, null).add(fi).finish();
 
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
@@ -276,7 +277,12 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     String softDeletesField =
         random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
 
-    var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField);
+    String parentField = random().nextBoolean() ? TestUtil.randomUnicodeString(random()) : null;
+
+    if (softDeletesField != null && softDeletesField.equals(parentField)) {
+      parentField = null;
+    }
+    var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField, parentField);
 
     for (String field : fieldNames) {
       IndexableFieldType fieldType = randomFieldType(random(), field);
@@ -290,6 +296,15 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
           storePayloads = random().nextBoolean();
         }
       }
+      boolean hasDocValuesSkipIndex = false;
+      if (EnumSet.of(
+              DocValuesType.NUMERIC,
+              DocValuesType.SORTED,
+              DocValuesType.SORTED_NUMERIC,
+              DocValuesType.SORTED_SET)
+          .contains(fieldType.docValuesType())) {
+        hasDocValuesSkipIndex = fieldType.hasDocValuesSkipIndex();
+      }
       FieldInfo fi =
           new FieldInfo(
               field,
@@ -299,6 +314,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               storePayloads,
               fieldType.indexOptions(),
               fieldType.docValuesType(),
+              hasDocValuesSkipIndex,
               -1,
               new HashMap<>(),
               fieldType.pointDimensionCount(),
@@ -307,7 +323,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.vectorDimension(),
               fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
-              field.equals(softDeletesField));
+              field.equals(softDeletesField),
+              field.equals(parentField));
       addAttributes(fi);
       builder.add(fi);
     }
@@ -343,8 +360,15 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     }
 
     if (r.nextBoolean()) {
-      DocValuesType values[] = DocValuesType.values();
+      DocValuesType[] values = DocValuesType.values();
+      DocValuesType current = values[r.nextInt(values.length)];
       type.setDocValuesType(values[r.nextInt(values.length)]);
+      if (current == DocValuesType.NUMERIC
+          || current == DocValuesType.SORTED_NUMERIC
+          || current == DocValuesType.SORTED
+          || current == DocValuesType.SORTED_SET) {
+        type.setDocValuesSkipIndex(random().nextBoolean());
+      }
     }
 
     if (r.nextBoolean()) {
@@ -383,6 +407,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(expected.number, actual.number);
     assertEquals(expected.name, actual.name);
     assertEquals(expected.getDocValuesType(), actual.getDocValuesType());
+    assertEquals(expected.hasDocValuesSkipIndex(), actual.hasDocValuesSkipIndex());
     assertEquals(expected.getIndexOptions(), actual.getIndexOptions());
     assertEquals(expected.hasNorms(), actual.hasNorms());
     assertEquals(expected.hasPayloads(), actual.hasPayloads());
@@ -423,6 +448,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         false,
         TextField.TYPE_STORED.indexOptions(),
         DocValuesType.NONE,
+        false,
         -1,
         new HashMap<>(),
         0,
@@ -431,6 +457,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
+        false,
         false);
   }
 }

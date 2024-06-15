@@ -27,6 +27,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
@@ -38,27 +39,54 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable {
+  private static final int CHUNK_SIZE_BITS = 13;
+  static final int CHUNK_SIZE = 1 << CHUNK_SIZE_BITS;
+  private static final int CHUNK_MASK = CHUNK_SIZE - 1;
 
-  private final int[] parents;
+  private final ChunkedIntArray parents;
 
   // the following two arrays are lazily initialized. note that we only keep a
   // single boolean member as volatile, instead of declaring the arrays
   // volatile. the code guarantees that only after the boolean is set to true,
   // the arrays are returned.
   private volatile boolean initializedChildren = false;
-  private int[] children, siblings;
+  private ChunkedIntArray children, siblings;
 
-  /** Used by {@link #add(int, int)} after the array grew. */
-  private TaxonomyIndexArrays(int[] parents) {
-    this.parents = parents;
+  static class ChunkedIntArray extends ParallelTaxonomyArrays.IntArray {
+    final int[][] values;
+
+    private ChunkedIntArray(int[][] values) {
+      this.values = values;
+    }
+
+    @Override
+    public int get(int i) {
+      return values[i >> CHUNK_SIZE_BITS][i & CHUNK_MASK];
+    }
+
+    public void set(int i, int val) {
+      values[i >> CHUNK_SIZE_BITS][i & CHUNK_MASK] = val;
+    }
+
+    @Override
+    public int length() {
+      return ((values.length - 1) << CHUNK_SIZE_BITS) + values[values.length - 1].length;
+    }
+  }
+
+  /** Used by {@link #add(int, int)} after the array grew. Also, used for testing. */
+  TaxonomyIndexArrays(int[][] parents) {
+    this.parents = new ChunkedIntArray(parents);
   }
 
   public TaxonomyIndexArrays(IndexReader reader) throws IOException {
-    parents = new int[reader.maxDoc()];
-    if (parents.length > 0) {
-      initParents(reader, 0);
-      parents[0] = TaxonomyReader.INVALID_ORDINAL;
+    int[][] parentArray = allocateChunkedArray(reader.maxDoc(), 0);
+    assert parentArray.length > 0;
+    if (parentArray[0].length > 0) {
+      initParents(parentArray, reader, 0);
+      parentArray[0][0] = TaxonomyReader.INVALID_ORDINAL;
     }
+    parents = new ChunkedIntArray(parentArray);
   }
 
   public TaxonomyIndexArrays(IndexReader reader, TaxonomyIndexArrays copyFrom) throws IOException {
@@ -68,25 +96,54 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     // it may be caused if e.g. the taxonomy segments were merged, and so an updated
     // NRT reader was obtained, even though nothing was changed. this is not very likely
     // to happen.
-    int[] copyParents = copyFrom.parents();
-    this.parents = new int[reader.maxDoc()];
-    System.arraycopy(copyParents, 0, parents, 0, copyParents.length);
-    initParents(reader, copyParents.length);
+    int[][] parentArray = allocateChunkedArray(reader.maxDoc(), copyFrom.parents.values.length - 1);
+    assert parentArray.length > 0;
 
+    copyChunkedArray(copyFrom.parents.values, parentArray);
+    initParents(parentArray, reader, copyFrom.parents.length());
+    parents = new ChunkedIntArray(parentArray);
     if (copyFrom.initializedChildren) {
       initChildrenSiblings(copyFrom);
     }
   }
 
+  private static int[][] allocateChunkedArray(int size, int startFrom) {
+    int chunkCount = (size >> CHUNK_SIZE_BITS) + 1;
+    int[][] array = new int[chunkCount][];
+    for (int i = startFrom; i < chunkCount - 1; i++) {
+      array[i] = new int[CHUNK_SIZE];
+    }
+    array[chunkCount - 1] = new int[size & CHUNK_MASK];
+    return array;
+  }
+
+  private static void copyChunkedArray(int[][] oldArray, int[][] newArray) {
+    // Copy all but the last (maybe partial) chunk from the old array
+    if (oldArray.length > 1) {
+      System.arraycopy(oldArray, 0, newArray, 0, oldArray.length - 1);
+    }
+    int[] lastCopyChunk = oldArray[oldArray.length - 1];
+    System.arraycopy(lastCopyChunk, 0, newArray[oldArray.length - 1], 0, lastCopyChunk.length);
+  }
+
   private synchronized void initChildrenSiblings(TaxonomyIndexArrays copyFrom) {
     if (!initializedChildren) { // must do this check !
-      children = new int[parents.length];
-      siblings = new int[parents.length];
+      int startFrom;
+      if (copyFrom == null) {
+        startFrom = 0;
+      } else {
+        startFrom = copyFrom.parents.values.length - 1;
+      }
+      int[][] childrenArray = allocateChunkedArray(parents.length(), startFrom);
+      int[][] siblingsArray = allocateChunkedArray(parents.length(), startFrom);
+      // Rely on these arrays being copied by reference, since we may modify them below
+      children = new ChunkedIntArray(childrenArray);
+      siblings = new ChunkedIntArray(siblingsArray);
       if (copyFrom != null) {
         // called from the ctor, after we know copyFrom has initialized children/siblings
-        System.arraycopy(copyFrom.children(), 0, children, 0, copyFrom.children().length);
-        System.arraycopy(copyFrom.siblings(), 0, siblings, 0, copyFrom.siblings().length);
-        computeChildrenSiblings(copyFrom.parents.length);
+        copyChunkedArray(copyFrom.children.values, childrenArray);
+        copyChunkedArray(copyFrom.siblings.values, siblingsArray);
+        computeChildrenSiblings(copyFrom.parents.length());
       } else {
         computeChildrenSiblings(0);
       }
@@ -98,26 +155,42 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     // reset the youngest child of all ordinals. while this should be done only
     // for the leaves, we don't know up front which are the leaves, so we reset
     // all of them.
-    for (int i = first; i < parents.length; i++) {
-      children[i] = TaxonomyReader.INVALID_ORDINAL;
+    int length = parents.length();
+    for (int i = first; i < length; i++) {
+      children.set(i, TaxonomyReader.INVALID_ORDINAL);
     }
 
     // the root category has no parent, and therefore no siblings
     if (first == 0) {
       first = 1;
-      siblings[0] = TaxonomyReader.INVALID_ORDINAL;
+      siblings.set(0, TaxonomyReader.INVALID_ORDINAL);
     }
 
-    for (int i = first; i < parents.length; i++) {
+    int firstChunkStart = first - (first & CHUNK_MASK);
+    IntHashSet reallocatedChildChunks = new IntHashSet();
+    for (int i = first; i < length; i++) {
+      int parent = parents.get(i);
+      // The existing youngest child of the parent is the next older sibling of i.
       // note that parents[i] is always < i, so the right-hand-side of
       // the following line is already set when we get here
-      siblings[i] = children[parents[i]];
-      children[parents[i]] = i;
+      siblings.set(i, children.get(parent));
+      // The new youngest child of the parent is i.
+      if (parent < firstChunkStart) {
+        int chunkIdx = parent >> CHUNK_SIZE_BITS;
+        if (reallocatedChildChunks.contains(chunkIdx) == false) {
+          reallocatedChildChunks.add(chunkIdx);
+          int[] oldChildren = children.values[chunkIdx];
+          children.values[chunkIdx] = new int[CHUNK_SIZE];
+          System.arraycopy(oldChildren, 0, children.values[chunkIdx], 0, oldChildren.length);
+        }
+      }
+      children.set(parent, i);
     }
   }
 
   // Read the parents of the new categories
-  private void initParents(IndexReader reader, int first) throws IOException {
+  private static void initParents(int[][] parentsArray, IndexReader reader, int first)
+      throws IOException {
     if (reader.maxDoc() == first) {
       return;
     }
@@ -141,7 +214,9 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
           throw new CorruptIndexException(
               "Missing parent data for category " + (doc + leafContext.docBase), reader.toString());
         }
-        parents[doc + leafContext.docBase] = Math.toIntExact(parentValues.longValue());
+        int pos = doc + leafContext.docBase;
+        parentsArray[pos >> CHUNK_SIZE_BITS][pos & CHUNK_MASK] =
+            Math.toIntExact(parentValues.longValue());
       }
     }
   }
@@ -153,12 +228,15 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
    * <p><b>NOTE:</b> you should call this method from a thread-safe code.
    */
   TaxonomyIndexArrays add(int ordinal, int parentOrdinal) {
-    if (ordinal >= parents.length) {
-      int[] newarray = ArrayUtil.grow(parents, ordinal + 1);
-      newarray[ordinal] = parentOrdinal;
-      return new TaxonomyIndexArrays(newarray);
+    if (ordinal >= parents.length()) {
+      int[][] newParents =
+          allocateChunkedArray(
+              ArrayUtil.oversize(ordinal + 1, Integer.BYTES), parents.values.length - 1);
+      copyChunkedArray(parents.values, newParents);
+      newParents[ordinal >> CHUNK_SIZE_BITS][ordinal & CHUNK_MASK] = parentOrdinal;
+      return new TaxonomyIndexArrays(newParents);
     }
-    parents[ordinal] = parentOrdinal;
+    parents.set(ordinal, parentOrdinal);
     return this;
   }
 
@@ -167,7 +245,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
    * {@code i}.
    */
   @Override
-  public int[] parents() {
+  public ChunkedIntArray parents() {
     return parents;
   }
 
@@ -177,7 +255,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
    * taxonomy as an immediate child of {@code i}.
    */
   @Override
-  public int[] children() {
+  public ChunkedIntArray children() {
     if (!initializedChildren) {
       initChildrenSiblings(null);
     }
@@ -191,7 +269,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
    * {@code i}. The sibling is defined as the previous youngest child of {@code parents[i]}.
    */
   @Override
-  public int[] siblings() {
+  public ChunkedIntArray siblings() {
     if (!initializedChildren) {
       initChildrenSiblings(null);
     }

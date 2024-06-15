@@ -58,6 +58,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.internal.hppc.CharCursor;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 
 /** The Reduce object is used to remove gaps in a Trie which stores a dictionary. */
 public class Reduce {
@@ -88,9 +90,9 @@ public class Reduce {
 
     Row now = old.get(ind);
     to.add(now);
-    Iterator<Cell> i = now.cells.values().iterator();
+    Iterator<ObjectCursor<Cell>> i = now.cells.values().iterator();
     for (; i.hasNext(); ) {
-      Cell c = i.next();
+      Cell c = i.next().value;
       if (c.ref >= 0 && remap[c.ref] < 0) {
         removeGaps(c.ref, old, to, remap);
       }
@@ -109,9 +111,9 @@ public class Reduce {
      */
     public Remap(Row old, int[] remap) {
       super();
-      Iterator<Character> i = old.cells.keySet().iterator();
+      Iterator<CharCursor> i = old.cells.keys().iterator();
       for (; i.hasNext(); ) {
-        Character ch = i.next();
+        char ch = i.next().value;
         Cell c = old.at(ch);
         Cell nc;
         if (c.ref >= 0) {

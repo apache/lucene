@@ -17,8 +17,7 @@
 
 package org.apache.lucene.search.join;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -96,6 +95,11 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
   }
 
+  @Override
+  public int numCollected() {
+    return heap.size();
+  }
+
   /**
    * This is a minimum binary heap, inspired by {@link org.apache.lucene.util.LongHeap}. But instead
    * of encoding and using `long` values. Node ids and scores are kept separate. Additionally, this
@@ -112,7 +116,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     // Used to keep track of nodeId -> positionInHeap. This way when new scores are added for a
     // node, the heap can be
     // updated efficiently.
-    private final Map<Integer, Integer> nodeIdHeapIndex;
+    private final IntIntHashMap nodeIdHeapIndex;
     private boolean closed = false;
 
     public NodeIdCachingHeap(int maxSize) {
@@ -125,8 +129,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
       heapSize = maxSize + 1;
       this.maxSize = maxSize;
-      this.nodeIdHeapIndex =
-          new HashMap<>(maxSize < 2 ? maxSize + 1 : (int) (maxSize / 0.75 + 1.0));
+      this.nodeIdHeapIndex = new IntIntHashMap(maxSize);
       this.heapNodes = new ParentChildScore[heapSize];
     }
 
@@ -174,8 +177,9 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       if (closed) {
         throw new IllegalStateException();
       }
-      Integer previousNodeIndex = nodeIdHeapIndex.get(parentNode);
-      if (previousNodeIndex != null) {
+      int index = nodeIdHeapIndex.indexOf(parentNode);
+      if (index >= 0) {
+        int previousNodeIndex = nodeIdHeapIndex.indexGet(index);
         if (heapNodes[previousNodeIndex].score < score) {
           updateElement(previousNodeIndex, node, parentNode, score);
           return true;

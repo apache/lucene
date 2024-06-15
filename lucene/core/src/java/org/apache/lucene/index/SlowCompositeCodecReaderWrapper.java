@@ -36,6 +36,7 @@ import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
@@ -151,6 +152,12 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           reader.checkIntegrity();
         }
       }
+    }
+
+    @Override
+    public void prefetch(int docID) throws IOException {
+      int readerId = docIdToReaderId(docID);
+      readers[readerId].prefetch(docID - docStarts[readerId]);
     }
 
     @Override
@@ -486,6 +493,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         totalCost += v.cost();
       }
       return new MultiSortedSetDocValues(values, docStarts, map, totalCost);
+    }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      throw new UnsupportedOperationException("This method is for searching not for merging");
     }
   }
 
@@ -824,15 +836,6 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public long ramBytesUsed() {
-      long ramBytesUsed = 0;
-      for (KnnVectorsReader reader : readers) {
-        ramBytesUsed += reader.ramBytesUsed();
-      }
-      return ramBytesUsed;
-    }
-
-    @Override
     public void checkIntegrity() throws IOException {
       for (KnnVectorsReader reader : readers) {
         if (reader != null) {
@@ -892,6 +895,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         public int advance(int target) throws IOException {
           return mergedIterator.advance(target);
         }
+
+        @Override
+        public VectorScorer scorer(float[] target) {
+          throw new UnsupportedOperationException();
+        }
       };
     }
 
@@ -945,6 +953,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         @Override
         public int advance(int target) throws IOException {
           return mergedIterator.advance(target);
+        }
+
+        @Override
+        public VectorScorer scorer(byte[] target) {
+          throw new UnsupportedOperationException();
         }
       };
     }

@@ -103,6 +103,7 @@ public class MismatchedLeafReader extends FilterLeafReader {
               oldInfo.hasPayloads(), // storePayloads
               oldInfo.getIndexOptions(), // indexOptions
               oldInfo.getDocValuesType(), // docValuesType
+              oldInfo.hasDocValuesSkipIndex(), // hasDocValuesSkipIndex
               oldInfo.getDocValuesGen(), // dvGen
               oldInfo.attributes(), // attributes
               oldInfo.getPointDimensionCount(), // data dimension count
@@ -112,7 +113,8 @@ public class MismatchedLeafReader extends FilterLeafReader {
               oldInfo.getVectorEncoding(), // numeric type of vector samples
               // distance function for calculating similarity of the field's vector
               oldInfo.getVectorSimilarityFunction(),
-              oldInfo.isSoftDeletesField()); // used as soft-deletes field
+              oldInfo.isSoftDeletesField(), // used as soft-deletes field
+              oldInfo.isParentField());
       shuffled.set(i, newInfo);
     }
 
