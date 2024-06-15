@@ -38,8 +38,9 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * Executor wrapper responsible for the execution of concurrent tasks. Used to parallelize search
  * across segments as well as query rewrite in some cases. Exposes a single {@link
  * #invokeAll(Collection)} method that takes a collection of {@link Callable}s and executes them
- * concurrently/ Once all tasks are submitted to the executor, it blocks and wait for all tasks to
- * be completed, and then returns a list with the obtained results.
+ * concurrently. Once all but one task have been submitted to the executor, it tries to run as many
+ * tasks as possible on the calling thread, then waits for all tasks that have been executed in
+ * parallel on the executor to be completed and then returns a list with the obtained results.
  *
  * @lucene.experimental
  */
