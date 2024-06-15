@@ -45,11 +45,14 @@ import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
@@ -2742,6 +2745,14 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  private static boolean vectorsReaderSupportsSearch(CodecReader codecReader, String fieldName) {
+    KnnVectorsReader vectorsReader = codecReader.getVectorReader();
+    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader) {
+      vectorsReader = perFieldReader.getFieldReader(fieldName);
+    }
+    return (vectorsReader instanceof FlatVectorsReader) == false;
+  }
+
   private static void checkFloatVectorValues(
       FloatVectorValues values,
       FieldInfo fieldInfo,
@@ -2754,11 +2765,15 @@ public final class CheckIndex implements Closeable {
       // search the first maxNumSearches vectors to exercise the graph
       if (values.docID() % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
-        TopDocs docs = collector.topDocs();
-        if (docs.scoreDocs.length == 0) {
-          throw new CheckIndexException(
-              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+        if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
+          codecReader
+              .getVectorReader()
+              .search(fieldInfo.name, values.vectorValue(), collector, null);
+          TopDocs docs = collector.topDocs();
+          if (docs.scoreDocs.length == 0) {
+            throw new CheckIndexException(
+                "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+          }
         }
       }
       int valueLength = values.vectorValue().length;
@@ -2794,9 +2809,10 @@ public final class CheckIndex implements Closeable {
       throws IOException {
     int docCount = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
+    boolean supportsSearch = vectorsReaderSupportsSearch(codecReader, fieldInfo.name);
     while (values.nextDoc() != NO_MORE_DOCS) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (values.docID() % everyNdoc == 0) {
+      if (supportsSearch && values.docID() % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
         TopDocs docs = collector.topDocs();
