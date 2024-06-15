@@ -21,7 +21,7 @@ import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.Query;
 
 /**
- * Field that stores a per-document <code>long</code> values for scoring, sorting or value
+ * Field that stores a per-document <code>long</code> value for scoring, sorting or value
  * retrieval. Here's an example usage:
  *
  * <pre class="prettyprint">
