@@ -23,6 +23,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.FloatTensorValue;
 import org.apache.lucene.util.VectorUtil;
 
 import java.util.List;
@@ -100,6 +101,7 @@ public class KnnFloatTensorField extends Field {
    * @return A new vector query
    */
   public static Query newVectorQuery(String field, float[] queryVector, int k) {
+    // TODO: this could be a KnnFloatTensorQuery that allows a tensor on query side and uses TensorSimFn
     return new KnnFloatVectorQuery(field, queryVector, k);
   }
 
@@ -117,7 +119,8 @@ public class KnnFloatTensorField extends Field {
       String name, List<float[]> tensor, TensorSimilarityFunction similarityFunction) {
     super(name, createType(tensor, similarityFunction));
     tensor.forEach(VectorUtil::checkFinite);
-    fieldsData = tensor;
+    assert type.tensorDimension() == tensor.get(0).length;
+    fieldsData = new FloatTensorValue(tensor, type.tensorDimension());
   }
 
   /**
@@ -157,12 +160,12 @@ public class KnnFloatTensorField extends Field {
     }
     checkDimensions(tensor, fieldType.tensorDimension());
     tensor.forEach(VectorUtil::checkFinite);
-    fieldsData = tensor;
+    fieldsData = new FloatTensorValue(tensor, fieldType.tensorDimension());
   }
 
   /** Return the tensor value of this field */
-  public List<float[]> vectorValue() {
-    return (List<float[]>) fieldsData;
+  public FloatTensorValue tensorValue() {
+    return (FloatTensorValue) fieldsData;
   }
 
   /**
@@ -170,11 +173,14 @@ public class KnnFloatTensorField extends Field {
    *
    * @param value the value to set; must not be null, and dimension must match the field type
    */
-  public void setVectorValue(List<float[]> value) {
-    if (value == null || value.isEmpty()) {
+  public void setTensorValue(FloatTensorValue value) {
+    if (value == null) {
       throw new IllegalArgumentException("value must not be null or empty");
     }
-    checkDimensions(value, type.tensorDimension());
+    if (value.dimension() != type.tensorDimension()) {
+      throw new IllegalArgumentException("value dimension [" + value.dimension() + "] " +
+          "should match field tensor dimension: [" + type.tensorDimension() + "]");
+    }
     fieldsData = value;
   }
 

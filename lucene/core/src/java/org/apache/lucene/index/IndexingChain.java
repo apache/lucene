@@ -51,18 +51,8 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.ByteBlockPool;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.*;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
-import org.apache.lucene.util.Counter;
-import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.IntBlockPool;
-import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.Version;
 
 /** Default general purpose indexing chain, which handles indexing all types of fields. */
 final class IndexingChain implements Accountable {
@@ -1073,8 +1063,8 @@ final class IndexingChain implements Accountable {
     switch (tensorEncoding) {
 //      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
 //          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
-      case FLOAT32 -> ((KnnFieldVectorsWriter<List<float[]>>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnFloatTensorField) field).vectorValue());
+      case FLOAT32 -> ((KnnFieldVectorsWriter<FloatTensorValue>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnFloatTensorField) field).tensorValue());
     }
   }
 
