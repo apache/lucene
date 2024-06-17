@@ -206,7 +206,7 @@ public class StringValueFacetCounts extends Facets {
           }
         }
       }
-    } else {
+    } else if (denseCounts != null) {
       for (int i = 0; i < denseCounts.length; i++) {
         int count = denseCounts[i];
         if (count != 0) {

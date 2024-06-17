@@ -32,8 +32,7 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -77,6 +76,31 @@ public class TestStringValueFacetCounts extends FacetTestCase {
         new StringDocValuesReaderState(searcher.getIndexReader(), "field");
     checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
 
+    IOUtils.close(searcher.getIndexReader(), dir);
+  }
+
+  public void testNarrowSingleValued() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new SortedSetDocValuesField("field", new BytesRef("foo")));
+    writer.addDocument(doc);
+
+    IndexSearcher searcher = newSearcher(writer.getReader());
+    writer.close();
+
+    TopScoreDocCollectorManager docCollector = new TopScoreDocCollectorManager(10, 10);
+    FacetsCollectorManager facetCollector = new FacetsCollectorManager();
+    MultiCollectorManager merged = new MultiCollectorManager(docCollector, facetCollector);
+
+    Object[] results = searcher.search(new MatchNoDocsQuery(), merged);
+    StringDocValuesReaderState state =
+            new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+
+    StringValueFacetCounts counts = new StringValueFacetCounts(state, (FacetsCollector) results[1]);
+    FacetResult top = counts.getTopChildren(10, "field");
+    assertEquals(top.childCount, 0);
     IOUtils.close(searcher.getIndexReader(), dir);
   }
 
