@@ -104,7 +104,7 @@ public final class FunctionMatchQuery extends Query {
                 return matchCost; // TODO maybe DoubleValuesSource should have a matchCost?
               }
             };
-        final var scorer = new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
         return new DefaultScorerSupplier(scorer);
       }
 

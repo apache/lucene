@@ -17,11 +17,11 @@
 package org.apache.lucene.search.suggest.document;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.TreeSet;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -200,19 +200,27 @@ public class ContextQuery extends CompletionQuery implements Accountable {
         Operations.determinize(contextsAutomaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
 
     final Map<IntsRef, Float> contextMap = CollectionUtil.newHashMap(contexts.size());
-    final TreeSet<Integer> contextLengths = new TreeSet<>();
+    final IntHashSet contextLengths = new IntHashSet();
     for (Map.Entry<IntsRef, ContextMetaData> entry : contexts.entrySet()) {
       ContextMetaData contextMetaData = entry.getValue();
       contextMap.put(entry.getKey(), contextMetaData.boost);
       contextLengths.add(entry.getKey().length);
     }
-    int[] contextLengthArray = new int[contextLengths.size()];
-    final Iterator<Integer> iterator = contextLengths.descendingIterator();
-    for (int i = 0; iterator.hasNext(); i++) {
-      contextLengthArray[i] = iterator.next();
-    }
+    int[] contextLengthArray = contextLengths.toArray();
+    sortDescending(contextLengthArray);
     return new ContextCompletionWeight(
         this, contextsAutomaton, innerWeight, contextMap, contextLengthArray);
+  }
+
+  /** Sorts and reverses the array. */
+  private static void sortDescending(int[] array) {
+    Arrays.sort(array);
+    for (int i = 0, midLength = array.length / 2, last = array.length - 1; i < midLength; i++) {
+      int swapIndex = last - i;
+      int tmp = array[i];
+      array[i] = array[swapIndex];
+      array[swapIndex] = tmp;
+    }
   }
 
   private static Automaton toContextAutomaton(

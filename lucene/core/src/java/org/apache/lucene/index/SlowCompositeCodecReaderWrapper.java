@@ -155,6 +155,12 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
+    public void prefetch(int docID) throws IOException {
+      int readerId = docIdToReaderId(docID);
+      readers[readerId].prefetch(docID - docStarts[readerId]);
+    }
+
+    @Override
     public void document(int docID, StoredFieldVisitor visitor) throws IOException {
       int readerId = docIdToReaderId(docID);
       readers[readerId].document(
@@ -487,6 +493,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         totalCost += v.cost();
       }
       return new MultiSortedSetDocValues(values, docStarts, map, totalCost);
+    }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      throw new UnsupportedOperationException("This method is for searching not for merging");
     }
   }
 

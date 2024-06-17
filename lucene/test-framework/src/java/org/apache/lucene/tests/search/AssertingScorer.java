@@ -55,7 +55,6 @@ public class AssertingScorer extends Scorer {
 
   private AssertingScorer(
       Random random, Scorer in, ScoreMode scoreMode, boolean canCallMinCompetitiveScore) {
-    super(in.getWeight());
     this.random = random;
     this.in = in;
     this.scoreMode = scoreMode;

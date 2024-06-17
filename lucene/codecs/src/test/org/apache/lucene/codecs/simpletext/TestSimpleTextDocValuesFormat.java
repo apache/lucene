@@ -38,6 +38,12 @@ public class TestSimpleTextDocValuesFormat extends BaseDocValuesFormatTestCase {
   private final Codec codec = new SimpleTextCodec();
 
   @Override
+  protected boolean skipperHasAccurateDocBounds() {
+    // This format always returns minDocID = 0 and maxDocID = maxDoc - 1
+    return false;
+  }
+
+  @Override
   protected Codec getCodec() {
     return codec;
   }

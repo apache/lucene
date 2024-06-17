@@ -18,21 +18,22 @@
 import groovy.xml.NamespaceBuilder
 
 // Configure rat dependencies for use in the custom task.
-configure(rootProject) {
+
+// Configure the rat validation task and all scanned directories.
+allprojects {
     configurations {
         ratDeps
     }
 
     dependencies {
-        ratDeps "org.apache.rat:apache-rat:${scriptDepVersions['apache-rat']}"
+        ratDeps deps.rat
     }
-}
 
-// Configure the rat validation task and all scanned directories.
-allprojects {
-    task("rat", type: RatTask) {
+    tasks.register("rat", RatTask).configure {
         group = 'Verification'
         description = 'Runs Apache Rat checks.'
+
+        dependsOn configurations.ratDeps
 
         def defaultScanFileTree = project.fileTree(projectDir, {
             // Don't check under the project's build folder.
@@ -78,10 +79,10 @@ allprojects {
                     // Exclude github stuff (templates, workflows).
                     exclude ".github"
 
-                    // The root project also includes patterns for the boostrap (buildSrc) and composite
+                    // The root project also includes patterns for the include composite
                     // projects. Include their sources in the scan.
-                    include "buildSrc/src/**"
-                    include "dev-tools/missing-doclet/src/**"
+                    include "build-tools/build-infra/src/**"
+                    include "build-tools/missing-doclet/src/**"
 
                     // do not let RAT attempt to scan a python venv, it gets lost and confused...
                     exclude "dev-tools/aws-jmh/build/**"
@@ -142,7 +143,7 @@ class RatTask extends DefaultTask {
 
     def generateReport(File reportFile) {
         // Set up ant rat task.
-        def ratClasspath = project.rootProject.configurations.ratDeps.asPath
+        def ratClasspath = project.configurations.ratDeps.asPath
         ant.setLifecycleLogLevel(AntBuilder.AntMessagePriority.ERROR)
         ant.taskdef(resource: 'org/apache/rat/anttasks/antlib.xml', classpath: ratClasspath)
 

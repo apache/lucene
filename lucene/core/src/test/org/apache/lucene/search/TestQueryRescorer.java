@@ -495,7 +495,7 @@ public class TestQueryRescorer extends LuceneTestCase {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           final var scorer =
-              new Scorer(this) {
+              new Scorer() {
                 int docID = -1;
 
                 @Override

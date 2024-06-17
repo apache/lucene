@@ -62,18 +62,28 @@ class QueryProfilerWeight extends FilterWeight {
     if (subQueryScorerSupplier == null) {
       return null;
     }
-
-    final QueryProfilerWeight weight = this;
     return new ScorerSupplier() {
 
       @Override
       public Scorer get(long loadCost) throws IOException {
         timer.start();
         try {
-          return new QueryProfilerScorer(weight, subQueryScorerSupplier.get(loadCost), profile);
+          return new QueryProfilerScorer(subQueryScorerSupplier.get(loadCost), profile);
         } finally {
           timer.stop();
         }
+      }
+
+      @Override
+      public BulkScorer bulkScorer() throws IOException {
+        // We use the default bulk scorer instead of the specialized one. The reason
+        // is that BulkScorers do everything at once: finding matches,
+        // scoring them and calling the collector, so they make it impossible to
+        // see where time is spent, which is the purpose of query profiling.
+        // The default bulk scorer will pull a scorer and iterate over matches,
+        // this might be a significantly different execution path for some queries
+        // like disjunctions, but in general this is what is done anyway
+        return super.bulkScorer();
       }
 
       @Override
@@ -91,18 +101,6 @@ class QueryProfilerWeight extends FilterWeight {
         subQueryScorerSupplier.setTopLevelScoringClause();
       }
     };
-  }
-
-  @Override
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    // We use the default bulk scorer instead of the specialized one. The reason
-    // is that BulkScorers do everything at once: finding matches,
-    // scoring them and calling the collector, so they make it impossible to
-    // see where time is spent, which is the purpose of query profiling.
-    // The default bulk scorer will pull a scorer and iterate over matches,
-    // this might be a significantly different execution path for some queries
-    // like disjunctions, but in general this is what is done anyway
-    return super.bulkScorer(context);
   }
 
   @Override

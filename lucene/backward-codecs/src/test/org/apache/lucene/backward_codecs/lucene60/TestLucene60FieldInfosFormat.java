@@ -27,4 +27,9 @@ public class TestLucene60FieldInfosFormat extends BaseFieldInfoFormatTestCase {
   protected Codec getCodec() {
     return new Lucene84RWCodec();
   }
+
+  @Override
+  protected boolean supportDocValuesSkipIndex() {
+    return false;
+  }
 }

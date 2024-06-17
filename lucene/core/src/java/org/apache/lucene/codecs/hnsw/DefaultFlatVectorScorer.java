@@ -29,6 +29,9 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  * @lucene.experimental
  */
 public class DefaultFlatVectorScorer implements FlatVectorsScorer {
+
+  public static final DefaultFlatVectorScorer INSTANCE = new DefaultFlatVectorScorer();
+
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)

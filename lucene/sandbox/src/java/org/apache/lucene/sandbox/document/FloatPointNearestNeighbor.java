@@ -25,6 +25,7 @@ import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.PointTree;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
@@ -176,7 +177,7 @@ public class FloatPointNearestNeighbor {
   private static NearestHit[] nearest(
       List<PointValues> readers,
       List<Bits> liveDocs,
-      List<Integer> docBases,
+      IntArrayList docBases,
       final int topN,
       float[] origin)
       throws IOException {
@@ -310,7 +311,7 @@ public class FloatPointNearestNeighbor {
       throw new IllegalArgumentException("searcher must not be null");
     }
     List<PointValues> readers = new ArrayList<>();
-    List<Integer> docBases = new ArrayList<>();
+    IntArrayList docBases = new IntArrayList();
     List<Bits> liveDocs = new ArrayList<>();
     int totalHits = 0;
     for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {

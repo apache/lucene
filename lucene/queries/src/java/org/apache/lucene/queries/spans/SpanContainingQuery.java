@@ -140,13 +140,12 @@ public final class SpanContainingQuery extends SpanContainQuery {
 
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-      final SpanWeight spanWeight = this;
       final Spans spans = getSpans(context, Postings.POSITIONS);
       if (spans == null) {
         return null;
       }
       final LeafSimScorer docScorer = getSimScorer(context);
-      final var scorer = new SpanScorer(spanWeight, spans, docScorer);
+      final var scorer = new SpanScorer(spans, docScorer);
       return new DefaultScorerSupplier(scorer);
     }
   }

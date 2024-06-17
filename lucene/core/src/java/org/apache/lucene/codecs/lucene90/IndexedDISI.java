@@ -359,6 +359,14 @@ public final class IndexedDISI extends DocIdSetIterator {
 
     this.slice = blockSlice;
     this.jumpTable = jumpTable;
+    // Prefetch the first pages of data. Following pages are expected to get prefetched through
+    // read-ahead.
+    if (slice.length() > 0) {
+      slice.prefetch(0, 1);
+    }
+    if (jumpTable != null && jumpTable.length() > 0) {
+      jumpTable.prefetch(0, 1);
+    }
     this.jumpTableEntryCount = jumpTableEntryCount;
     this.denseRankPower = denseRankPower;
     final int rankIndexShift = denseRankPower - 7;
