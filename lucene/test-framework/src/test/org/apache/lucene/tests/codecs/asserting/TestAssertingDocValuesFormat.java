@@ -17,7 +17,6 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
 import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
 
 /** Test AssertingDocValuesFormat directly */
