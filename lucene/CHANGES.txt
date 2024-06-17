@@ -129,6 +129,10 @@ New Features
 
 * GITHUB#13233: Add RomanianNormalizationFilter (Trey Jones, Robert Muir)
 
+* GITHUB#13449: Sparse index: optional skip list on top of doc values which is exposed via the
+  DocValuesSkipper abstraction. A new flag is added to FieldType.java that configures whether
+  to create a "skip index" for doc values. (Ignacio Vera)
+
 Improvements
 ---------------------
 
@@ -268,6 +272,8 @@ Optimizations
   no query terms are present in the index segment (Mayya Sharipova)
 
 * GITHUB#13431: Replace TreeMap and use compiled Patterns in Japanese UserDictionary. (Bruno Roustant)
+
+* GITHUB#12941: Don't preserve auxiliary buffer contents in LSBRadixSorter if it grows. (Stefan Vodita)
 
 Bug Fixes
 ---------------------

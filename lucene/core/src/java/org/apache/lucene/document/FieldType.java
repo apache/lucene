@@ -22,6 +22,7 @@ import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.VectorEncoding;
@@ -40,6 +41,7 @@ public class FieldType implements IndexableFieldType {
   private IndexOptions indexOptions = IndexOptions.NONE;
   private boolean frozen;
   private DocValuesType docValuesType = DocValuesType.NONE;
+  private boolean docValuesSkipIndex;
   private int dimensionCount;
   private int indexDimensionCount;
   private int dimensionNumBytes;
@@ -59,6 +61,7 @@ public class FieldType implements IndexableFieldType {
     this.omitNorms = ref.omitNorms();
     this.indexOptions = ref.indexOptions();
     this.docValuesType = ref.docValuesType();
+    this.docValuesSkipIndex = ref.hasDocValuesSkipIndex();
     this.dimensionCount = ref.pointDimensionCount();
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
@@ -505,6 +508,22 @@ public class FieldType implements IndexableFieldType {
   }
 
   @Override
+  public boolean hasDocValuesSkipIndex() {
+    return docValuesSkipIndex;
+  }
+
+  /**
+   * Set whether to enable a skip index for doc values on this field. This is typically useful on
+   * fields that are part of the {@link IndexWriterConfig#setIndexSort index sort}, or that
+   * correlate with fields that are part of the index sort, so that values can be expected to be
+   * clustered in the doc ID space.
+   */
+  public void setDocValuesSkipIndex(boolean docValuesSkipIndex) {
+    checkIfFrozen();
+    this.docValuesSkipIndex = docValuesSkipIndex;
+  }
+
+  @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
@@ -512,6 +531,7 @@ public class FieldType implements IndexableFieldType {
     result = prime * result + indexDimensionCount;
     result = prime * result + dimensionNumBytes;
     result = prime * result + ((docValuesType == null) ? 0 : docValuesType.hashCode());
+    result = prime * result + Boolean.hashCode(docValuesSkipIndex);
     result = prime * result + indexOptions.hashCode();
     result = prime * result + (omitNorms ? 1231 : 1237);
     result = prime * result + (storeTermVectorOffsets ? 1231 : 1237);
@@ -533,6 +553,7 @@ public class FieldType implements IndexableFieldType {
     if (indexDimensionCount != other.indexDimensionCount) return false;
     if (dimensionNumBytes != other.dimensionNumBytes) return false;
     if (docValuesType != other.docValuesType) return false;
+    if (docValuesSkipIndex != other.docValuesSkipIndex) return false;
     if (indexOptions != other.indexOptions) return false;
     if (omitNorms != other.omitNorms) return false;
     if (storeTermVectorOffsets != other.storeTermVectorOffsets) return false;
