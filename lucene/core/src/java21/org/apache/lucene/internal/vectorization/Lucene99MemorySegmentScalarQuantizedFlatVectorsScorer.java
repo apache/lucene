@@ -46,7 +46,7 @@ public class Lucene99MemorySegmentScalarQuantizedFlatVectorsScorer implements Fl
           && similarityType == VectorSimilarityFunction.EUCLIDEAN
           // Indicates that the vector is compressed as the byte length is not equal to the
           // dimension count
-          && (vectorValues.getVectorByteLength() - Float.BYTES) != vectorValues.dimension()) {
+          && vectorValues.getVectorByteLength() != vectorValues.dimension()) {
         return delegate.getRandomVectorScorerSupplier(similarityType, vectorValues);
       }
       var scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
@@ -77,7 +77,7 @@ public class Lucene99MemorySegmentScalarQuantizedFlatVectorsScorer implements Fl
           && similarityType == VectorSimilarityFunction.EUCLIDEAN
           // Indicates that the vector is compressed as the byte length is not equal to the
           // dimension count
-          && (vectorValues.getVectorByteLength() - Float.BYTES) != vectorValues.dimension()) {
+          && vectorValues.getVectorByteLength() != vectorValues.dimension()) {
         return delegate.getRandomVectorScorer(similarityType, vectorValues, queryVector);
       }
       checkDimensions(queryVector.length, vectorValues.dimension());

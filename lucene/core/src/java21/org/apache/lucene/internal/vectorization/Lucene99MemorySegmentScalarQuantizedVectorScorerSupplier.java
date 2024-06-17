@@ -31,12 +31,11 @@ import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues
 public abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorerSupplier
     implements RandomVectorScorerSupplier {
 
-  final int vectorByteSize, trueVectorByteSize;
+  final int vectorByteSize, vectorByteOffset;
   final int maxOrd;
   final MemorySegmentAccessInput input;
   final RandomAccessQuantizedByteVectorValues values; // to support ordToDoc/getAcceptOrds
   byte[] scratch1, scratch2;
-  final int scratch1Size;
   final float constMultiplier;
 
   /**
@@ -56,10 +55,10 @@ public abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorerSup
     if (!(input instanceof MemorySegmentAccessInput msInput)) {
       return Optional.empty();
     }
-    final boolean compressed = (values.getVectorByteLength() - Float.BYTES) != values.dimension();
+    final boolean compressed = values.getVectorByteLength() != values.dimension();
     if (compressed) {
       assert bits == 4;
-      assert (values.getVectorByteLength() - Float.BYTES) == values.dimension() / 2;
+      assert values.getVectorByteLength() == values.dimension() / 2;
     }
     checkInvariants(values.size(), values.getVectorByteLength(), input);
     return switch (type) {
@@ -88,13 +87,7 @@ public abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorerSup
     this.input = input;
     this.values = values;
     this.vectorByteSize = values.getVectorByteLength();
-    this.trueVectorByteSize = (values.getVectorByteLength() - Float.BYTES);
-    if (values.dimension() != trueVectorByteSize) {
-      assert values.dimension() == trueVectorByteSize / 2;
-      this.scratch1Size = trueVectorByteSize;
-    } else {
-      this.scratch1Size = trueVectorByteSize / 2;
-    }
+    this.vectorByteOffset = values.getVectorByteLength() + Float.BYTES;
     this.maxOrd = values.size();
     this.constMultiplier = constMultiplier;
   }
@@ -126,17 +119,17 @@ public abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorerSup
   }
 
   final MemorySegment getFirstSegment(int ord) throws IOException {
-    long byteOffset = (long) ord * vectorByteSize;
+    long byteOffset = (long) ord * vectorByteOffset;
     MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     // we always read and decompress the full vector if the value is compressed
     // Generally, this is OK, as the scorer is used many times after the initial decompression
-    if (seg == null || values.dimension() != trueVectorByteSize) {
+    if (seg == null || values.dimension() != vectorByteSize) {
       if (scratch1 == null) {
-        scratch1 = new byte[this.scratch1Size];
+        scratch1 = new byte[values.dimension()];
       }
-      input.readBytes(byteOffset, scratch1, 0, trueVectorByteSize);
-      if (values.dimension() != trueVectorByteSize) {
-        decompressBytes(scratch1, scratch1.length);
+      input.readBytes(byteOffset, scratch1, 0, vectorByteSize);
+      if (values.dimension() != vectorByteSize) {
+        decompressBytes(scratch1, vectorByteSize);
       }
       seg = MemorySegment.ofArray(scratch1);
     }
@@ -144,13 +137,13 @@ public abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorerSup
   }
 
   final MemorySegment getSecondSegment(int ord) throws IOException {
-    long byteOffset = (long) ord * vectorByteSize;
+    long byteOffset = (long) ord * vectorByteOffset;
     MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
       if (scratch2 == null) {
-        scratch2 = new byte[values.dimension()];
+        scratch2 = new byte[vectorByteSize];
       }
-      input.readBytes(byteOffset, scratch2, 0, trueVectorByteSize);
+      input.readBytes(byteOffset, scratch2, 0, vectorByteSize);
       seg = MemorySegment.ofArray(scratch2);
     }
     return seg;
@@ -158,7 +151,7 @@ public abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorerSup
 
   final float getOffsetCorrection(int ord) throws IOException {
     checkOrdinal(ord);
-    long byteOffset = ((long) ord * vectorByteSize) + trueVectorByteSize;
+    long byteOffset = ((long) ord * vectorByteOffset) + vectorByteSize;
     int floatInts = input.readInt(byteOffset);
     return Float.intBitsToFloat(floatInts);
   }

@@ -29,7 +29,7 @@ import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues
 abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer {
 
-  final int vectorByteLength, trueVectorByteSize;
+  final int vectorByteSize, vectorByteOffset;
   final MemorySegmentAccessInput input;
   final MemorySegment query;
   final float constMultiplier;
@@ -55,10 +55,10 @@ abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorer
       return Optional.empty();
     }
     checkInvariants(values.size(), values.getVectorByteLength(), input);
-    final boolean compressed = (values.getVectorByteLength() - Float.BYTES) != values.dimension();
+    final boolean compressed = values.getVectorByteLength() != values.dimension();
     if (compressed) {
       assert bits == 4;
-      assert (values.getVectorByteLength() - Float.BYTES) == values.dimension() / 2;
+      assert values.getVectorByteLength() == values.dimension() / 2;
     }
     return switch (similarityType) {
       case COSINE, DOT_PRODUCT -> {
@@ -92,21 +92,21 @@ abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorer
       float constMultiplier) {
     super(values);
     this.input = input;
-    this.vectorByteLength = values.getVectorByteLength();
-    this.trueVectorByteSize = values.getVectorByteLength() - Float.BYTES;
+    this.vectorByteSize = values.getVectorByteLength();
+    this.vectorByteOffset = values.getVectorByteLength() + Float.BYTES;
     this.query = MemorySegment.ofArray(queryVector);
     this.constMultiplier = constMultiplier;
   }
 
   final MemorySegment getSegment(int ord) throws IOException {
     checkOrdinal(ord);
-    long byteOffset = (long) ord * vectorByteLength;
-    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteLength);
+    long byteOffset = (long) ord * vectorByteOffset;
+    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
       if (scratch == null) {
-        scratch = new byte[trueVectorByteSize];
+        scratch = new byte[vectorByteSize];
       }
-      input.readBytes(byteOffset, scratch, 0, trueVectorByteSize);
+      input.readBytes(byteOffset, scratch, 0, vectorByteSize);
       seg = MemorySegment.ofArray(scratch);
     }
     return seg;
@@ -114,7 +114,7 @@ abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorer
 
   final float getOffsetCorrection(int ord) throws IOException {
     checkOrdinal(ord);
-    long byteOffset = ((long) ord * vectorByteLength) + trueVectorByteSize;
+    long byteOffset = ((long) ord * vectorByteOffset) + vectorByteSize;
     int floatInts = input.readInt(byteOffset);
     return Float.intBitsToFloat(floatInts);
   }
