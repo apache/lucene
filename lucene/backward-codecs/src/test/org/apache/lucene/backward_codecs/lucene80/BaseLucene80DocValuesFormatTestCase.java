@@ -64,7 +64,7 @@ import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
-import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
+import org.apache.lucene.tests.index.LegacyBaseDocValuesFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
@@ -72,7 +72,8 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.packed.PackedInts;
 
 /** Tests Lucene80DocValuesFormat */
-public abstract class BaseLucene80DocValuesFormatTestCase extends BaseDocValuesFormatTestCase {
+public abstract class BaseLucene80DocValuesFormatTestCase
+    extends LegacyBaseDocValuesFormatTestCase {
 
   private static long dirSize(Directory d) throws IOException {
     long size = 0;

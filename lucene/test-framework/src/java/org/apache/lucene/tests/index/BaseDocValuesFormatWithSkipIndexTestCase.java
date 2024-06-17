@@ -53,8 +53,11 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
-/** Extends {@link BaseDocValuesFormatTestCase} to add checks for {@link DocValuesSkipper}. */
-public abstract class BaseDocValuesFormatWithSkipIndexTestCase extends BaseDocValuesFormatTestCase {
+/**
+ * Extends {@link LegacyBaseDocValuesFormatTestCase} and adds checks for {@link DocValuesSkipper}.
+ */
+public abstract class BaseDocValuesFormatWithSkipIndexTestCase
+    extends LegacyBaseDocValuesFormatTestCase {
 
   /**
    * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
