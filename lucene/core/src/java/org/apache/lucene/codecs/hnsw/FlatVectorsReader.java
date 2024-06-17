@@ -20,7 +20,6 @@ package org.apache.lucene.codecs.hnsw;
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
@@ -38,7 +37,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsReader extends KnnVectorsReader implements Accountable {
+public abstract class FlatVectorsReader extends KnnVectorsReader {
 
   /** Scorer for flat vectors */
   protected final FlatVectorsScorer vectorScorer;
