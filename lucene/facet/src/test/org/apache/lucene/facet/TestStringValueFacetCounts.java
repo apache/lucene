@@ -96,7 +96,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
     Object[] results = searcher.search(new MatchNoDocsQuery(), merged);
     StringDocValuesReaderState state =
-            new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
 
     StringValueFacetCounts counts = new StringValueFacetCounts(state, (FacetsCollector) results[1]);
     FacetResult top = counts.getTopChildren(10, "field");
