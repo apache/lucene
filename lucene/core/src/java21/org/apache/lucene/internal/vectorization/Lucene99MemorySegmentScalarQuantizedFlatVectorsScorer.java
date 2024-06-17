@@ -19,7 +19,6 @@ package org.apache.lucene.internal.vectorization;
 import static org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer.quantizeQuery;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -40,43 +39,65 @@ public class Lucene99MemorySegmentScalarQuantizedFlatVectorsScorer implements Fl
       VectorSimilarityFunction similarityType, RandomAccessVectorValues vectorValues)
       throws IOException {
     if (vectorValues instanceof RandomAccessQuantizedByteVectorValues quantizedByteVectorValues) {
-      // Unoptimized edge case, we don't optimize compressed 4-bit quantization with Euclidean similarity
+      // Unoptimized edge case, we don't optimize compressed 4-bit quantization with Euclidean
+      // similarity
       // So, we delegate to the default scorer
       if (quantizedByteVectorValues.getScalarQuantizer().getBits() == 4
-        && similarityType == VectorSimilarityFunction.EUCLIDEAN
-        // Indicates that the vector is compressed as the byte length is not equal to the dimension count
-        && (vectorValues.getVectorByteLength() - Float.BYTES) != vectorValues.dimension()
-      ) {
-        return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
+          && similarityType == VectorSimilarityFunction.EUCLIDEAN
+          // Indicates that the vector is compressed as the byte length is not equal to the
+          // dimension count
+          && (vectorValues.getVectorByteLength() - Float.BYTES) != vectorValues.dimension()) {
+        return delegate.getRandomVectorScorerSupplier(similarityType, vectorValues);
+      }
+      var scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
+      var scalarScorerSupplier =
+          Lucene99MemorySegmentScalarQuantizedVectorScorerSupplier.create(
+              similarityType,
+              scalarQuantizer.getBits(),
+              scalarQuantizer.getConstantMultiplier(),
+              quantizedByteVectorValues);
+      if (scalarScorerSupplier.isPresent()) {
+        return scalarScorerSupplier.get();
       }
     }
-    return delegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
+    return delegate.getRandomVectorScorerSupplier(similarityType, vectorValues);
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityType,
       RandomAccessVectorValues vectorValues,
-      float[] target)
+      float[] queryVector)
       throws IOException {
     if (vectorValues instanceof RandomAccessQuantizedByteVectorValues quantizedByteVectorValues) {
-      // Unoptimized edge case, we don't optimize compressed 4-bit quantization with Euclidean similarity
+      // Unoptimized edge case, we don't optimize compressed 4-bit quantization with Euclidean
+      // similarity
       // So, we delegate to the default scorer
       if (quantizedByteVectorValues.getScalarQuantizer().getBits() == 4
           && similarityType == VectorSimilarityFunction.EUCLIDEAN
-          // Indicates that the vector is compressed as the byte length is not equal to the dimension count
-          && (vectorValues.getVectorByteLength() - Float.BYTES) != vectorValues.dimension()
-      ) {
-        return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
+          // Indicates that the vector is compressed as the byte length is not equal to the
+          // dimension count
+          && (vectorValues.getVectorByteLength() - Float.BYTES) != vectorValues.dimension()) {
+        return delegate.getRandomVectorScorer(similarityType, vectorValues, queryVector);
       }
       checkDimensions(queryVector.length, vectorValues.dimension());
-      ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
-      byte[] targetBytes = new byte[target.length];
+      var scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
+      byte[] targetBytes = new byte[queryVector.length];
       float offsetCorrection =
-        quantizeQuery(target, targetBytes, similarityType, scalarQuantizer);
-      // TODO similarity
+          quantizeQuery(queryVector, targetBytes, similarityType, scalarQuantizer);
+      var scalarScorer =
+          Lucene99MemorySegmentScalarQuantizedVectorScorer.create(
+              similarityType,
+              targetBytes,
+              offsetCorrection,
+              scalarQuantizer.getConstantMultiplier(),
+              scalarQuantizer.getBits(),
+              quantizedByteVectorValues);
+      if (scalarScorer.isPresent()) {
+        return scalarScorer.get();
+      }
     }
-    return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
+    return delegate.getRandomVectorScorer(similarityType, vectorValues, queryVector);
   }
 
   @Override
@@ -85,7 +106,7 @@ public class Lucene99MemorySegmentScalarQuantizedFlatVectorsScorer implements Fl
       RandomAccessVectorValues vectorValues,
       byte[] queryVector)
       throws IOException {
-    return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
+    return delegate.getRandomVectorScorer(similarityType, vectorValues, queryVector);
   }
 
   static void checkDimensions(int queryLen, int fieldLen) {

@@ -405,7 +405,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return int4DotProduct(MemorySegment.ofArray(a), apacked, MemorySegment.ofArray(b), bpacked);
   }
 
-  public static int public int int4DotProduct(MemorySegment a, boolean apacked, MemorySegment b, boolean bpacked) {
+  public static int int4DotProduct(
+      MemorySegment a, boolean apacked, MemorySegment b, boolean bpacked) {
     assert (apacked && bpacked) == false;
     int i = 0;
     int res = 0;
@@ -428,15 +429,15 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       for (; i < packed.byteSize(); i++) {
         byte packedByte = packed.get(JAVA_BYTE, i);
         byte unpacked1 = unpacked.get(JAVA_BYTE, i);
-        byte unpacked2 = unpacked.get(JAVA_BYTE, i + packed.getByte());
+        byte unpacked2 = unpacked.get(JAVA_BYTE, i + packed.byteSize());
         res += (packedByte & 0x0F) * unpacked2;
         res += ((packedByte & 0xFF) >> 4) * unpacked1;
       }
     } else {
       if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
         return dotProduct(a, b);
-      } else if (a.length >= 32 && HAS_FAST_INTEGER_VECTORS) {
-        i += ByteVector.SPECIES_128.loopBound(a.length);
+      } else if (a.byteSize() >= 32 && HAS_FAST_INTEGER_VECTORS) {
+        i += ByteVector.SPECIES_128.loopBound(a.byteSize());
         res += int4DotProductBody128(a, b, i);
       }
       // scalar tail
@@ -448,7 +449,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return res;
   }
 
-  private static int dotProductBody512Int4Packed(MemorySegment unpacked, MemorySegment packed, int limit) {
+  private static int dotProductBody512Int4Packed(
+      MemorySegment unpacked, MemorySegment packed, int limit) {
     int sum = 0;
     // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += 4096) {
@@ -457,9 +459,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, 4096);
       for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_256.length()) {
         // packed
-        var vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_256, packed, i + j);
+        var vb8 =
+            ByteVector.fromMemorySegment(ByteVector.SPECIES_256, packed, i + j, LITTLE_ENDIAN);
         // unpacked
-        var va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_256, unpacked, i + j + packed.length);
+        var va8 =
+            ByteVector.fromMemorySegment(
+                ByteVector.SPECIES_256, unpacked, i + j + packed.byteSize(), LITTLE_ENDIAN);
 
         // upper
         ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
@@ -467,7 +472,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         acc0 = acc0.add(prod16);
 
         // lower
-        ByteVector vc8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_256, unpacked, i + j);
+        ByteVector vc8 =
+            ByteVector.fromMemorySegment(ByteVector.SPECIES_256, unpacked, i + j, LITTLE_ENDIAN);
         ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
         Vector<Short> prod16a = prod8a.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_512, 0);
         acc1 = acc1.add(prod16a);
@@ -481,7 +487,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return sum;
   }
 
-  private static int dotProductBody256Int4Packed(MemorySegment unpacked, MemorySegment packed, int limit) {
+  private static int dotProductBody256Int4Packed(
+      MemorySegment unpacked, MemorySegment packed, int limit) {
     int sum = 0;
     // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += 2048) {
@@ -490,9 +497,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, 2048);
       for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_128.length()) {
         // packed
-        var vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, packed, i + j);
+        var vb8 =
+            ByteVector.fromMemorySegment(ByteVector.SPECIES_128, packed, i + j, LITTLE_ENDIAN);
         // unpacked
-        var va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, unpacked, i + j + packed.length);
+        var va8 =
+            ByteVector.fromMemorySegment(
+                ByteVector.SPECIES_128, unpacked, i + j + packed.byteSize(), LITTLE_ENDIAN);
 
         // upper
         ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
@@ -500,7 +510,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         acc0 = acc0.add(prod16);
 
         // lower
-        ByteVector vc8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, unpacked, i + j);
+        ByteVector vc8 =
+            ByteVector.fromMemorySegment(ByteVector.SPECIES_128, unpacked, i + j, LITTLE_ENDIAN);
         ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
         Vector<Short> prod16a = prod8a.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_256, 0);
         acc1 = acc1.add(prod16a);
@@ -515,7 +526,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (128 bit vectors) */
-  private static int dotProductBody128Int4Packed(MemorySegment unpacked, MemorySegment packed, int limit) {
+  private static int dotProductBody128Int4Packed(
+      MemorySegment unpacked, MemorySegment packed, int limit) {
     int sum = 0;
     // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += 1024) {
@@ -524,10 +536,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, 1024);
       for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_64.length()) {
         // packed
-        ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, packed, i + j);
+        ByteVector vb8 =
+            ByteVector.fromMemorySegment(ByteVector.SPECIES_64, packed, i + j, LITTLE_ENDIAN);
         // unpacked
         ByteVector va8 =
-            ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + j + packed.length);
+            ByteVector.fromMemorySegment(
+                ByteVector.SPECIES_64, unpacked, i + j + packed.byteSize(), LITTLE_ENDIAN);
 
         // upper
         ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
@@ -536,7 +550,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         acc0 = acc0.add(prod16.and((short) 0xFF));
 
         // lower
-        va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, unpacked, i + j);
+        va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, unpacked, i + j, LITTLE_ENDIAN);
         prod8 = vb8.lanewise(LSHR, 4).mul(va8);
         prod16 = prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
         acc1 = acc1.add(prod16.and((short) 0xFF));
@@ -558,15 +572,17 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_128);
       int innerLimit = Math.min(limit - i, 1024);
       for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_128.length()) {
-        ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i + j);
-        ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i + j);
+        ByteVector va8 =
+            ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i + j, LITTLE_ENDIAN);
+        ByteVector vb8 =
+            ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i + j, LITTLE_ENDIAN);
         ByteVector prod8 = va8.mul(vb8);
         ShortVector prod16 =
             prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
         acc0 = acc0.add(prod16.and((short) 0xFF));
 
-        va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i + j + 8);
-        vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i + j + 8);
+        va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i + j + 8, LITTLE_ENDIAN);
+        vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i + j + 8, LITTLE_ENDIAN);
         prod8 = va8.mul(vb8);
         prod16 = prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
         acc1 = acc1.add(prod16.and((short) 0xFF));

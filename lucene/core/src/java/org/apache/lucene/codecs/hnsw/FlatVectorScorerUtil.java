@@ -38,7 +38,6 @@ public final class FlatVectorScorerUtil {
     return IMPL.getLucene99FlatVectorsScorer();
   }
 
-
   /**
    * Returns a FlatVectorsScorer that supports the Lucene99 format. Scorers retrieved through this
    * method may be optimized on certain platforms. Otherwise, a DefaultFlatVectorScorer is returned.
