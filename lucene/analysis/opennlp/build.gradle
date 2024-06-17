@@ -22,7 +22,7 @@ description = 'OpenNLP Library Integration'
 dependencies {
   moduleApi project(':lucene:core')
   moduleApi project(':lucene:analysis:common')
-  moduleApi 'org.apache.opennlp:opennlp-tools'
+  moduleApi deps.opennlp.tools
 
   moduleTestImplementation project(':lucene:test-framework')
 }
