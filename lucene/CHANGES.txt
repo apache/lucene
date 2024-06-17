@@ -179,8 +179,6 @@ Bug Fixes
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
 
-* GITHUB#13384: Fix highlighter to use longer passages instead of shorter individual terms. (Zack Kendall)
-
 Changes in Runtime Behavior
 ---------------------
 
@@ -281,7 +279,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#13384: Fix highlighter to use longer passages instead of shorter individual terms. (Zack Kendall)
 
 Other
 --------------------
