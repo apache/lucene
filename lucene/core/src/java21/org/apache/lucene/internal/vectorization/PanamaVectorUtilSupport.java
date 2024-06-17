@@ -402,28 +402,33 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   @Override
   public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
     assert (apacked && bpacked) == false;
+    return int4DotProduct(MemorySegment.ofArray(a), apacked, MemorySegment.ofArray(b), bpacked);
+  }
+
+  public static int public int int4DotProduct(MemorySegment a, boolean apacked, MemorySegment b, boolean bpacked) {
+    assert (apacked && bpacked) == false;
     int i = 0;
     int res = 0;
     if (apacked || bpacked) {
-      byte[] packed = apacked ? a : b;
-      byte[] unpacked = apacked ? b : a;
-      if (packed.length >= 32) {
+      MemorySegment packed = apacked ? a : b;
+      MemorySegment unpacked = apacked ? b : a;
+      if (packed.byteSize() >= 32) {
         if (VECTOR_BITSIZE >= 512) {
-          i += ByteVector.SPECIES_256.loopBound(packed.length);
+          i += ByteVector.SPECIES_256.loopBound(packed.byteSize());
           res += dotProductBody512Int4Packed(unpacked, packed, i);
         } else if (VECTOR_BITSIZE == 256) {
-          i += ByteVector.SPECIES_128.loopBound(packed.length);
+          i += ByteVector.SPECIES_128.loopBound(packed.byteSize());
           res += dotProductBody256Int4Packed(unpacked, packed, i);
         } else if (HAS_FAST_INTEGER_VECTORS) {
-          i += ByteVector.SPECIES_64.loopBound(packed.length);
+          i += ByteVector.SPECIES_64.loopBound(packed.byteSize());
           res += dotProductBody128Int4Packed(unpacked, packed, i);
         }
       }
       // scalar tail
-      for (; i < packed.length; i++) {
-        byte packedByte = packed[i];
-        byte unpacked1 = unpacked[i];
-        byte unpacked2 = unpacked[i + packed.length];
+      for (; i < packed.byteSize(); i++) {
+        byte packedByte = packed.get(JAVA_BYTE, i);
+        byte unpacked1 = unpacked.get(JAVA_BYTE, i);
+        byte unpacked2 = unpacked.get(JAVA_BYTE, i + packed.getByte());
         res += (packedByte & 0x0F) * unpacked2;
         res += ((packedByte & 0xFF) >> 4) * unpacked1;
       }
@@ -435,15 +440,15 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         res += int4DotProductBody128(a, b, i);
       }
       // scalar tail
-      for (; i < a.length; i++) {
-        res += b[i] * a[i];
+      for (; i < a.byteSize(); i++) {
+        res += b.get(JAVA_BYTE, i) * a.get(JAVA_BYTE, i);
       }
     }
 
     return res;
   }
 
-  private int dotProductBody512Int4Packed(byte[] unpacked, byte[] packed, int limit) {
+  private static int dotProductBody512Int4Packed(MemorySegment unpacked, MemorySegment packed, int limit) {
     int sum = 0;
     // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += 4096) {
@@ -476,7 +481,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return sum;
   }
 
-  private int dotProductBody256Int4Packed(byte[] unpacked, byte[] packed, int limit) {
+  private static int dotProductBody256Int4Packed(MemorySegment unpacked, MemorySegment packed, int limit) {
     int sum = 0;
     // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += 2048) {
@@ -510,7 +515,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (128 bit vectors) */
-  private int dotProductBody128Int4Packed(byte[] unpacked, byte[] packed, int limit) {
+  private static int dotProductBody128Int4Packed(MemorySegment unpacked, MemorySegment packed, int limit) {
     int sum = 0;
     // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += 1024) {
@@ -545,7 +550,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return sum;
   }
 
-  private int int4DotProductBody128(byte[] a, byte[] b, int limit) {
+  private static int int4DotProductBody128(MemorySegment a, MemorySegment b, int limit) {
     int sum = 0;
     // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += 1024) {

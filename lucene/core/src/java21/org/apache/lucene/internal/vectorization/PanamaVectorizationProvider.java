@@ -79,4 +79,9 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   public FlatVectorsScorer getLucene99FlatVectorsScorer() {
     return Lucene99MemorySegmentFlatVectorsScorer.INSTANCE;
   }
+
+  @Override
+  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
+    return new Lucene99MemorySegmentScalarQuantizedFlatVectorsScorer(new Lucene99ScalarQuantizedVectorScorer(getLucene99FlatVectorsScorer()));
+  }
 }

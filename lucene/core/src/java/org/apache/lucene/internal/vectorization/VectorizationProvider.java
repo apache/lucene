@@ -95,6 +95,9 @@ public abstract class VectorizationProvider {
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
 
+  /** Returns a FlatVectorsScorer that supports scalar quantized vectors in the Lucene99 format. */
+  public abstract FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer();
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
