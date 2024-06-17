@@ -32,6 +32,7 @@ abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorer
   final int vectorByteSize;
   final MemorySegmentAccessInput input;
   final MemorySegment query;
+  final float constMultiplier;
   byte[] scratch;
 
   /**
@@ -56,16 +57,16 @@ abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorer
     }
     checkInvariants(values.size(), values.getVectorByteLength(), input);
     return switch (type) {
-      case COSINE -> Optional.of(new CosineScorer(msInput, values, queryVector));
-      case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector));
-      case EUCLIDEAN -> Optional.of(new EuclideanScorer(msInput, values, queryVector));
+      case COSINE -> Optional.of(new CosineScorer(msInput, values, queryVector, constMultiplier, offsetCorrection));
+      case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector, constMultiplier, offsetCorrection));
+      case EUCLIDEAN -> Optional.of(new EuclideanScorer(msInput, values, queryVector, constMultiplier));
       case MAXIMUM_INNER_PRODUCT -> Optional.of(
-          new MaxInnerProductScorer(msInput, values, queryVector));
+          new MaxInnerProductScorer(msInput, values, queryVector, offsetCorrection));
     };
   }
 
   Lucene99MemorySegmentScalarQuantizedVectorScorer(
-      MemorySegmentAccessInput input, RandomAccessQuantizedByteVectorValues values, byte[] queryVector) {
+      MemorySegmentAccessInput input, RandomAccessQuantizedByteVectorValues values, byte[] queryVector, float constMultiplier) {
     super(values);
     this.input = input;
     this.vectorByteLength = values.getVectorByteLength();
@@ -101,50 +102,57 @@ abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorer
 
   static final class DotProductScorer extends Lucene99MemorySegmentScalarQuantizedVectorScorer {
     DotProductScorer(
-        MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] query) {
-      super(input, values, query);
+        MemorySegmentAccessInput input, RandomAccessQuantizedByteVectorValues values, byte[] query, float constMultiplier, float offsetCorrection) {
+      super(input, values, query, constMultiplier);
     }
 
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
       float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
-      return 0.5f + raw / (float) (query.byteSize() * (1 << 15));
+      float vectorOffset = values.getScoreCorrectionConstant(node);
+      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      assert dotProduct >= 0;
+      float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
+      return Math.max((1 + adjustedDistance) / 2, 0);
     }
   }
 
   static final class Int4DotProductScorer extends Lucene99MemorySegmentScalarQuantizedVectorScorer {
     Int4DotProductScorer(
-      MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] query) {
-      super(input, values, query);
+      MemorySegmentAccessInput input, RandomAccessQuantizedByteVectorValues values, byte[] query, float constMultiplier, float offsetCorrection) {
+      super(input, values, query, constMultiplier);
     }
 
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-      float raw = PanamaVectorUtilSupport.int4DotProduct(query, getSegment(node));
-      return 0.5f + raw / (float) (query.byteSize() * (1 << 15));
+      float raw = PanamaVectorUtilSupport.int4DotProduct(query, false, getSegment(node), false);
+      float vectorOffset = values.getScoreCorrectionConstant(node);
+      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      assert dotProduct >= 0;
+      float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
+      return Math.max((1 + adjustedDistance) / 2, 0);
     }
   }
 
   static final class EuclideanScorer extends Lucene99MemorySegmentScalarQuantizedVectorScorer {
-    EuclideanScorer(MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] query) {
-      super(input, values, query);
+    EuclideanScorer(MemorySegmentAccessInput input, RandomAccessQuantizedByteVectorValues values, byte[] query, float constMultiplier) {
+      super(input, values, query, constMultiplier);
     }
 
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
       float raw = PanamaVectorUtilSupport.squareDistance(query, getSegment(node));
-      return 1 / (1f + raw);
+      float adjustedDistance = raw * constMultiplier;
+      return 1 / (1f + adjustedDistance);
     }
   }
 
   static final class MaxInnerProductScorer extends Lucene99MemorySegmentScalarQuantizedVectorScorer {
     MaxInnerProductScorer(
-        MemorySegmentAccessInput input, RandomAccessVectorValues values, byte[] query) {
+        MemorySegmentAccessInput input, RandomAccessQuantizedByteVectorValues values, byte[] query, float constMultiplier, float offsetCorrection) {
       super(input, values, query);
     }
 
@@ -152,10 +160,14 @@ abstract sealed class Lucene99MemorySegmentScalarQuantizedVectorScorer
     public float score(int node) throws IOException {
       checkOrdinal(node);
       float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
-      if (raw < 0) {
-        return 1 / (1 + -1 * raw);
+      float vectorOffset = values.getScoreCorrectionConstant(node);
+      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      assert dotProduct >= 0;
+      float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
+      if (adjustedDistance < 0) {
+        return 1 / (1 + -1 * adjustedDistance);
       }
-      return raw + 1;
+      return adjustedDistance + 1;
     }
   }
 }
