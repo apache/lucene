@@ -250,6 +250,8 @@ API Changes
 
 * GITHUB#13281: Mark COSINE VectorSimilarityFunction as deprecated. (Pulkit Gupta)
 
+* GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov) 
+
 New Features
 ---------------------
 (No changes)
@@ -272,6 +274,8 @@ Optimizations
   no query terms are present in the index segment (Mayya Sharipova)
 
 * GITHUB#13431: Replace TreeMap and use compiled Patterns in Japanese UserDictionary. (Bruno Roustant)
+
+* GITHUB#12941: Don't preserve auxiliary buffer contents in LSBRadixSorter if it grows. (Stefan Vodita)
 
 * GITHUB#13175: Stop double-checking priority queue inserts in some FacetCount classes. (Jakub Slowinski)
 
