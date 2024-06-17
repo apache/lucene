@@ -18,7 +18,6 @@ package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
@@ -54,12 +53,13 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     private final StoredFieldsReader in;
     private final int maxDoc;
     private final boolean merging;
-    private final AtomicReference<Thread> creationThread = new AtomicReference<>();
+    private final Thread creationThread;
 
     AssertingStoredFieldsReader(StoredFieldsReader in, int maxDoc, boolean merging) {
       this.in = in;
       this.maxDoc = maxDoc;
       this.merging = merging;
+      this.creationThread = Thread.currentThread();
       // do a few simple checks on init
       assert toString() != null;
     }
@@ -72,10 +72,7 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
 
     @Override
     public void document(int n, StoredFieldVisitor visitor) throws IOException {
-      if (merging) {
-        creationThread.compareAndExchange(null, Thread.currentThread());
-        AssertingCodec.assertThread("StoredFieldsReader", creationThread.get());
-      }
+      AssertingCodec.assertThread("StoredFieldsReader", creationThread);
       assert n >= 0 && n < maxDoc;
       in.document(n, visitor);
     }
