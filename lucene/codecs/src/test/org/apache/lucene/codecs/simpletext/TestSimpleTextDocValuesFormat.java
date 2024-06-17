@@ -28,13 +28,13 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.index.BaseDocValuesFormatWithSkipIndexTestCase;
+import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 /** Tests SimpleTextDocValuesFormat */
-public class TestSimpleTextDocValuesFormat extends BaseDocValuesFormatWithSkipIndexTestCase {
+public class TestSimpleTextDocValuesFormat extends BaseDocValuesFormatTestCase {
   private final Codec codec = new SimpleTextCodec();
 
   @Override

@@ -16,114 +16,809 @@
  */
 package org.apache.lucene.tests.index;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.PrintStream;
+import java.util.function.Supplier;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.CheckIndex;
+import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.packed.PackedInts;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 
-/** Extends {@link BaseDocValuesFormatWithSkipIndexTestCase} to add compression checks. */
-public abstract class BaseDocValuesFormatTestCase extends BaseDocValuesFormatWithSkipIndexTestCase {
+/**
+ * Extends {@link LegacyBaseDocValuesFormatTestCase} and adds checks for {@link DocValuesSkipper}.
+ */
+public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFormatTestCase {
 
-  static long dirSize(Directory d) throws IOException {
-    long size = 0;
-    for (String file : d.listAll()) {
-      size += d.fileLength(file);
-    }
-    return size;
+  /**
+   * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
+   * sometimes returns documents in {@link DocValuesSkipper#minDocID(int)} or {@link
+   * DocValuesSkipper#maxDocID(int)} that may not have a value.
+   */
+  protected boolean skipperHasAccurateDocBounds() {
+    return true;
   }
 
-  public void testUniqueValuesCompression() throws IOException {
-    try (final Directory dir = new ByteBuffersDirectory()) {
-      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+  /**
+   * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
+   * sometimes returns values in {@link DocValuesSkipper#minValue(int)} or {@link
+   * DocValuesSkipper#maxValue(int)} that none of the documents in the range have.
+   */
+  protected boolean skipperHasAccurateValueBounds() {
+    return true;
+  }
 
-      final int uniqueValueCount = TestUtil.nextInt(random(), 1, 256);
-      final List<Long> values = new ArrayList<>();
+  public void testSortedMergeAwayAllValuesWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
+    iwconfig.setMergePolicy(newLogMergePolicy());
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
 
-      final Document doc = new Document();
-      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
-      doc.add(dvf);
-      for (int i = 0; i < 300; ++i) {
-        final long value;
-        if (values.size() < uniqueValueCount) {
-          value = random().nextLong();
-          values.add(value);
-        } else {
-          value = RandomPicks.randomFrom(random(), values);
-        }
-        dvf.setLongValue(value);
-        iwriter.addDocument(doc);
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    iwriter.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(SortedDocValuesField.indexedField("field", newBytesRef("hello")));
+    iwriter.addDocument(doc);
+    iwriter.commit();
+    iwriter.deleteDocuments(new Term("id", "1"));
+    iwriter.forceMerge(1);
+
+    DirectoryReader ireader = iwriter.getReader();
+    iwriter.close();
+
+    SortedDocValues dv = getOnlyLeafReader(ireader).getSortedDocValues("field");
+    assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+
+    TermsEnum termsEnum = dv.termsEnum();
+    assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef("lucene")));
+    assertEquals(-1, dv.lookupTerm(new BytesRef("lucene")));
+
+    ireader.close();
+    directory.close();
+  }
+
+  public void testSortedSetMergeAwayAllValuesWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
+    iwconfig.setMergePolicy(newLogMergePolicy());
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    iwriter.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(SortedSetDocValuesField.indexedField("field", newBytesRef("hello")));
+    iwriter.addDocument(doc);
+    iwriter.commit();
+    iwriter.deleteDocuments(new Term("id", "1"));
+    iwriter.forceMerge(1);
+
+    DirectoryReader ireader = iwriter.getReader();
+    iwriter.close();
+
+    SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
+    assertEquals(0, dv.getValueCount());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+
+    TermsEnum termsEnum = dv.termsEnum();
+    assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef("lucene")));
+    assertEquals(-1, dv.lookupTerm(new BytesRef("lucene")));
+
+    ireader.close();
+    directory.close();
+  }
+
+  public void testNumberMergeAwayAllValuesWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
+    iwconfig.setMergePolicy(newLogMergePolicy());
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    iwriter.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(NumericDocValuesField.indexedField("field", 5));
+    iwriter.addDocument(doc);
+    iwriter.commit();
+    iwriter.deleteDocuments(new Term("id", "1"));
+    iwriter.forceMerge(1);
+
+    DirectoryReader ireader = iwriter.getReader();
+    iwriter.close();
+
+    NumericDocValues dv = getOnlyLeafReader(ireader).getNumericDocValues("field");
+    assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+
+    ireader.close();
+    directory.close();
+  }
+
+  public void testSortedNumberMergeAwayAllValuesWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
+    iwconfig.setMergePolicy(newLogMergePolicy());
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    iwriter.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(SortedNumericDocValuesField.indexedField("field", 5));
+    iwriter.addDocument(doc);
+    iwriter.commit();
+    iwriter.deleteDocuments(new Term("id", "1"));
+    iwriter.forceMerge(1);
+
+    DirectoryReader ireader = iwriter.getReader();
+    iwriter.close();
+
+    SortedNumericDocValues dv = getOnlyLeafReader(ireader).getSortedNumericDocValues("field");
+    assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+
+    ireader.close();
+    directory.close();
+  }
+
+  // same as testSortedMergeAwayAllValues but on more than 1024 docs to have sparse encoding on
+  public void testSortedMergeAwayAllValuesLargeSegmentWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
+    iwconfig.setMergePolicy(newLogMergePolicy());
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(SortedDocValuesField.indexedField("field", newBytesRef("hello")));
+    iwriter.addDocument(doc);
+    final int numEmptyDocs = atLeast(1024);
+    for (int i = 0; i < numEmptyDocs; ++i) {
+      iwriter.addDocument(new Document());
+    }
+    iwriter.commit();
+    iwriter.deleteDocuments(new Term("id", "1"));
+    iwriter.forceMerge(1);
+
+    DirectoryReader ireader = iwriter.getReader();
+    iwriter.close();
+
+    SortedDocValues dv = getOnlyLeafReader(ireader).getSortedDocValues("field");
+    assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+
+    TermsEnum termsEnum = dv.termsEnum();
+    assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef("lucene")));
+    assertEquals(-1, dv.lookupTerm(new BytesRef("lucene")));
+
+    ireader.close();
+    directory.close();
+  }
+
+  // same as testSortedSetMergeAwayAllValues but on more than 1024 docs to have sparse encoding on
+  public void testSortedSetMergeAwayAllValuesLargeSegmentWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
+    iwconfig.setMergePolicy(newLogMergePolicy());
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(SortedSetDocValuesField.indexedField("field", newBytesRef("hello")));
+    iwriter.addDocument(doc);
+    final int numEmptyDocs = atLeast(1024);
+    for (int i = 0; i < numEmptyDocs; ++i) {
+      iwriter.addDocument(new Document());
+    }
+    iwriter.commit();
+    iwriter.deleteDocuments(new Term("id", "1"));
+    iwriter.forceMerge(1);
+
+    DirectoryReader ireader = iwriter.getReader();
+    iwriter.close();
+
+    SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
+    assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+
+    TermsEnum termsEnum = dv.termsEnum();
+    assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef("lucene")));
+    assertEquals(-1, dv.lookupTerm(new BytesRef("lucene")));
+
+    ireader.close();
+    directory.close();
+  }
+
+  // same as testNumericMergeAwayAllValues but on more than 1024 docs to have sparse encoding on
+  public void testNumericMergeAwayAllValuesLargeSegmentWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
+    iwconfig.setMergePolicy(newLogMergePolicy());
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(NumericDocValuesField.indexedField("field", 42L));
+    iwriter.addDocument(doc);
+    final int numEmptyDocs = atLeast(1024);
+    for (int i = 0; i < numEmptyDocs; ++i) {
+      iwriter.addDocument(new Document());
+    }
+    iwriter.commit();
+    iwriter.deleteDocuments(new Term("id", "1"));
+    iwriter.forceMerge(1);
+
+    DirectoryReader ireader = iwriter.getReader();
+    iwriter.close();
+
+    NumericDocValues dv = getOnlyLeafReader(ireader).getNumericDocValues("field");
+    assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+
+    ireader.close();
+    directory.close();
+  }
+
+  // same as testSortedNumericMergeAwayAllValues but on more than 1024 docs to have sparse encoding
+  // on
+  public void testSortedNumericMergeAwayAllValuesLargeSegmentWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
+    iwconfig.setMergePolicy(newLogMergePolicy());
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(SortedNumericDocValuesField.indexedField("field", 42L));
+    iwriter.addDocument(doc);
+    final int numEmptyDocs = atLeast(1024);
+    for (int i = 0; i < numEmptyDocs; ++i) {
+      iwriter.addDocument(new Document());
+    }
+    iwriter.commit();
+    iwriter.deleteDocuments(new Term("id", "1"));
+    iwriter.forceMerge(1);
+
+    DirectoryReader ireader = iwriter.getReader();
+    iwriter.close();
+
+    SortedNumericDocValues dv = getOnlyLeafReader(ireader).getSortedNumericDocValues("field");
+    assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
+    assertEquals(0, skipper.docCount());
+    skipper.advance(0);
+    assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
+
+    ireader.close();
+    directory.close();
+  }
+
+  public void testNumericDocValuesWithSkipperSmall() throws Exception {
+    doTestNumericDocValuesWithSkipper(random().nextInt(1, 1000));
+  }
+
+  public void testNumericDocValuesWithSkipperMedium() throws Exception {
+    doTestNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
+  }
+
+  @Nightly
+  public void testNumericDocValuesWithSkipperBig() throws Exception {
+    doTestNumericDocValuesWithSkipper(random().nextInt(50000, 100000));
+  }
+
+  private void doTestNumericDocValuesWithSkipper(int totalDocs) throws Exception {
+    assertDocValuesWithSkipper(
+        totalDocs,
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            doc.add(NumericDocValuesField.indexedField("test", random().nextLong()));
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            NumericDocValues numericDocValues = leafReader.getNumericDocValues("test");
+            return new DocValuesWrapper() {
+
+              @Override
+              public int advance(int target) throws IOException {
+                return numericDocValues.advance(target);
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                return numericDocValues.advanceExact(target);
+              }
+
+              @Override
+              public long maxValue() throws IOException {
+                return numericDocValues.longValue();
+              }
+
+              @Override
+              public long minValue() throws IOException {
+                return numericDocValues.longValue();
+              }
+
+              @Override
+              public int docID() {
+                return numericDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
+  }
+
+  public void testSortedNumericDocValuesWithSkipperSmall() throws Exception {
+    doTestSortedNumericDocValuesWithSkipper(random().nextInt(1, 1000));
+  }
+
+  public void testSortedNumericDocValuesWithSkipperMedium() throws Exception {
+    doTestSortedNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
+  }
+
+  @Nightly
+  public void testSortedNumericDocValuesWithSkipperBig() throws Exception {
+    doTestSortedNumericDocValuesWithSkipper(random().nextInt(50000, 100000));
+  }
+
+  private void doTestSortedNumericDocValuesWithSkipper(int totalDocs) throws Exception {
+    assertDocValuesWithSkipper(
+        totalDocs,
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            for (int j = 0; j < random().nextInt(1, 5); j++) {
+              doc.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
+            }
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedNumericDocValues sortedNumericDocValues =
+                leafReader.getSortedNumericDocValues("test");
+            return new DocValuesWrapper() {
+              long max;
+              long min;
+
+              @Override
+              public int advance(int target) throws IOException {
+                int doc = sortedNumericDocValues.advance(target);
+                if (doc != NO_MORE_DOCS) {
+                  readValues();
+                }
+                return doc;
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                if (sortedNumericDocValues.advanceExact(target)) {
+                  readValues();
+                  return true;
+                }
+                return false;
+              }
+
+              private void readValues() throws IOException {
+                max = Long.MIN_VALUE;
+                min = Long.MAX_VALUE;
+                for (int i = 0; i < sortedNumericDocValues.docValueCount(); i++) {
+                  long value = sortedNumericDocValues.nextValue();
+                  max = Math.max(max, value);
+                  min = Math.min(min, value);
+                }
+              }
+
+              @Override
+              public long maxValue() {
+                return max;
+              }
+
+              @Override
+              public long minValue() {
+                return min;
+              }
+
+              @Override
+              public int docID() {
+                return sortedNumericDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
+  }
+
+  public void testSortedDocValuesWithSkipperSmall() throws Exception {
+    doTestSortedDocValuesWithSkipper(random().nextInt(1, 1000));
+  }
+
+  public void testSortedDocValuesWithSkipperMedium() throws Exception {
+    doTestSortedDocValuesWithSkipper(random().nextInt(1000, 20000));
+  }
+
+  @Nightly
+  public void testSortedDocValuesWithSkipperBig() throws Exception {
+    doTestSortedDocValuesWithSkipper(random().nextInt(50000, 100000));
+  }
+
+  private void doTestSortedDocValuesWithSkipper(int totalDocs) throws Exception {
+    assertDocValuesWithSkipper(
+        totalDocs,
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            doc.add(SortedDocValuesField.indexedField("test", TestUtil.randomBinaryTerm(random())));
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedDocValues sortedDocValues = leafReader.getSortedDocValues("test");
+            return new DocValuesWrapper() {
+
+              @Override
+              public int advance(int target) throws IOException {
+                return sortedDocValues.advance(target);
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                return sortedDocValues.advanceExact(target);
+              }
+
+              @Override
+              public long maxValue() throws IOException {
+                return sortedDocValues.ordValue();
+              }
+
+              @Override
+              public long minValue() throws IOException {
+                return sortedDocValues.ordValue();
+              }
+
+              @Override
+              public int docID() {
+                return sortedDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
+  }
+
+  public void testSortedSetDocValuesWithSkipperSmall() throws Exception {
+    doTestSortedSetDocValuesWithSkipper(random().nextInt(1, 1000));
+  }
+
+  public void testSortedSetDocValuesWithSkipperMedium() throws Exception {
+    doTestSortedSetDocValuesWithSkipper(random().nextInt(10000, 20000));
+  }
+
+  @Nightly
+  public void testSortedSetDocValuesWithSkipperBig() throws Exception {
+    doTestSortedSetDocValuesWithSkipper(random().nextInt(50000, 100000));
+  }
+
+  private void doTestSortedSetDocValuesWithSkipper(int totalDocs) throws Exception {
+    assertDocValuesWithSkipper(
+        totalDocs,
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            for (int j = 0; j < random().nextInt(1, 5); j++) {
+              doc.add(
+                  SortedSetDocValuesField.indexedField(
+                      "test", TestUtil.randomBinaryTerm(random())));
+            }
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedSetDocValues sortedSetDocValues = leafReader.getSortedSetDocValues("test");
+            return new DocValuesWrapper() {
+              long max;
+              long min;
+
+              @Override
+              public int advance(int target) throws IOException {
+                int doc = sortedSetDocValues.advance(target);
+                if (doc != NO_MORE_DOCS) {
+                  readValues();
+                }
+                return doc;
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                if (sortedSetDocValues.advanceExact(target)) {
+                  readValues();
+                  return true;
+                }
+                return false;
+              }
+
+              private void readValues() throws IOException {
+                max = Long.MIN_VALUE;
+                min = Long.MAX_VALUE;
+                for (int i = 0; i < sortedSetDocValues.docValueCount(); i++) {
+                  long value = sortedSetDocValues.nextOrd();
+                  max = Math.max(max, value);
+                  min = Math.min(min, value);
+                }
+              }
+
+              @Override
+              public long maxValue() {
+                return max;
+              }
+
+              @Override
+              public long minValue() {
+                return min;
+              }
+
+              @Override
+              public int docID() {
+                return sortedSetDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
+  }
+
+  private void assertDocValuesWithSkipper(int totalDocs, TestDocValueSkipper testDocValueSkipper)
+      throws Exception {
+    Supplier<Boolean> booleanSupplier;
+    switch (random().nextInt(3)) {
+      case 0 -> booleanSupplier = () -> true;
+      case 1 -> booleanSupplier = () -> random().nextBoolean();
+      case 2 -> booleanSupplier = () -> random().nextBoolean() && random().nextBoolean();
+      default -> throw new AssertionError();
+    }
+    Directory directory = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
+    int numDocs = 0;
+    for (int i = 0; i < totalDocs; i++) {
+      Document doc = new Document();
+      if (booleanSupplier.get()) {
+        testDocValueSkipper.populateDoc(doc);
+        numDocs++;
       }
-      iwriter.forceMerge(1);
-      final long size1 = dirSize(dir);
-      for (int i = 0; i < 20; ++i) {
-        dvf.setLongValue(RandomPicks.randomFrom(random(), values));
-        iwriter.addDocument(doc);
+      writer.addDocument(doc);
+      if (rarely()) {
+        writer.commit();
       }
-      iwriter.forceMerge(1);
-      final long size2 = dirSize(dir);
-      // make sure the new longs did not cost 8 bytes each
-      assertTrue(size2 < size1 + 8 * 20);
+    }
+    writer.flush();
+
+    if (random().nextBoolean()) {
+      writer.forceMerge(1);
+    }
+
+    IndexReader r = writer.getReader();
+    int readDocs = 0;
+    for (LeafReaderContext readerContext : r.leaves()) {
+      LeafReader reader = readerContext.reader();
+      ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
+      PrintStream infoStream = new PrintStream(bos, false, UTF_8);
+      DocValuesStatus status = CheckIndex.testDocValues((CodecReader) reader, infoStream, true);
+      if (status.error != null) {
+        throw new Exception(status.error);
+      }
+      readDocs +=
+          assertDocValuesSkipSequential(
+              testDocValueSkipper.docValuesWrapper(reader),
+              testDocValueSkipper.docValuesSkipper(reader));
+      for (int i = 0; i < 10; i++) {
+        assertDocValuesSkipRandom(
+            testDocValueSkipper.docValuesWrapper(reader),
+            testDocValueSkipper.docValuesSkipper(reader),
+            reader.maxDoc());
+      }
+    }
+    assertEquals(numDocs, readDocs);
+    IOUtils.close(r, writer, directory);
+  }
+
+  private int assertDocValuesSkipSequential(DocValuesWrapper iterator, DocValuesSkipper skipper)
+      throws IOException {
+    if (skipper == null) {
+      return 0;
+    }
+
+    assertEquals(-1, iterator.docID());
+    assertEquals(-1, skipper.minDocID(0));
+    assertEquals(-1, skipper.maxDocID(0));
+
+    iterator.advance(0);
+    int docCount = 0;
+    while (true) {
+      int previousMaxDoc = skipper.maxDocID(0);
+      skipper.advance(previousMaxDoc + 1);
+      assertTrue(skipper.minDocID(0) > previousMaxDoc);
+      if (skipperHasAccurateDocBounds()) {
+        assertEquals(iterator.docID(), skipper.minDocID(0));
+      } else {
+        assertTrue(
+            "Expected: " + iterator.docID() + " but got " + skipper.minDocID(0),
+            skipper.minDocID(0) <= iterator.docID());
+      }
+
+      if (skipper.minDocID(0) == NO_MORE_DOCS) {
+        assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
+        break;
+      }
+      assertTrue(skipper.docCount(0) > 0);
+
+      int maxDoc = -1;
+      long minVal = Long.MAX_VALUE;
+      long maxVal = Long.MIN_VALUE;
+      for (int i = 0; i < skipper.docCount(0); ++i) {
+        assertNotEquals(NO_MORE_DOCS, iterator.docID());
+        maxDoc = Math.max(maxDoc, iterator.docID());
+        minVal = Math.min(minVal, iterator.minValue());
+        maxVal = Math.max(maxVal, iterator.maxValue());
+        iterator.advance(iterator.docID() + 1);
+      }
+      if (skipperHasAccurateDocBounds()) {
+        assertEquals(maxDoc, skipper.maxDocID(0));
+      } else {
+        assertTrue(
+            "Expected: " + maxDoc + " but got " + skipper.maxDocID(0),
+            skipper.maxDocID(0) >= maxDoc);
+      }
+      if (skipperHasAccurateValueBounds()) {
+        assertEquals(minVal, skipper.minValue(0));
+        assertEquals(maxVal, skipper.maxValue(0));
+      } else {
+        assertTrue(
+            "Expected: " + minVal + " but got " + skipper.minValue(0),
+            minVal >= skipper.minValue(0));
+        assertTrue(
+            "Expected: " + maxVal + " but got " + skipper.maxValue(0),
+            maxVal <= skipper.maxValue(0));
+      }
+      docCount += skipper.docCount(0);
+    }
+
+    assertEquals(docCount, skipper.docCount());
+    return docCount;
+  }
+
+  private static void assertDocValuesSkipRandom(
+      DocValuesWrapper iterator, DocValuesSkipper skipper, int maxDoc) throws IOException {
+    if (skipper == null) {
+      return;
+    }
+    while (true) {
+      int doc = random().nextInt(skipper.maxDocID(0), maxDoc + 1) + 1;
+      skipper.advance(doc);
+      if (skipper.minDocID(0) == NO_MORE_DOCS) {
+        assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
+        return;
+      }
+      if (iterator.advanceExact(doc)) {
+        assertTrue(iterator.docID() >= skipper.minDocID(0));
+        assertTrue(iterator.docID() <= skipper.maxDocID(0));
+        assertTrue(iterator.minValue() >= skipper.minValue(0));
+        assertTrue(iterator.maxValue() <= skipper.maxValue(0));
+      }
     }
   }
 
-  public void testDateCompression() throws IOException {
-    try (final Directory dir = new ByteBuffersDirectory()) {
-      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+  private interface TestDocValueSkipper {
 
-      final long base = 13; // prime
-      final long day = 1000L * 60 * 60 * 24;
+    void populateDoc(Document doc);
 
-      final Document doc = new Document();
-      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
-      doc.add(dvf);
-      for (int i = 0; i < 300; ++i) {
-        dvf.setLongValue(base + random().nextInt(1000) * day);
-        iwriter.addDocument(doc);
-      }
-      iwriter.forceMerge(1);
-      final long size1 = dirSize(dir);
-      for (int i = 0; i < 50; ++i) {
-        dvf.setLongValue(base + random().nextInt(1000) * day);
-        iwriter.addDocument(doc);
-      }
-      iwriter.forceMerge(1);
-      final long size2 = dirSize(dir);
-      // make sure the new longs costed less than if they had only been packed
-      assertTrue(size2 < size1 + (PackedInts.bitsRequired(day) * 50) / 8);
-    }
+    DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException;
+
+    DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException;
   }
 
-  public void testSingleBigValueCompression() throws IOException {
-    try (final Directory dir = new ByteBuffersDirectory()) {
-      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+  private interface DocValuesWrapper {
 
-      final Document doc = new Document();
-      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
-      doc.add(dvf);
-      for (int i = 0; i < 20000; ++i) {
-        dvf.setLongValue(i & 1023);
-        iwriter.addDocument(doc);
-      }
-      iwriter.forceMerge(1);
-      final long size1 = dirSize(dir);
-      dvf.setLongValue(Long.MAX_VALUE);
-      iwriter.addDocument(doc);
-      iwriter.forceMerge(1);
-      final long size2 = dirSize(dir);
-      // make sure the new value did not grow the bpv for every other value
-      assertTrue(size2 < size1 + (20000 * (63 - 10)) / 8);
-    }
+    int advance(int target) throws IOException;
+
+    boolean advanceExact(int target) throws IOException;
+
+    long maxValue() throws IOException;
+
+    long minValue() throws IOException;
+
+    int docID();
   }
 }

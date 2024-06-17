@@ -52,13 +52,13 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
-import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
+import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
 import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 /** Basic tests of PerFieldDocValuesFormat */
-public class TestPerFieldDocValuesFormat extends BaseDocValuesFormatTestCase {
+public class TestPerFieldDocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
   private Codec codec;
 
   @Override
