@@ -23,8 +23,8 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.hppc.LongArrayList;
 
 /** Encapsulates multiple producers when there are docvalues updates as one producer */
 // TODO: try to clean up close? no-op?
@@ -122,6 +122,13 @@ class SegmentDocValuesProducer extends DocValuesProducer {
     DocValuesProducer dvProducer = dvProducersByField.get(field.name);
     assert dvProducer != null;
     return dvProducer.getSortedSet(field);
+  }
+
+  @Override
+  public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+    DocValuesProducer dvProducer = dvProducersByField.get(field.name);
+    assert dvProducer != null;
+    return dvProducer.getSkipper(field);
   }
 
   @Override

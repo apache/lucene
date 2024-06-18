@@ -73,4 +73,9 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   public void testByteVectorScorerIteration() {
     // unimplemented
   }
+
+  @Override
+  public void testEmptyByteVectorData() {
+    // unimplemented
+  }
 }

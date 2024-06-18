@@ -61,7 +61,10 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   @Override
   public void setUp() throws Exception {
     bits = random().nextBoolean() ? 4 : 7;
-    confidenceInterval = random().nextBoolean() ? 0.99f : null;
+    confidenceInterval = random().nextBoolean() ? random().nextFloat(0.90f, 1.0f) : null;
+    if (random().nextBoolean()) {
+      confidenceInterval = 0f;
+    }
     format =
         new Lucene99HnswScalarQuantizedVectorsFormat(
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
@@ -133,7 +136,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
       vectors.add(randomVector(dim));
     }
     ScalarQuantizer scalarQuantizer =
-        confidenceInterval == null
+        confidenceInterval != null && confidenceInterval == 0f
             ? ScalarQuantizer.fromVectorsAutoInterval(
                 new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
                 similarityFunction,
@@ -141,7 +144,9 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 (byte) bits)
             : ScalarQuantizer.fromVectors(
                 new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-                confidenceInterval,
+                confidenceInterval == null
+                    ? Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval(dim)
+                    : confidenceInterval,
                 numVectors,
                 (byte) bits);
     float[] expectedCorrections = new float[numVectors];

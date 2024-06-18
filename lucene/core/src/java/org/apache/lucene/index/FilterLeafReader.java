@@ -448,6 +448,12 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    return in.getDocValuesSkipper(field);
+  }
+
+  @Override
   public NumericDocValues getNormValues(String field) throws IOException {
     ensureOpen();
     return in.getNormValues(field);

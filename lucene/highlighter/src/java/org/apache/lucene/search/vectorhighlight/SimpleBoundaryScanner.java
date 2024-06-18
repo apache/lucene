@@ -18,7 +18,7 @@ package org.apache.lucene.search.vectorhighlight;
 
 import java.util.Iterator;
 import java.util.Set;
-import org.apache.lucene.util.hppc.CharHashSet;
+import org.apache.lucene.internal.hppc.CharHashSet;
 
 /**
  * Simple boundary scanner implementation that divides fragments based on a set of separator

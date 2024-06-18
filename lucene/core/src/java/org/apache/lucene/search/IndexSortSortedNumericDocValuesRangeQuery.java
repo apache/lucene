@@ -158,14 +158,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Weight weight = this;
         IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
         if (itAndCount != null) {
           DocIdSetIterator disi = itAndCount.it;
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
-              return new ConstantScoreScorer(weight, score(), scoreMode, disi);
+              return new ConstantScoreScorer(score(), scoreMode, disi);
             }
 
             @Override

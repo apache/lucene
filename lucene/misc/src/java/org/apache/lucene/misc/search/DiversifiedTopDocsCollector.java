@@ -21,6 +21,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.internal.hppc.LongObjectHashMap;
 import org.apache.lucene.misc.search.DiversifiedTopDocsCollector.ScoreDocKey;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -30,7 +31,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.PriorityQueue;
-import org.apache.lucene.util.hppc.LongObjectHashMap;
 
 /**
  * A {@link TopDocsCollector} that controls diversity in results by ensuring no more than

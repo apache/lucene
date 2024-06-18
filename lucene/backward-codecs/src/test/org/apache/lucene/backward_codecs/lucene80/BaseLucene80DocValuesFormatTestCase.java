@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_codecs.lucene80;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,18 +60,114 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
-import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
+import org.apache.lucene.tests.index.LegacyBaseDocValuesFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.packed.PackedInts;
 
 /** Tests Lucene80DocValuesFormat */
 public abstract class BaseLucene80DocValuesFormatTestCase
-    extends BaseCompressingDocValuesFormatTestCase {
+    extends LegacyBaseDocValuesFormatTestCase {
+
+  private static long dirSize(Directory d) throws IOException {
+    long size = 0;
+    for (String file : d.listAll()) {
+      size += d.fileLength(file);
+    }
+    return size;
+  }
+
+  public void testUniqueValuesCompression() throws IOException {
+    try (final Directory dir = new ByteBuffersDirectory()) {
+      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+
+      final int uniqueValueCount = TestUtil.nextInt(random(), 1, 256);
+      final List<Long> values = new ArrayList<>();
+
+      final Document doc = new Document();
+      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
+      doc.add(dvf);
+      for (int i = 0; i < 300; ++i) {
+        final long value;
+        if (values.size() < uniqueValueCount) {
+          value = random().nextLong();
+          values.add(value);
+        } else {
+          value = RandomPicks.randomFrom(random(), values);
+        }
+        dvf.setLongValue(value);
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size1 = dirSize(dir);
+      for (int i = 0; i < 20; ++i) {
+        dvf.setLongValue(RandomPicks.randomFrom(random(), values));
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size2 = dirSize(dir);
+      // make sure the new longs did not cost 8 bytes each
+      assertTrue(size2 < size1 + 8 * 20);
+    }
+  }
+
+  public void testDateCompression() throws IOException {
+    try (final Directory dir = new ByteBuffersDirectory()) {
+      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+
+      final long base = 13; // prime
+      final long day = 1000L * 60 * 60 * 24;
+
+      final Document doc = new Document();
+      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
+      doc.add(dvf);
+      for (int i = 0; i < 300; ++i) {
+        dvf.setLongValue(base + random().nextInt(1000) * day);
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size1 = dirSize(dir);
+      for (int i = 0; i < 50; ++i) {
+        dvf.setLongValue(base + random().nextInt(1000) * day);
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size2 = dirSize(dir);
+      // make sure the new longs costed less than if they had only been packed
+      assertTrue(size2 < size1 + (PackedInts.bitsRequired(day) * 50) / 8);
+    }
+  }
+
+  public void testSingleBigValueCompression() throws IOException {
+    try (final Directory dir = new ByteBuffersDirectory()) {
+      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+
+      final Document doc = new Document();
+      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
+      doc.add(dvf);
+      for (int i = 0; i < 20000; ++i) {
+        dvf.setLongValue(i & 1023);
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size1 = dirSize(dir);
+      dvf.setLongValue(Long.MAX_VALUE);
+      iwriter.addDocument(doc);
+      iwriter.forceMerge(1);
+      final long size2 = dirSize(dir);
+      // make sure the new value did not grow the bpv for every other value
+      assertTrue(size2 < size1 + (20000 * (63 - 10)) / 8);
+    }
+  }
 
   // TODO: these big methods can easily blow up some of the other ram-hungry codecs...
   // for now just keep them here, as we want to test this for this format.

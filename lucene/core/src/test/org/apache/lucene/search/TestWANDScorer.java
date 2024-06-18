@@ -1024,8 +1024,7 @@ public class TestWANDScorer extends LuceneTestCase {
           final Scorer scorer;
           if (optionalScorers.size() > 0) {
             scorer =
-                new WANDScorer(
-                    weight, optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
+                new WANDScorer(optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
           } else {
             scorer = weight.scorer(context);
             if (scorer == null) return null;

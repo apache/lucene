@@ -96,6 +96,11 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
+          public boolean hasDocValuesSkipIndex() {
+            return false;
+          }
+
+          @Override
           public int pointDimensionCount() {
             return 0;
           }

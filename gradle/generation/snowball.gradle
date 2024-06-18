@@ -19,7 +19,7 @@ import org.apache.tools.ant.taskdefs.condition.Os
 
 def resources = scriptResources(buildscript)
 
-apply plugin: "de.undercouch.download"
+apply plugin: deps.plugins.undercouch.download.get().pluginId
 
 configure(project(":lucene:analysis:common")) {
   ext {

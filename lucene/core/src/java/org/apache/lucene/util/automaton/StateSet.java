@@ -18,9 +18,9 @@
 package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
-import org.apache.lucene.util.hppc.BitMixer;
-import org.apache.lucene.util.hppc.IntCursor;
-import org.apache.lucene.util.hppc.IntIntHashMap;
+import org.apache.lucene.internal.hppc.BitMixer;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 
 /**
  * A thin wrapper of {@link IntIntHashMap} Maps from state in integer representation to its

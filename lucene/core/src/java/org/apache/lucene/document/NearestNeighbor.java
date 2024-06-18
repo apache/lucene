@@ -28,9 +28,9 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SloppyMath;
-import org.apache.lucene.util.hppc.IntArrayList;
 
 /** KNN search on top of 2D lat/lon indexed points. */
 class NearestNeighbor {

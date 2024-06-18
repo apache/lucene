@@ -17,8 +17,6 @@
 
 package org.apache.lucene.search.join;
 
-import com.carrotsearch.hppc.FloatArrayList;
-import com.carrotsearch.hppc.cursors.FloatCursor;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.function.BiFunction;
@@ -34,6 +32,8 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
+import org.apache.lucene.internal.hppc.FloatArrayList;
+import org.apache.lucene.internal.hppc.FloatCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -204,7 +204,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         float[] scores = new float[reader.maxDoc()];
         values.intersect(new MergePointVisitor(sortedPackedPoints, result, scores));
         final var scorer =
-            new Scorer(this) {
+            new Scorer() {
 
               DocIdSetIterator disi = new BitSetIterator(result, 10L);
 
