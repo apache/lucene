@@ -12,6 +12,8 @@ Bug Fixes
 
 * GITHUB#13501, GITHUB#13478: Remove intra-merge parallelism for everything except HNSW graph merges. (Ben Trent)
 
+* GITHUB#13498, GITHUB#13340: Allow adding a parent field to an index with no fields (Michael Sokolov)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
