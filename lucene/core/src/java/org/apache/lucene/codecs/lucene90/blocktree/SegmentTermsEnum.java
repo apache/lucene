@@ -30,9 +30,8 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.fst.BytesRefFSTEnum;
-import org.apache.lucene.util.fst.BytesRefFSTEnum.InputOutput;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Util;
 
@@ -309,38 +308,13 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     return true;
   }
 
-  @Override
-  public void prepareSeekExact(BytesRef target) throws IOException {
-    if (fr.index == null) {
-      throw new IllegalStateException("terms index was not loaded");
-    }
-
-    if (fr.size() == 0 || target.compareTo(fr.getMin()) < 0 || target.compareTo(fr.getMax()) > 0) {
-      return;
-    }
-
-    // TODO: should we try to reuse the current state of this terms enum when applicable?
-    BytesRefFSTEnum<BytesRef> indexEnum = new BytesRefFSTEnum<>(fr.index);
-    InputOutput<BytesRef> output = indexEnum.seekFloor(target);
-    assert output != null; // never null since we already checked against fr.getMin()
-    final long code =
-        fr.readVLongOutput(
-            new ByteArrayDataInput(
-                output.output.bytes, output.output.offset, output.output.length));
-    final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
-    initIndexInput();
-    in.prefetch(fpSeek, 1); // TODO: could we know the length of the block?
-  }
-
-  @Override
-  public boolean seekExact(BytesRef target) throws IOException {
-
+  private IOBooleanSupplier prepareSeekExact(BytesRef target, boolean prefetch) throws IOException {
     if (fr.index == null) {
       throw new IllegalStateException("terms index was not loaded");
     }
 
     if (fr.size() > 0 && (target.compareTo(fr.getMin()) < 0 || target.compareTo(fr.getMax()) > 0)) {
-      return false;
+      return null;
     }
 
     term.grow(1 + target.length);
@@ -456,7 +430,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) {
           //   System.out.println("  target is same as current; return true");
           // }
-          return true;
+          return () -> true;
         } else {
           // if (DEBUG) {
           //   System.out.println("  target is same as current but term doesn't exist");
@@ -526,24 +500,30 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) {
           //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
           // }
-          return false;
+          return null;
         }
 
-        currentFrame.loadBlock();
-
-        final SeekStatus result = currentFrame.scanToTerm(target, true);
-        if (result == SeekStatus.FOUND) {
-          // if (DEBUG) {
-          //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-          // }
-          return true;
-        } else {
-          // if (DEBUG) {
-          //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-          // ToStringUtils.bytesRefToString(term));
-          // }
-          return false;
+        if (prefetch) {
+          currentFrame.prefetchBlock();
         }
+
+        return () -> {
+          currentFrame.loadBlock();
+
+          final SeekStatus result = currentFrame.scanToTerm(target, true);
+          if (result == SeekStatus.FOUND) {
+            // if (DEBUG) {
+            //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
+            // }
+            return true;
+          } else {
+            // if (DEBUG) {
+            //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
+            // ToStringUtils.bytesRefToString(term));
+            // }
+            return false;
+          }
+        };
       } else {
         // Follow this arc
         arc = nextArc;
@@ -581,25 +561,42 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       // if (DEBUG) {
       //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
       // }
-      return false;
+      return null;
     }
 
-    currentFrame.loadBlock();
-
-    final SeekStatus result = currentFrame.scanToTerm(target, true);
-    if (result == SeekStatus.FOUND) {
-      // if (DEBUG) {
-      //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-      // }
-      return true;
-    } else {
-      // if (DEBUG) {
-      //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
-      // term.utf8ToString());
-      // }
-
-      return false;
+    if (prefetch) {
+      currentFrame.prefetchBlock();
     }
+
+    return () -> {
+      currentFrame.loadBlock();
+
+      final SeekStatus result = currentFrame.scanToTerm(target, true);
+      if (result == SeekStatus.FOUND) {
+        // if (DEBUG) {
+        //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
+        // }
+        return true;
+      } else {
+        // if (DEBUG) {
+        //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
+        // term.utf8ToString());
+        // }
+
+        return false;
+      }
+    };
+  }
+
+  @Override
+  public IOBooleanSupplier prepareSeekExact(BytesRef target) throws IOException {
+    return prepareSeekExact(target, true);
+  }
+
+  @Override
+  public boolean seekExact(BytesRef target) throws IOException {
+    IOBooleanSupplier termExistsSupplier = prepareSeekExact(target, false);
+    return termExistsSupplier != null && termExistsSupplier.get();
   }
 
   @Override

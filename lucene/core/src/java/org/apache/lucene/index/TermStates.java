@@ -17,11 +17,12 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.function.Supplier;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * Maintains a {@link IndexReader} {@link TermState} view over {@link IndexReader} instances
@@ -79,6 +80,8 @@ public final class TermStates {
     register(state, ord, docFreq, totalTermFreq);
   }
 
+  private record PendingTermLookup(TermsEnum termsEnum, IOBooleanSupplier supplier) {}
+
   /**
    * Creates a {@link TermStates} from a top-level {@link IndexReaderContext} and the given {@link
    * Term}. This method will lookup the given term in all context's leaf readers and register each
@@ -96,18 +99,21 @@ public final class TermStates {
     assert context != null;
     final TermStates perReaderTermState = new TermStates(needsStats ? null : term, context);
     if (needsStats) {
-      TermsEnum[] termsEnums = new TermsEnum[0];
+      PendingTermLookup[] pendingTermLookups = new PendingTermLookup[0];
       for (LeafReaderContext ctx : context.leaves()) {
         Terms terms = Terms.getTerms(ctx.reader(), term.field());
         TermsEnum termsEnum = terms.iterator();
         // Schedule the I/O in the terms dictionary in the background.
-        termsEnum.prepareSeekExact(term.bytes());
-        termsEnums = ArrayUtil.grow(termsEnums, ctx.ord + 1);
-        termsEnums[ctx.ord] = termsEnum;
+        IOBooleanSupplier termExistsSupplier = termsEnum.prepareSeekExact(term.bytes());
+        if (termExistsSupplier != null) {
+          pendingTermLookups = ArrayUtil.grow(pendingTermLookups, ctx.ord + 1);
+          pendingTermLookups[ctx.ord] = new PendingTermLookup(termsEnum, termExistsSupplier);
+        }
       }
-      for (int ord = 0; ord < termsEnums.length; ++ord) {
-        TermsEnum termsEnum = termsEnums[ord];
-        if (termsEnum != null && termsEnum.seekExact(term.bytes())) {
+      for (int ord = 0; ord < pendingTermLookups.length; ++ord) {
+        PendingTermLookup pendingTermLookup = pendingTermLookups[ord];
+        if (pendingTermLookup != null && pendingTermLookup.supplier.get()) {
+          TermsEnum termsEnum = pendingTermLookup.termsEnum();
           perReaderTermState.register(
               termsEnum.termState(), ord, termsEnum.docFreq(), termsEnum.totalTermFreq());
         }
@@ -166,7 +172,7 @@ public final class TermStates {
    * @param ctx the {@link LeafReaderContext} to get the {@link TermState} for.
    * @return a Supplier for a TermState.
    */
-  public Supplier<TermState> get(LeafReaderContext ctx) throws IOException {
+  public IOSupplier<TermState> get(LeafReaderContext ctx) throws IOException {
     assert ctx.ord >= 0 && ctx.ord < states.length;
     if (term == null) {
       if (states[ctx.ord] == null) {
@@ -178,25 +184,23 @@ public final class TermStates {
     if (this.states[ctx.ord] == null) {
       final Terms terms = ctx.reader().terms(term.field());
       if (terms == null) {
+        this.states[ctx.ord] = EMPTY_TERMSTATE;
         return null;
       }
       final TermsEnum termsEnum = terms.iterator();
-      termsEnum.prepareSeekExact(term.bytes());
-      final Thread creationThread = Thread.currentThread();
+      IOBooleanSupplier termExistsSupplier = termsEnum.prepareSeekExact(term.bytes());
+      if (termExistsSupplier == null) {
+        this.states[ctx.ord] = EMPTY_TERMSTATE;
+        return null;
+      }
       return () -> {
-        if (creationThread != Thread.currentThread()) {
-          throw new IllegalStateException(
-              "The Supplier returned by TermStates#get must be consumed in the same thread");
-        }
         if (this.states[ctx.ord] == null) {
-          try {
-            TermState state = null;
-            if (termsEnum.seekExact(term.bytes())) {
-              state = termsEnum.termState();
-            }
-            this.states[ctx.ord] = state == null ? EMPTY_TERMSTATE : state;
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
+          TermState state = null;
+          if (termExistsSupplier.get()) {
+            state = termsEnum.termState();
+            this.states[ctx.ord] = state;
+          } else {
+            this.states[ctx.ord] = EMPTY_TERMSTATE;
           }
         }
         TermState state = this.states[ctx.ord];
@@ -206,13 +210,11 @@ public final class TermStates {
         return state;
       };
     }
-    return () -> {
-      TermState state = this.states[ctx.ord];
-      if (state == EMPTY_TERMSTATE) {
-        return null;
-      }
-      return state;
-    };
+    TermState state = this.states[ctx.ord];
+    if (state == EMPTY_TERMSTATE) {
+      return null;
+    }
+    return () -> state;
   }
 
   /**

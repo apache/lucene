@@ -79,6 +79,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -3877,10 +3878,14 @@ public final class CheckIndex implements Closeable {
                   postings = termsEnum.postings(postings, PostingsEnum.ALL);
                   assert postings != null;
 
-                  if ((seekExactCounter++ & 0xFF) == 0) {
-                    postingsTermsEnum.prepareSeekExact(term);
+                  boolean termExists;
+                  if ((seekExactCounter++ & 0x01) == 0) {
+                    termExists = postingsTermsEnum.seekExact(term);
+                  } else {
+                    IOBooleanSupplier termExistsSupplier = postingsTermsEnum.prepareSeekExact(term);
+                    termExists = termExistsSupplier != null && termExistsSupplier.get();
                   }
-                  if (postingsTermsEnum.seekExact(term) == false) {
+                  if (termExists == false) {
                     throw new CheckIndexException(
                         "vector term="
                             + term

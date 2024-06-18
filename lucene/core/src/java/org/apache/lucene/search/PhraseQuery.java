@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Supplier;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
 import org.apache.lucene.index.ImpactsEnum;
@@ -39,6 +38,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * A Query that matches documents containing a particular sequence of terms. A PhraseQuery is built
@@ -499,7 +499,7 @@ public class PhraseQuery extends Query {
 
         for (int i = 0; i < terms.length; i++) {
           final Term t = terms[i];
-          final Supplier<TermState> supplier = states[i].get(context);
+          final IOSupplier<TermState> supplier = states[i].get(context);
           final TermState state = supplier == null ? null : supplier.get();
           if (state == null) {
             /* term doesnt exist in this segment */

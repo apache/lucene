@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
@@ -51,6 +50,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automaton;
@@ -417,7 +417,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
             : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
                 + ReaderUtil.getTopLevelContext(context);
         BytesRef term = idToTerm.get(ent.key);
-        Supplier<TermState> supplier = termStates.get(context);
+        IOSupplier<TermState> supplier = termStates.get(context);
         TermState state = supplier == null ? null : supplier.get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(field).iterator();

@@ -22,6 +22,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.Unwrappable;
 
 /**
@@ -238,8 +239,8 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public void prepareSeekExact(BytesRef text) throws IOException {
-      in.prepareSeekExact(text);
+    public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+      return in.prepareSeekExact(text);
     }
 
     @Override

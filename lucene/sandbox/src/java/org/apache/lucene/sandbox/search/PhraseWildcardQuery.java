@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -57,6 +56,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.mutable.MutableValueBool;
 
 /**
@@ -388,7 +388,7 @@ public class PhraseWildcardQuery extends Query {
       Terms terms = leafReaderContext.reader().terms(term.field());
       if (terms != null) {
         checkTermsHavePositions(terms);
-        Supplier<TermState> supplier = termStates.get(leafReaderContext);
+        IOSupplier<TermState> supplier = termStates.get(leafReaderContext);
         TermState termState = supplier == null ? null : supplier.get();
         if (termState != null) {
           termMatchesInSegment = true;

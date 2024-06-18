@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 
 /**
  * Abstract class for enumerating a subset of all terms.
@@ -161,7 +162,7 @@ public abstract class FilteredTermsEnum extends TermsEnum {
    * @throws UnsupportedOperationException In general, subclasses do not support seeking.
    */
   @Override
-  public void prepareSeekExact(BytesRef text) throws IOException {
+  public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
     throw new UnsupportedOperationException(getClass().getName() + " does not support seeking");
   }
 

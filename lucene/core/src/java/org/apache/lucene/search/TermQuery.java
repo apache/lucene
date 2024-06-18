@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Objects;
-import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -30,6 +29,7 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * A Query that matches documents containing a term. This may be combined with other terms with a
@@ -121,7 +121,7 @@ public class TermQuery extends Query {
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
 
-      final Supplier<TermState> stateSupplier = termStates.get(context);
+      final IOSupplier<TermState> stateSupplier = termStates.get(context);
       if (stateSupplier == null) {
         return null;
       }
@@ -197,7 +197,7 @@ public class TermQuery extends Query {
       assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context))
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
-      final Supplier<TermState> supplier = termStates.get(context);
+      final IOSupplier<TermState> supplier = termStates.get(context);
       final TermState state = supplier == null ? null : supplier.get();
       if (state == null) { // term is not present in that reader
         assert termNotInReader(context.reader(), term)

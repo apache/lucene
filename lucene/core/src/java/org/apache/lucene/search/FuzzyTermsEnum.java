@@ -31,6 +31,7 @@ import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -326,8 +327,8 @@ public final class FuzzyTermsEnum extends BaseTermsEnum {
   }
 
   @Override
-  public void prepareSeekExact(BytesRef text) throws IOException {
-    actualEnum.prepareSeekExact(text);
+  public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+    return actualEnum.prepareSeekExact(text);
   }
 
   @Override

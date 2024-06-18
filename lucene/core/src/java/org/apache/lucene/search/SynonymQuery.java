@@ -25,7 +25,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Supplier;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
@@ -40,6 +39,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -280,7 +280,7 @@ public final class SynonymQuery extends Query {
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       @SuppressWarnings({"rawtypes", "unchecked"})
-      Supplier<TermState>[] termStateSuppliers = new Supplier[terms.length];
+      IOSupplier<TermState>[] termStateSuppliers = new IOSupplier[terms.length];
       for (int i = 0; i < terms.length; i++) {
         // schedule the I/O for terms dictionary lookups in the background
         termStateSuppliers[i] = termStates[i].get(context);
@@ -303,7 +303,7 @@ public final class SynonymQuery extends Query {
           cost = 0L;
 
           for (int i = 0; i < terms.length; i++) {
-            Supplier<TermState> supplier = termStateSuppliers[i];
+            IOSupplier<TermState> supplier = termStateSuppliers[i];
             TermState state = supplier == null ? null : supplier.get();
             if (state != null) {
               TermsEnum termsEnum = context.reader().terms(field).iterator();

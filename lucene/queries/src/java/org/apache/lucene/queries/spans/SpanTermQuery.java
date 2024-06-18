@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -33,6 +32,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * Matches spans containing a term. This should not be used for terms that are indexed at position
@@ -136,7 +136,7 @@ public class SpanTermQuery extends SpanQuery {
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
 
-      final Supplier<TermState> supplier = termStates.get(context);
+      final IOSupplier<TermState> supplier = termStates.get(context);
       final TermState state = supplier == null ? null : supplier.get();
       if (state == null) { // term is not present in that reader
         assert context.reader().docFreq(term) == 0
