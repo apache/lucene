@@ -10,6 +10,8 @@ Bug Fixes
 
 * GITHUB#13498: Avoid performance regression by constructing lazily the PointTree in NumericComparator, (Ignacio Vera)
 
+* GITHUB#13498, GITHUB#13340: Allow adding a parent field to an index with no fields (Michael Sokolov)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
