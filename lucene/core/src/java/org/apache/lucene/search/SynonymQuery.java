@@ -285,7 +285,6 @@ public final class SynonymQuery extends Query {
         // schedule the I/O for terms dictionary lookups in the background
         termStateSuppliers[i] = termStates[i].get(context);
       }
-      final Weight weight = this;
 
       return new ScorerSupplier() {
 
@@ -332,7 +331,7 @@ public final class SynonymQuery extends Query {
           init();
 
           if (iterators.isEmpty()) {
-            return new ConstantScoreScorer(weight, 0f, scoreMode, DocIdSetIterator.empty());
+            return new ConstantScoreScorer(0f, scoreMode, DocIdSetIterator.empty());
           }
 
           LeafSimScorer simScorer = new LeafSimScorer(simWeight, context.reader(), field, true);
@@ -380,7 +379,7 @@ public final class SynonymQuery extends Query {
               iterator = impactsDisi;
             }
 
-            return new SynonymScorer(weight, queue, iterator, impactsDisi, simScorer);
+            return new SynonymScorer(queue, iterator, impactsDisi, simScorer);
           }
         }
 

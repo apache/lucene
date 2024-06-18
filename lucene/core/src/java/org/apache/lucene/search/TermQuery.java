@@ -147,8 +147,7 @@ public class TermQuery extends Query {
         public Scorer get(long leadCost) throws IOException {
           TermsEnum termsEnum = getTermsEnum();
           if (termsEnum == null) {
-            return new ConstantScoreScorer(
-                TermWeight.this, 0f, scoreMode, DocIdSetIterator.empty());
+            return new ConstantScoreScorer(0f, scoreMode, DocIdSetIterator.empty());
           }
 
           LeafSimScorer scorer =
