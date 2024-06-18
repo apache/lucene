@@ -90,7 +90,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
-    // lazily constructed
+    // lazily constructed to avoid performance overhead when this is not used
     private PointValues.PointTree pointTree;
     // if skipping functionality should be enabled on this segment
     private final boolean enableSkipping;
