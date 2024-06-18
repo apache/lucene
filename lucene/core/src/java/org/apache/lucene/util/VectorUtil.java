@@ -70,7 +70,9 @@ public final class VectorUtil {
    * Returns the cosine similarity between the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
+   * @deprecated use dot-product instead using normalized vectors
    */
+  @Deprecated
   public static float cosine(float[] a, float[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -80,7 +82,12 @@ public final class VectorUtil {
     return r;
   }
 
-  /** Returns the cosine similarity between the two vectors. */
+  /**
+   * Returns the cosine similarity between the two vectors.
+   *
+   * @deprecated use dot-product instead using normalized vectors
+   */
+  @Deprecated
   public static float cosine(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
