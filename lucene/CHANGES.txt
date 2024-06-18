@@ -258,7 +258,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#13475: Re-enable intra-merge parallelism except for terms, norms, and doc values.
+  Related to GITHUB#13478.  (Ben Trent)
 
 Optimizations
 ---------------------
@@ -279,7 +280,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
 
 Other
 --------------------
