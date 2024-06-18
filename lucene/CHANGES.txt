@@ -258,7 +258,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#13475: Re-enable intra-merge parallelism except for terms, norms, and doc values.
+  Related to GITHUB#13478.  (Ben Trent)
 
 Optimizations
 ---------------------
@@ -279,19 +280,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
 
 Other
 --------------------
 (No changes)
-
-======================== Lucene 9.11.1 =======================
-
-Bug Fixes
----------------------
-* GITHUB#13475: Prevent intra-merge parallelism for merging doc values, terms, and norms. Additionally, ensure that
-  merge optimized readers are not used between more than one thread.
-  Fixes bug explained here: GITHUB#13478.  (Ben Trent)
 
 ======================== Lucene 9.11.0 =======================
 
