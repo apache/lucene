@@ -154,41 +154,17 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         List<TermAndState> collectedTerms)
         throws IOException;
 
-    private IOSupplier<WeightOrDocIdSetIterator> rewrite(
-        LeafReaderContext context,
-        Terms terms,
-        List<TermAndState> collectedTerms,
-        boolean[] collectResult)
-        throws IOException {
-      assert terms != null;
-
-      final int fieldDocCount = terms.getDocCount();
-      final TermsEnum termsEnum = q.getTermsEnum(terms);
-      assert termsEnum != null;
-
-      collectResult[0] = collectTerms(fieldDocCount, termsEnum, collectedTerms);
-      if (collectResult[0] && collectedTerms.isEmpty()) {
-        return null;
+    private WeightOrDocIdSetIterator rewriteAsBooleanQuery(
+        LeafReaderContext context, List<TermAndState> collectedTerms) throws IOException {
+      BooleanQuery.Builder bq = new BooleanQuery.Builder();
+      for (TermAndState t : collectedTerms) {
+        final TermStates termStates = new TermStates(searcher.getTopReaderContext());
+        termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
+        bq.add(new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
       }
-      return () -> {
-        if (collectResult[0]) {
-          // build a boolean query
-          BooleanQuery.Builder bq = new BooleanQuery.Builder();
-          for (TermAndState t : collectedTerms) {
-            final TermStates termStates = new TermStates(searcher.getTopReaderContext());
-            termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
-            bq.add(
-                new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
-          }
-          Query q = new ConstantScoreQuery(bq.build());
-          final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-          return new WeightOrDocIdSetIterator(weight);
-        } else {
-          // Too many terms to rewrite as a simple bq.
-          // Invoke rewriteInner logic to handle rewriting:
-          return rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
-        }
-      };
+      Query q = new ConstantScoreQuery(bq.build());
+      final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+      return new WeightOrDocIdSetIterator(weight);
     }
 
     private boolean collectTerms(int fieldDocCount, TermsEnum termsEnum, List<TermAndState> terms)
@@ -243,13 +219,19 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         return null;
       }
 
+      assert terms != null;
+
+      final int fieldDocCount = terms.getDocCount();
+      final TermsEnum termsEnum = q.getTermsEnum(terms);
+      assert termsEnum != null;
+
       List<TermAndState> collectedTerms = new ArrayList<>();
-      boolean[] collectResult = new boolean[1];
-      IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier =
-          rewrite(context, terms, collectedTerms, collectResult);
-      if (weightOrIteratorSupplier == null) return null;
+      boolean collectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
+
+      if (collectResult && collectedTerms.isEmpty()) return null;
+
       final long cost;
-      if (collectResult[0]) {
+      if (collectResult) {
         long sumTermCost = 0;
         for (TermAndState collectedTerm : collectedTerms) {
           sumTermCost += collectedTerm.docFreq;
@@ -258,6 +240,17 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       } else {
         cost = estimateCost(terms, q.getTermsCount());
       }
+
+      IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier =
+          () -> {
+            if (collectResult) {
+              return rewriteAsBooleanQuery(context, collectedTerms);
+            } else {
+              // Too many terms to rewrite as a simple bq.
+              // Invoke rewriteInner logic to handle rewriting:
+              return rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
+            }
+          };
 
       return new ScorerSupplier() {
         @Override
