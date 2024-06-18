@@ -20,7 +20,7 @@ import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.QueryMaker;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 
 /** Does search w/ a custom collector */
 public class SearchWithCollectorTask extends SearchTask {
@@ -49,7 +49,8 @@ public class SearchWithCollectorTask extends SearchTask {
   protected Collector createCollector() throws Exception {
     Collector collector = null;
     if (clnName.equalsIgnoreCase("topScoreDoc") == true) {
-      collector = TopScoreDocCollector.create(numHits(), Integer.MAX_VALUE);
+      collector =
+          new TopScoreDocCollectorManager(numHits(), null, Integer.MAX_VALUE, false).newCollector();
     } else if (clnName.length() > 0) {
       collector = Class.forName(clnName).asSubclass(Collector.class).getConstructor().newInstance();
 

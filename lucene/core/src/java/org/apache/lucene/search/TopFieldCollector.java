@@ -30,8 +30,8 @@ import org.apache.lucene.search.TotalHits.Relation;
 /**
  * A {@link Collector} that sorts by {@link SortField} using {@link FieldComparator}s.
  *
- * <p>See the {@link #create(org.apache.lucene.search.Sort, int, int)} method for instantiating a
- * TopFieldCollector.
+ * <p>See the constructor of {@link TopFieldCollectorManager} for instantiating a
+ * TopFieldCollectorManager with support for concurrency in IndexSearcher.
  *
  * @lucene.experimental
  */
