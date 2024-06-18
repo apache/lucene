@@ -10,6 +10,8 @@ Bug Fixes
 
 * GITHUB#13498: Avoid performance regression by constructing lazily the PointTree in NumericComparator, (Ignacio Vera)
 
+* GITHUB#13501, GITHUB#13478: Remove intra-merge parallelism for everything except HNSW graph merges. (Ben Trent)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
