@@ -1,105 +1,142 @@
 package org.apache.lucene.sandbox.facet.recorders;
 
-import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
+import com.carrotsearch.hppc.IntObjectHashMap;
+import com.carrotsearch.hppc.cursors.IntCursor;
+import com.carrotsearch.hppc.cursors.IntObjectCursor;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
+import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
+import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
+import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.abstracts.Reducer;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
 import java.io.IOException;
+import java.util.*;
 
 /**
- * Facet recorder that computes multiple long aggregations per facet.
- * TODO: implement!
- * TODO: I think we can use long[] as a value per facet, benefit that it gives us
- *   - reduce memory footprint as we have one map with facet ordinal as a key for all aggregations rather than
- *     N maps.
- *   - We need to sync map access only once per document, not sync per document per facet id. Also, if facetId is already in the map
- *     I think we can sync on the value (array) itself, not the entire map?
- *   - We can also try collecting in each leaf in a separate map and merge then in reduce(), this can be fast enough
- *     if we need to merge one map per leaf rather than N maps per leaf.
- *   - implementing rollup if necessary is easier and faster as we can accumulate values for parent in an array and then
- *     assign the array as a value rather than updates each running aggregation value individually.
- *   - [premature optimization idea] if instead of one array we keep aggregations in two LongVector (one for MAX aggregation
+ * {@link FacetRecorder} that computes multiple long aggregations per facet.
+ * TODO: [premature optimization idea] if instead of one array we keep aggregations in two LongVector (one for MAX aggregation
  *     and one for SUM) we can benefit from SIMD?
  */
-public abstract class LongAggregationsFacetRecorder implements FacetRecorder {
+public class LongAggregationsFacetRecorder implements FacetRecorder {
 
-    final LongValuesSource[] longValuesSources;
-    final Reducer[] reducers;
+    private IntObjectHashMap<long[]> perOrdinalValues;
+    private List<IntObjectHashMap<long[]>> leafValues;
+
+    private final LongValuesSource[] longValuesSources;
+    private final Reducer[] reducers;
 
     /** TODO */
-    LongAggregationsFacetRecorder(LongValuesSource[] longValuesSources, Reducer[] reducers) {
+    public LongAggregationsFacetRecorder(LongValuesSource[] longValuesSources, Reducer[] reducers) {
         assert longValuesSources.length == reducers.length;
         this.longValuesSources = longValuesSources;
         this.reducers = reducers;
-        initialisePerOrdinalValues();
+        perOrdinalValues = new IntObjectHashMap<>();
+        leafValues = Collections.synchronizedList(new ArrayList<>());
     }
 
-    /** TODO: add doc
-     *
-     * @param useSyncMap TK
-     * @param longValuesSources TK
-     * @param reducers TK
-     * @return TK
-     */
-    public static LongAggregationsFacetRecorder create(boolean useSyncMap, LongValuesSource[] longValuesSources, Reducer[] reducers) {
-        if (useSyncMap) {
-            return new SyncLongAggregationsFacetRecorder(longValuesSources, reducers);
-        }
-        return new ReducingLongAggregationsFacetRecorder(longValuesSources, reducers);
-    }
-
-    abstract void initialisePerOrdinalValues();
-
-    /**TODO:
-     *
-     * @param context TK
-     * @return TK
-     * @throws IOException TK
-     */
     @Override
     public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
         LongValues[] longValues = new LongValues[longValuesSources.length];
         for (int i=0; i< longValuesSources.length; i++) {
             longValues[i] = longValuesSources[i].getValues(context, null);
         }
-        return getLeafRecorder(longValues, reducers);
+        IntObjectHashMap<long[]> valuesRecorder = new IntObjectHashMap<>();
+        leafValues.add(valuesRecorder);
+        return new LongAggregationsFacetLeafRecorder(longValues, reducers, valuesRecorder);
     }
 
-    abstract LongAggregationsFacetLeafRecorder getLeafRecorder(LongValues[] longValues, Reducer[] reducers);
-
-    /**TODO
-     *
-     * @param ord TK
-     * @param valuesId TK
-     * @return TK
-     */
-    public abstract long getRecordedValue(int ord, int valuesId);
-
-    static abstract class LongAggregationsFacetLeafRecorder implements FacetLeafRecorder {
-
-        final LongValues[] longValues;
-
-        final Reducer[] reducers;
-
-        LongAggregationsFacetLeafRecorder(LongValues[] longValues, Reducer[] reducers) {
-            this.longValues = longValues;
-            this.reducers = reducers;
+    @Override
+    public OrdinalIterator recordedOrds() {
+        if (perOrdinalValues.isEmpty()) {
+            return null;
         }
-        @Override
-        public void record(int docId, int facetId) throws IOException {
-            // TODO: we should read from the map just once, not for each aggregation ID!
-            for (int i=0; i < longValues.length; i++) {
-                LongValues values = longValues[i];
-                if (values.advanceExact(docId)) {
-                    recordValue(i, facetId, values.longValue());
+        Iterator<IntCursor> ordIterator = perOrdinalValues.keys().iterator();
+        return new OrdinalIterator() {
+            @Override
+            public int nextOrd() throws IOException {
+                if (ordIterator.hasNext()) {
+                    return ordIterator.next().value;
+                } else {
+                    return NO_MORE_ORDS;
+                }
+            }
+        };
+    }
+
+    @Override
+    public void reduce(FacetRollup facetRollup) throws IOException {
+        boolean firstElement = true;
+        for (IntObjectHashMap<long[]> leafValue : leafValues) {
+            if (firstElement) {
+                perOrdinalValues = leafValue;
+                firstElement = false;
+            } else {
+                for(IntObjectCursor<long[]> elem: leafValue) {
+                    long[] vals = perOrdinalValues.get(elem.key);
+                    if (vals == null) {
+                        perOrdinalValues.put(elem.key, elem.value);
+                    } else {
+                        for (int i = 0; i < longValuesSources.length; i++) {
+                            vals[i] = reducers[i].reduce(vals[i], elem.value[i]);
+                        }
+                    }
                 }
             }
         }
+        if (firstElement) {
+            // TODO: do we need empty map by default?
+            perOrdinalValues = new IntObjectHashMap<>();
+        }
+        // TODO: implement rollup
+        if (facetRollup != null && facetRollup.getDimOrdsToRollup().nextOrd() != OrdinalIterator.NO_MORE_ORDS) {
+            throw new UnsupportedOperationException("Rollup is required, but not implemented");
+        }
+    }
 
-        abstract void recordValue(int i, int facetId, long value);
+    public long getRecordedValue(int ord, int valuesId) {
+        if (valuesId < 0 || valuesId >= longValuesSources.length) {
+            throw new IllegalArgumentException("Invalid request for ordinal values");
+        }
+        long[] valuesForOrd = perOrdinalValues.get(ord);
+        if (valuesForOrd != null) {
+            return valuesForOrd[valuesId];
+        }
+        return -1; // TODO: missing value, what do we want to return? Zero might be a better option.
+    }
 
+    private static class LongAggregationsFacetLeafRecorder implements FacetLeafRecorder {
+
+        private final LongValues[] longValues;
+
+        private final Reducer[] reducers;
+        private final IntObjectHashMap<long[]> perOrdinalValues;
+
+
+        LongAggregationsFacetLeafRecorder(LongValues[] longValues, Reducer[] reducers, IntObjectHashMap<long[]> perOrdinalValues) {
+            this.longValues = longValues;
+            this.reducers = reducers;
+            this.perOrdinalValues = perOrdinalValues;
+        }
+        @Override
+        public void record(int docId, int facetId) throws IOException {
+            long[] valuesForOrd = perOrdinalValues.get(facetId);
+            if (valuesForOrd == null) {
+                valuesForOrd = new long[longValues.length];
+                perOrdinalValues.put(facetId, valuesForOrd);
+            }
+
+            LongValues values;
+            long value;
+            for (int i=0; i < longValues.length; i++) {
+                // TODO: cache advance/longValue results for current doc? Skipped for now as LongValues themselves can keep the cache.
+                values = longValues[i];
+                if (values.advanceExact(docId)) {
+                    valuesForOrd[i] = reducers[i].reduce(valuesForOrd[i], values.longValue());
+                }
+            }
+        }
     }
 }

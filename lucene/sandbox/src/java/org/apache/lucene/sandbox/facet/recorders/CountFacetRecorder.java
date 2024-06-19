@@ -29,13 +29,14 @@ import static org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator.NO_MORE_
  */
 public class CountFacetRecorder implements FacetRecorder {
 
+    // TODO: deprecate - it is cheaper to merge during reduce than to lock threads during collection.
     private final boolean useSyncMap;
 
     /**
      * Create
      */
     public CountFacetRecorder() {
-        this(true);
+        this(false);
     }
 
     IntIntMap values;
@@ -47,16 +48,10 @@ public class CountFacetRecorder implements FacetRecorder {
      */
     public CountFacetRecorder(boolean useSyncMap) {
         super();
-        // TODO: useSyncMap param is temporary, we should run performance tests and understand what is faster -
-        //  - collecting in a sync map,
-        //  - collecting in a map per leaf, and then merge at reduce.
-        //  - collecting in a map per Collector (same map withing work slice). Merge at reduce.
-        //    This option expect all leafs within a slice to be collected sequentially, which is the case today?
         if (useSyncMap) {
             values = new SafeIntIntHashMap();
         } else {
             // Has to be synchronizedList as we have one recorder per all slices.
-            // TODO: do we want to have RecorderSlice/RecorderManager for CollectorManager, and then FacetRecorder per Collector?
             perLeafValues = Collections.synchronizedList(new ArrayList<>());
         }
         this.useSyncMap = useSyncMap;

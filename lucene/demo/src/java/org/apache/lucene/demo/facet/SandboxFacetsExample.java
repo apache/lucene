@@ -297,7 +297,7 @@ public class SandboxFacetsExample {
     longValuesSources[1] = LongValuesSource.fromLongField("Units");
     reducers[1] = Reducer.SUM;
 
-    LongAggregationsFacetRecorder longAggregationsFacetRecorder = LongAggregationsFacetRecorder.create(false, longValuesSources, reducers);
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
     CountFacetRecorder countRecorder = new CountFacetRecorder(false);
 

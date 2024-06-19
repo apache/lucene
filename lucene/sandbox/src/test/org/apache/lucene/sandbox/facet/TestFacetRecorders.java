@@ -125,8 +125,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     longValuesSources[1] = LongValuesSource.fromLongField("Units");
     reducers[1] = Reducer.SUM;
 
-    LongAggregationsFacetRecorder longAggregationsFacetRecorder = LongAggregationsFacetRecorder.create(
-            random().nextBoolean(), longValuesSources, reducers);
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
     final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
     // Compute both counts and aggregations
@@ -219,8 +218,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     longValuesSources[1] = LongValuesSource.fromLongField("Units");
     reducers[1] = Reducer.SUM;
 
-    LongAggregationsFacetRecorder longAggregationsFacetRecorder = LongAggregationsFacetRecorder.create(
-            random().nextBoolean(), longValuesSources, reducers);
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
     final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
     // Compute both counts and aggregations
@@ -319,8 +317,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     longValuesSources[1] = LongValuesSource.fromLongField("Units");
     reducers[1] = Reducer.SUM;
 
-    LongAggregationsFacetRecorder longAggregationsFacetRecorder = LongAggregationsFacetRecorder.create(
-            random().nextBoolean(), longValuesSources, reducers);
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
     final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
     // Compute both counts and aggregations
