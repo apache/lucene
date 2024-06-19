@@ -53,6 +53,8 @@ final class FreqProxTermsWriter extends TermsHash {
   private void applyDeletes(SegmentWriteState state, Fields fields) throws IOException {
     if (state.segUpdates != null) {
       applyTermDeletes(state, fields, state.segUpdates.deleteTerms);
+      // We can not apply deleteUniqueTerm on only one doc here, since we merged deleteUniqueTerms
+      // by term and only apply the one with max docIDUpto.
       applyTermDeletes(state, fields, state.segUpdates.deleteUniqueTerms);
     }
   }
