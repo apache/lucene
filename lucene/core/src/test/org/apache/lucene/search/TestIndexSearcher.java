@@ -293,4 +293,121 @@ public class TestIndexSearcher extends LuceneTestCase {
     IndexSearcher indexSearcher = new IndexSearcher(reader);
     assertNotNull(indexSearcher.getTaskExecutor());
   }
+
+  public void testIOConcurrencyThreshold() throws IOException {
+    IndexSearcher indexSearcher = new IndexSearcher(reader);
+    indexSearcher.setIOConcurrencySumMaxDocThreshold(1);
+
+    {
+      // threshold of 1: segments get searched completely sequentially
+      indexSearcher.setIOConcurrencySumMaxDocThreshold(1);
+      List<String> expectedEvents = new ArrayList<>();
+      for (LeafReaderContext ctx : indexSearcher.getIndexReader().leaves()) {
+        expectedEvents.add("ScorerSupplier " + ctx.ord);
+        expectedEvents.add("Scorer " + ctx.ord);
+      }
+      List<String> actualEvents = new ArrayList<>();
+      indexSearcher.search(new LoggingQuery(actualEvents), new TotalHitCountCollectorManager());
+      assertEquals(expectedEvents, actualEvents);
+    }
+
+    {
+      // threshold of MAX_INT: all segments get searched concurrently
+      indexSearcher.setIOConcurrencySumMaxDocThreshold(Integer.MAX_VALUE);
+      List<String> expectedEvents = new ArrayList<>();
+      for (LeafReaderContext ctx : indexSearcher.getIndexReader().leaves()) {
+        expectedEvents.add("ScorerSupplier " + ctx.ord);
+      }
+      for (LeafReaderContext ctx : indexSearcher.getIndexReader().leaves()) {
+        expectedEvents.add("Scorer " + ctx.ord);
+      }
+      List<String> actualEvents = new ArrayList<>();
+      indexSearcher.search(new LoggingQuery(actualEvents), new TotalHitCountCollectorManager());
+      assertEquals(expectedEvents, actualEvents);
+    }
+
+    {
+      final int threshold = indexSearcher.getIndexReader().maxDoc() / 3;
+      // intermediate threshold, gives only some concurrency
+      indexSearcher.setIOConcurrencySumMaxDocThreshold(threshold);
+      List<String> expectedEvents = new ArrayList<>();
+      List<LeafReaderContext> leaves = indexSearcher.getIndexReader().leaves();
+      int sumMaxDoc = 0;
+      int finished = 0;
+      for (int i = 0; i < leaves.size(); ++i) {
+        LeafReaderContext context = leaves.get(i);
+        while (sumMaxDoc + context.reader().maxDoc() > threshold && finished < i) {
+          LeafReaderContext prevContext = leaves.get(finished++);
+          expectedEvents.add("Scorer " + prevContext.ord);
+          sumMaxDoc -= prevContext.reader().maxDoc();
+        }
+        expectedEvents.add("ScorerSupplier " + context.ord);
+        sumMaxDoc += context.reader().maxDoc();
+      }
+      while (finished < leaves.size()) {
+        expectedEvents.add("Scorer " + leaves.get(finished++).ord);
+      }
+      List<String> actualEvents = new ArrayList<>();
+      indexSearcher.search(new LoggingQuery(actualEvents), new TotalHitCountCollectorManager());
+      assertEquals(expectedEvents, actualEvents);
+    }
+  }
+
+  private static class LoggingQuery extends Query {
+
+    private final List<String> events;
+
+    LoggingQuery(List<String> events) {
+      this.events = events;
+    }
+
+    @Override
+    public String toString(String field) {
+      return "LoggingQuery";
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {}
+
+    @Override
+    public boolean equals(Object obj) {
+      return super.sameClassAs(obj);
+    }
+
+    @Override
+    public int hashCode() {
+      return classHash();
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      return new ConstantScoreWeight(LoggingQuery.this, boost) {
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return false;
+        }
+
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          events.add("ScorerSupplier " + context.ord);
+          return new ScorerSupplier() {
+
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              events.add("Scorer " + context.ord);
+              return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
+            }
+
+            @Override
+            public long cost() {
+              return 0;
+            }
+          };
+        }
+        ;
+      };
+    }
+  }
 }

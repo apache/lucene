@@ -23,6 +23,7 @@ import java.util.Locale;
 public enum QueryProfilerTimingType {
   CREATE_WEIGHT,
   COUNT,
+  BUILD_SCORER_SUPPLIER,
   BUILD_SCORER,
   NEXT_DOC,
   ADVANCE,
