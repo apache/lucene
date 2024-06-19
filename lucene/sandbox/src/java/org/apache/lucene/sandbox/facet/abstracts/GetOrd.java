@@ -1,7 +1,7 @@
 package org.apache.lucene.sandbox.facet.abstracts;
 
 /**
- * Interface to return ordinal for something.
+ * Interface to return an ordinal.
  */
 public interface GetOrd {
 

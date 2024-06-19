@@ -92,6 +92,7 @@ public class SyncLongAggregationsFacetRecorder extends LongAggregationsFacetReco
 
         @Override
         void recordValue(int i, int facetId, long value) {
+            // TODO: this must be sync method!
             long prev = perOrdinalValues[i].get(facetId);
             long reducedValue = reducers[i].reduce(prev, value);
             perOrdinalValues[i].put(facetId, reducedValue);

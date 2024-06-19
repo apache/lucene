@@ -4,7 +4,6 @@ import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.IntIntMap;
 import com.carrotsearch.hppc.cursors.IntCursor;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
@@ -169,9 +168,5 @@ public class CountFacetRecorder implements FacetRecorder {
             this.values.addTo(facetId, 1);
         }
 
-        @Override
-        public void finish(FacetLeafCutter cutter) {
-
-        }
     }
 }

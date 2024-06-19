@@ -5,9 +5,9 @@ import org.apache.lucene.index.LeafReaderContext;
 import java.io.IOException;
 
 /**
- * Registers which payload we need for a field, and then
- * generates per leaf payload class that computes the payload.
+ * Record data for each facet of each doc.
  * TODO: do we need FacetRecorderManager similar to CollectorManager, e.g. is getLeafRecorder always thread safe?
+ *  If we have a Manager-level recorder, then collection within a slice can be done without "syncronized"
  */
 public interface FacetRecorder {
     /**
@@ -17,9 +17,9 @@ public interface FacetRecorder {
 
     /**
      * Return next collected ordinal, or {@link FacetLeafCutter#NO_MORE_ORDS}
-     * TODO: do we really need that here? Should it live somewhere else?
      */
     OrdinalIterator recordedOrds();
+
     /**
      * Reduce leaf recorder results into this recorder.
      * If facetRollup is not null, it also rolls up values.

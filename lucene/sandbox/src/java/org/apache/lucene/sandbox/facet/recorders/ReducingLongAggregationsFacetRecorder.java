@@ -112,6 +112,7 @@ public class ReducingLongAggregationsFacetRecorder extends LongAggregationsFacet
 
         @Override
         void recordValue(int i, int facetId, long value) {
+            // TODO: we should not init array every time
             long[] valuesForOrd = perOrdinalValues.getOrDefault(facetId, new long[longValues.length]);
             long prev = valuesForOrd[i];
             valuesForOrd[i] = reducers[i].reduce(prev, value);

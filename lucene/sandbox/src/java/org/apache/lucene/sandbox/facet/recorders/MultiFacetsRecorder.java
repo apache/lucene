@@ -1,6 +1,5 @@
 package org.apache.lucene.sandbox.facet.recorders;
 
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
@@ -57,9 +56,5 @@ public final class MultiFacetsRecorder implements FacetRecorder {
             }
         }
 
-        @Override
-        public void finish(FacetLeafCutter cutter) {
-            // TODO: remove the method
-        }
     }
 }

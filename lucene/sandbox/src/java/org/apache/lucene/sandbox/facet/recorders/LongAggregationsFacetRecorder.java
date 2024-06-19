@@ -1,6 +1,5 @@
 package org.apache.lucene.sandbox.facet.recorders;
 
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.index.LeafReaderContext;
@@ -91,6 +90,7 @@ public abstract class LongAggregationsFacetRecorder implements FacetRecorder {
         }
         @Override
         public void record(int docId, int facetId) throws IOException {
+            // TODO: we should read from the map just once, not for each aggregation ID!
             for (int i=0; i < longValues.length; i++) {
                 LongValues values = longValues[i];
                 if (values.advanceExact(docId)) {
@@ -101,9 +101,5 @@ public abstract class LongAggregationsFacetRecorder implements FacetRecorder {
 
         abstract void recordValue(int i, int facetId, long value);
 
-        @Override
-        public void finish(FacetLeafCutter cutter) {
-
-        }
     }
 }
