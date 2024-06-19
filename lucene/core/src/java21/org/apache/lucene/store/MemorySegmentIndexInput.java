@@ -374,8 +374,13 @@ abstract class MemorySegmentIndexInput extends IndexInput
       offset -= offsetInPage;
       length += offsetInPage;
       if (offset < 0) {
-        // The start of the page is outside of this segment, ignore.
-        return;
+        // The start of the page is before the start of this segment, ignore the first page.
+        offset += nativeAccess.getPageSize();
+        length -= nativeAccess.getPageSize();
+        if (length <= 0) {
+          // This segment has no data beyond the first page.
+          return;
+        }
       }
 
       final MemorySegment advisedSlice = segment.asSlice(offset, length);
