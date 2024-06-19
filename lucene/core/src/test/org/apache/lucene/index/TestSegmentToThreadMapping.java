@@ -172,7 +172,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     leafReaderContexts.add(new LeafReaderContext(secondMediumSegmentReader));
     leafReaderContexts.add(new LeafReaderContext(thirdMediumSegmentReader));
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    IndexSearcher.LeafSlice[] resultSlices = computeSlices(leafReaderContexts);
 
     assertTrue(resultSlices.length == 1);
 
@@ -201,7 +201,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     leafReaderContexts.add(new LeafReaderContext(seventhLargeSegmentReader));
     leafReaderContexts.add(new LeafReaderContext(eigthLargeSegmentReader));
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    IndexSearcher.LeafSlice[] resultSlices = computeSlices(leafReaderContexts);
 
     assertTrue(resultSlices.length == 3);
 
@@ -226,7 +226,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     leafReaderContexts.add(new LeafReaderContext(secondMediumSegmentReader));
     leafReaderContexts.add(new LeafReaderContext(thirdMediumSegmentReader));
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    IndexSearcher.LeafSlice[] resultSlices = computeSlices(leafReaderContexts);
 
     assertTrue(resultSlices.length == 3);
 
@@ -292,8 +292,43 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
           new LeafReaderContext(dummyIndexReader(random().nextInt((max - min) + 1) + min)));
     }
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    IndexSearcher.LeafSlice[] resultSlices = computeSlices(leafReaderContexts);
 
     assertTrue(resultSlices.length > 0);
+  }
+
+  public void testTwoPreciseSlices() {
+    LeafReader firstSegmentReader = dummyIndexReader(250_000);
+    LeafReader secondSegmentReader = dummyIndexReader(250_000);
+    List<LeafReaderContext> leafReaderContexts = new ArrayList<>();
+
+    leafReaderContexts.add(new LeafReaderContext(firstSegmentReader));
+    leafReaderContexts.add(new LeafReaderContext(secondSegmentReader));
+
+    IndexSearcher.LeafSlice[] resultSlices = computeSlices(leafReaderContexts);
+
+    assertTrue(resultSlices.length == 1);
+    assertTrue(resultSlices[0].leaves.length == 2);
+  }
+
+  private static IndexSearcher.LeafSlice[] computeSlices(List<LeafReaderContext> leaves) {
+    final int maxDocsPerSlice = 250_000;
+    final int maxSegmentsPerSlice = 5;
+    final IndexSearcher.LeafSlice[] slices =
+        IndexSearcher.slices(leaves, maxDocsPerSlice, maxSegmentsPerSlice);
+    for (IndexSearcher.LeafSlice slice : slices) {
+      if (slice.leaves.length > 1) {
+        int docSum = 0;
+        for (LeafReaderContext leaf : slice.leaves) {
+          docSum += leaf.reader().maxDoc();
+        }
+        if (docSum > maxDocsPerSlice) {
+          assertFalse(
+              "docSum=" + docSum + " exceeds maxDocsPerSlice=" + maxDocsPerSlice + " by too much",
+              (docSum - maxDocsPerSlice) > maxDocsPerSlice);
+        }
+      }
+    }
+    return slices;
   }
 }
