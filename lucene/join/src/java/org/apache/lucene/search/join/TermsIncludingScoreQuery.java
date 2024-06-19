@@ -281,9 +281,8 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
               matchingDocs.set(doc);
             }*/
             // But this behaves the same as MVInnerScorer and only then the tests will pass:
-            if (!matchingDocs.get(doc)) {
+            if (!matchingDocs.getAndSet(doc)) {
               scores[doc] = score;
-              matchingDocs.set(doc);
             }
           }
         }

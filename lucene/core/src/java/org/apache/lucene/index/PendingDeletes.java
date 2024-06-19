@@ -97,9 +97,8 @@ class PendingDeletes {
             + info.info.name
             + " maxDoc="
             + info.info.maxDoc();
-    final boolean didDelete = mutableBits.get(docID);
+    final boolean didDelete = mutableBits.getAndClear(docID);
     if (didDelete) {
-      mutableBits.clear(docID);
       pendingDeleteCount++;
     }
     return didDelete;
