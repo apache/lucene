@@ -22,7 +22,7 @@ import org.gradle.util.GradleVersion
 
 configure(rootProject) {
   ext {
-    expectedGradleVersion = '8.8'
+    expectedGradleVersion = deps.versions.minGradle.get()
     hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map(this.class.module::canRead).orElse(false)
   }
 
@@ -32,6 +32,7 @@ configure(rootProject) {
   }
 
   def currentJavaVersion = JavaVersion.current()
+  def minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
   if (currentJavaVersion < minJavaVersion) {
     throw new GradleException("At least Java ${minJavaVersion} is required, you are running Java ${currentJavaVersion} "
         + "[${System.getProperty('java.vm.name')} ${System.getProperty('java.vm.version')}]")

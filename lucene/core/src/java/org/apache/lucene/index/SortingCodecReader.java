@@ -637,6 +637,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
+
+      @Override
+      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+        // We can hardly return information about min/max values if doc IDs have been reordered.
+        return null;
+      }
     };
   }
 
@@ -736,10 +742,14 @@ public final class SortingCodecReader extends FilterCodecReader {
     if (timesCached > 1) {
       assert norms == false : "[" + field + "] norms must not be cached twice";
       boolean isSortField = false;
-      for (SortField sf : metaData.getSort().getSort()) {
-        if (field.equals(sf.getField())) {
-          isSortField = true;
-          break;
+      // For things that aren't sort fields, it's possible for sort to be null here
+      // In the event that we accidentally cache twice, its better not to throw an NPE
+      if (metaData.getSort() != null) {
+        for (SortField sf : metaData.getSort().getSort()) {
+          if (field.equals(sf.getField())) {
+            isSortField = true;
+            break;
+          }
         }
       }
       assert timesCached == 2

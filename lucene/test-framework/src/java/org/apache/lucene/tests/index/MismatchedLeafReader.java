@@ -103,6 +103,7 @@ public class MismatchedLeafReader extends FilterLeafReader {
               oldInfo.hasPayloads(), // storePayloads
               oldInfo.getIndexOptions(), // indexOptions
               oldInfo.getDocValuesType(), // docValuesType
+              oldInfo.hasDocValuesSkipIndex(), // hasDocValuesSkipIndex
               oldInfo.getDocValuesGen(), // dvGen
               oldInfo.attributes(), // attributes
               oldInfo.getPointDimensionCount(), // data dimension count
