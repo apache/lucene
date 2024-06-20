@@ -79,6 +79,13 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), dir);
   }
 
+  private void assertEmptyFacetResult(FacetResult result) {
+    assertEquals(0, result.path.length);
+    assertEquals(0, result.value);
+    assertEquals(0, result.childCount);
+    assertEquals(0, result.labelValues.length);
+  }
+
   public void testEmptyMatchset() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -97,10 +104,10 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     StringValueFacetCounts counts = new StringValueFacetCounts(state, facetsCollector);
 
     FacetResult top = counts.getTopChildren(10, "field");
-    assertEquals(top.childCount, 0);
+    assertEmptyFacetResult(top);
 
     FacetResult all = counts.getAllChildren("field");
-    assertEquals(all.childCount, 0);
+    assertEmptyFacetResult(all);
 
     assertEquals(0, counts.getSpecificValue("field", "foo"));
 
