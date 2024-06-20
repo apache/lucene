@@ -79,7 +79,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), dir);
   }
 
-  public void testNarrowSingleValued() throws Exception {
+  public void testEmptyMatchset() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
@@ -90,15 +90,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    TopScoreDocCollectorManager docCollector = new TopScoreDocCollectorManager(10, 10);
-    FacetsCollectorManager facetCollector = new FacetsCollectorManager();
-    MultiCollectorManager merged = new MultiCollectorManager(docCollector, facetCollector);
-
-    Object[] results = searcher.search(new MatchNoDocsQuery(), merged);
+    FacetsCollector facetsCollector = searcher.search(new MatchNoDocsQuery(), new FacetsCollectorManager());
     StringDocValuesReaderState state =
         new StringDocValuesReaderState(searcher.getIndexReader(), "field");
 
-    StringValueFacetCounts counts = new StringValueFacetCounts(state, (FacetsCollector) results[1]);
+    StringValueFacetCounts counts = new StringValueFacetCounts(state, facetsCollector);
     FacetResult top = counts.getTopChildren(10, "field");
     assertEquals(top.childCount, 0);
     IOUtils.close(searcher.getIndexReader(), dir);
