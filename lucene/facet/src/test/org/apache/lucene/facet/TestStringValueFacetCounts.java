@@ -32,7 +32,9 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -97,7 +99,8 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    FacetsCollector facetsCollector = searcher.search(new MatchNoDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector facetsCollector =
+        searcher.search(new MatchNoDocsQuery(), new FacetsCollectorManager());
     StringDocValuesReaderState state =
         new StringDocValuesReaderState(searcher.getIndexReader(), "field");
 
