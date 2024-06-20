@@ -53,8 +53,7 @@ final class PendingSoftDeletes extends PendingDeletes {
     FixedBitSet mutableBits = getMutableBits();
     // hardDeletes
     if (hardDeletes.delete(docID)) {
-      if (mutableBits.get(docID)) { // delete it here too!
-        mutableBits.clear(docID);
+      if (mutableBits.getAndClear(docID)) { // delete it here too!
         assert hardDeletes.delete(docID) == false;
       } else {
         // if it was deleted subtract the delCount
@@ -135,16 +134,14 @@ final class PendingSoftDeletes extends PendingDeletes {
             : null;
     while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       if (hasValue == null || hasValue.hasValue()) {
-        if (bits.get(docID)) { // doc is live - clear it
-          bits.clear(docID);
+        if (bits.getAndClear(docID)) { // doc is live - clear it
           newDeletes++;
           // now that we know we deleted it and we fully control the hard deletes we can do correct
           // accounting
           // below.
         }
       } else {
-        if (bits.get(docID) == false) {
-          bits.set(docID);
+        if (bits.getAndSet(docID) == false) {
           newDeletes--;
         }
       }

@@ -276,8 +276,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         if (cmp == 0) {
           // Query point equals index point, so collect and return
           if (multipleValuesPerDocument) {
-            if (result.get(docID) == false) {
-              result.set(docID);
+            if (result.getAndSet(docID) == false) {
               scores[docID] = nextScore;
             }
           } else {
