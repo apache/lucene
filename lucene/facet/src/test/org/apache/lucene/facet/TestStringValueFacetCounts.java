@@ -102,6 +102,8 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     FacetResult all = counts.getAllChildren("field");
     assertEquals(all.childCount, 0);
 
+    assertEquals(0, counts.getSpecificValue("field", "foo"));
+
     IOUtils.close(searcher.getIndexReader(), dir);
   }
 

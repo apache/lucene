@@ -256,7 +256,13 @@ public class StringValueFacetCounts extends Facets {
       return -1;
     }
 
-    return sparseCounts != null ? sparseCounts.get(ord) : denseCounts[ord];
+    if (sparseCounts != null) {
+      return sparseCounts.get(ord);
+    }
+    if (denseCounts != null) {
+      return denseCounts[ord];
+    }
+    return 0;
   }
 
   @Override
