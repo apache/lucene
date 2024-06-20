@@ -42,6 +42,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ByteTensorValue;
 import org.apache.lucene.util.FloatTensorValue;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -178,15 +179,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
         fieldData.fieldInfo, maxDoc, tensorDataOffset, tensorDataLength, fieldData.docsWithField, fieldData.dataOffsets);
   }
 
-//  private void writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
-//    final ByteBuffer buffer =
-//        ByteBuffer.allocate(fieldData.dim * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-//    for (Object v : fieldData.values) {
-//      buffer.asFloatBuffer().put((float[]) v);
-//      vectorData.writeBytes(buffer.array(), buffer.array().length);
-//    }
-//  }
-
   private void writeFloat32Tensors(FieldWriter<?> fieldData) throws IOException {
     int maxPackedTensorSize = 0;
     for (int i = 0; i < fieldData.values.size(); i++) {
@@ -209,19 +201,16 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
     fieldData.dataOffsets[ordinal] = tensorData.getFilePointer();
   }
 
-//  private void writeByteVectors(FieldWriter<?> fieldData) throws IOException {
-//    for (Object v : fieldData.values) {
-//      byte[] vector = (byte[]) v;
-//      vectorData.writeBytes(vector, vector.length);
-//    }
-//  }
-
   private void writeByteTensors(FieldWriter<?> fieldData) throws IOException {
-    throw new UnsupportedOperationException("not implemented yet");
-//    for (Object v : fieldData.values) {
-//      byte[] vector = (byte[]) v;
-//      vectorData.writeBytes(vector, vector.length);
-//    }
+    fieldData.dataOffsets = new long[fieldData.values.size() + 1];
+    int ordinal = 0;
+    for (int i = 0; i < fieldData.values.size(); i++) {
+      byte[] packedTensor = ((ByteTensorValue) fieldData.values.get(i)).packedValue();
+      fieldData.dataOffsets[ordinal++] = tensorData.getFilePointer();
+      tensorData.writeBytes(packedTensor, packedTensor.length);
+    }
+    assert ordinal == fieldData.values.size();
+    fieldData.dataOffsets[ordinal] = tensorData.getFilePointer();
   }
 
   private void writeSortingField(FieldWriter<?> fieldData, int maxDoc, Sorter.DocMap sortMap)
@@ -259,28 +248,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
     writeMeta(fieldData.fieldInfo, maxDoc, tensorDataOffset, tensorDataLength, newDocsWithField, fieldData.dataOffsets);
   }
 
-//  private long writeSortedFloat32Vectors(FieldWriter<?> fieldData, int[] ordMap)
-//      throws IOException {
-//    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-//    final ByteBuffer buffer =
-//        ByteBuffer.allocate(fieldData.dim * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-//    for (int ordinal : ordMap) {
-//      float[] vector = (float[]) fieldData.values.get(ordinal);
-//      buffer.asFloatBuffer().put(vector);
-//      vectorData.writeBytes(buffer.array(), buffer.array().length);
-//    }
-//    return vectorDataOffset;
-//  }
-
-//  private long writeSortedByteVectors(FieldWriter<?> fieldData, int[] ordMap) throws IOException {
-//    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-//    for (int ordinal : ordMap) {
-//      byte[] vector = (byte[]) fieldData.values.get(ordinal);
-//      vectorData.writeBytes(vector, vector.length);
-//    }
-//    return vectorDataOffset;
-//  }
-
   private long writeSortedFloat32Tensors(FieldWriter<?> fieldData, int[] ordMap)
       throws IOException {
     long tensorDataOffset = tensorData.alignFilePointer(Float.BYTES);
@@ -307,13 +274,17 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
   }
 
   private long writeSortedByteTensors(FieldWriter<?> fieldData, int[] ordMap) throws IOException {
-    throw new UnsupportedOperationException("not implemented yet");
-//    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-//    for (int ordinal : ordMap) {
-//      byte[] vector = (byte[]) fieldData.vectors.get(ordinal);
-//      vectorData.writeBytes(vector, vector.length);
-//    }
-//    return vectorDataOffset;
+    long tensorDataOffset = tensorData.alignFilePointer(Float.BYTES);
+    fieldData.dataOffsets = new long[fieldData.values.size() + 1];
+    int newOrd = 0;
+    for (int ordinal : ordMap) {
+      byte[] tensor = ((ByteTensorValue) fieldData.values.get(ordinal)).packedValue();
+      fieldData.dataOffsets[newOrd++] = tensorData.getFilePointer();
+      tensorData.writeBytes(tensor, tensor.length);
+    }
+    assert newOrd == fieldData.values.size();
+    fieldData.dataOffsets[newOrd] = tensorData.getFilePointer();
+    return tensorDataOffset;
   }
 
   // TODO: [Tensors] revisit after defining FlatTensorReaders
@@ -511,43 +482,25 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
 
     @SuppressWarnings("unchecked")
     static FieldWriter<?> create(FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) {
-      if (fieldInfo.hasTensorValues()) {
-        return switch (fieldInfo.getTensorEncoding()) {
-          case BYTE -> throw new UnsupportedOperationException("not added support for byte yet");
-//              new Lucene99FlatVectorsWriter.FieldWriter<>(
-//              fieldInfo, (KnnFieldVectorsWriter<byte[]>) indexWriter) {
-//            @Override
-//            public byte[] copyValue(byte[] value) {
-//              return ArrayUtil.copyOfSubArray(value, 0, dim);
-//            }
-//          };
-          case FLOAT32 -> new Lucene99FlatTensorsWriter.FieldWriter<>(
-              fieldInfo, (KnnFieldVectorsWriter<FloatTensorValue>) indexWriter) {
-            @Override
-            public FloatTensorValue copyValue(FloatTensorValue value) {
-              return new FloatTensorValue(value.packedValue(), value.dimension());
-            }
-          };
-        };
-      } else {
-        int dim = fieldInfo.getVectorDimension();
-        return switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> new Lucene99FlatTensorsWriter.FieldWriter<>(
-              fieldInfo, (KnnFieldVectorsWriter<byte[]>) indexWriter) {
-            @Override
-            public byte[] copyValue(byte[] value) {
-              return ArrayUtil.copyOfSubArray(value, 0, dim);
-            }
-          };
-          case FLOAT32 -> new Lucene99FlatTensorsWriter.FieldWriter<>(
-              fieldInfo, (KnnFieldVectorsWriter<float[]>) indexWriter) {
-            @Override
-            public float[] copyValue(float[] value) {
-              return ArrayUtil.copyOfSubArray(value, 0, dim);
-            }
-          };
-        };
+      if (fieldInfo.hasTensorValues() == false) {
+        throw new IllegalArgumentException("Cannot create Tensors writer for a field without tensor values");
       }
+      return switch (fieldInfo.getTensorEncoding()) {
+        case BYTE -> new Lucene99FlatTensorsWriter.FieldWriter<>(
+            fieldInfo, (KnnFieldVectorsWriter<ByteTensorValue>) indexWriter) {
+          @Override
+          public ByteTensorValue copyValue(ByteTensorValue value) {
+            return new ByteTensorValue(value.packedValue(), value.dimension());
+          }
+        };
+        case FLOAT32 -> new Lucene99FlatTensorsWriter.FieldWriter<>(
+            fieldInfo, (KnnFieldVectorsWriter<FloatTensorValue>) indexWriter) {
+          @Override
+          public FloatTensorValue copyValue(FloatTensorValue value) {
+            return new FloatTensorValue(value.packedValue(), value.dimension());
+          }
+        };
+      };
     }
 
     FieldWriter(FieldInfo fieldInfo, KnnFieldVectorsWriter<T> indexWriter) {
@@ -555,11 +508,7 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
       this.fieldInfo = fieldInfo;
       this.docsWithField = new DocsWithFieldSet();
       values = new ArrayList<>();
-      if (fieldInfo.hasTensorValues()) {
-        this.dim = fieldInfo.getTensorDimension();
-      } else {
-        this.dim = fieldInfo.getVectorDimension();
-      }
+      this.dim = fieldInfo.getTensorDimension();
     }
 
     @Override
@@ -588,14 +537,15 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
       }
       if (values.size() == 0) return size;
       long valueSize = 0;
-      if (fieldInfo.hasTensorValues()) {
-        for (T v: values) {
-          valueSize += ((FloatTensorValue) v).ramBytesUsed();
+      for (T v: values) {
+        switch(fieldInfo.getTensorEncoding()) {
+          case BYTE -> valueSize += ((ByteTensorValue) v).ramBytesUsed();
+          case FLOAT32 -> valueSize += ((FloatTensorValue) v).ramBytesUsed();
         }
-      } else {
-        valueSize = (long) values.size()
-                        * fieldInfo.getVectorDimension()
-                        * fieldInfo.getVectorEncoding().byteSize;
+      }
+      if (dataOffsets != null) {
+        size += RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + (long) RamUsageEstimator.primitiveSizes.get(long.class) * dataOffsets.length;
       }
       return size
           + docsWithField.ramBytesUsed()
