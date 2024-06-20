@@ -179,9 +179,6 @@ Bug Fixes
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
 
-* GITHUB#12431: Fix IndexOutOfBoundsException thrown in DefaultPassageFormatter
-  by unordered matches. (Stephane Campinas)
-
 Changes in Runtime Behavior
 ---------------------
 
@@ -285,6 +282,9 @@ Bug Fixes
 
 * GITHUB#13463: Address bug in MultiLeafKnnCollector causing #minCompetitiveSimilarity to stay artificially low in
   some corner cases. (Greg Miller)
+
+* GITHUB#12431: Fix IndexOutOfBoundsException thrown in DefaultPassageFormatter
+  by unordered matches. (Stephane Campinas)
 
 Other
 --------------------
