@@ -14,6 +14,9 @@ Bug Fixes
 
 * GITHUB#13498, GITHUB#13340: Allow adding a parent field to an index with no fields (Michael Sokolov)
 
+* GITHUB#12431: Fix IndexOutOfBoundsException thrown in DefaultPassageFormatter
+  by unordered matches. (Stephane Campinas)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
