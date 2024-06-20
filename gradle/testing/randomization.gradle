@@ -30,7 +30,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.7.2'
+    classpath deps.randomizedtesting.runner
   }
 }
 
@@ -126,10 +126,10 @@ allprojects {
       secManagerExclusions
     }
     dependencies {
-      secManagerExclusions ( "com.carrotsearch.randomizedtesting:randomizedtesting-runner", {
+      secManagerExclusions ( deps.randomizedtesting.runner, {
           exclude group: "junit"
       })
-      secManagerExclusions ( "junit:junit", {
+      secManagerExclusions ( deps.junit, {
         exclude group: "org.hamcrest"
       })
     }

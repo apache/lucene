@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -113,6 +114,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
         if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
 
         // implement ScorerSupplier, since we do some expensive stuff to make a scorer
@@ -149,12 +151,15 @@ final class SortedSetDocValuesRangeQuery extends Query {
             }
 
             // no terms matched in this segment
-            if (minOrd > maxOrd) {
+            // no terms matched in this segment
+            if (minOrd > maxOrd
+                || (skipper != null
+                    && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()))) {
               return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
             }
 
             final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-            final TwoPhaseIterator iterator;
+            TwoPhaseIterator iterator;
             if (singleton != null) {
               iterator =
                   new TwoPhaseIterator(singleton) {
@@ -191,6 +196,9 @@ final class SortedSetDocValuesRangeQuery extends Query {
                       return 2; // 2 comparisons
                     }
                   };
+            }
+            if (skipper != null) {
+              iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd);
             }
             return new ConstantScoreScorer(score(), scoreMode, iterator);
           }

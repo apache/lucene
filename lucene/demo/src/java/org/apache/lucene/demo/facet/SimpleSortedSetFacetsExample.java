@@ -91,7 +91,7 @@ public class SimpleSortedSetFacetsExample {
     SortedSetDocValuesReaderState state =
         new DefaultSortedSetDocValuesReaderState(indexReader, config);
 
-    // Aggregatses the facet counts
+    // Aggregates the facet counts
     FacetsCollector fc = new FacetsCollector();
 
     // MatchAllDocsQuery is for "browsing" (counts facets
