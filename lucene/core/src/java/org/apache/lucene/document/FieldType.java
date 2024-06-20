@@ -52,7 +52,7 @@ public class FieldType implements IndexableFieldType {
   private int tensorRank;
   private int tensorDimension;
   private VectorEncoding tensorEncoding = VectorEncoding.FLOAT32;
-  private TensorSimilarityFunction tensorSimilarityFunction = TensorSimilarityFunction.MAX_EUCLIDEAN;
+  private TensorSimilarityFunction tensorSimilarityFunction = TensorSimilarityFunction.SUM_MAX_EUCLIDEAN;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */

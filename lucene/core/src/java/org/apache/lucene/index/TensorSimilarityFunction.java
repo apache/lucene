@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.util.ArrayUtil;
+
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.lucene.util.VectorUtil.*;
@@ -106,6 +109,22 @@ public enum TensorSimilarityFunction {
    * @return the value of the similarity function applied to the two tensors
    */
   public abstract float compare(List<float[]> t1, List<float[]> t2);
+
+  /** Helper function that works with packed tensor floats */
+  public float compare(float[] t1, float[] t2, int dimension) {
+    if (t1.length % dimension != 0 || t2.length % dimension != 0) {
+      throw new IllegalArgumentException("Tensor vectors do not match provided dimensions");
+    }
+    List<float[]> a = new ArrayList<>();
+    List<float[]> b = new ArrayList<>();
+    for (int i = 0; i <= t1.length; i += dimension) {
+      a.add(ArrayUtil.copyOfSubArray(t1, i, dimension));
+    }
+    for (int i = 0; i <= t2.length; i += dimension) {
+      b.add(ArrayUtil.copyOfSubArray(t2, i, dimension));
+    }
+    return compare(a, b);
+  }
 
 //    /**
 //   * Calculates a similarity score between the two vectors with a specified function. Higher
