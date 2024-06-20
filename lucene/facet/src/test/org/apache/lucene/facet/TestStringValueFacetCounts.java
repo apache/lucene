@@ -95,8 +95,13 @@ public class TestStringValueFacetCounts extends FacetTestCase {
         new StringDocValuesReaderState(searcher.getIndexReader(), "field");
 
     StringValueFacetCounts counts = new StringValueFacetCounts(state, facetsCollector);
+
     FacetResult top = counts.getTopChildren(10, "field");
     assertEquals(top.childCount, 0);
+
+    FacetResult all = counts.getAllChildren("field");
+    assertEquals(all.childCount, 0);
+
     IOUtils.close(searcher.getIndexReader(), dir);
   }
 
