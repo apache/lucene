@@ -149,20 +149,21 @@ public class OrdToDocDISIReaderConfiguration {
         meta);
   }
 
-  final int size;
+  // TODO: Instead of public members, move to util package or clone to utilize across codecs?
+  public final int size;
   // the following four variables used to read docIds encoded by IndexDISI
   // special values of docsWithFieldOffset are -1 and -2
   // -1 : dense
   // -2 : empty
   // other: sparse
-  final short jumpTableEntryCount;
-  final long docsWithFieldOffset, docsWithFieldLength;
-  final byte denseRankPower;
+  public final short jumpTableEntryCount;
+  public final long docsWithFieldOffset, docsWithFieldLength;
+  public final byte denseRankPower;
 
   // the following four variables used to read ordToDoc encoded by DirectMonotonicWriter
   // note that only spare case needs to store ordToDoc
-  final long addressesOffset, addressesLength;
-  final DirectMonotonicReader.Meta meta;
+  public final long addressesOffset, addressesLength;
+  public final DirectMonotonicReader.Meta meta;
 
   OrdToDocDISIReaderConfiguration(
       int size,

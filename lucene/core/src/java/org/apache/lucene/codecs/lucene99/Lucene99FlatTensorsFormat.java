@@ -42,14 +42,14 @@ import java.io.IOException;
  *       concatenated and written as a single array. All vectors in a tensor have the same dimension.
  *       When vectorEncoding is BYTE, each sample is stored as a single byte. When it is FLOAT32, each
  *       sample is stored as an IEEE float in little-endian byte order.
-// *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
-// *       note that only in sparse case
-// *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
-// *       that only in sparse case
-// *   <li>TensorOffsets encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}. Since tensors
-// *   can have variable number of vectors, tensor data has variable length slices. TensorOffsets holds the
-// *   start and end offset for each tensor value. Splitting this slice by dimension should produce the individual
-// *   vector values for a tensor.
+ *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
+ *       note that only in sparse case
+ *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
+ *       that only in sparse case
+ *   <li>TensorOffsets encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}. Since tensors
+ *   can have variable number of vectors, tensor data has variable length slices. TensorOffsets holds the
+ *   start and end offset for each tensor value. Splitting this slice by dimension should produce the individual
+ *   vector values for a tensor.
  * </ul>
  *
  * <h2>.tem (tensor metadata) file</h2>
