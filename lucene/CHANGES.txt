@@ -283,9 +283,6 @@ Bug Fixes
 * GITHUB#13463: Address bug in MultiLeafKnnCollector causing #minCompetitiveSimilarity to stay artificially low in
   some corner cases. (Greg Miller)
 
-* GITHUB#12431: Fix IndexOutOfBoundsException thrown in DefaultPassageFormatter
-  by unordered matches. (Stephane Campinas)
-
 Other
 --------------------
 (No changes)
