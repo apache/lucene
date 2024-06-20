@@ -120,6 +120,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
+  public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+    return addField(fieldInfo, null);
+  }
+
+  @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     for (FieldWriter<?> field : fields) {
       if (sortMap == null) {

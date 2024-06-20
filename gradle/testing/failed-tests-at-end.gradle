@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.gradle.ErrorReportingTestListener
-
 // Display all failed tests at the end of the build.
 
 def failedTests = []
@@ -28,7 +26,7 @@ allprojects {
         failedTests << [
             "name": "${desc.className}.${desc.name}",
             "project": "${test.project.path}",
-            "output": file("${task.testOutputsDir}/${ErrorReportingTestListener.getOutputLogName(desc.parent)}"),
+            "output": file("${task.testOutputsDir}/${buildinfra.getOutputLogName(desc.parent)}"),
             "reproduce": "gradlew ${project.path}:test --tests \"${desc.className}.${desc.name}\" ${task.project.testOptionsForReproduceLine}"
         ]
       }
@@ -39,7 +37,7 @@ allprojects {
         failedTests << [
             "name": "${desc.name}",
             "project": "${test.project.path}",
-            "output": file("${task.testOutputsDir}/${ErrorReportingTestListener.getOutputLogName(desc)}"),
+            "output": file("${task.testOutputsDir}/${buildinfra.getOutputLogName(desc)}"),
             "reproduce": "gradlew ${project.path}:test --tests \"${desc.name}\" ${task.project.testOptionsForReproduceLine}"
         ]
       }

@@ -22,31 +22,37 @@ package org.apache.lucene.index;
  */
 public enum DocValuesType {
   /** No doc values for this field. */
-  NONE,
+  NONE(false),
   /** A per-document Number */
-  NUMERIC,
+  NUMERIC(true),
   /**
    * A per-document byte[]. Values may be larger than 32766 bytes, but different codecs may enforce
    * their own limits.
    */
-  BINARY,
+  BINARY(false),
   /**
    * A pre-sorted byte[]. Fields with this type only store distinct byte values and store an
    * additional offset pointer per document to dereference the shared byte[]. The stored byte[] is
    * presorted and allows access via document id, ordinal and by-value. Values must be {@code <=
    * 32766} bytes.
    */
-  SORTED,
+  SORTED(true),
   /**
    * A pre-sorted Number[]. Fields with this type store numeric values in sorted order according to
    * {@link Long#compare(long, long)}.
    */
-  SORTED_NUMERIC,
+  SORTED_NUMERIC(true),
   /**
    * A pre-sorted Set&lt;byte[]&gt;. Fields with this type only store distinct byte values and store
    * additional offset pointers per document to dereference the shared byte[]s. The stored byte[] is
    * presorted and allows access via document id, ordinal and by-value. Values must be {@code <=
    * 32766} bytes.
    */
-  SORTED_SET,
+  SORTED_SET(true);
+
+  final boolean supportsSkipIndex; // pkg-private for use in FieldInfo
+
+  DocValuesType(boolean supportsSkipIndex) {
+    this.supportsSkipIndex = supportsSkipIndex;
+  }
 }
