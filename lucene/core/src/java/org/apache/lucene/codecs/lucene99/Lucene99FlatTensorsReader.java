@@ -18,21 +18,15 @@
 package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.*;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
@@ -48,30 +42,32 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSi
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 /**
- * Reads vectors from the index segments.
+ * Reads tensors from the index segments.
  *
  * @lucene.experimental
  */
 public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatTensorsFormat.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
-  private final IndexInput vectorData;
+  private final IndexInput tensorData;
+  private final FlatTensorsScorer tensorsScorer;
 
-  public Lucene99FlatTensorsReader(SegmentReadState state, FlatVectorsScorer scorer)
+  public Lucene99FlatTensorsReader(SegmentReadState state, FlatTensorsScorer scorer)
       throws IOException {
-    super(scorer);
+    super(null);
+    tensorsScorer = scorer;
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
-      vectorData =
+      tensorData =
           openDataInput(
               state,
               versionMeta,
-              Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene99FlatTensorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene99FlatTensorsFormat.VECTOR_DATA_CODEC_NAME,
               // Flat formats are used to randomly access vectors from their node ID that is stored
               // in the HNSW graph.
               state.context.withReadAdvice(ReadAdvice.RANDOM));
@@ -83,10 +79,15 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
     }
   }
 
+  @Override
+  public FlatVectorsScorer getFlatVectorScorer() {
+    throw new UnsupportedOperationException("Tensor reader does not work on vector scorer");
+  }
+
   private int readMetadata(SegmentReadState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene99FlatVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene99FlatTensorsFormat.META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
@@ -94,9 +95,9 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene99FlatVectorsFormat.META_CODEC_NAME,
-                Lucene99FlatVectorsFormat.VERSION_START,
-                Lucene99FlatVectorsFormat.VERSION_CURRENT,
+                Lucene99FlatTensorsFormat.META_CODEC_NAME,
+                Lucene99FlatTensorsFormat.VERSION_START,
+                Lucene99FlatTensorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -125,8 +126,8 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene99FlatVectorsFormat.VERSION_START,
-              Lucene99FlatVectorsFormat.VERSION_CURRENT,
+              Lucene99FlatTensorsFormat.VERSION_START,
+              Lucene99FlatTensorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -169,18 +170,18 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
 
   @Override
   public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
+    CodecUtil.checksumEntireFile(tensorData);
   }
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+    if (fieldEntry.tensorEncoding != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
+              + fieldEntry.tensorEncoding
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
@@ -264,75 +265,88 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
   }
 
   private record FieldEntry(
-      VectorSimilarityFunction similarityFunction,
-      VectorEncoding vectorEncoding,
-      long vectorDataOffset,
-      long vectorDataLength,
+      FieldInfo info,
+      VectorEncoding tensorEncoding,
+      TensorSimilarityFunction similarityFunction,
+      long tensorDataOffset,
+      long tensorDataLength,
       int dimension,
       int size,
       OrdToDocDISIReaderConfiguration ordToDoc,
-      FieldInfo info) {
+      TensorDataOffsetsReaderConfiguration dataOffsets) {
 
     FieldEntry {
-      if (similarityFunction != info.getVectorSimilarityFunction()) {
+      if (similarityFunction != info.getTensorSimilarityFunction()) {
         throw new IllegalStateException(
-            "Inconsistent vector similarity function for field=\""
+            "Inconsistent tensor similarity function for field=\""
                 + info.name
                 + "\"; "
                 + similarityFunction
                 + " != "
-                + info.getVectorSimilarityFunction());
+                + info.getTensorSimilarityFunction());
       }
-      int infoVectorDimension = info.getVectorDimension();
-      if (infoVectorDimension != dimension) {
+      int infoDimension = info.getTensorDimension();
+      if (infoDimension != dimension) {
         throw new IllegalStateException(
-            "Inconsistent vector dimension for field=\""
+            "Inconsistent tensor dimension for field=\""
                 + info.name
                 + "\"; "
-                + infoVectorDimension
+                + infoDimension
                 + " != "
                 + dimension);
       }
 
-      int byteSize =
-          switch (info.getVectorEncoding()) {
-            case BYTE -> Byte.BYTES;
-            case FLOAT32 -> Float.BYTES;
-          };
-      long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
-      long numBytes = Math.multiplyExact(vectorBytes, size);
-      if (numBytes != vectorDataLength) {
-        throw new IllegalStateException(
-            "Vector data length "
-                + vectorDataLength
-                + " not matching size="
-                + size
-                + " * dim="
-                + dimension
-                + " * byteSize="
-                + byteSize
-                + " = "
-                + numBytes);
-      }
+      // Tensors have variable lengths as they can vary in vector count.
+//      int byteSize =
+//          switch (info.getTensorEncoding()) {
+//            case BYTE -> Byte.BYTES;
+//            case FLOAT32 -> Float.BYTES;
+//          };
+//      long vectorBytes = Math.multiplyExact((long) infoDimension, byteSize);
+//      long numBytes = Math.multiplyExact(vectorBytes, size);
+//      if (numBytes != vectorDataLength) {
+//        throw new IllegalStateException(
+//            "Vector data length "
+//                + vectorDataLength
+//                + " not matching size="
+//                + size
+//                + " * dim="
+//                + dimension
+//                + " * byteSize="
+//                + byteSize
+//                + " = "
+//                + numBytes);
+//      }
     }
 
     static FieldEntry create(IndexInput input, FieldInfo info) throws IOException {
-      final VectorEncoding vectorEncoding = readVectorEncoding(input);
-      final VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-      final var vectorDataOffset = input.readVLong();
-      final var vectorDataLength = input.readVLong();
+      final VectorEncoding tensorEncoding = readVectorEncoding(input);
+      final TensorSimilarityFunction similarityFunction = readSimilarityFunction(input);
+      final var tensorDataOffset = input.readVLong();
+      final var tensorDataLength = input.readVLong();
       final var dimension = input.readVInt();
       final var size = input.readInt();
       final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      final var dataOffsets = TensorDataOffsetsReaderConfiguration.fromStoredMeta(input);
       return new FieldEntry(
+          info,
+          tensorEncoding,
           similarityFunction,
-          vectorEncoding,
-          vectorDataOffset,
-          vectorDataLength,
+          tensorDataOffset,
+          tensorDataLength,
           dimension,
           size,
           ordToDoc,
-          info);
+          dataOffsets);
     }
+  }
+
+  public static TensorSimilarityFunction readSimilarityFunction(DataInput input)
+      throws IOException {
+    int fnId = input.readInt();
+    if (fnId < 0 || fnId >= TensorSimilarityFunction.values().length) {
+      throw new CorruptIndexException("Invalid tensor similarity function id: " + fnId, input);
+    }
+    return TensorSimilarityFunction.values()[fnId];
   }
 }
