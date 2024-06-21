@@ -154,7 +154,7 @@ public class StringValueFacetCounts extends Facets {
         final BytesRef term = docValues.lookupOrd(sparseCount.key);
         labelValues.add(new LabelAndValue(term.utf8ToString(), count));
       }
-    } else {
+    } else if (denseCounts != null) {
       for (int i = 0; i < denseCounts.length; i++) {
         int count = denseCounts[i];
         if (count != 0) {
@@ -206,7 +206,7 @@ public class StringValueFacetCounts extends Facets {
           }
         }
       }
-    } else {
+    } else if (denseCounts != null) {
       for (int i = 0; i < denseCounts.length; i++) {
         int count = denseCounts[i];
         if (count != 0) {
@@ -256,7 +256,13 @@ public class StringValueFacetCounts extends Facets {
       return -1;
     }
 
-    return sparseCounts != null ? sparseCounts.get(ord) : denseCounts[ord];
+    if (sparseCounts != null) {
+      return sparseCounts.get(ord);
+    }
+    if (denseCounts != null) {
+      return denseCounts[ord];
+    }
+    return 0;
   }
 
   @Override
