@@ -115,7 +115,7 @@ public abstract class RunAutomaton implements Accountable {
     }
 
     // Apply to RegexpQuery, WildcardQuery.
-    // TODO Track other transitions.
+    // TODO: Is it enough just check last transition is [0, 127]?.
     for (int i = 0; i < numTransitions; i++) {
       automaton.getTransition(state, i, transition);
       if (transition.min == 0 && transition.max == 127) {
@@ -131,7 +131,6 @@ public abstract class RunAutomaton implements Accountable {
   }
 
   /** Returns a string representation of this automaton. */
-  // TODO: Is it necessary to add matchAllSuffix to toString?.
   @Override
   public String toString() {
     StringBuilder b = new StringBuilder();
@@ -140,6 +139,8 @@ public abstract class RunAutomaton implements Accountable {
       b.append("state ").append(i);
       if (accept.get(i)) b.append(" [accept]:\n");
       else b.append(" [reject]:\n");
+      if (matchAllSuffix.get(i)) b.append(" [matchAllSuffix]:\n");
+      else b.append(" [can not matchAllSuffix]:\n");
       for (int j = 0; j < points.length; j++) {
         int k = transitions[i * points.length + j];
         if (k != -1) {
