@@ -42,6 +42,8 @@ Bug Fixes
 
 * GITHUB#13498: Avoid performance regression by constructing lazily the PointTree in NumericComparator, (Ignacio Vera)
 
+* GITHUB#13384: Fix highlighter to use longer passages instead of shorter individual terms. (Zack Kendall)
+
 * GITHUB#13463: Address bug in MultiLeafKnnCollector causing #minCompetitiveSimilarity to stay artificially low in
   some corner cases. (Greg Miller)
 
