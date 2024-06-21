@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -29,10 +28,6 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
   private static final class SimpleScorer extends Scorer {
     private int idx = 0;
     private int doc = -1;
-
-    public SimpleScorer(Weight weight) {
-      super(weight);
-    }
 
     @Override
     public float score() {
@@ -145,10 +140,7 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     writer.commit();
     IndexReader ir = writer.getReader();
     writer.close();
-    IndexSearcher searcher = newSearcher(ir);
-    Weight fake =
-        new TermQuery(new Term("fake", "weight")).createWeight(searcher, ScoreMode.COMPLETE, 1f);
-    Scorer s = new SimpleScorer(fake);
+    Scorer s = new SimpleScorer();
     ScoreCachingCollector scc = new ScoreCachingCollector(scores.length);
     LeafCollector lc = scc.getLeafCollector(null);
     lc.setScorer(s);

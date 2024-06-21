@@ -35,9 +35,27 @@ public class NumericDocValuesField extends Field {
   /** Type for numeric DocValues. */
   public static final FieldType TYPE = new FieldType();
 
+  private static final FieldType INDEXED_TYPE;
+
   static {
     TYPE.setDocValuesType(DocValuesType.NUMERIC);
     TYPE.freeze();
+
+    INDEXED_TYPE = new FieldType(TYPE);
+    INDEXED_TYPE.setDocValuesSkipIndex(true);
+    INDEXED_TYPE.freeze();
+  }
+
+  /**
+   * Creates a new {@link NumericDocValuesField} with the specified 64-bit long value that also
+   * creates a {@link FieldType#hasDocValuesSkipIndex() skip index}.
+   *
+   * @param name field name
+   * @param value 64-bit long value
+   * @throws IllegalArgumentException if the field name is null
+   */
+  public static NumericDocValuesField indexedField(String name, long value) {
+    return new NumericDocValuesField(name, value, INDEXED_TYPE);
   }
 
   /**
@@ -60,7 +78,11 @@ public class NumericDocValuesField extends Field {
    * @throws IllegalArgumentException if the field name is null
    */
   public NumericDocValuesField(String name, Long value) {
-    super(name, TYPE);
+    this(name, value, TYPE);
+  }
+
+  private NumericDocValuesField(String name, Long value, FieldType fieldType) {
+    super(name, fieldType);
     fieldsData = value;
   }
 

@@ -773,3 +773,23 @@ Additionally, `OrdinalsReader` (and sub-classes) are fully removed starting with
 classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on the default
 taxonomy facet encodings where possible. If custom formats are needed, users will need
 to manage the indexed data on their own and create new `Facet` implementations to use it.
+
+### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` methd is marked final 
+
+The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier 
+interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to 
+`Weight#scorerSupplier` for the scorer.
+
+### Reference to `weight` is removed from Scorer (GITHUB#13410)
+
+The `weight` has been removed from the Scorer class. Consequently, the constructor, `Scorer(Weight)`,and a getter, 
+`Scorer#getWeight`, has also been eliminated. References to weight have also been removed from nearly all the subclasses 
+of Scorer, including ConstantScoreScorer, TermScorer, and others.
+
+Additionally, several APIs have been modified to remove the weight reference, as it is no longer necessary. 
+Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderContext readerContext)` has been updated to 
+`FunctionValues#getScorer(LeafReaderContext readerContext)`.
+
+Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on 
+Scorer.
+

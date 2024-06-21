@@ -229,7 +229,7 @@ public class TestBoolean2 extends LuceneTestCase {
 
     // adjust the expected doc numbers according to our filler docs
     if (0 < NUM_FILLER_DOCS) {
-      expDocNrs = ArrayUtil.copyOfSubArray(expDocNrs, 0, expDocNrs.length);
+      expDocNrs = ArrayUtil.copyArray(expDocNrs);
       for (int i = 0; i < expDocNrs.length; i++) {
         expDocNrs[i] = PRE_FILLER_DOCS + ((NUM_FILLER_DOCS + 1) * expDocNrs[i]);
       }

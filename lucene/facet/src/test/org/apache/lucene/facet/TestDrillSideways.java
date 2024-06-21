@@ -72,6 +72,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
@@ -1306,31 +1307,36 @@ public class TestDrillSideways extends FacetTestCase {
               public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
                   throws IOException {
                 return new ConstantScoreWeight(this, boost) {
-
                   @Override
-                  public Scorer scorer(LeafReaderContext context) throws IOException {
+                  public ScorerSupplier scorerSupplier(LeafReaderContext context)
+                      throws IOException {
                     DocIdSetIterator approximation =
                         DocIdSetIterator.all(context.reader().maxDoc());
-                    return new ConstantScoreScorer(
-                        this,
-                        score(),
-                        scoreMode,
-                        new TwoPhaseIterator(approximation) {
+                    final var scorer =
+                        new ConstantScoreScorer(
+                            score(),
+                            scoreMode,
+                            new TwoPhaseIterator(approximation) {
 
-                          @Override
-                          public boolean matches() throws IOException {
-                            int docID = approximation.docID();
-                            return (Integer.parseInt(
-                                        context.reader().storedFields().document(docID).get("id"))
-                                    & 1)
-                                == 0;
-                          }
+                              @Override
+                              public boolean matches() throws IOException {
+                                int docID = approximation.docID();
+                                return (Integer.parseInt(
+                                            context
+                                                .reader()
+                                                .storedFields()
+                                                .document(docID)
+                                                .get("id"))
+                                        & 1)
+                                    == 0;
+                              }
 
-                          @Override
-                          public float matchCost() {
-                            return 1000f;
-                          }
-                        });
+                              @Override
+                              public float matchCost() {
+                                return 1000f;
+                              }
+                            });
+                    return new DefaultScorerSupplier(scorer);
                   }
 
                   @Override

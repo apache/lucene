@@ -497,6 +497,57 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     doTestRandomTopDocs(4, 1.0f, 0.5f, 0.05f, 0f);
   }
 
+  public void testExplainMatch() throws IOException {
+    // Both match
+    Query sub1 = tq("hed", "elephant");
+    Query sub2 = tq("dek", "elephant");
+
+    final DisjunctionMaxQuery dq = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+
+    final Weight dw = s.createWeight(s.rewrite(dq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = (LeafReaderContext) s.getTopReaderContext();
+    Explanation explanation = dw.explain(context, 1);
+
+    assertEquals("max of:", explanation.getDescription());
+    // Two matching sub queries should be included in the explanation details
+    assertEquals(2, explanation.getDetails().length);
+  }
+
+  public void testExplainNoMatch() throws IOException {
+    // No match
+    Query sub1 = tq("abc", "elephant");
+    Query sub2 = tq("def", "elephant");
+
+    final DisjunctionMaxQuery dq = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+
+    final Weight dw = s.createWeight(s.rewrite(dq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = (LeafReaderContext) s.getTopReaderContext();
+    Explanation explanation = dw.explain(context, 1);
+
+    assertEquals("No matching clause", explanation.getDescription());
+    // Two non-matching sub queries should be included in the explanation details
+    assertEquals(2, explanation.getDetails().length);
+  }
+
+  public void testExplainMatch_OneNonMatchingSubQuery_NotIncludedInExplanation()
+      throws IOException {
+    // Matches
+    Query sub1 = tq("hed", "elephant");
+
+    // Doesn't match
+    Query sub2 = tq("def", "elephant");
+
+    final DisjunctionMaxQuery dq = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+
+    final Weight dw = s.createWeight(s.rewrite(dq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = (LeafReaderContext) s.getTopReaderContext();
+    Explanation explanation = dw.explain(context, 1);
+
+    assertEquals("max of:", explanation.getDescription());
+    // Only the matching sub query (sub1) should be included in the explanation details
+    assertEquals(1, explanation.getDetails().length);
+  }
+
   private void doTestRandomTopDocs(int numFields, double... freqs) throws IOException {
     assert numFields == freqs.length;
     Directory dir = newDirectory();

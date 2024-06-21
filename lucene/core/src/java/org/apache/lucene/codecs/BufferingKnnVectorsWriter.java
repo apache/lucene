@@ -27,6 +27,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -159,6 +160,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     public int advance(int target) throws IOException {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
@@ -214,6 +220,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public int advance(int target) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
       throw new UnsupportedOperationException();
     }
   }
@@ -354,6 +365,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     public int advance(int target) {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private static class BufferedByteVectorValues extends ByteVectorValues {
@@ -412,6 +428,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public int advance(int target) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
       throw new UnsupportedOperationException();
     }
   }

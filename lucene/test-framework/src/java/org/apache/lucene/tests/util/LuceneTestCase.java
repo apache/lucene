@@ -89,7 +89,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -103,6 +102,7 @@ import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -3215,18 +3215,26 @@ public abstract class LuceneTestCase extends Assert {
     return it;
   }
 
-  protected KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
-    ServiceLoader<KnnVectorsFormat> formats = java.util.ServiceLoader.load(KnnVectorsFormat.class);
-    List<KnnVectorsFormat> availableFormats = new ArrayList<>();
-    for (KnnVectorsFormat f : formats) {
-      if (f.getName().equals(HnswBitVectorsFormat.NAME)) {
-        if (vectorEncoding.equals(VectorEncoding.BYTE)) {
-          availableFormats.add(f);
-        }
-      } else {
-        availableFormats.add(f);
-      }
+  private static boolean supportsVectorEncoding(
+      KnnVectorsFormat format, VectorEncoding vectorEncoding) {
+    if (format instanceof HnswBitVectorsFormat) {
+      // special case, this only supports BYTE
+      return vectorEncoding == VectorEncoding.BYTE;
     }
+    return true;
+  }
+
+  private static boolean supportsVectorSearch(KnnVectorsFormat format) {
+    return (format instanceof FlatVectorsFormat) == false;
+  }
+
+  protected static KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
+    List<KnnVectorsFormat> availableFormats =
+        KnnVectorsFormat.availableKnnVectorsFormats().stream()
+            .map(KnnVectorsFormat::forName)
+            .filter(format -> supportsVectorEncoding(format, vectorEncoding))
+            .filter(format -> supportsVectorSearch(format))
+            .toList();
     return RandomPicks.randomFrom(random(), availableFormats);
   }
 }

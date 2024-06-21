@@ -185,10 +185,27 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
+        public void prefetch(long offset, long length) throws IOException {
+          slice.prefetch(offset, length);
+        }
+
+        @Override
         public String toString() {
           return "RandomAccessInput(" + IndexInput.this.toString() + ")";
         }
       };
     }
   }
+
+  /**
+   * Optional method: Give a hint to this input that some bytes will be read in the near future.
+   * IndexInput implementations may take advantage of this hint to start fetching pages of data
+   * immediately from storage.
+   *
+   * <p>The default implementation is a no-op.
+   *
+   * @param offset start offset
+   * @param length the number of bytes to prefetch
+   */
+  public void prefetch(long offset, long length) throws IOException {}
 }

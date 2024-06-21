@@ -17,8 +17,13 @@
 package org.apache.lucene.analysis;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestWordlistLoader extends LuceneTestCase {
@@ -76,5 +81,17 @@ public class TestWordlistLoader extends LuceneTestCase {
     assertTrue(wordset.contains("five"));
     assertTrue(wordset.contains("six"));
     assertTrue(wordset.contains("seven"));
+  }
+
+  public void testGetLines() throws IOException {
+    String s = "One \n#Comment \n \n Two \n  Three  \n";
+    Charset charset = StandardCharsets.UTF_8;
+    byte[] sByteArr = s.getBytes(charset);
+    InputStream sInputStream = new ByteArrayInputStream(sByteArr);
+    List<String> lines = WordlistLoader.getLines(sInputStream, charset);
+    assertEquals(3, lines.size());
+    assertEquals("One", lines.get(0));
+    assertEquals("Two", lines.get(1));
+    assertEquals("Three", lines.get(2));
   }
 }

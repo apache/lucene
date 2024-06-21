@@ -23,7 +23,7 @@ dependencies {
   moduleApi project(':lucene:core')
   moduleApi project(':lucene:analysis:common')
 
-  moduleApi 'com.ibm.icu:icu4j'
+  moduleApi deps.icu4j
 
   moduleTestImplementation project(':lucene:test-framework')
 }

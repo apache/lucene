@@ -33,7 +33,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "org.eclipse.jgit:org.eclipse.jgit:${scriptDepVersions['jgit']}"
+    classpath deps.jgit
   }
 }
 

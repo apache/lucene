@@ -141,7 +141,6 @@ public class TermQuery extends Query {
                 topLevelScoringClause);
           } else {
             return new TermScorer(
-                TermWeight.this,
                 termsEnum.postings(
                     null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE),
                 scorer);
@@ -158,15 +157,6 @@ public class TermQuery extends Query {
           topLevelScoringClause = true;
         }
       };
-    }
-
-    @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      ScorerSupplier supplier = scorerSupplier(context);
-      if (supplier == null) {
-        return null;
-      }
-      return supplier.get(Long.MAX_VALUE);
     }
 
     @Override

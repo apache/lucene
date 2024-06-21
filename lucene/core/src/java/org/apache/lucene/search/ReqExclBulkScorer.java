@@ -22,26 +22,46 @@ import org.apache.lucene.util.Bits;
 final class ReqExclBulkScorer extends BulkScorer {
 
   private final BulkScorer req;
-  private final DocIdSetIterator excl;
+  private final DocIdSetIterator exclApproximation;
+  private final TwoPhaseIterator exclTwoPhase;
+
+  ReqExclBulkScorer(BulkScorer req, Scorer excl) {
+    this.req = req;
+    this.exclTwoPhase = excl.twoPhaseIterator();
+    if (exclTwoPhase != null) {
+      this.exclApproximation = exclTwoPhase.approximation();
+    } else {
+      this.exclApproximation = excl.iterator();
+    }
+  }
 
   ReqExclBulkScorer(BulkScorer req, DocIdSetIterator excl) {
     this.req = req;
-    this.excl = excl;
+    this.exclTwoPhase = null;
+    this.exclApproximation = excl;
+  }
+
+  ReqExclBulkScorer(BulkScorer req, TwoPhaseIterator excl) {
+    this.req = req;
+    this.exclTwoPhase = excl;
+    this.exclApproximation = excl.approximation();
   }
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     int upTo = min;
-    int exclDoc = excl.docID();
+    int exclDoc = exclApproximation.docID();
 
     while (upTo < max) {
       if (exclDoc < upTo) {
-        exclDoc = excl.advance(upTo);
+        exclDoc = exclApproximation.advance(upTo);
       }
       if (exclDoc == upTo) {
-        // upTo is excluded so we can consider that we scored up to upTo+1
-        upTo += 1;
-        exclDoc = excl.nextDoc();
+        if (exclTwoPhase == null || exclTwoPhase.matches()) {
+          // upTo is excluded so we can consider that we scored up to upTo+1
+          upTo += 1;
+        }
+        exclDoc = exclApproximation.nextDoc();
       } else {
         upTo = req.score(collector, acceptDocs, upTo, Math.min(exclDoc, max));
       }

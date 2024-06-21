@@ -44,7 +44,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.ReadAdvice;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -361,10 +360,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       DirectMonotonicReader.Meta offsetsMeta,
       long offsetsOffset,
       int offsetsBlockShift,
-      long offsetsLength)
-      implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
+      long offsetsLength) {
 
     static FieldEntry create(
         IndexInput input,
@@ -422,13 +418,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           offsetsOffset,
           offsetsBlockShift,
           offsetsLength);
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE
-          + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(offsetsMeta);
     }
   }
 

@@ -462,7 +462,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           return null;
         }
 
@@ -1178,7 +1178,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           return null;
         }
 
@@ -1355,15 +1355,30 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      scorerCalled.set(true);
-      return in.scorer(context);
-    }
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final var scorerSupplier = in.scorerSupplier(context);
+      if (scorerSupplier == null) {
+        return null;
+      }
+      final var scorer = scorerSupplier.get(Long.MAX_VALUE);
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          scorerCalled.set(true);
+          return scorer;
+        }
 
-    @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      bulkScorerCalled.set(true);
-      return in.bulkScorer(context);
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          bulkScorerCalled.set(true);
+          return in.bulkScorer(context);
+        }
+
+        @Override
+        public long cost() {
+          return scorer.iterator().cost();
+        }
+      };
     }
   }
 
@@ -1536,7 +1551,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           return null;
         }
 
@@ -1608,23 +1623,18 @@ public class TestLRUQueryCache extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          return scorerSupplier(context).get(Long.MAX_VALUE);
-        }
-
-        @Override
         public boolean isCacheable(LeafReaderContext ctx) {
           return true;
         }
 
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          final Weight weight = this;
+          final var scorer = new ConstantScoreScorer(boost, scoreMode, DocIdSetIterator.all(1));
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
               scorerCreated.set(true);
-              return new ConstantScoreScorer(weight, boost, scoreMode, DocIdSetIterator.all(1));
+              return scorer;
             }
 
             @Override
@@ -1709,12 +1719,21 @@ public class TestLRUQueryCache extends LuceneTestCase {
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
       return new ConstantScoreWeight(this, 1) {
-
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          scorerCreatedCount.incrementAndGet();
-          return new ConstantScoreScorer(
-              this, 1, scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              scorerCreatedCount.incrementAndGet();
+              return new ConstantScoreScorer(
+                  1, scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+            }
+
+            @Override
+            public long cost() {
+              return context.reader().maxDoc();
+            }
+          };
         }
 
         @Override

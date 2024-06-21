@@ -111,10 +111,11 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
         throw convertMapFailedIOException(ioe, resourceDescription, segSize);
       }
       // if preload apply it without madvise.
-      // if chunk size is too small (2 MiB), disable madvise support (incorrect alignment)
+      // skip madvise if the address of our segment is not page-aligned (small segments due to
+      // internal FileChannel logic)
       if (preload) {
         segment.load();
-      } else if (nativeAccess.isPresent() && chunkSizePower >= 21) {
+      } else if (nativeAccess.filter(na -> segment.address() % na.getPageSize() == 0).isPresent()) {
         nativeAccess.get().madvise(segment, readAdvice);
       }
       segments[segNr] = segment;

@@ -153,7 +153,6 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
             return null; // no values/docs so nothing can match
           }
 
-          final Weight weight = this;
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
@@ -164,8 +163,7 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
 
               if (termsEnum.next() == null) {
                 // no matching terms
-                return new ConstantScoreScorer(
-                    weight, score(), scoreMode, DocIdSetIterator.empty());
+                return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
               }
 
               // Create a bit set for the "term set" ordinals (these are the terms provided by the
@@ -184,8 +182,7 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
 
               // no terms matched in this segment
               if (maxOrd < 0) {
-                return new ConstantScoreScorer(
-                    weight, score(), scoreMode, DocIdSetIterator.empty());
+                return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
               }
 
               final SortedDocValues singleton = DocValues.unwrapSingleton(values);
@@ -227,7 +224,7 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
                     };
               }
 
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override
@@ -237,15 +234,6 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               return values.cost();
             }
           };
-        }
-
-        @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          final ScorerSupplier scorerSupplier = scorerSupplier(context);
-          if (scorerSupplier == null) {
-            return null;
-          }
-          return scorerSupplier.get(Long.MAX_VALUE);
         }
 
         @Override
