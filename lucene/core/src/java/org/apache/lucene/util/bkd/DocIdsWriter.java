@@ -30,6 +30,7 @@ final class DocIdsWriter {
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_BPV_16 = (byte) 16;
+  private static final byte BPV_21 = (byte) 21;
   private static final byte BPV_24 = (byte) 24;
   private static final byte BPV_32 = (byte) 32;
   // These signs are legacy, should no longer be used in the writing side.
@@ -108,7 +109,33 @@ final class DocIdsWriter {
         out.writeShort((short) scratch[count - 1]);
       }
     } else {
-      if (max <= 0xFFFFFF) {
+      if (max <= 0x001FFFFF) {
+        out.writeByte(BPV_21);
+        int i = 0;
+        for (; i < count - 8; i += 9) {
+          long l1 = ((docIds[i] & 0x001FFFFFL) << 42) |
+                  ((docIds[i + 1] & 0x001FFFFFL) << 21) |
+                  (docIds[i + 2] & 0x001FFFFFL);
+          long l2 = ((docIds[i + 3] & 0x001FFFFFL) << 42) |
+                  ((docIds[i + 4] & 0x001FFFFFL) << 21) |
+                  (docIds[i + 5] & 0x001FFFFFL);
+          long l3 = ((docIds[i + 6] & 0x001FFFFFL) << 42) |
+                  ((docIds[i + 7] & 0x001FFFFFL) << 21) |
+                  (docIds[i + 8] & 0x001FFFFFL);
+          out.writeLong(l1);
+          out.writeLong(l2);
+          out.writeLong(l3);
+        }
+        for (; i < count - 2; i += 3) {
+          long packedLong = ((docIds[i] & 0x001FFFFFL) << 42) |
+                  ((docIds[i + 1] & 0x001FFFFFL) << 21) |
+                  (docIds[i + 2] & 0x001FFFFFL);
+          out.writeLong(packedLong);
+        }
+        for (; i < count; i++) {
+          out.writeInt(docIds[i]);
+        }
+      } else if (max <= 0xFFFFFF) {
         out.writeByte(BPV_24);
         // write them the same way we are reading them.
         int i;
@@ -191,6 +218,9 @@ final class DocIdsWriter {
       case DELTA_BPV_16:
         readDelta16(in, count, docIDs);
         break;
+      case BPV_21:
+        readInts21(in, count, docIDs);
+        break;
       case BPV_24:
         readInts24(in, count, docIDs);
         break;
@@ -253,6 +283,33 @@ final class DocIdsWriter {
     }
   }
 
+  private void readInts21(IndexInput in, int count, int[] docIDs) throws IOException {
+    int i = 0;
+    for (; i < count - 8; i += 9) {
+      long l1 = in.readLong();
+      long l2 = in.readLong();
+      long l3 = in.readLong();
+      docIDs[i] = (int) (l1 >>> 42);
+      docIDs[i + 1] = (int) ((l1 & 0x000003FFFFE00000L) >>> 21);
+      docIDs[i + 2] = (int) (l1 & 0x001FFFFFL);
+      docIDs[i + 3] = (int) (l2 >>> 42);
+      docIDs[i + 4] = (int) ((l2 & 0x000003FFFFE00000L) >>> 21);
+      docIDs[i + 5] = (int) (l2 & 0x001FFFFFL);
+      docIDs[i + 6] = (int) (l3 >>> 42);
+      docIDs[i + 7] = (int) ((l3 & 0x000003FFFFE00000L) >>> 21);
+      docIDs[i + 8] = (int) (l3 & 0x001FFFFFL);
+    }
+    for (; i < count - 2; i += 3) {
+      long packedLong = in.readLong();
+      docIDs[i] = (int) (packedLong >>> 42);
+      docIDs[i + 1] = (int) ((packedLong & 0x000003FFFFE00000L) >>> 21);
+      docIDs[i + 2] = (int) (packedLong & 0x001FFFFFL);
+    }
+    for (; i < count; i++) {
+      docIDs[i] = in.readInt();
+    }
+  }
+
   private static void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
@@ -292,6 +349,9 @@ final class DocIdsWriter {
         break;
       case DELTA_BPV_16:
         readDelta16(in, count, visitor);
+        break;
+      case BPV_21:
+        readInts21(in, count, visitor);
         break;
       case BPV_24:
         readInts24(in, count, visitor);
@@ -335,6 +395,13 @@ final class DocIdsWriter {
 
   private void readDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     readDelta16(in, count, scratch);
+    scratchIntsRef.ints = scratch;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
+  }
+
+  private void readInts21(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+    readInts21(in, count, scratch);
     scratchIntsRef.ints = scratch;
     scratchIntsRef.length = count;
     visitor.visit(scratchIntsRef);
