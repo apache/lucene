@@ -21,10 +21,16 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
-import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.TensorSimilarityFunction;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
@@ -32,6 +38,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 import java.io.IOException;
@@ -53,12 +60,12 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput tensorData;
-  private final FlatTensorsScorer tensorsScorer;
+  private final FlatTensorsScorer tensorScorer;
 
   public Lucene99FlatTensorsReader(SegmentReadState state, FlatTensorsScorer scorer)
       throws IOException {
     super(null);
-    tensorsScorer = scorer;
+    tensorScorer = scorer;
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -185,83 +192,77 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapFloatVectorValues.load(
+    return OffHeapFloatTensorValues.load(
         fieldEntry.similarityFunction,
-        vectorScorer,
+        tensorScorer,
         fieldEntry.ordToDoc,
-        fieldEntry.vectorEncoding,
+        fieldEntry.dataOffsets,
+        fieldEntry.tensorEncoding,
         fieldEntry.dimension,
-        fieldEntry.vectorDataOffset,
-        fieldEntry.vectorDataLength,
-        vectorData);
+        fieldEntry.tensorDataOffset,
+        fieldEntry.tensorDataLength,
+        tensorData);
   }
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+    if (fieldEntry.tensorEncoding != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
+              + fieldEntry.tensorEncoding
               + " expected: "
               + VectorEncoding.BYTE);
     }
-    return OffHeapByteVectorValues.load(
+    return OffHeapByteTensorValues.load(
         fieldEntry.similarityFunction,
-        vectorScorer,
+        tensorScorer,
         fieldEntry.ordToDoc,
-        fieldEntry.vectorEncoding,
+        fieldEntry.dataOffsets,
+        fieldEntry.tensorEncoding,
         fieldEntry.dimension,
-        fieldEntry.vectorDataOffset,
-        fieldEntry.vectorDataLength,
-        vectorData);
+        fieldEntry.tensorDataOffset,
+        fieldEntry.tensorDataLength,
+        tensorData);
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+    if (fieldEntry == null || fieldEntry.tensorEncoding != VectorEncoding.FLOAT32) {
       return null;
     }
-    return vectorScorer.getRandomVectorScorer(
+    // target tensor should consist of vectors with the same dimension as field
+    if (target.length % fieldEntry.dimension != 0) {
+      return null;
+    }
+    return tensorScorer.getRandomTensorScorer(
         fieldEntry.similarityFunction,
-        OffHeapFloatVectorValues.load(
-            fieldEntry.similarityFunction,
-            vectorScorer,
-            fieldEntry.ordToDoc,
-            fieldEntry.vectorEncoding,
-            fieldEntry.dimension,
-            fieldEntry.vectorDataOffset,
-            fieldEntry.vectorDataLength,
-            vectorData),
+        (RandomAccessVectorValues.Floats) getFloatVectorValues(field),
         target);
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+    if (fieldEntry == null || fieldEntry.tensorEncoding != VectorEncoding.BYTE) {
       return null;
     }
-    return vectorScorer.getRandomVectorScorer(
+    // target tensor should consist of vectors with the same dimension as field
+    if (target.length % fieldEntry.dimension != 0) {
+      return null;
+    }
+    return tensorScorer.getRandomTensorScorer(
         fieldEntry.similarityFunction,
-        OffHeapByteVectorValues.load(
-            fieldEntry.similarityFunction,
-            vectorScorer,
-            fieldEntry.ordToDoc,
-            fieldEntry.vectorEncoding,
-            fieldEntry.dimension,
-            fieldEntry.vectorDataOffset,
-            fieldEntry.vectorDataLength,
-            vectorData),
+        (RandomAccessVectorValues.Bytes) getByteVectorValues(field),
         target);
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData);
+    IOUtils.close(tensorData);
   }
 
   private record FieldEntry(
@@ -295,28 +296,6 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
                 + " != "
                 + dimension);
       }
-
-      // Tensors have variable lengths as they can vary in vector count.
-//      int byteSize =
-//          switch (info.getTensorEncoding()) {
-//            case BYTE -> Byte.BYTES;
-//            case FLOAT32 -> Float.BYTES;
-//          };
-//      long vectorBytes = Math.multiplyExact((long) infoDimension, byteSize);
-//      long numBytes = Math.multiplyExact(vectorBytes, size);
-//      if (numBytes != vectorDataLength) {
-//        throw new IllegalStateException(
-//            "Vector data length "
-//                + vectorDataLength
-//                + " not matching size="
-//                + size
-//                + " * dim="
-//                + dimension
-//                + " * byteSize="
-//                + byteSize
-//                + " = "
-//                + numBytes);
-//      }
     }
 
     static FieldEntry create(IndexInput input, FieldInfo info) throws IOException {
