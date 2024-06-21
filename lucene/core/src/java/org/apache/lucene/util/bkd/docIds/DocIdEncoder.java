@@ -21,16 +21,12 @@ public interface DocIdEncoder {
                 return new Bit21With3StepsAddEncoder();
             } else if (parsedEncoderName.equalsIgnoreCase(Bit21WithArrEncoder.class.getSimpleName())) {
                 return new Bit21WithArrEncoder();
-            } else if (parsedEncoderName.equalsIgnoreCase(Bit21With1StepAddEncoder.class.getSimpleName())) {
-                return new Bit21With1StepAddEncoder();
             } else if (parsedEncoderName.equalsIgnoreCase(Bit21With2StepsAddAndShortByteEncoder.class.getSimpleName())) {
                 return new Bit21With2StepsAddAndShortByteEncoder();
             } else if (parsedEncoderName.equalsIgnoreCase(Bit21With3StepsAddAndShortByteEncoder.class.getSimpleName())) {
                 return new Bit21With3StepsAddAndShortByteEncoder();
             } else if (parsedEncoderName.equalsIgnoreCase(Bit21With2StepsAddEncoder.class.getSimpleName())) {
                 return new Bit21With2StepsAddEncoder();
-            } else if (parsedEncoderName.equalsIgnoreCase(Bit21With3StepsSingleLoopAddEncoder.class.getSimpleName())) {
-                return new Bit21With3StepsSingleLoopAddEncoder();
             } else {
                 throw new IllegalArgumentException("Unknown DocIdEncoder " + encoderName);
             }
