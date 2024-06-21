@@ -285,6 +285,8 @@ Bug Fixes
 * GITHUB#13463: Address bug in MultiLeafKnnCollector causing #minCompetitiveSimilarity to stay artificially low in
   some corner cases. (Greg Miller)
 
+* GITHUB#13493: StringValueFacetCunts stops throwing NPE when faceting over an empty match-set. (Grebennikov Roman,
+  Stefan Vodita)
 
 Other
 --------------------
