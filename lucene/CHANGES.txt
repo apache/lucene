@@ -17,6 +17,9 @@ Bug Fixes
 * GITHUB#12431: Fix IndexOutOfBoundsException thrown in DefaultPassageFormatter
   by unordered matches. (Stephane Campinas)
 
+* GITHUB#13493: StringValueFacetCunts stops throwing NPE when faceting over an empty match-set. (Grebennikov Roman,
+  Stefan Vodita)
+
 ======================== Lucene 9.11.0 =======================
 
 API Changes
