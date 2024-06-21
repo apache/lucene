@@ -52,15 +52,13 @@ public interface FlatTensorsScorer {
    * @param similarityFunction the similarity function to use
    * @param values the tensor values to score
    * @param target the target tensor with vector values packed in a single array
-   * @param dimension the dimension for each vector in the tensor
    * @return a {@link RandomVectorScorer} for the given field and target tensor.
    * @throws IOException if an I/O error occurs when reading from the index.
    */
-  RandomVectorScorer getRandomVectorScorer(
+  RandomVectorScorer getRandomTensorScorer(
       TensorSimilarityFunction similarityFunction,
       RandomAccessVectorValues values,
-      float[] target,
-      int dimension)
+      float[] target)
       throws IOException;
 
   /**
@@ -69,14 +67,12 @@ public interface FlatTensorsScorer {
    * @param similarityFunction the similarity function to use
    * @param values the tensor values to score
    * @param target the target tensor with vector values packed in a single array
-   * @param dimension the dimension for each vector in the tensor
    * @return a {@link RandomVectorScorer} for the given field and target tensor.
    * @throws IOException if an I/O error occurs when reading from the index.
    */
-  RandomVectorScorer getRandomVectorScorer(
+  RandomVectorScorer getRandomTensorScorer(
       TensorSimilarityFunction similarityFunction,
       RandomAccessVectorValues values,
-      byte[] target,
-      int dimension)
+      byte[] target)
       throws IOException;
 }

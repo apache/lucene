@@ -21,8 +21,6 @@ import org.apache.lucene.util.ArrayUtil;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.lucene.util.VectorUtil.*;
-
 /**
  * Tensor similarity function; used in search to return top K most similar vectors to a target
  * tensor. This is a label describing the method used during indexing and searching of the tensors
@@ -36,14 +34,14 @@ public enum TensorSimilarityFunction {
    */
   SUM_MAX_EUCLIDEAN {
     @Override
-    public float compare(List<float[]> t1, List<float[]> t2) {
-      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.EUCLIDEAN);
+    public float compare(float[] t1, float[] t2, int dimension) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.EUCLIDEAN, dimension);
     }
 
-//    @Override
-//    public float compare(byte[] v1, byte[] v2) {
-//      throw new UnsupportedOperationException("not implemented for tensors");
-//    }
+    @Override
+    public float compare(byte[] t1, byte[] t2, int dimension) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.EUCLIDEAN, dimension);
+    }
   },
 
   /**
@@ -55,14 +53,13 @@ public enum TensorSimilarityFunction {
    */
   SUM_MAX_DOT_PRODUCT {
     @Override
-    public float compare(List<float[]> t1, List<float[]> t2) {
-      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.DOT_PRODUCT);
+    public float compare(float[] t1, float[] t2, int dimension) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.DOT_PRODUCT, dimension);
     }
 
-//    @Override
-//    public float compare(byte[] v1, byte[] v2) {
-//      throw new UnsupportedOperationException("not implemented for tensors");
-//    }
+    public float compare(byte[] t1, byte[] t2, int dimension) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.DOT_PRODUCT, dimension);
+    }
   },
 
   /**
@@ -73,14 +70,14 @@ public enum TensorSimilarityFunction {
    */
   SUM_MAX_COSINE {
     @Override
-    public float compare(List<float[]> t1, List<float[]> t2) {
-      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.COSINE);
+    public float compare(float[] t1, float[] t2, int dimension) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.COSINE, dimension);
     }
 
-//    @Override
-//    public float compare(byte[] v1, byte[] v2) {
-//      return (1 + cosine(v1, v2)) / 2;
-//    }
+    @Override
+    public float compare(byte[] t1, byte[] t2, int dimension) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.COSINE, dimension);
+    }
   },
 
   /**
@@ -90,14 +87,14 @@ public enum TensorSimilarityFunction {
    */
   SUM_MAXIMUM_INNER_PRODUCT {
     @Override
-    public float compare(List<float[]> t1, List<float[]> t2) {
-      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+    public float compare(float[] t1, float[] t2, int dimension) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, dimension);
     }
 
-//    @Override
-//    public float compare(byte[] v1, byte[] v2) {
-//      return scaleMaxInnerProductScore(dotProduct(v1, v2));
-//    }
+    @Override
+    public float compare(byte[] t1, byte[] t2, int dimension) {
+      return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, dimension);
+    }
   };
 
   /**
@@ -105,53 +102,84 @@ public enum TensorSimilarityFunction {
    * similarity scores correspond to closer vectors.
    *
    * @param t1 a tensor with non-empty vectors
+   *           All vector values are concatenated in a single packed array.
    * @param t2 another tensor, vectors of the same dimension as t1.
+   *           All vector values are concatenated in a single packed array.
    * @return the value of the similarity function applied to the two tensors
    */
-  public abstract float compare(List<float[]> t1, List<float[]> t2);
+  public abstract float compare(float[] t1, float[] t2, int dimension);
 
-  /** Helper function that works with packed tensor floats */
-  public float compare(float[] t1, float[] t2, int dimension) {
-    if (t1.length % dimension != 0 || t2.length % dimension != 0) {
-      throw new IllegalArgumentException("Tensor vectors do not match provided dimensions");
-    }
-    List<float[]> a = new ArrayList<>();
-    List<float[]> b = new ArrayList<>();
-    for (int i = 0; i <= t1.length; i += dimension) {
-      a.add(ArrayUtil.copyOfSubArray(t1, i, dimension));
-    }
-    for (int i = 0; i <= t2.length; i += dimension) {
-      b.add(ArrayUtil.copyOfSubArray(t2, i, dimension));
-    }
-    return compare(a, b);
-  }
-
-//    /**
-//   * Calculates a similarity score between the two vectors with a specified function. Higher
-//   * similarity scores correspond to closer vectors. Each (signed) byte represents a vector
-//   * dimension.
-//   *
-//   * @param v1 a vector
-//   * @param v2 another vector, of the same dimension
-//   * @return the value of the similarity function applied to the two vectors
-//   */
-//  public abstract float compare(byte[] v1, byte[] v2);
+  /**
+   * Calculates a similarity score between the two tensors with a specified function. Higher
+   * similarity scores correspond to closer vectors.
+   *
+   * @param t1 a tensor with non-empty vectors.
+   *           All vector values are concatenated in a single packed array.
+   * @param t2 another tensor, vectors of the same dimension as t1.
+   *           All vector values are concatenated in a single packed array.
+   * @return the value of the similarity function applied to the two tensors
+   */
+  public abstract float compare(byte[] t1, byte[] t2, int dimension);
 
   /**
    * Compute SumMaxSimilarity between two tensors.
    * Returns the sum of maximum similarity found for each vector in the outer tensor against all vectors
    * in the inner tensor. Uses {@param vectorSimilarityFunction} to compute similarity between two vectors.
    *
-   * @param outer Outer tensor
-   * @param inner Inner tensor
+   * @param outerTensor Outer tensor
+   * @param innerTensor Inner tensor
    * @param vectorSimilarityFunction Function to compute vector similarity
+   * @param dimension Dimension for each vector in the tensors
    * @return The sum of max similarity between outer - inner vector tensors
    */
-  public float sumMaxSimilarity(List<float[]> outer, List<float[]> inner, VectorSimilarityFunction vectorSimilarityFunction) {
+  public float sumMaxSimilarity(float[] outerTensor,
+                                float[] innerTensor,
+                                VectorSimilarityFunction vectorSimilarityFunction,
+                                int dimension) {
+    if (outerTensor.length % dimension != 0 || innerTensor.length % dimension != 0) {
+      throw new IllegalArgumentException("Tensor vectors do not match provided dimensions");
+    }
+    List<float[]> outer = new ArrayList<>();
+    List<float[]> inner = new ArrayList<>();
+    for (int i = 0; i <= outerTensor.length; i += dimension) {
+      outer.add(ArrayUtil.copyOfSubArray(outerTensor, i, dimension));
+    }
+    for (int i = 0; i <= innerTensor.length; i += dimension) {
+      inner.add(ArrayUtil.copyOfSubArray(innerTensor, i, dimension));
+    }
+
     float result = 0f;
     for (float[] o: outer) {
       float maxSim = Float.MIN_VALUE;
       for (float[] i: inner) {
+        maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(o, i));
+      }
+      result += maxSim;
+    }
+    return result;
+  }
+
+  /** SumMaxSimilarity for byte tensors */
+  public float sumMaxSimilarity(byte[] outerTensor,
+                                byte[] innerTensor,
+                                VectorSimilarityFunction vectorSimilarityFunction,
+                                int dimension) {
+    if (outerTensor.length % dimension != 0 || innerTensor.length % dimension != 0) {
+      throw new IllegalArgumentException("Tensor vectors do not match provided dimensions");
+    }
+    List<byte[]> outer = new ArrayList<>();
+    List<byte[]> inner = new ArrayList<>();
+    for (int i = 0; i <= outerTensor.length; i += dimension) {
+      outer.add(ArrayUtil.copyOfSubArray(outerTensor, i, dimension));
+    }
+    for (int i = 0; i <= innerTensor.length; i += dimension) {
+      inner.add(ArrayUtil.copyOfSubArray(innerTensor, i, dimension));
+    }
+
+    float result = 0f;
+    for (byte[] o: outer) {
+      float maxSim = Float.MIN_VALUE;
+      for (byte[] i: inner) {
         maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(o, i));
       }
       result += maxSim;
