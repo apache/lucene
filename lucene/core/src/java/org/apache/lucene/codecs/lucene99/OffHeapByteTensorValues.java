@@ -206,7 +206,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
     public VectorScorer scorer(byte[] query) throws IOException {
       DenseOffHeapTensorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
-          flatTensorsScorer.getRandomVectorScorer(similarityFunction, copy, query, dimension);
+          flatTensorsScorer.getRandomTensorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -309,7 +309,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
     public VectorScorer scorer(byte[] query) throws IOException {
       SparseOffHeapTensorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
-          flatTensorsScorer.getRandomVectorScorer(similarityFunction, copy, query, dimension);
+          flatTensorsScorer.getRandomTensorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {

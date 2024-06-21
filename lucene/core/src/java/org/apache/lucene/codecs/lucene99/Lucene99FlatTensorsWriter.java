@@ -77,7 +77,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  // TODO: modify the FlatVectorsScorer to include tensors
   public Lucene99FlatTensorsWriter(SegmentWriteState state, FlatTensorsScorer scorer)
       throws IOException {
     super(null);
@@ -291,7 +290,7 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     // Since we know we will not be searching for additional indexing, we can just write the
-    // the vectors directly to the new segment.
+    // the tensors directly to the new segment.
     long tensorDataOffset = tensorData.alignFilePointer(Float.BYTES);
     // No need to use temporary file as we don't have to re-open for reading
     DocsWithFieldSet docsWithField =
