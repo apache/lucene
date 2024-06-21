@@ -20,7 +20,7 @@ package org.apache.lucene.codecs.lucene99;
 import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -37,22 +37,22 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /** Read the tensor values from the index input. This supports both iterated and random access. */
-public abstract class OffHeapFloatTensorValues extends FloatVectorValues
-    implements RandomAccessVectorValues.Floats {
+public abstract class OffHeapByteTensorValues extends ByteVectorValues
+    implements RandomAccessVectorValues.Bytes {
 
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
   protected final IndexInput tensorData;
   protected int lastOrd = -1;
-  protected float[] value;
+  protected byte[] value;
   protected ByteBuffer valueBuffer;
   protected final TensorSimilarityFunction similarityFunction;
   protected final FlatTensorsScorer flatTensorsScorer;
   protected final DirectMonotonicReader dataOffsetsReader;
   protected final TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration;
 
-  public OffHeapFloatTensorValues(
+  public OffHeapByteTensorValues(
       int dimension,
       int size,
       IndexInput slice,
@@ -93,33 +93,26 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
+  public byte[] vectorValue(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
       return value;
     }
     long offset = dataOffsetsReader.get(targetOrd);
+    int length = (int)(dataOffsetsReader.get(targetOrd + 1) - offset);
+    if (value == null || valueBuffer.capacity() < length) {
+      valueBuffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN);
+    }
 
-    // Todo: switch to using ByteBuffer post manual testing
-    int length = (int)(dataOffsetsReader.get(targetOrd + 1) - offset) / Float.BYTES;
-    value = new float[length];
     slice.seek(offset);
-    slice.readFloats(value, 0, length);
-
-//    // Use a ByteBuffer to avoid reallocation
-//    int length = (int)(dataOffsetsReader.get(targetOrd + 1) - offset);
-//    if (valueBuffer == null || valueBuffer.capacity() < length) {
-//      valueBuffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN);
-//    }
-//    valueBuffer.reset();
-//    slice.seek(offset);
-//    slice.readBytes(valueBuffer.array(), valueBuffer.arrayOffset(), length);
-//    value = valueBuffer.slice(0, length).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().array();
-
+    valueBuffer.reset();
+    slice.readBytes(valueBuffer.array(), valueBuffer.arrayOffset(), length);
+    value = valueBuffer.slice(0, length).array();
+    assert value.length == length;
     lastOrd = targetOrd;
     return value;
   }
 
-  public static OffHeapFloatTensorValues load(
+  public static OffHeapByteTensorValues load(
       TensorSimilarityFunction tensorSimilarityFunction,
       FlatTensorsScorer flatTensorsScorer,
       OrdToDocDISIReaderConfiguration configuration,
@@ -130,7 +123,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
       long tensorDataLength,
       IndexInput tensorData)
       throws IOException {
-    if (configuration.docsWithFieldOffset == -2 || tensorEncoding != VectorEncoding.FLOAT32) {
+    if (configuration.docsWithFieldOffset == -2 || tensorEncoding != VectorEncoding.BYTE) {
       return new EmptyOffHeapTensorValues(dimension, flatTensorsScorer, tensorSimilarityFunction);
     }
     IndexInput tensorDataSlice = tensorData.slice("tensor-data", tensorDataOffset, tensorDataLength);
@@ -159,7 +152,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
    * Dense tensor values that are stored off-heap.
    * This is the case when every doc has a tensor, and docId is the same as tensor ordinal.
    */
-  public static class DenseOffHeapTensorValues extends OffHeapFloatTensorValues {
+  public static class DenseOffHeapTensorValues extends OffHeapByteTensorValues {
 
     private int doc = -1;
 
@@ -175,7 +168,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       return vectorValue(doc);
     }
 
@@ -210,7 +203,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] query) throws IOException {
+    public VectorScorer scorer(byte[] query) throws IOException {
       DenseOffHeapTensorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
           flatTensorsScorer.getRandomVectorScorer(similarityFunction, copy, query, dimension);
@@ -228,7 +221,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
   }
 
-  private static class SparseOffHeapTensorValues extends OffHeapFloatTensorValues {
+  private static class SparseOffHeapTensorValues extends OffHeapByteTensorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     private final OrdToDocDISIReaderConfiguration configuration;
@@ -257,7 +250,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       return vectorValue(disi.index());
     }
 
@@ -313,7 +306,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] query) throws IOException {
+    public VectorScorer scorer(byte[] query) throws IOException {
       SparseOffHeapTensorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
           flatTensorsScorer.getRandomVectorScorer(similarityFunction, copy, query, dimension);
@@ -331,7 +324,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
   }
 
-  private static class EmptyOffHeapTensorValues extends OffHeapFloatTensorValues {
+  private static class EmptyOffHeapTensorValues extends OffHeapByteTensorValues {
 
     public EmptyOffHeapTensorValues(
         int dimension,
@@ -353,7 +346,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -378,7 +371,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) {
+    public byte[] vectorValue(int targetOrd) {
       throw new UnsupportedOperationException();
     }
 
@@ -393,7 +386,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] query) {
+    public VectorScorer scorer(byte[] query) {
       return null;
     }
   }
