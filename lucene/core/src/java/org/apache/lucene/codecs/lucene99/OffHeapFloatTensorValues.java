@@ -28,6 +28,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
@@ -93,20 +94,24 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
+  public int getVectorByteLength() {
+    return value.length * VectorEncoding.FLOAT32.byteSize;
+  }
+
+  protected float[] vectorValue(int targetOrd, LongValues dataOffsets) throws IOException {
     if (lastOrd == targetOrd) {
       return value;
     }
-    long offset = dataOffsetsReader.get(targetOrd);
+    long offset = dataOffsets.get(targetOrd);
 
-    // Todo: switch to using ByteBuffer post manual testing
-    int length = (int)(dataOffsetsReader.get(targetOrd + 1) - offset) / Float.BYTES;
+    // Todo: switch to using ByteBuffer
+    int length = (int)(dataOffsets.get(targetOrd + 1) - offset) / Float.BYTES;
     value = new float[length];
     slice.seek(offset);
     slice.readFloats(value, 0, length);
 
 //    // Use a ByteBuffer to avoid reallocation
-//    int length = (int)(dataOffsetsReader.get(targetOrd + 1) - offset);
+//    int length = (int)(dataOffsets.get(targetOrd + 1) - offset);
 //    if (valueBuffer == null || valueBuffer.capacity() < length) {
 //      valueBuffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN);
 //    }
@@ -117,6 +122,11 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
 
     lastOrd = targetOrd;
     return value;
+  }
+
+  @Override
+  public float[] vectorValue(int targetOrd) throws IOException {
+    return vectorValue(targetOrd, dataOffsetsReader);
   }
 
   public static OffHeapFloatTensorValues load(
@@ -213,7 +223,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     public VectorScorer scorer(float[] query) throws IOException {
       DenseOffHeapTensorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
-          flatTensorsScorer.getRandomVectorScorer(similarityFunction, copy, query, dimension);
+          flatTensorsScorer.getRandomTensorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -225,6 +235,32 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
           return copy;
         }
       };
+    }
+  }
+
+  public static class DenseOffHeapTensorValuesWithOffsets extends DenseOffHeapTensorValues {
+    final LongValues dataOffsets;
+
+    public DenseOffHeapTensorValuesWithOffsets(
+        int dimension,
+        int size,
+        IndexInput slice,
+        FlatTensorsScorer flatTensorsScorer,
+        TensorSimilarityFunction similarityFunction,
+        LongValues tensorDataOffsets) throws IOException {
+      super(dimension, size, slice, null, flatTensorsScorer, similarityFunction, null);
+      dataOffsets = tensorDataOffsets;
+    }
+
+    @Override
+    public float[] vectorValue(int targetOrd) throws IOException {
+      return vectorValue(targetOrd, dataOffsets);
+    }
+
+    @Override
+    public DenseOffHeapTensorValues copy() throws IOException {
+      return new DenseOffHeapTensorValuesWithOffsets(
+          dimension, size, slice.clone(), flatTensorsScorer, similarityFunction, dataOffsets);
     }
   }
 
@@ -316,7 +352,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     public VectorScorer scorer(float[] query) throws IOException {
       SparseOffHeapTensorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
-          flatTensorsScorer.getRandomVectorScorer(similarityFunction, copy, query, dimension);
+          flatTensorsScorer.getRandomTensorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
