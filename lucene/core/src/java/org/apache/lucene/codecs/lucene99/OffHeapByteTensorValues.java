@@ -28,6 +28,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
@@ -93,12 +94,16 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
   }
 
   @Override
-  public byte[] vectorValue(int targetOrd) throws IOException {
+  public int getVectorByteLength() {
+    return value.length * VectorEncoding.BYTE.byteSize;
+  }
+
+  protected byte[] vectorValue(int targetOrd, LongValues dataOffsets) throws IOException {
     if (lastOrd == targetOrd) {
       return value;
     }
-    long offset = dataOffsetsReader.get(targetOrd);
-    int length = (int)(dataOffsetsReader.get(targetOrd + 1) - offset);
+    long offset = dataOffsets.get(targetOrd);
+    int length = (int)(dataOffsets.get(targetOrd + 1) - offset);
     if (value == null || valueBuffer.capacity() < length) {
       valueBuffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN);
     }
@@ -110,6 +115,11 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
     assert value.length == length;
     lastOrd = targetOrd;
     return value;
+  }
+
+  @Override
+  public byte[] vectorValue(int targetOrd) throws IOException {
+    return vectorValue(targetOrd, dataOffsetsReader);
   }
 
   public static OffHeapByteTensorValues load(
@@ -218,6 +228,32 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
           return copy;
         }
       };
+    }
+  }
+
+  public static class DenseOffHeapTensorValuesWithOffsets extends OffHeapByteTensorValues.DenseOffHeapTensorValues {
+    final LongValues dataOffsets;
+
+    public DenseOffHeapTensorValuesWithOffsets(
+        int dimension,
+        int size,
+        IndexInput slice,
+        FlatTensorsScorer flatTensorsScorer,
+        TensorSimilarityFunction similarityFunction,
+        LongValues tensorDataOffsets) throws IOException {
+      super(dimension, size, slice, null, flatTensorsScorer, similarityFunction, null);
+      dataOffsets = tensorDataOffsets;
+    }
+
+    @Override
+    public byte[] vectorValue(int targetOrd) throws IOException {
+      return vectorValue(targetOrd, dataOffsets);
+    }
+
+    @Override
+    public DenseOffHeapTensorValues copy() throws IOException {
+      return new DenseOffHeapTensorValuesWithOffsets(
+          dimension, size, slice.clone(), flatTensorsScorer, similarityFunction, dataOffsets);
     }
   }
 

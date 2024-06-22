@@ -143,14 +143,23 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   public static final class MergedVectorValues {
     private MergedVectorValues() {}
 
+    private static void validateFieldEncoding(FieldInfo fieldInfo, VectorEncoding expected) {
+      assert fieldInfo != null && (fieldInfo.hasVectorValues() || fieldInfo.hasTensorValues());
+      if (fieldInfo.hasTensorValues() && fieldInfo.hasVectorValues()) {
+        throw new IllegalStateException("Same field cannot be of both vector and tensor type");
+      }
+      VectorEncoding fieldEncoding =
+          fieldInfo.hasVectorValues() ? fieldInfo.getVectorEncoding() : fieldInfo.getTensorEncoding();
+      if (fieldEncoding != expected) {
+        throw new UnsupportedOperationException(
+            "Cannot merge field encoded as [" + fieldEncoding + "] as " + expected);
+      }
+    }
+
     /** Returns a merged view over all the segment's {@link FloatVectorValues}. */
     public static FloatVectorValues mergeFloatVectorValues(
         FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      assert fieldInfo != null && fieldInfo.hasVectorValues();
-      if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
-        throw new UnsupportedOperationException(
-            "Cannot merge vectors encoded as [" + fieldInfo.getVectorEncoding() + "] as FLOAT32");
-      }
+      validateFieldEncoding(fieldInfo, VectorEncoding.FLOAT32);
       List<VectorValuesSub> subs = new ArrayList<>();
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
@@ -167,11 +176,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     /** Returns a merged view over all the segment's {@link ByteVectorValues}. */
     public static ByteVectorValues mergeByteVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
-      assert fieldInfo != null && fieldInfo.hasVectorValues();
-      if (fieldInfo.getVectorEncoding() != VectorEncoding.BYTE) {
-        throw new UnsupportedOperationException(
-            "Cannot merge vectors encoded as [" + fieldInfo.getVectorEncoding() + "] as BYTE");
-      }
+      validateFieldEncoding(fieldInfo, VectorEncoding.BYTE);
       List<ByteVectorValuesSub> subs = new ArrayList<>();
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
