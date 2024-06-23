@@ -53,7 +53,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99FlatTensorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
