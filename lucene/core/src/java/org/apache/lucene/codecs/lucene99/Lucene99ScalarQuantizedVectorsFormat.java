@@ -57,6 +57,9 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   /** The maximum confidence interval */
   private static final float MAXIMUM_CONFIDENCE_INTERVAL = 1f;
 
+  /** Dynamic confidence interval */
+  public static final float DYNAMIC_CONFIDENCE_INTERVAL = 0f;
+
   /**
    * Controls the confidence interval used to scalar quantize the vectors the default value is
    * calculated as `1-1/(vector_dimensions + 1)`
@@ -76,7 +79,8 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    * Constructs a format using the given graph construction parameters.
    *
    * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
-   *     it is calculated dynamically.
+   *     it is calculated based on the vector dimension. When `0`, the quantiles are dynamically
+   *     determined by sampling many confidence intervals and determining the most accurate pair.
    * @param bits the number of bits to use for scalar quantization (must be between 1 and 8,
    *     inclusive)
    * @param compress whether to compress the vectors, if true, the vectors that are quantized with
@@ -85,7 +89,9 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    */
   public Lucene99ScalarQuantizedVectorsFormat(
       Float confidenceInterval, int bits, boolean compress) {
+    super(NAME);
     if (confidenceInterval != null
+        && confidenceInterval != DYNAMIC_CONFIDENCE_INTERVAL
         && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL
             || confidenceInterval > MAXIMUM_CONFIDENCE_INTERVAL)) {
       throw new IllegalArgumentException(
@@ -93,6 +99,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
               + MINIMUM_CONFIDENCE_INTERVAL
               + " and "
               + MAXIMUM_CONFIDENCE_INTERVAL
+              + " or 0"
               + "; confidenceInterval="
               + confidenceInterval);
     }

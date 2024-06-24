@@ -586,7 +586,7 @@ public class TestJoinUtil extends LuceneTestCase {
             }
             NumericDocValues price = context.reader().getNumericDocValues(field);
             final var scorer =
-                new FilterScorer(fieldScorer, this) {
+                new FilterScorer(fieldScorer) {
                   @Override
                   public float score() throws IOException {
                     assertEquals(in.docID(), price.advance(in.docID()));

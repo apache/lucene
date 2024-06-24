@@ -107,7 +107,6 @@ public class RandomApproximationQuery extends Query {
     private final RandomTwoPhaseView twoPhaseView;
 
     RandomApproximationScorer(Scorer scorer, Random random) {
-      super(scorer.getWeight());
       this.scorer = scorer;
       this.twoPhaseView = new RandomTwoPhaseView(random, scorer.iterator());
     }

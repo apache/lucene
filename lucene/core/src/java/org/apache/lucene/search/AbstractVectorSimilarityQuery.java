@@ -201,8 +201,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
     final DocIdSetIterator iterator;
     final float[] cachedScore;
 
-    VectorSimilarityScorer(Weight weight, DocIdSetIterator iterator, float[] cachedScore) {
-      super(weight);
+    VectorSimilarityScorer(DocIdSetIterator iterator, float[] cachedScore) {
       this.iterator = iterator;
       this.cachedScore = cachedScore;
     }
@@ -253,7 +252,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             }
           };
 
-      return new VectorSimilarityScorer(weight, iterator, cachedScore);
+      return new VectorSimilarityScorer(iterator, cachedScore);
     }
 
     static VectorSimilarityScorer fromAcceptDocs(
@@ -282,7 +281,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             }
           };
 
-      return new VectorSimilarityScorer(weight, iterator, cachedScore);
+      return new VectorSimilarityScorer(iterator, cachedScore);
     }
 
     @Override

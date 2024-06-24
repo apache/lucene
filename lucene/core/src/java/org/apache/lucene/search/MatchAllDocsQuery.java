@@ -33,13 +33,12 @@ public final class MatchAllDocsQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Weight weight = this;
         return new ScorerSupplier() {
 
           @Override
           public Scorer get(long leadCost) throws IOException {
             return new ConstantScoreScorer(
-                weight, score(), scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+                score(), scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
           }
 
           @Override

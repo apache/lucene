@@ -204,7 +204,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         float[] scores = new float[reader.maxDoc()];
         values.intersect(new MergePointVisitor(sortedPackedPoints, result, scores));
         final var scorer =
-            new Scorer(this) {
+            new Scorer() {
 
               DocIdSetIterator disi = new BitSetIterator(result, 10L);
 
@@ -276,8 +276,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         if (cmp == 0) {
           // Query point equals index point, so collect and return
           if (multipleValuesPerDocument) {
-            if (result.get(docID) == false) {
-              result.set(docID);
+            if (result.getAndSet(docID) == false) {
               scores[docID] = nextScore;
             }
           } else {

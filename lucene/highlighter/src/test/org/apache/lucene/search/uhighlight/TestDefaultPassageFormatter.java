@@ -18,6 +18,7 @@
 package org.apache.lucene.search.uhighlight;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 public class TestDefaultPassageFormatter extends LuceneTestCase {
   public void testBasic() throws Exception {
@@ -51,5 +52,27 @@ public class TestDefaultPassageFormatter extends LuceneTestCase {
         "Test customization &amp; &lt;div class=&quot;xy&quot;&gt;&amp;quot;escaping&amp;quot;"
             + "&lt;&#x2F;div&gt; of this <u>very</u> formatter.\u2026 It&#x27;s not <u>very</u> N&#x2F;A!",
         formatter.format(passages, text));
+  }
+
+  public void testOverlappingPassages() throws Exception {
+    String content = "Yin yang loooooooooong, yin gap yang yong";
+    Passage[] passages = new Passage[1];
+    passages[0] = new Passage();
+    passages[0].setStartOffset(0);
+    passages[0].setEndOffset(41);
+    passages[0].setScore(5.93812f);
+    passages[0].setScore(5.93812f);
+    passages[0].addMatch(0, 3, new BytesRef("yin"), 1);
+    passages[0].addMatch(0, 22, new BytesRef("yin yang loooooooooooong"), 1);
+    passages[0].addMatch(4, 8, new BytesRef("yang"), 1);
+    passages[0].addMatch(9, 22, new BytesRef("loooooooooong"), 1);
+    passages[0].addMatch(24, 27, new BytesRef("yin"), 1);
+    passages[0].addMatch(32, 36, new BytesRef("yang"), 1);
+
+    // test default
+    DefaultPassageFormatter formatter = new DefaultPassageFormatter();
+    assertEquals(
+        "<b>Yin yang loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong",
+        formatter.format(passages, content));
   }
 }

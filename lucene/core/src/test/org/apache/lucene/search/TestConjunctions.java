@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.analysis.Analyzer;
@@ -147,21 +148,27 @@ public class TestConjunctions extends LuceneTestCase {
     private final AtomicBoolean setScorerCalled = new AtomicBoolean(false);
 
     @Override
-    public void setScorer(Scorable s) throws IOException {
-      Collection<Scorer.ChildScorable> childScorers = s.getChildren();
-      setScorerCalled.set(true);
-      assertEquals(2, childScorers.size());
+    public void setWeight(Weight weight) {
+      BooleanQuery query = (BooleanQuery) weight.getQuery();
+      List<BooleanClause> clauseList = query.clauses();
+      assertEquals(2, clauseList.size());
       Set<String> terms = new HashSet<>();
-      for (Scorer.ChildScorable childScorer : childScorers) {
-        Query query = ((Scorer) childScorer.child).getWeight().getQuery();
-        assertTrue(query instanceof TermQuery);
-        Term term = ((TermQuery) query).getTerm();
+      for (BooleanClause clause : clauseList) {
+        assert (clause.query() instanceof TermQuery);
+        Term term = ((TermQuery) clause.query()).getTerm();
         assertEquals("field", term.field());
         terms.add(term.text());
       }
       assertEquals(2, terms.size());
       assertTrue(terms.contains("a"));
       assertTrue(terms.contains("b"));
+    }
+
+    @Override
+    public void setScorer(Scorable s) throws IOException {
+      Collection<Scorer.ChildScorable> childScorers = s.getChildren();
+      setScorerCalled.set(true);
+      assertEquals(2, childScorers.size());
     }
 
     @Override

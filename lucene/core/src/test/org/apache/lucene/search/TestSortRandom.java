@@ -268,10 +268,7 @@ public class TestSortRandom extends LuceneTestCase {
 
           final var scorer =
               new ConstantScoreScorer(
-                  this,
-                  score(),
-                  scoreMode,
-                  new BitSetIterator(bits, bits.approximateCardinality()));
+                  score(), scoreMode, new BitSetIterator(bits, bits.approximateCardinality()));
           return new DefaultScorerSupplier(scorer);
         }
 

@@ -31,8 +31,6 @@ import org.apache.lucene.search.Weight.DefaultBulkScorer;
 import org.apache.lucene.util.Bits;
 
 final class BooleanScorerSupplier extends ScorerSupplier {
-
-  private final Weight weight;
   private final Map<BooleanClause.Occur, Collection<ScorerSupplier>> subs;
   private final ScoreMode scoreMode;
   private final int minShouldMatch;
@@ -65,7 +63,6 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         == 0) {
       throw new IllegalArgumentException("There should be at least one positive clause");
     }
-    this.weight = weight;
     this.subs = subs;
     this.scoreMode = scoreMode;
     this.minShouldMatch = minShouldMatch;
@@ -121,8 +118,8 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       // no scoring clauses but scores are needed so we wrap the scorer in
       // a constant score in order to allow early termination
       return scorer.twoPhaseIterator() != null
-          ? new ConstantScoreScorer(weight, 0f, scoreMode, scorer.twoPhaseIterator())
-          : new ConstantScoreScorer(weight, 0f, scoreMode, scorer.iterator());
+          ? new ConstantScoreScorer(0f, scoreMode, scorer.twoPhaseIterator())
+          : new ConstantScoreScorer(0f, scoreMode, scorer.iterator());
     }
     return scorer;
   }
@@ -159,7 +156,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
               subs.get(Occur.MUST_NOT),
               leadCost);
       Scorer opt = opt(subs.get(Occur.SHOULD), minShouldMatch, scoreMode, leadCost, false);
-      return new ConjunctionScorer(weight, Arrays.asList(req, opt), Arrays.asList(req, opt));
+      return new ConjunctionScorer(Arrays.asList(req, opt), Arrays.asList(req, opt));
     } else {
       assert scoreMode.needsScores();
       return new ReqOptSumScorer(
@@ -237,7 +234,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       Scorer prohibitedScorer =
           prohibited.size() == 1
               ? prohibited.get(0)
-              : new DisjunctionSumScorer(weight, prohibited, ScoreMode.COMPLETE_NO_SCORES);
+              : new DisjunctionSumScorer(prohibited, ScoreMode.COMPLETE_NO_SCORES);
       return new ReqExclBulkScorer(positiveScorer, prohibitedScorer);
     }
   }
@@ -349,8 +346,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return new ConjunctionBulkScorer(requiredScoring, requiredNoScoring);
     }
     if (scoreMode == ScoreMode.TOP_SCORES && requiredScoring.size() > 1) {
-      requiredScoring =
-          Collections.singletonList(new BlockMaxConjunctionScorer(weight, requiredScoring));
+      requiredScoring = Collections.singletonList(new BlockMaxConjunctionScorer(requiredScoring));
     }
     Scorer conjunctionScorer;
     if (requiredNoScoring.size() + requiredScoring.size() == 1) {
@@ -378,7 +374,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       List<Scorer> required = new ArrayList<>();
       required.addAll(requiredScoring);
       required.addAll(requiredNoScoring);
-      conjunctionScorer = new ConjunctionScorer(weight, required, requiredScoring);
+      conjunctionScorer = new ConjunctionScorer(required, requiredScoring);
     }
     return new DefaultBulkScorer(conjunctionScorer);
   }
@@ -433,14 +429,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         scoringScorers.add(scorer);
       }
       if (scoreMode == ScoreMode.TOP_SCORES && scoringScorers.size() > 1 && topLevelScoringClause) {
-        Scorer blockMaxScorer = new BlockMaxConjunctionScorer(weight, scoringScorers);
+        Scorer blockMaxScorer = new BlockMaxConjunctionScorer(scoringScorers);
         if (requiredScorers.isEmpty()) {
           return blockMaxScorer;
         }
         scoringScorers = Collections.singletonList(blockMaxScorer);
       }
       requiredScorers.addAll(scoringScorers);
-      return new ConjunctionScorer(weight, requiredScorers, scoringScorers);
+      return new ConjunctionScorer(requiredScorers, scoringScorers);
     }
   }
 
@@ -477,9 +473,9 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       // However, as WANDScorer uses more complex algorithm and data structure, we would like to
       // still use DisjunctionSumScorer to handle exhaustive pure disjunctions, which may be faster
       if ((scoreMode == ScoreMode.TOP_SCORES && topLevelScoringClause) || minShouldMatch > 1) {
-        return new WANDScorer(weight, optionalScorers, minShouldMatch, scoreMode);
+        return new WANDScorer(optionalScorers, minShouldMatch, scoreMode);
       } else {
-        return new DisjunctionSumScorer(weight, optionalScorers, scoreMode);
+        return new DisjunctionSumScorer(optionalScorers, scoreMode);
       }
     }
   }
