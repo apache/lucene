@@ -7,6 +7,8 @@ import org.apache.lucene.facet.range.LongRange;
 
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.LongValues;
+import org.apache.lucene.search.LongValuesSource;
 
 
 import java.io.IOException;
@@ -26,8 +28,9 @@ import java.util.Map;
 public class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     private final LongRangeNode root;
 
-    OverlappingLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
-        super(field, longValuesSource, longRanges);
+    OverlappingLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource,
+                                    LongValuesSource singleLongValuesSource, LongRange[] longRanges) {
+        super(field, longValuesSource, singleLongValuesSource, longRanges);
 
         // Build binary tree on top of intervals:
         root = split(0, elementaryIntervals.size(), elementaryIntervals);
@@ -127,17 +130,69 @@ public class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
     @Override
     public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
-        MultiLongValues values = valuesSource.getValues(context);
-        return new OverlappingRangeFacetLeafCutter(values, boundaries, pos, requestedRangeCount, root);
+        if (singleValues != null) {
+            LongValues values = singleValues.getValues(context, null);
+            return new OverlappingSinglevaluedRangeFacetLeafCutter(values, boundaries, pos, requestedRangeCount, root);
+        } else {
+            MultiLongValues values = valuesSource.getValues(context);
+            return new OverlappingMultivaluedRangeFacetLeafCutter(values, boundaries, pos, requestedRangeCount, root);
+        }
     }
 
-    static class OverlappingRangeFacetLeafCutter extends LongRangeFacetLeafCutter {
+    static class OverlappingMultivaluedRangeFacetLeafCutter extends LongRangeMultivaluedFacetLeafCutter {
 
         LongRangeNode elementaryIntervalRoot;
 
         private int elementaryIntervalUpto;
 
-        OverlappingRangeFacetLeafCutter(MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount, LongRangeNode elementaryIntervalRoot) {
+        OverlappingMultivaluedRangeFacetLeafCutter(MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount, LongRangeNode elementaryIntervalRoot) {
+            super(longValues, boundaries, pos, requestedRangeCount);
+            requestedIntervalTracker = new IntervalTracker.MultiIntervalTracker(requestedRangeCount);
+            this.elementaryIntervalRoot = elementaryIntervalRoot;
+        }
+
+        @Override
+        void maybeRollUp(IntervalTracker rollUpInto) {
+            elementaryIntervalUpto = 0;
+            rollupMultiValued(elementaryIntervalRoot);
+        }
+
+        // Note: combined rollUpSingleValued and rollUpMultiValued from OverlappingLongRangeCounter into 1 rollUp method
+        private boolean rollupMultiValued(LongRangeNode node) {
+            boolean containedHit;
+            if (node.left != null) {
+                containedHit = rollupMultiValued(node.left);
+                containedHit |= rollupMultiValued(node.right);
+            } else {
+                // Leaf:
+                containedHit = elementaryIntervalTracker.get(elementaryIntervalUpto);
+                elementaryIntervalUpto++;
+            }
+            if (containedHit && node.outputs != null) {
+                for (int rangeIndex : node.outputs) {
+                    requestedIntervalTracker.set(rangeIndex);
+                }
+            }
+
+            return containedHit;
+        }
+
+        @Override
+        public int nextOrd() throws IOException {
+            if (requestedIntervalTracker == null) {
+                return NO_MORE_ORDS;
+            }
+            return requestedIntervalTracker.nextOrd();
+        }
+    }
+
+    static class OverlappingSinglevaluedRangeFacetLeafCutter extends LongRangeSinglevaluedFacetLeafCutter {
+
+        LongRangeNode elementaryIntervalRoot;
+
+        private int elementaryIntervalUpto;
+
+        OverlappingSinglevaluedRangeFacetLeafCutter(LongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount, LongRangeNode elementaryIntervalRoot) {
             super(longValues, boundaries, pos, requestedRangeCount);
             requestedIntervalTracker = new IntervalTracker.MultiIntervalTracker(requestedRangeCount);
             this.elementaryIntervalRoot = elementaryIntervalRoot;

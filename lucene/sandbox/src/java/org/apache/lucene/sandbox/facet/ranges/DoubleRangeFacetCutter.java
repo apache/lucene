@@ -6,6 +6,8 @@ import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DoubleValuesSource;
+import org.apache.lucene.search.LongValuesSource;
 
 import java.io.IOException;
 
@@ -15,9 +17,11 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
     LongRangeFacetCutter longRangeFacetCutter;
 
     MultiDoubleValuesSource multiDoubleValuesSource;
+    DoubleValuesSource singleDoubleValuesSource;
     DoubleRange[] doubleRanges;
 
     MultiLongValuesSource multiLongValuesSource;
+    LongValuesSource singleLongValuesSource;
 
     LongRange[] longRanges;
 
@@ -28,10 +32,15 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
     public DoubleRangeFacetCutter(String field, MultiDoubleValuesSource valuesSource, DoubleRange[] doubleRanges) {
         super(field);
         this.multiDoubleValuesSource = valuesSource;
+        this.singleDoubleValuesSource = MultiDoubleValuesSource.unwrapSingleton(valuesSource);
         this.doubleRanges = doubleRanges;
-        this.multiLongValuesSource = multiDoubleValuesSource.toPreciseMultiLongValuesSource();
+        if (singleDoubleValuesSource != null) { // TODO: ugly!
+            this.singleLongValuesSource = singleDoubleValuesSource.toPreciseLongDoubleValuesSource();
+        } else {
+            this.multiLongValuesSource = multiDoubleValuesSource.toPreciseMultiLongValuesSource();
+        }
         this.longRanges = mapDoubleRangesToLongWithPrecision(doubleRanges);
-        this.longRangeFacetCutter = LongRangeFacetCutter.create(field, multiLongValuesSource, longRanges);
+        this.longRangeFacetCutter = LongRangeFacetCutter.create(field, multiLongValuesSource, singleLongValuesSource, longRanges);
     }
     @Override
     public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {

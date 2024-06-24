@@ -5,6 +5,8 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.LongValues;
+import org.apache.lucene.search.LongValuesSource;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,8 +17,9 @@ import java.util.List;
  * TODO: it doesn't need to be public?
  * **/
 public class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
-    ExclusiveLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
-        super(field, longValuesSource, longRanges);
+    ExclusiveLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource,
+                                  LongValuesSource singleLongValuesSource, LongRange[] longRanges) {
+        super(field, longValuesSource, singleLongValuesSource, longRanges);
     }
 
     @Override
@@ -47,13 +50,18 @@ public class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
 
     @Override
     public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
-        MultiLongValues values = valuesSource.getValues(context);
-        return new ExclusiveLongRangeFacetLeafCutter(values, boundaries, pos, requestedRangeCount);
+        if (singleValues != null) {
+            LongValues values = singleValues.getValues(context, null);
+            return new ExclusiveLongRangeSinglevalueFacetLeafCutter(values, boundaries, pos, requestedRangeCount);
+        } else {
+            MultiLongValues values = valuesSource.getValues(context);
+            return new ExclusiveLongRangeMultivalueFacetLeafCutter(values, boundaries, pos, requestedRangeCount);
+        }
     }
 
-    static class ExclusiveLongRangeFacetLeafCutter extends LongRangeFacetLeafCutter {
+    static class ExclusiveLongRangeMultivalueFacetLeafCutter extends LongRangeMultivaluedFacetLeafCutter {
 
-        ExclusiveLongRangeFacetLeafCutter(MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
+        ExclusiveLongRangeMultivalueFacetLeafCutter(MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
             super(longValues, boundaries, pos, requestedRangeCount);
         }
 
@@ -69,6 +77,30 @@ public class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
                 }
                 int result = pos[ordinal];
                 if (result != SKIP_INTERVAL_POSITION) {
+                    return result;
+                }
+            }
+        }
+    }
+
+    static class ExclusiveLongRangeSinglevalueFacetLeafCutter extends LongRangeSinglevaluedFacetLeafCutter {
+        ExclusiveLongRangeSinglevalueFacetLeafCutter(LongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
+            super(longValues, boundaries, pos, requestedRangeCount);
+        }
+
+        @Override
+        public int nextOrd() throws IOException {
+            /*if (elementaryIntervalTracker == null) {
+                return NO_MORE_ORDS;
+            }*/
+            while (true) {
+                int ordinal = elementaryIntervalTracker.nextOrd();
+                if (ordinal == NO_MORE_ORDS) {
+                    return NO_MORE_ORDS;
+                }
+                int result = pos[ordinal];
+                if (result != SKIP_INTERVAL_POSITION) {
+                    // TODO: as soon as we return single interval here we can set nextOrd to NO_MORE_ORDS
                     return result;
                 }
             }
