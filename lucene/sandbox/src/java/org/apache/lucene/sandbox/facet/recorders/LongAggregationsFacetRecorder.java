@@ -28,7 +28,7 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     private final LongValuesSource[] longValuesSources;
     private final Reducer[] reducers;
 
-    /** TODO */
+    /** Constructor. */
     public LongAggregationsFacetRecorder(LongValuesSource[] longValuesSources, Reducer[] reducers) {
         assert longValuesSources.length == reducers.length;
         this.longValuesSources = longValuesSources;

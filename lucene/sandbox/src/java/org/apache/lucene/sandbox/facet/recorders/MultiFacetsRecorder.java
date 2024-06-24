@@ -9,7 +9,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import java.io.IOException;
 
 /**
- *  {@link FacetRecorder} that "chains" multiple FacetRecorder types.
+ *  {@link FacetRecorder} that contains multiple FacetRecorders.
  * */
 public final class MultiFacetsRecorder implements FacetRecorder {
 
@@ -53,6 +53,7 @@ public final class MultiFacetsRecorder implements FacetRecorder {
 
         @Override
         public void record(int docId, int facetId) throws IOException {
+            // TODO: handle collection terminated exception
             for (FacetLeafRecorder leafRecorder: delegates) {
                 leafRecorder.record(docId, facetId);
             }

@@ -10,6 +10,8 @@ import java.io.IOException;
  * Instances may be reused by clearing the current iterator
  * E.g. LongRangeFacetCutter uses IntervalTracker instances to map ranges to ordinals and track per-range data and
  * retrieve recorded ranges for a data set.
+ *
+ * TODO: it doesn't have to be public?
  **/
 public interface IntervalTracker extends OrdinalIterator {
     /** track information for the seen input interval **/
@@ -18,17 +20,19 @@ public interface IntervalTracker extends OrdinalIterator {
     /** return number of intervals seen **/
     int size();
 
-    /** clear recorded information on this tracker. Ideally, this should unset any state set by freeze() **/
+    /** clear recorded information on this tracker. **/
     void clear();
 
-    /** check if any data for interval has been recorded **/
+    /** check if any data for the interval has been recorded **/
     boolean get(int index);
 
     /** finalise any state before read operations can be performed on this OrdinalIterator */
     void freeze();
 
     /** Interval Tracker that tracks data for one interval only. The interval is recorded only once iff data belonging to
-     * the interval is encountered **/
+     * the interval is encountered.
+     * TODO: deprecate if not needed (if we have dedicated classes to handle single value sources).
+     * **/
     class SingleIntervalTracker implements IntervalTracker {
 
         int tracker;

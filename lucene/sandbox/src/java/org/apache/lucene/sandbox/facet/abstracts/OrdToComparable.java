@@ -2,7 +2,7 @@ package org.apache.lucene.sandbox.facet.abstracts;
 
 /**
  * Generates {@link Comparable} for provided ordinal.
- * For e.g. it can be used to find topN facet ordinals.
+ * For example it can be used to find topN facet ordinals.
  * @param <T> something ordinals can be compared by.
  */
 public interface OrdToComparable<T extends Comparable<T>> {

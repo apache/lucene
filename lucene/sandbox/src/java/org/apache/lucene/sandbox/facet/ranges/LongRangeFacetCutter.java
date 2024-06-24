@@ -143,6 +143,8 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
             int lastIntervalSeen = -1;
 
             if (numValues == 1) {
+                // TODO: we should clear() interval tracker for doc rather than re-create it,
+                //  it requires some refactoring to handle single value and multi value sources separately.
                 elementaryIntervalTracker = new IntervalTracker.SingleIntervalTracker();
                 lastIntervalSeen = processValue(multiLongValues.nextValue(), lastIntervalSeen);
                 elementaryIntervalTracker.set(lastIntervalSeen);

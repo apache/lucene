@@ -16,12 +16,6 @@ public class FacetFieldLeafCollector implements LeafCollector {
 
     private final FacetLeafCutter leafCutter;
 
-    // TODO: should this be a list, so that we can register multiple types of recorders?
-    //  E.g. min-and-max, long aggregations, double aggregations, vector aggregations?
-    // TODO: Hmm, for min-and-max we can use yet another aggregations that work on the same field that is used
-    //  in leafCutter; this feels a little weird, but that should work fast as we are positioned at the same doc and
-    //  therefore should have the value cached? We need Min and Max for every range facet! Other option is to make sure
-    //  we always add min and max as aggregations for ranges, know their aggregation IDs to read them.
     private final FacetLeafRecorder leafRecorder;
 
     /** Constructor */

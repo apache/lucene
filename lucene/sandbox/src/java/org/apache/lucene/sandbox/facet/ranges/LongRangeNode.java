@@ -8,6 +8,9 @@ import java.util.List;
 
 /**
  * Holds one node of the segment tree.
+ *
+ * TODO: dedup existing LongRangeNode.
+ * TODO: does it have to be public?
  * */
 public final class LongRangeNode {
     final LongRangeNode left;
