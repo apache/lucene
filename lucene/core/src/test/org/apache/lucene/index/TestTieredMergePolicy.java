@@ -65,6 +65,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       segmentSizes.add(weightedByteSize);
       minSegmentBytes = Math.min(minSegmentBytes, weightedByteSize);
     }
+    Collections.sort(segmentSizes);
 
     final double delPercentage = 100.0 * totalDelCount / totalMaxDoc;
     assertTrue(
@@ -77,14 +78,25 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     long levelSizeBytes = Math.max(minSegmentBytes, (long) (tmp.getFloorSegmentMB() * 1024 * 1024));
     long bytesLeft = totalBytes;
     double allowedSegCount = 0;
-    final int maxNumSegmentsOnHighestTier =
-        (int) Math.max(tmp.getSegmentsPerTier(), tmp.getTargetSearchConcurrency());
+    List<Long> biggestSegments = segmentSizes;
+    if (biggestSegments.size() > tmp.getTargetSearchConcurrency() - 1) {
+      biggestSegments =
+          biggestSegments.subList(
+              biggestSegments.size() - tmp.getTargetSearchConcurrency() + 1,
+              biggestSegments.size());
+    }
+    // Allow whole segments for the targetSearchConcurrency-1 biggest segments
+    for (long size : biggestSegments) {
+      bytesLeft -= size;
+      allowedSegCount++;
+    }
+
     // below we make the assumption that segments that reached the max segment
     // size divided by 2 don't need merging anymore
     int mergeFactor = (int) Math.min(tmp.getSegmentsPerTier(), tmp.getMaxMergeAtOnce());
     while (true) {
       final double segCountLevel = bytesLeft / (double) levelSizeBytes;
-      if (segCountLevel <= maxNumSegmentsOnHighestTier
+      if (segCountLevel <= tmp.getSegmentsPerTier()
           || levelSizeBytes >= maxMergedSegmentBytes / 2) {
         allowedSegCount += Math.ceil(segCountLevel);
         break;
@@ -93,11 +105,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       bytesLeft -= tmp.getSegmentsPerTier() * levelSizeBytes;
       levelSizeBytes = Math.min(levelSizeBytes * mergeFactor, maxMergedSegmentBytes / 2);
     }
-    allowedSegCount = Math.max(allowedSegCount, maxNumSegmentsOnHighestTier);
+    allowedSegCount = Math.max(allowedSegCount, tmp.getSegmentsPerTier());
 
     // It's ok to be over the allowed segment count if none of the most balanced merges are balanced
     // enough
-    Collections.sort(segmentSizes);
     boolean hasBalancedMerges = false;
     for (int i = 0; i < segmentSizes.size() - mergeFactor; ++i) {
       long maxMergeSegmentSize = segmentSizes.get(i + mergeFactor - 1);
