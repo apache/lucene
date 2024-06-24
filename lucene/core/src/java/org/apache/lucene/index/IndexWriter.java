@@ -4270,8 +4270,7 @@ public class IndexWriter
       synchronized (fullFlushLock) {
         boolean flushSuccess = false;
         try {
-          long seqNo = docWriter.flushAllThreads();
-          anyChanges = seqNo < 0;
+          anyChanges = (docWriter.flushAllThreads() < 0);
           if (!anyChanges) {
             // flushCount is incremented in flushAllThreads
             flushCount.incrementAndGet();
