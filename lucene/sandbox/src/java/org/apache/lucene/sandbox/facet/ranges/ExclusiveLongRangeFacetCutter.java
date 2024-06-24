@@ -10,7 +10,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** add doc **/
+/**
+ * {@link RangeFacetCutter} for ranges of long value that don't overlap.
+ * TODO: it doesn't need to be public?
+ * **/
 public class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
     ExclusiveLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
         super(field, longValuesSource, longRanges);

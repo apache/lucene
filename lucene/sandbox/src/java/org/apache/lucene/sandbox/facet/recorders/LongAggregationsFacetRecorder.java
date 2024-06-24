@@ -129,7 +129,6 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
             }
 
             LongValues values;
-            long value;
             for (int i=0; i < longValues.length; i++) {
                 // TODO: cache advance/longValue results for current doc? Skipped for now as LongValues themselves can keep the cache.
                 values = longValues[i];

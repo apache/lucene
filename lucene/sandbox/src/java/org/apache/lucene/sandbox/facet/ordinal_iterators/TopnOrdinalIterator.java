@@ -8,9 +8,7 @@ import org.apache.lucene.util.PriorityQueue;
 import java.io.IOException;
 
 /**
- * Class that consumes incoming ordinals, sorts them by provided long aggregations, and returns in sorted order.
- * TODO: rename to TopnOrdinalIterator, and create TopnOrdinalIterator to use when we want to sort everything
- *  e.g. ranges? Sorting must be faster than managing PQ of everything?
+ * Class that consumes incoming ordinals, sorts them by provided Comparable, and returns top N first ordinals.
  */
 public class TopnOrdinalIterator<T extends Comparable<T> & GetOrd> implements OrdinalIterator {
 
@@ -19,7 +17,8 @@ public class TopnOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
     private final int topN;
     private int[] result;
     private int currentIndex;
-    /** TODO */
+
+    /** Constructor. */
     public TopnOrdinalIterator(OrdinalIterator sourceOrds,
                                OrdToComparable<T> ordToComparable,
                                int topN) {
@@ -36,9 +35,6 @@ public class TopnOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
         // TODO: current taxonomy implementations limit queue size by taxo reader size too, but this
         //  probably doesn't make sense for large enough taxonomy indexes?
         //  e.g. TopOrdAndIntQueue q = new TopComparableQueue(Math.min(taxoReader.getSize(), topN));
-        //  This is +1 for making OrdinalIterator size base rather than NO_MORE_ORDS base; which is happening
-        //  to some Lucene classes already, and there must be good reason to do it?
-        //  Note that getAllChildren doesn't use queues, so this is not the reason we are limiting by taxonomy size.
         // TODO: create queue lazily - skip if first nextOrd is NO_MORE_ORDS
         TopComparableQueue<T> queue = new TopComparableQueue<>(topN);
         T reuse = null;
@@ -67,7 +63,7 @@ public class TopnOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
         return result[currentIndex++];
     }
 
-    /** Keeps highest results, first by largest int value, then tie-break by smallest ord. */
+    /** Keeps top N results ordered by Comparable. */
     private static class TopComparableQueue<T extends Comparable<T>> extends PriorityQueue<T> {
 
         /** Sole constructor. */

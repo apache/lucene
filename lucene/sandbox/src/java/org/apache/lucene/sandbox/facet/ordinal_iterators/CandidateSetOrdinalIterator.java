@@ -6,7 +6,9 @@ import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 import java.io.IOException;
 
 /**
- * {@link OrdinalIterator} that only keeps ordinals from a candidate set.
+ * {@link OrdinalIterator} that filters out ordinals from delegate if they are not in the candidate set.
+ *
+ * Can be handy to get results only for specific facets.
  */
 public class CandidateSetOrdinalIterator implements OrdinalIterator {
 
@@ -15,7 +17,6 @@ public class CandidateSetOrdinalIterator implements OrdinalIterator {
 
     /**
      * Constructor.
-     * TODO: do we really nead source ords? I think we do, we don't want to return ords that are candidates yet we don't have results for them.
      */
     public CandidateSetOrdinalIterator(OrdinalIterator sourceOrds, IntSet candidates) {
         this.candidates = candidates;

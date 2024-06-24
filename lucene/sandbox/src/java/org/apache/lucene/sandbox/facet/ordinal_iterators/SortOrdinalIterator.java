@@ -12,7 +12,7 @@ import java.util.Comparator;
 import java.util.Objects;
 
 /**
- * {@link OrdinalIterator} that consumes incoming ordinals, sorts them by provided long aggregations, and returns in sorted order.
+ * {@link OrdinalIterator} that consumes incoming ordinals, sorts them by Comparable, and returns in sorted order.
  */
 public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements OrdinalIterator {
 
@@ -35,9 +35,9 @@ public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
     private void sort() throws IOException {
         assert result == null;
         result = sourceOrds.toArray();
-        // TODO: there must be a better way to sort by comparable?
+        // TODO: it doesn't really work - we need List<T>.
         @SuppressWarnings({"unchecked"})
-        T[] comparables = (T[])new Object[result.length];
+        T[] comparables = (T[]) new Object[result.length];
         for (int i = 0; i < result.length; i++) {
             comparables[i] = ordToComparable.getComparable(result[i], null);
         }

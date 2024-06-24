@@ -17,8 +17,10 @@ import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * TODO: add doc
- * This class is quite inefficient. Will optimise later.
+ * {@link FacetCutter} and {@link OrdLabelBiMap} for distinct long values.
+ *
+ * TODO: This class is quite inefficient. Will optimise later.
+ * TODO: add support for other value sources e.g: LongValues
  */
 public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
     private final String field;
@@ -28,8 +30,8 @@ public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
     private final AtomicInteger maxOrdinal;
 
     /**
-     * TODO add doc
-     * @param field TK
+     * Constructor.
+     * @param field field name to read long values from.
      */
     public LongValueFacetCutter(String field) {
         this.field = field;
@@ -44,7 +46,6 @@ public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
     }
     @Override
     public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
-        // TODO: later add support for other value sources e.g: LongValues
         SortedNumericDocValues docValues = DocValues.getSortedNumeric(context.reader(), field);
         return new FacetLeafCutter() {
             int currDoc = -1;
@@ -98,7 +99,7 @@ public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
      * Should only be called after collection phase.
      * TODO: we need it to tie break sort by value. Alternatively we can sort by label (then we don't need this method),
      *   but we would have to convert FacetLabel to "long" to have the same order... Overall, it is probably not
-     *   important to tie break by value, and we can tie break by ord same as for other facetsl; but for now
+     *   important to tie break by value, and we can tie break by ord same as for other facets; but for now
      *   we don't want to change results order just in case.
      * @param ordinal facet ordinal.
      * @return long value

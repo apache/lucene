@@ -9,7 +9,7 @@ import org.apache.lucene.index.LeafReaderContext;
 
 import java.io.IOException;
 
-/** add doc **/
+/** {@link RangeFacetCutter} for ranges of double values. **/
 public class DoubleRangeFacetCutter extends RangeFacetCutter {
 
     LongRangeFacetCutter longRangeFacetCutter;
@@ -21,7 +21,10 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
 
     LongRange[] longRanges;
 
-    /**TODO: add doc**/
+    /**
+     * Constructor.
+     * TODO: maybe explain how it works?
+     **/
     public DoubleRangeFacetCutter(String field, MultiDoubleValuesSource valuesSource, DoubleRange[] doubleRanges) {
         super(field);
         this.multiDoubleValuesSource = valuesSource;
