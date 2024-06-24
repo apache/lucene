@@ -10,7 +10,7 @@ import org.apache.lucene.search.Scorable;
 import java.io.IOException;
 
 /**
- * TODO
+ * LeafCollector that collects and records data for all facetIds for each doc.
  */
 public class FacetFieldLeafCollector implements LeafCollector {
 
@@ -24,7 +24,7 @@ public class FacetFieldLeafCollector implements LeafCollector {
     //  we always add min and max as aggregations for ranges, know their aggregation IDs to read them.
     private final FacetLeafRecorder leafRecorder;
 
-    /** TODO */
+    /** Constructor */
     public FacetFieldLeafCollector(LeafReaderContext context, FacetLeafCutter leafCutter, FacetLeafRecorder leafPayload) {
         // TODO: we don't need context param?
         this.leafCutter = leafCutter;

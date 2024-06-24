@@ -8,12 +8,14 @@ import org.apache.lucene.index.LeafReaderContext;
 
 import java.io.IOException;
 
-/** TODO */
+/**
+ *  {@link FacetRecorder} that "chains" multiple FacetRecorder types.
+ * */
 public final class MultiFacetsRecorder implements FacetRecorder {
 
     private final FacetRecorder[] delegates;
 
-    /** TODO */
+    /** Constructor */
     public MultiFacetsRecorder(FacetRecorder... delegates) {
         this.delegates = delegates;
     }

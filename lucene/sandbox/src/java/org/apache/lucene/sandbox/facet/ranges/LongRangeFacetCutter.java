@@ -11,7 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-/** add doc **/
+/** {@link RangeFacetCutter} for ranges of long values. **/
 public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
     MultiLongValuesSource valuesSource;

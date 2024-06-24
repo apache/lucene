@@ -5,24 +5,30 @@ import org.apache.lucene.util.FixedBitSet;
 
 import java.io.IOException;
 
-/** add doc **/
+/** A specialised ordinal iterator that supports write (set and clear) operations.
+ * Clients can write data and freeze the state before reading data from it like any other OrdinalIterator.
+ * Instances may be reused by clearing the current iterator
+ * E.g. LongRangeFacetCutter uses IntervalTracker instances to map ranges to ordinals and track per-range data and
+ * retrieve recorded ranges for a data set.
+ **/
 public interface IntervalTracker extends OrdinalIterator {
-    /** add doc **/
+    /** track information for the seen input interval **/
     void set(int i);
 
-    /** add doc **/
+    /** return number of intervals seen **/
     int size();
 
-    /** add doc **/
+    /** clear recorded information on this tracker. Ideally, this should unset any state set by freeze() **/
     void clear();
 
-    /** add doc **/
+    /** check if any data for interval has been recorded **/
     boolean get(int index);
 
-    /**TODO: add doc**/
+    /** finalise any state before read operations can be performed on this OrdinalIterator */
     void freeze();
 
-    /** add doc **/
+    /** Interval Tracker that tracks data for one interval only. The interval is recorded only once iff data belonging to
+     * the interval is encountered **/
     class SingleIntervalTracker implements IntervalTracker {
 
         int tracker;
@@ -72,7 +78,8 @@ public interface IntervalTracker extends OrdinalIterator {
         }
     }
 
-    /** add doc **/
+    /** Interval Tracker that tracks data for multiple intervals. The interval is recorded only once iff data belonging to
+     * the interval is encountered **/
     class MultiIntervalTracker implements IntervalTracker {
 
         FixedBitSet tracker;

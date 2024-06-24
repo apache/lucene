@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * TODO add doc
- */
+ * Holds one node of the segment tree.
+ * */
 public final class LongRangeNode {
     final LongRangeNode left;
     final LongRangeNode right;
@@ -89,27 +89,27 @@ public final class LongRangeNode {
         }
     }
 
-    /** add doc **/
+    /** returns the range start value **/
     public long start() {
         return start;
     }
 
-    /** add doc **/
+    /** returns the range end value **/
     public long end() {
         return end;
     }
 
-    /** add doc **/
+    /** returns left node of segment tree node **/
     public LongRangeNode left() {
         return left;
     }
 
-    /** add doc **/
+    /** returns right node of segment tree node **/
     public LongRangeNode right() {
         return right;
     }
 
-    /** add doc **/
+    /** returns range indices to output when a query goes through this node: **/
     public List<Integer> outputs() {
         return outputs;
     }

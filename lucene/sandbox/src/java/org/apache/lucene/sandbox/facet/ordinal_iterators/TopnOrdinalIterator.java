@@ -8,7 +8,7 @@ import org.apache.lucene.util.PriorityQueue;
 import java.io.IOException;
 
 /**
- * Class that consumes incoming ordinals, sorts them by provided Comparable, and returns top N first ordinals.
+ * Class that consumes incoming ordinals, sorts them by provided Comparable, and returns first top N ordinals only.
  */
 public class TopnOrdinalIterator<T extends Comparable<T> & GetOrd> implements OrdinalIterator {
 

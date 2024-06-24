@@ -17,11 +17,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** add doc **/
+/**
+ * {@link RangeFacetCutter} for ranges of long value that overlap.
+ * TODO: it doesn't need to be public?
+ * Uses segment tree optimisation to find all matching ranges for a given value
+ * <a href="https://blog.mikemccandless.com/2013/12/fast-range-faceting-using-segment-trees.html">fast-range-faceting-
+ * using-segment-trees.html</a>
+ **/
 public class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
-
-    // Uses segment tree optimisation to find all matching ranges for a given value
-    // https://blog.mikemccandless.com/2013/12/fast-range-faceting-using-segment-trees.html
     private final LongRangeNode root;
 
     OverlappingLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource, LongRange[] longRanges) {

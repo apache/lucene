@@ -7,17 +7,19 @@ import org.apache.lucene.facet.taxonomy.FacetLabel;
 import java.io.IOException;
 import java.util.List;
 
-/**TODO: add doc**/
+/**
+ * {@link OrdLabelBiMap} for ranges.
+ */
 public class RangeOrdLabelBiMap implements OrdLabelBiMap {
 
     Range[] ranges;
 
-    /**TODO: add doc**/
+    /** Constructor that takes array of Range objects as input **/
     public RangeOrdLabelBiMap(Range[] inputRanges) {
         ranges = inputRanges;
     }
 
-    /**TODO: add doc**/
+    /** Constructor that takes List of Range objects as input **/
     public RangeOrdLabelBiMap(List<? extends Range> inputRanges) {
         ranges = inputRanges.toArray(new Range[0]);
     }
