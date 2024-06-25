@@ -86,6 +86,16 @@ public final class LogsPanelProvider {
           clipboard.setContents(selection, null);
         });
     header.add(copyBtn);
+    
+    JButton clearBtn =
+        new JButton(
+            MessageUtils.getLocalizedMessage("button.clear"));
+      clearBtn.setMargin(new Insets(3, 3, 3, 3));
+      clearBtn.addActionListener(
+        e -> {
+          logTextArea.setText(null);
+        });
+    header.add(clearBtn);
 
     panel.add(header, BorderLayout.PAGE_START);
     panel.add(new JScrollPane(logTextArea), BorderLayout.CENTER);
