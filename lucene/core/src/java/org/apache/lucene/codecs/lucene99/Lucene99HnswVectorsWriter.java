@@ -27,6 +27,7 @@ import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -39,6 +40,8 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ByteTensorValue;
+import org.apache.lucene.util.FloatTensorValue;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -127,13 +130,22 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    FieldWriter<?> newField =
-        FieldWriter.create(
-            flatVectorWriter.getFlatVectorScorer(),
-            fieldInfo,
-            M,
-            beamWidth,
-            segmentWriteState.infoStream);
+    FieldWriter<?> newField;
+    if (fieldInfo.hasTensorValues()) {
+      newField = FieldWriter.create(
+          flatVectorWriter.getFlatTensorScorer(),
+          fieldInfo,
+          M,
+          beamWidth,
+          segmentWriteState.infoStream);
+    } else {
+      newField = FieldWriter.create(
+          flatVectorWriter.getFlatVectorScorer(),
+          fieldInfo,
+          M,
+          beamWidth,
+          segmentWriteState.infoStream);
+    }
     fields.add(newField);
     return flatVectorWriter.addField(fieldInfo, newField);
   }
@@ -449,12 +461,23 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       HnswGraph graph,
       int[][] graphLevelNodeOffsets)
       throws IOException {
+    int encoding, similarityFunction, dimension;
+    if (field.hasTensorValues()) {
+      encoding = field.getTensorEncoding().ordinal();
+      similarityFunction = field.getTensorSimilarityFunction().ordinal();
+      dimension = field.getTensorDimension();
+    } else {
+      encoding = field.getVectorEncoding().ordinal();
+      similarityFunction = distFuncToOrd(field.getVectorSimilarityFunction());
+      dimension = field.getVectorDimension();
+    }
+    // write metadata
     meta.writeInt(field.number);
-    meta.writeInt(field.getVectorEncoding().ordinal());
-    meta.writeInt(distFuncToOrd(field.getVectorSimilarityFunction()));
+    meta.writeInt(encoding);
+    meta.writeInt(similarityFunction);
     meta.writeVLong(vectorIndexOffset);
     meta.writeVLong(vectorIndexLength);
-    meta.writeVInt(field.getVectorDimension());
+    meta.writeVInt(dimension);
     meta.writeInt(count);
     meta.writeVInt(M);
     // write graph nodes on each level
@@ -543,7 +566,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     private final FieldInfo fieldInfo;
     private final DocsWithFieldSet docsWithField;
-    private final List<T> vectors;
+    private final List<T> values;
     private final HnswGraphBuilder hnswGraphBuilder;
     private int lastDocID = -1;
     private int node = 0;
@@ -557,23 +580,55 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       };
     }
 
+    static FieldWriter<?> create(
+        FlatTensorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
+        throws IOException {
+      return switch (fieldInfo.getTensorEncoding()) {
+        case BYTE -> new FieldWriter<ByteTensorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
+        case FLOAT32 -> new FieldWriter<FloatTensorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
+      };
+    }
+
     @SuppressWarnings("unchecked")
     FieldWriter(
         FlatVectorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.docsWithField = new DocsWithFieldSet();
-      vectors = new ArrayList<>();
+      values = new ArrayList<>();
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> scorer.getRandomVectorScorerSupplier(
                 fieldInfo.getVectorSimilarityFunction(),
                 RandomAccessVectorValues.fromBytes(
-                    (List<byte[]>) vectors, fieldInfo.getVectorDimension()));
+                    (List<byte[]>) values, fieldInfo.getVectorDimension()));
             case FLOAT32 -> scorer.getRandomVectorScorerSupplier(
                 fieldInfo.getVectorSimilarityFunction(),
                 RandomAccessVectorValues.fromFloats(
-                    (List<float[]>) vectors, fieldInfo.getVectorDimension()));
+                    (List<float[]>) values, fieldInfo.getVectorDimension()));
+          };
+      hnswGraphBuilder =
+          HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+      hnswGraphBuilder.setInfoStream(infoStream);
+    }
+
+    @SuppressWarnings("unchecked")
+    FieldWriter(
+        FlatTensorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
+        throws IOException {
+      this.fieldInfo = fieldInfo;
+      this.docsWithField = new DocsWithFieldSet();
+      values = new ArrayList<>();
+      RandomVectorScorerSupplier scorerSupplier =
+          switch (fieldInfo.getTensorEncoding()) {
+            case BYTE -> scorer.getRandomTensorScorerSupplier(
+                fieldInfo.getTensorSimilarityFunction(),
+                RandomAccessVectorValues.fromByteTensors(
+                    (List<ByteTensorValue>) values, fieldInfo.getTensorDimension()));
+            case FLOAT32 -> scorer.getRandomTensorScorerSupplier(
+                fieldInfo.getTensorSimilarityFunction(),
+                RandomAccessVectorValues.fromFloatTensors(
+                    (List<FloatTensorValue>) values, fieldInfo.getTensorDimension()));
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -581,15 +636,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, T vectorValue) throws IOException {
+    public void addValue(int docID, T value) throws IOException {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
-            "VectorValuesField \""
+            "Field \""
                 + fieldInfo.name
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       assert docID > lastDocID;
-      vectors.add(vectorValue);
+      values.add(value);
       docsWithField.add(docID);
       hnswGraphBuilder.addGraphNode(node);
       node++;
@@ -613,7 +668,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     public long ramBytesUsed() {
       return SHALLOW_SIZE
           + docsWithField.ramBytesUsed()
-          + (long) vectors.size()
+          + (long) values.size()
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
           + hnswGraphBuilder.getGraph().ramBytesUsed();
     }

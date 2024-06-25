@@ -70,15 +70,15 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, tensorData;
-  private final FlatTensorsScorer tensorScorer;
+//  private final FlatTensorsScorer tensorScorer;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
   public Lucene99FlatTensorsWriter(SegmentWriteState state, FlatTensorsScorer scorer)
       throws IOException {
-    super(null);
-    tensorScorer = scorer;
+    super(scorer);
+//    tensorScorer = scorer;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -591,13 +591,13 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
 
     private final RandomVectorScorerSupplier supplier;
     private final Closeable onClose;
-    private final int numVectors;
+    private final int numTensors;
 
     FlatCloseableRandomVectorScorerSupplier(
-        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier) {
+        Closeable onClose, int numTensors, RandomVectorScorerSupplier supplier) {
       this.onClose = onClose;
       this.supplier = supplier;
-      this.numVectors = numVectors;
+      this.numTensors = numTensors;
     }
 
     @Override
@@ -617,7 +617,7 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
 
     @Override
     public int totalVectorCount() {
-      return numVectors;
+      return numTensors;
     }
   }
 }
