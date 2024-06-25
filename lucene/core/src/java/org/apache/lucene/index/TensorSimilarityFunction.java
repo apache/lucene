@@ -97,6 +97,21 @@ public enum TensorSimilarityFunction {
     }
   };
 
+  // TODO: this is trappy, it has an unchecked requirement for VectorSimilarityFunction to have ordinal < 1000
+  // can we merge the two similarity functions?
+  /** Uses identifier instead of ordinals to avoid overlap with {@link VectorSimilarityFunction} */
+  private final int identifier;
+
+  public static final int ORDINAL_START = 1000;
+
+  TensorSimilarityFunction() {
+    this.identifier = this.ordinal() + ORDINAL_START;
+  }
+
+  public int identifier() {
+    return identifier;
+  }
+
   /**
    * Calculates a similarity score between the two tensors with a specified function. Higher
    * similarity scores correspond to closer vectors.
