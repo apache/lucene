@@ -552,6 +552,7 @@ final class FrozenBufferedUpdates {
             // because on flush we apply all Term deletes to
             // each segment.  So all Term deleting here is
             // against prior segments:
+            // TODO: we should not skip soft deleted docs when apply hard delete.
             if (segState.rld.delete(docID)) {
               delCount++;
               continue nextDelTerm;

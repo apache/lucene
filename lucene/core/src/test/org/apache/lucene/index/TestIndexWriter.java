@@ -203,6 +203,7 @@ public class TestIndexWriter extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: Used for debugging, delete if useless.
   public void testUpdateUID() throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer =
@@ -231,7 +232,7 @@ public class TestIndexWriter extends LuceneTestCase {
     doc.add(new KeywordField("_id", "1", Field.Store.NO));
     doc.add(new KeywordField("version", "3", Field.Store.NO));
     writer.updateDocument(new Term("_id", "1"), doc);
-    // Doc 0, 1 will be deleted FreqProxTermsWriter.applyDeletes.
+    // Doc 1, 2 will be deleted FreqProxTermsWriter.applyDeletes.
     writer.flush(); // seg0.
 
     // Keep segment alive.
@@ -270,7 +271,51 @@ public class TestIndexWriter extends LuceneTestCase {
     DirectoryReader reader = writer.getReader(true, false);
     IndexSearcher searcher = newSearcher(reader);
     assertEquals(1, searcher.search(new TermQuery(new Term("_id", "1")), 10).totalHits.value);
+
     reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  // TODO: Used for debugging, delete if useless.
+  public void testUpdateUIDSoft() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setSoftDeletesField("_soft_deletes")
+                // make sure all docs will end up in the same segment
+                .setMaxBufferedDocs(10)
+                .setMergePolicy(
+                    new SoftDeletesRetentionMergePolicy(
+                        "_soft_deletes", () -> new MatchAllDocsQuery(), new LogDocMergePolicy()))
+                .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH));
+
+    Document doc = new Document();
+    doc.add(new KeywordField("id", "a", Field.Store.YES));
+    doc.add(new KeywordField("content", "a1", Field.Store.YES));
+    writer.addDocument(doc);
+
+    // soft delete doc0.
+    doc = new Document();
+    doc.add(new KeywordField("id", "a", Field.Store.YES));
+    doc.add(new KeywordField("content", "a2", Field.Store.YES));
+    writer.softUpdateDocument(
+        new Term("id", "a"), doc, new NumericDocValuesField("_soft_deletes", 1));
+    writer.flush();
+
+    // hard delete doc0, doc1 in seg0.
+    doc = new Document();
+    doc.add(new KeywordField("id", "a", Field.Store.YES));
+    doc.add(new KeywordField("content", "a3", Field.Store.YES));
+    //    writer.updateDocument(new Term("id", "a"), true, doc);
+    writer.updateDocument(new Term("id", "a"), doc);
+    writer.flush();
+
+    DirectoryReader reader = writer.getReader(true, false);
+    IndexSearcher searcher = newSearcher(reader);
+    assertEquals(1, searcher.search(new TermQuery(new Term("id", "a")), 10).totalHits.value);
 
     reader.close();
     writer.close();
