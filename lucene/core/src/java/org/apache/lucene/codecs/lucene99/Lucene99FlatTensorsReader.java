@@ -59,12 +59,10 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput tensorData;
-  private final FlatTensorsScorer tensorScorer;
 
   public Lucene99FlatTensorsReader(SegmentReadState state, FlatTensorsScorer scorer)
       throws IOException {
-    super(null);
-    tensorScorer = scorer;
+    super(scorer);
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {

@@ -77,11 +77,11 @@ public abstract class KnnTensorsFormat implements NamedSPILoader.NamedSPI {
     return Holder.getLoader().lookup(name);
   }
 
-  /** Returns a {@link KnnTensorsWriter} to write the tensors to the index. */
-  public abstract KnnTensorsWriter fieldsWriter(SegmentWriteState state) throws IOException;
+  /** Returns a {@link KnnVectorsWriter} to write the tensors to the index. */
+  public abstract KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException;
 
-  /** Returns a {@link KnnTensorsReader} to read the tensors from the index. */
-  public abstract KnnTensorsReader fieldsReader(SegmentReadState state) throws IOException;
+  /** Returns a {@link KnnVectorsReader} to read the tensors from the index. */
+  public abstract KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 
   /**
    * Returns the maximum number of dimensions per vector supported by this codec
@@ -101,40 +101,40 @@ public abstract class KnnTensorsFormat implements NamedSPILoader.NamedSPI {
   public static final KnnTensorsFormat EMPTY =
       new KnnTensorsFormat("EMPTY") {
         @Override
-        public KnnTensorsWriter fieldsWriter(SegmentWriteState state) {
+        public KnnVectorsWriter fieldsWriter(SegmentWriteState state) {
           throw new UnsupportedOperationException("Attempt to write EMPTY vector values");
         }
 
         @Override
-        public KnnTensorsReader fieldsReader(SegmentReadState state) {
-          return new KnnTensorsReader() {
-//            @Override
-//            public void checkIntegrity() {}
-//
-//            @Override
-//            public FloatVectorValues getFloatVectorValues(String field) {
-//              throw new UnsupportedOperationException();
-//            }
-//
-//            @Override
-//            public ByteVectorValues getByteVectorValues(String field) {
-//              throw new UnsupportedOperationException();
-//            }
-//
-//            @Override
-//            public void search(
-//                String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
-//              throw new UnsupportedOperationException();
-//            }
-//
-//            @Override
-//            public void search(
-//                String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
-//              throw new UnsupportedOperationException();
-//            }
-//
-//            @Override
-//            public void close() {}
+        public KnnVectorsReader fieldsReader(SegmentReadState state) {
+          return new KnnVectorsReader() {
+            @Override
+            public void checkIntegrity() {}
+
+            @Override
+            public FloatVectorValues getFloatVectorValues(String field) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ByteVectorValues getByteVectorValues(String field) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void search(
+                String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void search(
+                String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void close() {}
           };
         }
 
