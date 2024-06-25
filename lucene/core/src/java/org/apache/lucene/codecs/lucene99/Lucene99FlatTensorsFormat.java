@@ -102,11 +102,11 @@ public final class Lucene99FlatTensorsFormat extends FlatVectorsFormat {
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99FlatVectorsReader(state, tensorsScorer);
+    return new Lucene99FlatTensorsReader(state, tensorsScorer);
   }
 
   @Override
   public String toString() {
-    return "Lucene99FlatVectorsFormat(" + "vectorsScorer=" + tensorsScorer + ')';
+    return "Lucene99FlatTensorsFormat(" + "vectorsScorer=null, tensorsScorer" + tensorsScorer + ')';
   }
 }
