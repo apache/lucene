@@ -464,7 +464,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     int encoding, similarityFunction, dimension;
     if (field.hasTensorValues()) {
       encoding = field.getTensorEncoding().ordinal();
-      similarityFunction = field.getTensorSimilarityFunction().ordinal();
+      similarityFunction = field.getTensorSimilarityFunction().identifier();
       dimension = field.getTensorDimension();
     } else {
       encoding = field.getVectorEncoding().ordinal();

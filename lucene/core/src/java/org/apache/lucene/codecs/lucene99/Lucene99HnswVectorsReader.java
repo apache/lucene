@@ -35,6 +35,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
@@ -166,7 +167,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
-    int dimension = info.getVectorDimension();
+    int dimension = (info.hasTensorValues()) ? info.getTensorDimension() : info.getVectorDimension();
     if (dimension != fieldEntry.dimension) {
       throw new IllegalStateException(
           "Inconsistent vector dimension for field=\""
@@ -208,17 +209,42 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    if (similarityFunction != info.getVectorSimilarityFunction()) {
-      throw new IllegalStateException(
-          "Inconsistent vector similarity function for field=\""
-              + info.name
-              + "\"; "
-              + similarityFunction
-              + " != "
-              + info.getVectorSimilarityFunction());
+    VectorSimilarityFunction vectorSimilarityFunction = null;
+    TensorSimilarityFunction tensorSimilarityFunction = null;
+
+    // TODO: can we merge vector and tensor similarity functions into a single object?
+    int similarityId = input.readInt();
+    if (similarityId < 0) {
+      throw new IllegalArgumentException("invalid distance function: " + similarityId);
     }
-    return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
+    if (similarityId >= TensorSimilarityFunction.ORDINAL_START) {
+      tensorSimilarityFunction = TensorSimilarityFunction.values()[similarityId - TensorSimilarityFunction.ORDINAL_START];
+      if (tensorSimilarityFunction != info.getTensorSimilarityFunction()) {
+        throw new IllegalStateException(
+            "Inconsistent similarity function for field=\""
+                + info.name
+                + "\"; "
+                + tensorSimilarityFunction
+                + " != "
+                + info.getTensorSimilarityFunction());
+      }
+    } else {
+      if (similarityId >= SIMILARITY_FUNCTIONS.size()) {
+        throw new IllegalArgumentException("invalid distance function: " + similarityId);
+      }
+      vectorSimilarityFunction = SIMILARITY_FUNCTIONS.get(similarityId);
+      if (vectorSimilarityFunction != info.getVectorSimilarityFunction()) {
+        throw new IllegalStateException(
+            "Inconsistent vector similarity function for field=\""
+                + info.name
+                + "\"; "
+                + vectorSimilarityFunction
+                + " != "
+                + info.getVectorSimilarityFunction());
+      }
+    }
+
+    return FieldEntry.create(input, vectorEncoding, vectorSimilarityFunction, tensorSimilarityFunction);
   }
 
   @Override
@@ -252,7 +278,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+        || fieldEntry.encoding != VectorEncoding.FLOAT32) {
+      return;
+    }
+    if (fieldEntry.tensorSimilarityFunction != null
+        && target.length % fieldEntry.dimension != 0) {
       return;
     }
     final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
@@ -283,7 +313,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+        || fieldEntry.encoding != VectorEncoding.BYTE) {
+      return;
+    }
+    if (fieldEntry.tensorSimilarityFunction != null
+        && target.length % fieldEntry.dimension != 0) {
       return;
     }
     final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
@@ -347,8 +381,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   private record FieldEntry(
-      VectorSimilarityFunction similarityFunction,
-      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      TensorSimilarityFunction tensorSimilarityFunction,
+      VectorEncoding encoding,
       long vectorIndexOffset,
       long vectorIndexLength,
       int M,
@@ -364,8 +399,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
     static FieldEntry create(
         IndexInput input,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
+        VectorEncoding encoding,
+        VectorSimilarityFunction vectorSimilarityFunction,
+        TensorSimilarityFunction tensorSimilarityFunction)
         throws IOException {
       final var vectorIndexOffset = input.readVLong();
       final var vectorIndexLength = input.readVLong();
@@ -405,8 +441,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         offsetsLength = 0;
       }
       return new FieldEntry(
-          similarityFunction,
-          vectorEncoding,
+          vectorSimilarityFunction,
+          tensorSimilarityFunction,
+          encoding,
           vectorIndexOffset,
           vectorIndexLength,
           M,

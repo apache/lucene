@@ -70,7 +70,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, tensorData;
-//  private final FlatTensorsScorer tensorScorer;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -78,7 +77,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
   public Lucene99FlatTensorsWriter(SegmentWriteState state, FlatTensorsScorer scorer)
       throws IOException {
     super(scorer);
-//    tensorScorer = scorer;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
