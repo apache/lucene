@@ -41,6 +41,7 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
+import org.apache.lucene.document.KnnByteTensorField;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatTensorField;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -730,8 +731,7 @@ final class IndexingChain implements Accountable {
         throw th;
       }
     }
-    if (fi.getTensorDimension() != 0) {
-      // TODO: Change to use a tensor writer.
+    if (fi.hasTensorValues()) {
       try {
         pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
       } catch (Throwable th) {
@@ -788,6 +788,9 @@ final class IndexingChain implements Accountable {
     }
     if (fieldType.vectorDimension() != 0) {
       indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
+    }
+    if (fieldType.tensorDimension() > 0) {
+      indexTensorValue(docID, pf, fieldType.tensorEncoding(), field);
     }
     return indexedField;
   }
@@ -1058,11 +1061,12 @@ final class IndexingChain implements Accountable {
     }
   }
 
+  @SuppressWarnings("unchecked")
   private void indexTensorValue(int docID, PerField pf, VectorEncoding tensorEncoding, IndexableField field)
       throws IOException {
     switch (tensorEncoding) {
-//      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
-//          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case BYTE -> ((KnnFieldVectorsWriter<ByteTensorValue>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnByteTensorField) field).tensorValue());
       case FLOAT32 -> ((KnnFieldVectorsWriter<FloatTensorValue>) pf.knnFieldVectorsWriter)
           .addValue(docID, ((KnnFloatTensorField) field).tensorValue());
     }
