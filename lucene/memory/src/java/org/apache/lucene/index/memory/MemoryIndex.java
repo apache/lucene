@@ -737,6 +737,10 @@ public class MemoryIndex {
         fieldType.vectorDimension(),
         fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
+        0,
+        2,
+        null,
+        null,
         false,
         false);
   }
@@ -792,6 +796,10 @@ public class MemoryIndex {
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
+              info.fieldInfo.getTensorDimension(),
+              info.fieldInfo.getTensorRank(),
+              info.fieldInfo.getTensorEncoding(),
+              info.fieldInfo.getTensorSimilarityFunction(),
               info.fieldInfo.isSoftDeletesField(),
               info.fieldInfo.isParentField());
     } else if (existingDocValuesType != docValuesType) {

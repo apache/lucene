@@ -105,6 +105,10 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
+            0,
+            2,
+            null,
+            null,
             false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});

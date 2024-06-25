@@ -17,19 +17,8 @@
 package org.apache.lucene.backward_codecs.lucene90;
 
 import java.util.Objects;
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.CompoundFormat;
-import org.apache.lucene.codecs.DocValuesFormat;
-import org.apache.lucene.codecs.FieldInfosFormat;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.LiveDocsFormat;
-import org.apache.lucene.codecs.NormsFormat;
-import org.apache.lucene.codecs.PointsFormat;
-import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.SegmentInfoFormat;
-import org.apache.lucene.codecs.StoredFieldsFormat;
-import org.apache.lucene.codecs.TermVectorsFormat;
+
+import org.apache.lucene.codecs.*;
 import org.apache.lucene.codecs.lucene90.Lucene90CompoundFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90LiveDocsFormat;
@@ -163,6 +152,11 @@ public class Lucene90Codec extends Codec {
   @Override
   public KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
+  }
+
+  @Override
+  public KnnTensorsFormat knnTensorsFormat() {
+    return KnnTensorsFormat.EMPTY;
   }
 
   /**
