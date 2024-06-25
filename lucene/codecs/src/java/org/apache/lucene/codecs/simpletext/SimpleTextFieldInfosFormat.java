@@ -199,6 +199,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 vectorNumDimensions,
                 vectorEncoding,
                 vectorDistFunc,
+                0,
+                2,
+                null,
+                null,
                 isSoftDeletesField,
                 isParentField);
       }

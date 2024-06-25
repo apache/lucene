@@ -330,6 +330,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.vectorDimension(),
               fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
+              fieldType.tensorDimension(),
+              fieldType.tensorRank(),
+              fieldType.tensorEncoding(),
+              fieldType.tensorSimilarityFunction(),
               field.equals(softDeletesField),
               field.equals(parentField));
       addAttributes(fi);
@@ -464,6 +468,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
+        0,
+        2,
+        null,
+        null,
         false,
         false);
   }

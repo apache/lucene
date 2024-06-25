@@ -195,6 +195,10 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     vectorDimension,
                     VectorEncoding.FLOAT32,
                     vectorDistFunc,
+                    0,
+                    2,
+                    null,
+                    null,
                     isSoftDeletesField,
                     false);
             infos[i].checkConsistency();
