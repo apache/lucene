@@ -86,12 +86,10 @@ public final class LogsPanelProvider {
           clipboard.setContents(selection, null);
         });
     header.add(copyBtn);
-    
-    JButton clearBtn =
-        new JButton(
-            MessageUtils.getLocalizedMessage("button.clear"));
-      clearBtn.setMargin(new Insets(3, 3, 3, 3));
-      clearBtn.addActionListener(
+
+    JButton clearBtn = new JButton(MessageUtils.getLocalizedMessage("button.clear"));
+    clearBtn.setMargin(new Insets(3, 3, 3, 3));
+    clearBtn.addActionListener(
         e -> {
           logTextArea.setText(null);
         });
