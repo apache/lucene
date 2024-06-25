@@ -471,6 +471,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     cms.setSuppressExceptions();
     conf.setMergeScheduler(cms);
     ((LogMergePolicy) conf.getMergePolicy()).setMergeFactor(2);
+    ((LogMergePolicy) conf.getMergePolicy()).setTargetSearchConcurrency(1);
     TestPoint3 testPoint = new TestPoint3();
     IndexWriter w = RandomIndexWriter.mockIndexWriter(random(), dir, conf, testPoint);
     testPoint.doFail = true;

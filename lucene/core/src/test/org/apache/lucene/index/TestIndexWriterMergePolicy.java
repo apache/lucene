@@ -900,8 +900,10 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
   }
 
   public void testSetDiagnostics() throws IOException {
+    LogMergePolicy logMp = newLogMergePolicy(4);
+    logMp.setTargetSearchConcurrency(1);
     MergePolicy myMergePolicy =
-        new FilterMergePolicy(newLogMergePolicy(4)) {
+        new FilterMergePolicy(logMp) {
           @Override
           public MergeSpecification findMerges(
               MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)

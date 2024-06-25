@@ -249,8 +249,10 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
     SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
 
     LogMergePolicy mp = mergePolicy();
+    // Number of segments guaranteed to trigger a merge.
+    int numSegmentsForMerging = mp.getMergeFactor() + mp.getTargetSearchConcurrency();
 
-    for (int i = 0; i < mp.getMergeFactor(); ++i) {
+    for (int i = 0; i < numSegmentsForMerging; ++i) {
       segmentInfos.add(
           makeSegmentCommitInfo(
               "_" + segNameGenerator.getAndIncrement(),
@@ -266,6 +268,6 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
       segmentInfos =
           applyMerge(segmentInfos, merge, "_" + segNameGenerator.getAndIncrement(), stats);
     }
-    assertEquals(1, segmentInfos.size());
+    assertTrue(segmentInfos.size() < numSegmentsForMerging);
   }
 }
