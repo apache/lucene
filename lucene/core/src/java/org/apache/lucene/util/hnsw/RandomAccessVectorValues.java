@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.ByteTensorValue;
+import org.apache.lucene.util.FloatTensorValue;
 
 /**
  * Provides random access to vectors by dense ordinal. This interface is used by HNSW-based
@@ -164,6 +166,78 @@ public interface RandomAccessVectorValues {
       @Override
       public byte[] vectorValue(int targetOrd) {
         return vectors.get(targetOrd);
+      }
+
+      @Override
+      public RandomAccessVectorValues.Bytes copy() {
+        return this;
+      }
+    };
+  }
+
+  /**
+   * Creates a {@link RandomAccessVectorValues.Floats} from a list of {@link FloatTensorValue}s.
+   *
+   * @param tensors the list of float tensors
+   * @param dim the dimension of the vectors that compose the tensor
+   * @return a {@link RandomAccessVectorValues.Floats} instance
+   */
+  static RandomAccessVectorValues.Floats fromFloatTensors(List<FloatTensorValue> tensors, int dim) {
+    return new RandomAccessVectorValues.Floats() {
+      @Override
+      public int size() {
+        return tensors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return dim;
+      }
+
+      @Override
+      public float[] vectorValue(int targetOrd) {
+        return tensors.get(targetOrd).packedValue();
+      }
+
+      @Override
+      public int getVectorByteLength() {
+        throw new UnsupportedOperationException("Tensor have variable value length across different ordinals");
+      }
+
+      @Override
+      public RandomAccessVectorValues.Floats copy() {
+        return this;
+      }
+    };
+  }
+
+  /**
+   * Creates a {@link RandomAccessVectorValues.Bytes} from a list of {@link ByteTensorValue}s.
+   *
+   * @param tensors the list of {@link ByteTensorValue}s
+   * @param dim the dimension of the vectors composing these tensors
+   * @return a {@link RandomAccessVectorValues.Bytes} instance
+   */
+  static RandomAccessVectorValues.Bytes fromByteTensors(List<ByteTensorValue> tensors, int dim) {
+    return new RandomAccessVectorValues.Bytes() {
+      @Override
+      public int size() {
+        return tensors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return dim;
+      }
+
+      @Override
+      public byte[] vectorValue(int targetOrd) {
+        return tensors.get(targetOrd).packedValue();
+      }
+
+      @Override
+      public int getVectorByteLength() {
+        throw new UnsupportedOperationException("Tensor have variable value length across different ordinals");
       }
 
       @Override

@@ -33,9 +33,17 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
   /** Scorer for flat vectors */
   protected final FlatVectorsScorer vectorsScorer;
 
-  /** Sole constructor */
+  /** Scorer for flat tensors */
+  protected final FlatTensorsScorer tensorScorer;
+
   protected FlatVectorsWriter(FlatVectorsScorer vectorsScorer) {
     this.vectorsScorer = vectorsScorer;
+    this.tensorScorer = null;
+  }
+
+  protected FlatVectorsWriter(FlatTensorsScorer tensorScorer) {
+    this.vectorsScorer = null;
+    this.tensorScorer = tensorScorer;
   }
 
   /**
@@ -43,6 +51,13 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
    */
   public FlatVectorsScorer getFlatVectorScorer() {
     return vectorsScorer;
+  }
+
+  /**
+   * @return the {@link FlatTensorsScorer} for this reader.
+   */
+  public FlatTensorsScorer getFlatTensorScorer() {
+    return tensorScorer;
   }
 
   /**
