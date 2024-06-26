@@ -56,6 +56,7 @@ public enum TensorSimilarityFunction {
       return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.DOT_PRODUCT, dimension);
     }
 
+    @Override
     public float compare(byte[] t1, byte[] t2, int dimension) {
       return sumMaxSimilarity(t1, t2, VectorSimilarityFunction.DOT_PRODUCT, dimension);
     }
@@ -139,8 +140,7 @@ public enum TensorSimilarityFunction {
 
   /**
    * Compute SumMaxSimilarity between two tensors. Returns the sum of maximum similarity found for
-   * each vector in the outer tensor against all vectors in the inner tensor. Uses {@param
-   * vectorSimilarityFunction} to compute similarity between two vectors.
+   * each vector in the outer tensor against all vectors in the inner tensor.
    *
    * @param outerTensor Outer tensor
    * @param innerTensor Inner tensor
