@@ -72,20 +72,11 @@ public class DocIdWriterBenchmark {
 
         List<int[]> allDocIds = readAllDocIds(benchmarkInput.getInputDataFile());
 
-//        allDocIds = allDocIds.stream().filter(x -> x.length == 512).map(x -> {
-//            int[] newArr = new int[x.length + 12]; // Did this for one pass reading without 2 for loops to avoid ArrayIndexOOB
-//            System.arraycopy(x, 0, newArr, 0, x.length);
-//            return newArr;
-//        }).collect(Collectors.toList());
-
         System.out.println("Found " + allDocIds.size() + " docId sequences.");
 
         List<int[]> finalDocIds = Collections.nCopies(benchmarkInput.inputScaleFactor, allDocIds).stream().flatMap(List::stream).collect(Collectors.toList());
 
         System.out.printf("\nFinal size of docIds sequences is %s \n", finalDocIds.size());
-//
-//        System.out.println(allDocIds.stream().filter(x -> x.length < 510).count());
-//        System.out.println(allDocIds.stream().filter(x -> x.length == 510).count());
 
         runBenchmark(finalDocIds, true, benchmarkInput);
         System.out.println("Warmup complete!!");
@@ -98,7 +89,6 @@ public class DocIdWriterBenchmark {
         try (Directory dir = FSDirectory.open(benchmarkInput.getOutputDir())) {
 
             int totalIterations = isWarmup ? 1 : benchmarkInput.getTotalIterations();
-            //int arrayLen = 512; // Hardcoded as we are filtering for docId sequences of 512
 
             DocIdEncoder docIdEncoder = benchmarkInput.encoder;
 
@@ -138,7 +128,6 @@ public class DocIdWriterBenchmark {
                 decodeTime += (System.nanoTime() - decodeStart);
                 totalDecodeTime += decodeTime;
 
-                // Kind of a black hole to ensure compiler doesn't optimise away decoding.
                 if (Arrays.stream(scratch).filter(x -> x == Integer.MAX_VALUE).count() > 0) {
                     // Should not be reachable
                     System.out.printf("\nSomething went Wrong\nScratch is %s for Encoder %s \n", Arrays.toString(scratch), docIdEncoder.getClass().getSimpleName());
