@@ -37,6 +37,14 @@ public final class OffHeapFSTStore implements FSTStore {
   private long offset;
   private long numBytes;
 
+  public OffHeapFSTStore() {}
+
+  public OffHeapFSTStore(IndexInput in, long offset, FST.FSTMetadata<?> metadata) {
+    this.in = in;
+    this.offset = offset;
+    this.numBytes = metadata.numBytes;
+  }
+
   @Override
   public FSTStore init(DataInput in, long numBytes) throws IOException {
     if (in instanceof IndexInput) {
