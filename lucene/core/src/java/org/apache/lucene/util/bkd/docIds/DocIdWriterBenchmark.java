@@ -104,6 +104,8 @@ public class DocIdWriterBenchmark {
 
             List<Integer> docIdLengths = allDocIds.stream().map(x -> x.length).toList();
 
+            long totalEncodeTime = 0L, totalDecodeTime = 0L;
+
             for (int i = 1; i <= totalIterations; i++) {
 
                 if (!isWarmup) {
@@ -124,6 +126,7 @@ public class DocIdWriterBenchmark {
                 }
                 out.close();
                 encodeTime += (System.nanoTime() - encodeStart);
+                totalEncodeTime += encodeTime;
 
                 // Reading all the written DocId Arrays in the file using the decoder
                 long decodeStart = System.nanoTime();
@@ -133,6 +136,7 @@ public class DocIdWriterBenchmark {
                 }
                 in.close();
                 decodeTime += (System.nanoTime() - decodeStart);
+                totalDecodeTime += decodeTime;
 
                 // Kind of a black hole to ensure compiler doesn't optimise away decoding.
                 if (Arrays.stream(scratch).filter(x -> x == Integer.MAX_VALUE).count() > 0) {
@@ -147,6 +151,11 @@ public class DocIdWriterBenchmark {
                             docIdEncoder.getClass().getSimpleName(), encodeTime / 1_000_000, decodeTime / 1_000_000);
                 }
 
+            }
+
+            if (!isWarmup) {
+                System.out.printf("\nBenchmark completed for Encoder %s with average encode time as %s ms and average decode time as %s ms\n",
+                        docIdEncoder.getClass().getSimpleName(), (totalEncodeTime / totalIterations) / 1_000_000, (totalDecodeTime / totalIterations) / 1_000_000);
             }
 
         }
