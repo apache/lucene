@@ -46,6 +46,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
+// noCommit
 public final class Lucene99HnswTensorsFormat extends KnnTensorsFormat {
 
   /**
