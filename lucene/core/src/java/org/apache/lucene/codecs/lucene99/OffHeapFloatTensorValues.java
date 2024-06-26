@@ -68,12 +68,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     this.similarityFunction = similarityFunction;
     this.dataOffsetsReaderConfiguration = dataOffsetsConfiguration;
     if (tensorData != null && dataOffsetsReaderConfiguration != null) {
-      final RandomAccessInput dataOffsetsSlice =
-          tensorData.randomAccessSlice(
-              dataOffsetsReaderConfiguration.addressesOffset,
-              dataOffsetsReaderConfiguration.addressesLength);
-      this.dataOffsetsReader =
-          DirectMonotonicReader.getInstance(dataOffsetsReaderConfiguration.meta, dataOffsetsSlice);
+      this.dataOffsetsReader = dataOffsetsReaderConfiguration.getDirectMonotonicReader(tensorData);
     } else {
       this.dataOffsetsReader = null;
     }
@@ -305,10 +300,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
           similarityFunction,
           dataOffsetsReaderConfiguration);
       this.configuration = configuration;
-      final RandomAccessInput disiAddressesData =
-          tensorData.randomAccessSlice(
-              configuration.addressesOffset, configuration.addressesLength);
-      this.ordToDoc = DirectMonotonicReader.getInstance(configuration.meta, disiAddressesData);
+      this.ordToDoc = configuration.getDirectMonotonicReader(tensorData);
       this.disi =
           new IndexedDISI(
               tensorData,
