@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.KnnFloatTensorQuery;
-import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.FloatTensorValue;
 import org.apache.lucene.util.VectorUtil;
