@@ -17,6 +17,11 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -40,12 +45,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 /**
  * Reads tensors from the index segments.

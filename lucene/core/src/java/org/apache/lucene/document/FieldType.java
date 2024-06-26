@@ -52,7 +52,8 @@ public class FieldType implements IndexableFieldType {
   private int tensorRank;
   private int tensorDimension;
   private VectorEncoding tensorEncoding = VectorEncoding.FLOAT32;
-  private TensorSimilarityFunction tensorSimilarityFunction = TensorSimilarityFunction.SUM_MAX_EUCLIDEAN;
+  private TensorSimilarityFunction tensorSimilarityFunction =
+      TensorSimilarityFunction.SUM_MAX_EUCLIDEAN;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -409,12 +410,14 @@ public class FieldType implements IndexableFieldType {
     return vectorSimilarityFunction;
   }
 
-  /** Enable tensor indexing for fixed degree tensors. Dimensions for individual vectors within
-   * the tensor can vary.
+  /**
+   * Enable tensor indexing for fixed degree tensors. Dimensions for individual vectors within the
+   * tensor can vary.
    *
    * @param rank Rank of the tensor
    * @param dimension Dimension of each vector in the tensor
-   * @param encoding {@link VectorEncoding} for each tensor vector. Should be the same for all vectors
+   * @param encoding {@link VectorEncoding} for each tensor vector. Should be the same for all
+   *     vectors
    * @param similarity Used to compare tensors during indexing and search.
    */
   public void setTensorAttributes(

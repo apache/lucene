@@ -149,7 +149,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         throw new IllegalStateException("Same field cannot be of both vector and tensor type");
       }
       VectorEncoding fieldEncoding =
-          fieldInfo.hasVectorValues() ? fieldInfo.getVectorEncoding() : fieldInfo.getTensorEncoding();
+          fieldInfo.hasVectorValues()
+              ? fieldInfo.getVectorEncoding()
+              : fieldInfo.getTensorEncoding();
       if (fieldEncoding != expected) {
         throw new UnsupportedOperationException(
             "Cannot merge field encoded as [" + fieldEncoding + "] as " + expected);

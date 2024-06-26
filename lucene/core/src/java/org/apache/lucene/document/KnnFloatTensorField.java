@@ -17,38 +17,36 @@
 
 package org.apache.lucene.document;
 
-import org.apache.lucene.index.FloatVectorValues;
+import java.util.List;
+import java.util.Objects;
 import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.FloatTensorValue;
 import org.apache.lucene.util.VectorUtil;
 
-import java.util.List;
-import java.util.Objects;
-
 /**
- * A field that contains one or more floating-point numeric vectors for each document.
- * Similar to {@link KnnFloatVectorField}, vectors are dense - that is, every dimension of a vector
- * contains an explicit value, stored packed into an array (of type float[]) whose length is
- * the vector dimension.
- * Only rank 2 tensors are currently supported. All vectors in a tensor field are required to have
- * the same dimension, although different documents can have different number of vectors.
- * The {@link TensorSimilarityFunction} may be used to compare tensors at query time, or during indexing
- * for generating a nearest neighbour graph (such as the HNSW graph).
- * TODO: Value retrieved from ?? what iterators are supported? random access?
+ * A field that contains one or more floating-point numeric vectors for each document. Similar to
+ * {@link KnnFloatVectorField}, vectors are dense - that is, every dimension of a vector contains an
+ * explicit value, stored packed into an array (of type float[]) whose length is the vector
+ * dimension. Only rank 2 tensors are currently supported. All vectors in a tensor field are
+ * required to have the same dimension, although different documents can have different number of
+ * vectors. The {@link TensorSimilarityFunction} may be used to compare tensors at query time, or
+ * during indexing for generating a nearest neighbour graph (such as the HNSW graph). TODO: Value
+ * retrieved from ?? what iterators are supported? random access?
  *
  * @lucene.experimental
  */
-// * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
+// * A field that contains a single floating-point numeric vector (or none) for each document.
+// Vectors
 // * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
 // * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
 // * {@link FloatVectorValues}, which is a forward-only docID-based iterator and also offers
 // * random-access by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to
 // * compare vectors at query time (for example as part of result ranking). A {@link
-// * KnnFloatTensorField} may be associated with a search similarity function defining the metric used
+// * KnnFloatTensorField} may be associated with a search similarity function defining the metric
+// used
 // * for nearest-neighbor search among vectors of that field.
 // *
 // * @lucene.experimental
@@ -57,7 +55,8 @@ public class KnnFloatTensorField extends Field {
 
   private static final int rank = 2;
 
-  private static FieldType createType(List<float[]> t, TensorSimilarityFunction similarityFunction) {
+  private static FieldType createType(
+      List<float[]> t, TensorSimilarityFunction similarityFunction) {
     if (t == null) {
       throw new IllegalArgumentException("tensor value must not be null");
     }
@@ -68,7 +67,8 @@ public class KnnFloatTensorField extends Field {
       throw new IllegalArgumentException("similarity function must not be null");
     }
     if (t.get(0).length == 0) {
-      throw new IllegalArgumentException("empty vector found at index 0. Tensor cannot have empty vectors");
+      throw new IllegalArgumentException(
+          "empty vector found at index 0. Tensor cannot have empty vectors");
     }
     int dimension = t.get(0).length;
     checkDimensions(t, dimension);
@@ -85,7 +85,8 @@ public class KnnFloatTensorField extends Field {
    * @param similarityFunction a function to compute similarity between two tensors
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
-  public static FieldType createFieldType(int dimension, TensorSimilarityFunction similarityFunction) {
+  public static FieldType createFieldType(
+      int dimension, TensorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setTensorAttributes(rank, dimension, VectorEncoding.FLOAT32, similarityFunction);
     type.freeze();
@@ -101,13 +102,14 @@ public class KnnFloatTensorField extends Field {
    * @return A new vector query
    */
   public static Query newVectorQuery(String field, float[] queryVector, int k) {
-    // TODO: this could be a KnnFloatTensorQuery that allows a tensor on query side and uses TensorSimFn
+    // TODO: this could be a KnnFloatTensorQuery that allows a tensor on query side and uses
+    // TensorSimFn
     return new KnnFloatVectorQuery(field, queryVector, k);
   }
 
   /**
-   * Creates a numeric tensor field. Fields are multi-valued: each document has one or more
-   * values. Tensors of a single field share the same dimension and similarity function.
+   * Creates a numeric tensor field. Fields are multi-valued: each document has one or more values.
+   * Tensors of a single field share the same dimension and similarity function.
    *
    * @param name field name
    * @param tensor value
@@ -124,8 +126,8 @@ public class KnnFloatTensorField extends Field {
   }
 
   /**
-   * Creates a numeric tensor field with the default EUCLIDEAN_HNSW (L2) similarity. Vectors within a single
-   * tensor field share the same dimension and similarity function.
+   * Creates a numeric tensor field with the default EUCLIDEAN_HNSW (L2) similarity. Vectors within
+   * a single tensor field share the same dimension and similarity function.
    *
    * @param name field name
    * @param tensor value
@@ -137,7 +139,8 @@ public class KnnFloatTensorField extends Field {
   }
 
   /**
-   * Creates a numeric tensor field. Vectors of a single tensor share the same dimension and similarity function.
+   * Creates a numeric tensor field. Vectors of a single tensor share the same dimension and
+   * similarity function.
    *
    * @param name field name
    * @param tensor value
@@ -178,17 +181,23 @@ public class KnnFloatTensorField extends Field {
       throw new IllegalArgumentException("value must not be null or empty");
     }
     if (value.dimension() != type.tensorDimension()) {
-      throw new IllegalArgumentException("value dimension [" + value.dimension() + "] " +
-          "should match field tensor dimension: [" + type.tensorDimension() + "]");
+      throw new IllegalArgumentException(
+          "value dimension ["
+              + value.dimension()
+              + "] "
+              + "should match field tensor dimension: ["
+              + type.tensorDimension()
+              + "]");
     }
     fieldsData = value;
   }
 
   private static void checkDimensions(List<float[]> tensor, int dimensions) {
-    for(float[] val: tensor) {
+    for (float[] val : tensor) {
       if (val.length != dimensions) {
-        throw new IllegalArgumentException("All vectors in the tensor should have the " +
-            "same dimension value as configured in the fieldType");
+        throw new IllegalArgumentException(
+            "All vectors in the tensor should have the "
+                + "same dimension value as configured in the fieldType");
       }
     }
   }

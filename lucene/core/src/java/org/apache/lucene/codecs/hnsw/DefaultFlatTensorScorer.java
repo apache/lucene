@@ -17,12 +17,11 @@
 
 package org.apache.lucene.codecs.hnsw;
 
+import java.io.IOException;
 import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-
-import java.io.IOException;
 
 /**
  * Default implementation of {@link FlatTensorsScorer}.
@@ -45,23 +44,20 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
 
   @Override
   public RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues values,
-      float[] target)
+      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
       throws IOException {
     assert values instanceof RandomAccessVectorValues.Floats;
     if (target.length % values.dimension() != 0) {
       throw new IllegalArgumentException(
           "query tensor dimension differs from tensor field dimension: " + values.dimension());
     }
-    return new FloatTensorScorer((RandomAccessVectorValues.Floats) values, target, similarityFunction);
+    return new FloatTensorScorer(
+        (RandomAccessVectorValues.Floats) values, target, similarityFunction);
   }
 
   @Override
   public RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues values,
-      byte[] target)
+      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
       throws IOException {
     assert values instanceof RandomAccessVectorValues.Bytes;
     if (target.length % values.dimension() != 0) {
@@ -100,7 +96,8 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
       return new RandomVectorScorer.AbstractRandomVectorScorer(tensors) {
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(tensors1.vectorValue(ord), tensors2.vectorValue(node), dimension);
+          return similarityFunction.compare(
+              tensors1.vectorValue(ord), tensors2.vectorValue(node), dimension);
         }
       };
     }
@@ -134,7 +131,8 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
       return new RandomVectorScorer.AbstractRandomVectorScorer(tensors) {
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(tensors1.vectorValue(ord), tensors2.vectorValue(node), dimension);
+          return similarityFunction.compare(
+              tensors1.vectorValue(ord), tensors2.vectorValue(node), dimension);
         }
       };
     }

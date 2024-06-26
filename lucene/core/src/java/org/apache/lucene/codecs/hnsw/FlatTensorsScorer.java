@@ -17,14 +17,11 @@
 
 package org.apache.lucene.codecs.hnsw;
 
+import java.io.IOException;
 import org.apache.lucene.index.TensorSimilarityFunction;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-
-import java.io.IOException;
-import java.util.List;
 
 /**
  * Provides mechanisms to score tensors that are stored in a flat file The purpose of this class is
@@ -56,9 +53,7 @@ public interface FlatTensorsScorer {
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues values,
-      float[] target)
+      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
       throws IOException;
 
   /**
@@ -71,8 +66,6 @@ public interface FlatTensorsScorer {
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues values,
-      byte[] target)
+      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
       throws IOException;
 }

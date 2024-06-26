@@ -16,13 +16,12 @@
  */
 package org.apache.lucene.util;
 
-
 import java.util.List;
 
 public class FloatTensorValue {
   private float[] packedValue;
   private int vectorCount;
-  final private int dimension;
+  private final int dimension;
 
   public FloatTensorValue(float[] tensorValue, int dimension) {
     if (dimension <= 0) {
@@ -33,13 +32,14 @@ public class FloatTensorValue {
     }
     this.vectorCount = tensorValue.length / dimension;
     if (dimension * vectorCount != tensorValue.length) {
-      throw new IllegalArgumentException("Each composing vector should have the same dimension = " + dimension);
+      throw new IllegalArgumentException(
+          "Each composing vector should have the same dimension = " + dimension);
     }
     this.dimension = dimension;
     this.packedValue = ArrayUtil.copyOfSubArray(tensorValue, 0, vectorCount * this.dimension);
   }
 
-  public FloatTensorValue(List<float []> vectorValues, int dimension) {
+  public FloatTensorValue(List<float[]> vectorValues, int dimension) {
     if (dimension <= 0) {
       throw new IllegalArgumentException("Dimension for composing vectors should be > 0");
     }
@@ -50,29 +50,33 @@ public class FloatTensorValue {
     this.dimension = dimension;
     packedValue = new float[vectorCount * dimension];
     int targetPtr = 0;
-    for (float[] vector: vectorValues) {
+    for (float[] vector : vectorValues) {
       if (vector.length != dimension) {
-        throw new IllegalArgumentException("Found vector of dimension = " + vector.length +
-            ". Each composing vector should have the same dimension = " + dimension);
+        throw new IllegalArgumentException(
+            "Found vector of dimension = "
+                + vector.length
+                + ". Each composing vector should have the same dimension = "
+                + dimension);
       }
       System.arraycopy(vector, 0, packedValue, targetPtr, dimension);
       targetPtr += dimension;
     }
   }
 
-//  // TODO: implement if needed
-//  public void addValues(List<float []> vectorValues) {
-//    if (vectorValues == null || vectorValues.isEmpty()) {
-//      return;
-//    }
-//    for (float[] vector: vectorValues) {
-//      if (vector.length != dimension) {
-//        throw new IllegalArgumentException("Dimension for provided vector value [" + vector.length + "] " +
-//            "does not match FloatTensorValue dimension [" + dimension + "]");
-//        // TODO: add to existing running list of vectors
-//      }
-//    }
-//  }
+  //  // TODO: implement if needed
+  //  public void addValues(List<float []> vectorValues) {
+  //    if (vectorValues == null || vectorValues.isEmpty()) {
+  //      return;
+  //    }
+  //    for (float[] vector: vectorValues) {
+  //      if (vector.length != dimension) {
+  //        throw new IllegalArgumentException("Dimension for provided vector value [" +
+  // vector.length + "] " +
+  //            "does not match FloatTensorValue dimension [" + dimension + "]");
+  //        // TODO: add to existing running list of vectors
+  //      }
+  //    }
+  //  }
 
   public float[] packedValue() {
     return packedValue;

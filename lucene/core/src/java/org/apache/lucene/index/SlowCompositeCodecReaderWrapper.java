@@ -826,7 +826,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     private final KnnVectorsReader[] readers;
     private final int[] docStarts;
 
-    SlowCompositeKnnVectorsReaderWrapper(CodecReader[] codecReaders, int[] docStarts, boolean isTensor) {
+    SlowCompositeKnnVectorsReaderWrapper(
+        CodecReader[] codecReaders, int[] docStarts, boolean isTensor) {
       this.codecReaders = codecReaders;
       if (isTensor) {
         this.readers =

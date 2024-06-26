@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs;
 
+import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
@@ -24,8 +25,6 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
-
-import java.io.IOException;
 
 /**
  * Encodes/decodes per-document tensors and any associated indexing structures required to support
@@ -84,8 +83,8 @@ public abstract class KnnTensorsFormat implements NamedSPILoader.NamedSPI {
   public abstract KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 
   /**
-   * Returns the maximum number of dimensions per vector supported by this codec
-   * for the given field name
+   * Returns the maximum number of dimensions per vector supported by this codec for the given field
+   * name
    *
    * <p>Codecs implement this method to specify the maximum number of dimensions they support.
    *

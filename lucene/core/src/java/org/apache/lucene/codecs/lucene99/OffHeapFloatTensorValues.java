@@ -17,6 +17,8 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -32,10 +34,6 @@ import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /** Read the tensor values from the index input. This supports both iterated and random access. */
 public abstract class OffHeapFloatTensorValues extends FloatVectorValues
@@ -60,7 +58,8 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
       IndexInput dataIn,
       FlatTensorsScorer flatTensorsScorer,
       TensorSimilarityFunction similarityFunction,
-      TensorDataOffsetsReaderConfiguration dataOffsetsConfiguration) throws IOException {
+      TensorDataOffsetsReaderConfiguration dataOffsetsConfiguration)
+      throws IOException {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
@@ -71,8 +70,10 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     if (tensorData != null && dataOffsetsReaderConfiguration != null) {
       final RandomAccessInput dataOffsetsSlice =
           tensorData.randomAccessSlice(
-              dataOffsetsReaderConfiguration.addressesOffset, dataOffsetsReaderConfiguration.addressesLength);
-      this.dataOffsetsReader = DirectMonotonicReader.getInstance(dataOffsetsReaderConfiguration.meta, dataOffsetsSlice);
+              dataOffsetsReaderConfiguration.addressesOffset,
+              dataOffsetsReaderConfiguration.addressesLength);
+      this.dataOffsetsReader =
+          DirectMonotonicReader.getInstance(dataOffsetsReaderConfiguration.meta, dataOffsetsSlice);
     } else {
       this.dataOffsetsReader = null;
     }
@@ -105,20 +106,21 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     long offset = dataOffsets.get(targetOrd);
 
     // Todo: switch to using ByteBuffer
-    int length = (int)(dataOffsets.get(targetOrd + 1) - offset) / Float.BYTES;
+    int length = (int) (dataOffsets.get(targetOrd + 1) - offset) / Float.BYTES;
     value = new float[length];
     slice.seek(offset);
     slice.readFloats(value, 0, length);
 
-//    // Use a ByteBuffer to avoid reallocation
-//    int length = (int)(dataOffsets.get(targetOrd + 1) - offset);
-//    if (valueBuffer == null || valueBuffer.capacity() < length) {
-//      valueBuffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN);
-//    }
-//    valueBuffer.reset();
-//    slice.seek(offset);
-//    slice.readBytes(valueBuffer.array(), valueBuffer.arrayOffset(), length);
-//    value = valueBuffer.slice(0, length).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().array();
+    //    // Use a ByteBuffer to avoid reallocation
+    //    int length = (int)(dataOffsets.get(targetOrd + 1) - offset);
+    //    if (valueBuffer == null || valueBuffer.capacity() < length) {
+    //      valueBuffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN);
+    //    }
+    //    valueBuffer.reset();
+    //    slice.seek(offset);
+    //    slice.readBytes(valueBuffer.array(), valueBuffer.arrayOffset(), length);
+    //    value = valueBuffer.slice(0,
+    // length).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().array();
 
     lastOrd = targetOrd;
     return value;
@@ -143,7 +145,8 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     if (configuration.docsWithFieldOffset == -2 || tensorEncoding != VectorEncoding.FLOAT32) {
       return new EmptyOffHeapTensorValues(dimension, flatTensorsScorer, tensorSimilarityFunction);
     }
-    IndexInput tensorDataSlice = tensorData.slice("tensor-data", tensorDataOffset, tensorDataLength);
+    IndexInput tensorDataSlice =
+        tensorData.slice("tensor-data", tensorDataOffset, tensorDataLength);
     if (configuration.docsWithFieldOffset == -1) {
       return new DenseOffHeapTensorValues(
           dimension,
@@ -166,8 +169,8 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
   }
 
   /**
-   * Dense tensor values that are stored off-heap.
-   * This is the case when every doc has a tensor, and docId is the same as tensor ordinal.
+   * Dense tensor values that are stored off-heap. This is the case when every doc has a tensor, and
+   * docId is the same as tensor ordinal.
    */
   public static class DenseOffHeapTensorValues extends OffHeapFloatTensorValues {
 
@@ -180,8 +183,16 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
         IndexInput tensorData,
         FlatTensorsScorer flatTensorsScorer,
         TensorSimilarityFunction similarityFunction,
-        TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration) throws IOException {
-      super(dimension, size, slice, tensorData, flatTensorsScorer, similarityFunction, dataOffsetsReaderConfiguration);
+        TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration)
+        throws IOException {
+      super(
+          dimension,
+          size,
+          slice,
+          tensorData,
+          flatTensorsScorer,
+          similarityFunction,
+          dataOffsetsReaderConfiguration);
     }
 
     @Override
@@ -211,7 +222,13 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     @Override
     public DenseOffHeapTensorValues copy() throws IOException {
       return new DenseOffHeapTensorValues(
-          dimension, size, slice.clone(), tensorData.clone(), flatTensorsScorer, similarityFunction, dataOffsetsReaderConfiguration);
+          dimension,
+          size,
+          slice.clone(),
+          tensorData.clone(),
+          flatTensorsScorer,
+          similarityFunction,
+          dataOffsetsReaderConfiguration);
     }
 
     @Override
@@ -247,7 +264,8 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
         IndexInput slice,
         FlatTensorsScorer flatTensorsScorer,
         TensorSimilarityFunction similarityFunction,
-        LongValues tensorDataOffsets) throws IOException {
+        LongValues tensorDataOffsets)
+        throws IOException {
       super(dimension, size, slice, null, flatTensorsScorer, similarityFunction, null);
       dataOffsets = tensorDataOffsets;
     }
@@ -276,11 +294,20 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
         FlatTensorsScorer flatTensorsScorer,
         TensorSimilarityFunction similarityFunction,
         TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration,
-        OrdToDocDISIReaderConfiguration configuration) throws IOException {
-      super(dimension, configuration.size, slice, tensorData, flatTensorsScorer, similarityFunction, dataOffsetsReaderConfiguration);
+        OrdToDocDISIReaderConfiguration configuration)
+        throws IOException {
+      super(
+          dimension,
+          configuration.size,
+          slice,
+          tensorData,
+          flatTensorsScorer,
+          similarityFunction,
+          dataOffsetsReaderConfiguration);
       this.configuration = configuration;
       final RandomAccessInput disiAddressesData =
-          tensorData.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
+          tensorData.randomAccessSlice(
+              configuration.addressesOffset, configuration.addressesLength);
       this.ordToDoc = DirectMonotonicReader.getInstance(configuration.meta, disiAddressesData);
       this.disi =
           new IndexedDISI(
@@ -372,7 +399,8 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     public EmptyOffHeapTensorValues(
         int dimension,
         FlatTensorsScorer flatTensorsScorer,
-        TensorSimilarityFunction similarityFunction) throws IOException {
+        TensorSimilarityFunction similarityFunction)
+        throws IOException {
       super(dimension, 0, null, null, flatTensorsScorer, similarityFunction, null);
     }
 

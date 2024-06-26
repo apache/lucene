@@ -201,7 +201,8 @@ public interface RandomAccessVectorValues {
 
       @Override
       public int getVectorByteLength() {
-        throw new UnsupportedOperationException("Tensor have variable value length across different ordinals");
+        throw new UnsupportedOperationException(
+            "Tensor have variable value length across different ordinals");
       }
 
       @Override
@@ -237,7 +238,8 @@ public interface RandomAccessVectorValues {
 
       @Override
       public int getVectorByteLength() {
-        throw new UnsupportedOperationException("Tensor have variable value length across different ordinals");
+        throw new UnsupportedOperationException(
+            "Tensor have variable value length across different ordinals");
       }
 
       @Override
