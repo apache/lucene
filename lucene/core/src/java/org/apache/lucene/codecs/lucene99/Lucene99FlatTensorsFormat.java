@@ -77,6 +77,8 @@ import org.apache.lucene.store.IndexOutput;
  */
 public final class Lucene99FlatTensorsFormat extends FlatVectorsFormat {
 
+  public static final String NAME = "Lucene99FlatTensorsFormat";
+
   static final String META_CODEC_NAME = "Lucene99FlatTensorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene99FlatTensorsFormatData";
   static final String META_EXTENSION = "tem";
@@ -90,6 +92,7 @@ public final class Lucene99FlatTensorsFormat extends FlatVectorsFormat {
 
   /** Constructs a format */
   public Lucene99FlatTensorsFormat(FlatTensorsScorer tensorsScorer) {
+    super(NAME);
     this.tensorsScorer = tensorsScorer;
   }
 
