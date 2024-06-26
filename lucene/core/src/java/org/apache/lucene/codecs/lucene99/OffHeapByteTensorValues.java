@@ -36,6 +36,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the tensor values from the index input. This supports both iterated and random access. */
+// no commit
 public abstract class OffHeapByteTensorValues extends ByteVectorValues
     implements RandomAccessVectorValues.Bytes {
 
