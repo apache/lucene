@@ -87,37 +87,15 @@ public class TensorDataOffsetsReaderConfiguration {
    */
   public static TensorDataOffsetsReaderConfiguration fromStoredMeta(IndexInput inputMeta)
       throws IOException {
-    //    long docsWithFieldOffset = inputMeta.readLong();
-    //    long docsWithFieldLength = inputMeta.readLong();
-    //    short jumpTableEntryCount = inputMeta.readShort();
-    //    byte denseRankPower = inputMeta.readByte();
-    //    long addressesOffset = 0;
-    //    int blockShift = 0;
-    //    DirectMonotonicReader.Meta meta = null;
-    //    long addressesLength = 0;
-    //    if (docsWithFieldOffset > -1) {
     long addressesOffset = inputMeta.readLong();
     int blockShift = inputMeta.readVInt();
     int numValues = inputMeta.readVInt();
     DirectMonotonicReader.Meta meta =
         DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
     long addressesLength = inputMeta.readLong();
-    //    }
     return new TensorDataOffsetsReaderConfiguration(addressesOffset, addressesLength, meta);
   }
 
-  //  final int size;
-  //  // the following four variables used to read docIds encoded by IndexDISI
-  //  // special values of docsWithFieldOffset are -1 and -2
-  //  // -1 : dense
-  //  // -2 : empty
-  //  // other: sparse
-  //  final short jumpTableEntryCount;
-  //  final long docsWithFieldOffset, docsWithFieldLength;
-  //  final byte denseRankPower;
-  //
-  //  // the following four variables used to read ordToDoc encoded by DirectMonotonicWriter
-  //  // note that only spare case needs to store ordToDoc
   final long addressesOffset, addressesLength;
   final DirectMonotonicReader.Meta meta;
 
@@ -127,22 +105,6 @@ public class TensorDataOffsetsReaderConfiguration {
     this.addressesLength = addressesLength;
     this.meta = meta;
   }
-
-  //  /**
-  //   * @param dataIn the dataIn
-  //   * @return the IndexedDISI for sparse values
-  //   * @throws IOException thrown when reading data fails
-  //   */
-  //  public IndexedDISI getIndexedDISI(IndexInput dataIn) throws IOException {
-  //    assert docsWithFieldOffset > -1;
-  //    return new IndexedDISI(
-  //        dataIn,
-  //        docsWithFieldOffset,
-  //        docsWithFieldLength,
-  //        jumpTableEntryCount,
-  //        denseRankPower,
-  //        size);
-  //  }
 
   /**
    * @param dataIn the IndexInput to read data from
@@ -154,22 +116,4 @@ public class TensorDataOffsetsReaderConfiguration {
         dataIn.randomAccessSlice(addressesOffset, addressesLength);
     return DirectMonotonicReader.getInstance(meta, addressesData);
   }
-
-  //  /**
-  //   * @return If true, the field is empty, no vector values. If false, the field is either dense
-  // or
-  //   *     sparse.
-  //   */
-  //  public boolean isEmpty() {
-  //    return docsWithFieldOffset == -2;
-  //  }
-  //
-  //  /**
-  //   * @return If true, the field is dense, all documents have values for a field. If false, the
-  // field
-  //   *     is sparse, some documents missing values.
-  //   */
-  //  public boolean isDense() {
-  //    return docsWithFieldOffset == -1;
-  //  }
 }

@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.KnnByteTensorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ByteTensorValue;
 
@@ -87,10 +87,8 @@ public class KnnByteTensorField extends Field {
    * @param k The number of nearest neighbors to gather
    * @return A new vector query
    */
-  public static Query newVectorQuery(String field, float[] queryVector, int k) {
-    // TODO: this could be a KnnFloatTensorQuery that allows a tensor on query side and uses
-    // TensorSimFn
-    return new KnnFloatVectorQuery(field, queryVector, k);
+  public static Query newVectorQuery(String field, byte[] queryVector, int k) {
+    return KnnByteTensorQuery.create(field, queryVector, k);
   }
 
   /**
@@ -111,7 +109,7 @@ public class KnnByteTensorField extends Field {
   }
 
   /**
-   * Creates a byte numeric tensor field with the default EUCLIDEAN_HNSW (L2) similarity. Vectors
+   * Creates a byte numeric tensor field with the default SUM_MAX_EUCLIDEAN (L2) similarity. Vectors
    * within a single tensor field share the same dimension and similarity function.
    *
    * @param name field name
