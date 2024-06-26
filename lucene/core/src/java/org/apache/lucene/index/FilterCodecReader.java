@@ -106,6 +106,11 @@ public abstract class FilterCodecReader extends CodecReader {
   }
 
   @Override
+  public KnnVectorsReader getTensorReader() {
+    return in.getTensorReader();
+  }
+
+  @Override
   public int numDocs() {
     return in.numDocs();
   }

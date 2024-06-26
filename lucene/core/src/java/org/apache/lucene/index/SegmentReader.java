@@ -288,6 +288,11 @@ public final class SegmentReader extends CodecReader {
   }
 
   @Override
+  public KnnVectorsReader getTensorReader() {
+    return core.knnTensorsReader;
+  }
+
+  @Override
   public FieldsProducer getPostingsReader() {
     ensureOpen();
     return core.fields;
