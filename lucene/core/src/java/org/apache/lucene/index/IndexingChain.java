@@ -866,7 +866,8 @@ final class IndexingChain implements Accountable {
           fieldType.vectorDimension());
     }
     if (fieldType.tensorDimension() > 0) {
-      schema.setTensors(fieldType.tensorRank(),
+      schema.setTensors(
+          fieldType.tensorRank(),
           fieldType.tensorDimension(),
           fieldType.tensorEncoding(),
           fieldType.tensorSimilarityFunction());
@@ -1062,7 +1063,8 @@ final class IndexingChain implements Accountable {
   }
 
   @SuppressWarnings("unchecked")
-  private void indexTensorValue(int docID, PerField pf, VectorEncoding tensorEncoding, IndexableField field)
+  private void indexTensorValue(
+      int docID, PerField pf, VectorEncoding tensorEncoding, IndexableField field)
       throws IOException {
     switch (tensorEncoding) {
       case BYTE -> ((KnnFieldVectorsWriter<ByteTensorValue>) pf.knnFieldVectorsWriter)
@@ -1479,7 +1481,8 @@ final class IndexingChain implements Accountable {
     private int tensorRank = 0;
     private int tensorDimension = 0;
     private VectorEncoding tensorEncoding = VectorEncoding.FLOAT32;
-    private TensorSimilarityFunction tensorSimilarityFunction = TensorSimilarityFunction.SUM_MAX_EUCLIDEAN;
+    private TensorSimilarityFunction tensorSimilarityFunction =
+        TensorSimilarityFunction.SUM_MAX_EUCLIDEAN;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1574,7 +1577,11 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setTensors(int rank, int dimension, VectorEncoding encoding, TensorSimilarityFunction similarityFunction) {
+    void setTensors(
+        int rank,
+        int dimension,
+        VectorEncoding encoding,
+        TensorSimilarityFunction similarityFunction) {
       if (tensorDimension == 0) {
         this.tensorRank = rank;
         this.tensorDimension = dimension;
@@ -1615,7 +1622,8 @@ final class IndexingChain implements Accountable {
       assertSame("tensor rank", fi.getTensorRank(), tensorRank);
       assertSame("tensor dimension", fi.getTensorDimension(), tensorDimension);
       assertSame("tensor encoding", fi.getTensorEncoding(), tensorEncoding);
-      assertSame("tensor similarity function", fi.getTensorSimilarityFunction(), tensorSimilarityFunction);
+      assertSame(
+          "tensor similarity function", fi.getTensorSimilarityFunction(), tensorSimilarityFunction);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);

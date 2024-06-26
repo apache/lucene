@@ -132,19 +132,21 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     FieldWriter<?> newField;
     if (fieldInfo.hasTensorValues()) {
-      newField = FieldWriter.create(
-          flatVectorWriter.getFlatTensorScorer(),
-          fieldInfo,
-          M,
-          beamWidth,
-          segmentWriteState.infoStream);
+      newField =
+          FieldWriter.create(
+              flatVectorWriter.getFlatTensorScorer(),
+              fieldInfo,
+              M,
+              beamWidth,
+              segmentWriteState.infoStream);
     } else {
-      newField = FieldWriter.create(
-          flatVectorWriter.getFlatVectorScorer(),
-          fieldInfo,
-          M,
-          beamWidth,
-          segmentWriteState.infoStream);
+      newField =
+          FieldWriter.create(
+              flatVectorWriter.getFlatVectorScorer(),
+              fieldInfo,
+              M,
+              beamWidth,
+              segmentWriteState.infoStream);
     }
     fields.add(newField);
     return flatVectorWriter.addField(fieldInfo, newField);
@@ -585,7 +587,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         throws IOException {
       return switch (fieldInfo.getTensorEncoding()) {
         case BYTE -> new FieldWriter<ByteTensorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
-        case FLOAT32 -> new FieldWriter<FloatTensorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
+        case FLOAT32 -> new FieldWriter<FloatTensorValue>(
+            scorer, fieldInfo, M, beamWidth, infoStream);
       };
     }
 

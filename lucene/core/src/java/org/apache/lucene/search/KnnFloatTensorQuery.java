@@ -16,18 +16,18 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.document.KnnFloatTensorField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.Bits;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-
 /**
- * Syntactic sugar on top of {@link KnnFloatVectorQuery} to provide an interface for tensor query targets.
+ * Syntactic sugar on top of {@link KnnFloatVectorQuery} to provide an interface for tensor query
+ * targets.
  */
 public class KnnFloatTensorQuery extends KnnFloatVectorQuery {
 
@@ -36,31 +36,35 @@ public class KnnFloatTensorQuery extends KnnFloatVectorQuery {
 
   /**
    * Find the <code>k</code> nearest documents to the target tensor according to the tensors in the
-   * given field. All vector values for the target are concatenated as a
-   * single float[] in <code>target</code> tensor.
+   * given field. All vector values for the target are concatenated as a single float[] in <code>
+   * target</code> tensor.
    *
    * @param field a field that has been indexed as a {@link KnnFloatTensorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @param filter a filter applied before the vector search
-   * @param targetDimension dimension for the target tensor. Should be same as that of the indexed field.
+   * @param targetDimension dimension for the target tensor. Should be same as that of the indexed
+   *     field.
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public KnnFloatTensorQuery(String field, float[] target, int k, Query filter, int targetDimension) {
+  public KnnFloatTensorQuery(
+      String field, float[] target, int k, Query filter, int targetDimension) {
     super(field, target, k, filter);
     this.targetDimension = targetDimension;
   }
 
-  public static KnnFloatTensorQuery create(String field, List<float[]> target, int k, Query filter) {
+  public static KnnFloatTensorQuery create(
+      String field, List<float[]> target, int k, Query filter) {
     if (target == null || target.isEmpty()) {
       throw new IllegalArgumentException("empty target");
     }
     int targetDim = target.get(0).length;
     float[] packedTarget = new float[targetDim * target.size()];
     int dPtr = 0;
-    for (float[] v: target) {
+    for (float[] v : target) {
       if (v.length != targetDim) {
-        throw new IllegalArgumentException("all vectors in the tensor should have the same dimension");
+        throw new IllegalArgumentException(
+            "all vectors in the tensor should have the same dimension");
       }
       System.arraycopy(v, 0, packedTarget, dPtr, targetDim);
       dPtr += targetDim;
@@ -76,7 +80,8 @@ public class KnnFloatTensorQuery extends KnnFloatVectorQuery {
     return new KnnFloatTensorQuery(field, target, k, null, 0);
   }
 
-  public static KnnFloatTensorQuery create(String field, float[] target, int k, Query filter, int dimension) {
+  public static KnnFloatTensorQuery create(
+      String field, float[] target, int k, Query filter, int dimension) {
     return new KnnFloatTensorQuery(field, target, k, filter, dimension);
   }
 
@@ -93,8 +98,13 @@ public class KnnFloatTensorQuery extends KnnFloatVectorQuery {
       throws IOException {
     int fieldDim = context.reader().getFieldInfos().fieldInfo(field).getTensorDimension();
     if (targetDimension != 0 && fieldDim != targetDimension) {
-      throw new IllegalArgumentException("Indexed field " + field +
-          " dimension: " + fieldDim + " does not match search target dimension: " + targetDimension);
+      throw new IllegalArgumentException(
+          "Indexed field "
+              + field
+              + " dimension: "
+              + fieldDim
+              + " does not match search target dimension: "
+              + targetDimension);
     }
     return super.approximateSearch(context, acceptDocs, visitedLimit, knnCollectorManager);
   }
@@ -105,8 +115,13 @@ public class KnnFloatTensorQuery extends KnnFloatVectorQuery {
       throws IOException {
     int fieldDim = context.reader().getFieldInfos().fieldInfo(field).getTensorDimension();
     if (targetDimension != 0 && fieldDim != targetDimension) {
-      throw new IllegalArgumentException("Indexed field " + field +
-          " dimension: " + fieldDim + " does not match search target dimension: " + targetDimension);
+      throw new IllegalArgumentException(
+          "Indexed field "
+              + field
+              + " dimension: "
+              + fieldDim
+              + " does not match search target dimension: "
+              + targetDimension);
     }
     return super.exactSearch(context, acceptIterator, queryTimeout);
   }

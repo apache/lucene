@@ -17,7 +17,6 @@
 package org.apache.lucene.backward_codecs.lucene90;
 
 import java.util.Objects;
-
 import org.apache.lucene.codecs.*;
 import org.apache.lucene.codecs.lucene90.Lucene90CompoundFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;

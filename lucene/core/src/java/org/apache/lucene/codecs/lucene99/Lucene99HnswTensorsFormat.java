@@ -17,6 +17,14 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_MAX_CONN;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.KnnTensorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -29,21 +37,12 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
-import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_BEAM_WIDTH;
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_MAX_CONN;
-
 /**
  * Lucene 9.9 tensor format, which encodes numeric tensor values into an associated graph connecting
  * the documents having values. The graph is used to power HNSW search. The format consists of two
  * files, a {@link Lucene99FlatTensorsFormat} to store and retrieve the actual tensor values from
- * the index, and a {@link Lucene99HnswVectorsFormat} to build an HNSW graph on tensor nodes. Each tensor
- * node corresponds to a single document.
+ * the index, and a {@link Lucene99HnswVectorsFormat} to build an HNSW graph on tensor nodes. Each
+ * tensor node corresponds to a single document.
  *
  * @lucene.experimental
  */

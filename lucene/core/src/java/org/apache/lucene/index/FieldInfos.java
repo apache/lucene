@@ -22,8 +22,8 @@ import static org.apache.lucene.index.FieldInfo.verifySameIndexOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameOmitNorms;
 import static org.apache.lucene.index.FieldInfo.verifySamePointsOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
-import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameTensorOptions;
+import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -385,18 +385,19 @@ public class FieldInfos implements Iterable<FieldInfo> {
       int rank,
       VectorEncoding tensorEncoding,
       TensorSimilarityFunction similarityFunction) {}
-//
-//    FieldTensorProperties(
-//        int numDimensions,
-//        int rank,
-//        VectorEncoding tensorEncoding,
-//        TensorSimilarityFunction similarityFunction) {
-//      this.numDimensions = numDimensions;
-//      this.rank = rank;
-//      this.tensorEncoding = tensorEncoding;
-//      this.similarityFunction = similarityFunction;
-//    }
-//  }
+
+  //
+  //    FieldTensorProperties(
+  //        int numDimensions,
+  //        int rank,
+  //        VectorEncoding tensorEncoding,
+  //        TensorSimilarityFunction similarityFunction) {
+  //      this.numDimensions = numDimensions;
+  //      this.rank = rank;
+  //      this.tensorEncoding = tensorEncoding;
+  //      this.similarityFunction = similarityFunction;
+  //    }
+  //  }
 
   static final class FieldNumbers {
 

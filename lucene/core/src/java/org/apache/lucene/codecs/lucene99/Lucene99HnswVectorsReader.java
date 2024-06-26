@@ -168,7 +168,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
-    int dimension = (info.hasTensorValues()) ? info.getTensorDimension() : info.getVectorDimension();
+    int dimension =
+        (info.hasTensorValues()) ? info.getTensorDimension() : info.getVectorDimension();
     if (dimension != fieldEntry.dimension) {
       throw new IllegalStateException(
           "Inconsistent vector dimension for field=\""
@@ -219,7 +220,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       throw new IllegalArgumentException("invalid distance function: " + similarityId);
     }
     if (similarityId >= TensorSimilarityFunction.ORDINAL_START) {
-      tensorSimilarityFunction = TensorSimilarityFunction.values()[similarityId - TensorSimilarityFunction.ORDINAL_START];
+      tensorSimilarityFunction =
+          TensorSimilarityFunction.values()[similarityId - TensorSimilarityFunction.ORDINAL_START];
       if (tensorSimilarityFunction != info.getTensorSimilarityFunction()) {
         throw new IllegalStateException(
             "Inconsistent similarity function for field=\""
@@ -245,7 +247,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       }
     }
 
-    return FieldEntry.create(input, vectorEncoding, vectorSimilarityFunction, tensorSimilarityFunction);
+    return FieldEntry.create(
+        input, vectorEncoding, vectorSimilarityFunction, tensorSimilarityFunction);
   }
 
   @Override

@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.util.ArrayUtil;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Tensor similarity function; used in search to return top K most similar vectors to a target
@@ -29,8 +28,8 @@ import java.util.List;
 public enum TensorSimilarityFunction {
 
   /**
-   * SumMax Euclidean distance - returns sum of max pair wise {@link VectorSimilarityFunction#EUCLIDEAN}
-   * distance across vectors in the two tensors.
+   * SumMax Euclidean distance - returns sum of max pair wise {@link
+   * VectorSimilarityFunction#EUCLIDEAN} distance across vectors in the two tensors.
    */
   SUM_MAX_EUCLIDEAN {
     @Override
@@ -63,10 +62,11 @@ public enum TensorSimilarityFunction {
   },
 
   /**
-   * SumMax Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize all
-   * vectors to unit length, and instead use {@link TensorSimilarityFunction#SUM_MAX_DOT_PRODUCT}. You
-   * should only use this function if you need to preserve the original vectors and cannot normalize
-   * them in advance. The cosine similarity score per vector is normalised to assure it is positive.
+   * SumMax Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize
+   * all vectors to unit length, and instead use {@link
+   * TensorSimilarityFunction#SUM_MAX_DOT_PRODUCT}. You should only use this function if you need to
+   * preserve the original vectors and cannot normalize them in advance. The cosine similarity score
+   * per vector is normalised to assure it is positive.
    */
   SUM_MAX_COSINE {
     @Override
@@ -81,9 +81,9 @@ public enum TensorSimilarityFunction {
   },
 
   /**
-   * Sum Maximum inner product. This is like {@link TensorSimilarityFunction#SUM_MAX_DOT_PRODUCT}, but does not
-   * require normalization of the inputs. Should be used when the embedding vectors store useful
-   * information within the vector magnitude
+   * Sum Maximum inner product. This is like {@link TensorSimilarityFunction#SUM_MAX_DOT_PRODUCT},
+   * but does not require normalization of the inputs. Should be used when the embedding vectors
+   * store useful information within the vector magnitude
    */
   SUM_MAXIMUM_INNER_PRODUCT {
     @Override
@@ -97,7 +97,8 @@ public enum TensorSimilarityFunction {
     }
   };
 
-  // TODO: this is trappy, it has an unchecked requirement for VectorSimilarityFunction to have ordinal < 1000
+  // TODO: this is trappy, it has an unchecked requirement for VectorSimilarityFunction to have
+  // ordinal < 1000
   // can we merge the two similarity functions?
   /** Uses identifier instead of ordinals to avoid overlap with {@link VectorSimilarityFunction} */
   private final int identifier;
@@ -116,10 +117,10 @@ public enum TensorSimilarityFunction {
    * Calculates a similarity score between the two tensors with a specified function. Higher
    * similarity scores correspond to closer vectors.
    *
-   * @param t1 a tensor with non-empty vectors
-   *           All vector values are concatenated in a single packed array.
-   * @param t2 another tensor, vectors of the same dimension as t1.
-   *           All vector values are concatenated in a single packed array.
+   * @param t1 a tensor with non-empty vectors All vector values are concatenated in a single packed
+   *     array.
+   * @param t2 another tensor, vectors of the same dimension as t1. All vector values are
+   *     concatenated in a single packed array.
    * @return the value of the similarity function applied to the two tensors
    */
   public abstract float compare(float[] t1, float[] t2, int dimension);
@@ -128,18 +129,18 @@ public enum TensorSimilarityFunction {
    * Calculates a similarity score between the two tensors with a specified function. Higher
    * similarity scores correspond to closer vectors.
    *
-   * @param t1 a tensor with non-empty vectors.
-   *           All vector values are concatenated in a single packed array.
-   * @param t2 another tensor, vectors of the same dimension as t1.
-   *           All vector values are concatenated in a single packed array.
+   * @param t1 a tensor with non-empty vectors. All vector values are concatenated in a single
+   *     packed array.
+   * @param t2 another tensor, vectors of the same dimension as t1. All vector values are
+   *     concatenated in a single packed array.
    * @return the value of the similarity function applied to the two tensors
    */
   public abstract float compare(byte[] t1, byte[] t2, int dimension);
 
   /**
-   * Compute SumMaxSimilarity between two tensors.
-   * Returns the sum of maximum similarity found for each vector in the outer tensor against all vectors
-   * in the inner tensor. Uses {@param vectorSimilarityFunction} to compute similarity between two vectors.
+   * Compute SumMaxSimilarity between two tensors. Returns the sum of maximum similarity found for
+   * each vector in the outer tensor against all vectors in the inner tensor. Uses {@param
+   * vectorSimilarityFunction} to compute similarity between two vectors.
    *
    * @param outerTensor Outer tensor
    * @param innerTensor Inner tensor
@@ -147,10 +148,11 @@ public enum TensorSimilarityFunction {
    * @param dimension Dimension for each vector in the tensors
    * @return The sum of max similarity between outer - inner vector tensors
    */
-  public float sumMaxSimilarity(float[] outerTensor,
-                                float[] innerTensor,
-                                VectorSimilarityFunction vectorSimilarityFunction,
-                                int dimension) {
+  public float sumMaxSimilarity(
+      float[] outerTensor,
+      float[] innerTensor,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      int dimension) {
     if (outerTensor.length % dimension != 0 || innerTensor.length % dimension != 0) {
       throw new IllegalArgumentException("Tensor vectors do not match provided dimensions");
     }
@@ -164,9 +166,9 @@ public enum TensorSimilarityFunction {
     }
 
     float result = 0f;
-    for (float[] o: outer) {
+    for (float[] o : outer) {
       float maxSim = Float.MIN_VALUE;
-      for (float[] i: inner) {
+      for (float[] i : inner) {
         maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(o, i));
       }
       result += maxSim;
@@ -175,10 +177,11 @@ public enum TensorSimilarityFunction {
   }
 
   /** SumMaxSimilarity for byte tensors */
-  public float sumMaxSimilarity(byte[] outerTensor,
-                                byte[] innerTensor,
-                                VectorSimilarityFunction vectorSimilarityFunction,
-                                int dimension) {
+  public float sumMaxSimilarity(
+      byte[] outerTensor,
+      byte[] innerTensor,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      int dimension) {
     if (outerTensor.length % dimension != 0 || innerTensor.length % dimension != 0) {
       throw new IllegalArgumentException("Tensor vectors do not match provided dimensions");
     }
@@ -192,9 +195,9 @@ public enum TensorSimilarityFunction {
     }
 
     float result = 0f;
-    for (byte[] o: outer) {
+    for (byte[] o : outer) {
       float maxSim = Float.MIN_VALUE;
-      for (byte[] i: inner) {
+      for (byte[] i : inner) {
         maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(o, i));
       }
       result += maxSim;
