@@ -192,8 +192,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
+    if (fi == null || (fi.getVectorDimension() == 0 && fi.getTensorDimension() <= 0)) {
+      // The field does not exist or does not index vectors or tensors
       return NO_RESULTS;
     }
 
