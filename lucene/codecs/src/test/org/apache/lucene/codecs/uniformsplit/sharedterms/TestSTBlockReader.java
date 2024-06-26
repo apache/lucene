@@ -207,6 +207,10 @@ public class TestSTBlockReader extends LuceneTestCase {
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
+        0,
+        0,
+        null,
+        null,
         false,
         false);
   }

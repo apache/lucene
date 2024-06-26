@@ -429,18 +429,22 @@ public class FieldType implements IndexableFieldType {
     this.tensorSimilarityFunction = Objects.requireNonNull(similarity);
   }
 
+  @Override
   public int tensorRank() {
     return tensorRank;
   }
 
+  @Override
   public int tensorDimension() {
     return tensorDimension;
   }
 
+  @Override
   public VectorEncoding tensorEncoding() {
     return tensorEncoding;
   }
 
+  @Override
   public TensorSimilarityFunction tensorSimilarityFunction() {
     return tensorSimilarityFunction;
   }

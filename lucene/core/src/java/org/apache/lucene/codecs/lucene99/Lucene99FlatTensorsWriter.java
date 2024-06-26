@@ -293,8 +293,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
     return tensorDataOffset;
   }
 
-  // TODO: [Tensors] revisit after defining FlatTensorReaders
-
   private record TensorDataWriteState(DocsWithFieldSet docsWithField, long[] dataOffsets) {
     TensorDataWriteState {
       assert dataOffsets.length == docsWithField.cardinality() + 1;
@@ -326,7 +324,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
         writeState.dataOffsets);
   }
 
-  // TODO: [Tensors] revisit after defining FlatTensorReaders
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
@@ -514,7 +511,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
     private static final long SHALLOW_RAM_BYTES_USED =
         RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
     private final FieldInfo fieldInfo;
-    private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> values;
 
@@ -554,7 +550,6 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
       this.fieldInfo = fieldInfo;
       this.docsWithField = new DocsWithFieldSet();
       values = new ArrayList<>();
-      this.dim = fieldInfo.getTensorDimension();
     }
 
     @Override
