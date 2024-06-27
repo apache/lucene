@@ -56,8 +56,9 @@ import org.apache.lucene.store.IndexOutput;
  *
  * <ul>
  *   <li><b>[int32]</b> field number
- *   <li><b>[int32]</b> tensor encoding ordinal
- *   <li><b>[int32]</b> tensor similarity function ordinal
+ *   <li><b>[int32]</b> vector encoding ordinal for the tensor
+ *   <li><b>[int32]</b> vector similarity function ordinal for the tensor
+ *   <li><b>[int32]</b> tensor similarity aggregation function ordinal
  *   <li><b>[vlong]</b> start offset to this field's tensor data in the .tec file
  *   <li><b>[vlong]</b> length of this field's tensor data, in bytes
  *   <li><b>[vint]</b> dimension of this field's vectors that compose the tensor

@@ -60,18 +60,12 @@ public class KnnByteTensorField extends Field {
     int dimension = t.get(0).length;
     checkDimensions(t, dimension);
     FieldType type = new FieldType();
-    type.setTensorAttributes(
-        true,
-        dimension,
-        VectorEncoding.BYTE,
-        similarityFunction,
-        aggregation);
+    type.setTensorAttributes(true, dimension, VectorEncoding.BYTE, similarityFunction, aggregation);
     type.freeze();
     return type;
   }
 
-  private static FieldType createType(
-      List<byte[]> t, TensorSimilarityFunction similarityFunction) {
+  private static FieldType createType(List<byte[]> t, TensorSimilarityFunction similarityFunction) {
     return createType(t, similarityFunction.similarityFunction, similarityFunction.aggregation);
   }
 
@@ -108,27 +102,31 @@ public class KnnByteTensorField extends Field {
   }
 
   /**
-   * Creates a byte numeric tensor field. Fields are multi-valued: each document has one or more values.
-   * Tensors of a single field share the same dimension and similarity function.
+   * Creates a byte numeric tensor field. Fields are multi-valued: each document has one or more
+   * values. Tensors of a single field share the same dimension and similarity function.
    *
    * @param name field name
    * @param tensor value
    * @param similarityFunction a {@link VectorSimilarityFunction} defining tensor proximity.
-   * @param aggregation a {@link Aggregation} defining similarity aggregation across multiple vector values
+   * @param aggregation a {@link Aggregation} defining similarity aggregation across multiple vector
+   *     values
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
   public KnnByteTensorField(
-      String name, List<byte[]> tensor, VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
+      String name,
+      List<byte[]> tensor,
+      VectorSimilarityFunction similarityFunction,
+      Aggregation aggregation) {
     super(name, createType(tensor, similarityFunction, aggregation));
     assert type.vectorDimension() == tensor.get(0).length;
     fieldsData = new ByteTensorValue(tensor, type.vectorDimension());
   }
 
   /**
-   * Creates a byte numeric tensor field with the default EUCLIDEAN (L2) similarity
-   * and default SUM_MAX aggregation. Vectors within a single tensor field share
-   * the same dimension and similarity function.
+   * Creates a byte numeric tensor field with the default EUCLIDEAN (L2) similarity and default
+   * SUM_MAX aggregation. Vectors within a single tensor field share the same dimension and
+   * similarity function.
    *
    * @param name field name
    * @param tensor value

@@ -27,15 +27,7 @@ import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.TensorSimilarityFunction;
-import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.*;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
@@ -180,12 +172,12 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry.tensorEncoding != VectorEncoding.FLOAT32) {
+    if (fieldEntry.encoding != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
-              + fieldEntry.tensorEncoding
+              + fieldEntry.encoding
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
@@ -194,7 +186,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
         tensorScorer,
         fieldEntry.ordToDoc,
         fieldEntry.dataOffsets,
-        fieldEntry.tensorEncoding,
+        fieldEntry.encoding,
         fieldEntry.dimension,
         fieldEntry.tensorDataOffset,
         fieldEntry.tensorDataLength,
@@ -204,12 +196,12 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry.tensorEncoding != VectorEncoding.BYTE) {
+    if (fieldEntry.encoding != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
-              + fieldEntry.tensorEncoding
+              + fieldEntry.encoding
               + " expected: "
               + VectorEncoding.BYTE);
     }
@@ -218,7 +210,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
         tensorScorer,
         fieldEntry.ordToDoc,
         fieldEntry.dataOffsets,
-        fieldEntry.tensorEncoding,
+        fieldEntry.encoding,
         fieldEntry.dimension,
         fieldEntry.tensorDataOffset,
         fieldEntry.tensorDataLength,
@@ -228,7 +220,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.tensorEncoding != VectorEncoding.FLOAT32) {
+    if (fieldEntry == null || fieldEntry.encoding != VectorEncoding.FLOAT32) {
       return null;
     }
     // target tensor should consist of vectors with the same dimension as field
@@ -244,7 +236,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.tensorEncoding != VectorEncoding.BYTE) {
+    if (fieldEntry == null || fieldEntry.encoding != VectorEncoding.BYTE) {
       return null;
     }
     // target tensor should consist of vectors with the same dimension as field
@@ -264,7 +256,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
 
   private record FieldEntry(
       FieldInfo info,
-      VectorEncoding tensorEncoding,
+      VectorEncoding encoding,
       TensorSimilarityFunction similarityFunction,
       long tensorDataOffset,
       long tensorDataLength,
@@ -274,7 +266,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
       TensorDataOffsetsReaderConfiguration dataOffsets) {
 
     FieldEntry {
-      if (similarityFunction != info.getTensorSimilarityFunction()) {
+      if (similarityFunction.equals(info.getTensorSimilarityFunction()) == false) {
         throw new IllegalStateException(
             "Inconsistent tensor similarity function for field=\""
                 + info.name
@@ -283,10 +275,10 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
                 + " != "
                 + info.getTensorSimilarityFunction());
       }
-      int infoDimension = info.getTensorDimension();
+      int infoDimension = info.getVectorDimension();
       if (infoDimension != dimension) {
         throw new IllegalStateException(
-            "Inconsistent tensor dimension for field=\""
+            "Inconsistent dimension for field=\""
                 + info.name
                 + "\"; "
                 + infoDimension
@@ -296,7 +288,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
     }
 
     static FieldEntry create(IndexInput input, FieldInfo info) throws IOException {
-      final VectorEncoding tensorEncoding = readVectorEncoding(input);
+      final VectorEncoding encoding = readVectorEncoding(input);
       final TensorSimilarityFunction similarityFunction = readSimilarityFunction(input);
       final var tensorDataOffset = input.readVLong();
       final var tensorDataLength = input.readVLong();
@@ -306,7 +298,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
       final var dataOffsets = TensorDataOffsetsReaderConfiguration.fromStoredMeta(input);
       return new FieldEntry(
           info,
-          tensorEncoding,
+          encoding,
           similarityFunction,
           tensorDataOffset,
           tensorDataLength,
@@ -319,10 +311,16 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
 
   public static TensorSimilarityFunction readSimilarityFunction(DataInput input)
       throws IOException {
-    int fnId = input.readInt();
-    if (fnId < 0 || fnId >= TensorSimilarityFunction.values().length) {
-      throw new CorruptIndexException("Invalid tensor similarity function id: " + fnId, input);
+    int similarity = input.readInt();
+    int agg = input.readInt();
+    if (similarity < 0 || similarity >= VectorSimilarityFunction.values().length) {
+      throw new CorruptIndexException("Invalid similarity function id: " + similarity, input);
     }
-    return TensorSimilarityFunction.values()[fnId];
+    if (agg < 0 || agg >= TensorSimilarityFunction.Aggregation.values().length) {
+      throw new CorruptIndexException("Invalid tensor aggregation function, id: " + agg, input);
+    }
+    return new TensorSimilarityFunction(
+        VectorSimilarityFunction.values()[similarity],
+        TensorSimilarityFunction.Aggregation.values()[agg]);
   }
 }

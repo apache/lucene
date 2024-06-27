@@ -381,8 +381,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       FieldTensorProperties fieldTensorProperties) {}
 
   private record FieldTensorProperties(
-      boolean isTensor,
-      TensorSimilarityFunction similarityFunction) {}
+      boolean isTensor, TensorSimilarityFunction similarityFunction) {}
 
   static final class FieldNumbers {
 
@@ -468,9 +467,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                     fi.getVectorDimension(),
                     fi.getVectorEncoding(),
                     fi.getVectorSimilarityFunction()),
-                new FieldTensorProperties(
-                    fi.isTensor(),
-                    fi.getTensorSimilarityFunction()));
+                new FieldTensorProperties(fi.isTensor(), fi.getTensorSimilarityFunction()));
         this.fieldProperties.put(fieldName, fieldProperties);
       }
       return fieldProperties.number;

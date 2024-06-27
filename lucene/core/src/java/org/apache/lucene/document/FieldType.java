@@ -50,7 +50,8 @@ public class FieldType implements IndexableFieldType {
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private boolean isTensor;
-  private TensorSimilarityFunction.Aggregation tensorAggregate = TensorSimilarityFunction.Aggregation.SUM_MAX;
+  private TensorSimilarityFunction.Aggregation tensorAggregate =
+      TensorSimilarityFunction.Aggregation.SUM_MAX;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -406,15 +407,17 @@ public class FieldType implements IndexableFieldType {
   }
 
   /**
-   * Enable tensor indexing. Each vector in the tensor has the same dimension. Different
-   * tensor values can vary in the number of vectors.
+   * Enable tensor indexing. Each vector in the tensor has the same dimension. Different tensor
+   * values can vary in the number of vectors.
    *
    * @param isTensor Boolean flag indicating if the field indexes tensors
    * @param dimension Dimension of each vector in the tensor
    * @param encoding {@link VectorEncoding} for each tensor vector. Should be the same for all
    *     vectors
-   * @param similarityFunction {@link VectorSimilarityFunction} Used to compare tensors during indexing and search
-   * @param aggregation {@link TensorSimilarityFunction.Aggregation} used to aggregate similarity across multiple vectors
+   * @param similarityFunction {@link VectorSimilarityFunction} Used to compare tensors during
+   *     indexing and search
+   * @param aggregation {@link TensorSimilarityFunction.Aggregation} used to aggregate similarity
+   *     across multiple vectors
    */
   public void setTensorAttributes(
       boolean isTensor,
