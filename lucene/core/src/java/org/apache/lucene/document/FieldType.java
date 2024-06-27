@@ -25,7 +25,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.TensorSimilarityFunction;
+import org.apache.lucene.index.TensorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
@@ -50,8 +50,8 @@ public class FieldType implements IndexableFieldType {
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private boolean isTensor;
-  private TensorSimilarityFunction.Aggregation tensorAggregate =
-      TensorSimilarityFunction.Aggregation.SUM_MAX;
+  private Aggregation tensorAggregate =
+      Aggregation.SUM_MAX;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -416,7 +416,7 @@ public class FieldType implements IndexableFieldType {
    *     vectors
    * @param similarityFunction {@link VectorSimilarityFunction} Used to compare tensors during
    *     indexing and search
-   * @param aggregation {@link TensorSimilarityFunction.Aggregation} used to aggregate similarity
+   * @param aggregation {@link Aggregation} used to aggregate similarity
    *     across multiple vectors
    */
   public void setTensorAttributes(
@@ -424,7 +424,7 @@ public class FieldType implements IndexableFieldType {
       int dimension,
       VectorEncoding encoding,
       VectorSimilarityFunction similarityFunction,
-      TensorSimilarityFunction.Aggregation aggregation) {
+      Aggregation aggregation) {
     checkIfFrozen();
     this.isTensor = isTensor;
     this.vectorDimension = dimension;
@@ -439,7 +439,7 @@ public class FieldType implements IndexableFieldType {
   }
 
   @Override
-  public TensorSimilarityFunction.Aggregation tensorAggregate() {
+  public Aggregation tensorAggregate() {
     return tensorAggregate;
   }
 

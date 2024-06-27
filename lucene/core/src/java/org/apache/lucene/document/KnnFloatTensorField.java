@@ -68,11 +68,6 @@ public class KnnFloatTensorField extends Field {
     return type;
   }
 
-  private static FieldType createType(
-      List<float[]> t, TensorSimilarityFunction similarityFunction) {
-    return createType(t, similarityFunction.similarityFunction, similarityFunction.aggregation);
-  }
-
   /**
    * A convenience method for creating a tensor field type.
    *
