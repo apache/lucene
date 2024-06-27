@@ -297,6 +297,11 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     assertTrue(resultSlices.length > 0);
   }
 
+  public void testConstantsUnchanged() {
+    assertEquals(250_000, IndexSearcher.MAX_DOCS_PER_SLICE);
+    assertEquals(5, IndexSearcher.MAX_SEGMENTS_PER_SLICE);
+  }
+
   public void testTwoPreciseSlices() {
     LeafReader firstSegmentReader = dummyIndexReader(250_000);
     LeafReader secondSegmentReader = dummyIndexReader(250_000);
