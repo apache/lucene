@@ -50,8 +50,7 @@ public class FieldType implements IndexableFieldType {
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private boolean isTensor;
-  private Aggregation tensorAggregate =
-      Aggregation.SUM_MAX;
+  private Aggregation tensorAggregate = Aggregation.SUM_MAX;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -416,8 +415,7 @@ public class FieldType implements IndexableFieldType {
    *     vectors
    * @param similarityFunction {@link VectorSimilarityFunction} Used to compare tensors during
    *     indexing and search
-   * @param aggregation {@link Aggregation} used to aggregate similarity
-   *     across multiple vectors
+   * @param aggregation {@link Aggregation} used to aggregate similarity across multiple vectors
    */
   public void setTensorAttributes(
       boolean isTensor,
