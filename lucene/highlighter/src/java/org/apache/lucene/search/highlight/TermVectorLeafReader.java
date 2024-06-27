@@ -19,7 +19,6 @@ package org.apache.lucene.search.highlight;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
-
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
