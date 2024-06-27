@@ -110,17 +110,11 @@ public interface IndexableFieldType {
   /** The {@link VectorSimilarityFunction} of the field's vector value */
   VectorSimilarityFunction vectorSimilarityFunction();
 
-  /** Rank of the tensor */
-  int tensorRank();
+  /** True if this field is a Tensor field, false otherwise */
+  boolean isTensor();
 
-  /** Dimensions for each vector in the tensor */
-  int tensorDimension();
-
-  /** The {@link VectorEncoding} for vectors in the field's tensor values */
-  VectorEncoding tensorEncoding();
-
-  /** The {@link TensorSimilarityFunction} for a field's tensor value */
-  TensorSimilarityFunction tensorSimilarityFunction();
+  /** Aggregation used for {@link TensorSimilarityFunction} */
+  TensorSimilarityFunction.Aggregation tensorAggregate();
 
   /**
    * Attributes for the field type.

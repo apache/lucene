@@ -661,12 +661,11 @@ final class IndexingChain implements Accountable {
           s.vectorDimension,
           indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions(pf.fieldName));
     }
-    if (s.tensorDimension > 0) {
-      // TODO: Do we need a different codec for Tensors?
+    if (s.isTensor) {
       validateMaxVectorDimension(
           pf.fieldName,
-          s.tensorDimension,
-          indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions(pf.fieldName));
+          s.vectorDimension,
+          indexWriterConfig.getCodec().knnTensorsFormat().getMaxDimensions(pf.fieldName));
     }
     FieldInfo fi =
         fieldInfos.add(
@@ -688,10 +687,8 @@ final class IndexingChain implements Accountable {
                 s.vectorDimension,
                 s.vectorEncoding,
                 s.vectorSimilarityFunction,
-                s.tensorDimension,
-                s.tensorRank,
-                s.tensorEncoding,
-                s.tensorSimilarityFunction,
+                s.isTensor,
+                s.tensorAggregate,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName()),
                 pf.fieldName.equals(fieldInfos.getParentFieldName())));
     pf.setFieldInfo(fi);
@@ -786,11 +783,11 @@ final class IndexingChain implements Accountable {
     if (fieldType.pointDimensionCount() != 0) {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
-    if (fieldType.vectorDimension() != 0) {
+
+    if (fieldType.isTensor()) {
+      indexTensorValue(docID, pf, fieldType.vectorEncoding(), field);
+    } else if (fieldType.vectorDimension() != 0) {
       indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
-    }
-    if (fieldType.tensorDimension() > 0) {
-      indexTensorValue(docID, pf, fieldType.tensorEncoding(), field);
     }
     return indexedField;
   }
@@ -865,12 +862,10 @@ final class IndexingChain implements Accountable {
           fieldType.vectorSimilarityFunction(),
           fieldType.vectorDimension());
     }
-    if (fieldType.tensorDimension() > 0) {
+    if (fieldType.isTensor()) {
       schema.setTensors(
-          fieldType.tensorRank(),
-          fieldType.tensorDimension(),
-          fieldType.tensorEncoding(),
-          fieldType.tensorSimilarityFunction());
+          fieldType.isTensor(),
+          fieldType.tensorAggregate());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1064,9 +1059,9 @@ final class IndexingChain implements Accountable {
 
   @SuppressWarnings("unchecked")
   private void indexTensorValue(
-      int docID, PerField pf, VectorEncoding tensorEncoding, IndexableField field)
+      int docID, PerField pf, VectorEncoding encoding, IndexableField field)
       throws IOException {
-    switch (tensorEncoding) {
+    switch (encoding) {
       case BYTE -> ((KnnFieldVectorsWriter<ByteTensorValue>) pf.knnFieldVectorsWriter)
           .addValue(docID, ((KnnByteTensorField) field).tensorValue());
       case FLOAT32 -> ((KnnFieldVectorsWriter<FloatTensorValue>) pf.knnFieldVectorsWriter)
@@ -1478,11 +1473,8 @@ final class IndexingChain implements Accountable {
     private int vectorDimension = 0;
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    private int tensorRank = 0;
-    private int tensorDimension = 0;
-    private VectorEncoding tensorEncoding = VectorEncoding.FLOAT32;
-    private TensorSimilarityFunction tensorSimilarityFunction =
-        TensorSimilarityFunction.SUM_MAX_EUCLIDEAN;
+    private boolean isTensor = false;
+    private TensorSimilarityFunction.Aggregation tensorAggregate = TensorSimilarityFunction.Aggregation.SUM_MAX;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1578,20 +1570,14 @@ final class IndexingChain implements Accountable {
     }
 
     void setTensors(
-        int rank,
-        int dimension,
-        VectorEncoding encoding,
-        TensorSimilarityFunction similarityFunction) {
-      if (tensorDimension == 0) {
-        this.tensorRank = rank;
-        this.tensorDimension = dimension;
-        this.tensorEncoding = encoding;
-        this.tensorSimilarityFunction = similarityFunction;
+        boolean isTensor,
+        TensorSimilarityFunction.Aggregation tensorAggregate) {
+      if (isTensor == false) {
+        this.isTensor = isTensor;
+        this.tensorAggregate = tensorAggregate;
       } else {
-        assertSame("tensor rank", tensorRank, rank);
-        assertSame("tensor dimension", tensorDimension, dimension);
-        assertSame("tensor encoding", tensorEncoding, encoding);
-        assertSame("tensor similarity", tensorSimilarityFunction, similarityFunction);
+        assertSame("isTensor", this.isTensor, isTensor);
+        assertSame("tensor aggregation", this.tensorAggregate, tensorAggregate);
       }
     }
 
@@ -1619,11 +1605,8 @@ final class IndexingChain implements Accountable {
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
-      assertSame("tensor rank", fi.getTensorRank(), tensorRank);
-      assertSame("tensor dimension", fi.getTensorDimension(), tensorDimension);
-      assertSame("tensor encoding", fi.getTensorEncoding(), tensorEncoding);
-      assertSame(
-          "tensor similarity function", fi.getTensorSimilarityFunction(), tensorSimilarityFunction);
+      assertSame("isTensor", fi.isTensor(), this.isTensor);
+      assertSame("tensor aggregation", fi.getTensorAggregate(), this.tensorAggregate);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);

@@ -126,7 +126,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       hasPayloads |= info.hasPayloads();
       hasPointValues |= (info.getPointDimensionCount() != 0);
       hasVectorValues |= (info.getVectorDimension() != 0);
-      hasTensorValues |= (info.getTensorDimension() != 0);
+      hasTensorValues |= info.hasTensorValues();
       if (info.isSoftDeletesField()) {
         if (softDeletesField != null && softDeletesField.equals(info.name) == false) {
           throw new IllegalArgumentException(
@@ -381,23 +381,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
       FieldTensorProperties fieldTensorProperties) {}
 
   private record FieldTensorProperties(
-      int numDimensions,
-      int rank,
-      VectorEncoding tensorEncoding,
+      boolean isTensor,
       TensorSimilarityFunction similarityFunction) {}
-
-  //
-  //    FieldTensorProperties(
-  //        int numDimensions,
-  //        int rank,
-  //        VectorEncoding tensorEncoding,
-  //        TensorSimilarityFunction similarityFunction) {
-  //      this.numDimensions = numDimensions;
-  //      this.rank = rank;
-  //      this.tensorEncoding = tensorEncoding;
-  //      this.similarityFunction = similarityFunction;
-  //    }
-  //  }
 
   static final class FieldNumbers {
 
@@ -484,9 +469,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                     fi.getVectorEncoding(),
                     fi.getVectorSimilarityFunction()),
                 new FieldTensorProperties(
-                    fi.getTensorDimension(),
-                    fi.getTensorRank(),
-                    fi.getTensorEncoding(),
+                    fi.isTensor(),
                     fi.getTensorSimilarityFunction()));
         this.fieldProperties.put(fieldName, fieldProperties);
       }
@@ -583,16 +566,16 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fi.getVectorEncoding(),
           fi.getVectorSimilarityFunction());
 
-      FieldTensorProperties tensorProperties = fieldProperties.fieldTensorProperties;
+      FieldTensorProperties tensorProps = fieldProperties.fieldTensorProperties;
       verifySameTensorOptions(
           fieldName,
-          tensorProperties.numDimensions,
-          tensorProperties.rank,
-          tensorProperties.tensorEncoding,
-          tensorProperties.similarityFunction,
-          fi.getTensorDimension(),
-          fi.getTensorRank(),
-          fi.getTensorEncoding(),
+          tensorProps.isTensor,
+          props.numDimensions,
+          props.vectorEncoding,
+          tensorProps.similarityFunction,
+          fi.isTensor(),
+          fi.getVectorDimension(),
+          fi.getVectorEncoding(),
           fi.getTensorSimilarityFunction());
     }
 
@@ -638,10 +621,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   VectorEncoding.FLOAT32,
                   VectorSimilarityFunction.EUCLIDEAN,
-                  0,
-                  0,
-                  VectorEncoding.FLOAT32,
-                  TensorSimilarityFunction.SUM_MAX_EUCLIDEAN,
+                  false,
+                  TensorSimilarityFunction.Aggregation.SUM_MAX,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)),
                   (parentFieldName != null && parentFieldName.equals(fieldName)));
           addOrGet(fi);
@@ -736,10 +717,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           VectorEncoding.FLOAT32,
           VectorSimilarityFunction.EUCLIDEAN,
-          0,
-          0,
-          VectorEncoding.FLOAT32,
-          TensorSimilarityFunction.SUM_MAX_EUCLIDEAN,
+          false,
+          TensorSimilarityFunction.Aggregation.SUM_MAX,
           isSoftDeletesField,
           isParentField);
     }
@@ -862,10 +841,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getVectorDimension(),
               fi.getVectorEncoding(),
               fi.getVectorSimilarityFunction(),
-              fi.getTensorDimension(),
-              fi.getTensorRank(),
-              fi.getTensorEncoding(),
-              fi.getTensorSimilarityFunction(),
+              fi.isTensor(),
+              fi.getTensorAggregate(),
               fi.isSoftDeletesField(),
               fi.isParentField());
       byName.put(fiNew.getName(), fiNew);
