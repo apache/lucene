@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.util.List;
 
+/** Stores a float numeric tensor value */
 public class FloatTensorValue {
   private float[] packedValue;
   private int vectorCount;

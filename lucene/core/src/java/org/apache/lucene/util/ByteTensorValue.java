@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.util.List;
 
+/** Stores a byte numeric tensor value */
 public class ByteTensorValue {
   private byte[] packedValue;
   private int vectorCount;
