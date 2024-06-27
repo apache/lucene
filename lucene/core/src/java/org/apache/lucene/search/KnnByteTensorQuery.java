@@ -94,7 +94,7 @@ public class KnnByteTensorQuery extends KnnByteVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    int fieldDim = context.reader().getFieldInfos().fieldInfo(field).getTensorDimension();
+    int fieldDim = context.reader().getFieldInfos().fieldInfo(field).getVectorDimension();
     if (targetDimension != 0 && fieldDim != targetDimension) {
       throw new IllegalArgumentException(
           "Indexed field "
@@ -111,7 +111,7 @@ public class KnnByteTensorQuery extends KnnByteVectorQuery {
   protected TopDocs exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
-    int fieldDim = context.reader().getFieldInfos().fieldInfo(field).getTensorDimension();
+    int fieldDim = context.reader().getFieldInfos().fieldInfo(field).getVectorDimension();
     if (targetDimension != 0 && fieldDim != targetDimension) {
       throw new IllegalArgumentException(
           "Indexed field "
