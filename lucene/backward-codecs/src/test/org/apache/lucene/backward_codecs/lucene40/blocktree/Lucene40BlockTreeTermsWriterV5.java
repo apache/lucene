@@ -695,7 +695,7 @@ public final class Lucene40BlockTreeTermsWriterV5 extends FieldsConsumer {
           PendingTerm term = (PendingTerm) ent;
 
           assert StringHelper.startsWith(term.termBytes, prefix)
-              : "term.term=" + term.termBytes + " prefix=" + prefix;
+              : "term.term=" + new BytesRef(term.termBytes) + " prefix=" + prefix;
           BlockTermState state = term.state;
           final int suffix = term.termBytes.length - prefixLength;
           // if (DEBUG2) {
@@ -729,7 +729,7 @@ public final class Lucene40BlockTreeTermsWriterV5 extends FieldsConsumer {
             PendingTerm term = (PendingTerm) ent;
 
             assert StringHelper.startsWith(term.termBytes, prefix)
-                : "term.term=" + term.termBytes + " prefix=" + prefix;
+                : "term.term=" + new BytesRef(term.termBytes) + " prefix=" + prefix;
             BlockTermState state = term.state;
             final int suffix = term.termBytes.length - prefixLength;
             // if (DEBUG2) {
