@@ -123,4 +123,14 @@ public class TensorSimilarityFunction implements TensorSimilarity {
   public float compare(byte[] t1, byte[] t2, int dimension) {
     return aggregation.aggregate(t1, t2, similarityFunction, dimension);
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof TensorSimilarityFunction == false) {
+      return false;
+    }
+    TensorSimilarityFunction o = (TensorSimilarityFunction) obj;
+    return this.similarityFunction == o.similarityFunction
+        && this.aggregation == o.aggregation;
+  }
 }

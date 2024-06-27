@@ -20,7 +20,9 @@ package org.apache.lucene.document;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.TensorSimilarityFunction;
+import org.apache.lucene.index.TensorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteTensorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ByteTensorValue;
@@ -40,9 +42,8 @@ import org.apache.lucene.util.ByteTensorValue;
  */
 public class KnnByteTensorField extends Field {
 
-  private static final int rank = 2;
-
-  private static FieldType createType(List<byte[]> t, TensorSimilarityFunction similarityFunction) {
+  private static FieldType createType(
+      List<byte[]> t, VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
     if (t == null) {
       throw new IllegalArgumentException("tensor value must not be null");
     }
@@ -59,9 +60,19 @@ public class KnnByteTensorField extends Field {
     int dimension = t.get(0).length;
     checkDimensions(t, dimension);
     FieldType type = new FieldType();
-    type.setTensorAttributes(rank, dimension, VectorEncoding.BYTE, similarityFunction);
+    type.setTensorAttributes(
+        true,
+        dimension,
+        VectorEncoding.BYTE,
+        similarityFunction,
+        aggregation);
     type.freeze();
     return type;
+  }
+
+  private static FieldType createType(
+      List<byte[]> t, TensorSimilarityFunction similarityFunction) {
+    return createType(t, similarityFunction.similarityFunction, similarityFunction.aggregation);
   }
 
   /**
@@ -74,7 +85,12 @@ public class KnnByteTensorField extends Field {
   public static FieldType createFieldType(
       int dimension, TensorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
-    type.setTensorAttributes(rank, dimension, VectorEncoding.BYTE, similarityFunction);
+    type.setTensorAttributes(
+        true,
+        dimension,
+        VectorEncoding.BYTE,
+        similarityFunction.similarityFunction,
+        similarityFunction.aggregation);
     type.freeze();
     return type;
   }
@@ -92,25 +108,27 @@ public class KnnByteTensorField extends Field {
   }
 
   /**
-   * Creates a numeric tensor field. Fields are multi-valued: each document has one or more values.
+   * Creates a byte numeric tensor field. Fields are multi-valued: each document has one or more values.
    * Tensors of a single field share the same dimension and similarity function.
    *
    * @param name field name
    * @param tensor value
-   * @param similarityFunction a function defining tensor proximity.
+   * @param similarityFunction a {@link VectorSimilarityFunction} defining tensor proximity.
+   * @param aggregation a {@link Aggregation} defining similarity aggregation across multiple vector values
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
   public KnnByteTensorField(
-      String name, List<byte[]> tensor, TensorSimilarityFunction similarityFunction) {
-    super(name, createType(tensor, similarityFunction));
-    assert type.tensorDimension() == tensor.get(0).length;
-    fieldsData = new ByteTensorValue(tensor, type.tensorDimension());
+      String name, List<byte[]> tensor, VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
+    super(name, createType(tensor, similarityFunction, aggregation));
+    assert type.vectorDimension() == tensor.get(0).length;
+    fieldsData = new ByteTensorValue(tensor, type.vectorDimension());
   }
 
   /**
-   * Creates a byte numeric tensor field with the default SUM_MAX_EUCLIDEAN (L2) similarity. Vectors
-   * within a single tensor field share the same dimension and similarity function.
+   * Creates a byte numeric tensor field with the default EUCLIDEAN (L2) similarity
+   * and default SUM_MAX aggregation. Vectors within a single tensor field share
+   * the same dimension and similarity function.
    *
    * @param name field name
    * @param tensor value
@@ -118,7 +136,7 @@ public class KnnByteTensorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnByteTensorField(String name, List<byte[]> tensor) {
-    this(name, tensor, TensorSimilarityFunction.SUM_MAX_EUCLIDEAN);
+    this(name, tensor, VectorSimilarityFunction.EUCLIDEAN, Aggregation.SUM_MAX);
   }
 
   /**
@@ -133,7 +151,7 @@ public class KnnByteTensorField extends Field {
    */
   public KnnByteTensorField(String name, List<byte[]> tensor, FieldType fieldType) {
     super(name, fieldType);
-    if (fieldType.tensorEncoding() != VectorEncoding.BYTE) {
+    if (fieldType.vectorEncoding() != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
           "Attempt to create a tensor for field "
               + name
@@ -141,11 +159,8 @@ public class KnnByteTensorField extends Field {
               + fieldType.vectorEncoding());
     }
     Objects.requireNonNull(tensor, "tensor value must not be null");
-    if (fieldType.tensorRank() != rank) {
-      throw new UnsupportedOperationException("Only tensors of rank = " + rank + "are supported");
-    }
-    checkDimensions(tensor, fieldType.tensorDimension());
-    fieldsData = new ByteTensorValue(tensor, fieldType.tensorDimension());
+    checkDimensions(tensor, fieldType.vectorDimension());
+    fieldsData = new ByteTensorValue(tensor, fieldType.vectorDimension());
   }
 
   /** Return the tensor value of this field */
@@ -162,13 +177,13 @@ public class KnnByteTensorField extends Field {
     if (value == null) {
       throw new IllegalArgumentException("value must not be null or empty");
     }
-    if (value.dimension() != type.tensorDimension()) {
+    if (value.dimension() != type.vectorDimension()) {
       throw new IllegalArgumentException(
           "value dimension ["
               + value.dimension()
               + "] "
               + "should match field tensor dimension: ["
-              + type.tensorDimension()
+              + type.vectorDimension()
               + "]");
     }
     fieldsData = value;

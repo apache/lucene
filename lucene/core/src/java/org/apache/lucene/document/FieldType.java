@@ -49,11 +49,8 @@ public class FieldType implements IndexableFieldType {
   private int vectorDimension;
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-  private int tensorRank;
-  private int tensorDimension;
-  private VectorEncoding tensorEncoding = VectorEncoding.FLOAT32;
-  private TensorSimilarityFunction tensorSimilarityFunction =
-      TensorSimilarityFunction.SUM_MAX_EUCLIDEAN;
+  private boolean isTensor;
+  private TensorSimilarityFunction.Aggregation tensorAggregate = TensorSimilarityFunction.Aggregation.SUM_MAX;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -74,10 +71,8 @@ public class FieldType implements IndexableFieldType {
     this.vectorDimension = ref.vectorDimension();
     this.vectorEncoding = ref.vectorEncoding();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
-    this.tensorRank = ref.tensorRank();
-    this.tensorDimension = ref.tensorDimension();
-    this.tensorEncoding = ref.tensorEncoding();
-    this.tensorSimilarityFunction = ref.tensorSimilarityFunction();
+    this.isTensor = ref.isTensor();
+    this.tensorAggregate = ref.tensorAggregate();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
     }
@@ -411,42 +406,38 @@ public class FieldType implements IndexableFieldType {
   }
 
   /**
-   * Enable tensor indexing for fixed degree tensors. Dimensions for individual vectors within the
-   * tensor can vary.
+   * Enable tensor indexing. Each vector in the tensor has the same dimension. Different
+   * tensor values can vary in the number of vectors.
    *
-   * @param rank Rank of the tensor
+   * @param isTensor Boolean flag indicating if the field indexes tensors
    * @param dimension Dimension of each vector in the tensor
    * @param encoding {@link VectorEncoding} for each tensor vector. Should be the same for all
    *     vectors
-   * @param similarity Used to compare tensors during indexing and search.
+   * @param similarityFunction {@link VectorSimilarityFunction} Used to compare tensors during indexing and search
+   * @param aggregation {@link TensorSimilarityFunction.Aggregation} used to aggregate similarity across multiple vectors
    */
   public void setTensorAttributes(
-      int rank, int dimension, VectorEncoding encoding, TensorSimilarityFunction similarity) {
+      boolean isTensor,
+      int dimension,
+      VectorEncoding encoding,
+      VectorSimilarityFunction similarityFunction,
+      TensorSimilarityFunction.Aggregation aggregation) {
     checkIfFrozen();
-    this.tensorRank = rank;
-    this.tensorDimension = dimension;
-    this.tensorEncoding = Objects.requireNonNull(encoding);
-    this.tensorSimilarityFunction = Objects.requireNonNull(similarity);
+    this.isTensor = isTensor;
+    this.vectorDimension = dimension;
+    this.vectorEncoding = Objects.requireNonNull(encoding);
+    this.vectorSimilarityFunction = Objects.requireNonNull(similarityFunction);
+    this.tensorAggregate = Objects.requireNonNull(aggregation);
   }
 
   @Override
-  public int tensorRank() {
-    return tensorRank;
+  public boolean isTensor() {
+    return isTensor;
   }
 
   @Override
-  public int tensorDimension() {
-    return tensorDimension;
-  }
-
-  @Override
-  public VectorEncoding tensorEncoding() {
-    return tensorEncoding;
-  }
-
-  @Override
-  public TensorSimilarityFunction tensorSimilarityFunction() {
-    return tensorSimilarityFunction;
+  public TensorSimilarityFunction.Aggregation tensorAggregate() {
+    return tensorAggregate;
   }
 
   /**

@@ -60,15 +60,14 @@ public final class FieldInfo {
   private int pointIndexDimensionCount;
   private int pointNumBytes;
 
-  // if it is a positive value, it means this field indexes vectors
+  // if it is a positive value it means this field indexes vectors or tensors
   private final int vectorDimension;
   private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
 
-  // if it is a positive value, it means this field indexes tensors
-  private final int tensorDimension;
-  private final int tensorRank;
-  private final VectorEncoding tensorEncoding;
+  // if true, field is a tensor
+  private final boolean isTensor;
+  private final TensorSimilarityFunction.Aggregation tensorAggregate;
   private final TensorSimilarityFunction tensorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
@@ -98,10 +97,8 @@ public final class FieldInfo {
       int vectorDimension,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
-      int tensorDimension,
-      int tensorRank,
-      VectorEncoding tensorEncoding,
-      TensorSimilarityFunction tensorSimilarityFunction,
+      boolean isTensor,
+      TensorSimilarityFunction.Aggregation tensorAggregate,
       boolean softDeletesField,
       boolean isParentField) {
     this.name = Objects.requireNonNull(name);
@@ -130,10 +127,9 @@ public final class FieldInfo {
     this.vectorDimension = vectorDimension;
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
-    this.tensorDimension = tensorDimension;
-    this.tensorRank = tensorRank;
-    this.tensorEncoding = tensorEncoding;
-    this.tensorSimilarityFunction = tensorSimilarityFunction;
+    this.isTensor = isTensor;
+    this.tensorAggregate = tensorAggregate;
+    this.tensorSimilarityFunction = new TensorSimilarityFunction(this.vectorSimilarityFunction, this.tensorAggregate);
     this.softDeletesField = softDeletesField;
     this.isParentField = isParentField;
     this.checkConsistency();
@@ -239,10 +235,6 @@ public final class FieldInfo {
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
 
-    if (tensorDimension < 0) {
-      throw new IllegalArgumentException(
-          "tensorDimension must be >=0; got " + tensorDimension + " (field: '" + name + "')");
-    }
     if (tensorSimilarityFunction == null) {
       throw new IllegalArgumentException(
           "Tensor similarity function must not be null (field: '" + name + "')");
@@ -287,6 +279,15 @@ public final class FieldInfo {
         o.vectorDimension,
         o.vectorEncoding,
         o.vectorSimilarityFunction);
+    verifySameTensorOptions(fieldName,
+        this.isTensor,
+        this.vectorDimension,
+        this.vectorEncoding,
+        this.tensorSimilarityFunction,
+        o.isTensor,
+        o.vectorDimension,
+        o.vectorEncoding,
+        o.getTensorSimilarityFunction());
   }
 
   /**
@@ -451,34 +452,27 @@ public final class FieldInfo {
    */
   static void verifySameTensorOptions(
       String fieldName,
-      int td1,
-      int tr1,
-      VectorEncoding te1,
+      boolean isT1,
+      int vd1,
+      VectorEncoding ve1,
       TensorSimilarityFunction tsf1,
-      int td2,
-      int tr2,
-      VectorEncoding te2,
+      boolean isT2,
+      int vd2,
+      VectorEncoding ve2,
       TensorSimilarityFunction tsf2) {
-    if (td1 != td2 || tr1 != tr2 || tsf1 != tsf2 || te1 != te2) {
+    verifySameVectorOptions(fieldName, vd1, ve1, tsf1.similarityFunction, vd2, ve2, tsf2.similarityFunction);
+    if (isT1 != isT2 || tsf1.aggregation != tsf2.aggregation) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
-              + "\" from tensor dimension="
-              + td1
-              + ", tensor rank="
-              + tr1
-              + ", tensor encoding="
-              + te1
-              + ", tensor similarity function="
-              + tsf1
-              + " to inconsistent tensor dimension="
-              + td2
-              + ", tensor rank="
-              + tr2
-              + ", tensor encoding="
-              + te2
-              + ", tensor similarity function="
-              + tsf2);
+              + "\" from isTensor="
+              + isT1
+              + ", tensor aggregation="
+              + tsf1.aggregation
+              + " to inconsistent isTensor="
+              + isT2
+              + ", tensor aggregation="
+              + tsf2.aggregation);
     }
   }
 
@@ -597,19 +591,14 @@ public final class FieldInfo {
     return vectorSimilarityFunction;
   }
 
-  /** Returns the number of dimensions for each vector in the tensor */
-  public int getTensorDimension() {
-    return tensorDimension;
+  /** Returns true if field is a tensor, false otherwise */
+  public boolean isTensor() {
+    return isTensor;
   }
 
-  /** Returns rank of the tensor field */
-  public int getTensorRank() {
-    return tensorRank;
-  }
-
-  /** Returns {@link VectorEncoding} for each vector in the tensor */
-  public VectorEncoding getTensorEncoding() {
-    return tensorEncoding;
+  /** Returns {@link TensorSimilarityFunction.Aggregation} for the field */
+  public TensorSimilarityFunction.Aggregation getTensorAggregate() {
+    return tensorAggregate;
   }
 
   /** Returns {@link TensorSimilarityFunction} for the field */
@@ -733,7 +722,7 @@ public final class FieldInfo {
 
   /** Returns whether any (numeric) tensor values exist for this field */
   public boolean hasTensorValues() {
-    return tensorDimension > 0;
+    return isTensor;
   }
 
   /** Get a codec attribute value, or null if it does not exist */
