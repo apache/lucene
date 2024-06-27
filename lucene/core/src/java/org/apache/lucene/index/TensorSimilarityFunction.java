@@ -135,6 +135,13 @@ public class TensorSimilarityFunction implements TensorSimilarity {
   }
 
   @Override
+  public int hashCode() {
+    int result = Integer.hashCode(similarityFunction.ordinal());
+    result = 31 * result + Integer.hashCode(aggregation.ordinal());
+    return result;
+  }
+
+  @Override
   public String toString() {
     return "TensorSimilarityFunction(similarity="
         + similarityFunction
