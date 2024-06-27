@@ -463,23 +463,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       HnswGraph graph,
       int[][] graphLevelNodeOffsets)
       throws IOException {
-    int encoding, similarityFunction, dimension;
-    if (field.hasTensorValues()) {
-      encoding = field.getTensorEncoding().ordinal();
-      similarityFunction = field.getTensorSimilarityFunction().identifier();
-      dimension = field.getTensorDimension();
-    } else {
-      encoding = field.getVectorEncoding().ordinal();
-      similarityFunction = distFuncToOrd(field.getVectorSimilarityFunction());
-      dimension = field.getVectorDimension();
-    }
-    // write metadata
     meta.writeInt(field.number);
-    meta.writeInt(encoding);
-    meta.writeInt(similarityFunction);
+    meta.writeInt(field.getVectorEncoding().ordinal());
+    meta.writeInt(distFuncToOrd(field.getVectorSimilarityFunction()));
     meta.writeVLong(vectorIndexOffset);
     meta.writeVLong(vectorIndexLength);
-    meta.writeVInt(dimension);
+    meta.writeVInt(field.getVectorDimension());
     meta.writeInt(count);
     meta.writeVInt(M);
     // write graph nodes on each level
@@ -523,6 +512,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
       memoryOffsetsWriter.finish();
       meta.writeLong(vectorIndex.getFilePointer() - start);
+    }
+    // for tensor fields, write aggregation function ordinal
+    if (field.hasTensorValues()) {
+      meta.writeInt(field.getTensorSimilarityFunction().aggregation.ordinal());
     }
   }
 
@@ -585,7 +578,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     static FieldWriter<?> create(
         FlatTensorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
-      return switch (fieldInfo.getTensorEncoding()) {
+      return switch (fieldInfo.getVectorEncoding()) {
         case BYTE -> new FieldWriter<ByteTensorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
         case FLOAT32 -> new FieldWriter<FloatTensorValue>(
             scorer, fieldInfo, M, beamWidth, infoStream);
@@ -623,15 +616,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.docsWithField = new DocsWithFieldSet();
       values = new ArrayList<>();
       RandomVectorScorerSupplier scorerSupplier =
-          switch (fieldInfo.getTensorEncoding()) {
+          switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> scorer.getRandomTensorScorerSupplier(
                 fieldInfo.getTensorSimilarityFunction(),
                 RandomAccessVectorValues.fromByteTensors(
-                    (List<ByteTensorValue>) values, fieldInfo.getTensorDimension()));
+                    (List<ByteTensorValue>) values, fieldInfo.getVectorDimension()));
             case FLOAT32 -> scorer.getRandomTensorScorerSupplier(
                 fieldInfo.getTensorSimilarityFunction(),
                 RandomAccessVectorValues.fromFloatTensors(
-                    (List<FloatTensorValue>) values, fieldInfo.getTensorDimension()));
+                    (List<FloatTensorValue>) values, fieldInfo.getVectorDimension()));
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -640,6 +633,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public void addValue(int docID, T value) throws IOException {
+      // TODO: with tensors we can combine the vector values. Hnsw writer would then replace with
+      // the new combined value.
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "Field \""

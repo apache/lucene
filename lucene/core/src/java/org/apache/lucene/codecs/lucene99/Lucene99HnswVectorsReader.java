@@ -167,8 +167,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
-    int dimension =
-        (info.hasTensorValues()) ? info.getTensorDimension() : info.getVectorDimension();
+    int dimension = info.getVectorDimension();
     if (dimension != fieldEntry.dimension) {
       throw new IllegalStateException(
           "Inconsistent vector dimension for field=\""
@@ -210,44 +209,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarityFunction vectorSimilarityFunction = null;
-    TensorSimilarityFunction tensorSimilarityFunction = null;
-
-    // TODO: can we merge vector and tensor similarity functions into a single object?
-    int similarityId = input.readInt();
-    if (similarityId < 0) {
-      throw new IllegalArgumentException("invalid distance function: " + similarityId);
+    VectorSimilarityFunction vectorSimilarityFunction = readSimilarityFunction(input);
+    if (vectorSimilarityFunction != info.getVectorSimilarityFunction()) {
+      throw new IllegalStateException(
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + vectorSimilarityFunction
+              + " != "
+              + info.getVectorSimilarityFunction());
     }
-    if (similarityId >= TensorSimilarityFunction.ORDINAL_START) {
-      tensorSimilarityFunction =
-          TensorSimilarityFunction.values()[similarityId - TensorSimilarityFunction.ORDINAL_START];
-      if (tensorSimilarityFunction != info.getTensorSimilarityFunction()) {
-        throw new IllegalStateException(
-            "Inconsistent similarity function for field=\""
-                + info.name
-                + "\"; "
-                + tensorSimilarityFunction
-                + " != "
-                + info.getTensorSimilarityFunction());
-      }
-    } else {
-      if (similarityId >= SIMILARITY_FUNCTIONS.size()) {
-        throw new IllegalArgumentException("invalid distance function: " + similarityId);
-      }
-      vectorSimilarityFunction = SIMILARITY_FUNCTIONS.get(similarityId);
-      if (vectorSimilarityFunction != info.getVectorSimilarityFunction()) {
-        throw new IllegalStateException(
-            "Inconsistent vector similarity function for field=\""
-                + info.name
-                + "\"; "
-                + vectorSimilarityFunction
-                + " != "
-                + info.getVectorSimilarityFunction());
-      }
-    }
-
-    return FieldEntry.create(
-        input, vectorEncoding, vectorSimilarityFunction, tensorSimilarityFunction);
+    return FieldEntry.create(info, input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -399,10 +371,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       long offsetsLength) {
 
     static FieldEntry create(
+        FieldInfo fieldInfo,
         IndexInput input,
         VectorEncoding encoding,
-        VectorSimilarityFunction vectorSimilarityFunction,
-        TensorSimilarityFunction tensorSimilarityFunction)
+        VectorSimilarityFunction vectorSimilarityFunction)
         throws IOException {
       final var vectorIndexOffset = input.readVLong();
       final var vectorIndexLength = input.readVLong();
@@ -440,6 +412,22 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         offsetsBlockShift = 0;
         offsetsMeta = null;
         offsetsLength = 0;
+      }
+      // Tensor Similarity Function
+      TensorSimilarityFunction tensorSimilarityFunction = null;
+      if (fieldInfo.hasTensorValues()) {
+        int aggFnOrd = input.readInt();
+        tensorSimilarityFunction = new TensorSimilarityFunction(
+            vectorSimilarityFunction, TensorSimilarityFunction.Aggregation.values()[aggFnOrd]);
+        if (tensorSimilarityFunction.equals(fieldInfo.getTensorSimilarityFunction()) == false) {
+          throw new IllegalStateException(
+              "Inconsistent tensor similarity function for field=\""
+                  + fieldInfo.name
+                  + "\"; "
+                  + tensorSimilarityFunction
+                  + " != "
+                  + fieldInfo.getTensorSimilarityFunction());
+        }
       }
       return new FieldEntry(
           vectorSimilarityFunction,
