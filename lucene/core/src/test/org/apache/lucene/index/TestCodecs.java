@@ -116,6 +116,8 @@ public class TestCodecs extends LuceneTestCase {
                     VectorEncoding.FLOAT32,
                     VectorSimilarityFunction.EUCLIDEAN,
                     false,
+                    TensorSimilarityFunction.Aggregation.SUM_MAX,
+                    false,
                     false));
       }
       this.terms = terms;

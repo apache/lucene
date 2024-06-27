@@ -28,6 +28,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -199,10 +200,8 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 vectorNumDimensions,
                 vectorEncoding,
                 vectorDistFunc,
-                0,
-                2,
-                null,
-                null,
+                false,
+                TensorSimilarityFunction.Aggregation.SUM_MAX,
                 isSoftDeletesField,
                 isParentField);
       }
