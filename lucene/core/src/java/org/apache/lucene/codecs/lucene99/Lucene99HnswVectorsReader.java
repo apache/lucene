@@ -417,8 +417,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       TensorSimilarityFunction tensorSimilarityFunction = null;
       if (fieldInfo.hasTensorValues()) {
         int aggFnOrd = input.readInt();
-        tensorSimilarityFunction = new TensorSimilarityFunction(
-            vectorSimilarityFunction, TensorSimilarityFunction.Aggregation.values()[aggFnOrd]);
+        tensorSimilarityFunction =
+            new TensorSimilarityFunction(
+                vectorSimilarityFunction, TensorSimilarityFunction.Aggregation.values()[aggFnOrd]);
         if (tensorSimilarityFunction.equals(fieldInfo.getTensorSimilarityFunction()) == false) {
           throw new IllegalStateException(
               "Inconsistent tensor similarity function for field=\""
