@@ -123,6 +123,16 @@ public class KnnFloatTensorField extends Field {
     fieldsData = new FloatTensorValue(tensor, type.vectorDimension());
   }
 
+  /**
+   * Creates a numeric tensor field. Fields are multi-valued: each document has one or more values.
+   * Tensors of a single field share the same dimension and similarity function.
+   *
+   * @param name field name
+   * @param tensor value
+   * @param similarityFunction a {@link TensorSimilarityFunction} defining tensor proximity.
+   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
+   *     dimension &gt; 1024.
+   */
   public KnnFloatTensorField(
       String name, List<float[]> tensor, TensorSimilarityFunction similarityFunction) {
     this(name, tensor, similarityFunction.similarityFunction, similarityFunction.aggregation);

@@ -250,6 +250,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
   }
 
+  /** Dense off-heap tensor values created from in-memory data offsets */
   public static class DenseOffHeapTensorValuesWithOffsets extends DenseOffHeapTensorValues {
     final LongValues dataOffsets;
 

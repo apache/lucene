@@ -243,6 +243,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
     }
   }
 
+  /** Dense off-heap tensor values created from in-memory data offsets */
   public static class DenseOffHeapTensorValuesWithOffsets
       extends OffHeapByteTensorValues.DenseOffHeapTensorValues {
     final LongValues dataOffsets;

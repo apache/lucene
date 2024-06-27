@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+/** Defines comparison functions for tensor similarity */
 public interface TensorSimilarity {
 
   /**

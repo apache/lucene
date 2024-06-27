@@ -28,6 +28,7 @@ import org.apache.lucene.util.ArrayUtil;
 // no commit
 public class TensorSimilarityFunction implements TensorSimilarity {
 
+  /** Aggregation function to combine similarity across multiple vector values */
   public enum Aggregation {
     /**
      * SumMaxSimilarity between two tensors. Aggregates using the sum of maximum similarity found
@@ -93,12 +94,30 @@ public class TensorSimilarityFunction implements TensorSimilarity {
       }
     };
 
+    /**
+     * Computes and aggregates similarity over multiple vector values
+     *
+     * @param outerTensor first tensor
+     * @param innerTensor second tensor
+     * @param vectorSimilarityFunction distance function for vector proximity
+     * @param dimension dimension for each vector value in the tensor
+     * @return similarity between the two tensors
+     */
     public abstract float aggregate(
         float[] outerTensor,
         float[] innerTensor,
         VectorSimilarityFunction vectorSimilarityFunction,
         int dimension);
 
+    /**
+     * Computes and aggregates similarity over multiple vector values
+     *
+     * @param outerTensor first tensor
+     * @param innerTensor second tensor
+     * @param vectorSimilarityFunction distance function for vector proximity
+     * @param dimension dimension for each vector value in the tensor
+     * @return similarity between the two tensors
+     */
     public abstract float aggregate(
         byte[] outerTensor,
         byte[] innerTensor,
@@ -106,9 +125,18 @@ public class TensorSimilarityFunction implements TensorSimilarity {
         int dimension);
   }
 
+  /** Similarity function used for tensor distance calculations */
   public final VectorSimilarityFunction similarityFunction;
+
+  /** Aggregation function to combine similarity across multiple vector values */
   public final Aggregation aggregation;
 
+  /**
+   * Similarity function for computing distance between tensor values
+   *
+   * @param similarityFunction {@link VectorSimilarityFunction} for computing vector proximity
+   * @param aggregation {@link Aggregation} to combine similarity across multiple vector values
+   */
   public TensorSimilarityFunction(
       VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
     this.similarityFunction = similarityFunction;
