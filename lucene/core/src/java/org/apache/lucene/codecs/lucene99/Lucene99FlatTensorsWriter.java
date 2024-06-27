@@ -62,7 +62,6 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  *
  * @lucene.experimental
  */
-// noCommit
 public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
 
   private static final long SHALLLOW_RAM_BYTES_USED =
