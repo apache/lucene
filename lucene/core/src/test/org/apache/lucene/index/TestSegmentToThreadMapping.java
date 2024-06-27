@@ -163,7 +163,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
   public void testSingleSlice() {
     LeafReader largeSegmentReader = dummyIndexReader(50_000);
     LeafReader firstMediumSegmentReader = dummyIndexReader(30_000);
-    LeafReader secondMediumSegmentReader = dummyIndexReader(30__000);
+    LeafReader secondMediumSegmentReader = dummyIndexReader(30_000);
     LeafReader thirdMediumSegmentReader = dummyIndexReader(30_000);
     List<LeafReaderContext> leafReaderContexts = new ArrayList<>();
 
