@@ -113,10 +113,8 @@ public class MismatchedLeafReader extends FilterLeafReader {
               oldInfo.getVectorEncoding(), // numeric type of vector samples
               // distance function for calculating similarity of the field's vector
               oldInfo.getVectorSimilarityFunction(),
-              oldInfo.getTensorDimension(),
-              oldInfo.getTensorRank(),
-              oldInfo.getTensorEncoding(),
-              oldInfo.getTensorSimilarityFunction(),
+              oldInfo.isTensor(),
+              oldInfo.getTensorAggregate(),
               oldInfo.isSoftDeletesField(), // used as soft-deletes field
               oldInfo.isParentField());
       shuffled.set(i, newInfo);
