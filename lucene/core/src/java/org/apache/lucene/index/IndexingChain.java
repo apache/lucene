@@ -863,9 +863,7 @@ final class IndexingChain implements Accountable {
           fieldType.vectorDimension());
     }
     if (fieldType.isTensor()) {
-      schema.setTensors(
-          fieldType.isTensor(),
-          fieldType.tensorAggregate());
+      schema.setTensors(fieldType.isTensor(), fieldType.tensorAggregate());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1059,8 +1057,7 @@ final class IndexingChain implements Accountable {
 
   @SuppressWarnings("unchecked")
   private void indexTensorValue(
-      int docID, PerField pf, VectorEncoding encoding, IndexableField field)
-      throws IOException {
+      int docID, PerField pf, VectorEncoding encoding, IndexableField field) throws IOException {
     switch (encoding) {
       case BYTE -> ((KnnFieldVectorsWriter<ByteTensorValue>) pf.knnFieldVectorsWriter)
           .addValue(docID, ((KnnByteTensorField) field).tensorValue());
@@ -1474,7 +1471,8 @@ final class IndexingChain implements Accountable {
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     private boolean isTensor = false;
-    private TensorSimilarityFunction.Aggregation tensorAggregate = TensorSimilarityFunction.Aggregation.SUM_MAX;
+    private TensorSimilarityFunction.Aggregation tensorAggregate =
+        TensorSimilarityFunction.Aggregation.SUM_MAX;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1569,9 +1567,7 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setTensors(
-        boolean isTensor,
-        TensorSimilarityFunction.Aggregation tensorAggregate) {
+    void setTensors(boolean isTensor, TensorSimilarityFunction.Aggregation tensorAggregate) {
       if (isTensor == false) {
         this.isTensor = isTensor;
         this.tensorAggregate = tensorAggregate;

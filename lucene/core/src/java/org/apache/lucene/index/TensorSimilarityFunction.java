@@ -22,16 +22,16 @@ import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Tensor similarity function; used in search to return top K most similar vectors to a target
- * tensor. This method is used during indexing and searching of the tensors
- * in order to determine the nearest neighbors.
+ * tensor. This method is used during indexing and searching of the tensors in order to determine
+ * the nearest neighbors.
  */
 // no commit
 public class TensorSimilarityFunction implements TensorSimilarity {
 
   public enum Aggregation {
     /**
-     * SumMaxSimilarity between two tensors. Aggregates using the sum of maximum similarity
-     * found for each vector in the first tensor against all vectors in the second tensor.
+     * SumMaxSimilarity between two tensors. Aggregates using the sum of maximum similarity found
+     * for each vector in the first tensor against all vectors in the second tensor.
      */
     SUM_MAX {
       @Override
@@ -109,7 +109,8 @@ public class TensorSimilarityFunction implements TensorSimilarity {
   public final VectorSimilarityFunction similarityFunction;
   public final Aggregation aggregation;
 
-  public TensorSimilarityFunction(VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
+  public TensorSimilarityFunction(
+      VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
     this.similarityFunction = similarityFunction;
     this.aggregation = aggregation;
   }
@@ -130,7 +131,15 @@ public class TensorSimilarityFunction implements TensorSimilarity {
       return false;
     }
     TensorSimilarityFunction o = (TensorSimilarityFunction) obj;
-    return this.similarityFunction == o.similarityFunction
-        && this.aggregation == o.aggregation;
+    return this.similarityFunction == o.similarityFunction && this.aggregation == o.aggregation;
+  }
+
+  @Override
+  public String toString() {
+    return "TensorSimilarityFunction(similarity="
+        + similarityFunction
+        + ", aggregation="
+        + aggregation
+        + ")";
   }
 }

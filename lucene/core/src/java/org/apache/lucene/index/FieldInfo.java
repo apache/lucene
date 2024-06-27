@@ -129,7 +129,8 @@ public final class FieldInfo {
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.isTensor = isTensor;
     this.tensorAggregate = tensorAggregate;
-    this.tensorSimilarityFunction = new TensorSimilarityFunction(this.vectorSimilarityFunction, this.tensorAggregate);
+    this.tensorSimilarityFunction =
+        new TensorSimilarityFunction(this.vectorSimilarityFunction, this.tensorAggregate);
     this.softDeletesField = softDeletesField;
     this.isParentField = isParentField;
     this.checkConsistency();
@@ -279,7 +280,8 @@ public final class FieldInfo {
         o.vectorDimension,
         o.vectorEncoding,
         o.vectorSimilarityFunction);
-    verifySameTensorOptions(fieldName,
+    verifySameTensorOptions(
+        fieldName,
         this.isTensor,
         this.vectorDimension,
         this.vectorEncoding,
@@ -460,7 +462,8 @@ public final class FieldInfo {
       int vd2,
       VectorEncoding ve2,
       TensorSimilarityFunction tsf2) {
-    verifySameVectorOptions(fieldName, vd1, ve1, tsf1.similarityFunction, vd2, ve2, tsf2.similarityFunction);
+    verifySameVectorOptions(
+        fieldName, vd1, ve1, tsf1.similarityFunction, vd2, ve2, tsf2.similarityFunction);
     if (isT1 != isT2 || tsf1.aggregation != tsf2.aggregation) {
       throw new IllegalArgumentException(
           "cannot change field \""
