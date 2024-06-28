@@ -93,6 +93,8 @@ public final class FieldReader extends Terms {
       final IndexInput clone = indexIn.clone();
       clone.seek(indexStartFP);
       fstMetadata = readMetadata(clone, ByteSequenceOutputs.getSingleton());
+      // FST bytes actually only start after the metadata.
+      indexStartFP = clone.getFilePointer();
     } else {
       fstMetadata = readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
     }
