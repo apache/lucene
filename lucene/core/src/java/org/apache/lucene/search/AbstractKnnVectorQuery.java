@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
@@ -120,8 +121,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       Weight filterWeight,
       TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager)
       throws IOException {
-    Bits liveDocs = ctx.reader().getLiveDocs();
-    int maxDoc = ctx.reader().maxDoc();
+    final LeafReader reader = ctx.reader();
+    final Bits liveDocs = reader.getLiveDocs();
 
     if (filterWeight == null) {
       return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
@@ -132,7 +133,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
+    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, reader.maxDoc());
     final int cost = acceptDocs.cardinality();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
