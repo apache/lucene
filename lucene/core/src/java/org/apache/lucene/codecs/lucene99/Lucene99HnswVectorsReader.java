@@ -248,45 +248,53 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return;
-    }
-    final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
-    final KnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    if (knnCollector.k() < scorer.maxOrd()) {
-      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
-    } else {
-      // if k is larger than the number of vectors, we can just iterate over all vectors
-      // and collect them
-      for (int i = 0; i < scorer.maxOrd(); i++) {
-        if (acceptedOrds == null || acceptedOrds.get(i)) {
-          if (knnCollector.earlyTerminated()) {
-            break;
+    search(
+        fields.get(field),
+        knnCollector,
+        acceptDocs,
+        VectorEncoding.FLOAT32,
+        new RandomVectorScorerSupplier() {
+          @Override
+          RandomVectorScorer get() throws IOException {
+            return flatVectorsReader.getRandomVectorScorer(field, target);
           }
-          knnCollector.incVisitedCount(1);
-          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
-        }
-      }
-    }
+        });
   }
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    search(
+        fields.get(field),
+        knnCollector,
+        acceptDocs,
+        VectorEncoding.BYTE,
+        new RandomVectorScorerSupplier() {
+          @Override
+          RandomVectorScorer get() throws IOException {
+            return flatVectorsReader.getRandomVectorScorer(field, target);
+          }
+        });
+  }
+
+  private abstract static class RandomVectorScorerSupplier {
+    abstract RandomVectorScorer get() throws IOException;
+  }
+
+  private void search(
+      FieldEntry fieldEntry,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      VectorEncoding vectorEncoding,
+      RandomVectorScorerSupplier scorerSupplier)
+      throws IOException {
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+        || fieldEntry.vectorEncoding != vectorEncoding) {
       return;
     }
-    final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
+    final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
