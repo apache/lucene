@@ -76,7 +76,6 @@ import org.apache.lucene.store.IndexOutput;
  *
  * @lucene.experimental
  */
-// no commit
 public final class Lucene99FlatTensorsFormat extends FlatVectorsFormat {
 
   public static final String NAME = "Lucene99FlatTensorsFormat";
