@@ -1,8 +1,10 @@
 package org.apache.lucene.sandbox.facet;
 
+import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -14,15 +16,25 @@ import java.io.IOException;
  */
 public class FacetFieldLeafCollector implements LeafCollector {
 
-    private final FacetLeafCutter leafCutter;
+    private final LeafReaderContext context;
+    private final FacetCutter cutter;
+    private final FacetRecorder recorder;
+    private FacetLeafCutter leafCutter;
 
-    private final FacetLeafRecorder leafRecorder;
+    private FacetLeafRecorder leafRecorder;
 
     /** Constructor */
-    public FacetFieldLeafCollector(LeafReaderContext context, FacetLeafCutter leafCutter, FacetLeafRecorder leafPayload) {
+    /*public FacetFieldLeafCollector(LeafReaderContext context, FacetLeafCutter leafCutter, FacetLeafRecorder leafPayload) {
         // TODO: we don't need context param?
         this.leafCutter = leafCutter;
         this.leafRecorder = leafPayload;
+    }*/
+
+    public FacetFieldLeafCollector(LeafReaderContext context, FacetCutter cutter, FacetRecorder recorder) {
+        // TODO: we don't need context param?
+        this.context = context;
+        this.cutter = cutter;
+        this.recorder = recorder;
     }
 
     @Override
@@ -32,12 +44,21 @@ public class FacetFieldLeafCollector implements LeafCollector {
 
     @Override
     public void collect(int doc) throws IOException {
+        if (leafCutter == null) {
+            leafCutter = cutter.createLeafCutter(context);
+        }
         if (leafCutter.advanceExact(doc) == false) {
             return;
         }
-        for(int curOrd = leafCutter.nextOrd(); curOrd != FacetLeafCutter.NO_MORE_ORDS;) {
+        int curOrd = leafCutter.nextOrd();
+        if (curOrd != FacetLeafCutter.NO_MORE_ORDS) {
+            if (leafRecorder == null) {
+                leafRecorder = recorder.getLeafRecorder(context);
+            }
             leafRecorder.record(doc, curOrd);
-            curOrd = leafCutter.nextOrd();
+            for(curOrd = leafCutter.nextOrd(); curOrd != FacetLeafCutter.NO_MORE_ORDS; curOrd = leafCutter.nextOrd()) {
+                leafRecorder.record(doc, curOrd);
+            }
         }
     }
 

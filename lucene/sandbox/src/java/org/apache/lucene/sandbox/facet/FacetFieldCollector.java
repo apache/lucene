@@ -29,8 +29,8 @@ public class FacetFieldCollector implements Collector {
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
         return new FacetFieldLeafCollector(
                 context,
-                facetCutter.createLeafCutter(context),
-                facetRecorder.getLeafRecorder(context));
+                facetCutter,
+                facetRecorder);
     }
 
     @Override
