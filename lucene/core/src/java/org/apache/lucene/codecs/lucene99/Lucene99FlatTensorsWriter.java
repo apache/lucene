@@ -387,7 +387,7 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> tensorScorer.getRandomTensorScorerSupplier(
                 fieldInfo.getTensorSimilarityFunction(),
-                new OffHeapByteTensorValues.DenseOffHeapTensorValuesWithOffsets(
+                new OffHeapByteMultiVectorValues.DenseOffHeapMultiVectorValuesWithOffsets(
                     fieldInfo.getVectorDimension(),
                     writeState.docsWithField.cardinality(),
                     finalTensorDataInput,
@@ -396,7 +396,7 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
                     dataOffsets));
             case FLOAT32 -> tensorScorer.getRandomTensorScorerSupplier(
                 fieldInfo.getTensorSimilarityFunction(),
-                new OffHeapFloatTensorValues.DenseOffHeapTensorValuesWithOffsets(
+                new OffHeapFloatMultiVectorValues.DenseOffHeapMultiVectorValuesWithOffsets(
                     fieldInfo.getVectorDimension(),
                     writeState.docsWithField.cardinality(),
                     finalTensorDataInput,
@@ -446,7 +446,7 @@ public final class Lucene99FlatTensorsWriter extends FlatVectorsWriter {
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, tensorData, count, maxDoc, docsWithField);
 
     // write tensor offsets
-    TensorDataOffsetsReaderConfiguration.writeStoredMeta(
+    MultiVectorDataOffsetsReaderConfiguration.writeStoredMeta(
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, tensorData, tensorDataOffsets);
   }
 

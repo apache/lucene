@@ -19,10 +19,12 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
+import java.nio.ByteOrder;
+
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -34,41 +36,40 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
-/** Read the tensor values from the index input. This supports both iterated and random access. */
-// no commit
-public abstract class OffHeapFloatTensorValues extends FloatVectorValues
-    implements RandomAccessVectorValues.Floats {
+/** Read multiVector values from the index input. This supports both iterated and random access. */
+public abstract class OffHeapByteMultiVectorValues extends ByteVectorValues
+    implements RandomAccessVectorValues.Bytes {
 
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
-  protected final IndexInput tensorData;
+  protected final IndexInput vectorData;
   protected int lastOrd = -1;
-  protected float[] value;
+  protected byte[] value;
   protected ByteBuffer valueBuffer;
   protected final MultiVectorSimilarityFunction similarityFunction;
-  protected final FlatTensorsScorer flatTensorsScorer;
+  protected final FlatVectorsScorer flatMultiVectorScorer;
   protected final DirectMonotonicReader dataOffsetsReader;
-  protected final TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration;
+  protected final MultiVectorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration;
 
-  public OffHeapFloatTensorValues(
+  public OffHeapByteMultiVectorValues(
       int dimension,
       int size,
       IndexInput slice,
       IndexInput dataIn,
-      FlatTensorsScorer flatTensorsScorer,
+      FlatVectorsScorer flatMultiVectorScorer,
       MultiVectorSimilarityFunction similarityFunction,
-      TensorDataOffsetsReaderConfiguration dataOffsetsConfiguration)
+      MultiVectorDataOffsetsReaderConfiguration dataOffsetsConfiguration)
       throws IOException {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
-    this.tensorData = dataIn;
-    this.flatTensorsScorer = flatTensorsScorer;
+    this.vectorData = dataIn;
+    this.flatMultiVectorScorer = flatMultiVectorScorer;
     this.similarityFunction = similarityFunction;
     this.dataOffsetsReaderConfiguration = dataOffsetsConfiguration;
-    if (tensorData != null && dataOffsetsReaderConfiguration != null) {
-      this.dataOffsetsReader = dataOffsetsReaderConfiguration.getDirectMonotonicReader(tensorData);
+    if (vectorData != null && dataOffsetsReaderConfiguration != null) {
+      this.dataOffsetsReader = dataOffsetsReaderConfiguration.getDirectMonotonicReader(vectorData);
     } else {
       this.dataOffsetsReader = null;
     }
@@ -91,107 +92,99 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
 
   @Override
   public int getVectorByteLength() {
-    return value.length * VectorEncoding.FLOAT32.byteSize;
+    return value.length * VectorEncoding.BYTE.byteSize;
   }
 
-  protected float[] vectorValue(int targetOrd, LongValues dataOffsets) throws IOException {
+  protected byte[] vectorValue(int targetOrd, LongValues dataOffsets) throws IOException {
     if (lastOrd == targetOrd) {
       return value;
     }
     long offset = dataOffsets.get(targetOrd);
+    int length = (int) (dataOffsets.get(targetOrd + 1) - offset);
+    if (value == null || valueBuffer.capacity() < length) {
+      valueBuffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN);
+    }
 
-    // Todo: switch to using ByteBuffer
-    int length = (int) (dataOffsets.get(targetOrd + 1) - offset) / Float.BYTES;
-    value = new float[length];
     slice.seek(offset);
-    slice.readFloats(value, 0, length);
-
-    //    // Use a ByteBuffer to avoid reallocation
-    //    int length = (int)(dataOffsets.get(targetOrd + 1) - offset);
-    //    if (valueBuffer == null || valueBuffer.capacity() < length) {
-    //      valueBuffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN);
-    //    }
-    //    valueBuffer.reset();
-    //    slice.seek(offset);
-    //    slice.readBytes(valueBuffer.array(), valueBuffer.arrayOffset(), length);
-    //    value = valueBuffer.slice(0,
-    // length).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().array();
-
+    valueBuffer.reset();
+    slice.readBytes(valueBuffer.array(), valueBuffer.arrayOffset(), length);
+    value = valueBuffer.slice(0, length).array();
+    assert value.length == length;
     lastOrd = targetOrd;
     return value;
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
+  public byte[] vectorValue(int targetOrd) throws IOException {
     return vectorValue(targetOrd, dataOffsetsReader);
   }
 
-  public static OffHeapFloatTensorValues load(
-      MultiVectorSimilarityFunction tensorSimilarityFunction,
-      FlatTensorsScorer flatTensorsScorer,
+  public static OffHeapByteMultiVectorValues load(
+      MultiVectorSimilarityFunction multiVectorSimilarityFunction,
+      FlatVectorsScorer flatMultiVectorScorer,
       OrdToDocDISIReaderConfiguration configuration,
-      TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration,
-      VectorEncoding tensorEncoding,
+      MultiVectorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration,
+      VectorEncoding encoding,
       int dimension,
-      long tensorDataOffset,
-      long tensorDataLength,
-      IndexInput tensorData)
+      long multiVectorDataOffset,
+      long multiVectorDataLength,
+      IndexInput vectorData)
       throws IOException {
-    if (configuration.docsWithFieldOffset == -2 || tensorEncoding != VectorEncoding.FLOAT32) {
-      return new EmptyOffHeapTensorValues(dimension, flatTensorsScorer, tensorSimilarityFunction);
+    if (configuration.docsWithFieldOffset == -2 || encoding != VectorEncoding.BYTE) {
+      return new EmptyOffHeapMultiVectorValues(dimension, flatMultiVectorScorer, multiVectorSimilarityFunction);
     }
-    IndexInput tensorDataSlice =
-        tensorData.slice("tensor-data", tensorDataOffset, tensorDataLength);
+    IndexInput multiVectorDataSlice =
+        vectorData.slice("multi-vector-data", multiVectorDataOffset, multiVectorDataLength);
     if (configuration.docsWithFieldOffset == -1) {
-      return new DenseOffHeapTensorValues(
+      return new DenseOffHeapMultiVectorValues(
           dimension,
           configuration.size,
-          tensorDataSlice,
-          tensorData,
-          flatTensorsScorer,
-          tensorSimilarityFunction,
+          multiVectorDataSlice,
+          vectorData,
+          flatMultiVectorScorer,
+          multiVectorSimilarityFunction,
           dataOffsetsReaderConfiguration);
     } else {
-      return new SparseOffHeapTensorValues(
+      return new SparseOffHeapMultiVectorValues(
           dimension,
-          tensorDataSlice,
-          tensorData,
-          flatTensorsScorer,
-          tensorSimilarityFunction,
+          multiVectorDataSlice,
+          vectorData,
+          flatMultiVectorScorer,
+          multiVectorSimilarityFunction,
           dataOffsetsReaderConfiguration,
           configuration);
     }
   }
 
   /**
-   * Dense tensor values that are stored off-heap. This is the case when every doc has a tensor, and
-   * docId is the same as tensor ordinal.
+   * Dense multiVector values that are stored off-heap. This is the case when every doc has a multiVector, and
+   * docId is the same as multiVector ordinal.
    */
-  public static class DenseOffHeapTensorValues extends OffHeapFloatTensorValues {
+  public static class DenseOffHeapMultiVectorValues extends OffHeapByteMultiVectorValues {
 
     private int doc = -1;
 
-    public DenseOffHeapTensorValues(
+    public DenseOffHeapMultiVectorValues(
         int dimension,
         int size,
         IndexInput slice,
-        IndexInput tensorData,
-        FlatTensorsScorer flatTensorsScorer,
+        IndexInput vectorData,
+        FlatVectorsScorer flatMultiVectorScorer,
         MultiVectorSimilarityFunction similarityFunction,
-        TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration)
+        MultiVectorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration)
         throws IOException {
       super(
           dimension,
           size,
           slice,
-          tensorData,
-          flatTensorsScorer,
+          vectorData,
+          flatMultiVectorScorer,
           similarityFunction,
           dataOffsetsReaderConfiguration);
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       return vectorValue(doc);
     }
 
@@ -215,13 +208,13 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public DenseOffHeapTensorValues copy() throws IOException {
-      return new DenseOffHeapTensorValues(
+    public DenseOffHeapMultiVectorValues copy() throws IOException {
+      return new DenseOffHeapMultiVectorValues(
           dimension,
           size,
           slice.clone(),
-          tensorData.clone(),
-          flatTensorsScorer,
+          vectorData.clone(),
+          flatMultiVectorScorer,
           similarityFunction,
           dataOffsetsReaderConfiguration);
     }
@@ -232,10 +225,10 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] query) throws IOException {
-      DenseOffHeapTensorValues copy = copy();
+    public VectorScorer scorer(byte[] query) throws IOException {
+      DenseOffHeapMultiVectorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
-          flatTensorsScorer.getRandomTensorScorer(similarityFunction, copy, query);
+          flatMultiVectorScorer.getRandomMultiVectorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -250,61 +243,62 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
   }
 
-  /** Dense off-heap tensor values created from in-memory data offsets */
-  public static class DenseOffHeapTensorValuesWithOffsets extends DenseOffHeapTensorValues {
+  /** Dense off-heap multiVector values created from in-memory data offsets */
+  public static class DenseOffHeapMultiVectorValuesWithOffsets
+      extends DenseOffHeapMultiVectorValues {
     final LongValues dataOffsets;
 
-    public DenseOffHeapTensorValuesWithOffsets(
+    public DenseOffHeapMultiVectorValuesWithOffsets(
         int dimension,
         int size,
         IndexInput slice,
-        FlatTensorsScorer flatTensorsScorer,
+        FlatVectorsScorer flatMultiVectorScorer,
         MultiVectorSimilarityFunction similarityFunction,
-        LongValues tensorDataOffsets)
+        LongValues vectorDataOffsets)
         throws IOException {
-      super(dimension, size, slice, null, flatTensorsScorer, similarityFunction, null);
-      dataOffsets = tensorDataOffsets;
+      super(dimension, size, slice, null, flatMultiVectorScorer, similarityFunction, null);
+      dataOffsets = vectorDataOffsets;
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
+    public byte[] vectorValue(int targetOrd) throws IOException {
       return vectorValue(targetOrd, dataOffsets);
     }
 
     @Override
-    public DenseOffHeapTensorValues copy() throws IOException {
-      return new DenseOffHeapTensorValuesWithOffsets(
-          dimension, size, slice.clone(), flatTensorsScorer, similarityFunction, dataOffsets);
+    public DenseOffHeapMultiVectorValues copy() throws IOException {
+      return new DenseOffHeapMultiVectorValuesWithOffsets(
+          dimension, size, slice.clone(), flatMultiVectorScorer, similarityFunction, dataOffsets);
     }
   }
 
-  private static class SparseOffHeapTensorValues extends OffHeapFloatTensorValues {
+  private static class SparseOffHeapMultiVectorValues extends OffHeapByteMultiVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     private final OrdToDocDISIReaderConfiguration configuration;
 
-    public SparseOffHeapTensorValues(
+    public SparseOffHeapMultiVectorValues(
         int dimension,
         IndexInput slice,
-        IndexInput tensorData,
-        FlatTensorsScorer flatTensorsScorer,
+        IndexInput vectorData,
+        FlatVectorsScorer flatMultiVectorScorer,
         MultiVectorSimilarityFunction similarityFunction,
-        TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration,
+        MultiVectorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration,
         OrdToDocDISIReaderConfiguration configuration)
         throws IOException {
       super(
           dimension,
           configuration.size,
           slice,
-          tensorData,
-          flatTensorsScorer,
+          vectorData,
+          flatMultiVectorScorer,
           similarityFunction,
           dataOffsetsReaderConfiguration);
       this.configuration = configuration;
-      this.ordToDoc = configuration.getDirectMonotonicReader(tensorData);
+      this.ordToDoc = configuration.getDirectMonotonicReader(vectorData);
       this.disi =
           new IndexedDISI(
-              tensorData,
+              vectorData,
               configuration.docsWithFieldOffset,
               configuration.docsWithFieldLength,
               configuration.jumpTableEntryCount,
@@ -313,7 +307,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       return vectorValue(disi.index());
     }
 
@@ -334,12 +328,12 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public SparseOffHeapTensorValues copy() throws IOException {
-      return new SparseOffHeapTensorValues(
+    public SparseOffHeapMultiVectorValues copy() throws IOException {
+      return new SparseOffHeapMultiVectorValues(
           dimension,
           slice,
-          tensorData,
-          flatTensorsScorer,
+          vectorData,
+          flatMultiVectorScorer,
           similarityFunction,
           dataOffsetsReaderConfiguration,
           configuration);
@@ -369,10 +363,10 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] query) throws IOException {
-      SparseOffHeapTensorValues copy = copy();
+    public VectorScorer scorer(byte[] query) throws IOException {
+      SparseOffHeapMultiVectorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
-          flatTensorsScorer.getRandomTensorScorer(similarityFunction, copy, query);
+          flatMultiVectorScorer.getRandomMultiVectorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -387,14 +381,14 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
   }
 
-  private static class EmptyOffHeapTensorValues extends OffHeapFloatTensorValues {
+  private static class EmptyOffHeapMultiVectorValues extends OffHeapByteMultiVectorValues {
 
-    public EmptyOffHeapTensorValues(
+    public EmptyOffHeapMultiVectorValues(
         int dimension,
-        FlatTensorsScorer flatTensorsScorer,
+        FlatVectorsScorer flatMultiVectorScorer,
         MultiVectorSimilarityFunction similarityFunction)
         throws IOException {
-      super(dimension, 0, null, null, flatTensorsScorer, similarityFunction, null);
+      super(dimension, 0, null, null, flatMultiVectorScorer, similarityFunction, null);
     }
 
     private int doc = -1;
@@ -410,7 +404,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -430,12 +424,12 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public EmptyOffHeapTensorValues copy() {
+    public EmptyOffHeapMultiVectorValues copy() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) {
+    public byte[] vectorValue(int targetOrd) {
       throw new UnsupportedOperationException();
     }
 
@@ -450,7 +444,7 @@ public abstract class OffHeapFloatTensorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] query) {
+    public VectorScorer scorer(byte[] query) {
       return null;
     }
   }

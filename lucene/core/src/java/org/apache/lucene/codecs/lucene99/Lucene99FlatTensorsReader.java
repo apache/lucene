@@ -180,7 +180,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapFloatTensorValues.load(
+    return OffHeapFloatMultiVectorValues.load(
         fieldEntry.similarityFunction,
         tensorScorer,
         fieldEntry.ordToDoc,
@@ -204,7 +204,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
               + " expected: "
               + VectorEncoding.BYTE);
     }
-    return OffHeapByteTensorValues.load(
+    return OffHeapByteMultiVectorValues.load(
         fieldEntry.similarityFunction,
         tensorScorer,
         fieldEntry.ordToDoc,
@@ -262,7 +262,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
       int dimension,
       int size,
       OrdToDocDISIReaderConfiguration ordToDoc,
-      TensorDataOffsetsReaderConfiguration dataOffsets) {
+      MultiVectorDataOffsetsReaderConfiguration dataOffsets) {
 
     FieldEntry {
       if (similarityFunction.equals(info.getTensorSimilarityFunction()) == false) {
@@ -294,7 +294,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
       final var dimension = input.readVInt();
       final var size = input.readInt();
       final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
-      final var dataOffsets = TensorDataOffsetsReaderConfiguration.fromStoredMeta(input);
+      final var dataOffsets = MultiVectorDataOffsetsReaderConfiguration.fromStoredMeta(input);
       return new FieldEntry(
           info,
           encoding,
