@@ -802,6 +802,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     iwc.setMaxBufferedDocs(2);
     LogMergePolicy lmp = newLogMergePolicy();
     lmp.setMergeFactor(2);
+    lmp.setTargetSearchConcurrency(1);
     iwc.setMergePolicy(lmp);
 
     IndexWriter w = new IndexWriter(dir, iwc);

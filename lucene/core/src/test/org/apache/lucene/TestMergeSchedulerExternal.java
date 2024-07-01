@@ -132,7 +132,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     logMP.setMergeFactor(10);
 
     try {
-      for (int i = 0; i < 20; i++) {
+      for (int i = 0; i < 60; i++) {
         writer.addDocument(doc);
       }
     } catch (
