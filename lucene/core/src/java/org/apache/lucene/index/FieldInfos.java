@@ -381,7 +381,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       FieldTensorProperties fieldTensorProperties) {}
 
   private record FieldTensorProperties(
-      boolean isTensor, TensorSimilarityFunction similarityFunction) {}
+      boolean isTensor, MultiVectorSimilarityFunction similarityFunction) {}
 
   static final class FieldNumbers {
 
@@ -619,7 +619,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   VectorEncoding.FLOAT32,
                   VectorSimilarityFunction.EUCLIDEAN,
                   false,
-                  TensorSimilarityFunction.Aggregation.SUM_MAX,
+                  MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)),
                   (parentFieldName != null && parentFieldName.equals(fieldName)));
           addOrGet(fi);
@@ -715,7 +715,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           VectorEncoding.FLOAT32,
           VectorSimilarityFunction.EUCLIDEAN,
           false,
-          TensorSimilarityFunction.Aggregation.SUM_MAX,
+          MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
           isSoftDeletesField,
           isParentField);
     }

@@ -23,7 +23,7 @@ import org.apache.lucene.codecs.lucene90.tests.MockTermStateFactory;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.TensorSimilarityFunction;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -122,7 +122,7 @@ public class TestBlockWriter extends LuceneTestCase {
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
         false,
-        TensorSimilarityFunction.Aggregation.SUM_MAX,
+        MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
         true,
         false);
   }

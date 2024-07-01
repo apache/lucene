@@ -459,7 +459,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
         false,
-        TensorSimilarityFunction.Aggregation.SUM_MAX,
+        MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
         false,
         false);
   }

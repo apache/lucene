@@ -28,16 +28,8 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.TensorSimilarityFunction;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.*;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -355,7 +347,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private record FieldEntry(
       VectorSimilarityFunction vectorSimilarityFunction,
-      TensorSimilarityFunction tensorSimilarityFunction,
+      MultiVectorSimilarityFunction tensorSimilarityFunction,
       VectorEncoding encoding,
       long vectorIndexOffset,
       long vectorIndexLength,
@@ -414,12 +406,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         offsetsLength = 0;
       }
       // Tensor Similarity Function
-      TensorSimilarityFunction tensorSimilarityFunction = null;
+      MultiVectorSimilarityFunction tensorSimilarityFunction = null;
       if (fieldInfo.hasTensorValues()) {
         int aggFnOrd = input.readInt();
         tensorSimilarityFunction =
-            new TensorSimilarityFunction(
-                vectorSimilarityFunction, TensorSimilarityFunction.Aggregation.values()[aggFnOrd]);
+            new MultiVectorSimilarityFunction(
+                vectorSimilarityFunction, MultiVectorSimilarityFunction.Aggregation.values()[aggFnOrd]);
         if (tensorSimilarityFunction.equals(fieldInfo.getTensorSimilarityFunction()) == false) {
           throw new IllegalStateException(
               "Inconsistent tensor similarity function for field=\""

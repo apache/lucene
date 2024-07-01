@@ -18,7 +18,8 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.index.TensorSimilarityFunction;
+
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -40,7 +41,7 @@ public interface FlatTensorsScorer {
    * @throws IOException if an I/O error occurs
    */
   RandomVectorScorerSupplier getRandomTensorScorerSupplier(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values)
+      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values)
       throws IOException;
 
   /**
@@ -53,7 +54,7 @@ public interface FlatTensorsScorer {
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
+      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
       throws IOException;
 
   /**
@@ -66,6 +67,6 @@ public interface FlatTensorsScorer {
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
+      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
       throws IOException;
 }

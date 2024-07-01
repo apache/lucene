@@ -67,8 +67,8 @@ public final class FieldInfo {
 
   // if true, field is a tensor
   private final boolean isTensor;
-  private final TensorSimilarityFunction.Aggregation tensorAggregate;
-  private final TensorSimilarityFunction tensorSimilarityFunction;
+  private final MultiVectorSimilarityFunction.Aggregation tensorAggregate;
+  private final MultiVectorSimilarityFunction tensorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -98,7 +98,7 @@ public final class FieldInfo {
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
       boolean isTensor,
-      TensorSimilarityFunction.Aggregation tensorAggregate,
+      MultiVectorSimilarityFunction.Aggregation tensorAggregate,
       boolean softDeletesField,
       boolean isParentField) {
     this.name = Objects.requireNonNull(name);
@@ -130,7 +130,7 @@ public final class FieldInfo {
     this.isTensor = isTensor;
     this.tensorAggregate = tensorAggregate;
     this.tensorSimilarityFunction =
-        new TensorSimilarityFunction(this.vectorSimilarityFunction, this.tensorAggregate);
+        new MultiVectorSimilarityFunction(this.vectorSimilarityFunction, this.tensorAggregate);
     this.softDeletesField = softDeletesField;
     this.isParentField = isParentField;
     this.checkConsistency();
@@ -457,11 +457,11 @@ public final class FieldInfo {
       boolean isT1,
       int vd1,
       VectorEncoding ve1,
-      TensorSimilarityFunction tsf1,
+      MultiVectorSimilarityFunction tsf1,
       boolean isT2,
       int vd2,
       VectorEncoding ve2,
-      TensorSimilarityFunction tsf2) {
+      MultiVectorSimilarityFunction tsf2) {
     verifySameVectorOptions(
         fieldName, vd1, ve1, tsf1.similarityFunction, vd2, ve2, tsf2.similarityFunction);
     if (isT1 != isT2 || tsf1.aggregation != tsf2.aggregation) {
@@ -599,13 +599,13 @@ public final class FieldInfo {
     return isTensor;
   }
 
-  /** Returns {@link TensorSimilarityFunction.Aggregation} for the field */
-  public TensorSimilarityFunction.Aggregation getTensorAggregate() {
+  /** Returns {@link MultiVectorSimilarityFunction.Aggregation} for the field */
+  public MultiVectorSimilarityFunction.Aggregation getTensorAggregate() {
     return tensorAggregate;
   }
 
-  /** Returns {@link TensorSimilarityFunction} for the field */
-  public TensorSimilarityFunction getTensorSimilarityFunction() {
+  /** Returns {@link MultiVectorSimilarityFunction} for the field */
+  public MultiVectorSimilarityFunction getTensorSimilarityFunction() {
     return tensorSimilarityFunction;
   }
 

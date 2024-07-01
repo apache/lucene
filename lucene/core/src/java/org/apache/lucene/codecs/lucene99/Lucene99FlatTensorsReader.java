@@ -256,7 +256,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
   private record FieldEntry(
       FieldInfo info,
       VectorEncoding encoding,
-      TensorSimilarityFunction similarityFunction,
+      MultiVectorSimilarityFunction similarityFunction,
       long tensorDataOffset,
       long tensorDataLength,
       int dimension,
@@ -288,7 +288,7 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
 
     static FieldEntry create(IndexInput input, FieldInfo info) throws IOException {
       final VectorEncoding encoding = readVectorEncoding(input);
-      final TensorSimilarityFunction similarityFunction = readSimilarityFunction(input);
+      final MultiVectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
       final var tensorDataOffset = input.readVLong();
       final var tensorDataLength = input.readVLong();
       final var dimension = input.readVInt();
@@ -308,18 +308,18 @@ public final class Lucene99FlatTensorsReader extends FlatVectorsReader {
     }
   }
 
-  public static TensorSimilarityFunction readSimilarityFunction(DataInput input)
+  public static MultiVectorSimilarityFunction readSimilarityFunction(DataInput input)
       throws IOException {
     int similarity = input.readInt();
     int agg = input.readInt();
     if (similarity < 0 || similarity >= VectorSimilarityFunction.values().length) {
       throw new CorruptIndexException("Invalid similarity function id: " + similarity, input);
     }
-    if (agg < 0 || agg >= TensorSimilarityFunction.Aggregation.values().length) {
+    if (agg < 0 || agg >= MultiVectorSimilarityFunction.Aggregation.values().length) {
       throw new CorruptIndexException("Invalid tensor aggregation function, id: " + agg, input);
     }
-    return new TensorSimilarityFunction(
+    return new MultiVectorSimilarityFunction(
         VectorSimilarityFunction.values()[similarity],
-        TensorSimilarityFunction.Aggregation.values()[agg]);
+        MultiVectorSimilarityFunction.Aggregation.values()[agg]);
   }
 }

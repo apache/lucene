@@ -18,7 +18,8 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.index.TensorSimilarityFunction;
+
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -31,7 +32,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 public class DefaultFlatTensorScorer implements FlatTensorsScorer {
   @Override
   public RandomVectorScorerSupplier getRandomTensorScorerSupplier(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values)
+      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values)
       throws IOException {
     if (values instanceof RandomAccessVectorValues.Floats floatTensorValues) {
       return new FloatScoringSupplier(floatTensorValues, similarityFunction);
@@ -44,7 +45,7 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
 
   @Override
   public RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
+      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
       throws IOException {
     assert values instanceof RandomAccessVectorValues.Floats;
     if (target.length % values.dimension() != 0) {
@@ -57,7 +58,7 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
 
   @Override
   public RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
+      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
       throws IOException {
     assert values instanceof RandomAccessVectorValues.Bytes;
     if (target.length % values.dimension() != 0) {
@@ -78,11 +79,11 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
     private final RandomAccessVectorValues.Bytes tensors;
     private final RandomAccessVectorValues.Bytes tensors1;
     private final RandomAccessVectorValues.Bytes tensors2;
-    private final TensorSimilarityFunction similarityFunction;
+    private final MultiVectorSimilarityFunction similarityFunction;
     private final int dimension;
 
     private ByteScoringSupplier(
-        RandomAccessVectorValues.Bytes tensors, TensorSimilarityFunction similarityFunction)
+        RandomAccessVectorValues.Bytes tensors, MultiVectorSimilarityFunction similarityFunction)
         throws IOException {
       this.tensors = tensors;
       tensors1 = tensors.copy();
@@ -113,11 +114,11 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
     private final RandomAccessVectorValues.Floats tensors;
     private final RandomAccessVectorValues.Floats tensors1;
     private final RandomAccessVectorValues.Floats tensors2;
-    private final TensorSimilarityFunction similarityFunction;
+    private final MultiVectorSimilarityFunction similarityFunction;
     private final int dimension;
 
     private FloatScoringSupplier(
-        RandomAccessVectorValues.Floats tensors, TensorSimilarityFunction similarityFunction)
+        RandomAccessVectorValues.Floats tensors, MultiVectorSimilarityFunction similarityFunction)
         throws IOException {
       this.tensors = tensors;
       tensors1 = tensors.copy();
@@ -147,13 +148,13 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
   private static class FloatTensorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final RandomAccessVectorValues.Floats values;
     private final float[] query;
-    private final TensorSimilarityFunction similarityFunction;
+    private final MultiVectorSimilarityFunction similarityFunction;
     private final int dimension;
 
     public FloatTensorScorer(
         RandomAccessVectorValues.Floats values,
         float[] query,
-        TensorSimilarityFunction similarityFunction) {
+        MultiVectorSimilarityFunction similarityFunction) {
       super(values);
       this.values = values;
       this.query = query;
@@ -171,13 +172,13 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
   private static class ByteTensorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final RandomAccessVectorValues.Bytes values;
     private final byte[] query;
-    private final TensorSimilarityFunction similarityFunction;
+    private final MultiVectorSimilarityFunction similarityFunction;
     private final int dimension;
 
     public ByteTensorScorer(
         RandomAccessVectorValues.Bytes values,
         byte[] query,
-        TensorSimilarityFunction similarityFunction) {
+        MultiVectorSimilarityFunction similarityFunction) {
       super(values);
       this.values = values;
       this.query = query;

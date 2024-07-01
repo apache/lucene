@@ -136,8 +136,8 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public TensorSimilarityFunction.Aggregation tensorAggregate() {
-            return TensorSimilarityFunction.Aggregation.SUM_MAX;
+          public MultiVectorSimilarityFunction.Aggregation tensorAggregate() {
+            return MultiVectorSimilarityFunction.Aggregation.SUM_MAX;
           }
 
           @Override

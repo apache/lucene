@@ -738,7 +738,7 @@ public class MemoryIndex {
         fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
         false,
-        TensorSimilarityFunction.Aggregation.SUM_MAX,
+        MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
         false,
         false);
   }

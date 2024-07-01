@@ -260,7 +260,7 @@ public class TestFieldInfos extends LuceneTestCase {
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false,
-              TensorSimilarityFunction.Aggregation.SUM_MAX,
+              MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
               false,
               false));
     }
@@ -284,7 +284,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 false,
-                TensorSimilarityFunction.Aggregation.SUM_MAX,
+                MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
                 false,
                 false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
@@ -310,7 +310,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 false,
-                TensorSimilarityFunction.Aggregation.SUM_MAX,
+                MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
                 false,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);

@@ -19,8 +19,9 @@ package org.apache.lucene.document;
 
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.index.TensorSimilarityFunction;
-import org.apache.lucene.index.TensorSimilarityFunction.Aggregation;
+
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.MultiVectorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnFloatTensorQuery;
@@ -37,7 +38,7 @@ import org.apache.lucene.util.VectorUtil;
  * <p>Only rank 2 tensors are currently supported. All vectors in a tensor field are required to
  * have the same dimension, although different documents can have different number of vectors.
  *
- * <p>The {@link TensorSimilarityFunction} may be used to compare tensors at query time, or during
+ * <p>The {@link MultiVectorSimilarityFunction} may be used to compare tensors at query time, or during
  * indexing for generating a nearest neighbour graph (such as the HNSW graph).
  *
  * @lucene.experimental
@@ -76,7 +77,7 @@ public class KnnFloatTensorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, TensorSimilarityFunction similarityFunction) {
+      int dimension, MultiVectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setTensorAttributes(
         true,
@@ -129,12 +130,12 @@ public class KnnFloatTensorField extends Field {
    *
    * @param name field name
    * @param tensor value
-   * @param similarityFunction a {@link TensorSimilarityFunction} defining tensor proximity.
+   * @param similarityFunction a {@link MultiVectorSimilarityFunction} defining tensor proximity.
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
   public KnnFloatTensorField(
-      String name, List<float[]> tensor, TensorSimilarityFunction similarityFunction) {
+      String name, List<float[]> tensor, MultiVectorSimilarityFunction similarityFunction) {
     this(name, tensor, similarityFunction.similarityFunction, similarityFunction.aggregation);
   }
 

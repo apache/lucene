@@ -1471,8 +1471,8 @@ final class IndexingChain implements Accountable {
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     private boolean isTensor = false;
-    private TensorSimilarityFunction.Aggregation tensorAggregate =
-        TensorSimilarityFunction.Aggregation.SUM_MAX;
+    private MultiVectorSimilarityFunction.Aggregation tensorAggregate =
+        MultiVectorSimilarityFunction.Aggregation.SUM_MAX;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1567,7 +1567,7 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setTensors(boolean isTensor, TensorSimilarityFunction.Aggregation tensorAggregate) {
+    void setTensors(boolean isTensor, MultiVectorSimilarityFunction.Aggregation tensorAggregate) {
       if (isTensor == false) {
         this.isTensor = isTensor;
         this.tensorAggregate = tensorAggregate;

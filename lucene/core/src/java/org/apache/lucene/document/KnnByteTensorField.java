@@ -19,8 +19,8 @@ package org.apache.lucene.document;
 
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.index.TensorSimilarityFunction;
-import org.apache.lucene.index.TensorSimilarityFunction.Aggregation;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.MultiVectorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteTensorQuery;
@@ -35,7 +35,7 @@ import org.apache.lucene.util.ByteTensorValue;
  *
  * <p>Only rank 2 tensors are currently supported. All vectors in a tensor field are required to
  * have the same dimension, although different documents can have different number of vectors. The
- * {@link TensorSimilarityFunction} may be used to compare tensors at query time, or during indexing
+ * {@link MultiVectorSimilarityFunction} may be used to compare tensors at query time, or during indexing
  * for generating a nearest neighbour graph (such as the HNSW graph).
  *
  * @lucene.experimental
@@ -73,7 +73,7 @@ public class KnnByteTensorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, TensorSimilarityFunction similarityFunction) {
+      int dimension, MultiVectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setTensorAttributes(
         true,

@@ -188,7 +188,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     VectorEncoding.FLOAT32,
                     vectorDistFunc,
                     false,
-                    TensorSimilarityFunction.Aggregation.SUM_MAX,
+                    MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
                     isSoftDeletesField,
                     false);
             infos[i].checkConsistency();

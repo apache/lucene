@@ -25,7 +25,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.TensorSimilarityFunction.Aggregation;
+import org.apache.lucene.index.MultiVectorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 

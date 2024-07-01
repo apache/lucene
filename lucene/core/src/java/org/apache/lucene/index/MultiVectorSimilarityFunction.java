@@ -26,7 +26,7 @@ import org.apache.lucene.util.ArrayUtil;
  * the nearest neighbors.
  */
 // no commit
-public class TensorSimilarityFunction implements TensorSimilarity {
+public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
 
   /** Aggregation function to combine similarity across multiple vector values */
   public enum Aggregation {
@@ -137,7 +137,7 @@ public class TensorSimilarityFunction implements TensorSimilarity {
    * @param similarityFunction {@link VectorSimilarityFunction} for computing vector proximity
    * @param aggregation {@link Aggregation} to combine similarity across multiple vector values
    */
-  public TensorSimilarityFunction(
+  public MultiVectorSimilarityFunction(
       VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
     this.similarityFunction = similarityFunction;
     this.aggregation = aggregation;
@@ -155,10 +155,10 @@ public class TensorSimilarityFunction implements TensorSimilarity {
 
   @Override
   public boolean equals(Object obj) {
-    if (obj instanceof TensorSimilarityFunction == false) {
+    if (obj instanceof MultiVectorSimilarityFunction == false) {
       return false;
     }
-    TensorSimilarityFunction o = (TensorSimilarityFunction) obj;
+    MultiVectorSimilarityFunction o = (MultiVectorSimilarityFunction) obj;
     return this.similarityFunction == o.similarityFunction && this.aggregation == o.aggregation;
   }
 
@@ -171,7 +171,7 @@ public class TensorSimilarityFunction implements TensorSimilarity {
 
   @Override
   public String toString() {
-    return "TensorSimilarityFunction(similarity="
+    return "MultiVectorSimilarityFunction(similarity="
         + similarityFunction
         + ", aggregation="
         + aggregation

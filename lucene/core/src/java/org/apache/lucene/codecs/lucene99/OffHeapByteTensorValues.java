@@ -24,7 +24,7 @@ import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.TensorSimilarityFunction;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
@@ -47,7 +47,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
   protected int lastOrd = -1;
   protected byte[] value;
   protected ByteBuffer valueBuffer;
-  protected final TensorSimilarityFunction similarityFunction;
+  protected final MultiVectorSimilarityFunction similarityFunction;
   protected final FlatTensorsScorer flatTensorsScorer;
   protected final DirectMonotonicReader dataOffsetsReader;
   protected final TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration;
@@ -58,7 +58,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
       IndexInput slice,
       IndexInput dataIn,
       FlatTensorsScorer flatTensorsScorer,
-      TensorSimilarityFunction similarityFunction,
+      MultiVectorSimilarityFunction similarityFunction,
       TensorDataOffsetsReaderConfiguration dataOffsetsConfiguration)
       throws IOException {
     this.dimension = dimension;
@@ -120,7 +120,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
   }
 
   public static OffHeapByteTensorValues load(
-      TensorSimilarityFunction tensorSimilarityFunction,
+      MultiVectorSimilarityFunction tensorSimilarityFunction,
       FlatTensorsScorer flatTensorsScorer,
       OrdToDocDISIReaderConfiguration configuration,
       TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration,
@@ -170,7 +170,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
         IndexInput slice,
         IndexInput tensorData,
         FlatTensorsScorer flatTensorsScorer,
-        TensorSimilarityFunction similarityFunction,
+        MultiVectorSimilarityFunction similarityFunction,
         TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration)
         throws IOException {
       super(
@@ -253,7 +253,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
         int size,
         IndexInput slice,
         FlatTensorsScorer flatTensorsScorer,
-        TensorSimilarityFunction similarityFunction,
+        MultiVectorSimilarityFunction similarityFunction,
         LongValues tensorDataOffsets)
         throws IOException {
       super(dimension, size, slice, null, flatTensorsScorer, similarityFunction, null);
@@ -282,7 +282,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
         IndexInput slice,
         IndexInput tensorData,
         FlatTensorsScorer flatTensorsScorer,
-        TensorSimilarityFunction similarityFunction,
+        MultiVectorSimilarityFunction similarityFunction,
         TensorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration,
         OrdToDocDISIReaderConfiguration configuration)
         throws IOException {
@@ -386,7 +386,7 @@ public abstract class OffHeapByteTensorValues extends ByteVectorValues
     public EmptyOffHeapTensorValues(
         int dimension,
         FlatTensorsScorer flatTensorsScorer,
-        TensorSimilarityFunction similarityFunction)
+        MultiVectorSimilarityFunction similarityFunction)
         throws IOException {
       super(dimension, 0, null, null, flatTensorsScorer, similarityFunction, null);
     }

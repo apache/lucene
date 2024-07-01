@@ -17,7 +17,7 @@
 package org.apache.lucene.index;
 
 /** Defines comparison functions for tensor similarity */
-public interface TensorSimilarity {
+public interface MultiVectorSimilarity {
 
   /**
    * Calculates a similarity score between the two tensors with a specified function. Higher

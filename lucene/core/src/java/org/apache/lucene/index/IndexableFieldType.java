@@ -113,8 +113,8 @@ public interface IndexableFieldType {
   /** True if this field is a Tensor field, false otherwise */
   boolean isTensor();
 
-  /** Aggregation used for {@link TensorSimilarityFunction} */
-  TensorSimilarityFunction.Aggregation tensorAggregate();
+  /** Aggregation used for {@link MultiVectorSimilarityFunction} */
+  MultiVectorSimilarityFunction.Aggregation tensorAggregate();
 
   /**
    * Attributes for the field type.
