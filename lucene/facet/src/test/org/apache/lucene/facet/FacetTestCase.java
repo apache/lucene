@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +84,8 @@ public abstract class FacetTestCase extends LuceneTestCase {
    * @param docId docId for which facet labels are needed.
    * @param dimension Retain facet labels for supplied dimension only. A null value fetches all
    *     facet labels.
-   * @param facetLabelReader {@FacetLabelReader} instance use to get facet labels for input docId.
+   * @param facetLabelReader {@link FacetLabelReader} instance use to get facet labels for input
+   *     docId.
    * @return {@code List<FacetLabel>} containing matching facet labels.
    * @throws IOException when a low-level IO issue occurs while reading facet labels.
    */
@@ -178,12 +178,9 @@ public abstract class FacetTestCase extends LuceneTestCase {
               labelValues,
               i - numInRow,
               i,
-              new Comparator<LabelAndValue>() {
-                @Override
-                public int compare(LabelAndValue a, LabelAndValue b) {
-                  assert a.value.doubleValue() == b.value.doubleValue();
-                  return new BytesRef(a.label).compareTo(new BytesRef(b.label));
-                }
+              (a, b) -> {
+                assert a.value.doubleValue() == b.value.doubleValue();
+                return new BytesRef(a.label).compareTo(new BytesRef(b.label));
               });
         }
         numInRow = 1;
@@ -198,16 +195,13 @@ public abstract class FacetTestCase extends LuceneTestCase {
   protected void sortLabelValues(List<LabelAndValue> labelValues) {
     Collections.sort(
         labelValues,
-        new Comparator<LabelAndValue>() {
-          @Override
-          public int compare(LabelAndValue a, LabelAndValue b) {
-            if (a.value.doubleValue() > b.value.doubleValue()) {
-              return -1;
-            } else if (a.value.doubleValue() < b.value.doubleValue()) {
-              return 1;
-            } else {
-              return new BytesRef(a.label).compareTo(new BytesRef(b.label));
-            }
+        (a, b) -> {
+          if (a.value.doubleValue() > b.value.doubleValue()) {
+            return -1;
+          } else if (a.value.doubleValue() < b.value.doubleValue()) {
+            return 1;
+          } else {
+            return new BytesRef(a.label).compareTo(new BytesRef(b.label));
           }
         });
   }
@@ -215,16 +209,13 @@ public abstract class FacetTestCase extends LuceneTestCase {
   protected void sortFacetResults(List<FacetResult> results) {
     Collections.sort(
         results,
-        new Comparator<FacetResult>() {
-          @Override
-          public int compare(FacetResult a, FacetResult b) {
-            if (a.value.doubleValue() > b.value.doubleValue()) {
-              return -1;
-            } else if (b.value.doubleValue() > a.value.doubleValue()) {
-              return 1;
-            } else {
-              return a.dim.compareTo(b.dim);
-            }
+        (a, b) -> {
+          if (a.value.doubleValue() > b.value.doubleValue()) {
+            return -1;
+          } else if (b.value.doubleValue() > a.value.doubleValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
           }
         });
   }

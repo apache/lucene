@@ -318,37 +318,35 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
     for (int z = 0; z < addThreads.length; z++) {
       addThreads[z] =
-          new Thread() {
-            @Override
-            public void run() {
-              Random random = random();
-              while (numCats.decrementAndGet() > 0) {
-                try {
-                  int value = random.nextInt(range);
-                  FacetLabel cp =
-                      new FacetLabel(
-                          Integer.toString(value / 1000),
-                          Integer.toString(value / 10000),
-                          Integer.toString(value / 100000),
-                          Integer.toString(value));
-                  int ord = tw.addCategory(cp);
-                  assertTrue(
-                      "invalid parent for ordinal " + ord + ", category " + cp,
-                      tw.getParent(ord) != -1);
-                  String l1 = FacetsConfig.pathToString(cp.components, 1);
-                  String l2 = FacetsConfig.pathToString(cp.components, 2);
-                  String l3 = FacetsConfig.pathToString(cp.components, 3);
-                  String l4 = FacetsConfig.pathToString(cp.components, 4);
-                  values.put(l1, l1);
-                  values.put(l2, l2);
-                  values.put(l3, l3);
-                  values.put(l4, l4);
-                } catch (IOException e) {
-                  throw new RuntimeException(e);
+          new Thread(
+              () -> {
+                Random random = random();
+                while (numCats.decrementAndGet() > 0) {
+                  try {
+                    int value = random.nextInt(range);
+                    FacetLabel cp =
+                        new FacetLabel(
+                            Integer.toString(value / 1000),
+                            Integer.toString(value / 10000),
+                            Integer.toString(value / 100000),
+                            Integer.toString(value));
+                    int ord = tw.addCategory(cp);
+                    assertTrue(
+                        "invalid parent for ordinal " + ord + ", category " + cp,
+                        tw.getParent(ord) != -1);
+                    String l1 = FacetsConfig.pathToString(cp.components, 1);
+                    String l2 = FacetsConfig.pathToString(cp.components, 2);
+                    String l3 = FacetsConfig.pathToString(cp.components, 3);
+                    String l4 = FacetsConfig.pathToString(cp.components, 4);
+                    values.put(l1, l1);
+                    values.put(l2, l2);
+                    values.put(l3, l3);
+                    values.put(l4, l4);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
                 }
-              }
-            }
-          };
+              });
     }
 
     for (Thread t : addThreads) t.start();

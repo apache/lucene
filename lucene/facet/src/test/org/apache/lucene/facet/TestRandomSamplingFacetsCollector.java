@@ -119,7 +119,7 @@ public class TestRandomSamplingFacetsCollector extends FacetTestCase {
       float ei = (float) md.totalHits / totalHits;
       if (ei > 0.0f) {
         float oi = (float) numSampledDocs[i] / totalSampledDocs;
-        chi_square += (Math.pow(ei - oi, 2) / ei);
+        chi_square += (float) (Math.pow(ei - oi, 2) / ei);
       }
     }
 
