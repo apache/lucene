@@ -83,6 +83,13 @@ public abstract class CodecReader extends LeafReader {
    */
   public abstract KnnVectorsReader getVectorReader();
 
+  /**
+   * Expert: retrieve underlying VectorReader for tensors
+   *
+   * @lucene.internal
+   */
+  public abstract KnnVectorsReader getTensorReader();
+
   @Override
   public final StoredFields storedFields() throws IOException {
     final StoredFields reader = getFieldsReader();
@@ -234,28 +241,34 @@ public abstract class CodecReader extends LeafReader {
   public final FloatVectorValues getFloatVectorValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null
-        || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      // Field does not exist or does not index vectors
+    if (fi == null || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       return null;
     }
-
-    return getVectorReader().getFloatVectorValues(field);
+    if (fi.hasTensorValues()) {
+      return getTensorReader().getFloatVectorValues(field);
+    }
+    if (fi.hasVectorValues()) {
+      return getVectorReader().getFloatVectorValues(field);
+    }
+    // Field does not have tensors or vectors with VectorEncoding.FLOAT32 encoding
+    return null;
   }
 
   @Override
   public final ByteVectorValues getByteVectorValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null
-        || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
-      // Field does not exist or does not index vectors
+    if (fi == null || fi.getVectorEncoding() != VectorEncoding.BYTE) {
       return null;
     }
-
-    return getVectorReader().getByteVectorValues(field);
+    if (fi.hasTensorValues()) {
+      return getTensorReader().getByteVectorValues(field);
+    }
+    if (fi.hasVectorValues()) {
+      return getVectorReader().getByteVectorValues(field);
+    }
+    // Field does not have tensors or vectors with VectorEncoding.BYTE encoding
+    return null;
   }
 
   @Override
@@ -263,13 +276,14 @@ public abstract class CodecReader extends LeafReader {
       String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null
-        || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      // Field does not exist or does not index vectors
+    if (fi == null || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       return;
     }
-    getVectorReader().search(field, target, knnCollector, acceptDocs);
+    if (fi.hasTensorValues()) {
+      getTensorReader().search(field, target, knnCollector, acceptDocs);
+    } else if (fi.hasVectorValues()) {
+      getVectorReader().search(field, target, knnCollector, acceptDocs);
+    }
   }
 
   @Override
@@ -277,13 +291,14 @@ public abstract class CodecReader extends LeafReader {
       String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null
-        || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
-      // Field does not exist or does not index vectors
+    if (fi == null || fi.getVectorEncoding() != VectorEncoding.BYTE) {
       return;
     }
-    getVectorReader().search(field, target, knnCollector, acceptDocs);
+    if (fi.hasTensorValues()) {
+      getTensorReader().search(field, target, knnCollector, acceptDocs);
+    } else if (fi.hasVectorValues()) {
+      getVectorReader().search(field, target, knnCollector, acceptDocs);
+    }
   }
 
   @Override
@@ -326,6 +341,11 @@ public abstract class CodecReader extends LeafReader {
     // vectors
     if (getVectorReader() != null) {
       getVectorReader().checkIntegrity();
+    }
+
+    // tensors
+    if (getTensorReader() != null) {
+      getTensorReader().checkIntegrity();
     }
   }
 }

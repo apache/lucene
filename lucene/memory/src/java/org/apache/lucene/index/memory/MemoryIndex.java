@@ -738,6 +738,8 @@ public class MemoryIndex {
         fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
         false,
+        TensorSimilarityFunction.Aggregation.SUM_MAX,
+        false,
         false);
   }
 
@@ -792,6 +794,8 @@ public class MemoryIndex {
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
+              info.fieldInfo.isTensor(),
+              info.fieldInfo.getTensorAggregate(),
               info.fieldInfo.isSoftDeletesField(),
               info.fieldInfo.isParentField());
     } else if (existingDocValuesType != docValuesType) {

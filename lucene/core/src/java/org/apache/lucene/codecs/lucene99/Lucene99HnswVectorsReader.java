@@ -35,6 +35,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
@@ -209,17 +210,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    if (similarityFunction != info.getVectorSimilarityFunction()) {
+    VectorSimilarityFunction vectorSimilarityFunction = readSimilarityFunction(input);
+    if (vectorSimilarityFunction != info.getVectorSimilarityFunction()) {
       throw new IllegalStateException(
           "Inconsistent vector similarity function for field=\""
               + info.name
               + "\"; "
-              + similarityFunction
+              + vectorSimilarityFunction
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
+    return FieldEntry.create(info, input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -251,6 +252,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       throws IOException {
     search(
         fields.get(field),
+        target.length,
         knnCollector,
         acceptDocs,
         VectorEncoding.FLOAT32,
@@ -262,6 +264,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       throws IOException {
     search(
         fields.get(field),
+        target.length,
         knnCollector,
         acceptDocs,
         VectorEncoding.BYTE,
@@ -270,15 +273,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private void search(
       FieldEntry fieldEntry,
+      int targetLen,
       KnnCollector knnCollector,
       Bits acceptDocs,
-      VectorEncoding vectorEncoding,
+      VectorEncoding encoding,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
 
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != vectorEncoding) {
+    if (fieldEntry.size() == 0 || knnCollector.k() == 0 || fieldEntry.encoding != encoding) {
+      return;
+    }
+    if (fieldEntry.tensorSimilarityFunction != null && targetLen % fieldEntry.dimension != 0) {
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
@@ -342,8 +347,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   private record FieldEntry(
-      VectorSimilarityFunction similarityFunction,
-      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      TensorSimilarityFunction tensorSimilarityFunction,
+      VectorEncoding encoding,
       long vectorIndexOffset,
       long vectorIndexLength,
       int M,
@@ -358,9 +364,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       long offsetsLength) {
 
     static FieldEntry create(
+        FieldInfo fieldInfo,
         IndexInput input,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
+        VectorEncoding encoding,
+        VectorSimilarityFunction vectorSimilarityFunction)
         throws IOException {
       final var vectorIndexOffset = input.readVLong();
       final var vectorIndexLength = input.readVLong();
@@ -399,9 +406,27 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         offsetsMeta = null;
         offsetsLength = 0;
       }
+      // Tensor Similarity Function
+      TensorSimilarityFunction tensorSimilarityFunction = null;
+      if (fieldInfo.hasTensorValues()) {
+        int aggFnOrd = input.readInt();
+        tensorSimilarityFunction =
+            new TensorSimilarityFunction(
+                vectorSimilarityFunction, TensorSimilarityFunction.Aggregation.values()[aggFnOrd]);
+        if (tensorSimilarityFunction.equals(fieldInfo.getTensorSimilarityFunction()) == false) {
+          throw new IllegalStateException(
+              "Inconsistent tensor similarity function for field=\""
+                  + fieldInfo.name
+                  + "\"; "
+                  + tensorSimilarityFunction
+                  + " != "
+                  + fieldInfo.getTensorSimilarityFunction());
+        }
+      }
       return new FieldEntry(
-          similarityFunction,
-          vectorEncoding,
+          vectorSimilarityFunction,
+          tensorSimilarityFunction,
+          encoding,
           vectorIndexOffset,
           vectorIndexLength,
           M,

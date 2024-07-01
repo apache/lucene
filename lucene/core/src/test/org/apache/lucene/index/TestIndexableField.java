@@ -131,6 +131,16 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
+          public boolean isTensor() {
+            return false;
+          }
+
+          @Override
+          public TensorSimilarityFunction.Aggregation tensorAggregate() {
+            return TensorSimilarityFunction.Aggregation.SUM_MAX;
+          }
+
+          @Override
           public Map<String, String> getAttributes() {
             return null;
           }

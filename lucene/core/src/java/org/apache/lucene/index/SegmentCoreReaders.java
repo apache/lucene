@@ -59,6 +59,7 @@ final class SegmentCoreReaders {
   final TermVectorsReader termVectorsReaderOrig;
   final PointsReader pointsReader;
   final KnnVectorsReader knnVectorsReader;
+  final KnnVectorsReader knnTensorsReader;
   final CompoundDirectory cfsReader;
   final String segment;
 
@@ -139,6 +140,12 @@ final class SegmentCoreReaders {
         knnVectorsReader = null;
       }
 
+      if (coreFieldInfos.hasTensorValues()) {
+        knnTensorsReader = codec.knnTensorsFormat().fieldsReader(segmentReadState);
+      } else {
+        knnTensorsReader = null;
+      }
+
       success = true;
     } catch (EOFException | FileNotFoundException e) {
       throw new CorruptIndexException("Problem reading index from " + dir, dir.toString(), e);
@@ -176,7 +183,8 @@ final class SegmentCoreReaders {
             cfsReader,
             normsProducer,
             pointsReader,
-            knnVectorsReader);
+            knnVectorsReader,
+            knnTensorsReader);
       }
     }
   }

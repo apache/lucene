@@ -113,6 +113,9 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
   /** Encodes/decodes numeric vector fields */
   public abstract KnnVectorsFormat knnVectorsFormat();
 
+  /** Encodes/decodes numeric tensor fields */
+  public abstract KnnTensorsFormat knnTensorsFormat();
+
   /** looks up a codec by name */
   public static Codec forName(String name) {
     return Holder.getLoader().lookup(name);
