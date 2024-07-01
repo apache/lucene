@@ -141,7 +141,8 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
         @Override
         public int nextOrd() throws IOException {
-            if (ordPerDoc++ < multiValued.docValueCount()) {
+            if (ordPerDoc > 0) {
+                ordPerDoc--;
                 return (int) multiValued.nextValue();
             }
             return FacetLeafCutter.NO_MORE_ORDS;
@@ -150,7 +151,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
         @Override
         public boolean advanceExact(int doc) throws IOException {
             if (multiValued.advanceExact(doc)) {
-                ordPerDoc = 0;
+                ordPerDoc = multiValued.docValueCount();
                 return true;
             };
             return false;
