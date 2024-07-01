@@ -45,6 +45,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -253,12 +254,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         knnCollector,
         acceptDocs,
         VectorEncoding.FLOAT32,
-        new RandomVectorScorerSupplier() {
-          @Override
-          RandomVectorScorer get() throws IOException {
-            return flatVectorsReader.getRandomVectorScorer(field, target);
-          }
-        });
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
   @Override
@@ -269,16 +265,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         knnCollector,
         acceptDocs,
         VectorEncoding.BYTE,
-        new RandomVectorScorerSupplier() {
-          @Override
-          RandomVectorScorer get() throws IOException {
-            return flatVectorsReader.getRandomVectorScorer(field, target);
-          }
-        });
-  }
-
-  private abstract static class RandomVectorScorerSupplier {
-    abstract RandomVectorScorer get() throws IOException;
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
   private void search(
@@ -286,7 +273,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       KnnCollector knnCollector,
       Bits acceptDocs,
       VectorEncoding vectorEncoding,
-      RandomVectorScorerSupplier scorerSupplier)
+      IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
 
     if (fieldEntry.size() == 0
