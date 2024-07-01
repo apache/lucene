@@ -28,7 +28,7 @@ import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.KnnTensorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.hnsw.DefaultFlatTensorScorer;
+import org.apache.lucene.codecs.hnsw.DefaultFlatMultiVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
@@ -63,7 +63,7 @@ public final class Lucene99HnswTensorsFormat extends KnnTensorsFormat {
 
   /** The format for storing, reading, merging tensors on disk */
   private static final FlatVectorsFormat flatVectorsFormat =
-      new Lucene99FlatTensorsFormat(new DefaultFlatTensorScorer());
+      new Lucene99FlatTensorsFormat(new DefaultFlatMultiVectorScorer());
 
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
