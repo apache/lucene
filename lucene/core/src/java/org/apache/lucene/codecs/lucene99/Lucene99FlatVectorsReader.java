@@ -183,6 +183,18 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
+    if (fieldEntry.isMultiVector) {
+      return OffHeapFloatMultiVectorValues.load(
+          fieldEntry.multiVectorSimilarityFunction,
+          vectorScorer,
+          fieldEntry.ordToDoc,
+          fieldEntry.multiVectorDataOffsets,
+          fieldEntry.vectorEncoding,
+          fieldEntry.dimension,
+          fieldEntry.vectorDataOffset,
+          fieldEntry.vectorDataLength,
+          vectorData);
+    }
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -206,6 +218,18 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + " expected: "
               + VectorEncoding.BYTE);
     }
+    if (fieldEntry.isMultiVector) {
+      return OffHeapByteMultiVectorValues.load(
+          fieldEntry.multiVectorSimilarityFunction,
+          vectorScorer,
+          fieldEntry.ordToDoc,
+          fieldEntry.multiVectorDataOffsets,
+          fieldEntry.vectorEncoding,
+          fieldEntry.dimension,
+          fieldEntry.vectorDataOffset,
+          fieldEntry.vectorDataLength,
+          vectorData);
+    }
     return OffHeapByteVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -222,6 +246,24 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return null;
+    }
+    if (target.length % fieldEntry.dimension != 0) {
+      return null;
+    }
+    if (fieldEntry.isMultiVector) {
+      return vectorScorer.getRandomMultiVectorScorer(
+          fieldEntry.multiVectorSimilarityFunction,
+          OffHeapFloatMultiVectorValues.load(
+              fieldEntry.multiVectorSimilarityFunction,
+              vectorScorer,
+              fieldEntry.ordToDoc,
+              fieldEntry.multiVectorDataOffsets,
+              fieldEntry.vectorEncoding,
+              fieldEntry.dimension,
+              fieldEntry.vectorDataOffset,
+              fieldEntry.vectorDataLength,
+              vectorData),
+          target);
     }
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
@@ -242,6 +284,23 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return null;
+    }
+    if (target.length % fieldEntry.dimension != 0) {
+      return null;
+    }
+    if (fieldEntry.isMultiVector) {
+      return vectorScorer.getRandomMultiVectorScorer(
+          fieldEntry.multiVectorSimilarityFunction,
+          OffHeapByteVectorValues.load(
+              fieldEntry.similarityFunction,
+              vectorScorer,
+              fieldEntry.ordToDoc,
+              fieldEntry.vectorEncoding,
+              fieldEntry.dimension,
+              fieldEntry.vectorDataOffset,
+              fieldEntry.vectorDataLength,
+              vectorData),
+          target);
     }
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
@@ -270,6 +329,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       int dimension,
       int size,
       OrdToDocDISIReaderConfiguration ordToDoc,
+      boolean isMultiVector,
+      MultiVectorSimilarityFunction multiVectorSimilarityFunction,
+      MultiVectorDataOffsetsReaderConfiguration multiVectorDataOffsets,
       FieldInfo info) {
 
     FieldEntry {
@@ -323,6 +385,20 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       final var dimension = input.readVInt();
       final var size = input.readInt();
       final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+
+      // read multi-vector metadata
+      MultiVectorSimilarityFunction multiVectorSimilarityFunction = null;
+      MultiVectorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration = null;
+      final var isMultiVector = input.readByte() == 1;
+      if (isMultiVector) {
+        int agg = input.readInt();
+        if (agg < 0 || agg >= MultiVectorSimilarityFunction.Aggregation.values().length) {
+          throw new CorruptIndexException("Invalid multi-vector aggregation function, id: " + agg, input);
+        }
+        multiVectorSimilarityFunction = new MultiVectorSimilarityFunction(similarityFunction, MultiVectorSimilarityFunction.Aggregation.values()[agg]);
+        dataOffsetsReaderConfiguration = MultiVectorDataOffsetsReaderConfiguration.fromStoredMeta(input);
+      }
+
       return new FieldEntry(
           similarityFunction,
           vectorEncoding,
@@ -331,6 +407,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           dimension,
           size,
           ordToDoc,
+          isMultiVector,
+          multiVectorSimilarityFunction,
+          dataOffsetsReaderConfiguration,
           info);
     }
   }

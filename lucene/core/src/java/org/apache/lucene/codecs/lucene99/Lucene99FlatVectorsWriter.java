@@ -510,6 +510,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
 
     // write multi-vector metadata
+    meta.writeByte(field.hasTensorValues() ? (byte) 1 : (byte) 0);  // is multiVector?
     if (field.hasTensorValues()) {
       meta.writeInt(field.getTensorSimilarityFunction().aggregation.ordinal());
       MultiVectorDataOffsetsReaderConfiguration.writeStoredMeta(
