@@ -102,9 +102,9 @@ public class IndexSearcher {
    * Thresholds for index slice allocation logic. To change the default, extend <code> IndexSearcher
    * </code> and use custom values
    */
-  private static final int MAX_DOCS_PER_SLICE = 250_000;
+  public static final int MAX_DOCS_PER_SLICE = 250_000;
 
-  private static final int MAX_SEGMENTS_PER_SLICE = 5;
+  public static final int MAX_SEGMENTS_PER_SLICE = 5;
 
   final IndexReader reader; // package private for testing!
 
