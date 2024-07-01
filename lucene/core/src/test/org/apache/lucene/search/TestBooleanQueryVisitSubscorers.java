@@ -156,7 +156,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     private final Set<Scorer> tqsSet = new HashSet<>();
 
     MyCollector() {
-      super(TopScoreDocCollector.create(10, Integer.MAX_VALUE));
+      super(new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector());
     }
 
     @Override

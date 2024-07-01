@@ -231,13 +231,13 @@ public class TestSearchAfter extends LuceneTestCase {
     final boolean doScores;
     final CollectorManager<?, ? extends TopDocs> allManager;
     if (sort == null) {
-      allManager = TopScoreDocCollector.createSharedManager(maxDoc, null, Integer.MAX_VALUE);
+      allManager = new TopScoreDocCollectorManager(maxDoc, null, Integer.MAX_VALUE);
       doScores = false;
     } else if (sort == Sort.RELEVANCE) {
-      allManager = TopFieldCollector.createSharedManager(sort, maxDoc, null, Integer.MAX_VALUE);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE, true);
       doScores = true;
     } else {
-      allManager = TopFieldCollector.createSharedManager(sort, maxDoc, null, Integer.MAX_VALUE);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE, true);
       doScores = random().nextBoolean();
     }
     all = searcher.search(query, allManager);
@@ -269,20 +269,14 @@ public class TestSearchAfter extends LuceneTestCase {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
         pagedManager =
-            TopScoreDocCollector.createSharedManager(pageSize, lastBottom, Integer.MAX_VALUE);
+            new TopScoreDocCollectorManager(pageSize, lastBottom, Integer.MAX_VALUE, true);
       } else {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
-        if (sort == Sort.RELEVANCE) {
-          pagedManager =
-              TopFieldCollector.createSharedManager(
-                  sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
-        } else {
-          pagedManager =
-              TopFieldCollector.createSharedManager(
-                  sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
-        }
+        pagedManager =
+            new TopFieldCollectorManager(
+                sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE, true);
       }
       paged = searcher.search(query, pagedManager);
       if (doScores) {

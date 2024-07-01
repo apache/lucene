@@ -109,7 +109,9 @@ public class TestPositiveScoresOnlyCollector extends LuceneTestCase {
     IndexReader ir = writer.getReader();
     writer.close();
     Scorer s = new SimpleScorer();
-    TopDocsCollector<ScoreDoc> tdc = TopScoreDocCollector.create(scores.length, Integer.MAX_VALUE);
+    TopDocsCollector<ScoreDoc> tdc =
+        new TopScoreDocCollectorManager(scores.length, null, Integer.MAX_VALUE, false)
+            .newCollector();
     Collector c = new PositiveScoresOnlyCollector(tdc);
     LeafCollector ac = c.getLeafCollector(ir.leaves().get(0));
     ac.setScorer(s);

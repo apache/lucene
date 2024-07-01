@@ -98,7 +98,7 @@ public class TestElevationComparator extends LuceneTestCase {
 
     TopDocs topDocs =
         searcher.search(
-            newq.build(), TopFieldCollector.createSharedManager(sort, 50, null, Integer.MAX_VALUE));
+            newq.build(), new TopFieldCollectorManager(sort, 50, null, Integer.MAX_VALUE, true));
     int nDocsReturned = topDocs.scoreDocs.length;
 
     assertEquals(4, nDocsReturned);

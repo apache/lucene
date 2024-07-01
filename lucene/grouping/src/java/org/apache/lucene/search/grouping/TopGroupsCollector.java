@@ -31,7 +31,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -127,15 +128,17 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
         supplier =
             () ->
                 new TopDocsAndMaxScoreCollector(
-                    true, TopScoreDocCollector.create(maxDocsPerGroup, Integer.MAX_VALUE), null);
+                    true,
+                    new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+                        .newCollector(),
+                    null);
       } else {
         supplier =
             () -> {
               TopFieldCollector topDocsCollector =
-                  TopFieldCollector.create(
-                      withinGroupSort,
-                      maxDocsPerGroup,
-                      Integer.MAX_VALUE); // TODO: disable exact counts?
+                  new TopFieldCollectorManager(
+                          withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+                      .newCollector(); // TODO: disable exact counts?
               MaxScoreCollector maxScoreCollector = getMaxScores ? new MaxScoreCollector() : null;
               return new TopDocsAndMaxScoreCollector(false, topDocsCollector, maxScoreCollector);
             };
