@@ -16,30 +16,30 @@
  */
 package org.apache.lucene.index;
 
-/** Defines comparison functions for tensor similarity */
+/** Defines comparison functions for multi-vector similarity */
 public interface MultiVectorSimilarity {
 
   /**
-   * Calculates a similarity score between the two tensors with a specified function. Higher
+   * Calculates a similarity score between the two multi-vectors with a specified function. Higher
    * similarity scores correspond to closer vectors.
    *
-   * @param t1 a tensor with non-empty vectors All vector values are concatenated in a single packed
+   * @param t1 a multi-vector with non-empty vectors All vector values are concatenated in a single packed
    *     array.
-   * @param t2 another tensor, vectors of the same dimension as t1. All vector values are
+   * @param t2 another multi-vector, vectors of the same dimension as t1. All vector values are
    *     concatenated in a single packed array.
-   * @return the value of the similarity function applied to the two tensors
+   * @return the value of the similarity function applied to the two multi-vectors
    */
   float compare(float[] t1, float[] t2, int dimension);
 
   /**
-   * Calculates a similarity score between the two tensors with a specified function. Higher
+   * Calculates a similarity score between the two multi-vectors with a specified function. Higher
    * similarity scores correspond to closer vectors.
    *
-   * @param t1 a tensor with non-empty vectors. All vector values are concatenated in a single
+   * @param t1 a multi-vector with non-empty vectors. All vector values are concatenated in a single
    *     packed array.
-   * @param t2 another tensor, vectors of the same dimension as t1. All vector values are
+   * @param t2 another multi-vector, vectors of the same dimension as t1. All vector values are
    *     concatenated in a single packed array.
-   * @return the value of the similarity function applied to the two tensors
+   * @return the value of the similarity function applied to the two multi-vector
    */
   float compare(byte[] t1, byte[] t2, int dimension);
 }

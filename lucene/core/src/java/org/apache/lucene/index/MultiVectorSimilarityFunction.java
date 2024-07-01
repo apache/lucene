@@ -21,8 +21,8 @@ import java.util.List;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
- * Tensor similarity function; used in search to return top K most similar vectors to a target
- * tensor. This method is used during indexing and searching of the tensors in order to determine
+ * Multi-vector similarity function; used in search to return top K most similar multi-vectors to a target
+ * multi-vector. This method is used during indexing and searching of the multi-vectors in order to determine
  * the nearest neighbors.
  */
 // no commit
@@ -31,32 +31,33 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
   /** Aggregation function to combine similarity across multiple vector values */
   public enum Aggregation {
     /**
-     * SumMaxSimilarity between two tensors. Aggregates using the sum of maximum similarity found
-     * for each vector in the first tensor against all vectors in the second tensor.
+     * SumMaxSimilarity between two multi-vectors. Aggregates using the sum of maximum similarity found
+     * for each vector in the first multi-vector against all vectors in the second multi-vector.
      */
     SUM_MAX {
       @Override
       public float aggregate(
-          float[] outerTensor,
-          float[] innerTensor,
+          float[] outer,
+          float[] inner,
           VectorSimilarityFunction vectorSimilarityFunction,
           int dimension) {
-        if (outerTensor.length % dimension != 0 || innerTensor.length % dimension != 0) {
-          throw new IllegalArgumentException("Tensor vectors do not match provided dimensions");
+        if (outer.length % dimension != 0 || inner.length % dimension != 0) {
+          throw new IllegalArgumentException("Multi vectors do not match provided dimensions");
         }
-        List<float[]> outer = new ArrayList<>();
-        List<float[]> inner = new ArrayList<>();
-        for (int i = 0; i <= outerTensor.length; i += dimension) {
-          outer.add(ArrayUtil.copyOfSubArray(outerTensor, i, dimension));
+        // TODO: can we avoid making vector copies?
+        List<float[]> outerList = new ArrayList<>();
+        List<float[]> innerList = new ArrayList<>();
+        for (int i = 0; i <= outer.length; i += dimension) {
+          outerList.add(ArrayUtil.copyOfSubArray(outer, i, dimension));
         }
-        for (int i = 0; i <= innerTensor.length; i += dimension) {
-          inner.add(ArrayUtil.copyOfSubArray(innerTensor, i, dimension));
+        for (int i = 0; i <= inner.length; i += dimension) {
+          innerList.add(ArrayUtil.copyOfSubArray(inner, i, dimension));
         }
 
         float result = 0f;
-        for (float[] o : outer) {
+        for (float[] o : outerList) {
           float maxSim = Float.MIN_VALUE;
-          for (float[] i : inner) {
+          for (float[] i : innerList) {
             maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(o, i));
           }
           result += maxSim;
@@ -66,26 +67,26 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
 
       @Override
       public float aggregate(
-          byte[] outerTensor,
-          byte[] innerTensor,
+          byte[] outer,
+          byte[] inner,
           VectorSimilarityFunction vectorSimilarityFunction,
           int dimension) {
-        if (outerTensor.length % dimension != 0 || innerTensor.length % dimension != 0) {
-          throw new IllegalArgumentException("Tensor vectors do not match provided dimensions");
+        if (outer.length % dimension != 0 || inner.length % dimension != 0) {
+          throw new IllegalArgumentException("Multi vectors do not match provided dimensions");
         }
-        List<byte[]> outer = new ArrayList<>();
-        List<byte[]> inner = new ArrayList<>();
-        for (int i = 0; i <= outerTensor.length; i += dimension) {
-          outer.add(ArrayUtil.copyOfSubArray(outerTensor, i, dimension));
+        List<byte[]> outerList = new ArrayList<>();
+        List<byte[]> innerList = new ArrayList<>();
+        for (int i = 0; i <= outer.length; i += dimension) {
+          outerList.add(ArrayUtil.copyOfSubArray(outer, i, dimension));
         }
-        for (int i = 0; i <= innerTensor.length; i += dimension) {
-          inner.add(ArrayUtil.copyOfSubArray(innerTensor, i, dimension));
+        for (int i = 0; i <= inner.length; i += dimension) {
+          innerList.add(ArrayUtil.copyOfSubArray(inner, i, dimension));
         }
 
         float result = 0f;
-        for (byte[] o : outer) {
+        for (byte[] o : outerList) {
           float maxSim = Float.MIN_VALUE;
-          for (byte[] i : inner) {
+          for (byte[] i : innerList) {
             maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(o, i));
           }
           result += maxSim;
@@ -97,42 +98,42 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
     /**
      * Computes and aggregates similarity over multiple vector values
      *
-     * @param outerTensor first tensor
-     * @param innerTensor second tensor
+     * @param outer first multi-vector
+     * @param inner second multi-vector
      * @param vectorSimilarityFunction distance function for vector proximity
-     * @param dimension dimension for each vector value in the tensor
-     * @return similarity between the two tensors
+     * @param dimension dimension for each vector value in the multi-vector
+     * @return similarity between the two multi-vectors
      */
     public abstract float aggregate(
-        float[] outerTensor,
-        float[] innerTensor,
+        float[] outer,
+        float[] inner,
         VectorSimilarityFunction vectorSimilarityFunction,
         int dimension);
 
     /**
      * Computes and aggregates similarity over multiple vector values
      *
-     * @param outerTensor first tensor
-     * @param innerTensor second tensor
+     * @param outer first multi-vector
+     * @param inner second multi-vector
      * @param vectorSimilarityFunction distance function for vector proximity
-     * @param dimension dimension for each vector value in the tensor
-     * @return similarity between the two tensors
+     * @param dimension dimension for each vector value in the multi-vector
+     * @return similarity between the two multi-vectors
      */
     public abstract float aggregate(
-        byte[] outerTensor,
-        byte[] innerTensor,
+        byte[] outer,
+        byte[] inner,
         VectorSimilarityFunction vectorSimilarityFunction,
         int dimension);
   }
 
-  /** Similarity function used for tensor distance calculations */
+  /** Similarity function used for multi-vector distance calculations */
   public final VectorSimilarityFunction similarityFunction;
 
   /** Aggregation function to combine similarity across multiple vector values */
   public final Aggregation aggregation;
 
   /**
-   * Similarity function for computing distance between tensor values
+   * Similarity function for computing distance between multi-vector values
    *
    * @param similarityFunction {@link VectorSimilarityFunction} for computing vector proximity
    * @param aggregation {@link Aggregation} to combine similarity across multiple vector values
