@@ -25,7 +25,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteTensorQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.ByteTensorValue;
+import org.apache.lucene.util.ByteMultiVectorValue;
 
 /**
  * A field that contains one or more byte numeric vectors for each document. Similar to {@link
@@ -116,7 +116,7 @@ public class KnnByteTensorField extends Field {
       Aggregation aggregation) {
     super(name, createType(tensor, similarityFunction, aggregation));
     assert type.vectorDimension() == tensor.get(0).length;
-    fieldsData = new ByteTensorValue(tensor, type.vectorDimension());
+    fieldsData = new ByteMultiVectorValue(tensor, type.vectorDimension());
   }
 
   /**
@@ -154,12 +154,12 @@ public class KnnByteTensorField extends Field {
     }
     Objects.requireNonNull(tensor, "tensor value must not be null");
     checkDimensions(tensor, fieldType.vectorDimension());
-    fieldsData = new ByteTensorValue(tensor, fieldType.vectorDimension());
+    fieldsData = new ByteMultiVectorValue(tensor, fieldType.vectorDimension());
   }
 
   /** Return the tensor value of this field */
-  public ByteTensorValue tensorValue() {
-    return (ByteTensorValue) fieldsData;
+  public ByteMultiVectorValue tensorValue() {
+    return (ByteMultiVectorValue) fieldsData;
   }
 
   /**
@@ -167,7 +167,7 @@ public class KnnByteTensorField extends Field {
    *
    * @param value the value to set; must not be null, and dimension must match the field type
    */
-  public void setTensorValue(ByteTensorValue value) {
+  public void setTensorValue(ByteMultiVectorValue value) {
     if (value == null) {
       throw new IllegalArgumentException("value must not be null or empty");
     }

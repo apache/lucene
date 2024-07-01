@@ -18,29 +18,29 @@ package org.apache.lucene.util;
 
 import java.util.List;
 
-/** Stores a byte numeric tensor value */
-public class ByteTensorValue {
-  private byte[] packedValue;
+/** Stores a float numeric multi-vector value */
+public class FloatMultiVectorValue {
+  private float[] packedValue;
   private int vectorCount;
   private final int dimension;
 
-  public ByteTensorValue(byte[] tensorValue, int dimension) {
+  public FloatMultiVectorValue(float[] value, int dimension) {
     if (dimension <= 0) {
       throw new IllegalArgumentException("Dimension for composing vectors should be > 0");
     }
-    if (tensorValue == null || tensorValue.length == 0) {
-      throw new IllegalArgumentException("Empty tensor value not allowed");
+    if (value == null || value.length == 0) {
+      throw new IllegalArgumentException("Empty multi-vector value not allowed");
     }
-    this.vectorCount = tensorValue.length / dimension;
-    if (dimension * vectorCount != tensorValue.length) {
+    this.vectorCount = value.length / dimension;
+    if (dimension * vectorCount != value.length) {
       throw new IllegalArgumentException(
           "Each composing vector should have the same dimension = " + dimension);
     }
     this.dimension = dimension;
-    this.packedValue = ArrayUtil.copyOfSubArray(tensorValue, 0, vectorCount * this.dimension);
+    this.packedValue = ArrayUtil.copyOfSubArray(value, 0, vectorCount * this.dimension);
   }
 
-  public ByteTensorValue(List<byte[]> vectorValues, int dimension) {
+  public FloatMultiVectorValue(List<float[]> vectorValues, int dimension) {
     if (dimension <= 0) {
       throw new IllegalArgumentException("Dimension for composing vectors should be > 0");
     }
@@ -49,9 +49,9 @@ public class ByteTensorValue {
     }
     vectorCount = vectorValues.size();
     this.dimension = dimension;
-    packedValue = new byte[vectorCount * dimension];
+    packedValue = new float[vectorCount * dimension];
     int targetPtr = 0;
-    for (byte[] vector : vectorValues) {
+    for (float[] vector : vectorValues) {
       if (vector.length != dimension) {
         throw new IllegalArgumentException(
             "Found vector of dimension = "
@@ -73,13 +73,13 @@ public class ByteTensorValue {
   //      if (vector.length != dimension) {
   //        throw new IllegalArgumentException("Dimension for provided vector value [" +
   // vector.length + "] " +
-  //            "does not match FloatTensorValue dimension [" + dimension + "]");
+  //            "does not match FloatMultiVectorValue dimension [" + dimension + "]");
   //        // TODO: add to existing running list of vectors
   //      }
   //    }
   //  }
 
-  public byte[] packedValue() {
+  public float[] packedValue() {
     return packedValue;
   }
 
@@ -93,7 +93,7 @@ public class ByteTensorValue {
 
   public long ramBytesUsed() {
     return RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-        + (long) RamUsageEstimator.primitiveSizes.get(byte.class) * packedValue.length
+        + (long) RamUsageEstimator.primitiveSizes.get(float.class) * packedValue.length
         + (long) 2 * RamUsageEstimator.primitiveSizes.get(int.class);
   }
 }

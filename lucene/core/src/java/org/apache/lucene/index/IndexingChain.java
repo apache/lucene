@@ -1059,9 +1059,9 @@ final class IndexingChain implements Accountable {
   private void indexTensorValue(
       int docID, PerField pf, VectorEncoding encoding, IndexableField field) throws IOException {
     switch (encoding) {
-      case BYTE -> ((KnnFieldVectorsWriter<ByteTensorValue>) pf.knnFieldVectorsWriter)
+      case BYTE -> ((KnnFieldVectorsWriter<ByteMultiVectorValue>) pf.knnFieldVectorsWriter)
           .addValue(docID, ((KnnByteTensorField) field).tensorValue());
-      case FLOAT32 -> ((KnnFieldVectorsWriter<FloatTensorValue>) pf.knnFieldVectorsWriter)
+      case FLOAT32 -> ((KnnFieldVectorsWriter<FloatMultiVectorValue>) pf.knnFieldVectorsWriter)
           .addValue(docID, ((KnnFloatTensorField) field).tensorValue());
     }
   }

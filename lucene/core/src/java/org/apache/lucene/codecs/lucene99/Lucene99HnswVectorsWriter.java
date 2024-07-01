@@ -40,8 +40,8 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.ByteTensorValue;
-import org.apache.lucene.util.FloatTensorValue;
+import org.apache.lucene.util.ByteMultiVectorValue;
+import org.apache.lucene.util.FloatMultiVectorValue;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -579,8 +579,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         FlatTensorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> new FieldWriter<ByteTensorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
-        case FLOAT32 -> new FieldWriter<FloatTensorValue>(
+        case BYTE -> new FieldWriter<ByteMultiVectorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
+        case FLOAT32 -> new FieldWriter<FloatMultiVectorValue>(
             scorer, fieldInfo, M, beamWidth, infoStream);
       };
     }
@@ -619,12 +619,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> scorer.getRandomTensorScorerSupplier(
                 fieldInfo.getTensorSimilarityFunction(),
-                RandomAccessVectorValues.fromByteTensors(
-                    (List<ByteTensorValue>) values, fieldInfo.getVectorDimension()));
+                RandomAccessVectorValues.fromByteMultiVectors(
+                    (List<ByteMultiVectorValue>) values, fieldInfo.getVectorDimension()));
             case FLOAT32 -> scorer.getRandomTensorScorerSupplier(
                 fieldInfo.getTensorSimilarityFunction(),
-                RandomAccessVectorValues.fromFloatTensors(
-                    (List<FloatTensorValue>) values, fieldInfo.getVectorDimension()));
+                RandomAccessVectorValues.fromFloatMultiVectors(
+                    (List<FloatMultiVectorValue>) values, fieldInfo.getVectorDimension()));
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);

@@ -26,7 +26,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnFloatTensorQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.FloatTensorValue;
+import org.apache.lucene.util.FloatMultiVectorValue;
 import org.apache.lucene.util.VectorUtil;
 
 /**
@@ -121,7 +121,7 @@ public class KnnFloatTensorField extends Field {
     super(name, createType(tensor, similarityFunction, aggregation));
     tensor.forEach(VectorUtil::checkFinite);
     assert type.vectorDimension() == tensor.get(0).length;
-    fieldsData = new FloatTensorValue(tensor, type.vectorDimension());
+    fieldsData = new FloatMultiVectorValue(tensor, type.vectorDimension());
   }
 
   /**
@@ -175,12 +175,12 @@ public class KnnFloatTensorField extends Field {
     Objects.requireNonNull(tensor, "tensor value must not be null");
     checkDimensions(tensor, fieldType.vectorDimension());
     tensor.forEach(VectorUtil::checkFinite);
-    fieldsData = new FloatTensorValue(tensor, fieldType.vectorDimension());
+    fieldsData = new FloatMultiVectorValue(tensor, fieldType.vectorDimension());
   }
 
   /** Return the tensor value of this field */
-  public FloatTensorValue tensorValue() {
-    return (FloatTensorValue) fieldsData;
+  public FloatMultiVectorValue tensorValue() {
+    return (FloatMultiVectorValue) fieldsData;
   }
 
   /**
@@ -188,7 +188,7 @@ public class KnnFloatTensorField extends Field {
    *
    * @param value the value to set; must not be null, and dimension must match the field type
    */
-  public void setTensorValue(FloatTensorValue value) {
+  public void setTensorValue(FloatMultiVectorValue value) {
     if (value == null) {
       throw new IllegalArgumentException("value must not be null or empty");
     }
