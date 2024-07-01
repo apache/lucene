@@ -196,6 +196,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
       CheckIndex checker = new CheckIndex(dir);
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
+      checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
       CheckIndex.Status indexStatus = checker.checkIndex();
       if (version.startsWith("8.")) {
         assertTrue(indexStatus.clean);

@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
@@ -84,24 +85,26 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
-    FloatVectorValues floatVectorValues = context.reader().getFloatVectorValues(field);
+    LeafReader reader = context.reader();
+    FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
     if (floatVectorValues == null) {
-      FloatVectorValues.checkField(context.reader(), field);
+      FloatVectorValues.checkField(reader, field);
       return NO_RESULTS;
     }
     if (Math.min(knnCollector.k(), floatVectorValues.size()) == 0) {
       return NO_RESULTS;
     }
-    context.reader().searchNearestVectors(field, target, knnCollector, acceptDocs);
+    reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
     TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
   }
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    FloatVectorValues vectorValues = context.reader().getFloatVectorValues(field);
+    LeafReader reader = context.reader();
+    FloatVectorValues vectorValues = reader.getFloatVectorValues(field);
     if (vectorValues == null) {
-      FloatVectorValues.checkField(context.reader(), field);
+      FloatVectorValues.checkField(reader, field);
       return null;
     }
     return vectorValues.scorer(target);

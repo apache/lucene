@@ -93,7 +93,10 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
       FST.FSTMetadata<Object> fstMetadata = fstCompiler.compile();
       indexOutput.close();
       try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
-        FST<Object> fst = new FST<>(fstMetadata, indexInput, new OffHeapFSTStore());
+        FST<Object> fst =
+            FST.fromFSTReader(
+                fstMetadata,
+                new OffHeapFSTStore(indexInput, indexInput.getFilePointer(), fstMetadata));
 
         for (int verify = 0; verify < 2; verify++) {
           System.out.println(
@@ -181,7 +184,10 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
       FST.FSTMetadata<BytesRef> fstMetadata = fstCompiler.compile();
       indexOutput.close();
       try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
-        FST<BytesRef> fst = new FST<>(fstMetadata, indexInput, new OffHeapFSTStore());
+        FST<BytesRef> fst =
+            FST.fromFSTReader(
+                fstMetadata,
+                new OffHeapFSTStore(indexInput, indexInput.getFilePointer(), fstMetadata));
         for (int verify = 0; verify < 2; verify++) {
 
           System.out.println(
@@ -266,7 +272,10 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
       FST.FSTMetadata<Long> fstMetadata = fstCompiler.compile();
       indexOutput.close();
       try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
-        FST<Long> fst = new FST<>(fstMetadata, indexInput, new OffHeapFSTStore());
+        FST<Long> fst =
+            FST.fromFSTReader(
+                fstMetadata,
+                new OffHeapFSTStore(indexInput, indexInput.getFilePointer(), fstMetadata));
 
         for (int verify = 0; verify < 2; verify++) {
 

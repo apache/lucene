@@ -131,6 +131,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
+      assumeTrue("graph is disconnected", HnswTestUtil.graphIsConnected(reader, vectorField));
 
       // All vectors are above -Infinity
       Query query1 =

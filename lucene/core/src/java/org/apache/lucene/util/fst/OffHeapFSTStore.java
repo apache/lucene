@@ -17,7 +17,6 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -28,27 +27,19 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * @lucene.experimental
  */
-public final class OffHeapFSTStore implements FSTStore {
+public final class OffHeapFSTStore implements FSTReader {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(OffHeapFSTStore.class);
 
-  private IndexInput in;
-  private long offset;
-  private long numBytes;
+  private final IndexInput in;
+  private final long offset;
+  private final long numBytes;
 
-  @Override
-  public FSTStore init(DataInput in, long numBytes) throws IOException {
-    if (in instanceof IndexInput) {
-      this.in = (IndexInput) in;
-      this.numBytes = numBytes;
-      this.offset = this.in.getFilePointer();
-    } else {
-      throw new IllegalArgumentException(
-          "parameter:in should be an instance of IndexInput for using OffHeapFSTStore, not a "
-              + in.getClass().getName());
-    }
-    return this;
+  public OffHeapFSTStore(IndexInput in, long offset, FST.FSTMetadata<?> metadata) {
+    this.in = in;
+    this.offset = offset;
+    this.numBytes = metadata.numBytes;
   }
 
   @Override

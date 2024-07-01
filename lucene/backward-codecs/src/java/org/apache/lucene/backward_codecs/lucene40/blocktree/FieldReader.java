@@ -88,21 +88,17 @@ public final class FieldReader extends Terms {
         (new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length)).readVLong()
             >>> Lucene40BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     // Initialize FST always off-heap.
-    final IndexInput clone = indexIn.clone();
-    clone.seek(indexStartFP);
+    final FST.FSTMetadata<BytesRef> fstMetadata;
     if (metaIn == indexIn) { // Only true before Lucene 8.6
-      index =
-          new FST<>(
-              readMetadata(clone, ByteSequenceOutputs.getSingleton()),
-              clone,
-              new OffHeapFSTStore());
+      final IndexInput clone = indexIn.clone();
+      clone.seek(indexStartFP);
+      fstMetadata = readMetadata(clone, ByteSequenceOutputs.getSingleton());
+      // FST bytes actually only start after the metadata.
+      indexStartFP = clone.getFilePointer();
     } else {
-      index =
-          new FST<>(
-              readMetadata(metaIn, ByteSequenceOutputs.getSingleton()),
-              clone,
-              new OffHeapFSTStore());
+      fstMetadata = readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
     }
+    index = FST.fromFSTReader(fstMetadata, new OffHeapFSTStore(indexIn, indexStartFP, fstMetadata));
     /*
      if (false) {
      final String dotFileName = segment + "_" + fieldInfo.name + ".dot";

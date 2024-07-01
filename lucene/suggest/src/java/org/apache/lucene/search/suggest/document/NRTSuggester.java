@@ -341,11 +341,10 @@ public final class NRTSuggester implements Accountable {
     PairOutputs<Long, BytesRef> outputs =
         new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
     if (shouldLoadFSTOffHeap(input, fstLoadMode)) {
-      OffHeapFSTStore store = new OffHeapFSTStore();
-      IndexInput clone = input.clone();
-      clone.seek(input.getFilePointer());
-      fst = new FST<>(FST.readMetadata(clone, outputs), clone, store);
-      input.seek(clone.getFilePointer() + store.size());
+      final FST.FSTMetadata<Pair<Long, BytesRef>> fstMetadata = FST.readMetadata(input, outputs);
+      OffHeapFSTStore store = new OffHeapFSTStore(input, input.getFilePointer(), fstMetadata);
+      fst = FST.fromFSTReader(fstMetadata, store);
+      input.skipBytes(store.size());
     } else {
       fst = new FST<>(FST.readMetadata(input, outputs), input);
     }

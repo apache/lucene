@@ -90,10 +90,15 @@ public class FSTDictionary implements IndexDictionary {
     }
     PositiveIntOutputs fstOutputs = PositiveIntOutputs.getSingleton();
     FST.FSTMetadata<Long> metadata = FST.readMetadata(fstDataInput, fstOutputs);
-    FST<Long> fst =
-        isFSTOnHeap
-            ? new FST<>(metadata, fstDataInput)
-            : new FST<>(metadata, fstDataInput, new OffHeapFSTStore());
+    FST<Long> fst;
+    if (isFSTOnHeap) {
+      fst = new FST<>(metadata, fstDataInput);
+    } else {
+      final IndexInput indexInput = (IndexInput) fstDataInput;
+      fst =
+          FST.fromFSTReader(
+              metadata, new OffHeapFSTStore(indexInput, indexInput.getFilePointer(), metadata));
+    }
     return new FSTDictionary(fst);
   }
 
