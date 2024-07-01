@@ -1422,7 +1422,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
             Set.of("field_tripples", "field_characters"),
             "danc",
             "<b>danc</b>e with star",
-            "<b>da</b><b>n</b><b>c</b>e with star");
+            "<b>dan</b><b>c</b>e with star");
       }
     }
   }
