@@ -4334,18 +4334,6 @@ public class IndexWriter
     return docWriter.getNumDocs();
   }
 
-  private synchronized void ensureValidMerge(MergePolicy.OneMerge merge) {
-    for (SegmentCommitInfo info : merge.segments) {
-      if (!segmentInfos.contains(info)) {
-        throw new MergePolicy.MergeException(
-            "MergePolicy selected a segment ("
-                + info.info.name
-                + ") that is not in the current index "
-                + segString());
-      }
-    }
-  }
-
   /**
    * Carefully merges deletes and updates for the segments we just merged. This is tricky because,
    * although merging will clear all deletes (compacts the documents) and compact all the updates,
@@ -4840,7 +4828,11 @@ public class IndexWriter
                   + segString(info)
                   + " does not exist in live infos");
         }
-        return false;
+        throw new MergePolicy.MergeException(
+            "MergePolicy selected a segment ("
+                + info.info.name
+                + ") that is not in the current index "
+                + segString());
       }
       if (info.info.dir != directoryOrig) {
         isExternal = true;
@@ -4849,8 +4841,6 @@ public class IndexWriter
         merge.maxNumSegments = mergeMaxNumSegments;
       }
     }
-
-    ensureValidMerge(merge);
 
     pendingMerges.add(merge);
 
