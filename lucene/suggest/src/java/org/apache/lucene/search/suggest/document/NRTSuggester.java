@@ -226,8 +226,8 @@ public final class NRTSuggester implements Accountable {
         };
 
     for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-      scorer.weight.setNextMatch(path.input.get());
-      BytesRef output = path.output.output2;
+      scorer.weight.setNextMatch(path.input().get());
+      BytesRef output = path.output().output2;
       int payload = -1;
       if (collector.doSkipDuplicates()) {
         for (int j = 0; j < output.length; j++) {
@@ -241,10 +241,10 @@ public final class NRTSuggester implements Accountable {
       }
 
       searcher.addStartPaths(
-          path.fstNode,
-          path.output,
+          path.fstNode(),
+          path.output(),
           false,
-          path.input,
+          path.input(),
           scorer.weight.boost(),
           scorer.weight.context(),
           payload);
@@ -261,13 +261,8 @@ public final class NRTSuggester implements Accountable {
    * Compares partial completion paths using {@link CompletionScorer#score(float, float)}, breaks
    * ties comparing path inputs
    */
-  private static class ScoringPathComparator
+  private record ScoringPathComparator(CompletionScorer scorer)
       implements Comparator<Util.FSTPath<Pair<Long, BytesRef>>> {
-    private final CompletionScorer scorer;
-
-    public ScoringPathComparator(CompletionScorer scorer) {
-      this.scorer = scorer;
-    }
 
     @Override
     public int compare(

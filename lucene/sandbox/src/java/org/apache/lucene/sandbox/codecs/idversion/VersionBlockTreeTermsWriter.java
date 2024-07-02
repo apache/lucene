@@ -143,15 +143,14 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
   final PostingsWriterBase postingsWriter;
   final FieldInfos fieldInfos;
 
-  private static class FieldMetaData {
-    public final FieldInfo fieldInfo;
-    public final Pair<BytesRef, Long> rootCode;
-    public final long numTerms;
-    public final long indexStartFP;
-    public final BytesRef minTerm;
-    public final BytesRef maxTerm;
-
-    public FieldMetaData(
+  private record FieldMetaData(
+      FieldInfo fieldInfo,
+      Pair<BytesRef, Long> rootCode,
+      long numTerms,
+      long indexStartFP,
+      BytesRef minTerm,
+      BytesRef maxTerm) {
+    private FieldMetaData(
         FieldInfo fieldInfo,
         Pair<BytesRef, Long> rootCode,
         long numTerms,

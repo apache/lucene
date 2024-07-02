@@ -89,14 +89,14 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
 
       BinaryRangeDocValues binaryRangeDocValues =
           new BinaryRangeDocValues(
-              DocValues.getBinary(hits.context.reader(), field), dims, numEncodedValueBytes);
+              DocValues.getBinary(hits.context().reader(), field), dims, numEncodedValueBytes);
 
       final DocIdSetIterator it = createIterator(hits);
       if (it == null) {
         continue;
       }
 
-      totCount += hits.totalHits;
+      totCount += hits.totalHits();
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         if (binaryRangeDocValues.advanceExact(doc)) {
           boolean hasValidRange = false;

@@ -249,23 +249,14 @@ public class ContextQuery extends CompletionQuery implements Accountable {
     }
   }
 
-  /** Holder for context value meta data */
-  private static class ContextMetaData {
-
-    /** Boost associated with a context value */
-    private final float boost;
-
-    /**
-     * flag to indicate whether the context value should be treated as an exact value or a context
-     * prefix
-     */
-    private final boolean exact;
-
-    private ContextMetaData(float boost, boolean exact) {
-      this.boost = boost;
-      this.exact = exact;
-    }
-  }
+  /**
+   * Holder for context value meta data
+   *
+   * @param boost Boost associated with a context value
+   * @param exact flag to indicate whether the context value should be treated as an exact value or
+   *     a context prefix
+   */
+  private record ContextMetaData(float boost, boolean exact) {}
 
   private static class ContextCompletionWeight extends CompletionWeight {
 

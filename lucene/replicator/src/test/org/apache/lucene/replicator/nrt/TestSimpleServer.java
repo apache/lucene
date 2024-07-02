@@ -141,12 +141,12 @@ public class TestSimpleServer extends LuceneTestCase {
       out.writeString(ent.getKey());
 
       FileMetaData fmd = ent.getValue();
-      out.writeVLong(fmd.length);
-      out.writeVLong(fmd.checksum);
-      out.writeVInt(fmd.header.length);
-      out.writeBytes(fmd.header, 0, fmd.header.length);
-      out.writeVInt(fmd.footer.length);
-      out.writeBytes(fmd.footer, 0, fmd.footer.length);
+      out.writeVLong(fmd.length());
+      out.writeVLong(fmd.checksum());
+      out.writeVInt(fmd.header().length);
+      out.writeBytes(fmd.header(), 0, fmd.header().length);
+      out.writeVInt(fmd.footer().length);
+      out.writeBytes(fmd.footer(), 0, fmd.footer().length);
     }
   }
 

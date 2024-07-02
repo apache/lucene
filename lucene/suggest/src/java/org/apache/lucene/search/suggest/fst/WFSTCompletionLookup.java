@@ -204,10 +204,10 @@ public class WFSTCompletionLookup extends Lookup {
     for (Result<Long> completion : completions) {
       scratch.setLength(prefixLength);
       // append suffix
-      Util.toBytesRef(completion.input, suffix);
+      Util.toBytesRef(completion.input(), suffix);
       scratch.append(suffix);
       spare.copyUTF8Bytes(scratch.get());
-      results.add(new LookupResult(spare.toString(), decodeWeight(completion.output)));
+      results.add(new LookupResult(spare.toString(), decodeWeight(completion.output())));
     }
     return results;
   }

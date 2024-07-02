@@ -128,8 +128,8 @@ abstract class TaxonomyFacets extends Facets {
     int maxDoc = 0;
     int sumTotalHits = 0;
     for (FacetsCollector.MatchingDocs docs : fc.getMatchingDocs()) {
-      sumTotalHits += docs.totalHits;
-      maxDoc += docs.context.reader().maxDoc();
+      sumTotalHits += docs.totalHits();
+      maxDoc += docs.context().reader().maxDoc();
     }
 
     // if our result set is < 10% of the index, we collect sparsely (use hash map):

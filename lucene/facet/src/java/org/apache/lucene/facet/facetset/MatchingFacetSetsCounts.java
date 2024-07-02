@@ -91,7 +91,7 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
     int totCount = 0;
     for (FacetsCollector.MatchingDocs hits : matchingDocs) {
 
-      BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context.reader(), field);
+      BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context().reader(), field);
 
       final DocIdSetIterator it = createIterator(hits, binaryDocValues);
       if (it == null) {

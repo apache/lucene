@@ -197,13 +197,7 @@ public class TestArrayUtil extends LuceneTestCase {
     }
   }
 
-  static class Item implements Comparable<Item> {
-    final int val, order;
-
-    Item(int val, int order) {
-      this.val = val;
-      this.order = order;
-    }
+  record Item(int val, int order) implements Comparable<Item> {
 
     @Override
     public int compareTo(Item other) {

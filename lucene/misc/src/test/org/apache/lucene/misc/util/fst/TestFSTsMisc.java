@@ -114,10 +114,12 @@ public class TestFSTsMisc extends LuceneTestCase {
         protected boolean outputsEqual(Object output1, Object output2) {
           if (output1 instanceof TwoLongs && output2 instanceof List) {
             TwoLongs twoLongs1 = (TwoLongs) output1;
-            return Arrays.asList(new Long[] {twoLongs1.first, twoLongs1.second}).equals(output2);
+            return Arrays.asList(new Long[] {twoLongs1.first(), twoLongs1.second()})
+                .equals(output2);
           } else if (output2 instanceof TwoLongs && output1 instanceof List) {
             TwoLongs twoLongs2 = (TwoLongs) output2;
-            return Arrays.asList(new Long[] {twoLongs2.first, twoLongs2.second}).equals(output1);
+            return Arrays.asList(new Long[] {twoLongs2.first(), twoLongs2.second()})
+                .equals(output1);
           }
           return output1.equals(output2);
         }
