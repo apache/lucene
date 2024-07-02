@@ -18,6 +18,8 @@ package org.apache.lucene.analysis.compound;
 
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.Arrays;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
@@ -25,6 +27,11 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Simple tests to ensure the Dictionary compound filter factory is working. */
 public class TestDictionaryCompoundWordTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
+
+  private static CharArraySet makeDictionary(String... dictionary) {
+    return new CharArraySet(Arrays.asList(dictionary), true);
+  }
+
   /** Ensure the filter actually decompounds text. */
   public void testDecompounding() throws Exception {
     Reader reader = new StringReader("I like to play softball");
@@ -35,6 +42,25 @@ public class TestDictionaryCompoundWordTokenFilterFactory extends BaseTokenStrea
             .create(stream);
     assertTokenStreamContents(
         stream, new String[] {"I", "like", "to", "play", "softball", "soft", "ball"});
+  }
+
+  /** Ensure subtoken can be set with a positional increment of 1 * */
+  public void testDecompounderWithSubtokenIncrement() throws Exception {
+    CharArraySet dict = makeDictionary("læse", "hest");
+
+    DictionaryCompoundWordTokenFilter tf =
+        new DictionaryCompoundWordTokenFilter(
+            whitespaceMockTokenizer("min veninde som er lidt af en læsehest"),
+            dict,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
+            false,
+            1);
+    assertTokenStreamContents(
+        tf,
+        new String[] {"min", "veninde", "som", "er", "lidt", "af", "en", "læse", "hest"},
+        new int[] {1, 1, 1, 1, 1, 1, 1, 1, 1});
   }
 
   /** Test that bogus arguments result in exception */
