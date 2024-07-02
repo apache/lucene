@@ -60,15 +60,15 @@ public final class FieldInfo {
   private int pointIndexDimensionCount;
   private int pointNumBytes;
 
-  // if it is a positive value it means this field indexes vectors or tensors
+  // if it is a positive value it means this field indexes vectors
   private final int vectorDimension;
   private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
 
-  // if true, field is a tensor
-  private final boolean isTensor;
-  private final MultiVectorSimilarityFunction.Aggregation tensorAggregate;
-  private final MultiVectorSimilarityFunction tensorSimilarityFunction;
+  // if true, field is a multi-vector
+  private final boolean isMultiVector;
+  private final MultiVectorSimilarityFunction.Aggregation multiVectorAggregate;
+  private final MultiVectorSimilarityFunction multiVectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -97,8 +97,8 @@ public final class FieldInfo {
       int vectorDimension,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
-      boolean isTensor,
-      MultiVectorSimilarityFunction.Aggregation tensorAggregate,
+      boolean isMultiVector,
+      MultiVectorSimilarityFunction.Aggregation multiVectorAggregate,
       boolean softDeletesField,
       boolean isParentField) {
     this.name = Objects.requireNonNull(name);
@@ -127,10 +127,10 @@ public final class FieldInfo {
     this.vectorDimension = vectorDimension;
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
-    this.isTensor = isTensor;
-    this.tensorAggregate = tensorAggregate;
-    this.tensorSimilarityFunction =
-        new MultiVectorSimilarityFunction(this.vectorSimilarityFunction, this.tensorAggregate);
+    this.isMultiVector = isMultiVector;
+    this.multiVectorAggregate = multiVectorAggregate;
+    this.multiVectorSimilarityFunction =
+        new MultiVectorSimilarityFunction(this.vectorSimilarityFunction, this.multiVectorAggregate);
     this.softDeletesField = softDeletesField;
     this.isParentField = isParentField;
     this.checkConsistency();
@@ -236,9 +236,9 @@ public final class FieldInfo {
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
 
-    if (tensorSimilarityFunction == null) {
+    if (multiVectorSimilarityFunction == null) {
       throw new IllegalArgumentException(
-          "Tensor similarity function must not be null (field: '" + name + "')");
+          "Multi-Vector similarity function must not be null (field: '" + name + "')");
     }
 
     if (softDeletesField && isParentField) {
@@ -280,16 +280,16 @@ public final class FieldInfo {
         o.vectorDimension,
         o.vectorEncoding,
         o.vectorSimilarityFunction);
-    verifySameTensorOptions(
+    verifySameMultiVectorOptions(
         fieldName,
-        this.isTensor,
+        this.isMultiVector,
         this.vectorDimension,
         this.vectorEncoding,
-        this.tensorSimilarityFunction,
-        o.isTensor,
+        this.multiVectorSimilarityFunction,
+        o.isMultiVector,
         o.vectorDimension,
         o.vectorEncoding,
-        o.getTensorSimilarityFunction());
+        o.getMultiVectorSimilarityFunction());
   }
 
   /**
@@ -448,11 +448,11 @@ public final class FieldInfo {
   }
 
   /**
-   * Verify that the provided tensor indexing options are the same
+   * Verify that the provided multi-vector indexing options are the same
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  static void verifySameTensorOptions(
+  static void verifySameMultiVectorOptions(
       String fieldName,
       boolean isT1,
       int vd1,
@@ -468,13 +468,13 @@ public final class FieldInfo {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
-              + "\" from isTensor="
+              + "\" from isMultiVector="
               + isT1
-              + ", tensor aggregation="
+              + ", multi-vector aggregation="
               + tsf1.aggregation
-              + " to inconsistent isTensor="
+              + " to inconsistent isMultiVector="
               + isT2
-              + ", tensor aggregation="
+              + ", multi-vector aggregation="
               + tsf2.aggregation);
     }
   }
@@ -594,19 +594,19 @@ public final class FieldInfo {
     return vectorSimilarityFunction;
   }
 
-  /** Returns true if field is a tensor, false otherwise */
-  public boolean isTensor() {
-    return isTensor;
+  /** Returns true if field is a multi-vector, false otherwise */
+  public boolean isMultiVector() {
+    return isMultiVector;
   }
 
   /** Returns {@link MultiVectorSimilarityFunction.Aggregation} for the field */
-  public MultiVectorSimilarityFunction.Aggregation getTensorAggregate() {
-    return tensorAggregate;
+  public MultiVectorSimilarityFunction.Aggregation getMultiVectorAggregate() {
+    return multiVectorAggregate;
   }
 
   /** Returns {@link MultiVectorSimilarityFunction} for the field */
-  public MultiVectorSimilarityFunction getTensorSimilarityFunction() {
-    return tensorSimilarityFunction;
+  public MultiVectorSimilarityFunction getMultiVectorSimilarityFunction() {
+    return multiVectorSimilarityFunction;
   }
 
   /** Record that this field is indexed with docvalues, with the specified type */
@@ -723,9 +723,9 @@ public final class FieldInfo {
     return vectorDimension > 0;
   }
 
-  /** Returns whether any (numeric) tensor values exist for this field */
-  public boolean hasTensorValues() {
-    return isTensor;
+  /** Returns whether any (numeric) multi-vector values exist for this field */
+  public boolean hasMultiVectorValues() {
+    return isMultiVector;
   }
 
   /** Get a codec attribute value, or null if it does not exist */

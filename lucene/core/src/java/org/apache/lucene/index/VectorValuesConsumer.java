@@ -83,7 +83,7 @@ class VectorValuesConsumer {
   }
 
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    if (fieldInfo.hasTensorValues()) {
+    if (fieldInfo.hasMultiVectorValues()) {
       initKnnTensorsWriter(fieldInfo.name);
     } else {
       initKnnVectorsWriter(fieldInfo.name);

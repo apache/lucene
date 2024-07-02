@@ -23,7 +23,7 @@ import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.MultiVectorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.KnnByteTensorQuery;
+import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ByteMultiVectorValue;
 
@@ -33,49 +33,49 @@ import org.apache.lucene.util.ByteMultiVectorValue;
  * explicit value, stored packed into an array (of type byte[]) whose length is the vector
  * dimension.
  *
- * <p>Only rank 2 tensors are currently supported. All vectors in a tensor field are required to
- * have the same dimension, although different documents can have different number of vectors. The
- * {@link MultiVectorSimilarityFunction} may be used to compare tensors at query time, or during indexing
+ * <p>All vectors in the field are required to have the same dimension,
+ * although different documents can have different number of vectors. The
+ * {@link MultiVectorSimilarityFunction} may be used to compare multi-vectors at query time, or during indexing
  * for generating a nearest neighbour graph (such as the HNSW graph).
  *
  * @lucene.experimental
  */
-public class KnnByteTensorField extends Field {
+public class KnnByteMultiVectorField extends Field {
 
   private static FieldType createType(
       List<byte[]> t, VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
     if (t == null) {
-      throw new IllegalArgumentException("tensor value must not be null");
+      throw new IllegalArgumentException("multi-vector value must not be null");
     }
     if (t.size() == 0) {
-      throw new IllegalArgumentException("cannot index an empty tensor");
+      throw new IllegalArgumentException("cannot index an empty multi-vector");
     }
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
     }
     if (t.get(0).length == 0) {
       throw new IllegalArgumentException(
-          "empty vector found at index 0. Tensor cannot have empty vectors");
+          "empty vector found at index 0. multi-vector cannot have empty vectors");
     }
     int dimension = t.get(0).length;
     checkDimensions(t, dimension);
     FieldType type = new FieldType();
-    type.setTensorAttributes(true, dimension, VectorEncoding.BYTE, similarityFunction, aggregation);
+    type.setMultiVectorAttributes(true, dimension, VectorEncoding.BYTE, similarityFunction, aggregation);
     type.freeze();
     return type;
   }
 
   /**
-   * A convenience method for creating a tensor field type.
+   * A convenience method for creating a multi-vector field type.
    *
-   * @param dimension Dimension of vectors in the tensor
-   * @param similarityFunction a function to compute similarity between two tensors
+   * @param dimension Dimension of vectors in the multi-vector
+   * @param similarityFunction a function to compute similarity between two multi-vectors
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
       int dimension, MultiVectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
-    type.setTensorAttributes(
+    type.setMultiVectorAttributes(
         true,
         dimension,
         VectorEncoding.BYTE,
@@ -94,80 +94,80 @@ public class KnnByteTensorField extends Field {
    * @return A new vector query
    */
   public static Query newVectorQuery(String field, byte[] queryVector, int k) {
-    return KnnByteTensorQuery.create(field, queryVector, k);
+    return new KnnByteVectorQuery(field, queryVector, k);
   }
 
   /**
-   * Creates a byte numeric tensor field. Fields are multi-valued: each document has one or more
-   * values. Tensors of a single field share the same dimension and similarity function.
+   * Creates a byte numeric multi-vector field.
+   * Multi-vectors of a single field share the same dimension and similarity function.
    *
    * @param name field name
-   * @param tensor value
-   * @param similarityFunction a {@link VectorSimilarityFunction} defining tensor proximity.
+   * @param value multi-vector value
+   * @param similarityFunction a {@link VectorSimilarityFunction} defining multi-vector proximity.
    * @param aggregation a {@link Aggregation} defining similarity aggregation across multiple vector
    *     values
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnByteTensorField(
+  public KnnByteMultiVectorField(
       String name,
-      List<byte[]> tensor,
+      List<byte[]> value,
       VectorSimilarityFunction similarityFunction,
       Aggregation aggregation) {
-    super(name, createType(tensor, similarityFunction, aggregation));
-    assert type.vectorDimension() == tensor.get(0).length;
-    fieldsData = new ByteMultiVectorValue(tensor, type.vectorDimension());
+    super(name, createType(value, similarityFunction, aggregation));
+    assert type.vectorDimension() == value.get(0).length;
+    fieldsData = new ByteMultiVectorValue(value, type.vectorDimension());
   }
 
   /**
-   * Creates a byte numeric tensor field with the default EUCLIDEAN (L2) similarity and default
-   * SUM_MAX aggregation. Vectors within a single tensor field share the same dimension and
+   * Creates a byte numeric multi-vector field with the default EUCLIDEAN (L2) similarity and default
+   * SUM_MAX aggregation. Vectors within a single multi-vector field share the same dimension and
    * similarity function.
    *
    * @param name field name
-   * @param tensor value
+   * @param value multi-vector value
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnByteTensorField(String name, List<byte[]> tensor) {
-    this(name, tensor, VectorSimilarityFunction.EUCLIDEAN, Aggregation.SUM_MAX);
+  public KnnByteMultiVectorField(String name, List<byte[]> value) {
+    this(name, value, VectorSimilarityFunction.EUCLIDEAN, MultiVectorSimilarityFunction.DEFAULT_AGGREGATION);
   }
 
   /**
-   * Creates a byte numeric tensor field. Vectors of a single tensor share the same dimension and
+   * Creates a byte numeric multi-vector field. Vectors of a single multi-vector share the same dimension and
    * similarity function.
    *
    * @param name field name
-   * @param tensor value
+   * @param value multi-vector value
    * @param fieldType field type
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnByteTensorField(String name, List<byte[]> tensor, FieldType fieldType) {
+  public KnnByteMultiVectorField(String name, List<byte[]> value, FieldType fieldType) {
     super(name, fieldType);
     if (fieldType.vectorEncoding() != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
-          "Attempt to create a tensor for field "
+          "Attempt to create a multi-vector for field "
               + name
               + " using List<byte[]> but the field encoding is "
               + fieldType.vectorEncoding());
     }
-    Objects.requireNonNull(tensor, "tensor value must not be null");
-    checkDimensions(tensor, fieldType.vectorDimension());
-    fieldsData = new ByteMultiVectorValue(tensor, fieldType.vectorDimension());
+    Objects.requireNonNull(value, "multi-vector value must not be null");
+    checkDimensions(value, fieldType.vectorDimension());
+    fieldsData = new ByteMultiVectorValue(value, fieldType.vectorDimension());
   }
 
-  /** Return the tensor value of this field */
-  public ByteMultiVectorValue tensorValue() {
+  /** Return the multi-vector value of this field */
+  public ByteMultiVectorValue value() {
     return (ByteMultiVectorValue) fieldsData;
   }
 
   /**
-   * Set the tensor value of this field
+   * Set the multi-vector value of this field
    *
    * @param value the value to set; must not be null, and dimension must match the field type
    */
-  public void setTensorValue(ByteMultiVectorValue value) {
+  public void setValue(ByteMultiVectorValue value) {
     if (value == null) {
       throw new IllegalArgumentException("value must not be null or empty");
     }
@@ -176,18 +176,18 @@ public class KnnByteTensorField extends Field {
           "value dimension ["
               + value.dimension()
               + "] "
-              + "should match field tensor dimension: ["
+              + "should match field multi-vector dimension: ["
               + type.vectorDimension()
               + "]");
     }
     fieldsData = value;
   }
 
-  private static void checkDimensions(List<byte[]> tensor, int dimensions) {
-    for (byte[] val : tensor) {
+  private static void checkDimensions(List<byte[]> value, int dimensions) {
+    for (byte[] val : value) {
       if (val.length != dimensions) {
         throw new IllegalArgumentException(
-            "All vectors in the tensor should have the "
+            "All vectors in the multi-vector should have the "
                 + "same dimension value as configured in the fieldType");
       }
     }

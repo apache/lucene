@@ -22,7 +22,7 @@ import static org.apache.lucene.index.FieldInfo.verifySameIndexOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameOmitNorms;
 import static org.apache.lucene.index.FieldInfo.verifySamePointsOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
-import static org.apache.lucene.index.FieldInfo.verifySameTensorOptions;
+import static org.apache.lucene.index.FieldInfo.verifySameMultiVectorOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 
 import java.util.Arrays;
@@ -58,7 +58,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final boolean hasDocValues;
   private final boolean hasPointValues;
   private final boolean hasVectorValues;
-  private final boolean hasTensorValues;
+  private final boolean hasMultiVectorValues;
   private final String softDeletesField;
 
   private final String parentField;
@@ -85,7 +85,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     boolean hasDocValues = false;
     boolean hasPointValues = false;
     boolean hasVectorValues = false;
-    boolean hasTensorValues = false;
+    boolean hasMultiVectorValues = false;
     String softDeletesField = null;
     String parentField = null;
 
@@ -126,7 +126,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       hasPayloads |= info.hasPayloads();
       hasPointValues |= (info.getPointDimensionCount() != 0);
       hasVectorValues |= (info.getVectorDimension() != 0);
-      hasTensorValues |= info.hasTensorValues();
+      hasMultiVectorValues |= info.hasMultiVectorValues();
       if (info.isSoftDeletesField()) {
         if (softDeletesField != null && softDeletesField.equals(info.name) == false) {
           throw new IllegalArgumentException(
@@ -153,7 +153,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.hasDocValues = hasDocValues;
     this.hasPointValues = hasPointValues;
     this.hasVectorValues = hasVectorValues;
-    this.hasTensorValues = hasTensorValues;
+    this.hasMultiVectorValues = hasMultiVectorValues;
     this.softDeletesField = softDeletesField;
     this.parentField = parentField;
 
@@ -305,9 +305,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     return hasVectorValues;
   }
 
-  /** Returns true if any fields have tensor values */
-  public boolean hasTensorValues() {
-    return hasTensorValues;
+  /** Returns true if any fields have multi-vector values */
+  public boolean hasMultiVectorValues() {
+    return hasMultiVectorValues;
   }
 
   /** Returns the soft-deletes field name if exists; otherwise returns null */
@@ -378,10 +378,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
       boolean docValuesSkipIndex,
       FieldDimensions fieldDimensions,
       FieldVectorProperties fieldVectorProperties,
-      FieldTensorProperties fieldTensorProperties) {}
+      FieldMultiVectorProperties fieldMultiVectorProperties) {}
 
-  private record FieldTensorProperties(
-      boolean isTensor, MultiVectorSimilarityFunction similarityFunction) {}
+  private record FieldMultiVectorProperties(
+      boolean isMultiVector, MultiVectorSimilarityFunction similarityFunction) {}
 
   static final class FieldNumbers {
 
@@ -467,7 +467,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                     fi.getVectorDimension(),
                     fi.getVectorEncoding(),
                     fi.getVectorSimilarityFunction()),
-                new FieldTensorProperties(fi.isTensor(), fi.getTensorSimilarityFunction()));
+                new FieldMultiVectorProperties(fi.isMultiVector(), fi.getMultiVectorSimilarityFunction()));
         this.fieldProperties.put(fieldName, fieldProperties);
       }
       return fieldProperties.number;
@@ -563,17 +563,17 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fi.getVectorEncoding(),
           fi.getVectorSimilarityFunction());
 
-      FieldTensorProperties tensorProps = fieldProperties.fieldTensorProperties;
-      verifySameTensorOptions(
+      FieldMultiVectorProperties multiVectorProps = fieldProperties.fieldMultiVectorProperties;
+      verifySameMultiVectorOptions(
           fieldName,
-          tensorProps.isTensor,
+          multiVectorProps.isMultiVector,
           props.numDimensions,
           props.vectorEncoding,
-          tensorProps.similarityFunction,
-          fi.isTensor(),
+          multiVectorProps.similarityFunction,
+          fi.isMultiVector(),
           fi.getVectorDimension(),
           fi.getVectorEncoding(),
-          fi.getTensorSimilarityFunction());
+          fi.getMultiVectorSimilarityFunction());
     }
 
     /**
@@ -619,7 +619,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   VectorEncoding.FLOAT32,
                   VectorSimilarityFunction.EUCLIDEAN,
                   false,
-                  MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
+                  MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)),
                   (parentFieldName != null && parentFieldName.equals(fieldName)));
           addOrGet(fi);
@@ -715,7 +715,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           VectorEncoding.FLOAT32,
           VectorSimilarityFunction.EUCLIDEAN,
           false,
-          MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
+          MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
           isSoftDeletesField,
           isParentField);
     }
@@ -838,8 +838,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getVectorDimension(),
               fi.getVectorEncoding(),
               fi.getVectorSimilarityFunction(),
-              fi.isTensor(),
-              fi.getTensorAggregate(),
+              fi.isMultiVector(),
+              fi.getMultiVectorAggregate(),
               fi.isSoftDeletesField(),
               fi.isParentField());
       byName.put(fiNew.getName(), fiNew);

@@ -824,8 +824,8 @@ public class MemoryIndex {
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
-              info.fieldInfo.isTensor(),
-              info.fieldInfo.getTensorAggregate(),
+              info.fieldInfo.isMultiVector(),
+              info.fieldInfo.getMultiVectorAggregate(),
               info.fieldInfo.isSoftDeletesField(),
               info.fieldInfo.isParentField());
     } else if (existingDocValuesType != docValuesType) {

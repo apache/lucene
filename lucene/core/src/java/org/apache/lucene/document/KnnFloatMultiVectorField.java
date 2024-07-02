@@ -24,7 +24,7 @@ import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.MultiVectorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.KnnFloatTensorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.FloatMultiVectorValue;
 import org.apache.lucene.util.VectorUtil;
@@ -35,51 +35,51 @@ import org.apache.lucene.util.VectorUtil;
  * explicit value, stored packed into an array (of type float[]) whose length is the vector
  * dimension.
  *
- * <p>Only rank 2 tensors are currently supported. All vectors in a tensor field are required to
- * have the same dimension, although different documents can have different number of vectors.
+ * <p>All vectors in a multi-vector field are required to have the same dimension,
+ * although different documents can have different number of vectors.
  *
- * <p>The {@link MultiVectorSimilarityFunction} may be used to compare tensors at query time, or during
- * indexing for generating a nearest neighbour graph (such as the HNSW graph).
+ * <p>The {@link MultiVectorSimilarityFunction} may be used to compare multi-vectors at query time,
+ * or during indexing for generating a nearest neighbour graph (such as the HNSW graph).
  *
  * @lucene.experimental
  */
-public class KnnFloatTensorField extends Field {
+public class KnnFloatMultiVectorField extends Field {
 
   private static FieldType createType(
       List<float[]> t, VectorSimilarityFunction similarityFunction, Aggregation aggregation) {
     if (t == null) {
-      throw new IllegalArgumentException("tensor value must not be null");
+      throw new IllegalArgumentException("multi-vector value must not be null");
     }
     if (t.size() == 0) {
-      throw new IllegalArgumentException("cannot index an empty tensor");
+      throw new IllegalArgumentException("cannot index an empty multi-vector");
     }
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
     }
     if (t.get(0).length == 0) {
       throw new IllegalArgumentException(
-          "empty vector found at index 0. Tensor cannot have empty vectors");
+          "empty vector found at index 0. multi-vector cannot have empty vectors");
     }
     int dimension = t.get(0).length;
     checkDimensions(t, dimension);
     FieldType type = new FieldType();
-    type.setTensorAttributes(
+    type.setMultiVectorAttributes(
         true, dimension, VectorEncoding.FLOAT32, similarityFunction, aggregation);
     type.freeze();
     return type;
   }
 
   /**
-   * A convenience method for creating a tensor field type.
+   * A convenience method for creating a multi-vector field type.
    *
-   * @param dimension Dimension of vectors in the tensor
-   * @param similarityFunction a function to compute similarity between two tensors
+   * @param dimension Dimension of vectors in the multi-vector
+   * @param similarityFunction a function to compute similarity between two multi-vectors
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
       int dimension, MultiVectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
-    type.setTensorAttributes(
+    type.setMultiVectorAttributes(
         true,
         dimension,
         VectorEncoding.FLOAT32,
@@ -98,97 +98,97 @@ public class KnnFloatTensorField extends Field {
    * @return A new vector query
    */
   public static Query newVectorQuery(String field, float[] queryVector, int k) {
-    return KnnFloatTensorQuery.create(field, queryVector, k);
+    return new KnnFloatVectorQuery(field, queryVector, k);
   }
 
   /**
-   * Creates a numeric tensor field. Fields are multi-valued: each document has one or more values.
-   * Tensors of a single field share the same dimension and similarity function.
+   * Creates a numeric multi-vector field.
+   * Multi-vectors of a single field share the same dimension and similarity function.
    *
    * @param name field name
-   * @param tensor value
-   * @param similarityFunction a {@link VectorSimilarityFunction} defining tensor proximity.
+   * @param value multi-vector value
+   * @param similarityFunction a {@link VectorSimilarityFunction} defining multi-vector proximity.
    * @param aggregation a {@link Aggregation} defining similarity aggregation across multiple vector
    *     values
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatTensorField(
+  public KnnFloatMultiVectorField(
       String name,
-      List<float[]> tensor,
+      List<float[]> value,
       VectorSimilarityFunction similarityFunction,
       Aggregation aggregation) {
-    super(name, createType(tensor, similarityFunction, aggregation));
-    tensor.forEach(VectorUtil::checkFinite);
-    assert type.vectorDimension() == tensor.get(0).length;
-    fieldsData = new FloatMultiVectorValue(tensor, type.vectorDimension());
+    super(name, createType(value, similarityFunction, aggregation));
+    value.forEach(VectorUtil::checkFinite);
+    assert type.vectorDimension() == value.get(0).length;
+    fieldsData = new FloatMultiVectorValue(value, type.vectorDimension());
   }
 
   /**
-   * Creates a numeric tensor field. Fields are multi-valued: each document has one or more values.
-   * Tensors of a single field share the same dimension and similarity function.
+   * Creates a numeric multi-vector field.
+   * Multi-vectors of a single field share the same dimension and similarity function.
    *
    * @param name field name
-   * @param tensor value
-   * @param similarityFunction a {@link MultiVectorSimilarityFunction} defining tensor proximity.
+   * @param value multi-vector
+   * @param similarityFunction a {@link MultiVectorSimilarityFunction} defining multi-vector proximity.
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatTensorField(
-      String name, List<float[]> tensor, MultiVectorSimilarityFunction similarityFunction) {
-    this(name, tensor, similarityFunction.similarityFunction, similarityFunction.aggregation);
+  public KnnFloatMultiVectorField(
+      String name, List<float[]> value, MultiVectorSimilarityFunction similarityFunction) {
+    this(name, value, similarityFunction.similarityFunction, similarityFunction.aggregation);
   }
 
   /**
-   * Creates a numeric tensor field with the default EUCLIDEAN_HNSW (L2) similarity and SUM_MAX
-   * aggregation. Vectors within a single tensor field share the same dimension and similarity
+   * Creates a numeric multi-vector field with the default EUCLIDEAN_HNSW (L2) similarity and SUM_MAX
+   * aggregation. Vectors within a single multi-vector field share the same dimension and similarity
    * function.
    *
    * @param name field name
-   * @param tensor value
+   * @param value multi-vector value
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatTensorField(String name, List<float[]> tensor) {
-    this(name, tensor, VectorSimilarityFunction.EUCLIDEAN, Aggregation.SUM_MAX);
+  public KnnFloatMultiVectorField(String name, List<float[]> value) {
+    this(name, value, VectorSimilarityFunction.EUCLIDEAN, MultiVectorSimilarityFunction.DEFAULT_AGGREGATION);
   }
 
   /**
-   * Creates a numeric tensor field. Vectors of a single tensor share the same dimension and
+   * Creates a numeric multi-vector field. Vectors of a single multi-vector share the same dimension and
    * similarity function.
    *
    * @param name field name
-   * @param tensor value
+   * @param value multi-vector value
    * @param fieldType field type
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatTensorField(String name, List<float[]> tensor, FieldType fieldType) {
+  public KnnFloatMultiVectorField(String name, List<float[]> value, FieldType fieldType) {
     super(name, fieldType);
     if (fieldType.vectorEncoding() != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
-          "Attempt to create a tensor for field "
+          "Attempt to create a multi-vector for field "
               + name
               + " using List<float[]> but the field encoding is "
               + fieldType.vectorEncoding());
     }
-    Objects.requireNonNull(tensor, "tensor value must not be null");
-    checkDimensions(tensor, fieldType.vectorDimension());
-    tensor.forEach(VectorUtil::checkFinite);
-    fieldsData = new FloatMultiVectorValue(tensor, fieldType.vectorDimension());
+    Objects.requireNonNull(value, "multi-vector value must not be null");
+    checkDimensions(value, fieldType.vectorDimension());
+    value.forEach(VectorUtil::checkFinite);
+    fieldsData = new FloatMultiVectorValue(value, fieldType.vectorDimension());
   }
 
-  /** Return the tensor value of this field */
-  public FloatMultiVectorValue tensorValue() {
+  /** Return the multi-vector value of this field */
+  public FloatMultiVectorValue value() {
     return (FloatMultiVectorValue) fieldsData;
   }
 
   /**
-   * Set the tensor value of this field
+   * Set the multi-vector value of this field
    *
    * @param value the value to set; must not be null, and dimension must match the field type
    */
-  public void setTensorValue(FloatMultiVectorValue value) {
+  public void setValue(FloatMultiVectorValue value) {
     if (value == null) {
       throw new IllegalArgumentException("value must not be null or empty");
     }
@@ -197,18 +197,18 @@ public class KnnFloatTensorField extends Field {
           "value dimension ["
               + value.dimension()
               + "] "
-              + "should match field tensor dimension: ["
+              + "should match field multi-vector dimension: ["
               + type.vectorDimension()
               + "]");
     }
     fieldsData = value;
   }
 
-  private static void checkDimensions(List<float[]> tensor, int dimensions) {
-    for (float[] val : tensor) {
+  private static void checkDimensions(List<float[]> value, int dimensions) {
+    for (float[] val : value) {
       if (val.length != dimensions) {
         throw new IllegalArgumentException(
-            "All vectors in the tensor should have the "
+            "All vectors in multi-vector value should have the "
                 + "same dimension value as configured in the fieldType");
       }
     }

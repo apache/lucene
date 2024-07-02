@@ -118,7 +118,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   public FlatFieldVectorsWriter<?> addField(
       FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException {
     FieldWriter<?> newField;
-    if (fieldInfo.hasTensorValues()) {
+    if (fieldInfo.hasMultiVectorValues()) {
       newField = FieldWriter.createMultiVectorWriter(fieldInfo, indexWriter);
     } else {
       newField = FieldWriter.create(fieldInfo, indexWriter);
@@ -346,7 +346,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     // the vectors directly to the new segment.
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     // No need to use temporary file as we don't have to re-open for reading
-    DocsAndOffsets writeState = (fieldInfo.hasTensorValues()) ?
+    DocsAndOffsets writeState = (fieldInfo.hasMultiVectorValues()) ?
         writeVectorData(fieldInfo, mergeState, vectorData) :
         writeMultiVectorData(fieldInfo, mergeState, vectorData);
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
@@ -370,7 +370,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      DocsAndOffsets writeState = (fieldInfo.hasTensorValues()) ?
+      DocsAndOffsets writeState = (fieldInfo.hasMultiVectorValues()) ?
           writeVectorData(fieldInfo, mergeState, tempVectorData) :
           writeMultiVectorData(fieldInfo, mergeState, tempVectorData);
       CodecUtil.writeFooter(tempVectorData);
@@ -405,7 +405,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
       final IndexInput finalVectorDataInput = vectorDataInput;
       final RandomVectorScorerSupplier randomVectorScorerSupplier =
-          (fieldInfo.hasTensorValues()) ?
+          (fieldInfo.hasMultiVectorValues()) ?
               getRandomMultiVectorScorerSupplier(fieldInfo, writeState, finalVectorDataInput) :
               getRandomVectorScorerSupplier(fieldInfo, writeState, finalVectorDataInput);
       return new FlatCloseableRandomVectorScorerSupplier(
@@ -467,22 +467,22 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     final RandomVectorScorerSupplier randomMultiVectorScorerSupplier =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> vectorsScorer.getRandomMultiVectorScorerSupplier(
-              fieldInfo.getTensorSimilarityFunction(),
+              fieldInfo.getMultiVectorSimilarityFunction(),
               new OffHeapByteMultiVectorValues.DenseOffHeapMultiVectorValuesWithOffsets(
                   fieldInfo.getVectorDimension(),
                   docsAndOffsets.docsWithField.cardinality(),
                   dataInput,
                   vectorsScorer,
-                  fieldInfo.getTensorSimilarityFunction(),
+                  fieldInfo.getMultiVectorSimilarityFunction(),
                   dataOffsets));
           case FLOAT32 -> vectorsScorer.getRandomMultiVectorScorerSupplier(
-              fieldInfo.getTensorSimilarityFunction(),
+              fieldInfo.getMultiVectorSimilarityFunction(),
               new OffHeapFloatMultiVectorValues.DenseOffHeapMultiVectorValuesWithOffsets(
                   fieldInfo.getVectorDimension(),
                   docsAndOffsets.docsWithField.cardinality(),
                   dataInput,
                   vectorsScorer,
-                  fieldInfo.getTensorSimilarityFunction(),
+                  fieldInfo.getMultiVectorSimilarityFunction(),
                   dataOffsets));
         };
     return randomMultiVectorScorerSupplier;
@@ -510,9 +510,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
 
     // write multi-vector metadata
-    meta.writeByte(field.hasTensorValues() ? (byte) 1 : (byte) 0);  // is multiVector?
-    if (field.hasTensorValues()) {
-      meta.writeInt(field.getTensorSimilarityFunction().aggregation.ordinal());
+    meta.writeByte(field.hasMultiVectorValues() ? (byte) 1 : (byte) 0);  // is multiVector?
+    if (field.hasMultiVectorValues()) {
+      meta.writeInt(field.getMultiVectorSimilarityFunction().aggregation.ordinal());
       MultiVectorDataOffsetsReaderConfiguration.writeStoredMeta(
           DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, multiVectorDataOffsets);
     }
@@ -685,7 +685,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
     @SuppressWarnings("unchecked")
     static FieldWriter<?> createMultiVectorWriter(FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) {
-      if (fieldInfo.hasTensorValues() == false) {
+      if (fieldInfo.hasMultiVectorValues() == false) {
         throw new IllegalArgumentException(
             "Cannot create MultiVector writer for a field without multi-vector values");
       }
@@ -713,7 +713,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       this.vectors = new ArrayList<>();
-      this.isMultiVector = fieldInfo.hasTensorValues();
+      this.isMultiVector = fieldInfo.hasMultiVectorValues();
     }
 
     @Override
@@ -743,7 +743,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       }
       if (vectors.size() == 0) return size;
       long valueSize = 0;
-      if (fieldInfo.hasTensorValues()) {
+      if (fieldInfo.hasMultiVectorValues()) {
         for (T v : vectors) {
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> valueSize += ((ByteMultiVectorValue) v).ramBytesUsed();

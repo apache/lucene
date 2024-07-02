@@ -41,9 +41,9 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
-import org.apache.lucene.document.KnnByteTensorField;
+import org.apache.lucene.document.KnnByteMultiVectorField;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.document.KnnFloatTensorField;
+import org.apache.lucene.document.KnnFloatMultiVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -728,7 +728,7 @@ final class IndexingChain implements Accountable {
         throw th;
       }
     }
-    if (fi.hasTensorValues()) {
+    if (fi.hasMultiVectorValues()) {
       try {
         pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
       } catch (Throwable th) {
@@ -784,7 +784,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
 
-    if (fieldType.isTensor()) {
+    if (fieldType.isMultiVector()) {
       indexTensorValue(docID, pf, fieldType.vectorEncoding(), field);
     } else if (fieldType.vectorDimension() != 0) {
       indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
@@ -862,8 +862,8 @@ final class IndexingChain implements Accountable {
           fieldType.vectorSimilarityFunction(),
           fieldType.vectorDimension());
     }
-    if (fieldType.isTensor()) {
-      schema.setTensors(fieldType.isTensor(), fieldType.tensorAggregate());
+    if (fieldType.isMultiVector()) {
+      schema.setTensors(fieldType.isMultiVector(), fieldType.multiVectorAggregate());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1060,9 +1060,9 @@ final class IndexingChain implements Accountable {
       int docID, PerField pf, VectorEncoding encoding, IndexableField field) throws IOException {
     switch (encoding) {
       case BYTE -> ((KnnFieldVectorsWriter<ByteMultiVectorValue>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnByteTensorField) field).tensorValue());
+          .addValue(docID, ((KnnByteMultiVectorField) field).value());
       case FLOAT32 -> ((KnnFieldVectorsWriter<FloatMultiVectorValue>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnFloatTensorField) field).tensorValue());
+          .addValue(docID, ((KnnFloatMultiVectorField) field).value());
     }
   }
 
@@ -1601,8 +1601,8 @@ final class IndexingChain implements Accountable {
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
-      assertSame("isTensor", fi.isTensor(), this.isTensor);
-      assertSame("tensor aggregation", fi.getTensorAggregate(), this.tensorAggregate);
+      assertSame("isTensor", fi.isMultiVector(), this.isTensor);
+      assertSame("tensor aggregation", fi.getMultiVectorAggregate(), this.tensorAggregate);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);

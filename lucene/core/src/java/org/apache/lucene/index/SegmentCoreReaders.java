@@ -140,7 +140,7 @@ final class SegmentCoreReaders {
         knnVectorsReader = null;
       }
 
-      if (coreFieldInfos.hasTensorValues()) {
+      if (coreFieldInfos.hasMultiVectorValues()) {
         knnTensorsReader = codec.knnTensorsFormat().fieldsReader(segmentReadState);
       } else {
         knnTensorsReader = null;

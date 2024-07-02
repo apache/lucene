@@ -555,7 +555,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         FlatVectorsScorer scorer, FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       FieldWriter<?> fieldWriter;
-      if (fieldInfo.hasTensorValues()) {
+      if (fieldInfo.hasMultiVectorValues()) {
         fieldWriter = switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> new FieldWriter<ByteMultiVectorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
           case FLOAT32 -> new FieldWriter<FloatMultiVectorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
@@ -575,7 +575,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.fieldInfo = fieldInfo;
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      isMultiVector = fieldInfo.hasTensorValues();
+      isMultiVector = fieldInfo.hasMultiVectorValues();
       RandomVectorScorerSupplier scorerSupplier = createScorerSupplier(fieldInfo, scorer, isMultiVector);
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -584,14 +584,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     @SuppressWarnings("unchecked")
     private RandomVectorScorerSupplier createScorerSupplier(FieldInfo info, FlatVectorsScorer scorer, boolean isMultiVector) throws IOException {
-      if (info.hasTensorValues()) {
+      if (info.hasMultiVectorValues()) {
         return switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> scorer.getRandomMultiVectorScorerSupplier(
-              fieldInfo.getTensorSimilarityFunction(),
+              fieldInfo.getMultiVectorSimilarityFunction(),
               RandomAccessVectorValues.fromByteMultiVectors(
                   (List<ByteMultiVectorValue>) vectors, fieldInfo.getVectorDimension()));
           case FLOAT32 -> scorer.getRandomMultiVectorScorerSupplier(
-              fieldInfo.getTensorSimilarityFunction(),
+              fieldInfo.getMultiVectorSimilarityFunction(),
               RandomAccessVectorValues.fromFloatMultiVectors(
                   (List<FloatMultiVectorValue>) vectors, fieldInfo.getVectorDimension()));
         };

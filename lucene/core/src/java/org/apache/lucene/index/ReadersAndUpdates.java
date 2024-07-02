@@ -722,8 +722,8 @@ final class ReadersAndUpdates {
         fi.getVectorDimension(),
         fi.getVectorEncoding(),
         fi.getVectorSimilarityFunction(),
-        fi.isTensor(),
-        fi.getTensorAggregate(),
+        fi.isMultiVector(),
+        fi.getMultiVectorAggregate(),
         fi.isSoftDeletesField(),
         fi.isParentField());
   }

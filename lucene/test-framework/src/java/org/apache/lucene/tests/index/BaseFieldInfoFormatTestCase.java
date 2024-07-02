@@ -331,8 +331,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.vectorDimension(),
               fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
-              fieldType.isTensor(),
-              fieldType.tensorAggregate(),
+              fieldType.isMultiVector(),
+              fieldType.multiVectorAggregate(),
               field.equals(softDeletesField),
               field.equals(parentField));
       addAttributes(fi);

@@ -244,7 +244,7 @@ public abstract class CodecReader extends LeafReader {
     if (fi == null || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       return null;
     }
-    if (fi.hasTensorValues()) {
+    if (fi.hasMultiVectorValues()) {
       return getTensorReader().getFloatVectorValues(field);
     }
     if (fi.hasVectorValues()) {
@@ -261,7 +261,7 @@ public abstract class CodecReader extends LeafReader {
     if (fi == null || fi.getVectorEncoding() != VectorEncoding.BYTE) {
       return null;
     }
-    if (fi.hasTensorValues()) {
+    if (fi.hasMultiVectorValues()) {
       return getTensorReader().getByteVectorValues(field);
     }
     if (fi.hasVectorValues()) {
@@ -279,7 +279,7 @@ public abstract class CodecReader extends LeafReader {
     if (fi == null || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       return;
     }
-    if (fi.hasTensorValues()) {
+    if (fi.hasMultiVectorValues()) {
       getTensorReader().search(field, target, knnCollector, acceptDocs);
     } else if (fi.hasVectorValues()) {
       getVectorReader().search(field, target, knnCollector, acceptDocs);
@@ -294,7 +294,7 @@ public abstract class CodecReader extends LeafReader {
     if (fi == null || fi.getVectorEncoding() != VectorEncoding.BYTE) {
       return;
     }
-    if (fi.hasTensorValues()) {
+    if (fi.hasMultiVectorValues()) {
       getTensorReader().search(field, target, knnCollector, acceptDocs);
     } else if (fi.hasVectorValues()) {
       getVectorReader().search(field, target, knnCollector, acceptDocs);
