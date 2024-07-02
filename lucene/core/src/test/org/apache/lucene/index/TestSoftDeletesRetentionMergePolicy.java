@@ -778,6 +778,53 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     IOUtils.close(writer, dir);
   }
 
+  public void testMergeAfterReopenWriter() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig keepDeletesConfig =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_deletes")
+            .setMergePolicy(
+                new SoftDeletesRetentionMergePolicy(
+                    "soft_deletes", MatchAllDocsQuery::new, newMergePolicy()));
+    try (IndexWriter writer = new IndexWriter(dir, keepDeletesConfig)) {
+      Document d = new Document();
+      d.add(new StringField("id", "foo-1", Field.Store.YES));
+      writer.addDocument(d);
+      d = new Document();
+      d.add(new StringField("id", "foo-2", Field.Store.YES));
+      writer.softUpdateDocument(
+          new Term("id", "foo-1"), d, new NumericDocValuesField("soft_deletes", 1));
+      d = new Document();
+      d.add(new StringField("id", "bar-1", Field.Store.YES));
+      writer.addDocument(d);
+      d.add(new StringField("id", "bar-2", Field.Store.YES));
+      writer.softUpdateDocument(
+          new Term("id", "bar-1"), d, new NumericDocValuesField("soft_deletes", 1));
+      writer.forceMerge(1);
+      writer.commit();
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(4, reader.maxDoc());
+        assertEquals(2, reader.numDocs());
+      }
+    }
+
+    IndexWriterConfig dropDeletesConfig =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_deletes")
+            .setMergePolicy(
+                new SoftDeletesRetentionMergePolicy(
+                    "soft_deletes", MatchNoDocsQuery::new, newMergePolicy()));
+    try (IndexWriter writer = new IndexWriter(dir, dropDeletesConfig)) {
+      writer.forceMerge(1);
+      writer.commit();
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(2, reader.maxDoc());
+        assertEquals(2, reader.numDocs());
+      }
+    }
+    IOUtils.close(dir);
+  }
+
   static void doUpdate(Term doc, IndexWriter writer, Field... fields) throws IOException {
     long seqId = -1;
     do { // retry if we just committing a merge
