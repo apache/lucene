@@ -105,7 +105,7 @@ public abstract class OffHeapByteMultiVectorValues extends ByteVectorValues
     }
 
     slice.seek(offset);
-    valueBuffer.reset();
+    valueBuffer.clear();
     slice.readBytes(valueBuffer.array(), valueBuffer.arrayOffset(), length);
     value = valueBuffer.slice(0, length).array();
     assert value.length == length;

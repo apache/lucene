@@ -639,7 +639,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       if (buffer == null || buffer.capacity() < valueByteLength) {
         buffer = ByteBuffer.allocate(valueByteLength).order(ByteOrder.LITTLE_ENDIAN);
       }
-      buffer.reset();
+      buffer.clear();
       buffer.asFloatBuffer().put(value);
       dataOffsets[ordinal++] = output.getFilePointer();
       output.writeBytes(buffer.array(), valueByteLength);
