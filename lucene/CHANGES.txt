@@ -168,6 +168,8 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
+* GITHUB#12985: Make Lucene90BlockTreePostingsFormat to build FST off-heap. (Anh Dung Bui)
+
 Bug Fixes
 ---------------------
 
