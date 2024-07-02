@@ -108,9 +108,16 @@ public class TestTaskExecutor extends LuceneTestCase {
     assertEquals("exc", runtimeException.getCause().getMessage());
   }
 
-  public void testInvokeAllFromTaskDoesNotDeadlockSameSearcher() throws IOException {
+  public void testInvokeAllFromTaskDoesNotDeadlockSameSearcher() throws Exception {
     doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(executorService);
     doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(Runnable::run);
+    executorService
+        .submit(
+            () -> {
+              doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(executorService);
+              return null;
+            })
+        .get();
   }
 
   private static void doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(Executor executor)
@@ -175,9 +182,16 @@ public class TestTaskExecutor extends LuceneTestCase {
     }
   }
 
-  public void testInvokeAllFromTaskDoesNotDeadlockMultipleSearchers() throws IOException {
+  public void testInvokeAllFromTaskDoesNotDeadlockMultipleSearchers() throws Exception {
     doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(executorService);
     doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(Runnable::run);
+    executorService
+        .submit(
+            () -> {
+              doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(executorService);
+              return null;
+            })
+        .get();
   }
 
   private static void doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(Executor executor)
