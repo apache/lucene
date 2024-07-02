@@ -43,6 +43,7 @@ import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 
 public class TestTermQuery extends LuceneTestCase {
@@ -256,6 +257,11 @@ public class TestTermQuery extends LuceneTestCase {
               return new FilterTermsEnum(super.iterator()) {
                 @Override
                 public SeekStatus seekCeil(BytesRef text) throws IOException {
+                  throw new AssertionError("no seek");
+                }
+
+                @Override
+                public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
                   throw new AssertionError("no seek");
                 }
 

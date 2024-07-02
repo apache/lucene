@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 
 /**
  * A base TermsEnum that adds default implementations for
@@ -56,6 +57,11 @@ public abstract class BaseTermsEnum extends TermsEnum {
   @Override
   public boolean seekExact(BytesRef text) throws IOException {
     return seekCeil(text) == SeekStatus.FOUND;
+  }
+
+  @Override
+  public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+    return () -> seekExact(text);
   }
 
   @Override

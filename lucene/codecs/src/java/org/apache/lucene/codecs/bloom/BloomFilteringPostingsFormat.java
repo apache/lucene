@@ -43,6 +43,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -315,12 +316,21 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
-      public boolean seekExact(BytesRef text) throws IOException {
+      public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
         // The magical fail-fast speed up that is the entire point of all of
         // this code - save a disk seek if there is a match on an in-memory
         // structure
         // that may occasionally give a false positive but guaranteed no false
         // negatives
+        if (filter.contains(text) == ContainsResult.NO) {
+          return null;
+        }
+        return delegate().prepareSeekExact(text);
+      }
+
+      @Override
+      public boolean seekExact(BytesRef text) throws IOException {
+        // See #prepareSeekExact
         if (filter.contains(text) == ContainsResult.NO) {
           return false;
         }
