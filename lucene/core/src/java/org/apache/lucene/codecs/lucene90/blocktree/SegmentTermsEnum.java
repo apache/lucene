@@ -160,7 +160,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
             break allTerms;
           }
           final long lastFP = currentFrame.fpOrig;
-          currentFrame = stack[currentFrame.ord - 1];
+          currentFrame = getFrame(currentFrame.ord - 1);
           assert lastFP == currentFrame.lastSubFP;
           // if (DEBUG) {
           //   System.out.println("  reset validIndexPrefix=" + validIndexPrefix);
@@ -211,10 +211,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           new SegmentTermsEnumFrame
               [ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(stack, 0, next, 0, stack.length);
-      for (int stackOrd = stack.length; stackOrd < next.length; stackOrd++) {
-        next[stackOrd] = new SegmentTermsEnumFrame(this, stackOrd);
-      }
       stack = next;
+    }
+    if (stack[ord] == null) {
+      stack[ord] = new SegmentTermsEnumFrame(this, ord);
     }
     assert stack[ord].ord == ord;
     return stack[ord];
@@ -382,7 +382,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         outputAccumulator.push(arc.output());
 
         if (arc.isFinal()) {
-          lastFrame = stack[1 + lastFrame.ord];
+          lastFrame = getFrame(1 + lastFrame.ord);
         }
         targetUpto++;
       }
@@ -648,7 +648,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         outputAccumulator.push(arc.output());
         if (arc.isFinal()) {
-          lastFrame = stack[1 + lastFrame.ord];
+          lastFrame = getFrame(1 + lastFrame.ord);
         }
         targetUpto++;
       }
@@ -1012,7 +1012,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
         final long lastFP = currentFrame.fpOrig;
-        currentFrame = stack[currentFrame.ord - 1];
+        currentFrame = getFrame(currentFrame.ord - 1);
 
         if (currentFrame.nextEnt == -1 || currentFrame.lastSubFP != lastFP) {
           // We popped into a frame that's not loaded
