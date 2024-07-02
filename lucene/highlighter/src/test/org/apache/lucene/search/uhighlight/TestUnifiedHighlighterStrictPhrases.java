@@ -183,13 +183,15 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
   }
 
   public void testWithSameTermQuery() throws IOException {
-    indexWriter.addDocument(newDoc("Yin yang, yin gap yang"));
+    indexWriter.addDocument(newDoc("Yin yang loooooooooong, yin gap yang yong"));
     initReaderSearcherHighlighter();
 
     BooleanQuery query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("body", "yin")), BooleanClause.Occur.MUST)
-            .add(newPhraseQuery("body", "yin yang"), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("body", "yang")), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("body", "loooooooooong")), BooleanClause.Occur.MUST)
+            .add(newPhraseQuery("body", "yin\\ yang\\ loooooooooong"), BooleanClause.Occur.MUST)
             // add queries for other fields; we shouldn't highlight these because of that.
             .add(new TermQuery(new Term("title", "yang")), BooleanClause.Occur.SHOULD)
             .build();
@@ -199,9 +201,15 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
         false); // We don't want duplicates from "Yin" being in TermQuery & PhraseQuery.
     String[] snippets = highlighter.highlight("body", query, topDocs);
     if (highlighter.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES)) {
-      assertArrayEquals(new String[] {"<b>Yin yang</b>, <b>yin</b> gap yang"}, snippets);
+      assertArrayEquals(
+          new String[] {"<b>Yin yang loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong"},
+          snippets);
     } else {
-      assertArrayEquals(new String[] {"<b>Yin</b> <b>yang</b>, <b>yin</b> gap yang"}, snippets);
+      assertArrayEquals(
+          new String[] {
+            "<b>Yin</b> <b>yang</b> <b>loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong"
+          },
+          snippets);
     }
   }
 
