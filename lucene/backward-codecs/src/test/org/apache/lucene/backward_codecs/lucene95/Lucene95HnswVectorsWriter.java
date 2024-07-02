@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -384,8 +385,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     int size = neighbors.size();
     vectorIndex.writeVInt(size);
 
-    // Destructively modify; it's ok we are discarding it after this
-    int[] nnodes = neighbors.nodes();
+    int[] nnodes = neighbors.nodesCopy();
     for (int i = 0; i < size; i++) {
       nnodes[i] = oldToNewMap[nnodes[i]];
     }
@@ -532,16 +532,16 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         long offsetStart = vectorIndex.getFilePointer();
         vectorIndex.writeVInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.nodes();
-        Arrays.sort(nnodes, 0, size);
+        Arrays.sort(neighbors.scoreNodes, 0, size, Comparator.comparingInt(o -> o.node));
         // Now that we have sorted, do delta encoding to minimize the required bits to store the
         // information
         for (int i = size - 1; i > 0; --i) {
-          assert nnodes[i] < countOnLevel0 : "node too large: " + nnodes[i] + ">=" + countOnLevel0;
-          nnodes[i] -= nnodes[i - 1];
+          assert neighbors.scoreNodes[i].node < countOnLevel0
+              : "node too large: " + neighbors.scoreNodes[i].node + ">=" + countOnLevel0;
+          neighbors.scoreNodes[i].node -= neighbors.scoreNodes[i - 1].node;
         }
         for (int i = 0; i < size; i++) {
-          vectorIndex.writeVInt(nnodes[i]);
+          vectorIndex.writeVInt(neighbors.scoreNodes[i].node);
         }
         offsets[level][nodeOffsetId++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);

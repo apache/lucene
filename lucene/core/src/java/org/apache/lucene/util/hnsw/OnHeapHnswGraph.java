@@ -163,7 +163,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public int nextNeighbor() {
     if (++upto < cur.size()) {
-      return cur.nodes()[upto];
+      return cur.scoreNodes[upto].node;
     }
     return NO_MORE_DOCS;
   }
@@ -275,12 +275,12 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public long ramBytesUsed() {
     long neighborArrayBytes0 =
-        (long) nsize0 * (Integer.BYTES + Float.BYTES)
+        (long) nsize0 * (Integer.BYTES + Float.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
             + Integer.BYTES * 3;
     long neighborArrayBytes =
-        (long) nsize * (Integer.BYTES + Float.BYTES)
+        (long) nsize * (Integer.BYTES + Float.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
             + Integer.BYTES * 3;
