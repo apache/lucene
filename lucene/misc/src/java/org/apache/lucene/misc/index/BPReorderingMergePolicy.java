@@ -19,6 +19,7 @@ package org.apache.lucene.misc.index;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterMergePolicy;
 import org.apache.lucene.index.MergePolicy;
@@ -129,11 +130,12 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
             }
 
             @Override
-            public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
+            public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
+                throws IOException {
               Sorter.DocMap docMap = null;
               if (reader.numDocs() >= minNumDocs) {
                 try {
-                  docMap = reorderer.computeDocMap(reader, dir);
+                  docMap = reorderer.computeDocMap(reader, dir, executor);
                 } catch (
                     @SuppressWarnings("unused")
                     NotEnoughRAMException e) {
