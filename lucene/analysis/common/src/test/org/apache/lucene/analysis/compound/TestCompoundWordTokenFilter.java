@@ -255,12 +255,10 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
 
     assertTokenStreamContents(
         tf,
-        new String[] {
-          "Basfiolsfodralmakaregesäll", "Bas", "fiolsfodral", "fodral", "makare", "gesäll"
-        },
-        new int[] {0, 0, 0, 0, 0, 0},
-        new int[] {26, 26, 26, 26, 26, 26},
-        new int[] {1, 0, 0, 0, 0, 0});
+        new String[] {"Basfiolsfodralmakaregesäll", "Bas", "fiolsfodral", "makare", "gesäll"},
+        new int[] {0, 0, 0, 0, 0},
+        new int[] {26, 26, 26, 26, 26},
+        new int[] {1, 0, 0, 0, 0});
   }
 
   public void testTokenEndingWithWordComponentOfMinimumLength() throws Exception {
