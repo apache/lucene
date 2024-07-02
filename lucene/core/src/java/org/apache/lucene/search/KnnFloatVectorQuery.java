@@ -88,7 +88,8 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    * @return {@link KnnFloatVectorQuery}
    */
-  public static KnnFloatVectorQuery create(String field, List<float[]> target, int k, Query filter) {
+  public static KnnFloatVectorQuery create(
+      String field, List<float[]> target, int k, Query filter) {
     if (target == null || target.isEmpty()) {
       throw new IllegalArgumentException("empty target");
     }

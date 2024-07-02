@@ -556,15 +556,19 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         throws IOException {
       FieldWriter<?> fieldWriter;
       if (fieldInfo.hasMultiVectorValues()) {
-        fieldWriter = switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> new FieldWriter<ByteMultiVectorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
-          case FLOAT32 -> new FieldWriter<FloatMultiVectorValue>(scorer, fieldInfo, M, beamWidth, infoStream);
-        };
+        fieldWriter =
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE -> new FieldWriter<ByteMultiVectorValue>(
+                  scorer, fieldInfo, M, beamWidth, infoStream);
+              case FLOAT32 -> new FieldWriter<FloatMultiVectorValue>(
+                  scorer, fieldInfo, M, beamWidth, infoStream);
+            };
       } else {
-        fieldWriter = switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> new FieldWriter<byte[]>(scorer, fieldInfo, M, beamWidth, infoStream);
-          case FLOAT32 -> new FieldWriter<float[]>(scorer, fieldInfo, M, beamWidth, infoStream);
-        };
+        fieldWriter =
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE -> new FieldWriter<byte[]>(scorer, fieldInfo, M, beamWidth, infoStream);
+              case FLOAT32 -> new FieldWriter<float[]>(scorer, fieldInfo, M, beamWidth, infoStream);
+            };
       }
       return fieldWriter;
     }
@@ -576,14 +580,16 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
       isMultiVector = fieldInfo.hasMultiVectorValues();
-      RandomVectorScorerSupplier scorerSupplier = createScorerSupplier(fieldInfo, scorer, isMultiVector);
+      RandomVectorScorerSupplier scorerSupplier =
+          createScorerSupplier(fieldInfo, scorer, isMultiVector);
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
       hnswGraphBuilder.setInfoStream(infoStream);
     }
 
     @SuppressWarnings("unchecked")
-    private RandomVectorScorerSupplier createScorerSupplier(FieldInfo info, FlatVectorsScorer scorer, boolean isMultiVector) throws IOException {
+    private RandomVectorScorerSupplier createScorerSupplier(
+        FieldInfo info, FlatVectorsScorer scorer, boolean isMultiVector) throws IOException {
       if (info.hasMultiVectorValues()) {
         return switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> scorer.getRandomMultiVectorScorerSupplier(

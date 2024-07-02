@@ -394,10 +394,14 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       if (isMultiVector) {
         int agg = input.readInt();
         if (agg < 0 || agg >= MultiVectorSimilarityFunction.Aggregation.values().length) {
-          throw new CorruptIndexException("Invalid multi-vector aggregation function, id: " + agg, input);
+          throw new CorruptIndexException(
+              "Invalid multi-vector aggregation function, id: " + agg, input);
         }
-        multiVectorSimilarityFunction = new MultiVectorSimilarityFunction(similarityFunction, MultiVectorSimilarityFunction.Aggregation.values()[agg]);
-        dataOffsetsReaderConfiguration = MultiVectorDataOffsetsReaderConfiguration.fromStoredMeta(input);
+        multiVectorSimilarityFunction =
+            new MultiVectorSimilarityFunction(
+                similarityFunction, MultiVectorSimilarityFunction.Aggregation.values()[agg]);
+        dataOffsetsReaderConfiguration =
+            MultiVectorDataOffsetsReaderConfiguration.fromStoredMeta(input);
       }
 
       return new FieldEntry(

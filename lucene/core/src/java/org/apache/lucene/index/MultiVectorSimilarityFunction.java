@@ -21,9 +21,9 @@ import java.util.List;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
- * Multi-vector similarity function; used in search to return top K most similar multi-vectors to a target
- * multi-vector. This method is used during indexing and searching of the multi-vectors in order to determine
- * the nearest neighbors.
+ * Multi-vector similarity function; used in search to return top K most similar multi-vectors to a
+ * target multi-vector. This method is used during indexing and searching of the multi-vectors in
+ * order to determine the nearest neighbors.
  */
 // no commit
 public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
@@ -33,8 +33,9 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
   /** Aggregation function to combine similarity across multiple vector values */
   public enum Aggregation {
     /**
-     * SumMaxSimilarity between two multi-vectors. Aggregates using the sum of maximum similarity found
-     * for each vector in the first multi-vector against all vectors in the second multi-vector.
+     * SumMaxSimilarity between two multi-vectors. Aggregates using the sum of maximum similarity
+     * found for each vector in the first multi-vector against all vectors in the second
+     * multi-vector.
      */
     SUM_MAX {
       @Override

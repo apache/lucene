@@ -33,10 +33,10 @@ import org.apache.lucene.util.ByteMultiVectorValue;
  * explicit value, stored packed into an array (of type byte[]) whose length is the vector
  * dimension.
  *
- * <p>All vectors in the field are required to have the same dimension,
- * although different documents can have different number of vectors. The
- * {@link MultiVectorSimilarityFunction} may be used to compare multi-vectors at query time, or during indexing
- * for generating a nearest neighbour graph (such as the HNSW graph).
+ * <p>All vectors in the field are required to have the same dimension, although different documents
+ * can have different number of vectors. The {@link MultiVectorSimilarityFunction} may be used to
+ * compare multi-vectors at query time, or during indexing for generating a nearest neighbour graph
+ * (such as the HNSW graph).
  *
  * @lucene.experimental
  */
@@ -60,7 +60,8 @@ public class KnnByteMultiVectorField extends Field {
     int dimension = t.get(0).length;
     checkDimensions(t, dimension);
     FieldType type = new FieldType();
-    type.setMultiVectorAttributes(true, dimension, VectorEncoding.BYTE, similarityFunction, aggregation);
+    type.setMultiVectorAttributes(
+        true, dimension, VectorEncoding.BYTE, similarityFunction, aggregation);
     type.freeze();
     return type;
   }
@@ -98,8 +99,8 @@ public class KnnByteMultiVectorField extends Field {
   }
 
   /**
-   * Creates a byte numeric multi-vector field.
-   * Multi-vectors of a single field share the same dimension and similarity function.
+   * Creates a byte numeric multi-vector field. Multi-vectors of a single field share the same
+   * dimension and similarity function.
    *
    * @param name field name
    * @param value multi-vector value
@@ -120,9 +121,9 @@ public class KnnByteMultiVectorField extends Field {
   }
 
   /**
-   * Creates a byte numeric multi-vector field with the default EUCLIDEAN (L2) similarity and default
-   * SUM_MAX aggregation. Vectors within a single multi-vector field share the same dimension and
-   * similarity function.
+   * Creates a byte numeric multi-vector field with the default EUCLIDEAN (L2) similarity and
+   * default SUM_MAX aggregation. Vectors within a single multi-vector field share the same
+   * dimension and similarity function.
    *
    * @param name field name
    * @param value multi-vector value
@@ -130,12 +131,16 @@ public class KnnByteMultiVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnByteMultiVectorField(String name, List<byte[]> value) {
-    this(name, value, VectorSimilarityFunction.EUCLIDEAN, MultiVectorSimilarityFunction.DEFAULT_AGGREGATION);
+    this(
+        name,
+        value,
+        VectorSimilarityFunction.EUCLIDEAN,
+        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION);
   }
 
   /**
-   * Creates a byte numeric multi-vector field. Vectors of a single multi-vector share the same dimension and
-   * similarity function.
+   * Creates a byte numeric multi-vector field. Vectors of a single multi-vector share the same
+   * dimension and similarity function.
    *
    * @param name field name
    * @param value multi-vector value

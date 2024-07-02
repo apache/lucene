@@ -25,8 +25,8 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.MultiVectorSimilarityFunction;
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.MultiVectorSimilarityFunction.Aggregation;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
@@ -407,14 +407,13 @@ public class FieldType implements IndexableFieldType {
   }
 
   /**
-   * Enable multi-vector indexing.
-   * Each vector in the multi-vector has the same dimension. Different multi-vector values can
-   * vary in the number of vectors.
+   * Enable multi-vector indexing. Each vector in the multi-vector has the same dimension. Different
+   * multi-vector values can vary in the number of vectors.
    *
    * @param isMultiVector Boolean flag indicating if the field indexes multi-vectors
    * @param dimension Dimension of each vector in the multi-vector
-   * @param encoding {@link VectorEncoding} for each value in the multi-vector.
-   *                                       Should be the same for all vectors
+   * @param encoding {@link VectorEncoding} for each value in the multi-vector. Should be the same
+   *     for all vectors
    * @param similarityFunction {@link VectorSimilarityFunction} Used to compare multi-vectors during
    *     indexing and search
    * @param aggregation {@link Aggregation} used to aggregate similarity across multiple vectors

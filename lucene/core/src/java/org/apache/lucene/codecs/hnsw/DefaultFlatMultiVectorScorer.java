@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-
 import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -48,12 +47,15 @@ public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
 
   @Override
   public RandomVectorScorer getRandomMultiVectorScorer(
-      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
+      MultiVectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues values,
+      float[] target)
       throws IOException {
     assert values instanceof RandomAccessVectorValues.Floats;
     if (target.length % values.dimension() != 0) {
       throw new IllegalArgumentException(
-          "query multiVector dimension differs from multiVector field dimension: " + values.dimension());
+          "query multiVector dimension differs from multiVector field dimension: "
+              + values.dimension());
     }
     return new FloatMultiVectorScorer(
         (RandomAccessVectorValues.Floats) values, target, similarityFunction);
@@ -61,12 +63,15 @@ public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
 
   @Override
   public RandomVectorScorer getRandomMultiVectorScorer(
-      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
+      MultiVectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues values,
+      byte[] target)
       throws IOException {
     assert values instanceof RandomAccessVectorValues.Bytes;
     if (target.length % values.dimension() != 0) {
       throw new IllegalArgumentException(
-          "query multiVector dimension differs from multiVector field dimension: " + values.dimension());
+          "query multiVector dimension differs from multiVector field dimension: "
+              + values.dimension());
     }
     return new ByteMultiVectorScorer(
         (RandomAccessVectorValues.Bytes) values, target, similarityFunction);
@@ -86,7 +91,8 @@ public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
     private final int dimension;
 
     private ByteScoringSupplier(
-        RandomAccessVectorValues.Bytes multiVectors, MultiVectorSimilarityFunction similarityFunction)
+        RandomAccessVectorValues.Bytes multiVectors,
+        MultiVectorSimilarityFunction similarityFunction)
         throws IOException {
       this.multiVectors = multiVectors;
       multiVectors1 = multiVectors.copy();
@@ -121,7 +127,8 @@ public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
     private final int dimension;
 
     private FloatScoringSupplier(
-        RandomAccessVectorValues.Floats multiVectors, MultiVectorSimilarityFunction similarityFunction)
+        RandomAccessVectorValues.Floats multiVectors,
+        MultiVectorSimilarityFunction similarityFunction)
         throws IOException {
       this.multiVectors = multiVectors;
       multiVectors1 = multiVectors.copy();
@@ -148,7 +155,8 @@ public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
   }
 
   /** A {@link RandomVectorScorer} for float multiVectors. */
-  private static class FloatMultiVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
+  private static class FloatMultiVectorScorer
+      extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final RandomAccessVectorValues.Floats values;
     private final float[] query;
     private final MultiVectorSimilarityFunction similarityFunction;

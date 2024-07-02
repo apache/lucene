@@ -23,8 +23,8 @@ public interface MultiVectorSimilarity {
    * Calculates a similarity score between the two multi-vectors with a specified function. Higher
    * similarity scores correspond to closer vectors.
    *
-   * @param t1 a multi-vector with non-empty vectors All vector values are concatenated in a single packed
-   *     array.
+   * @param t1 a multi-vector with non-empty vectors All vector values are concatenated in a single
+   *     packed array.
    * @param t2 another multi-vector, vectors of the same dimension as t1. All vector values are
    *     concatenated in a single packed array.
    * @return the value of the similarity function applied to the two multi-vectors

@@ -33,9 +33,10 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
 public class MultiVectorDataOffsetsReaderConfiguration {
 
   /**
-   * Writes out data offsets for each multiVector value per document. Across documents, multiVectors can have
-   * variable number of vectors. Data offsets written here are used to read variable sized vector
-   * slices per document (multiVector ordinal). This is in adherence to the Lucene99FlatMultiVectorsFormat.
+   * Writes out data offsets for each multiVector value per document. Across documents, multiVectors
+   * can have variable number of vectors. Data offsets written here are used to read variable sized
+   * vector slices per document (multiVector ordinal). This is in adherence to the
+   * Lucene99FlatMultiVectorsFormat.
    *
    * <p>Within outputMeta the format is as follows:
    *

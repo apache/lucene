@@ -137,7 +137,8 @@ public abstract class OffHeapFloatMultiVectorValues extends FloatVectorValues
       IndexInput vectorData)
       throws IOException {
     if (configuration.docsWithFieldOffset == -2 || encoding != VectorEncoding.FLOAT32) {
-      return new EmptyOffHeapMultiVectorValues(dimension, flatMultiVectorScorer, multiVectorSimilarityFunction);
+      return new EmptyOffHeapMultiVectorValues(
+          dimension, flatMultiVectorScorer, multiVectorSimilarityFunction);
     }
     IndexInput vectorDataSlice =
         vectorData.slice("multi-vector-data", multiVectorDataOffset, multiVectorDataLength);
@@ -163,8 +164,8 @@ public abstract class OffHeapFloatMultiVectorValues extends FloatVectorValues
   }
 
   /**
-   * Dense multiVector values that are stored off-heap. This is the case when every doc has a multiVector, and
-   * docId is the same as multiVector ordinal.
+   * Dense multiVector values that are stored off-heap. This is the case when every doc has a
+   * multiVector, and docId is the same as multiVector ordinal.
    */
   public static class DenseOffHeapMultiVectorValues extends OffHeapFloatMultiVectorValues {
 
@@ -250,7 +251,8 @@ public abstract class OffHeapFloatMultiVectorValues extends FloatVectorValues
   }
 
   /** Dense off-heap multiVector values created from in-memory data offsets */
-  public static class DenseOffHeapMultiVectorValuesWithOffsets extends DenseOffHeapMultiVectorValues {
+  public static class DenseOffHeapMultiVectorValuesWithOffsets
+      extends DenseOffHeapMultiVectorValues {
     final LongValues dataOffsets;
 
     public DenseOffHeapMultiVectorValuesWithOffsets(

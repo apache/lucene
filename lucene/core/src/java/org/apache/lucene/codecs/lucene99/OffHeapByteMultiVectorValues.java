@@ -20,7 +20,6 @@ package org.apache.lucene.codecs.lucene99;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -131,7 +130,8 @@ public abstract class OffHeapByteMultiVectorValues extends ByteVectorValues
       IndexInput vectorData)
       throws IOException {
     if (configuration.docsWithFieldOffset == -2 || encoding != VectorEncoding.BYTE) {
-      return new EmptyOffHeapMultiVectorValues(dimension, flatMultiVectorScorer, multiVectorSimilarityFunction);
+      return new EmptyOffHeapMultiVectorValues(
+          dimension, flatMultiVectorScorer, multiVectorSimilarityFunction);
     }
     IndexInput multiVectorDataSlice =
         vectorData.slice("multi-vector-data", multiVectorDataOffset, multiVectorDataLength);
@@ -157,8 +157,8 @@ public abstract class OffHeapByteMultiVectorValues extends ByteVectorValues
   }
 
   /**
-   * Dense multiVector values that are stored off-heap. This is the case when every doc has a multiVector, and
-   * docId is the same as multiVector ordinal.
+   * Dense multiVector values that are stored off-heap. This is the case when every doc has a
+   * multiVector, and docId is the same as multiVector ordinal.
    */
   public static class DenseOffHeapMultiVectorValues extends OffHeapByteMultiVectorValues {
 

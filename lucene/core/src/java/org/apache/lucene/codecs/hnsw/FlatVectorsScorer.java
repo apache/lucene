@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-
 import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -90,7 +89,8 @@ public interface FlatVectorsScorer {
   }
 
   /**
-   * Returns a {@link RandomVectorScorer} for the given set of multi-vectors and target multi-vector.
+   * Returns a {@link RandomVectorScorer} for the given set of multi-vectors and target
+   * multi-vector.
    *
    * @param similarityFunction the similarity function to use
    * @param values the multi-vector values to score
@@ -99,13 +99,16 @@ public interface FlatVectorsScorer {
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   default RandomVectorScorer getRandomMultiVectorScorer(
-      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
+      MultiVectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues values,
+      float[] target)
       throws IOException {
     throw new UnsupportedOperationException("Multi-Vector scoring not supported");
   }
 
   /**
-   * Returns a {@link RandomVectorScorer} for the given set of multi-vectors and target multi-vector.
+   * Returns a {@link RandomVectorScorer} for the given set of multi-vectors and target
+   * multi-vector.
    *
    * @param similarityFunction the similarity function to use
    * @param values the multi-vector values to score
@@ -114,7 +117,9 @@ public interface FlatVectorsScorer {
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   default RandomVectorScorer getRandomMultiVectorScorer(
-      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
+      MultiVectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues values,
+      byte[] target)
       throws IOException {
     throw new UnsupportedOperationException("Multi-Vector scoring not supported");
   }

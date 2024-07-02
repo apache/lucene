@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.MultiVectorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
@@ -35,8 +34,8 @@ import org.apache.lucene.util.VectorUtil;
  * explicit value, stored packed into an array (of type float[]) whose length is the vector
  * dimension.
  *
- * <p>All vectors in a multi-vector field are required to have the same dimension,
- * although different documents can have different number of vectors.
+ * <p>All vectors in a multi-vector field are required to have the same dimension, although
+ * different documents can have different number of vectors.
  *
  * <p>The {@link MultiVectorSimilarityFunction} may be used to compare multi-vectors at query time,
  * or during indexing for generating a nearest neighbour graph (such as the HNSW graph).
@@ -102,8 +101,8 @@ public class KnnFloatMultiVectorField extends Field {
   }
 
   /**
-   * Creates a numeric multi-vector field.
-   * Multi-vectors of a single field share the same dimension and similarity function.
+   * Creates a numeric multi-vector field. Multi-vectors of a single field share the same dimension
+   * and similarity function.
    *
    * @param name field name
    * @param value multi-vector value
@@ -125,12 +124,13 @@ public class KnnFloatMultiVectorField extends Field {
   }
 
   /**
-   * Creates a numeric multi-vector field.
-   * Multi-vectors of a single field share the same dimension and similarity function.
+   * Creates a numeric multi-vector field. Multi-vectors of a single field share the same dimension
+   * and similarity function.
    *
    * @param name field name
    * @param value multi-vector
-   * @param similarityFunction a {@link MultiVectorSimilarityFunction} defining multi-vector proximity.
+   * @param similarityFunction a {@link MultiVectorSimilarityFunction} defining multi-vector
+   *     proximity.
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
@@ -140,9 +140,9 @@ public class KnnFloatMultiVectorField extends Field {
   }
 
   /**
-   * Creates a numeric multi-vector field with the default EUCLIDEAN_HNSW (L2) similarity and SUM_MAX
-   * aggregation. Vectors within a single multi-vector field share the same dimension and similarity
-   * function.
+   * Creates a numeric multi-vector field with the default EUCLIDEAN_HNSW (L2) similarity and
+   * SUM_MAX aggregation. Vectors within a single multi-vector field share the same dimension and
+   * similarity function.
    *
    * @param name field name
    * @param value multi-vector value
@@ -150,12 +150,16 @@ public class KnnFloatMultiVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnFloatMultiVectorField(String name, List<float[]> value) {
-    this(name, value, VectorSimilarityFunction.EUCLIDEAN, MultiVectorSimilarityFunction.DEFAULT_AGGREGATION);
+    this(
+        name,
+        value,
+        VectorSimilarityFunction.EUCLIDEAN,
+        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION);
   }
 
   /**
-   * Creates a numeric multi-vector field. Vectors of a single multi-vector share the same dimension and
-   * similarity function.
+   * Creates a numeric multi-vector field. Vectors of a single multi-vector share the same dimension
+   * and similarity function.
    *
    * @param name field name
    * @param value multi-vector value

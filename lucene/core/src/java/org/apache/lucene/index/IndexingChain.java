@@ -1553,7 +1553,8 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setMultiVectors(boolean isMultiVector, MultiVectorSimilarityFunction.Aggregation multiVectorAggregate) {
+    void setMultiVectors(
+        boolean isMultiVector, MultiVectorSimilarityFunction.Aggregation multiVectorAggregate) {
       if (isMultiVector == false) {
         this.isMultiVector = isMultiVector;
         this.multiVectorAggregate = multiVectorAggregate;
@@ -1588,7 +1589,8 @@ final class IndexingChain implements Accountable {
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
       assertSame("isMultiVector", fi.isMultiVector(), this.isMultiVector);
-      assertSame("multi-vector aggregation", fi.getMultiVectorAggregate(), this.multiVectorAggregate);
+      assertSame(
+          "multi-vector aggregation", fi.getMultiVectorAggregate(), this.multiVectorAggregate);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);

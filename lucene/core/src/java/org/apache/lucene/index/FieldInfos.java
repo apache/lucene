@@ -19,10 +19,10 @@ package org.apache.lucene.index;
 import static org.apache.lucene.index.FieldInfo.verifySameDocValuesSkipIndex;
 import static org.apache.lucene.index.FieldInfo.verifySameDocValuesType;
 import static org.apache.lucene.index.FieldInfo.verifySameIndexOptions;
+import static org.apache.lucene.index.FieldInfo.verifySameMultiVectorOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameOmitNorms;
 import static org.apache.lucene.index.FieldInfo.verifySamePointsOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
-import static org.apache.lucene.index.FieldInfo.verifySameMultiVectorOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 
 import java.util.Arrays;
@@ -467,7 +467,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
                     fi.getVectorDimension(),
                     fi.getVectorEncoding(),
                     fi.getVectorSimilarityFunction()),
-                new FieldMultiVectorProperties(fi.isMultiVector(), fi.getMultiVectorSimilarityFunction()));
+                new FieldMultiVectorProperties(
+                    fi.isMultiVector(), fi.getMultiVectorSimilarityFunction()));
         this.fieldProperties.put(fieldName, fieldProperties);
       }
       return fieldProperties.number;

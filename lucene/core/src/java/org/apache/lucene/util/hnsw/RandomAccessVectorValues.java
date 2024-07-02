@@ -176,13 +176,15 @@ public interface RandomAccessVectorValues {
   }
 
   /**
-   * Creates a {@link RandomAccessVectorValues.Floats} from a list of {@link FloatMultiVectorValue}s.
+   * Creates a {@link RandomAccessVectorValues.Floats} from a list of {@link
+   * FloatMultiVectorValue}s.
    *
    * @param values the list of float multi-vectors
    * @param dim the dimension of the vectors that compose the multi-vector
    * @return a {@link RandomAccessVectorValues.Floats} instance
    */
-  static RandomAccessVectorValues.Floats fromFloatMultiVectors(List<FloatMultiVectorValue> values, int dim) {
+  static RandomAccessVectorValues.Floats fromFloatMultiVectors(
+      List<FloatMultiVectorValue> values, int dim) {
     return new RandomAccessVectorValues.Floats() {
       @Override
       public int size() {
@@ -219,7 +221,8 @@ public interface RandomAccessVectorValues {
    * @param dim the dimension of the vectors composing these multi-vectors
    * @return a {@link RandomAccessVectorValues.Bytes} instance
    */
-  static RandomAccessVectorValues.Bytes fromByteMultiVectors(List<ByteMultiVectorValue> values, int dim) {
+  static RandomAccessVectorValues.Bytes fromByteMultiVectors(
+      List<ByteMultiVectorValue> values, int dim) {
     return new RandomAccessVectorValues.Bytes() {
       @Override
       public int size() {

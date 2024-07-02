@@ -190,7 +190,12 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     writeMeta(
-        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField, fieldData.dataOffsets);
+        fieldData.fieldInfo,
+        maxDoc,
+        vectorDataOffset,
+        vectorDataLength,
+        fieldData.docsWithField,
+        fieldData.dataOffsets);
   }
 
   private void writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
@@ -269,16 +274,22 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     // write vector values
     long vectorDataOffset =
         switch (fieldData.fieldInfo.getVectorEncoding()) {
-          case BYTE -> (fieldData.isMultiVector) ?
-              writeSortedByteMultiVectors(fieldData, ordMap) :
-              writeSortedByteVectors(fieldData, ordMap);
-          case FLOAT32 -> (fieldData.isMultiVector) ?
-              writeSortedFloat32MultiVectors(fieldData, ordMap) :
-              writeSortedFloat32Vectors(fieldData, ordMap);
+          case BYTE -> (fieldData.isMultiVector)
+              ? writeSortedByteMultiVectors(fieldData, ordMap)
+              : writeSortedByteVectors(fieldData, ordMap);
+          case FLOAT32 -> (fieldData.isMultiVector)
+              ? writeSortedFloat32MultiVectors(fieldData, ordMap)
+              : writeSortedFloat32Vectors(fieldData, ordMap);
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField, fieldData.dataOffsets);
+    writeMeta(
+        fieldData.fieldInfo,
+        maxDoc,
+        vectorDataOffset,
+        vectorDataLength,
+        newDocsWithField,
+        fieldData.dataOffsets);
   }
 
   private long writeSortedFloat32Vectors(FieldWriter<?> fieldData, int[] ordMap)
@@ -326,7 +337,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     return vectorDataOffset;
   }
 
-  private long writeSortedByteMultiVectors(FieldWriter<?> fieldData, int[] ordMap) throws IOException {
+  private long writeSortedByteMultiVectors(FieldWriter<?> fieldData, int[] ordMap)
+      throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     fieldData.dataOffsets = new long[fieldData.vectors.size() + 1];
     int newOrd = 0;
@@ -346,9 +358,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     // the vectors directly to the new segment.
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     // No need to use temporary file as we don't have to re-open for reading
-    DocsAndOffsets writeState = (fieldInfo.hasMultiVectorValues()) ?
-        writeVectorData(fieldInfo, mergeState, vectorData) :
-        writeMultiVectorData(fieldInfo, mergeState, vectorData);
+    DocsAndOffsets writeState =
+        (fieldInfo.hasMultiVectorValues())
+            ? writeVectorData(fieldInfo, mergeState, vectorData)
+            : writeMultiVectorData(fieldInfo, mergeState, vectorData);
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(
         fieldInfo,
@@ -370,9 +383,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      DocsAndOffsets writeState = (fieldInfo.hasMultiVectorValues()) ?
-          writeVectorData(fieldInfo, mergeState, tempVectorData) :
-          writeMultiVectorData(fieldInfo, mergeState, tempVectorData);
+      DocsAndOffsets writeState =
+          (fieldInfo.hasMultiVectorValues())
+              ? writeVectorData(fieldInfo, mergeState, tempVectorData)
+              : writeMultiVectorData(fieldInfo, mergeState, tempVectorData);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -405,9 +419,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
       final IndexInput finalVectorDataInput = vectorDataInput;
       final RandomVectorScorerSupplier randomVectorScorerSupplier =
-          (fieldInfo.hasMultiVectorValues()) ?
-              getRandomMultiVectorScorerSupplier(fieldInfo, writeState, finalVectorDataInput) :
-              getRandomVectorScorerSupplier(fieldInfo, writeState, finalVectorDataInput);
+          (fieldInfo.hasMultiVectorValues())
+              ? getRandomMultiVectorScorerSupplier(fieldInfo, writeState, finalVectorDataInput)
+              : getRandomVectorScorerSupplier(fieldInfo, writeState, finalVectorDataInput);
       return new FlatCloseableRandomVectorScorerSupplier(
           () -> {
             IOUtils.close(finalVectorDataInput);
@@ -424,9 +438,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  private RandomVectorScorerSupplier getRandomVectorScorerSupplier(FieldInfo fieldInfo,
-                                                                   DocsAndOffsets docsAndOffsets,
-                                                                   IndexInput dataInput) throws IOException {
+  private RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+      FieldInfo fieldInfo, DocsAndOffsets docsAndOffsets, IndexInput dataInput) throws IOException {
     RandomVectorScorerSupplier randomVectorScorerSupplier =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> vectorsScorer.getRandomVectorScorerSupplier(
@@ -452,10 +465,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   }
 
   private RandomVectorScorerSupplier getRandomMultiVectorScorerSupplier(
-      FieldInfo fieldInfo,
-      DocsAndOffsets docsAndOffsets,
-      IndexInput dataInput)
-      throws IOException {
+      FieldInfo fieldInfo, DocsAndOffsets docsAndOffsets, IndexInput dataInput) throws IOException {
     assert docsAndOffsets.dataOffsets != null : "multi-vector writes require data offsets";
     LongValues dataOffsets =
         new LongValues() {
@@ -510,7 +520,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
 
     // write multi-vector metadata
-    meta.writeByte(field.hasMultiVectorValues() ? (byte) 1 : (byte) 0);  // is multiVector?
+    meta.writeByte(field.hasMultiVectorValues() ? (byte) 1 : (byte) 0); // is multiVector?
     if (field.hasMultiVectorValues()) {
       meta.writeInt(field.getMultiVectorSimilarityFunction().aggregation.ordinal());
       MultiVectorDataOffsetsReaderConfiguration.writeStoredMeta(
@@ -558,8 +568,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     return docsWithField;
   }
 
-  private DocsAndOffsets writeVectorData(FieldInfo fieldInfo, MergeState mergeState, IndexOutput dataOut)
-      throws IOException {
+  private DocsAndOffsets writeVectorData(
+      FieldInfo fieldInfo, MergeState mergeState, IndexOutput dataOut) throws IOException {
     DocsWithFieldSet docsWithField =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> writeByteVectorData(
@@ -572,8 +582,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     return new DocsAndOffsets(docsWithField, null);
   }
 
-  private DocsAndOffsets writeMultiVectorData(FieldInfo fieldInfo, MergeState mergeState, IndexOutput dataOut)
-      throws IOException {
+  private DocsAndOffsets writeMultiVectorData(
+      FieldInfo fieldInfo, MergeState mergeState, IndexOutput dataOut) throws IOException {
     DocsAndOffsets docsAndOffsets =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> writeByteMultiVectorData(
@@ -600,8 +610,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     long[] dataOffsets = new long[byteVectorValues.size() + 1];
     int ordinal = 0;
     for (int docV = byteVectorValues.nextDoc();
-         docV != NO_MORE_DOCS;
-         docV = byteVectorValues.nextDoc()) {
+        docV != NO_MORE_DOCS;
+        docV = byteVectorValues.nextDoc()) {
       // write vector
       byte[] binaryValue = byteVectorValues.vectorValue();
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
@@ -622,8 +632,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     long[] dataOffsets = new long[floatVectorValues.size() + 1];
     int ordinal = 0;
     for (int docV = floatVectorValues.nextDoc();
-         docV != NO_MORE_DOCS;
-         docV = floatVectorValues.nextDoc()) {
+        docV != NO_MORE_DOCS;
+        docV = floatVectorValues.nextDoc()) {
       float[] value = floatVectorValues.vectorValue();
       final int valueByteLength = value.length * VectorEncoding.FLOAT32.byteSize;
       if (buffer == null || buffer.capacity() < valueByteLength) {
@@ -684,7 +694,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
 
     @SuppressWarnings("unchecked")
-    static FieldWriter<?> createMultiVectorWriter(FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) {
+    static FieldWriter<?> createMultiVectorWriter(
+        FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) {
       if (fieldInfo.hasMultiVectorValues() == false) {
         throw new IllegalArgumentException(
             "Cannot create MultiVector writer for a field without multi-vector values");
@@ -719,7 +730,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     @Override
     public void addValue(int docID, T vectorValue) throws IOException {
       if (docID == lastDocID) {
-        // TODO: can be implemented for multi-vector fields, by merging all vectors into a single multi-vector
+        // TODO: can be implemented for multi-vector fields, by merging all vectors into a single
+        // multi-vector
         throw new IllegalArgumentException(
             "VectorValuesField \""
                 + fieldInfo.name
@@ -751,7 +763,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           }
         }
       } else {
-        valueSize = (long) vectors.size() * fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
+        valueSize =
+            (long) vectors.size()
+                * fieldInfo.getVectorDimension()
+                * fieldInfo.getVectorEncoding().byteSize;
       }
       if (dataOffsets != null) {
         size +=

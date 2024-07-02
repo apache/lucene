@@ -43,8 +43,8 @@ import org.apache.lucene.store.IndexOutput;
  *       note that only in sparse case
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
- *   <li>DataOffsets for variable length multi-vector values.
- *       Encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, present only for multi-vectors
+ *   <li>DataOffsets for variable length multi-vector values. Encoded by {@link
+ *       org.apache.lucene.util.packed.DirectMonotonicWriter}, present only for multi-vectors
  * </ul>
  *
  * <h2>.vemf (vector metadata) file</h2>
@@ -65,8 +65,8 @@ import org.apache.lucene.store.IndexOutput;
  *       that only in sparse case
  *   <li><b>[byte]</b> set to 1 if field has multi-vector values, 0 otherwise
  *   <li><b>[int]</b> multi-vector aggregation function ordinal, present only for multi-vectors
- *   <li>DataOffsets for variable length multi-vector values.
- *       Encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, present only for multi-vectors
+ *   <li>DataOffsets for variable length multi-vector values. Encoded by {@link
+ *       org.apache.lucene.util.packed.DirectMonotonicWriter}, present only for multi-vectors
  * </ul>
  *
  * @lucene.experimental
