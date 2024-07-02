@@ -85,12 +85,6 @@ public final class SlowCodecReaderWrapper {
         }
 
         @Override
-        public KnnVectorsReader getTensorReader() {
-          reader.ensureOpen();
-          return readerToVectorReader(reader);
-        }
-
-        @Override
         public FieldsProducer getPostingsReader() {
           reader.ensureOpen();
           try {

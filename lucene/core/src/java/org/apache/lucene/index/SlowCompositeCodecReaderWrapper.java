@@ -812,12 +812,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
   @Override
   public KnnVectorsReader getVectorReader() {
-    return new SlowCompositeKnnVectorsReaderWrapper(codecReaders, docStarts, false);
-  }
-
-  @Override
-  public KnnVectorsReader getTensorReader() {
-    return new SlowCompositeKnnVectorsReaderWrapper(codecReaders, docStarts, true);
+    return new SlowCompositeKnnVectorsReaderWrapper(codecReaders, docStarts);
   }
 
   private static class SlowCompositeKnnVectorsReaderWrapper extends KnnVectorsReader {
@@ -826,20 +821,12 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     private final KnnVectorsReader[] readers;
     private final int[] docStarts;
 
-    SlowCompositeKnnVectorsReaderWrapper(
-        CodecReader[] codecReaders, int[] docStarts, boolean isTensor) {
+    SlowCompositeKnnVectorsReaderWrapper(CodecReader[] codecReaders, int[] docStarts) {
       this.codecReaders = codecReaders;
-      if (isTensor) {
-        this.readers =
-            Arrays.stream(codecReaders)
-                .map(CodecReader::getTensorReader)
-                .toArray(KnnVectorsReader[]::new);
-      } else {
-        this.readers =
-            Arrays.stream(codecReaders)
-                .map(CodecReader::getVectorReader)
-                .toArray(KnnVectorsReader[]::new);
-      }
+      this.readers =
+          Arrays.stream(codecReaders)
+              .map(CodecReader::getVectorReader)
+              .toArray(KnnVectorsReader[]::new);
       this.docStarts = docStarts;
     }
 

@@ -503,7 +503,9 @@ public final class SortingCodecReader extends FilterCodecReader {
     };
   }
 
-  private KnnVectorsReader getSortingVectorReader(KnnVectorsReader delegate) {
+  @Override
+  public KnnVectorsReader getVectorReader() {
+    KnnVectorsReader delegate = in.getVectorReader();
     return new KnnVectorsReader() {
       @Override
       public void checkIntegrity() throws IOException {
@@ -535,16 +537,6 @@ public final class SortingCodecReader extends FilterCodecReader {
         delegate.close();
       }
     };
-  }
-
-  @Override
-  public KnnVectorsReader getVectorReader() {
-    return getSortingVectorReader(in.getVectorReader());
-  }
-
-  @Override
-  public KnnVectorsReader getTensorReader() {
-    return getSortingVectorReader(in.getTensorReader());
   }
 
   @Override
