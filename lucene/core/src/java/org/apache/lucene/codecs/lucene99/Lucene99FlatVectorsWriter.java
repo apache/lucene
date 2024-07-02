@@ -604,7 +604,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   /* Write Multi-Vector fields for merging */
   private record DocsAndOffsets(DocsWithFieldSet docsWithField, long[] dataOffsets) {
     DocsAndOffsets {
-      assert dataOffsets == null || dataOffsets.length == docsWithField.cardinality() + 1
+      assert dataOffsets == null || dataOffsets.length == docsWithField.cardinality() + 1;
     }
   }
 
