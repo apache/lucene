@@ -42,9 +42,10 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
       float[] queryVector,
       Query childFilter,
       int k,
+      int efSearch,
       BitSetProducer parentBitSet) {
     return new DiversifyingChildrenFloatKnnVectorQuery(
-        fieldName, queryVector, childFilter, k, parentBitSet);
+        fieldName, queryVector, childFilter, k, efSearch, parentBitSet);
   }
 
   public void testVectorEncodingMismatch() throws IOException {

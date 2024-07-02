@@ -42,9 +42,10 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
       float[] queryVector,
       Query childFilter,
       int k,
+      int efSearch,
       BitSetProducer parentBitSet) {
     return new DiversifyingChildrenByteKnnVectorQuery(
-        fieldName, fromFloat(queryVector), childFilter, k, parentBitSet);
+        fieldName, fromFloat(queryVector), childFilter, k, efSearch, parentBitSet);
   }
 
   @Override

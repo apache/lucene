@@ -44,8 +44,9 @@ import org.apache.lucene.util.VectorUtil;
 
 public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnFloatVectorQuery(field, query, k, queryFilter);
+  AbstractKnnVectorQuery getKnnVectorQuery(
+      String field, float[] query, int k, int efSearch, Query queryFilter) {
+    return new KnnFloatVectorQuery(field, query, k, efSearch, queryFilter);
   }
 
   @Override
