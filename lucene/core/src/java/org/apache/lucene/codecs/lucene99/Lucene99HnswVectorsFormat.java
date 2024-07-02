@@ -82,7 +82,8 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
  *             the level 0th delta encoded nodes' ordinals.
  *       </ul>
- *   <li><b>[int32]</b> tensor aggregation function ordinal (only for tensor fields)
+ *   <li><b>[byte]</b> set to 1 if field has multi-vector values, 0 otherwise
+ *   <li><b>[int]</b> multi-vector aggregation function ordinal, present only for multi-vectors
  * </ul>
  *
  * @lucene.experimental

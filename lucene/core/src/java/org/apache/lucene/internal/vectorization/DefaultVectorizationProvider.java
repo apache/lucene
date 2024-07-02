@@ -17,7 +17,7 @@
 
 package org.apache.lucene.internal.vectorization;
 
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.DefaultFlatMultiVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 
 /** Default provider returning scalar implementations. */
@@ -36,6 +36,6 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
 
   @Override
   public FlatVectorsScorer getLucene99FlatVectorsScorer() {
-    return DefaultFlatVectorScorer.INSTANCE;
+    return DefaultFlatMultiVectorScorer.INSTANCE;
   }
 }

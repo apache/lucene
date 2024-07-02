@@ -28,8 +28,16 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -194,7 +202,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   public static VectorEncoding readVectorEncoding(DataInput input) throws IOException {
     int encodingId = input.readInt();
     if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
-      throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
+      throw new CorruptIndexException("Invalid vector vectorEncoding id: " + encodingId, input);
     }
     return VectorEncoding.values()[encodingId];
   }
@@ -245,10 +253,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
-        || fieldEntry.encoding != VectorEncoding.FLOAT32) {
+        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return;
     }
-    if (fieldEntry.tensorSimilarityFunction != null && target.length % fieldEntry.dimension != 0) {
+    if (fieldEntry.isMultiVector && target.length % fieldEntry.dimension != 0) {
       return;
     }
     final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
@@ -279,10 +287,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
-        || fieldEntry.encoding != VectorEncoding.BYTE) {
+        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return;
     }
-    if (fieldEntry.tensorSimilarityFunction != null && target.length % fieldEntry.dimension != 0) {
+    if (fieldEntry.isMultiVector && target.length % fieldEntry.dimension != 0) {
       return;
     }
     final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
@@ -347,8 +355,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private record FieldEntry(
       VectorSimilarityFunction vectorSimilarityFunction,
-      MultiVectorSimilarityFunction tensorSimilarityFunction,
-      VectorEncoding encoding,
+      boolean isMultiVector,
+      MultiVectorSimilarityFunction multiVectorSimilarityFunction,
+      VectorEncoding vectorEncoding,
       long vectorIndexOffset,
       long vectorIndexLength,
       int M,
@@ -405,26 +414,32 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         offsetsMeta = null;
         offsetsLength = 0;
       }
-      // Tensor Similarity Function
-      MultiVectorSimilarityFunction tensorSimilarityFunction = null;
-      if (fieldInfo.hasTensorValues()) {
-        int aggFnOrd = input.readInt();
-        tensorSimilarityFunction =
-            new MultiVectorSimilarityFunction(
-                vectorSimilarityFunction, MultiVectorSimilarityFunction.Aggregation.values()[aggFnOrd]);
-        if (tensorSimilarityFunction.equals(fieldInfo.getTensorSimilarityFunction()) == false) {
-          throw new IllegalStateException(
-              "Inconsistent tensor similarity function for field=\""
-                  + fieldInfo.name
-                  + "\"; "
-                  + tensorSimilarityFunction
-                  + " != "
-                  + fieldInfo.getTensorSimilarityFunction());
+
+      // Multi-Vector metadata
+      MultiVectorSimilarityFunction multiVectorSimilarityFunction = null;
+      final var isMultiVector = input.readByte() == 1;
+      if (isMultiVector) {
+        int agg = input.readInt();
+        if (agg < 0 || agg >= MultiVectorSimilarityFunction.Aggregation.values().length) {
+          throw new CorruptIndexException("Invalid multi-vector aggregation function, id: " + agg, input);
         }
+        multiVectorSimilarityFunction =
+            new MultiVectorSimilarityFunction(vectorSimilarityFunction, MultiVectorSimilarityFunction.Aggregation.values()[agg]);
       }
+      if (isMultiVector != fieldInfo.hasTensorValues()
+          || multiVectorSimilarityFunction.equals(fieldInfo.getTensorSimilarityFunction()) == false) {
+        throw new IllegalStateException("Inconsistent state for field=\"" + fieldInfo.name + "\" "
+            + "fieldInfo.isMultiVector=" + fieldInfo.hasTensorValues()
+            + ", fieldInfo.multiVectorSimilarityFunction=" + fieldInfo.getTensorSimilarityFunction()
+            + "; does not match metadata in segment: "
+            + "isMultiVector=" + isMultiVector
+            + ", multiVectorSimilarityFunction=" + multiVectorSimilarityFunction);
+      }
+
       return new FieldEntry(
           vectorSimilarityFunction,
-          tensorSimilarityFunction,
+          isMultiVector,
+          multiVectorSimilarityFunction,
           encoding,
           vectorIndexOffset,
           vectorIndexLength,
