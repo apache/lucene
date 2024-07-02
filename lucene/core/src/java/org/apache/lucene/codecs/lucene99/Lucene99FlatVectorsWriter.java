@@ -230,7 +230,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       vectorData.writeBytes(buffer.array(), packedValue.length * Float.BYTES);
       buffer.clear();
     }
-    assert ordinal == fieldData.vectors.size();
+    assert ordinal == fieldData.vectors.size()
+        : "ordinal=" + ordinal + "!=" + "fieldData.vectors.size()=" + fieldData.vectors.size();
     fieldData.dataOffsets[ordinal] = vectorData.getFilePointer();
   }
 
@@ -242,7 +243,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       fieldData.dataOffsets[ordinal++] = vectorData.getFilePointer();
       vectorData.writeBytes(packedValue, packedValue.length);
     }
-    assert ordinal == fieldData.vectors.size();
+    assert ordinal == fieldData.vectors.size()
+        : "ordinal=" + ordinal + "!=" + "fieldData.vectors.size()=" + fieldData.vectors.size();
     fieldData.dataOffsets[ordinal] = vectorData.getFilePointer();
   }
 
@@ -332,7 +334,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       vectorData.writeBytes(buffer.array(), buffer.array().length * Float.BYTES);
       buffer.clear();
     }
-    assert newOrd == fieldData.vectors.size();
+    assert newOrd == fieldData.vectors.size()
+        : "ordinal =" + newOrd + ", expected =" + fieldData.vectors.size();
     fieldData.dataOffsets[newOrd] = vectorData.getFilePointer();
     return vectorDataOffset;
   }
@@ -347,7 +350,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       fieldData.dataOffsets[newOrd++] = vectorData.getFilePointer();
       vectorData.writeBytes(packedValue, packedValue.length);
     }
-    assert newOrd == fieldData.vectors.size();
+    assert newOrd == fieldData.vectors.size()
+        : "ordinal =" + newOrd + ", expected =" + fieldData.vectors.size();
     fieldData.dataOffsets[newOrd] = vectorData.getFilePointer();
     return vectorDataOffset;
   }
@@ -540,7 +544,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         docV = byteVectorValues.nextDoc()) {
       // write vector
       byte[] binaryValue = byteVectorValues.vectorValue();
-      assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
+      assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize
+          : "vectorValue returned by ByteVectorValues is inconsistent with vector dimension";
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);
     }
@@ -599,7 +604,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   /* Write Multi-Vector fields for merging */
   private record DocsAndOffsets(DocsWithFieldSet docsWithField, long[] dataOffsets) {
     DocsAndOffsets {
-      assert dataOffsets == null || dataOffsets.length == docsWithField.cardinality() + 1;
+      assert dataOffsets == null || dataOffsets.length == docsWithField.cardinality() + 1
     }
   }
 
@@ -619,7 +624,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);
     }
-    assert ordinal == byteVectorValues.size();
+    assert ordinal == byteVectorValues.size()
+        : "ordinal=" + ordinal + "!=" + "byteVectorValues.size()=" + byteVectorValues.size();
     dataOffsets[ordinal] = output.getFilePointer();
     return new DocsAndOffsets(docsWithField, dataOffsets);
   }
@@ -645,7 +651,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       output.writeBytes(buffer.array(), valueByteLength);
       docsWithField.add(docV);
     }
-    assert ordinal == floatVectorValues.size();
+    assert ordinal == floatVectorValues.size()
+        : "ordinal=" + ordinal + "!=" + "floatVectorValues.size()=" + floatVectorValues.size();
     dataOffsets[ordinal] = output.getFilePointer();
     return new DocsAndOffsets(docsWithField, dataOffsets);
   }
