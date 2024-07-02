@@ -18,8 +18,18 @@
 package org.apache.lucene.replicator.nrt;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import org.apache.lucene.index.IndexCommit;
+import org.apache.lucene.index.IndexDeletionPolicy;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.FileDeleter;
 
@@ -27,9 +37,20 @@ class ReplicaFileDeleter {
   private final FileDeleter fileDeleter;
   private final Directory dir;
   private final Node node;
+  private final IndexDeletionPolicy policy;
+  /* Holds all commits (segments_N) currently in the index.
+   * This will have just 1 commit if you are using the
+   * default delete policy (KeepOnlyLastCommitDeletionPolicy).
+   * Other policies may leave commit points live for longer
+   * in which case this list would be longer than 1: */
+  private final List<IndexCommit> commits = new ArrayList<>();
+  /* Commits that the IndexDeletionPolicy have decided to delete: */
+  private List<CommitPoint> commitsToDelete = new ArrayList<>();
 
-  public ReplicaFileDeleter(Node node, Directory dir) throws IOException {
+  public ReplicaFileDeleter(Node node, Directory dir, IndexDeletionPolicy policy)
+      throws IOException {
     this.dir = dir;
+    this.policy = policy;
     this.node = node;
     this.fileDeleter =
         new FileDeleter(
@@ -39,6 +60,41 @@ class ReplicaFileDeleter {
                 node.message(s);
               }
             }));
+
+    String[] files = dir.listAll();
+    Matcher m = IndexFileNames.CODEC_FILE_PATTERN.matcher("");
+    for (String fileName : files) {
+      m.reset(fileName);
+      if (!fileName.endsWith(IndexWriter.WRITE_LOCK_NAME)
+          && (m.matches()
+              || fileName.startsWith(IndexFileNames.SEGMENTS)
+              || fileName.startsWith(IndexFileNames.PENDING_SEGMENTS))) {
+        // Add this file to refCounts with initial count 0:
+        fileDeleter.initRefCount(fileName);
+        if (fileName.startsWith(IndexFileNames.SEGMENTS)) {
+
+          // This is a commit (segments or segments_N), and
+          // it's valid (<= the max gen).  Load it, then
+          // incref all files it refers to:
+          node.message("init: load commit \"" + fileName + "\"");
+          SegmentInfos sis = SegmentInfos.readCommit(dir, fileName);
+          for (String sfileName : sis.files(true)) {
+            fileDeleter.incRef(sfileName);
+          }
+
+          CommitPoint commitPoint = new CommitPoint(commitsToDelete, dir, sis);
+          commits.add(commitPoint);
+        }
+      }
+    }
+    this.policy.onInit(commits);
+  }
+
+  public void checkpoint(SegmentInfos sis) throws IOException {
+    commits.add(new CommitPoint(commitsToDelete, dir, sis));
+    policy.onCommit(commits);
+    System.out.println("commits:"+commits);
+    System.out.println("commitsToDelete:"+commitsToDelete);
   }
 
   public synchronized void incRef(Collection<String> fileNames) throws IOException {
@@ -87,5 +143,72 @@ class ReplicaFileDeleter {
       }
     }
     fileDeleter.deleteFilesIfNoRef(toDelete);
+  }
+
+  private static final class CommitPoint extends IndexCommit {
+
+    private Collection<CommitPoint> commitsToDelete;
+    private Directory directory;
+    private String segmentsFileName;
+    private boolean deleted;
+    private Collection<String> files;
+    long generation;
+    final Map<String, String> userData;
+    private final int segmentCount;
+
+    public CommitPoint(
+        Collection<CommitPoint> commitsToDelete, Directory directory, SegmentInfos segmentInfos)
+        throws IOException {
+      this.commitsToDelete = commitsToDelete;
+      this.directory = directory;
+      userData = segmentInfos.getUserData();
+      segmentsFileName = segmentInfos.getSegmentsFileName();
+      generation = segmentInfos.getGeneration();
+      files = Collections.unmodifiableCollection(segmentInfos.files(true));
+      segmentCount = segmentInfos.size();
+    }
+
+    @Override
+    public String getSegmentsFileName() {
+      return segmentsFileName;
+    }
+
+    @Override
+    public Collection<String> getFileNames() throws IOException {
+      return files;
+    }
+
+    @Override
+    public Directory getDirectory() {
+      return directory;
+    }
+
+    @Override
+    public void delete() {
+      if (!deleted) {
+        deleted = true;
+        commitsToDelete.add(this);
+      }
+    }
+
+    @Override
+    public boolean isDeleted() {
+      return deleted;
+    }
+
+    @Override
+    public int getSegmentCount() {
+      return segmentCount;
+    }
+
+    @Override
+    public long getGeneration() {
+      return generation;
+    }
+
+    @Override
+    public Map<String, String> getUserData() throws IOException {
+      return userData;
+    }
   }
 }
