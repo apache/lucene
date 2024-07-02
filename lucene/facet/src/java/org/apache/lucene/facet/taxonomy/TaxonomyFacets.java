@@ -662,18 +662,16 @@ abstract class TaxonomyFacets extends Facets {
             intermediateResults.put(dim, topChildrenForPath);
             dimValue = topChildrenForPath.pathValue();
           }
-          if (valueComparator.compare(dimValue, 0) != 0) {
-            if (pq.size() < topNDims) {
-              pq.add(new DimValue(dim, dimOrd, dimValue));
-            } else {
-              if (valueComparator.compare(dimValue, pq.top().value) > 0
-                  || (valueComparator.compare(dimValue, pq.top().value) == 0
-                      && dim.compareTo(pq.top().dim) < 0)) {
-                DimValue bottomDim = pq.top();
-                bottomDim.dim = dim;
-                bottomDim.value = dimValue;
-                pq.updateTop();
-              }
+          if (pq.size() < topNDims) {
+            pq.add(new DimValue(dim, dimOrd, dimValue));
+          } else {
+            if (valueComparator.compare(dimValue, pq.top().value) > 0
+                || (valueComparator.compare(dimValue, pq.top().value) == 0
+                    && dim.compareTo(pq.top().dim) < 0)) {
+              DimValue bottomDim = pq.top();
+              bottomDim.dim = dim;
+              bottomDim.value = dimValue;
+              pq.updateTop();
             }
           }
         }
