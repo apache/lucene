@@ -193,7 +193,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || (fi.hasVectorValues() == false && fi.hasMultiVectorValues() == false)) {
-      // The field does not exist or does not index vectors or tensors
+      // The field does not exist or does not index vectors
       return NO_RESULTS;
     }
 

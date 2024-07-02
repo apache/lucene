@@ -243,7 +243,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             false,
-            MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
+            MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
             true,
             false);
     for (DocValuesFieldUpdates update : updates) {

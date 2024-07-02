@@ -220,7 +220,7 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 false,
-                MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
+                MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
                 isSoftDeletesField,
                 false);
       } catch (IllegalStateException e) {
