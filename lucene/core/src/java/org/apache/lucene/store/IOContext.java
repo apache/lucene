@@ -55,7 +55,12 @@ public record IOContext(
    */
   public static final IOContext DEFAULT = new IOContext(Constants.DEFAULT_READADVICE);
 
-  /** A default context for reads with {@link ReadAdvice#SEQUENTIAL}. */
+  /**
+   * A default context for reads with {@link ReadAdvice#SEQUENTIAL}.
+   *
+   * <p>This context should only be used when the read operations will be performed in the same
+   * thread as the thread that opens the underlying storage.
+   */
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
 
   @SuppressWarnings("incomplete-switch")
