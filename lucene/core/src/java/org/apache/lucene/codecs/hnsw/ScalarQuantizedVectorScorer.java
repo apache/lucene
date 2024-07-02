@@ -125,28 +125,32 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       implements RandomVectorScorerSupplier {
 
     private final RandomAccessQuantizedByteVectorValues values;
+    private final RandomAccessQuantizedByteVectorValues values1;
     private final ScalarQuantizedVectorSimilarity similarity;
     private final VectorSimilarityFunction vectorSimilarityFunction;
 
     public ScalarQuantizedRandomVectorScorerSupplier(
         VectorSimilarityFunction similarityFunction,
         ScalarQuantizer scalarQuantizer,
-        RandomAccessQuantizedByteVectorValues values) {
-      this.similarity =
+        RandomAccessQuantizedByteVectorValues values)
+        throws IOException {
+      this(
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
               similarityFunction,
               scalarQuantizer.getConstantMultiplier(),
-              scalarQuantizer.getBits());
-      this.values = values;
-      this.vectorSimilarityFunction = similarityFunction;
+              scalarQuantizer.getBits()),
+          similarityFunction,
+          values);
     }
 
     private ScalarQuantizedRandomVectorScorerSupplier(
         ScalarQuantizedVectorSimilarity similarity,
         VectorSimilarityFunction vectorSimilarityFunction,
-        RandomAccessQuantizedByteVectorValues values) {
+        RandomAccessQuantizedByteVectorValues values)
+        throws IOException {
       this.similarity = similarity;
       this.values = values;
+      this.values1 = values.copy();
       this.vectorSimilarityFunction = vectorSimilarityFunction;
     }
 
@@ -163,6 +167,15 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           return similarity.score(queryVector, queryOffset, nodeVector, nodeOffset);
         }
       };
+    }
+
+    @Override
+    public float score(int firstOrd, int secondOrd) throws IOException {
+      return similarity.score(
+          values.vectorValue(firstOrd),
+          values.getScoreCorrectionConstant(firstOrd),
+          values1.vectorValue(secondOrd),
+          values1.getScoreCorrectionConstant(secondOrd));
     }
 
     @Override

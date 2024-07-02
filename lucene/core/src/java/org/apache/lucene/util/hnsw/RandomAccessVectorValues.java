@@ -26,6 +26,9 @@ import org.apache.lucene.util.Bits;
  * Provides random access to vectors by dense ordinal. This interface is used by HNSW-based
  * implementations of KNN search.
  *
+ * <p>Not thread-safe, use {@link #copy()} to return an instance suitable for sharing with another
+ * thread. Each thread should have its own copy.
+ *
  * @lucene.experimental
  */
 public interface RandomAccessVectorValues {
@@ -39,6 +42,9 @@ public interface RandomAccessVectorValues {
   /**
    * Creates a new copy of this {@link RandomAccessVectorValues}. This is helpful when you need to
    * access different values at once, to avoid overwriting the underlying vector returned.
+   *
+   * <p>Additionally, users should always call copy before handing off a vector values to another
+   * thread.
    */
   RandomAccessVectorValues copy() throws IOException;
 
