@@ -439,7 +439,7 @@ public class TieredMergePolicy extends MergePolicy {
     // allowedSegCount may occasionally be less than segsPerTier
     // if segment sizes are below the floor size
     allowedSegCount = Math.max(allowedSegCount, Math.max(segsPerTier, targetSearchConcurrency));
-    int allowedDocCount = getMaxAllowedDocs(totalMaxDoc - totalDelDocs);
+    int allowedDocCount = getMaxAllowedDocs(totalMaxDoc, totalDelDocs);
 
     if (verbose(mergeContext) && tooBigCount > 0) {
       message(
@@ -993,14 +993,14 @@ public class TieredMergePolicy extends MergePolicy {
         Integer.MAX_VALUE,
         Integer.MAX_VALUE,
         0,
-        getMaxAllowedDocs(infos.totalMaxDoc() - totalDelCount),
+        getMaxAllowedDocs(infos.totalMaxDoc(), totalDelCount),
         MERGE_TYPE.FORCE_MERGE_DELETES,
         mergeContext,
         false);
   }
 
-  int getMaxAllowedDocs(int totalDocCount) {
-    return Math.ceilDiv(totalDocCount, targetSearchConcurrency);
+  int getMaxAllowedDocs(int totalMaxDoc, int totalDelDocs) {
+    return Math.ceilDiv(totalMaxDoc - totalDelDocs, targetSearchConcurrency);
   }
 
   private long floorSize(long bytes) {

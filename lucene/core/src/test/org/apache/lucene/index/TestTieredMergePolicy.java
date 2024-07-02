@@ -129,7 +129,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // At least the
     //  2 smallest segments should be mergeable.
     // should be 2 segments to merge
-    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc() - totalDelCount);
+    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc(), totalDelCount);
     List<Integer> segmentDocs =
         infos.asList().stream()
             .map(info -> info.info.maxDoc() - info.getDelCount())
