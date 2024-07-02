@@ -501,11 +501,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       memoryOffsetsWriter.finish();
       meta.writeLong(vectorIndex.getFilePointer() - start);
     }
-    // write multi-vector metadata
-    meta.writeByte(field.hasTensorValues() ? (byte) 1 : (byte) 0);  // is multiVector?
-    if (field.hasTensorValues()) {
-      meta.writeInt(field.getTensorSimilarityFunction().aggregation.ordinal());
-    }
   }
 
   private HnswGraphMerger createGraphMerger(
