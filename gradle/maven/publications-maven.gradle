@@ -49,7 +49,7 @@ configure(rootProject.ext.mavenProjects) { Project project ->
 
     // This moves pom metadata configuration after all the scripts of all projects
     // have been evaluated. This is required because we set artifact groups
-    // and archivesBaseName in other scripts and some of the properties below don't
+    // and archivesName in other scripts and some of the properties below don't
     // accept lazy property providers (so everything must be in its final form).
     gradle.projectsEvaluated {
       publishing {
@@ -57,22 +57,10 @@ configure(rootProject.ext.mavenProjects) { Project project ->
           configure(publication) {
             from components.java
             groupId = project.group
-            artifactId = project.archivesBaseName
+            artifactId = project.base.archivesName.get()
 
             artifact sourcesJar
             artifact javadocJar
-
-            // LUCENE-9561:
-            // Remove dependencyManagement section created by a combination of
-            // Palantir and the publishing plugin.
-            //
-            // https://github.com/palantir/gradle-consistent-versions/issues/550
-            pom({
-              withXml {
-                def dm = asNode().dependencyManagement
-                if (dm) dm.replaceNode {}
-              }
-            })
           }
         }
       }

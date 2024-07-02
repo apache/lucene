@@ -61,6 +61,13 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
   private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =
       TestSecrets.getIndexPackageAccess();
 
+  /**
+   * Override and return {@code false} if the format does not support setting doc values skip index.
+   */
+  protected boolean supportDocValuesSkipIndex() {
+    return true;
+  }
+
   /** Test field infos read/write with a single field */
   public void testOneField() throws Exception {
     Directory dir = newDirectory();
@@ -367,7 +374,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
           || current == DocValuesType.SORTED_NUMERIC
           || current == DocValuesType.SORTED
           || current == DocValuesType.SORTED_SET) {
-        type.setDocValuesSkipIndex(random().nextBoolean());
+        type.setDocValuesSkipIndex(supportDocValuesSkipIndex() && random().nextBoolean());
       }
     }
 

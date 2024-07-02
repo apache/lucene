@@ -23,7 +23,7 @@ configure(project(":lucene:expressions")) {
   }
 
   dependencies {
-    antlr "org.antlr:antlr4"
+    antlr deps.antlr.core
   }
 
   task generateAntlrInternal() {
