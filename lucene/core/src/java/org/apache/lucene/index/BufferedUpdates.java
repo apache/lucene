@@ -61,6 +61,7 @@ class BufferedUpdates implements Accountable {
   final AtomicInteger numFieldUpdates = new AtomicInteger();
 
   final DeletedTerms deleteTerms = new DeletedTerms();
+  final DeletedTerms deleteUniqueTerms = new DeletedTerms();
   final Map<Query, Integer> deleteQueries = new HashMap<>();
 
   final Map<String, FieldUpdatesBuffer> fieldUpdates = new HashMap<>();
@@ -85,6 +86,7 @@ class BufferedUpdates implements Accountable {
     if (VERBOSE_DELETES) {
       return ("gen=" + gen)
           + (", deleteTerms=" + deleteTerms)
+          + (", deleteUniqueTerms=" + deleteUniqueTerms)
           + (", deleteQueries=" + deleteQueries)
           + (", fieldUpdates=" + fieldUpdates)
           + (", bytesUsed=" + bytesUsed);
@@ -92,6 +94,9 @@ class BufferedUpdates implements Accountable {
       String s = "gen=" + gen;
       if (!deleteTerms.isEmpty()) {
         s += " " + deleteTerms.size() + " unique deleted terms ";
+      }
+      if (!deleteUniqueTerms.isEmpty()) {
+        s += " " + deleteUniqueTerms.size() + " unique deleted unique terms ";
       }
       if (deleteQueries.size() != 0) {
         s += " " + deleteQueries.size() + " deleted queries";
@@ -131,6 +136,22 @@ class BufferedUpdates implements Accountable {
     deleteTerms.put(term, docIDUpto);
   }
 
+  public void addUniqueTerm(Term term, int docIDUpto) {
+    int current = deleteUniqueTerms.get(term);
+    if (current != -1 && docIDUpto < current) {
+      // Only record the new number if it's greater than the
+      // current one.  This is important because if multiple
+      // threads are replacing the same doc at nearly the
+      // same time, it's possible that one thread that got a
+      // higher docID is scheduled before the other
+      // threads.  If we blindly replace than we can
+      // incorrectly get both docs indexed.
+      return;
+    }
+
+    deleteUniqueTerms.put(term, docIDUpto);
+  }
+
   void addNumericUpdate(NumericDocValuesUpdate update, int docIDUpto) {
     FieldUpdatesBuffer buffer =
         fieldUpdates.computeIfAbsent(
@@ -157,10 +178,12 @@ class BufferedUpdates implements Accountable {
 
   void clearDeleteTerms() {
     deleteTerms.clear();
+    deleteUniqueTerms.clear();
   }
 
   void clear() {
     deleteTerms.clear();
+    deleteUniqueTerms.clear();
     deleteQueries.clear();
     numFieldUpdates.set(0);
     fieldUpdates.clear();
@@ -169,12 +192,18 @@ class BufferedUpdates implements Accountable {
   }
 
   boolean any() {
-    return deleteTerms.size() > 0 || deleteQueries.size() > 0 || numFieldUpdates.get() > 0;
+    return deleteTerms.size() > 0
+        || deleteUniqueTerms.size() > 0
+        || deleteQueries.size() > 0
+        || numFieldUpdates.get() > 0;
   }
 
   @Override
   public long ramBytesUsed() {
-    return bytesUsed.get() + fieldUpdatesBytesUsed.get() + deleteTerms.ramBytesUsed();
+    return bytesUsed.get()
+        + fieldUpdatesBytesUsed.get()
+        + deleteTerms.ramBytesUsed()
+        + deleteUniqueTerms.ramBytesUsed();
   }
 
   static class DeletedTerms implements Accountable {

@@ -51,15 +51,24 @@ final class FreqProxTermsWriter extends TermsHash {
   }
 
   private void applyDeletes(SegmentWriteState state, Fields fields) throws IOException {
+    if (state.segUpdates != null) {
+      applyTermDeletes(state, fields, state.segUpdates.deleteTerms);
+      // We can not apply deleteUniqueTerm on only one doc here, since we merged deleteUniqueTerms
+      // by term and only apply the one with max docIDUpto.
+      applyTermDeletes(state, fields, state.segUpdates.deleteUniqueTerms);
+    }
+  }
+
+  private void applyTermDeletes(
+      SegmentWriteState state, Fields fields, BufferedUpdates.DeletedTerms deleteTerms)
+      throws IOException {
     // Process any pending Term deletes for this newly
     // flushed segment:
-    if (state.segUpdates != null && state.segUpdates.deleteTerms.size() > 0) {
-
-      BufferedUpdates.DeletedTerms segDeletes = state.segUpdates.deleteTerms;
+    if (deleteTerms.size() > 0) {
       FrozenBufferedUpdates.TermDocsIterator iterator =
           new FrozenBufferedUpdates.TermDocsIterator(fields, true);
 
-      segDeletes.forEachOrdered(
+      deleteTerms.forEachOrdered(
           (term, docId) -> {
             DocIdSetIterator postings = iterator.nextTerm(term.field(), term.bytes());
             if (postings != null) {

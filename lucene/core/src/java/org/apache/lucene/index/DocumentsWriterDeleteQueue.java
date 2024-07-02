@@ -139,7 +139,11 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   static Node<Term> newNode(Term term) {
-    return new TermNode(term);
+    return new TermNode(term, false);
+  }
+
+  static Node<Term> newNode(Term term, boolean isUnique) {
+    return new TermNode(term, isUnique);
   }
 
   static Node<Query> newNode(Query query) {
@@ -426,14 +430,20 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   private static final class TermNode extends Node<Term> {
+    final boolean isUnique;
 
-    TermNode(Term term) {
+    TermNode(Term term, boolean isUnique) {
       super(term);
+      this.isUnique = isUnique;
     }
 
     @Override
     void apply(BufferedUpdates bufferedDeletes, int docIDUpto) {
-      bufferedDeletes.addTerm(item, docIDUpto);
+      if (isUnique) {
+        bufferedDeletes.addUniqueTerm(item, docIDUpto);
+      } else {
+        bufferedDeletes.addTerm(item, docIDUpto);
+      }
     }
 
     @Override
