@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
+import org.apache.lucene.codecs.memory.DirectDocValuesFormat;
 import org.apache.lucene.codecs.memory.DirectPostingsFormat;
 import org.apache.lucene.codecs.memory.FSTPostingsFormat;
 import org.apache.lucene.index.FieldInfo;
@@ -232,6 +233,7 @@ public class RandomCodec extends AssertingCodec {
 
     addDocValues(
         avoidCodecs,
+        new DirectDocValuesFormat(),
         TestUtil.getDefaultDocValuesFormat(),
         new Lucene90DocValuesFormat(),
         new AssertingDocValuesFormat());
