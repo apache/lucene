@@ -258,7 +258,7 @@ New Features
 * GITHUB#13430: Allow configuring the search concurrency via
   TieredMergePolicy#setTargetSearchConcurrency. This in-turn instructs the
   merge policy to try to have at least this number of segments on the highest
-  tier. (Carlos Delgado)
+  tier. (Adrien Grand, Carlos Delgado)
 
 Improvements
 ---------------------
