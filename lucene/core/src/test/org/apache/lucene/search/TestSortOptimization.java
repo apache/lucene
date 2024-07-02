@@ -36,7 +36,23 @@ import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FilterDirectoryReader;
+import org.apache.lucene.index.FilterLeafReader;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -1284,7 +1300,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.DOT_PRODUCT,
                 false,
-                MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
+                MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
                 fi.isSoftDeletesField(),
                 fi.isParentField());
         newInfos[i] = noIndexFI;

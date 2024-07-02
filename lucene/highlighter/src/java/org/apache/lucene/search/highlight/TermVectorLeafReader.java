@@ -19,7 +19,30 @@ package org.apache.lucene.search.highlight;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
-import org.apache.lucene.index.*;
+
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.LeafMetaData;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
@@ -85,7 +108,7 @@ public class TermVectorLeafReader extends LeafReader {
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             false,
-            MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
+            MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
             false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});

@@ -111,9 +111,4 @@ public abstract class FilterCodec extends Codec {
   public KnnVectorsFormat knnVectorsFormat() {
     return delegate.knnVectorsFormat();
   }
-
-  @Override
-  public KnnTensorsFormat knnTensorsFormat() {
-    return delegate.knnTensorsFormat();
-  }
 }

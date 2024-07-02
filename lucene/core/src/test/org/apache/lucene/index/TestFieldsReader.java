@@ -68,7 +68,7 @@ public class TestFieldsReader extends LuceneTestCase {
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false,
-              MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
+              MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
               false,
               false));
     }

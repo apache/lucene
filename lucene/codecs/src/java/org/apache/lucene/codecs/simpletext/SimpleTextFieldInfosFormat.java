@@ -201,7 +201,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 vectorEncoding,
                 vectorDistFunc,
                 false,
-                MultiVectorSimilarityFunction.Aggregation.SUM_MAX,
+                MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
                 isSoftDeletesField,
                 isParentField);
       }
