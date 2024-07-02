@@ -51,7 +51,7 @@ class QueryProfilerWeight extends FilterWeight {
 
   @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-    QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.BUILD_SCORER);
+    QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.BUILD_SCORER_SUPPLIER);
     timer.start();
     final ScorerSupplier subQueryScorerSupplier;
     try {
@@ -66,6 +66,7 @@ class QueryProfilerWeight extends FilterWeight {
 
       @Override
       public Scorer get(long loadCost) throws IOException {
+        QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.BUILD_SCORER);
         timer.start();
         try {
           return new QueryProfilerScorer(subQueryScorerSupplier.get(loadCost), profile);
