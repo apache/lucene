@@ -654,7 +654,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     private final List<T> vectors;
     private final boolean isMultiVector;
 
-    /* Stores start and end offsets for the packed vector data written for each tensor value.
+    /* Stores start and end offsets for the packed vector data written for each multi-vector value.
      * dataOffsets[ordinal] holds the start offset. dataOffsets[ordinal+1] holds the end offset.
      * Initialized before writing multi-vector fields.
      */

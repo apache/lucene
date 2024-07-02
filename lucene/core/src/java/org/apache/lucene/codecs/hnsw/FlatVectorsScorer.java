@@ -76,11 +76,11 @@ public interface FlatVectorsScorer {
       throws IOException;
 
   /**
-   * Returns a {@link RandomVectorScorerSupplier} that can be used to score tensor values
+   * Returns a {@link RandomVectorScorerSupplier} that can be used to score multi-vector values
    *
    * @param similarityFunction the similarity function to use
-   * @param values the tensor values to score
-   * @return a {@link RandomVectorScorerSupplier} that can be used to score tensors
+   * @param values the multi-vector values to score
+   * @return a {@link RandomVectorScorerSupplier} that can be used to score multi-vectors
    * @throws IOException if an I/O error occurs
    */
   default RandomVectorScorerSupplier getRandomMultiVectorScorerSupplier(
@@ -90,12 +90,12 @@ public interface FlatVectorsScorer {
   }
 
   /**
-   * Returns a {@link RandomVectorScorer} for the given set of tensors and target tensor.
+   * Returns a {@link RandomVectorScorer} for the given set of multi-vectors and target multi-vector.
    *
    * @param similarityFunction the similarity function to use
-   * @param values the tensor values to score
-   * @param target the target tensor with vector values packed in a single array
-   * @return a {@link RandomVectorScorer} for the given field and target tensor.
+   * @param values the multi-vector values to score
+   * @param target the target multi-vector with vector values packed in a single array
+   * @return a {@link RandomVectorScorer} for the given field and target multi-vector.
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   default RandomVectorScorer getRandomMultiVectorScorer(
@@ -105,12 +105,12 @@ public interface FlatVectorsScorer {
   }
 
   /**
-   * Returns a {@link RandomVectorScorer} for the given set of tensors and target tensor.
+   * Returns a {@link RandomVectorScorer} for the given set of multi-vectors and target multi-vector.
    *
    * @param similarityFunction the similarity function to use
-   * @param values the tensor values to score
-   * @param target the target tensor with vector values packed in a single array
-   * @return a {@link RandomVectorScorer} for the given field and target tensor.
+   * @param values the multi-vector values to score
+   * @param target the target multi-vector with vector values packed in a single array
+   * @return a {@link RandomVectorScorer} for the given field and target multi-vector.
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   default RandomVectorScorer getRandomMultiVectorScorer(
