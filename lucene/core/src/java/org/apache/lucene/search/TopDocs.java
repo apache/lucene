@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.search;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Represents hits returned by {@link IndexSearcher#search(Query,int)}. */
@@ -349,5 +353,50 @@ public class TopDocs {
     } else {
       return new TopFieldDocs(totalHits, hits, sort.getSort());
     }
+  }
+
+  /**
+   * Reciprocal Rank Fusion method.
+   *
+   * <p>This method combines different search results into a single ranked list.
+   *
+   * @param topN the top N results to be returned
+   * @param k a constant determines how much influence documents in individual rankings have on the
+   *     final result. A higher value gives lower rank documents more influence. k should be greater
+   *     than or equal to 1.
+   * @param hits a list of TopDocs to apply RRF on
+   * @return a TopDocs contains the top N ranked results.
+   */
+  public static TopDocs rrf(int topN, int k, TopDocs[] hits) {
+    Map<Integer, Float> rrfScore = new HashMap<>();
+    long minHits = Long.MAX_VALUE;
+    for (TopDocs topDoc : hits) {
+      minHits = Math.min(minHits, topDoc.totalHits.value);
+      Map<Integer, Float> scoreMap = new HashMap<>();
+      for (ScoreDoc scoreDoc : topDoc.scoreDocs) {
+        scoreMap.put(scoreDoc.doc, scoreDoc.score);
+      }
+
+      List<Map.Entry<Integer, Float>> scoreList = new ArrayList<>(scoreMap.entrySet());
+      scoreList.sort(Map.Entry.comparingByValue());
+
+      int rank = 1;
+      for (ScoreDoc scoreDoc : topDoc.scoreDocs) {
+        rrfScore.put(scoreDoc.doc, rrfScore.getOrDefault(scoreDoc.doc, 0.0f) + 1.0f / (rank + k));
+        rank++;
+      }
+    }
+
+    List<Map.Entry<Integer, Float>> rrfScoreRank = new ArrayList<>(rrfScore.entrySet());
+    rrfScoreRank.sort(
+        Map.Entry.<Integer, Float>comparingByValue().reversed()); // Sort in descending order
+
+    ScoreDoc[] rrfScoreDocs = new ScoreDoc[Math.min(topN, rrfScoreRank.size())];
+    for (int i = 0; i < rrfScoreDocs.length; i++) {
+      rrfScoreDocs[i] = new ScoreDoc(rrfScoreRank.get(i).getKey(), rrfScoreRank.get(i).getValue());
+    }
+
+    return new TopDocs(
+        new TotalHits(minHits, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), rrfScoreDocs);
   }
 }
