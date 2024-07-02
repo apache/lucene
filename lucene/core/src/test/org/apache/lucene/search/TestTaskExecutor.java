@@ -21,10 +21,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -112,6 +109,12 @@ public class TestTaskExecutor extends LuceneTestCase {
   }
 
   public void testInvokeAllFromTaskDoesNotDeadlockSameSearcher() throws IOException {
+    doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(executorService);
+    doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(Runnable::run);
+  }
+
+  private static void doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(Executor executor)
+      throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       for (int i = 0; i < 500; i++) {
@@ -119,7 +122,7 @@ public class TestTaskExecutor extends LuceneTestCase {
       }
       try (DirectoryReader reader = iw.getReader()) {
         IndexSearcher searcher =
-            new IndexSearcher(reader, executorService) {
+            new IndexSearcher(reader, executor) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
                 return slices(leaves, 1, 1);
@@ -173,6 +176,12 @@ public class TestTaskExecutor extends LuceneTestCase {
   }
 
   public void testInvokeAllFromTaskDoesNotDeadlockMultipleSearchers() throws IOException {
+    doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(executorService);
+    doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(Runnable::run);
+  }
+
+  private static void doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(Executor executor)
+      throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       for (int i = 0; i < 500; i++) {
@@ -180,7 +189,7 @@ public class TestTaskExecutor extends LuceneTestCase {
       }
       try (DirectoryReader reader = iw.getReader()) {
         IndexSearcher searcher =
-            new IndexSearcher(reader, executorService) {
+            new IndexSearcher(reader, executor) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
                 return slices(leaves, 1, 1);
@@ -202,7 +211,7 @@ public class TestTaskExecutor extends LuceneTestCase {
                         // searcher has its own
                         // TaskExecutor, the safeguard is shared among all the searchers that get
                         // the same executor
-                        IndexSearcher indexSearcher = new IndexSearcher(reader, executorService);
+                        IndexSearcher indexSearcher = new IndexSearcher(reader, executor);
                         indexSearcher
                             .getTaskExecutor()
                             .invokeAll(Collections.singletonList(() -> null));
@@ -248,15 +257,15 @@ public class TestTaskExecutor extends LuceneTestCase {
     for (int i = 0; i < tasksWithNormalExit; i++) {
       callables.add(
           () -> {
-            tasksExecuted.incrementAndGet();
-            return null;
+            throw new AssertionError(
+                "must not be called since the first task failing cancels all subsequent tasks");
           });
     }
     expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
     assertEquals(1, tasksExecuted.get());
     // the callables are technically all run, but the cancelled ones will be no-op
     // add one for the task the gets executed on the current thread
-    assertEquals(100, tasksStarted.get() + 1);
+    assertEquals(tasksWithNormalExit, tasksStarted.get());
   }
 
   /**
