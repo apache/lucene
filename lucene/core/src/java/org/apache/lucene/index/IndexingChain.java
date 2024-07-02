@@ -661,12 +661,6 @@ final class IndexingChain implements Accountable {
           s.vectorDimension,
           indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions(pf.fieldName));
     }
-    if (s.isTensor) {
-      validateMaxVectorDimension(
-          pf.fieldName,
-          s.vectorDimension,
-          indexWriterConfig.getCodec().knnTensorsFormat().getMaxDimensions(pf.fieldName));
-    }
     FieldInfo fi =
         fieldInfos.add(
             new FieldInfo(
@@ -687,8 +681,8 @@ final class IndexingChain implements Accountable {
                 s.vectorDimension,
                 s.vectorEncoding,
                 s.vectorSimilarityFunction,
-                s.isTensor,
-                s.tensorAggregate,
+                s.isMultiVector,
+                s.multiVectorAggregate,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName()),
                 pf.fieldName.equals(fieldInfos.getParentFieldName())));
     pf.setFieldInfo(fi);
@@ -721,14 +715,6 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
     if (fi.getVectorDimension() != 0) {
-      try {
-        pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
-      } catch (Throwable th) {
-        onAbortingException(th);
-        throw th;
-      }
-    }
-    if (fi.hasMultiVectorValues()) {
       try {
         pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
       } catch (Throwable th) {
@@ -785,7 +771,7 @@ final class IndexingChain implements Accountable {
     }
 
     if (fieldType.isMultiVector()) {
-      indexTensorValue(docID, pf, fieldType.vectorEncoding(), field);
+      indexMultiVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     } else if (fieldType.vectorDimension() != 0) {
       indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     }
@@ -863,7 +849,7 @@ final class IndexingChain implements Accountable {
           fieldType.vectorDimension());
     }
     if (fieldType.isMultiVector()) {
-      schema.setTensors(fieldType.isMultiVector(), fieldType.multiVectorAggregate());
+      schema.setMultiVectors(fieldType.isMultiVector(), fieldType.multiVectorAggregate());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1056,7 +1042,7 @@ final class IndexingChain implements Accountable {
   }
 
   @SuppressWarnings("unchecked")
-  private void indexTensorValue(
+  private void indexMultiVectorValue(
       int docID, PerField pf, VectorEncoding encoding, IndexableField field) throws IOException {
     switch (encoding) {
       case BYTE -> ((KnnFieldVectorsWriter<ByteMultiVectorValue>) pf.knnFieldVectorsWriter)
@@ -1470,9 +1456,9 @@ final class IndexingChain implements Accountable {
     private int vectorDimension = 0;
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    private boolean isTensor = false;
-    private MultiVectorSimilarityFunction.Aggregation tensorAggregate =
-        MultiVectorSimilarityFunction.Aggregation.SUM_MAX;
+    private boolean isMultiVector = false;
+    private MultiVectorSimilarityFunction.Aggregation multiVectorAggregate =
+        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1567,13 +1553,13 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setTensors(boolean isTensor, MultiVectorSimilarityFunction.Aggregation tensorAggregate) {
-      if (isTensor == false) {
-        this.isTensor = isTensor;
-        this.tensorAggregate = tensorAggregate;
+    void setMultiVectors(boolean isMultiVector, MultiVectorSimilarityFunction.Aggregation multiVectorAggregate) {
+      if (isMultiVector == false) {
+        this.isMultiVector = isMultiVector;
+        this.multiVectorAggregate = multiVectorAggregate;
       } else {
-        assertSame("isTensor", this.isTensor, isTensor);
-        assertSame("tensor aggregation", this.tensorAggregate, tensorAggregate);
+        assertSame("isMultiVector", this.isMultiVector, isMultiVector);
+        assertSame("multiVectorAggregate", this.multiVectorAggregate, multiVectorAggregate);
       }
     }
 
@@ -1601,8 +1587,8 @@ final class IndexingChain implements Accountable {
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
-      assertSame("isTensor", fi.isMultiVector(), this.isTensor);
-      assertSame("tensor aggregation", fi.getMultiVectorAggregate(), this.tensorAggregate);
+      assertSame("isMultiVector", fi.isMultiVector(), this.isMultiVector);
+      assertSame("multi-vector aggregation", fi.getMultiVectorAggregate(), this.multiVectorAggregate);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);

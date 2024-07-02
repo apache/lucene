@@ -20,7 +20,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
-import org.apache.lucene.codecs.KnnTensorsFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.store.Directory;
@@ -66,28 +65,8 @@ class VectorValuesConsumer {
     }
   }
 
-  private void initKnnTensorsWriter(String fieldName) throws IOException {
-    if (writer == null) {
-      KnnTensorsFormat fmt = codec.knnTensorsFormat();
-      if (fmt == null) {
-        throw new IllegalStateException(
-            "field=\""
-                + fieldName
-                + "\" was indexed as tensors but codec does not support tensors");
-      }
-      SegmentWriteState initialWriteState =
-          new SegmentWriteState(infoStream, directory, segmentInfo, null, null, IOContext.DEFAULT);
-      writer = fmt.fieldsWriter(initialWriteState);
-      accountable = writer;
-    }
-  }
-
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    if (fieldInfo.hasMultiVectorValues()) {
-      initKnnTensorsWriter(fieldInfo.name);
-    } else {
-      initKnnVectorsWriter(fieldInfo.name);
-    }
+    initKnnVectorsWriter(fieldInfo.name);
     return writer.addField(fieldInfo);
   }
 
