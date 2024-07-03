@@ -17,7 +17,10 @@
 
 package org.apache.lucene.codecs.hnsw;
 
+import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.index.DocsWithFieldSet;
 
 /**
  * Vectors' writer for a field
@@ -26,20 +29,9 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
  * @lucene.experimental
  */
 public abstract class FlatFieldVectorsWriter<T> extends KnnFieldVectorsWriter<T> {
+  public abstract List<T> getVectors();
 
-  /**
-   * The delegate to write to, can be null When non-null, all vectors seen should be written to the
-   * delegate along with being written to the flat vectors.
-   */
-  protected final KnnFieldVectorsWriter<T> indexingDelegate;
+  public abstract DocsWithFieldSet getDocsWithFieldSet();
 
-  /**
-   * Sole constructor that expects some indexingDelegate. All vectors seen should be written to the
-   * delegate along with being written to the flat vectors.
-   *
-   * @param indexingDelegate the delegate to write to, can be null
-   */
-  protected FlatFieldVectorsWriter(KnnFieldVectorsWriter<T> indexingDelegate) {
-    this.indexingDelegate = indexingDelegate;
-  }
+  public abstract void finish() throws IOException;
 }
