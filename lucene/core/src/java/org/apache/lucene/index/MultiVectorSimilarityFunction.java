@@ -28,6 +28,7 @@ import org.apache.lucene.util.ArrayUtil;
 // no commit
 public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
 
+  /** Default aggregation function for multi-vectors */
   public static final Aggregation DEFAULT_AGGREGATION = Aggregation.SUM_MAX;
 
   /** Aggregation function to combine similarity across multiple vector values */
