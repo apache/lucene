@@ -233,9 +233,10 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
     var memSegScorer =
         format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
-    var multiVecScorer =
-        format(Locale.ROOT, expectedPattern, "DefaultFlatMultiVectorScorer");
-    assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer, multiVecScorer)));
+    var multiVecScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatMultiVectorScorer");
+    assertThat(
+        customCodec.knnVectorsFormat().toString(),
+        is(oneOf(defaultScorer, memSegScorer, multiVecScorer)));
   }
 
   public void testLimits() {
