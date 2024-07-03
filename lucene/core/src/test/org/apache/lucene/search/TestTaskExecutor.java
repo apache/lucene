@@ -278,7 +278,6 @@ public class TestTaskExecutor extends LuceneTestCase {
     expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
     assertEquals(1, tasksExecuted.get());
     // the callables are technically all run, but the cancelled ones will be no-op
-    // add one for the task the gets executed on the current thread
     assertEquals(tasksWithNormalExit, tasksStarted.get());
   }
 

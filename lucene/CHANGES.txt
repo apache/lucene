@@ -280,11 +280,11 @@ Optimizations
 Changes in runtime behavior
 ---------------------
 
-* GITHUB#13472: IndexSearcher now executes tasks on the thread that invoked a search as well as its configured
-  executor. Users that invoke searches from threads not belonging to the executor configured in IndexSearcher should
-  reduce the executor's thread-count by 1 to retain the previous level of parallelism. Searches invoked from a thread
-  not part of the IndexSearcher's executor will now complete on the calling thread in case the executor is busy or
-  blocked and unable to complete any work.
+* GITHUB#13472: When an executor is provided to the IndexSearcher constructor, the searcher now executes tasks on the
+  thread that invoked a search as well as its configured executor. Users should reduce the executor's thread-count by 1
+  to retain the previous level of parallelism. Moreover, it is now possible to start searches from the same executor
+  that is configured in the IndexSearcher without risk of deadlocking. A separate executor for starting searches is no
+  longer required.
 
 Bug Fixes
 ---------------------
