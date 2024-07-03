@@ -394,12 +394,15 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
-      // dataOffsets need to align with vectorData file pointer
-      long[] vectorDataOffsets = new long[writeState.dataOffsets.length];
-      long currOffset = vectorData.getFilePointer();
-      long shift = currOffset - writeState.dataOffsets[0];
-      for (int i = 0; i < writeState.dataOffsets.length; i++) {
-        vectorDataOffsets[i] = writeState.dataOffsets[i] + shift;
+      long[] vectorDataOffsets = null;
+      if (writeState.dataOffsets != null) {
+        // for multi-vectors, dataOffsets need to align with vectorData file pointer
+        vectorDataOffsets = new long[writeState.dataOffsets.length];
+        long currOffset = vectorData.getFilePointer();
+        long shift = currOffset - writeState.dataOffsets[0];
+        for (int i = 0; i < writeState.dataOffsets.length; i++) {
+          vectorDataOffsets[i] = writeState.dataOffsets[i] + shift;
+        }
       }
 
       // This temp file will be accessed in a random-access fashion to construct the HNSW graph.
