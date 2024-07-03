@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -26,8 +27,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
-
-import java.io.IOException;
 
 /**
  * Lucene 9.9 flat vector format, which encodes numeric vector values

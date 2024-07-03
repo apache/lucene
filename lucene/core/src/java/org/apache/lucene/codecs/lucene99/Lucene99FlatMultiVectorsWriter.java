@@ -17,6 +17,15 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99FlatMultiVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
@@ -49,16 +58,6 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.apache.lucene.codecs.lucene99.Lucene99FlatMultiVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 /**
  * Writes vector values to index segments.
  *
@@ -81,7 +80,9 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene99FlatMultiVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name,
+            state.segmentSuffix,
+            Lucene99FlatMultiVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
@@ -581,11 +582,9 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
     DocsWithFieldSet docsWithField =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> writeByteVectorData(
-              dataOut,
-              MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+              dataOut, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
           case FLOAT32 -> writeVectorData(
-              dataOut,
-              MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+              dataOut, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
         };
     return new DocsAndOffsets(docsWithField, null);
   }
@@ -595,11 +594,9 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
     DocsAndOffsets docsAndOffsets =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> writeByteMultiVectorData(
-              dataOut,
-              MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+              dataOut, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
           case FLOAT32 -> writeFloatMultiVectorData(
-              dataOut,
-              MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+              dataOut, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
         };
     return docsAndOffsets;
   }
