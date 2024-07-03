@@ -364,8 +364,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     // No need to use temporary file as we don't have to re-open for reading
     DocsAndOffsets writeState =
         (fieldInfo.hasMultiVectorValues())
-            ? writeVectorData(fieldInfo, mergeState, vectorData)
-            : writeMultiVectorData(fieldInfo, mergeState, vectorData);
+            ? writeMultiVectorData(fieldInfo, mergeState, vectorData)
+            : writeVectorData(fieldInfo, mergeState, vectorData);
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(
         fieldInfo,
@@ -389,8 +389,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       // write the vector data to a temporary file
       DocsAndOffsets writeState =
           (fieldInfo.hasMultiVectorValues())
-              ? writeVectorData(fieldInfo, mergeState, tempVectorData)
-              : writeMultiVectorData(fieldInfo, mergeState, tempVectorData);
+              ? writeMultiVectorData(fieldInfo, mergeState, tempVectorData)
+              : writeVectorData(fieldInfo, mergeState, tempVectorData);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 

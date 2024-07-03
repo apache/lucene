@@ -589,8 +589,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     @SuppressWarnings("unchecked")
     private RandomVectorScorerSupplier createScorerSupplier(
-        FieldInfo info, FlatVectorsScorer scorer, boolean isMultiVector) throws IOException {
-      if (info.hasMultiVectorValues()) {
+        FieldInfo fieldInfo, FlatVectorsScorer scorer, boolean isMultiVector) throws IOException {
+      if (isMultiVector) {
         return switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> scorer.getRandomMultiVectorScorerSupplier(
               fieldInfo.getMultiVectorSimilarityFunction(),
