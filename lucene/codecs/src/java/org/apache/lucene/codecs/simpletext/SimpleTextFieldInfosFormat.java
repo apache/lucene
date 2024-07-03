@@ -27,6 +27,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.TensorSimilarityFunction;
 import org.apache.lucene.index.VectorEncoding;
@@ -201,7 +202,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 vectorEncoding,
                 vectorDistFunc,
                 false,
-                TensorSimilarityFunction.Aggregation.SUM_MAX,
+                MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
                 isSoftDeletesField,
                 isParentField);
       }

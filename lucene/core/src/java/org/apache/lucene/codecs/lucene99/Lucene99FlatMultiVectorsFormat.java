@@ -18,9 +18,9 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.hnsw.FlatTensorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.SegmentReadState;
@@ -29,87 +29,80 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
 
 /**
- * Lucene 9.9 flat vector format, which encodes numeric tensor values
+ * Lucene 9.9 flat vector format, which encodes numeric vector values
  *
- * <h2>.tec (tensor data) file</h2>
+ * <h2>.vec (vector data) file</h2>
  *
  * <p>For each field:
  *
  * <ul>
- *   <li>Tensor data ordered by field, and document ordinal. All vector values in a single tensor
- *       are concatenated and written as a single array. All vectors in a tensor have the same
- *       dimension. When vectorEncoding is BYTE, each sample is stored as a single byte. When it is
- *       FLOAT32, each sample is stored as an IEEE float in little-endian byte order.
+ *   <li>Vector data ordered by field, document ordinal, and vector dimension. When the
+ *       vectorEncoding is BYTE, each sample is stored as a single byte. When it is FLOAT32, each
+ *       sample is stored as an IEEE float in little-endian byte order.
  *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
  *       note that only in sparse case
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
- *   <li>TensorOffsets encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}. Since
- *       tensors can have variable number of vectors, tensor data has variable length slices.
- *       TensorOffsets holds the start and end offset for each tensor value. Splitting this slice by
- *       dimension should produce the individual vector values for a tensor.
+ *   <li>DataOffsets for variable length multi-vector values. Encoded by {@link
+ *       org.apache.lucene.util.packed.DirectMonotonicWriter}, present only for multi-vectors
  * </ul>
  *
- * <h2>.tem (tensor metadata) file</h2>
+ * <h2>.vemf (vector metadata) file</h2>
  *
  * <p>For each field:
  *
  * <ul>
  *   <li><b>[int32]</b> field number
- *   <li><b>[int32]</b> vector encoding ordinal for the tensor
- *   <li><b>[int32]</b> vector similarity function ordinal for the tensor
- *   <li><b>[int32]</b> tensor similarity aggregation function ordinal
- *   <li><b>[vlong]</b> start offset to this field's tensor data in the .tec file
- *   <li><b>[vlong]</b> length of this field's tensor data, in bytes
- *   <li><b>[vint]</b> dimension of this field's vectors that compose the tensor
+ *   <li><b>[int32]</b> vector similarity function ordinal
+ *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
+ *   <li><b>[vlong]</b> length of this field's vectors, in bytes
+ *   <li><b>[vint]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
  *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
  *       0, sparse – some documents missing values.
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
- *   <li>TensorOffsets encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}. Since
- *       tensors can have variable number of vectors, tensor data has variable length slices.
- *       TensorOffsets holds the start and end offset for each tensor value. Splitting this slice by
- *       dimension should produce the individual vector values for a tensor.
+ *   <li><b>[byte]</b> set to 1 if field has multi-vector values, 0 otherwise
+ *   <li><b>[int]</b> multi-vector aggregation function ordinal, present only for multi-vectors
+ *   <li>DataOffsets for variable length multi-vector values. Encoded by {@link
+ *       org.apache.lucene.util.packed.DirectMonotonicWriter}, present only for multi-vectors
  * </ul>
  *
  * @lucene.experimental
  */
-// no commit
-public final class Lucene99FlatTensorsFormat extends FlatVectorsFormat {
+public final class Lucene99FlatMultiVectorsFormat extends FlatVectorsFormat {
 
-  public static final String NAME = "Lucene99FlatTensorsFormat";
-
-  static final String META_CODEC_NAME = "Lucene99FlatTensorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene99FlatTensorsFormatData";
-  static final String META_EXTENSION = "tem";
-  static final String VECTOR_DATA_EXTENSION = "tec";
+  static final String NAME = "Lucene99FlatMultiVectorsFormat";
+  static final String META_CODEC_NAME = "Lucene99FlatMultiVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene99FlatMultiVectorsFormatData";
+  static final String META_EXTENSION = "vemfmv";
+  static final String VECTOR_DATA_EXTENSION = "vecmv";
 
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
-  private final FlatTensorsScorer tensorsScorer;
+  private final FlatVectorsScorer vectorsScorer;
 
   /** Constructs a format */
-  public Lucene99FlatTensorsFormat(FlatTensorsScorer tensorsScorer) {
+  public Lucene99FlatMultiVectorsFormat(FlatVectorsScorer vectorsScorer) {
     super(NAME);
-    this.tensorsScorer = tensorsScorer;
+    this.vectorsScorer = vectorsScorer;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene99FlatTensorsWriter(state, tensorsScorer);
+    return new Lucene99FlatMultiVectorsWriter(state, vectorsScorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99FlatTensorsReader(state, tensorsScorer);
+    return new Lucene99FlatMultiVectorsReader(state, vectorsScorer);
   }
 
   @Override
   public String toString() {
-    return "Lucene99FlatTensorsFormat(" + "vectorsScorer=null, tensorsScorer" + tensorsScorer + ')';
+    return "Lucene99FlatMultiVectorsFormat(" + "vectorsScorer=" + vectorsScorer + ')';
   }
 }

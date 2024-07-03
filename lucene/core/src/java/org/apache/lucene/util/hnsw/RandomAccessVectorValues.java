@@ -21,8 +21,8 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.ByteTensorValue;
-import org.apache.lucene.util.FloatTensorValue;
+import org.apache.lucene.util.ByteMultiVectorValue;
+import org.apache.lucene.util.FloatMultiVectorValue;
 
 /**
  * Provides random access to vectors by dense ordinal. This interface is used by HNSW-based
@@ -176,17 +176,19 @@ public interface RandomAccessVectorValues {
   }
 
   /**
-   * Creates a {@link RandomAccessVectorValues.Floats} from a list of {@link FloatTensorValue}s.
+   * Creates a {@link RandomAccessVectorValues.Floats} from a list of {@link
+   * FloatMultiVectorValue}s.
    *
-   * @param tensors the list of float tensors
-   * @param dim the dimension of the vectors that compose the tensor
+   * @param values the list of float multi-vectors
+   * @param dim the dimension of the vectors that compose the multi-vector
    * @return a {@link RandomAccessVectorValues.Floats} instance
    */
-  static RandomAccessVectorValues.Floats fromFloatTensors(List<FloatTensorValue> tensors, int dim) {
+  static RandomAccessVectorValues.Floats fromFloatMultiVectors(
+      List<FloatMultiVectorValue> values, int dim) {
     return new RandomAccessVectorValues.Floats() {
       @Override
       public int size() {
-        return tensors.size();
+        return values.size();
       }
 
       @Override
@@ -196,13 +198,13 @@ public interface RandomAccessVectorValues {
 
       @Override
       public float[] vectorValue(int targetOrd) {
-        return tensors.get(targetOrd).packedValue();
+        return values.get(targetOrd).packedValue();
       }
 
       @Override
       public int getVectorByteLength() {
         throw new UnsupportedOperationException(
-            "Tensor have variable value length across different ordinals");
+            "MultiVectors have variable value length across different ordinals");
       }
 
       @Override
@@ -213,17 +215,18 @@ public interface RandomAccessVectorValues {
   }
 
   /**
-   * Creates a {@link RandomAccessVectorValues.Bytes} from a list of {@link ByteTensorValue}s.
+   * Creates a {@link RandomAccessVectorValues.Bytes} from a list of {@link ByteMultiVectorValue}s.
    *
-   * @param tensors the list of {@link ByteTensorValue}s
-   * @param dim the dimension of the vectors composing these tensors
+   * @param values the list of {@link ByteMultiVectorValue}s
+   * @param dim the dimension of the vectors composing these multi-vectors
    * @return a {@link RandomAccessVectorValues.Bytes} instance
    */
-  static RandomAccessVectorValues.Bytes fromByteTensors(List<ByteTensorValue> tensors, int dim) {
+  static RandomAccessVectorValues.Bytes fromByteMultiVectors(
+      List<ByteMultiVectorValue> values, int dim) {
     return new RandomAccessVectorValues.Bytes() {
       @Override
       public int size() {
-        return tensors.size();
+        return values.size();
       }
 
       @Override
@@ -233,13 +236,13 @@ public interface RandomAccessVectorValues {
 
       @Override
       public byte[] vectorValue(int targetOrd) {
-        return tensors.get(targetOrd).packedValue();
+        return values.get(targetOrd).packedValue();
       }
 
       @Override
       public int getVectorByteLength() {
         throw new UnsupportedOperationException(
-            "Tensor have variable value length across different ordinals");
+            "MultiVector have variable value length across different ordinals");
       }
 
       @Override

@@ -24,8 +24,9 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.MultiVectorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.TensorSimilarityFunction.Aggregation;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
@@ -49,8 +50,8 @@ public class FieldType implements IndexableFieldType {
   private int vectorDimension;
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-  private boolean isTensor;
-  private Aggregation tensorAggregate = Aggregation.SUM_MAX;
+  private boolean isMultiVector;
+  private Aggregation multiVectorAggregate = MultiVectorSimilarityFunction.DEFAULT_AGGREGATION;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -71,8 +72,8 @@ public class FieldType implements IndexableFieldType {
     this.vectorDimension = ref.vectorDimension();
     this.vectorEncoding = ref.vectorEncoding();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
-    this.isTensor = ref.isTensor();
-    this.tensorAggregate = ref.tensorAggregate();
+    this.isMultiVector = ref.isMultiVector();
+    this.multiVectorAggregate = ref.multiVectorAggregate();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
     }
@@ -406,39 +407,39 @@ public class FieldType implements IndexableFieldType {
   }
 
   /**
-   * Enable tensor indexing. Each vector in the tensor has the same dimension. Different tensor
-   * values can vary in the number of vectors.
+   * Enable multi-vector indexing. Each vector in the multi-vector has the same dimension. Different
+   * multi-vector values can vary in the number of vectors.
    *
-   * @param isTensor Boolean flag indicating if the field indexes tensors
-   * @param dimension Dimension of each vector in the tensor
-   * @param encoding {@link VectorEncoding} for each tensor vector. Should be the same for all
-   *     vectors
-   * @param similarityFunction {@link VectorSimilarityFunction} Used to compare tensors during
+   * @param isMultiVector Boolean flag indicating if the field indexes multi-vectors
+   * @param dimension Dimension of each vector in the multi-vector
+   * @param encoding {@link VectorEncoding} for each value in the multi-vector. Should be the same
+   *     for all vectors
+   * @param similarityFunction {@link VectorSimilarityFunction} Used to compare multi-vectors during
    *     indexing and search
    * @param aggregation {@link Aggregation} used to aggregate similarity across multiple vectors
    */
-  public void setTensorAttributes(
-      boolean isTensor,
+  public void setMultiVectorAttributes(
+      boolean isMultiVector,
       int dimension,
       VectorEncoding encoding,
       VectorSimilarityFunction similarityFunction,
       Aggregation aggregation) {
     checkIfFrozen();
-    this.isTensor = isTensor;
+    this.isMultiVector = isMultiVector;
     this.vectorDimension = dimension;
     this.vectorEncoding = Objects.requireNonNull(encoding);
     this.vectorSimilarityFunction = Objects.requireNonNull(similarityFunction);
-    this.tensorAggregate = Objects.requireNonNull(aggregation);
+    this.multiVectorAggregate = Objects.requireNonNull(aggregation);
   }
 
   @Override
-  public boolean isTensor() {
-    return isTensor;
+  public boolean isMultiVector() {
+    return isMultiVector;
   }
 
   @Override
-  public Aggregation tensorAggregate() {
-    return tensorAggregate;
+  public Aggregation multiVectorAggregate() {
+    return multiVectorAggregate;
   }
 
   /**

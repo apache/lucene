@@ -18,142 +18,154 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.index.TensorSimilarityFunction;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /**
- * Default implementation of {@link FlatTensorsScorer}.
+ * Default multi-vector implementation of {@link FlatVectorsScorer}.
  *
  * @lucene.experimental
  */
-public class DefaultFlatTensorScorer implements FlatTensorsScorer {
+public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
+
+  public static final DefaultFlatMultiVectorScorer INSTANCE = new DefaultFlatMultiVectorScorer();
+
   @Override
-  public RandomVectorScorerSupplier getRandomTensorScorerSupplier(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values)
+  public RandomVectorScorerSupplier getRandomMultiVectorScorerSupplier(
+      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values)
       throws IOException {
-    if (values instanceof RandomAccessVectorValues.Floats floatTensorValues) {
-      return new FloatScoringSupplier(floatTensorValues, similarityFunction);
-    } else if (values instanceof RandomAccessVectorValues.Bytes byteTensorValues) {
-      return new ByteScoringSupplier(byteTensorValues, similarityFunction);
+    if (values instanceof RandomAccessVectorValues.Floats floatMultiVectorValues) {
+      return new FloatScoringSupplier(floatMultiVectorValues, similarityFunction);
+    } else if (values instanceof RandomAccessVectorValues.Bytes byteMultiVectorValues) {
+      return new ByteScoringSupplier(byteMultiVectorValues, similarityFunction);
     }
     throw new IllegalArgumentException(
-        "tensorValues must be an instance of RandomAccessVectorValues.Floats or RandomAccessVectorValues.Bytes");
+        "MultiVector values must be an instance of RandomAccessVectorValues.Floats or RandomAccessVectorValues.Bytes");
   }
 
   @Override
-  public RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, float[] target)
+  public RandomVectorScorer getRandomMultiVectorScorer(
+      MultiVectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues values,
+      float[] target)
       throws IOException {
     assert values instanceof RandomAccessVectorValues.Floats;
     if (target.length % values.dimension() != 0) {
       throw new IllegalArgumentException(
-          "query tensor dimension differs from tensor field dimension: " + values.dimension());
+          "query multiVector dimension differs from multiVector field dimension: "
+              + values.dimension());
     }
-    return new FloatTensorScorer(
+    return new FloatMultiVectorScorer(
         (RandomAccessVectorValues.Floats) values, target, similarityFunction);
   }
 
   @Override
-  public RandomVectorScorer getRandomTensorScorer(
-      TensorSimilarityFunction similarityFunction, RandomAccessVectorValues values, byte[] target)
+  public RandomVectorScorer getRandomMultiVectorScorer(
+      MultiVectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues values,
+      byte[] target)
       throws IOException {
     assert values instanceof RandomAccessVectorValues.Bytes;
     if (target.length % values.dimension() != 0) {
       throw new IllegalArgumentException(
-          "query tensor dimension differs from tensor field dimension: " + values.dimension());
+          "query multiVector dimension differs from multiVector field dimension: "
+              + values.dimension());
     }
-    return new ByteTensorScorer(
+    return new ByteMultiVectorScorer(
         (RandomAccessVectorValues.Bytes) values, target, similarityFunction);
   }
 
   @Override
   public String toString() {
-    return "DefaultFlatTensorScorer()";
+    return "DefaultFlatMultiVectorScorer()";
   }
 
-  /** RandomVectorScorerSupplier for bytes tensors */
+  /** RandomVectorScorerSupplier for bytes multiVectors */
   private static final class ByteScoringSupplier implements RandomVectorScorerSupplier {
-    private final RandomAccessVectorValues.Bytes tensors;
-    private final RandomAccessVectorValues.Bytes tensors1;
-    private final RandomAccessVectorValues.Bytes tensors2;
-    private final TensorSimilarityFunction similarityFunction;
+    private final RandomAccessVectorValues.Bytes multiVectors;
+    private final RandomAccessVectorValues.Bytes multiVectors1;
+    private final RandomAccessVectorValues.Bytes multiVectors2;
+    private final MultiVectorSimilarityFunction similarityFunction;
     private final int dimension;
 
     private ByteScoringSupplier(
-        RandomAccessVectorValues.Bytes tensors, TensorSimilarityFunction similarityFunction)
+        RandomAccessVectorValues.Bytes multiVectors,
+        MultiVectorSimilarityFunction similarityFunction)
         throws IOException {
-      this.tensors = tensors;
-      tensors1 = tensors.copy();
-      tensors2 = tensors.copy();
+      this.multiVectors = multiVectors;
+      multiVectors1 = multiVectors.copy();
+      multiVectors2 = multiVectors.copy();
       this.similarityFunction = similarityFunction;
-      this.dimension = tensors.dimension();
+      this.dimension = multiVectors.dimension();
     }
 
     @Override
     public RandomVectorScorer scorer(int ord) {
-      return new RandomVectorScorer.AbstractRandomVectorScorer(tensors) {
+      return new RandomVectorScorer.AbstractRandomVectorScorer(multiVectors) {
         @Override
         public float score(int node) throws IOException {
           return similarityFunction.compare(
-              tensors1.vectorValue(ord), tensors2.vectorValue(node), dimension);
+              multiVectors1.vectorValue(ord), multiVectors2.vectorValue(node), dimension);
         }
       };
     }
 
     @Override
     public RandomVectorScorerSupplier copy() throws IOException {
-      return new ByteScoringSupplier(tensors, similarityFunction);
+      return new ByteScoringSupplier(multiVectors, similarityFunction);
     }
   }
 
   /** RandomVectorScorerSupplier for Float vector */
   private static final class FloatScoringSupplier implements RandomVectorScorerSupplier {
-    private final RandomAccessVectorValues.Floats tensors;
-    private final RandomAccessVectorValues.Floats tensors1;
-    private final RandomAccessVectorValues.Floats tensors2;
-    private final TensorSimilarityFunction similarityFunction;
+    private final RandomAccessVectorValues.Floats multiVectors;
+    private final RandomAccessVectorValues.Floats multiVectors1;
+    private final RandomAccessVectorValues.Floats multiVectors2;
+    private final MultiVectorSimilarityFunction similarityFunction;
     private final int dimension;
 
     private FloatScoringSupplier(
-        RandomAccessVectorValues.Floats tensors, TensorSimilarityFunction similarityFunction)
+        RandomAccessVectorValues.Floats multiVectors,
+        MultiVectorSimilarityFunction similarityFunction)
         throws IOException {
-      this.tensors = tensors;
-      tensors1 = tensors.copy();
-      tensors2 = tensors.copy();
+      this.multiVectors = multiVectors;
+      multiVectors1 = multiVectors.copy();
+      multiVectors2 = multiVectors.copy();
       this.similarityFunction = similarityFunction;
-      this.dimension = tensors.dimension();
+      this.dimension = multiVectors.dimension();
     }
 
     @Override
     public RandomVectorScorer scorer(int ord) {
-      return new RandomVectorScorer.AbstractRandomVectorScorer(tensors) {
+      return new RandomVectorScorer.AbstractRandomVectorScorer(multiVectors) {
         @Override
         public float score(int node) throws IOException {
           return similarityFunction.compare(
-              tensors1.vectorValue(ord), tensors2.vectorValue(node), dimension);
+              multiVectors1.vectorValue(ord), multiVectors2.vectorValue(node), dimension);
         }
       };
     }
 
     @Override
     public RandomVectorScorerSupplier copy() throws IOException {
-      return new FloatScoringSupplier(tensors, similarityFunction);
+      return new FloatScoringSupplier(multiVectors, similarityFunction);
     }
   }
 
-  /** A {@link RandomVectorScorer} for float tensors. */
-  private static class FloatTensorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
+  /** A {@link RandomVectorScorer} for float multiVectors. */
+  private static class FloatMultiVectorScorer
+      extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final RandomAccessVectorValues.Floats values;
     private final float[] query;
-    private final TensorSimilarityFunction similarityFunction;
+    private final MultiVectorSimilarityFunction similarityFunction;
     private final int dimension;
 
-    public FloatTensorScorer(
+    public FloatMultiVectorScorer(
         RandomAccessVectorValues.Floats values,
         float[] query,
-        TensorSimilarityFunction similarityFunction) {
+        MultiVectorSimilarityFunction similarityFunction) {
       super(values);
       this.values = values;
       this.query = query;
@@ -167,17 +179,17 @@ public class DefaultFlatTensorScorer implements FlatTensorsScorer {
     }
   }
 
-  /** A {@link RandomVectorScorer} for byte tensors. */
-  private static class ByteTensorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
+  /** A {@link RandomVectorScorer} for byte multiVectors. */
+  private static class ByteMultiVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final RandomAccessVectorValues.Bytes values;
     private final byte[] query;
-    private final TensorSimilarityFunction similarityFunction;
+    private final MultiVectorSimilarityFunction similarityFunction;
     private final int dimension;
 
-    public ByteTensorScorer(
+    public ByteMultiVectorScorer(
         RandomAccessVectorValues.Bytes values,
         byte[] query,
-        TensorSimilarityFunction similarityFunction) {
+        MultiVectorSimilarityFunction similarityFunction) {
       super(values);
       this.values = values;
       this.query = query;

@@ -30,7 +30,16 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.Directory;
@@ -322,8 +331,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.vectorDimension(),
               fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
-              fieldType.isTensor(),
-              fieldType.tensorAggregate(),
+              fieldType.isMultiVector(),
+              fieldType.multiVectorAggregate(),
               field.equals(softDeletesField),
               field.equals(parentField));
       addAttributes(fi);
@@ -459,7 +468,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
         false,
-        TensorSimilarityFunction.Aggregation.SUM_MAX,
+        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
         false,
         false);
   }
