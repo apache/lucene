@@ -252,7 +252,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
-        || target.length % fieldEntry.dimension != 0
         || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return;
     }
@@ -284,7 +283,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
-        || target.length % fieldEntry.dimension != 0
         || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return;
     }
