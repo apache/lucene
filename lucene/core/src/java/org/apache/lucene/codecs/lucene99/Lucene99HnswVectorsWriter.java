@@ -129,11 +129,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    FlatFieldVectorsWriter<?> flatVectorsWriter = flatVectorWriter.addField(fieldInfo);
     FieldWriter<?> newField =
         FieldWriter.create(
             flatVectorWriter.getFlatVectorScorer(),
-            flatVectorsWriter,
+            flatVectorWriter.addField(fieldInfo),
             fieldInfo,
             M,
             beamWidth,
@@ -631,6 +630,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     OnHeapHnswGraph getGraph() {
+      assert flatFieldVectorsWriter.isFinished();
       if (node > 0) {
         return hnswGraphBuilder.getGraph();
       } else {

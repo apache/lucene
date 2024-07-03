@@ -34,4 +34,6 @@ public abstract class FlatFieldVectorsWriter<T> extends KnnFieldVectorsWriter<T>
   public abstract DocsWithFieldSet getDocsWithFieldSet();
 
   public abstract void finish() throws IOException;
+
+  public abstract boolean isFinished();
 }

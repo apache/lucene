@@ -125,6 +125,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       } else {
         writeSortingField(field, maxDoc, sortMap);
       }
+      field.finish();
     }
   }
 
@@ -491,6 +492,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         return;
       }
       this.finished = true;
+    }
+
+    @Override
+    public boolean isFinished() {
+      return finished;
     }
   }
 
