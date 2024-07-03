@@ -21,6 +21,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
@@ -31,6 +32,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.IOFunction;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Accountable, Closeable {
@@ -152,38 +154,57 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
+    private static <V, S> List<S> mergeVectorValues(
+        KnnVectorsReader[] knnVectorsReaders,
+        MergeState.DocMap[] docMaps,
+        IOFunction<KnnVectorsReader, V> valuesSupplier,
+        BiFunction<MergeState.DocMap, V, S> newSub)
+        throws IOException {
+      List<S> subs = new ArrayList<>();
+      for (int i = 0; i < knnVectorsReaders.length; i++) {
+        KnnVectorsReader knnVectorsReader = knnVectorsReaders[i];
+        if (knnVectorsReader != null) {
+          V values = valuesSupplier.apply(knnVectorsReader);
+          if (values != null) {
+            subs.add(newSub.apply(docMaps[i], values));
+          }
+        }
+      }
+      return subs;
+    }
+
     /** Returns a merged view over all the segment's {@link FloatVectorValues}. */
     public static FloatVectorValues mergeFloatVectorValues(
         FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       validateFieldEncoding(fieldInfo, VectorEncoding.FLOAT32);
-      List<VectorValuesSub> subs = new ArrayList<>();
-      for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-        KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-        if (knnVectorsReader != null) {
-          FloatVectorValues values = knnVectorsReader.getFloatVectorValues(fieldInfo.name);
-          if (values != null) {
-            subs.add(new VectorValuesSub(mergeState.docMaps[i], values));
-          }
-        }
-      }
-      return new MergedFloat32VectorValues(subs, mergeState);
+      return new MergedFloat32VectorValues(
+          mergeVectorValues(
+              mergeState.knnVectorsReaders,
+              mergeState.docMaps,
+              knnVectorsReader -> {
+                return knnVectorsReader.getFloatVectorValues(fieldInfo.name);
+              },
+              (docMap, values) -> {
+                return new VectorValuesSub(docMap, values);
+              }),
+          mergeState);
     }
 
     /** Returns a merged view over all the segment's {@link ByteVectorValues}. */
     public static ByteVectorValues mergeByteVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
       validateFieldEncoding(fieldInfo, VectorEncoding.BYTE);
-      List<ByteVectorValuesSub> subs = new ArrayList<>();
-      for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-        KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-        if (knnVectorsReader != null) {
-          ByteVectorValues values = knnVectorsReader.getByteVectorValues(fieldInfo.name);
-          if (values != null) {
-            subs.add(new ByteVectorValuesSub(mergeState.docMaps[i], values));
-          }
-        }
-      }
-      return new MergedByteVectorValues(subs, mergeState);
+      return new MergedByteVectorValues(
+          mergeVectorValues(
+              mergeState.knnVectorsReaders,
+              mergeState.docMaps,
+              knnVectorsReader -> {
+                return knnVectorsReader.getByteVectorValues(fieldInfo.name);
+              },
+              (docMap, values) -> {
+                return new ByteVectorValuesSub(docMap, values);
+              }),
+          mergeState);
     }
 
     static class MergedFloat32VectorValues extends FloatVectorValues {
