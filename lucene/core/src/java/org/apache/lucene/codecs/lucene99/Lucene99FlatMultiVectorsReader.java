@@ -17,12 +17,6 @@
 
 package org.apache.lucene.codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -35,6 +29,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -46,20 +41,27 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+
 /**
  * Reads vectors from the index segments.
  *
  * @lucene.experimental
  */
-public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
+public final class Lucene99FlatMultiVectorsReader extends FlatVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatMultiVectorsFormat.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
 
-  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
+  public Lucene99FlatMultiVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
     super(scorer);
     int versionMeta = readMetadata(state);
@@ -69,8 +71,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene99FlatMultiVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene99FlatMultiVectorsFormat.VECTOR_DATA_CODEC_NAME,
               // Flat formats are used to randomly access vectors from their node ID that is stored
               // in the HNSW graph.
               state.context.withReadAdvice(ReadAdvice.RANDOM));
@@ -85,7 +87,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private int readMetadata(SegmentReadState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene99FlatVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene99FlatMultiVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
@@ -93,9 +95,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene99FlatVectorsFormat.META_CODEC_NAME,
-                Lucene99FlatVectorsFormat.VERSION_START,
-                Lucene99FlatVectorsFormat.VERSION_CURRENT,
+                Lucene99FlatMultiVectorsFormat.META_CODEC_NAME,
+                Lucene99FlatMultiVectorsFormat.VERSION_START,
+                Lucene99FlatMultiVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -124,8 +126,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene99FlatVectorsFormat.VERSION_START,
-              Lucene99FlatVectorsFormat.VERSION_CURRENT,
+              Lucene99FlatMultiVectorsFormat.VERSION_START,
+              Lucene99FlatMultiVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -161,7 +163,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public long ramBytesUsed() {
-    return Lucene99FlatVectorsReader.SHALLOW_SIZE
+    return Lucene99FlatMultiVectorsReader.SHALLOW_SIZE
         + RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
   }
@@ -182,6 +184,18 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + fieldEntry.vectorEncoding
               + " expected: "
               + VectorEncoding.FLOAT32);
+    }
+    if (fieldEntry.isMultiVector) {
+      return OffHeapFloatMultiVectorValues.load(
+          fieldEntry.multiVectorSimilarityFunction,
+          vectorScorer,
+          fieldEntry.ordToDoc,
+          fieldEntry.multiVectorDataOffsets,
+          fieldEntry.vectorEncoding,
+          fieldEntry.dimension,
+          fieldEntry.vectorDataOffset,
+          fieldEntry.vectorDataLength,
+          vectorData);
     }
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
@@ -206,6 +220,18 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + " expected: "
               + VectorEncoding.BYTE);
     }
+    if (fieldEntry.isMultiVector) {
+      return OffHeapByteMultiVectorValues.load(
+          fieldEntry.multiVectorSimilarityFunction,
+          vectorScorer,
+          fieldEntry.ordToDoc,
+          fieldEntry.multiVectorDataOffsets,
+          fieldEntry.vectorEncoding,
+          fieldEntry.dimension,
+          fieldEntry.vectorDataOffset,
+          fieldEntry.vectorDataLength,
+          vectorData);
+    }
     return OffHeapByteVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -222,6 +248,24 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return null;
+    }
+    if (target.length % fieldEntry.dimension != 0) {
+      return null;
+    }
+    if (fieldEntry.isMultiVector) {
+      return vectorScorer.getRandomMultiVectorScorer(
+          fieldEntry.multiVectorSimilarityFunction,
+          OffHeapFloatMultiVectorValues.load(
+              fieldEntry.multiVectorSimilarityFunction,
+              vectorScorer,
+              fieldEntry.ordToDoc,
+              fieldEntry.multiVectorDataOffsets,
+              fieldEntry.vectorEncoding,
+              fieldEntry.dimension,
+              fieldEntry.vectorDataOffset,
+              fieldEntry.vectorDataLength,
+              vectorData),
+          target);
     }
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
@@ -242,6 +286,23 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return null;
+    }
+    if (target.length % fieldEntry.dimension != 0) {
+      return null;
+    }
+    if (fieldEntry.isMultiVector) {
+      return vectorScorer.getRandomMultiVectorScorer(
+          fieldEntry.multiVectorSimilarityFunction,
+          OffHeapByteVectorValues.load(
+              fieldEntry.similarityFunction,
+              vectorScorer,
+              fieldEntry.ordToDoc,
+              fieldEntry.vectorEncoding,
+              fieldEntry.dimension,
+              fieldEntry.vectorDataOffset,
+              fieldEntry.vectorDataLength,
+              vectorData),
+          target);
     }
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
@@ -270,6 +331,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       int dimension,
       int size,
       OrdToDocDISIReaderConfiguration ordToDoc,
+      boolean isMultiVector,
+      MultiVectorSimilarityFunction multiVectorSimilarityFunction,
+      MultiVectorDataOffsetsReaderConfiguration multiVectorDataOffsets,
       FieldInfo info) {
 
     FieldEntry {
@@ -323,6 +387,24 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       final var dimension = input.readVInt();
       final var size = input.readInt();
       final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+
+      // read multi-vector metadata
+      MultiVectorSimilarityFunction multiVectorSimilarityFunction = null;
+      MultiVectorDataOffsetsReaderConfiguration dataOffsetsReaderConfiguration = null;
+      final var isMultiVector = input.readByte() == 1;
+      if (isMultiVector) {
+        int agg = input.readInt();
+        if (agg < 0 || agg >= MultiVectorSimilarityFunction.Aggregation.values().length) {
+          throw new CorruptIndexException(
+              "Invalid multi-vector aggregation function, id: " + agg, input);
+        }
+        multiVectorSimilarityFunction =
+            new MultiVectorSimilarityFunction(
+                similarityFunction, MultiVectorSimilarityFunction.Aggregation.values()[agg]);
+        dataOffsetsReaderConfiguration =
+            MultiVectorDataOffsetsReaderConfiguration.fromStoredMeta(input);
+      }
+
       return new FieldEntry(
           similarityFunction,
           vectorEncoding,
@@ -331,6 +413,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           dimension,
           size,
           ordToDoc,
+          isMultiVector,
+          multiVectorSimilarityFunction,
+          dataOffsetsReaderConfiguration,
           info);
     }
   }

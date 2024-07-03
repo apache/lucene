@@ -17,7 +17,6 @@
 
 package org.apache.lucene.codecs.lucene99;
 
-import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -27,6 +26,8 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
+
+import java.io.IOException;
 
 /**
  * Lucene 9.9 flat vector format, which encodes numeric vector values
@@ -43,6 +44,8 @@ import org.apache.lucene.store.IndexOutput;
  *       note that only in sparse case
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
+ *   <li>DataOffsets for variable length multi-vector values. Encoded by {@link
+ *       org.apache.lucene.util.packed.DirectMonotonicWriter}, present only for multi-vectors
  * </ul>
  *
  * <h2>.vemf (vector metadata) file</h2>
@@ -61,17 +64,21 @@ import org.apache.lucene.store.IndexOutput;
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
+ *   <li><b>[byte]</b> set to 1 if field has multi-vector values, 0 otherwise
+ *   <li><b>[int]</b> multi-vector aggregation function ordinal, present only for multi-vectors
+ *   <li>DataOffsets for variable length multi-vector values. Encoded by {@link
+ *       org.apache.lucene.util.packed.DirectMonotonicWriter}, present only for multi-vectors
  * </ul>
  *
  * @lucene.experimental
  */
-public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
+public final class Lucene99FlatMultiVectorsFormat extends FlatVectorsFormat {
 
-  static final String NAME = "Lucene99FlatVectorsFormat";
-  static final String META_CODEC_NAME = "Lucene99FlatVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene99FlatVectorsFormatData";
-  static final String META_EXTENSION = "vemf";
-  static final String VECTOR_DATA_EXTENSION = "vec";
+  static final String NAME = "Lucene99FlatMultiVectorsFormat";
+  static final String META_CODEC_NAME = "Lucene99FlatMultiVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene99FlatMultiVectorsFormatData";
+  static final String META_EXTENSION = "vemfmv";
+  static final String VECTOR_DATA_EXTENSION = "vecmv";
 
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
@@ -80,23 +87,23 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   private final FlatVectorsScorer vectorsScorer;
 
   /** Constructs a format */
-  public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
+  public Lucene99FlatMultiVectorsFormat(FlatVectorsScorer vectorsScorer) {
     super(NAME);
     this.vectorsScorer = vectorsScorer;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene99FlatVectorsWriter(state, vectorsScorer);
+    return new Lucene99FlatMultiVectorsWriter(state, vectorsScorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99FlatVectorsReader(state, vectorsScorer);
+    return new Lucene99FlatMultiVectorsReader(state, vectorsScorer);
   }
 
   @Override
   public String toString() {
-    return "Lucene99FlatVectorsFormat(" + "vectorsScorer=" + vectorsScorer + ')';
+    return "Lucene99FlatMultiVectorsFormat(" + "vectorsScorer=" + vectorsScorer + ')';
   }
 }
