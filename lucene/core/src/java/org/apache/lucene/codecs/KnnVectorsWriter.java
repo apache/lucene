@@ -109,11 +109,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   }
 
   /** Tracks state of one sub-reader that we are merging */
-  private static class VectorValuesSub extends DocIDMerger.Sub {
+  private static class FloatVectorValuesSub extends DocIDMerger.Sub {
 
     final FloatVectorValues values;
 
-    VectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) {
+    FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) {
       super(docMap);
       this.values = values;
       assert values.docID() == -1;
@@ -185,7 +185,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
                 return knnVectorsReader.getFloatVectorValues(fieldInfo.name);
               },
               (docMap, values) -> {
-                return new VectorValuesSub(docMap, values);
+                return new FloatVectorValuesSub(docMap, values);
               }),
           mergeState);
     }
@@ -208,18 +208,18 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
 
     static class MergedFloat32VectorValues extends FloatVectorValues {
-      private final List<VectorValuesSub> subs;
-      private final DocIDMerger<VectorValuesSub> docIdMerger;
+      private final List<FloatVectorValuesSub> subs;
+      private final DocIDMerger<FloatVectorValuesSub> docIdMerger;
       private final int size;
       private int docId;
-      VectorValuesSub current;
+      FloatVectorValuesSub current;
 
-      private MergedFloat32VectorValues(List<VectorValuesSub> subs, MergeState mergeState)
+      private MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
         int totalSize = 0;
-        for (VectorValuesSub sub : subs) {
+        for (FloatVectorValuesSub sub : subs) {
           totalSize += sub.values.size();
         }
         size = totalSize;
