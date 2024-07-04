@@ -346,6 +346,20 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
+  /** this = this XNOR other */
+  public void xnor(FixedBitSet other) {
+    xnor(other.bits, other.numWords);
+  }
+
+  private void xnor(long[] otherBits, int otherNumWords) {
+    assert otherNumWords <= numWords : "numWords=" + numWords + ", other.numWords=" + otherNumWords;
+    final long[] thisBits = this.bits;
+    int pos = Math.min(numWords, otherNumWords);
+    while (--pos >= 0) {
+      thisBits[pos] = ~(thisBits[pos] ^ otherBits[pos]);
+    }
+  }
+
   /** this = this XOR other */
   public void xor(FixedBitSet other) {
     xor(other.bits, other.numWords);
@@ -427,6 +441,7 @@ public final class FixedBitSet extends BitSet {
     andNot(otherOffsetWords, other.bits, other.numWords);
   }
 
+  // TODO: first NOT, then AND?
   private void andNot(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
     int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
