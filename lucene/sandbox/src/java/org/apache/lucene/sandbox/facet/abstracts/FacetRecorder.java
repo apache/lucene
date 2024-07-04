@@ -21,6 +21,11 @@ public interface FacetRecorder {
     OrdinalIterator recordedOrds();
 
     /**
+     * True if there are no records
+     */
+    boolean isEmpty();
+
+    /**
      * Reduce leaf recorder results into this recorder.
      * If facetRollup is not null, it also rolls up values.
      *

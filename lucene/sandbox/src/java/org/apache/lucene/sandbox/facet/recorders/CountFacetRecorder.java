@@ -103,6 +103,11 @@ public class CountFacetRecorder implements FacetRecorder {
         };
     }
 
+    @Override
+    public boolean isEmpty() {
+        return values.isEmpty();
+    }
+
 
     @Override
     public void reduce(FacetRollup facetRollup) throws IOException {

@@ -67,6 +67,11 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     }
 
     @Override
+    public boolean isEmpty() {
+        return perOrdinalValues.isEmpty();
+    }
+
+    @Override
     public void reduce(FacetRollup facetRollup) throws IOException {
         boolean firstElement = true;
         for (IntObjectHashMap<long[]> leafValue : leafValues) {

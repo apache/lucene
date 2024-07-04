@@ -37,6 +37,12 @@ public final class MultiFacetsRecorder implements FacetRecorder {
     }
 
     @Override
+    public boolean isEmpty() {
+        assert delegates.length > 0;
+        return delegates[0].isEmpty();
+    }
+
+    @Override
     public void reduce(FacetRollup facetRollup) throws IOException {
         for (FacetRecorder recorder: delegates) {
             recorder.reduce(facetRollup);
