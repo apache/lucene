@@ -284,7 +284,7 @@ Changes in runtime behavior
   thread that invoked a search as well as its configured executor. Users should reduce the executor's thread-count by 1
   to retain the previous level of parallelism. Moreover, it is now possible to start searches from the same executor
   that is configured in the IndexSearcher without risk of deadlocking. A separate executor for starting searches is no
-  longer required.
+  longer required. (Armin Braun)
 
 Bug Fixes
 ---------------------
