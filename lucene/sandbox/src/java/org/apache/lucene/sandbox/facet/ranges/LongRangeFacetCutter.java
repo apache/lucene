@@ -104,7 +104,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
         final int requestedRangeCount;
 
-        int currentDoc = -1;
+        //int currentDoc = -1;
 
         IntervalTracker elementaryIntervalTracker;
 
@@ -120,16 +120,17 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
         @Override
         public boolean advanceExact(int doc) throws IOException {
-            if (doc < currentDoc) {
+            // TODO: we don't actualy need these extra checks, do we?
+            /*if (doc < currentDoc) {
                 throw new IllegalStateException("doc id going backwards");
             }
             if (doc == currentDoc) {
                 return true;
-            }
+            }*/
             if (multiLongValues.advanceExact(doc) == false) {
                 return false;
             }
-            currentDoc = doc;
+            //currentDoc = doc;
 
             if (elementaryIntervalTracker != null) {
                 elementaryIntervalTracker.clear();
