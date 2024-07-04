@@ -46,7 +46,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
-    final Arena arena = confined? Arena.ofConfined() : Arena.ofShared();
+    final Arena arena = confined ? Arena.ofConfined() : Arena.ofShared();
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =
