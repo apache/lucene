@@ -71,6 +71,7 @@ import org.apache.lucene.store.IndexOutput;
  *
  * @lucene.experimental
  */
+// noCommit - pending tests
 public final class Lucene99FlatMultiVectorsFormat extends FlatVectorsFormat {
 
   static final String NAME = "Lucene99FlatMultiVectorsFormat";

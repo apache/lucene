@@ -28,6 +28,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  *
  * @lucene.experimental
  */
+// noCommit - pending tests
 public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
 
   public static final DefaultFlatMultiVectorScorer INSTANCE = new DefaultFlatMultiVectorScorer();

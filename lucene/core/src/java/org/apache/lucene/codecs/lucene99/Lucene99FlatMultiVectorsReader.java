@@ -52,6 +52,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  *
  * @lucene.experimental
  */
+// noCommit - pending tests
 public final class Lucene99FlatMultiVectorsReader extends FlatVectorsReader {
 
   private static final long SHALLOW_SIZE =
