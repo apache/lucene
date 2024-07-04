@@ -84,8 +84,6 @@ public class Lucene99Codec extends Codec {
 
   private final StoredFieldsFormat storedFieldsFormat;
 
-  private final KnnTensorsFormat knnTensorsFormat = new Lucene99HnswTensorsFormat();
-
   /** Instantiates a new codec. */
   public Lucene99Codec() {
     this(Mode.BEST_SPEED);
@@ -148,11 +146,6 @@ public class Lucene99Codec extends Codec {
   @Override
   public final KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
-  }
-
-  @Override
-  public KnnTensorsFormat knnTensorsFormat() {
-    return knnTensorsFormat;
   }
 
   /**

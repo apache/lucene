@@ -64,7 +64,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * <ul>
  *   <li><b>[int32]</b> field number
- *   <li><b>[int32]</b> similarity function ordinal
+ *   <li><b>[int32]</b> vector similarity function ordinal
  *   <li><b>[vlong]</b> offset to this field's index in the .vex file
  *   <li><b>[vlong]</b> length of this field's index data, in bytes
  *   <li><b>[vint]</b> dimension of this field's vectors
@@ -82,7 +82,6 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
  *             the level 0th delta encoded nodes' ordinals.
  *       </ul>
- *   <li><b>[int32]</b> tensor aggregation function ordinal (only for tensor fields)
  * </ul>
  *
  * @lucene.experimental

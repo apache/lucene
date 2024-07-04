@@ -131,22 +131,13 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-<<<<<<< HEAD
-          public boolean isTensor() {
-=======
           public boolean isMultiVector() {
->>>>>>> multivec_same_format
             return false;
           }
 
           @Override
-<<<<<<< HEAD
-          public TensorSimilarityFunction.Aggregation tensorAggregate() {
-            return TensorSimilarityFunction.Aggregation.SUM_MAX;
-=======
           public MultiVectorSimilarityFunction.Aggregation multiVectorAggregate() {
             return MultiVectorSimilarityFunction.DEFAULT_AGGREGATION;
->>>>>>> multivec_same_format
           }
 
           @Override
