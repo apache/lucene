@@ -266,7 +266,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     IOUtils.close(r, dir);
   }
 
-  public void testSlicesAllOffloadedToTheExecutor() throws IOException {
+  public void testSlicesOffloadedToTheExecutor() throws IOException {
     List<LeafReaderContext> leaves = reader.leaves();
     AtomicInteger numExecutions = new AtomicInteger(0);
     IndexSearcher searcher =
@@ -286,7 +286,7 @@ public class TestIndexSearcher extends LuceneTestCase {
           }
         };
     searcher.search(new MatchAllDocsQuery(), 10);
-    assertEquals(leaves.size(), numExecutions.get());
+    assertEquals(leaves.size() - 1, numExecutions.get());
   }
 
   public void testNullExecutorNonNullTaskExecutor() {
