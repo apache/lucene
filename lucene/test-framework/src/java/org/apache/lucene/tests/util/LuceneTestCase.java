@@ -1780,6 +1780,9 @@ public abstract class LuceneTestCase extends Assert {
 
   /** TODO: javadoc */
   public static IOContext newIOContext(Random random, IOContext oldContext) {
+    if (oldContext == IOContext.READONCE) {
+      return oldContext; // don't mess with the READONCE singleton
+    }
     final int randomNumDocs = random.nextInt(4192);
     final int size = random.nextInt(512) * randomNumDocs;
     if (oldContext.flushInfo() != null) {

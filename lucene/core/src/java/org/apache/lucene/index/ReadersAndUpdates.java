@@ -578,7 +578,8 @@ final class ReadersAndUpdates {
       // IndexWriter.commitMergedDeletes).
       final SegmentReader reader;
       if (this.reader == null) {
-        reader = new SegmentReader(info, indexCreatedVersionMajor, IOContext.READONCE);
+        IOContext context = info.info.getUseCompoundFile() ? IOContext.DEFAULT : IOContext.READONCE;
+        reader = new SegmentReader(info, indexCreatedVersionMajor, context);
         pendingDeletes.onNewReader(reader, info);
       } else {
         reader = this.reader;
