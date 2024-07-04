@@ -117,4 +117,25 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       }
     }
   }
+
+  // Opens the input with ReadAdvice.READONCE to ensure slice and clone are confined
+  public void testConfined() throws Exception {
+    final int size = 16;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (Directory dir = new MMapDirectory(createTempDir("testConfined"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
+      try (final IndexInput in = dir.openInput("test", IOContext.READONCE)) {
+        var x = expectThrows(IllegalStateException.class, () -> in.clone());
+        assertTrue(x.getMessage().contains("confined"));
+
+        var y = expectThrows(IllegalStateException.class, () -> in.slice("test", 0, in.length()));
+        assertTrue(y.getMessage().contains("confined"));
+      }
+    }
+  }
 }
