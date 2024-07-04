@@ -141,24 +141,29 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         assertEquals(15L, in.slice("test", 1, in.length() - 1).length());
 
         // ensure not accessible
-        var x = expectThrows(ISE, () -> in.clone());
+        var x = expectThrows(ISE, in::clone);
+        assertTrue(x.getMessage().contains("confined"));
+        x = expectThrows(ISE, () -> in.slice("test", 0, in.length()).clone());
         assertTrue(x.getMessage().contains("confined"));
 
         Callable<Object> task1 = () -> in.slice("test", 0, in.length());
-        var y = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task1)));
-        assertTrue(y.getMessage().contains("confined"));
+        x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task1)));
+        assertTrue(x.getMessage().contains("confined"));
 
         int offset = random().nextInt((int) in.length());
         int length = (int) in.length() - offset;
         Callable<Object> task2 = () -> in.slice("test", offset, length);
-        var z = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task2)));
-        assertTrue(z.getMessage().contains("confined"));
+        x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task2)));
+        assertTrue(x.getMessage().contains("confined"));
 
         // slice.slice
         var slice = in.slice("test", 0, in.length());
         Callable<Object> task3 = () -> slice.slice("test", 0, in.length());
-        var a = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task3)));
-        assertTrue(a.getMessage().contains("confined"));
+        x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task3)));
+        assertTrue(x.getMessage().contains("confined"));
+        // slice.clone
+        x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(slice::clone)));
+        assertTrue(x.getMessage().contains("confined"));
       }
     }
   }
