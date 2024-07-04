@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -43,7 +42,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   int firstRequiredScorer;
   private final long cost;
   float minCompetitiveScore;
-  private Score scorable = new Score();
+  private final Score scorable = new Score();
   final double[] maxScoreSums;
 
   private final long[] windowMatches = new long[FixedBitSet.bits2words(INNER_WINDOW_SIZE)];
@@ -335,8 +334,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
     System.arraycopy(allScorers, 0, scratch, 0, allScorers.length);
     Arrays.sort(
         scratch,
-        Comparator.comparingDouble(
-            scorer -> (double) scorer.maxWindowScore / Math.max(1L, scorer.cost)));
+        (c1, c2) -> {
+          return Double.compare(
+              (double) c1.maxWindowScore / Math.max(1L, c1.cost),
+              (double) c2.maxWindowScore / Math.max(1L, c2.cost));
+        });
     double maxScoreSum = 0;
     firstEssentialScorer = 0;
     for (int i = 0; i < allScorers.length; ++i) {
