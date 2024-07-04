@@ -123,7 +123,6 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
-  @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
   // Opens the input with ReadAdvice.READONCE to ensure slice and clone are appropriately confined
   public void testConfined() throws Exception {
     final int size = 16;
@@ -154,6 +153,12 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         Callable<Object> task2 = () -> in.slice("test", offset, length);
         var z = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task2)));
         assertTrue(z.getMessage().contains("confined"));
+
+        // slice.slice
+        var slice = in.slice("test", 0, in.length());
+        Callable<Object> task3 = () -> slice.slice("test", 0, in.length());
+        var a = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task3)));
+        assertTrue(a.getMessage().contains("confined"));
       }
     }
   }
