@@ -232,7 +232,7 @@ final class PendingSoftDeletes extends PendingDeletes {
                 segInfo
                     .getCodec()
                     .compoundFormat()
-                    .getCompoundReader(segInfo.dir, segInfo, IOContext.DEFAULT);
+                    .getCompoundReader(segInfo.dir, segInfo, IOContext.READONCE);
       } else {
         toClose = null;
         dir = segInfo.dir;
