@@ -109,6 +109,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
   }
 
+  void ensureAccessible() {
+    if (confined && curSegment.isAccessibleBy(Thread.currentThread()) == false) {
+      throw new IllegalStateException("confined");
+    }
+  }
+
   // the unused parameter is just to silence javac about unused variables
   RuntimeException handlePositionalIOOBE(RuntimeException unused, String action, long pos)
       throws IOException {
@@ -530,6 +536,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
   @Override
   public final MemorySegmentIndexInput clone() {
+    ensureNotConfined();
     final MemorySegmentIndexInput clone = buildSlice((String) null, 0L, this.length);
     try {
       clone.seek(getFilePointer());
@@ -582,7 +589,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
   MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
     ensureOpen();
-    ensureNotConfined();
+    ensureAccessible();
 
     final long sliceEnd = offset + length;
     final int startIndex = (int) (offset >>> chunkSizePower);
