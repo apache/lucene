@@ -7,7 +7,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
-import org.apache.lucene.sandbox.facet.abstracts.FacetSliceRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.abstracts.Reducer;
 import org.apache.lucene.search.LongValues;
@@ -24,7 +23,7 @@ import java.util.*;
 public class LongAggregationsFacetRecorder implements FacetRecorder {
 
     private IntObjectHashMap<long[]> perOrdinalValues;
-    private List<IntObjectHashMap<long[]>> sliceValues;
+    private List<IntObjectHashMap<long[]>> leafValues;
 
     private final LongValuesSource[] longValuesSources;
     private final Reducer[] reducers;
@@ -35,14 +34,18 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
         this.longValuesSources = longValuesSources;
         this.reducers = reducers;
         perOrdinalValues = new IntObjectHashMap<>();
-        sliceValues = Collections.synchronizedList(new ArrayList<>());
+        leafValues = Collections.synchronizedList(new ArrayList<>());
     }
 
     @Override
-    public FacetSliceRecorder getSliceRecorder() throws IOException {
-        IntObjectHashMap<long[]> sliceValuesRecorder = new IntObjectHashMap<>();
-        sliceValues.add(sliceValuesRecorder);
-        return new LongAggregationsFacetSliceRecorder(longValuesSources, reducers, sliceValuesRecorder);
+    public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
+        LongValues[] longValues = new LongValues[longValuesSources.length];
+        for (int i=0; i< longValuesSources.length; i++) {
+            longValues[i] = longValuesSources[i].getValues(context, null);
+        }
+        IntObjectHashMap<long[]> valuesRecorder = new IntObjectHashMap<>();
+        leafValues.add(valuesRecorder);
+        return new LongAggregationsFacetLeafRecorder(longValues, reducers, valuesRecorder);
     }
 
     @Override
@@ -71,7 +74,7 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     @Override
     public void reduce(FacetRollup facetRollup) throws IOException {
         boolean firstElement = true;
-        for (IntObjectHashMap<long[]> leafValue : sliceValues) {
+        for (IntObjectHashMap<long[]> leafValue : leafValues) {
             if (firstElement) {
                 perOrdinalValues = leafValue;
                 firstElement = false;
@@ -107,30 +110,6 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
             return valuesForOrd[valuesId];
         }
         return -1; // TODO: missing value, what do we want to return? Zero might be a better option.
-    }
-
-    private static class LongAggregationsFacetSliceRecorder implements FacetSliceRecorder {
-
-        private final LongValuesSource[] longValuesSources;
-        private final Reducer[] reducers;
-        private final IntObjectHashMap<long[]> valuesRecorder;
-
-        private LongAggregationsFacetSliceRecorder(LongValuesSource[] longValuesSources, Reducer[] reducers,
-                                                   IntObjectHashMap<long[]> valuesRecorder) {
-            this.longValuesSources = longValuesSources;
-            this.reducers = reducers;
-            this.valuesRecorder = valuesRecorder;
-        }
-
-        @Override
-        public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
-            LongValues[] longValues = new LongValues[longValuesSources.length];
-            for (int i=0; i< longValuesSources.length; i++) {
-                longValues[i] = longValuesSources[i].getValues(context, null);
-            }
-
-            return new LongAggregationsFacetLeafRecorder(longValues, reducers, valuesRecorder);
-        }
     }
 
     private static class LongAggregationsFacetLeafRecorder implements FacetLeafRecorder {

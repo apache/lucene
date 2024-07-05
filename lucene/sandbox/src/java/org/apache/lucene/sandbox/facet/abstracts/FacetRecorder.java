@@ -11,12 +11,12 @@ import java.io.IOException;
  */
 public interface FacetRecorder {
     /**
-     * Get slice recorder.
+     * Get leaf recorder.
      */
-    FacetSliceRecorder getSliceRecorder() throws IOException;
+    FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException;
 
     /**
-     * Return collected ordinals.
+     * Return next collected ordinal, or {@link FacetLeafCutter#NO_MORE_ORDS}
      */
     OrdinalIterator recordedOrds();
 
