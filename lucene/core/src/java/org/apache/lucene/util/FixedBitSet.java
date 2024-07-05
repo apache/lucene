@@ -356,6 +356,7 @@ public final class FixedBitSet extends BitSet {
     final long[] thisBits = this.bits;
     int pos = Math.min(numWords, otherNumWords);
     while (--pos >= 0) {
+      // TODO: Should we mask it?
       thisBits[pos] = ~(thisBits[pos] ^ otherBits[pos]);
     }
   }
