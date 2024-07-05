@@ -72,23 +72,4 @@ public class HammingDistanceBenchmark {
     }
     return tot;
   }
-
-  public static void main(String... args) throws Exception {
-    HammingDistanceBenchmark bench = new HammingDistanceBenchmark();
-    bench.setup();
-    System.out.println(bench.xorBitCount());
-  }
-
-  // before
-  // Benchmark                             (dims)     (nb)   Mode  Cnt   Score   Error  Units
-  // HammingDistanceBenchmark.xorBitCount    1024  1000000  thrpt    5  29.128 ± 5.697  ops/s
-  // after
-  // HammingDistanceBenchmark.xorBitCount    1024  1000000  thrpt    5  115.430 ± 3.086  ops/s
-
-  // Linux x64, Skylake
-  // before
-  // HammingDistanceBenchmark.xorBitCount    1024  1000000  thrpt    5  83.722 ± 1.172  ops/s
-  // after
-  // Benchmark                             (dims)     (nb)   Mode  Cnt   Score   Error  Units
-  // HammingDistanceBenchmark.xorBitCount    1024  1000000  thrpt    5  72.659 ± 0.067  ops/s
 }
