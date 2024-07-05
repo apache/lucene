@@ -3,6 +3,7 @@ package org.apache.lucene.sandbox.facet;
 import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.sandbox.facet.abstracts.FacetSliceRecorder;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.ScoreMode;
@@ -15,14 +16,14 @@ import java.io.IOException;
  */
 public class FacetFieldCollector implements Collector {
     private final FacetCutter facetCutter;
-    private final FacetRecorder facetRecorder;
+    private final FacetSliceRecorder facetSliceRecorder;
 
     /**
      * Collector for cutter+recorder pair.
      */
-    public FacetFieldCollector(FacetCutter facetCutter, FacetRecorder facetRecorder) {
+    public FacetFieldCollector(FacetCutter facetCutter, FacetSliceRecorder facetSliceRecorder) {
         this.facetCutter = facetCutter;
-        this.facetRecorder = facetRecorder;
+        this.facetSliceRecorder = facetSliceRecorder;
     }
 
     @Override
@@ -30,7 +31,7 @@ public class FacetFieldCollector implements Collector {
         return new FacetFieldLeafCollector(
                 context,
                 facetCutter,
-                facetRecorder);
+                facetSliceRecorder);
     }
 
     @Override

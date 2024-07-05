@@ -30,7 +30,7 @@ public class FacetFieldCollectorManager<V extends FacetRecorder> implements Coll
 
     @Override
     public FacetFieldCollector newCollector() throws IOException {
-        return new FacetFieldCollector(facetCutter, facetRecorder);
+        return new FacetFieldCollector(facetCutter, facetRecorder.getSliceRecorder());
     }
 
     @Override

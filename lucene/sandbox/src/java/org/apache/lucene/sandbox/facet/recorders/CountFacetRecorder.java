@@ -7,6 +7,7 @@ import com.carrotsearch.hppc.cursors.IntIntCursor;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
+import org.apache.lucene.sandbox.facet.abstracts.FacetSliceRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 import org.apache.lucene.index.LeafReaderContext;
 
@@ -28,33 +29,24 @@ import static org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator.NO_MORE_
  *    only?
  */
 public class CountFacetRecorder implements FacetRecorder {
-
-    // TODO: deprecate - it is cheaper to merge during reduce than to lock threads during collection.
-    private final boolean useSyncMap;
-
-    /**
-     * Create
-     */
-    public CountFacetRecorder() {
-        this(false);
-    }
-
     IntIntMap values;
-    List<IntIntMap> perLeafValues;
+    List<IntIntMap> perSliceValues;
 
     /**
      * Create.
-     * @param useSyncMap if true, use single sync map for all leafs.
+     * TODO: deprecate.
      */
     public CountFacetRecorder(boolean useSyncMap) {
-        super();
-        if (useSyncMap) {
-            values = new SafeIntIntHashMap();
-        } else {
-            // Has to be synchronizedList as we have one recorder per all slices.
-            perLeafValues = Collections.synchronizedList(new ArrayList<>());
-        }
-        this.useSyncMap = useSyncMap;
+        this();
+    }
+
+    /**
+     * Create.
+     */
+    public CountFacetRecorder() {
+        //super();
+        // Has to be synchronizedList as we have one recorder per all slices.
+        perSliceValues = Collections.synchronizedList(new ArrayList<>());
     }
 
     /**
@@ -65,23 +57,11 @@ public class CountFacetRecorder implements FacetRecorder {
         return values.get(ord);
     }
 
-    private static final class SafeIntIntHashMap extends IntIntHashMap {
-        @Override
-        public synchronized int addTo(int key, int incrementValue) {
-            return super.addTo(key, incrementValue);
-        }
-    }
-
-
     @Override
-    public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) {
-        if (useSyncMap) {
-            return new CountLeafRecorder(values);
-        } else {
-            IntIntMap leafValues = new IntIntHashMap();
-            perLeafValues.add(leafValues);
-            return new CountLeafRecorder(leafValues);
-        }
+    public FacetSliceRecorder getSliceRecorder() throws IOException {
+        IntIntMap sliceValues = new IntIntHashMap();
+        perSliceValues.add(sliceValues);
+        return new CountSliceRecorder(sliceValues);
     }
 
     @Override
@@ -111,33 +91,30 @@ public class CountFacetRecorder implements FacetRecorder {
 
     @Override
     public void reduce(FacetRollup facetRollup) throws IOException {
-        if (useSyncMap == false) {
-            boolean firstElement = true;
-            for (IntIntMap leafRecords: perLeafValues) {
-                if (firstElement) {
-                    values = leafRecords;
-                    firstElement = false;
-                } else {
-                    for(IntIntCursor elem: leafRecords) {
-                        values.addTo(elem.key, elem.value);
-                    }
+        boolean firstElement = true;
+        for (IntIntMap leafRecords: perSliceValues) {
+            if (firstElement) {
+                values = leafRecords;
+                firstElement = false;
+            } else {
+                for(IntIntCursor elem: leafRecords) {
+                    values.addTo(elem.key, elem.value);
                 }
             }
-            if (firstElement) {
-                // TODO: do we need empty map by default?
-                values = new IntIntHashMap();
-            }
+        }
+        if (firstElement) {
+            // TODO: do we need empty map by default?
+            values = new IntIntHashMap();
         }
 
         if (facetRollup == null) {
             return;
         }
-        // Don't need to do anything now because we collect all to a sync IntIntMap
-        // TODO: would that be faster to collect per leaf and then reduce?
+
         OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
         for(int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; ) {
             // TODO: we call addTo because this is what IntTaxonomyFacets does (add to current value).
-            //  We might want to just replace the value instead? We should not have dimOrd in the map.
+            //  We might want to just replace the value instead? We should not have dimOrd in the map yet.
             values.addTo(dimOrd, rollup(dimOrd, facetRollup));
             dimOrd = dimOrds.nextOrd();
         }
@@ -148,15 +125,27 @@ public class CountFacetRecorder implements FacetRecorder {
         int accum = 0;
         for(int nextChild = childOrds.nextOrd(); nextChild != NO_MORE_ORDS; ) {
             // TODO: we call addTo because this is what IntTaxonomyFacets does (add to current value).
-            //  We might want to just replace the value instead? We should not have nextChild in the map.
+            //  We might want to just replace the value instead? We should not have nextChild in the map yet.
             accum += values.addTo(nextChild, rollup(nextChild, facetRollup));
             nextChild = childOrds.nextOrd();
         }
         return accum;
     }
 
-    private static class CountLeafRecorder implements FacetLeafRecorder {
+    private static class CountSliceRecorder implements FacetSliceRecorder {
+        private final IntIntMap values;
 
+        public CountSliceRecorder(IntIntMap values) {
+            this.values = values;
+        }
+
+        @Override
+        public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) {
+                return new CountLeafRecorder(values);
+        }
+    }
+
+    private static class CountLeafRecorder implements FacetLeafRecorder {
         private final IntIntMap values;
 
         public CountLeafRecorder(IntIntMap values) {
@@ -167,6 +156,5 @@ public class CountFacetRecorder implements FacetRecorder {
         public void record(int docId, int facetId) {
             this.values.addTo(facetId, 1);
         }
-
     }
 }

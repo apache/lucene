@@ -5,6 +5,7 @@ import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
+import org.apache.lucene.sandbox.facet.abstracts.FacetSliceRecorder;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -18,7 +19,7 @@ public class FacetFieldLeafCollector implements LeafCollector {
 
     private final LeafReaderContext context;
     private final FacetCutter cutter;
-    private final FacetRecorder recorder;
+    private final FacetSliceRecorder sliceRecorder;
     private FacetLeafCutter leafCutter;
 
     private FacetLeafRecorder leafRecorder;
@@ -30,11 +31,11 @@ public class FacetFieldLeafCollector implements LeafCollector {
         this.leafRecorder = leafPayload;
     }*/
 
-    public FacetFieldLeafCollector(LeafReaderContext context, FacetCutter cutter, FacetRecorder recorder) {
+    public FacetFieldLeafCollector(LeafReaderContext context, FacetCutter cutter, FacetSliceRecorder sliceRecorder) {
         // TODO: we don't need context param?
         this.context = context;
         this.cutter = cutter;
-        this.recorder = recorder;
+        this.sliceRecorder = sliceRecorder;
     }
 
     @Override
@@ -53,7 +54,7 @@ public class FacetFieldLeafCollector implements LeafCollector {
         int curOrd = leafCutter.nextOrd();
         if (curOrd != FacetLeafCutter.NO_MORE_ORDS) {
             if (leafRecorder == null) {
-                leafRecorder = recorder.getLeafRecorder(context);
+                leafRecorder = sliceRecorder.getLeafRecorder(context);
             }
             leafRecorder.record(doc, curOrd);
             for(curOrd = leafCutter.nextOrd(); curOrd != FacetLeafCutter.NO_MORE_ORDS; curOrd = leafCutter.nextOrd()) {

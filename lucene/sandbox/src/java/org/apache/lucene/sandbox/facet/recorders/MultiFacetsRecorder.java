@@ -3,6 +3,7 @@ package org.apache.lucene.sandbox.facet.recorders;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
+import org.apache.lucene.sandbox.facet.abstracts.FacetSliceRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 import org.apache.lucene.index.LeafReaderContext;
 
@@ -19,15 +20,14 @@ public final class MultiFacetsRecorder implements FacetRecorder {
     public MultiFacetsRecorder(FacetRecorder... delegates) {
         this.delegates = delegates;
     }
+
     @Override
-    public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
-//        TODO: find out why streams gives StackOverFlowError?
-//        FacetLeafRecorder[] leafDelegates = Arrays.stream(delegates).map(k -> getLeafRecorder(context)).toArray(FacetLeafRecorder[]::new);
-        FacetLeafRecorder[] leafDelegates = new FacetLeafRecorder[delegates.length];
+    public FacetSliceRecorder getSliceRecorder() throws IOException {
+        FacetSliceRecorder[] sliceDelegates = new FacetSliceRecorder[delegates.length];
         for (int i=0; i < delegates.length; i++) {
-            leafDelegates[i] = delegates[i].getLeafRecorder(context);
+            sliceDelegates[i] = delegates[i].getSliceRecorder();
         }
-        return new MultiFacetsLeafRecorder(leafDelegates);
+        return new MultiFacetsSliceRecorder(sliceDelegates);
     }
 
     @Override
@@ -46,6 +46,24 @@ public final class MultiFacetsRecorder implements FacetRecorder {
     public void reduce(FacetRollup facetRollup) throws IOException {
         for (FacetRecorder recorder: delegates) {
             recorder.reduce(facetRollup);
+        }
+    }
+
+    private static final class MultiFacetsSliceRecorder implements FacetSliceRecorder {
+
+        private final FacetSliceRecorder[] delegates;
+
+        private MultiFacetsSliceRecorder(FacetSliceRecorder[] delegates) {
+            this.delegates = delegates;
+        }
+
+        @Override
+        public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
+            FacetLeafRecorder[] leafDelegates = new FacetLeafRecorder[delegates.length];
+            for (int i=0; i < delegates.length; i++) {
+                leafDelegates[i] = delegates[i].getLeafRecorder(context);
+            }
+            return new MultiFacetsLeafRecorder(leafDelegates);
         }
     }
 
