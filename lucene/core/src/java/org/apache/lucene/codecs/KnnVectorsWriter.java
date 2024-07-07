@@ -20,14 +20,17 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
+import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
@@ -136,6 +139,44 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     @Override
     public int nextDoc() throws IOException {
       return values.nextDoc();
+    }
+  }
+
+  public static void mapOldOrdToNewOrd(
+      DocsWithFieldSet oldDocIds,
+      Sorter.DocMap sortMap,
+      int[] old2NewOrd,
+      int[] new2OldOrd,
+      DocsWithFieldSet newDocsWithField)
+      throws IOException {
+    assert (old2NewOrd != null || new2OldOrd != null || newDocsWithField != null);
+    IntIntHashMap newIdToOldOrd = new IntIntHashMap();
+    DocIdSetIterator iterator = oldDocIds.iterator();
+    int[] newDocIds = new int[oldDocIds.cardinality()];
+    int oldOrd = 0;
+    for (int oldDocId = iterator.nextDoc();
+        oldDocId != DocIdSetIterator.NO_MORE_DOCS;
+        oldDocId = iterator.nextDoc()) {
+      int newId = sortMap.oldToNew(oldDocId);
+      newIdToOldOrd.put(newId, oldOrd);
+      newDocIds[oldOrd] = newId;
+      oldOrd++;
+    }
+
+    Arrays.sort(newDocIds);
+    int newOrd = 0;
+    for (int newDocId : newDocIds) {
+      int currOldOrd = newIdToOldOrd.get(newDocId);
+      if (old2NewOrd != null) {
+        old2NewOrd[currOldOrd] = newOrd;
+      }
+      if (new2OldOrd != null) {
+        new2OldOrd[newOrd] = currOldOrd;
+      }
+      if (newDocsWithField != null) {
+        newDocsWithField.add(newDocId);
+      }
+      newOrd++;
     }
   }
 
