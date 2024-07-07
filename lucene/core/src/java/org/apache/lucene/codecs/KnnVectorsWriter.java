@@ -142,6 +142,14 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
   }
 
+  /**
+   * Given old doc ids and an id mapping, maps old ordinal to new ordinal. Note: this method return
+   * nothing and output are written to parameters
+   *
+   * @param old2NewOrd int[] maps from old ord to new ord
+   * @param new2OldOrd int[] maps from new ord to old ord
+   * @param newDocsWithField set of new doc ids which has the value
+   */
   public static void mapOldOrdToNewOrd(
       DocsWithFieldSet oldDocIds,
       Sorter.DocMap sortMap,
@@ -149,6 +157,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       int[] new2OldOrd,
       DocsWithFieldSet newDocsWithField)
       throws IOException {
+    // TODO: a similar function exists in IncrementalHnswGraphMerger#getNewOrdMapping
+    //       maybe we can do a further refactoring
     assert (old2NewOrd != null || new2OldOrd != null || newDocsWithField != null);
     IntIntHashMap newIdToOldOrd = new IntIntHashMap();
     DocIdSetIterator iterator = oldDocIds.iterator();
