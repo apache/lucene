@@ -148,7 +148,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
    * nothing and output are written to parameters
    *
    * @param oldDocIds the old or current document ordinals. Must not be null.
-   * @param sortMap, the document sorting map for how to make the new ordinals. Must not be null.
+   * @param sortMap the document sorting map for how to make the new ordinals. Must not be null.
    * @param old2NewOrd int[] maps from old ord to new ord
    * @param new2OldOrd int[] maps from new ord to old ord
    * @param newDocsWithField set of new doc ids which has the value
