@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
@@ -127,6 +128,12 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     public AssertingStoredFields(StoredFields in) {
       this.in = in;
+    }
+
+    @Override
+    public void prefetch(int docID) throws IOException {
+      assertThread("StoredFields", creationThread);
+      in.prefetch(docID);
     }
 
     @Override
@@ -1149,6 +1156,109 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
   }
 
+  /** Wraps a DocValuesSkipper but with additional asserts */
+  public static class AssertingDocValuesSkipper extends DocValuesSkipper {
+
+    private final Thread creationThread = Thread.currentThread();
+    private final DocValuesSkipper in;
+
+    /** Sole constructor */
+    public AssertingDocValuesSkipper(DocValuesSkipper in) {
+      this.in = in;
+      assert minDocID(0) == -1;
+      assert maxDocID(0) == -1;
+    }
+
+    @Override
+    public void advance(int target) throws IOException {
+      assertThread("Doc values skipper", creationThread);
+      assert target > maxDocID(0)
+          : "Illegal to call advance() on a target that is not beyond the current interval";
+      in.advance(target);
+      assert in.minDocID(0) <= in.maxDocID(0);
+    }
+
+    private boolean iterating() {
+      return maxDocID(0) != -1
+          && minDocID(0) != -1
+          && maxDocID(0) != DocIdSetIterator.NO_MORE_DOCS
+          && minDocID(0) != DocIdSetIterator.NO_MORE_DOCS;
+    }
+
+    @Override
+    public int numLevels() {
+      assertThread("Doc values skipper", creationThread);
+      return in.numLevels();
+    }
+
+    @Override
+    public int minDocID(int level) {
+      assertThread("Doc values skipper", creationThread);
+      Objects.checkIndex(level, numLevels());
+      int minDocID = in.minDocID(level);
+      assert minDocID <= in.maxDocID(level);
+      if (level > 0) {
+        assert minDocID <= in.minDocID(level - 1);
+      }
+      return minDocID;
+    }
+
+    @Override
+    public int maxDocID(int level) {
+      assertThread("Doc values skipper", creationThread);
+      Objects.checkIndex(level, numLevels());
+      int maxDocID = in.maxDocID(level);
+
+      assert maxDocID >= in.minDocID(level);
+      if (level > 0) {
+        assert maxDocID >= in.maxDocID(level - 1);
+      }
+      return maxDocID;
+    }
+
+    @Override
+    public long minValue(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.minValue(level);
+    }
+
+    @Override
+    public long maxValue(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.maxValue(level);
+    }
+
+    @Override
+    public int docCount(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.docCount(level);
+    }
+
+    @Override
+    public long minValue() {
+      assertThread("Doc values skipper", creationThread);
+      return in.minValue();
+    }
+
+    @Override
+    public long maxValue() {
+      assertThread("Doc values skipper", creationThread);
+      return in.maxValue();
+    }
+
+    @Override
+    public int docCount() {
+      assertThread("Doc values skipper", creationThread);
+      return in.docCount();
+    }
+  }
+
   /** Wraps a SortedSetDocValues but with additional asserts */
   public static class AssertingPointValues extends PointValues {
     private final Thread creationThread = Thread.currentThread();
@@ -1473,6 +1583,19 @@ public class AssertingLeafReader extends FilterLeafReader {
       return new AssertingSortedSetDocValues(dv, maxDoc());
     } else {
       assert fi == null || fi.getDocValuesType() != DocValuesType.SORTED_SET;
+      return null;
+    }
+  }
+
+  @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    DocValuesSkipper skipper = super.getDocValuesSkipper(field);
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (skipper != null) {
+      assert fi.hasDocValuesSkipIndex();
+      return new AssertingDocValuesSkipper(skipper);
+    } else {
+      assert fi == null || fi.hasDocValuesSkipIndex() == false;
       return null;
     }
   }

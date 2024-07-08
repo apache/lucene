@@ -40,7 +40,6 @@ class ReqExclScorer extends Scorer {
    * @param exclScorer indicates exclusion.
    */
   public ReqExclScorer(Scorer reqScorer, Scorer exclScorer) {
-    super(reqScorer.weight);
     this.reqScorer = reqScorer;
     reqTwoPhaseIterator = reqScorer.twoPhaseIterator();
     if (reqTwoPhaseIterator == null) {

@@ -24,8 +24,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -33,10 +31,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  * Configuration for {@link DirectMonotonicReader} and {@link IndexedDISI} for reading sparse
  * vectors. The format in the static writing methods adheres to the Lucene95HnswVectorsFormat
  */
-public class OrdToDocDISIReaderConfiguration implements Accountable {
-
-  private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(OrdToDocDISIReaderConfiguration.class);
+public class OrdToDocDISIReaderConfiguration {
 
   /**
    * Writes out the docsWithField and ordToDoc mapping to the outputMeta and vectorData
@@ -186,11 +181,6 @@ public class OrdToDocDISIReaderConfiguration implements Accountable {
     this.docsWithFieldLength = docsWithFieldLength;
     this.denseRankPower = denseRankPower;
     this.meta = meta;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return SHALLOW_SIZE + RamUsageEstimator.sizeOf(meta);
   }
 
   /**

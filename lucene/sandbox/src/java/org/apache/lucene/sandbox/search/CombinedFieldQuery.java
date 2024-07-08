@@ -51,6 +51,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermScorer;
 import org.apache.lucene.search.TermStatistics;
@@ -400,7 +401,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
       for (int i = 0; i < fieldTerms.length; i++) {
@@ -427,13 +428,13 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       for (int i = 0; i < iterators.size(); i++) {
         float weight = fields.get(i).weight;
         queue.add(
-            new WeightedDisiWrapper(
-                new TermScorer(this, iterators.get(i), nonScoringSimScorer), weight));
+            new WeightedDisiWrapper(new TermScorer(iterators.get(i), nonScoringSimScorer), weight));
       }
       // Even though it is called approximation, it is accurate since none of
       // the sub iterators are two-phase iterators.
       DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
-      return new CombinedFieldScorer(this, queue, iterator, scoringSimScorer);
+      final var scorer = new CombinedFieldScorer(queue, iterator, scoringSimScorer);
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override
@@ -461,11 +462,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     private final MultiNormsLeafSimScorer simScorer;
 
     CombinedFieldScorer(
-        Weight weight,
-        DisiPriorityQueue queue,
-        DocIdSetIterator iterator,
-        MultiNormsLeafSimScorer simScorer) {
-      super(weight);
+        DisiPriorityQueue queue, DocIdSetIterator iterator, MultiNormsLeafSimScorer simScorer) {
       this.queue = queue;
       this.iterator = iterator;
       this.simScorer = simScorer;

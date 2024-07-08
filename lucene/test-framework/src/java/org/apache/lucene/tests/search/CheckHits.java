@@ -417,7 +417,7 @@ public class CheckHits {
     if (descr.startsWith("score based on ") && descr.contains("child docs in range")) {
       assertTrue("Child doc explanations are missing", detail.length > 0);
     }
-    if (detail.length > 0) {
+    if (detail.length > 0 && expl.isMatch()) {
       if (detail.length == 1 && COMPUTED_FROM_PATTERN.matcher(descr).matches() == false) {
         // simple containment, unless it's a freq of: (which lets a query explain how the freq is
         // calculated),

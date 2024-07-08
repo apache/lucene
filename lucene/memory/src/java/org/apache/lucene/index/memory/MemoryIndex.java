@@ -728,6 +728,7 @@ public class MemoryIndex {
         storePayloads,
         indexOptions,
         fieldType.docValuesType(),
+        false,
         -1,
         Collections.emptyMap(),
         fieldType.pointDimensionCount(),
@@ -782,6 +783,7 @@ public class MemoryIndex {
               info.fieldInfo.hasPayloads(),
               info.fieldInfo.getIndexOptions(),
               docValuesType,
+              false,
               -1,
               info.fieldInfo.attributes(),
               info.fieldInfo.getPointDimensionCount(),
@@ -1620,6 +1622,12 @@ public class MemoryIndex {
       } else {
         return null;
       }
+    }
+
+    @Override
+    public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+      // Skipping isn't needed on a 1-doc index.
+      return null;
     }
 
     @Override

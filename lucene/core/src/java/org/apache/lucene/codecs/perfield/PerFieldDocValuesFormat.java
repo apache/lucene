@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
@@ -344,6 +345,12 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
       DocValuesProducer producer = fields.get(field.name);
       return producer == null ? null : producer.getSortedSet(field);
+    }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      DocValuesProducer producer = fields.get(field.name);
+      return producer == null ? null : producer.getSkipper(field);
     }
 
     @Override

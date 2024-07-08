@@ -16,11 +16,15 @@
  */
 package org.apache.lucene.codecs.lucene99;
 
+import static java.lang.String.format;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -36,6 +40,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.util.SameThreadExecutorService;
@@ -54,7 +61,10 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   @Override
   public void setUp() throws Exception {
     bits = random().nextBoolean() ? 4 : 7;
-    confidenceInterval = random().nextBoolean() ? 0.99f : null;
+    confidenceInterval = random().nextBoolean() ? random().nextFloat(0.90f, 1.0f) : null;
+    if (random().nextBoolean()) {
+      confidenceInterval = 0f;
+    }
     format =
         new Lucene99HnswScalarQuantizedVectorsFormat(
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
@@ -77,6 +87,41 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     };
   }
 
+  public void testQuantizationScoringEdgeCase() throws Exception {
+    float[][] vectors = new float[][] {{0.6f, 0.8f}, {0.8f, 0.6f}, {-0.6f, -0.8f}};
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    .setCodec(
+                        new Lucene99Codec() {
+                          @Override
+                          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                            return new Lucene99HnswScalarQuantizedVectorsFormat(
+                                16, 100, 1, (byte) 7, false, 0.9f, null);
+                          }
+                        }))) {
+      for (float[] vector : vectors) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.DOT_PRODUCT));
+        w.addDocument(doc);
+        w.commit();
+      }
+      w.forceMerge(1);
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        TopKnnCollector topKnnCollector = new TopKnnCollector(5, Integer.MAX_VALUE);
+        r.searchNearestVectors("f", new float[] {0.6f, 0.8f}, topKnnCollector, null);
+        TopDocs topDocs = topKnnCollector.topDocs();
+        assertEquals(3, topDocs.totalHits.value);
+        for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+          assertTrue(scoreDoc.score >= 0f);
+        }
+      }
+    }
+  }
+
   public void testQuantizedVectorsWriteAndRead() throws Exception {
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
@@ -91,7 +136,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
       vectors.add(randomVector(dim));
     }
     ScalarQuantizer scalarQuantizer =
-        confidenceInterval == null
+        confidenceInterval != null && confidenceInterval == 0f
             ? ScalarQuantizer.fromVectorsAutoInterval(
                 new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
                 similarityFunction,
@@ -99,7 +144,9 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 (byte) bits)
             : ScalarQuantizer.fromVectors(
                 new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-                confidenceInterval,
+                confidenceInterval == null
+                    ? Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval(dim)
+                    : confidenceInterval,
                 numVectors,
                 (byte) bits);
     float[] expectedCorrections = new float[numVectors];
@@ -181,9 +228,12 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 10, 20, 1, (byte) 4, false, 0.9f, null);
           }
         };
-    String expectedString =
-        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=ScalarQuantizedVectorScorer(nonQuantizedDelegate=DefaultFlatVectorScorer()), rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=DefaultFlatVectorScorer())))";
-    assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
+    String expectedPattern =
+        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=ScalarQuantizedVectorScorer(nonQuantizedDelegate=DefaultFlatVectorScorer()), rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
+    var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
+    var memSegScorer =
+        format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
+    assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
   }
 
   public void testLimits() {

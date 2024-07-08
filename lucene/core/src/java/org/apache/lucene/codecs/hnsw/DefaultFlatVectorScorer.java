@@ -29,6 +29,9 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  * @lucene.experimental
  */
 public class DefaultFlatVectorScorer implements FlatVectorsScorer {
+
+  public static final DefaultFlatVectorScorer INSTANCE = new DefaultFlatVectorScorer();
+
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
@@ -100,8 +103,13 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      return new ByteVectorScorer(vectors2, vectors1.vectorValue(ord), similarityFunction);
+    public RandomVectorScorer scorer(int ord) {
+      return new RandomVectorScorer.AbstractRandomVectorScorer(vectors) {
+        @Override
+        public float score(int node) throws IOException {
+          return similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(node));
+        }
+      };
     }
 
     @Override
@@ -127,8 +135,13 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      return new FloatVectorScorer(vectors2, vectors1.vectorValue(ord), similarityFunction);
+    public RandomVectorScorer scorer(int ord) {
+      return new RandomVectorScorer.AbstractRandomVectorScorer(vectors) {
+        @Override
+        public float score(int node) throws IOException {
+          return similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(node));
+        }
+      };
     }
 
     @Override

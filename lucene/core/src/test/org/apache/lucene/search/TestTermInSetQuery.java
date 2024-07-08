@@ -28,13 +28,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -154,6 +159,69 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
       reader.close();
       dir.close();
+    }
+  }
+
+  public void testReturnsNullScoreSupplier() throws Exception {
+    try (Directory directory = newDirectory()) {
+      try (IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig())) {
+        for (char ch = 'a'; ch <= 'z'; ch++) {
+          Document doc = new Document();
+          doc.add(new KeywordField("id", Character.toString(ch), Field.Store.YES));
+          doc.add(new KeywordField("content", Character.toString(ch), Field.Store.YES));
+          writer.addDocument(doc);
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(directory)) {
+        List<BytesRef> terms = new ArrayList<>();
+        for (char ch = 'a'; ch <= 'z'; ch++) {
+          terms.add(newBytesRef(Character.toString(ch)));
+        }
+        Query query2 = new TermInSetQuery("content", terms);
+
+        {
+          // query1 doesn't match any documents
+          Query query1 = new TermInSetQuery("id", List.of(newBytesRef("aaa"), newBytesRef("bbb")));
+          BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+          queryBuilder.add(query1, Occur.FILTER);
+          queryBuilder.add(query2, Occur.FILTER);
+          Query boolQuery = queryBuilder.build();
+
+          IndexSearcher searcher = new IndexSearcher(reader);
+          final LeafReaderContext ctx = reader.leaves().get(0);
+
+          Weight weight1 = searcher.createWeight(searcher.rewrite(query1), ScoreMode.COMPLETE, 1);
+          ScorerSupplier scorerSupplier1 = weight1.scorerSupplier(ctx);
+          // as query1 doesn't match any documents, its scorerSupplier must be null
+          assertNull(scorerSupplier1);
+          Weight weight = searcher.createWeight(searcher.rewrite(boolQuery), ScoreMode.COMPLETE, 1);
+          // scorerSupplier of a bool query where query1 is mandatory must be null
+          ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+          assertNull(scorerSupplier);
+        }
+        {
+          // query1 matches some documents
+          Query query1 =
+              new TermInSetQuery(
+                  "id", List.of(newBytesRef("aaa"), newBytesRef("bbb"), newBytesRef("b")));
+          BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+          queryBuilder.add(query1, Occur.FILTER);
+          queryBuilder.add(query2, Occur.FILTER);
+          Query boolQuery = queryBuilder.build();
+
+          IndexSearcher searcher = new IndexSearcher(reader);
+          final LeafReaderContext ctx = reader.leaves().get(0);
+
+          Weight weight1 = searcher.createWeight(searcher.rewrite(query1), ScoreMode.COMPLETE, 1);
+          ScorerSupplier scorerSupplier1 = weight1.scorerSupplier(ctx);
+          // as query1 matches some documents, its scorerSupplier must not be null
+          assertNotNull(scorerSupplier1);
+          Weight weight = searcher.createWeight(searcher.rewrite(boolQuery), ScoreMode.COMPLETE, 1);
+          // scorerSupplier of a bool query where query1 is mandatory must not be null
+          ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+          assertNotNull(scorerSupplier);
+        }
+      }
     }
   }
 

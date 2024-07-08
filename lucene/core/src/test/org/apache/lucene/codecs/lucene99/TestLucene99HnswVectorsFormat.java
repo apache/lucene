@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.codecs.lucene99;
 
+import static java.lang.String.format;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
+
+import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -37,9 +42,12 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
             return new Lucene99HnswVectorsFormat(10, 20);
           }
         };
-    String expectedString =
-        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=DefaultFlatVectorScorer()))";
-    assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
+    String expectedPattern =
+        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
+    var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
+    var memSegScorer =
+        format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
+    assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
   }
 
   public void testLimits() {

@@ -181,4 +181,7 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int TERMS_DICT_REVERSE_INDEX_SHIFT = 10;
   static final int TERMS_DICT_REVERSE_INDEX_SIZE = 1 << TERMS_DICT_REVERSE_INDEX_SHIFT;
   static final int TERMS_DICT_REVERSE_INDEX_MASK = TERMS_DICT_REVERSE_INDEX_SIZE - 1;
+
+  static final int SKIP_INDEX_INTERVAL_SHIFT = 12;
+  static final int SKIP_INDEX_INTERVAL_SIZE = 1 << SKIP_INDEX_INTERVAL_SHIFT;
 }

@@ -755,7 +755,7 @@ public class TestPhraseQuery extends LuceneTestCase {
   public void testTopPhrases() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-    String[] docs = ArrayUtil.copyOfSubArray(DOCS, 0, DOCS.length);
+    String[] docs = ArrayUtil.copyArray(DOCS);
     Collections.shuffle(Arrays.asList(docs), random());
     for (String value : DOCS) {
       Document doc = new Document();

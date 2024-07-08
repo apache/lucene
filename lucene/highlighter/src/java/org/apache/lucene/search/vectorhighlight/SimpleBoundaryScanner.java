@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.search.vectorhighlight;
 
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import org.apache.lucene.internal.hppc.CharHashSet;
 
 /**
  * Simple boundary scanner implementation that divides fragments based on a set of separator
@@ -27,10 +27,10 @@ import java.util.Set;
 public class SimpleBoundaryScanner implements BoundaryScanner {
 
   public static final int DEFAULT_MAX_SCAN = 20;
-  public static final Character[] DEFAULT_BOUNDARY_CHARS = {'.', ',', '!', '?', ' ', '\t', '\n'};
+  public static final char[] DEFAULT_BOUNDARY_CHARS = {'.', ',', '!', '?', ' ', '\t', '\n'};
 
   protected int maxScan;
-  protected Set<Character> boundaryChars;
+  protected CharHashSet boundaryChars;
 
   public SimpleBoundaryScanner() {
     this(DEFAULT_MAX_SCAN, DEFAULT_BOUNDARY_CHARS);
@@ -44,15 +44,34 @@ public class SimpleBoundaryScanner implements BoundaryScanner {
     this(DEFAULT_MAX_SCAN, boundaryChars);
   }
 
-  public SimpleBoundaryScanner(int maxScan, Character[] boundaryChars) {
+  public SimpleBoundaryScanner(int maxScan, char[] boundaryChars) {
     this.maxScan = maxScan;
-    this.boundaryChars = new HashSet<>();
-    this.boundaryChars.addAll(Arrays.asList(boundaryChars));
+    this.boundaryChars = CharHashSet.from(boundaryChars);
+  }
+
+  public SimpleBoundaryScanner(int maxScan, Character[] boundaryChars) {
+    this(maxScan, toCharArray(boundaryChars));
   }
 
   public SimpleBoundaryScanner(int maxScan, Set<Character> boundaryChars) {
-    this.maxScan = maxScan;
-    this.boundaryChars = boundaryChars;
+    this(maxScan, toCharArray(boundaryChars));
+  }
+
+  private static char[] toCharArray(Character[] characters) {
+    char[] chars = new char[characters.length];
+    for (int i = 0; i < characters.length; i++) {
+      chars[i] = characters[i];
+    }
+    return chars;
+  }
+
+  private static char[] toCharArray(Set<Character> characters) {
+    Iterator<Character> iterator = characters.iterator();
+    char[] chars = new char[characters.size()];
+    for (int i = 0; i < chars.length; i++) {
+      chars[i] = iterator.next();
+    }
+    return chars;
   }
 
   @Override

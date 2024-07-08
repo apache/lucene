@@ -60,6 +60,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -1577,9 +1578,21 @@ public class TestRangeFacetCounts extends FacetTestCase {
       final Weight in = this.in.createWeight(searcher, scoreMode, boost);
       return new FilterWeight(in) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          used.set(true);
-          return in.scorer(context);
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorer = in.scorer(context);
+          if (scorer == null) return null;
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              used.set(true);
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
       };
     }

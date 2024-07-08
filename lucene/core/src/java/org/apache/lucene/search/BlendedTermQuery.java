@@ -268,7 +268,7 @@ public final class BlendedTermQuery extends Query {
 
   @Override
   public final Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    final TermStates[] contexts = ArrayUtil.copyOfSubArray(this.contexts, 0, this.contexts.length);
+    final TermStates[] contexts = ArrayUtil.copyArray(this.contexts);
     for (int i = 0; i < contexts.length; ++i) {
       if (contexts[i] == null
           || contexts[i].wasBuiltFor(indexSearcher.getTopReaderContext()) == false) {

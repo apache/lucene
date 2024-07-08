@@ -208,6 +208,7 @@ public final class Polygon extends LatLonGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
+    sb.append("Polygon");
     for (int i = 0; i < polyLats.length; i++) {
       sb.append("[").append(polyLats[i]).append(", ").append(polyLons[i]).append("] ");
     }

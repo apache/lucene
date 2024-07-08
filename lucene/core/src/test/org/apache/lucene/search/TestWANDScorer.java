@@ -953,36 +953,25 @@ public class TestWANDScorer extends LuceneTestCase {
     @Override
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
-      return new FilterWeight(query.createWeight(searcher, scoreMode, boost)) {
-        @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          Scorer scorer = super.scorer(context);
-          if (scorer == null) {
-            return null;
-          } else {
-            return new MaxScoreWrapperScorer(scorer, maxRange, maxScore);
-          }
-        }
-
+      var weight = query.createWeight(searcher, scoreMode, boost);
+      return new FilterWeight(weight) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          ScorerSupplier supplier = super.scorerSupplier(context);
+          ScorerSupplier supplier = weight.scorerSupplier(context);
           if (supplier == null) {
             return null;
-          } else {
-            return new ScorerSupplier() {
-
-              @Override
-              public Scorer get(long leadCost) throws IOException {
-                return new MaxScoreWrapperScorer(supplier.get(leadCost), maxRange, maxScore);
-              }
-
-              @Override
-              public long cost() {
-                return supplier.cost();
-              }
-            };
           }
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return new MaxScoreWrapperScorer(supplier.get(leadCost), maxRange, maxScore);
+            }
+
+            @Override
+            public long cost() {
+              return supplier.cost();
+            }
+          };
         }
       };
     }
@@ -1009,7 +998,7 @@ public class TestWANDScorer extends LuceneTestCase {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           BooleanWeight weight = (BooleanWeight) query.createWeight(searcher, scoreMode, boost);
           List<Scorer> optionalScorers =
               weight.weightedClauses.stream()
@@ -1032,13 +1021,15 @@ public class TestWANDScorer extends LuceneTestCase {
                         }
                       })
                   .toList();
-
+          final Scorer scorer;
           if (optionalScorers.size() > 0) {
-            return new WANDScorer(
-                weight, optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
+            scorer =
+                new WANDScorer(optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
           } else {
-            return weight.scorer(context);
+            scorer = weight.scorer(context);
+            if (scorer == null) return null;
           }
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

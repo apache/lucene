@@ -29,7 +29,7 @@ public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVecto
 
   ScalarQuantizer getScalarQuantizer();
 
-  float getScoreCorrectionConstant();
+  float getScoreCorrectionConstant(int vectorOrd) throws IOException;
 
   @Override
   RandomAccessQuantizedByteVectorValues copy() throws IOException;

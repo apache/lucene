@@ -579,24 +579,26 @@ public class TestJoinUtil extends LuceneTestCase {
           }
 
           @Override
-          public Scorer scorer(LeafReaderContext context) throws IOException {
+          public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
             Scorer fieldScorer = fieldWeight.scorer(context);
             if (fieldScorer == null) {
               return null;
             }
             NumericDocValues price = context.reader().getNumericDocValues(field);
-            return new FilterScorer(fieldScorer, this) {
-              @Override
-              public float score() throws IOException {
-                assertEquals(in.docID(), price.advance(in.docID()));
-                return (float) price.longValue();
-              }
+            final var scorer =
+                new FilterScorer(fieldScorer) {
+                  @Override
+                  public float score() throws IOException {
+                    assertEquals(in.docID(), price.advance(in.docID()));
+                    return (float) price.longValue();
+                  }
 
-              @Override
-              public float getMaxScore(int upTo) throws IOException {
-                return Float.POSITIVE_INFINITY;
-              }
-            };
+                  @Override
+                  public float getMaxScore(int upTo) throws IOException {
+                    return Float.POSITIVE_INFINITY;
+                  }
+                };
+            return new DefaultScorerSupplier(scorer);
           }
 
           @Override

@@ -56,7 +56,27 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     scorer1 = this.scorers[0];
     scorer2 = this.scorers[1];
     this.sumOfOtherClauses = new double[this.scorers.length];
+    for (int i = 0; i < sumOfOtherClauses.length; i++) {
+      sumOfOtherClauses[i] = Double.POSITIVE_INFINITY;
+    }
     this.maxDoc = maxDoc;
+  }
+
+  private float computeMaxScore(int windowMin, int windowMax) throws IOException {
+    for (int i = 0; i < scorers.length; ++i) {
+      scorers[i].advanceShallow(windowMin);
+    }
+
+    double maxWindowScore = 0;
+    for (int i = 0; i < scorers.length; ++i) {
+      float maxClauseScore = scorers[i].getMaxScore(windowMax);
+      sumOfOtherClauses[i] = maxClauseScore;
+      maxWindowScore += maxClauseScore;
+    }
+    for (int i = sumOfOtherClauses.length - 2; i >= 0; --i) {
+      sumOfOtherClauses[i] += sumOfOtherClauses[i + 1];
+    }
+    return (float) maxWindowScore;
   }
 
   @Override
@@ -68,20 +88,12 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       // Use impacts of the least costly scorer to compute windows
       // NOTE: windowMax is inclusive
       int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
-      for (int i = 1; i < scorers.length; ++i) {
-        scorers[i].advanceShallow(windowMin);
-      }
 
-      double maxWindowScore = 0;
-      for (int i = 0; i < scorers.length; ++i) {
-        double maxClauseScore = scorers[i].getMaxScore(windowMax);
-        sumOfOtherClauses[i] = maxClauseScore;
-        maxWindowScore += maxClauseScore;
+      float maxWindowScore = Float.POSITIVE_INFINITY;
+      if (0 < scorable.minCompetitiveScore) {
+        maxWindowScore = computeMaxScore(windowMin, windowMax);
       }
-      for (int i = sumOfOtherClauses.length - 2; i >= 0; --i) {
-        sumOfOtherClauses[i] += sumOfOtherClauses[i + 1];
-      }
-      scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, (float) maxWindowScore);
+      scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
       windowMin = Math.max(lead1.docID(), windowMax + 1);
     }
 

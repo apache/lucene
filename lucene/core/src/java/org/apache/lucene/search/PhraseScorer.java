@@ -32,8 +32,7 @@ class PhraseScorer extends Scorer {
   private float minCompetitiveScore = 0;
   private float freq = 0;
 
-  PhraseScorer(Weight weight, PhraseMatcher matcher, ScoreMode scoreMode, LeafSimScorer simScorer) {
-    super(weight);
+  PhraseScorer(PhraseMatcher matcher, ScoreMode scoreMode, LeafSimScorer simScorer) {
     this.matcher = matcher;
     this.scoreMode = scoreMode;
     this.simScorer = simScorer;
@@ -102,10 +101,5 @@ class PhraseScorer extends Scorer {
   @Override
   public float getMaxScore(int upTo) throws IOException {
     return maxScoreCache.getMaxScore(upTo);
-  }
-
-  @Override
-  public String toString() {
-    return "PhraseScorer(" + weight + ")";
   }
 }

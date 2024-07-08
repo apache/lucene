@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.facet;
 
-import com.carrotsearch.hppc.IntIntHashMap;
-import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +29,7 @@ import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -150,12 +149,12 @@ public class StringValueFacetCounts extends Facets {
     List<LabelAndValue> labelValues = new ArrayList<>();
 
     if (sparseCounts != null) {
-      for (IntIntCursor cursor : sparseCounts) {
-        int count = cursor.value;
-        final BytesRef term = docValues.lookupOrd(cursor.key);
+      for (IntIntHashMap.IntIntCursor sparseCount : sparseCounts) {
+        int count = sparseCount.value;
+        final BytesRef term = docValues.lookupOrd(sparseCount.key);
         labelValues.add(new LabelAndValue(term.utf8ToString(), count));
       }
-    } else {
+    } else if (denseCounts != null) {
       for (int i = 0; i < denseCounts.length; i++) {
         int count = denseCounts[i];
         if (count != 0) {
@@ -186,10 +185,10 @@ public class StringValueFacetCounts extends Facets {
     int childCount = 0; // total number of labels with non-zero count
 
     if (sparseCounts != null) {
-      for (IntIntCursor cursor : sparseCounts) {
+      for (IntIntHashMap.IntIntCursor sparseCount : sparseCounts) {
         childCount++; // every count in sparseValues should be non-zero
-        int ord = cursor.key;
-        int count = cursor.value;
+        int ord = sparseCount.key;
+        int count = sparseCount.value;
         if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
           if (q == null) {
             // Lazy init for sparse case:
@@ -207,7 +206,7 @@ public class StringValueFacetCounts extends Facets {
           }
         }
       }
-    } else {
+    } else if (denseCounts != null) {
       for (int i = 0; i < denseCounts.length; i++) {
         int count = denseCounts[i];
         if (count != 0) {
@@ -257,7 +256,13 @@ public class StringValueFacetCounts extends Facets {
       return -1;
     }
 
-    return sparseCounts != null ? sparseCounts.get(ord) : denseCounts[ord];
+    if (sparseCounts != null) {
+      return sparseCounts.get(ord);
+    }
+    if (denseCounts != null) {
+      return denseCounts[ord];
+    }
+    return 0;
   }
 
   @Override

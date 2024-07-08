@@ -36,11 +36,11 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -164,7 +164,24 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    return rawVectorsReader.getFloatVectorValues(field);
+    FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      return null;
+    }
+    final FloatVectorValues rawVectorValues = rawVectorsReader.getFloatVectorValues(field);
+    OffHeapQuantizedByteVectorValues quantizedByteVectorValues =
+        OffHeapQuantizedByteVectorValues.load(
+            fieldEntry.ordToDoc,
+            fieldEntry.dimension,
+            fieldEntry.size,
+            fieldEntry.scalarQuantizer,
+            fieldEntry.similarityFunction,
+            vectorScorer,
+            fieldEntry.compress,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            quantizedVectorData);
+    return new QuantizedVectorValues(rawVectorValues, quantizedByteVectorValues);
   }
 
   @Override
@@ -227,6 +244,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.dimension,
             fieldEntry.size,
             fieldEntry.scalarQuantizer,
+            fieldEntry.similarityFunction,
+            vectorScorer,
             fieldEntry.compress,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
@@ -282,6 +301,8 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         fieldEntry.dimension,
         fieldEntry.size,
         fieldEntry.scalarQuantizer,
+        fieldEntry.similarityFunction,
+        vectorScorer,
         fieldEntry.compress,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
@@ -307,10 +328,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       int size,
       byte bits,
       boolean compress,
-      OrdToDocDISIReaderConfiguration ordToDoc)
-      implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
+      OrdToDocDISIReaderConfiguration ordToDoc) {
 
     static FieldEntry create(
         IndexInput input,
@@ -328,9 +346,16 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       if (size > 0) {
         if (versionMeta < Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS) {
           int floatBits = input.readInt(); // confidenceInterval, unused
-          if (floatBits == -1) {
+          if (floatBits == -1) { // indicates a null confidence interval
             throw new CorruptIndexException(
                 "Missing confidence interval for scalar quantizer", input);
+          }
+          float confidenceInterval = Float.intBitsToFloat(floatBits);
+          // indicates a dynamic interval, which shouldn't be provided in this version
+          if (confidenceInterval
+              == Lucene99ScalarQuantizedVectorsFormat.DYNAMIC_CONFIDENCE_INTERVAL) {
+            throw new CorruptIndexException(
+                "Invalid confidence interval for scalar quantizer: " + confidenceInterval, input);
           }
           bits = (byte) 7;
           compress = false;
@@ -363,10 +388,57 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
           compress,
           ordToDoc);
     }
+  }
+
+  private static final class QuantizedVectorValues extends FloatVectorValues {
+    private final FloatVectorValues rawVectorValues;
+    private final OffHeapQuantizedByteVectorValues quantizedVectorValues;
+
+    QuantizedVectorValues(
+        FloatVectorValues rawVectorValues, OffHeapQuantizedByteVectorValues quantizedVectorValues) {
+      this.rawVectorValues = rawVectorValues;
+      this.quantizedVectorValues = quantizedVectorValues;
+    }
 
     @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(ordToDoc);
+    public int dimension() {
+      return rawVectorValues.dimension();
+    }
+
+    @Override
+    public int size() {
+      return rawVectorValues.size();
+    }
+
+    @Override
+    public float[] vectorValue() throws IOException {
+      return rawVectorValues.vectorValue();
+    }
+
+    @Override
+    public int docID() {
+      return rawVectorValues.docID();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      int rawDocId = rawVectorValues.nextDoc();
+      int quantizedDocId = quantizedVectorValues.nextDoc();
+      assert rawDocId == quantizedDocId;
+      return quantizedDocId;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      int rawDocId = rawVectorValues.advance(target);
+      int quantizedDocId = quantizedVectorValues.advance(target);
+      assert rawDocId == quantizedDocId;
+      return quantizedDocId;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      return quantizedVectorValues.scorer(query);
     }
   }
 }

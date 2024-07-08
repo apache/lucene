@@ -72,6 +72,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -281,7 +282,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     AbstractMockVectorValues<T> vectors = vectorValues(nDoc, dim);
 
     int M = random().nextInt(10) + 5;
-    int beamWidth = random().nextInt(10) + 5;
+    int beamWidth = random().nextInt(10) + 10;
     VectorSimilarityFunction similarityFunction =
         RandomizedTest.randomFrom(VectorSimilarityFunction.values());
     long seed = random().nextLong();
@@ -1128,6 +1129,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     public float[] vectorValue(int ord) {
       return unitVector2d(ord / (double) size, value);
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
@@ -1192,6 +1198,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         bValue[i] = (byte) (value[i] * 127);
       }
       return bValue;
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
+      throw new UnsupportedOperationException();
     }
   }
 

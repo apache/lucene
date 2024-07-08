@@ -30,7 +30,7 @@ def recompileDictionary(project, dictionaryName, Closure closure) {
 }
 
 configure(project(":lucene:analysis:nori")) {
-  apply plugin: "de.undercouch.download"
+  apply plugin: deps.plugins.undercouch.download.get().pluginId
 
   plugins.withType(JavaPlugin) {
     ext {

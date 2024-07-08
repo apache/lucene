@@ -47,6 +47,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -2308,5 +2309,39 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertTrue(DirectoryReader.indexExists(dir));
       DirectoryReader.open(dir).close();
     }
+  }
+
+  public void testExceptionJustBeforeFlushWithPointValues() throws Exception {
+    Directory dir = newDirectory();
+    Analyzer analyzer =
+        new Analyzer(Analyzer.PER_FIELD_REUSE_STRATEGY) {
+          @Override
+          public TokenStreamComponents createComponents(String fieldName) {
+            MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+            tokenizer.setEnableChecks(
+                false); // disable workflow checking as we forcefully close() in exceptional cases.
+            TokenStream stream = new CrashingFilter(fieldName, tokenizer);
+            return new TokenStreamComponents(tokenizer, stream);
+          }
+        };
+    IndexWriterConfig iwc =
+        newIndexWriterConfig(analyzer).setCommitOnClose(false).setMaxBufferedDocs(3);
+    MergePolicy mp = iwc.getMergePolicy();
+    iwc.setMergePolicy(
+        new SoftDeletesRetentionMergePolicy("soft_delete", MatchAllDocsQuery::new, mp));
+    IndexWriter w = RandomIndexWriter.mockIndexWriter(dir, iwc, random());
+    Document newdoc = new Document();
+    newdoc.add(newTextField("crash", "do it on token 4", Field.Store.NO));
+    newdoc.add(new IntPoint("int", 42));
+    expectThrows(IOException.class, () -> w.addDocument(newdoc));
+    DirectoryReader r = w.getReader(false, false);
+    LeafReader onlyReader = getOnlyLeafReader(r);
+    // we mark the failed doc as deleted
+    assertEquals(onlyReader.numDeletedDocs(), 1);
+    // there are not points values (rather than an empty set of values)
+    assertNull(onlyReader.getPointValues("field"));
+    onlyReader.close();
+    w.close();
+    dir.close();
   }
 }

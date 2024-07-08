@@ -20,31 +20,23 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.LongValues;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * Retrieves an instance previously written by {@link DirectMonotonicWriter}.
  *
  * @see DirectMonotonicWriter
  */
-public final class DirectMonotonicReader extends LongValues implements Accountable {
-
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(DirectMonotonicReader.class);
+public final class DirectMonotonicReader extends LongValues {
 
   /**
    * In-memory metadata that needs to be kept around for {@link DirectMonotonicReader} to read data
    * from disk.
    */
-  public static class Meta implements Accountable {
+  public static class Meta {
 
     // Use a shift of 63 so that there would be a single block regardless of the number of values.
     private static final Meta SINGLE_ZERO_BLOCK = new Meta(1L, 63);
-
-    private static final long BASE_RAM_BYTES_USED =
-        RamUsageEstimator.shallowSizeOfInstance(Meta.class);
 
     private final int blockShift;
     private final int numBlocks;
@@ -64,15 +56,6 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
       this.avgs = new float[this.numBlocks];
       this.bpvs = new byte[this.numBlocks];
       this.offsets = new long[this.numBlocks];
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return BASE_RAM_BYTES_USED
-          + RamUsageEstimator.sizeOf(mins)
-          + RamUsageEstimator.sizeOf(avgs)
-          + RamUsageEstimator.sizeOf(bpvs)
-          + RamUsageEstimator.sizeOf(offsets);
     }
   }
 
@@ -132,7 +115,6 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   private final long[] mins;
   private final float[] avgs;
   private final byte[] bpvs;
-  private final int nonZeroBpvs;
 
   private DirectMonotonicReader(
       int blockShift, LongValues[] readers, long[] mins, float[] avgs, byte[] bpvs) {
@@ -147,13 +129,6 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
         || readers.length != bpvs.length) {
       throw new IllegalArgumentException();
     }
-    int nonZeroBpvs = 0;
-    for (byte b : bpvs) {
-      if (b != 0) {
-        nonZeroBpvs++;
-      }
-    }
-    this.nonZeroBpvs = nonZeroBpvs;
   }
 
   @Override
@@ -212,15 +187,5 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
     }
 
     return -1 - lo;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    // Don't include meta, which should be accounted separately
-    return BASE_RAM_BYTES_USED
-        + RamUsageEstimator.shallowSizeOf(readers)
-        +
-        // Assume empty objects for the readers
-        nonZeroBpvs * RamUsageEstimator.alignObjectSize(RamUsageEstimator.NUM_BYTES_ARRAY_HEADER);
   }
 }

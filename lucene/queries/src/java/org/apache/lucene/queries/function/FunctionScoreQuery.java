@@ -31,6 +31,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -230,30 +231,32 @@ public final class FunctionScoreQuery extends Query {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      Scorer in = inner.scorer(context);
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Scorer in = inner.scorer(context);
       if (in == null) {
         return null;
       }
       DoubleValues scores = valueSource.getValues(context, DoubleValuesSource.fromScorer(in));
-      return new FilterScorer(in) {
-        @Override
-        public float score() throws IOException {
-          if (scores.advanceExact(docID())) {
-            double factor = scores.doubleValue();
-            if (factor >= 0) {
-              return (float) (factor * boost);
+      final var scorer =
+          new FilterScorer(in) {
+            @Override
+            public float score() throws IOException {
+              if (scores.advanceExact(docID())) {
+                double factor = scores.doubleValue();
+                if (factor >= 0) {
+                  return (float) (factor * boost);
+                }
+              }
+              // default: missing value, negative value or NaN
+              return 0;
             }
-          }
-          // default: missing value, negative value or NaN
-          return 0;
-        }
 
-        @Override
-        public float getMaxScore(int upTo) throws IOException {
-          return Float.POSITIVE_INFINITY;
-        }
-      };
+            @Override
+            public float getMaxScore(int upTo) throws IOException {
+              return Float.POSITIVE_INFINITY;
+            }
+          };
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

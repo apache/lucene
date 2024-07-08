@@ -116,7 +116,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   public void testExpectedDistributionModuleNames() {
     Assertions.assertThat(
             allLuceneModules.stream().map(module -> module.descriptor().name()).sorted())
-        .containsExactly(
+        .containsOnly(
             "org.apache.lucene.analysis.common",
             "org.apache.lucene.analysis.icu",
             "org.apache.lucene.analysis.kuromoji",
@@ -353,6 +353,9 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
         moduleExports.removeIf(
             export -> {
               boolean isInternal = export.source().startsWith("org.apache.lucene.internal");
+              if (isInternal && export.source().equals("org.apache.lucene.internal.hppc")) {
+                return true;
+              }
               if (isInternal) {
                 Assertions.assertThat(export.targets())
                     .containsExactlyInAnyOrder("org.apache.lucene.test_framework");

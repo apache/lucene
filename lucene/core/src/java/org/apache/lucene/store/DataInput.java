@@ -113,7 +113,7 @@ public abstract class DataInput implements Cloneable {
       readGroupVInt(dst, i);
     }
     for (; i < limit; ++i) {
-      dst[i] = readVInt();
+      dst[i] = readVInt() & 0xFFFFFFFFL;
     }
   }
 

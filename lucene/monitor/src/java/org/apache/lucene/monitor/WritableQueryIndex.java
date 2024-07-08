@@ -41,10 +41,10 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -364,8 +364,8 @@ class WritableQueryIndex extends QueryIndex {
     }
 
     @Override
-    public void setScorer(Scorable scorer) {
-      this.dataValues.scorer = scorer;
+    public void setWeight(Weight weight) {
+      this.dataValues.weight = weight;
     }
 
     @Override

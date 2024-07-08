@@ -194,6 +194,15 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
         new PriorityQueue<MatchesIterator>(matches.size()) {
           @Override
           protected boolean lessThan(MatchesIterator a, MatchesIterator b) {
+            if (a.startPosition() == -1 && b.startPosition() == -1) {
+              try {
+                return a.startOffset() < b.startOffset()
+                    || (a.startOffset() == b.startOffset() && a.endOffset() < b.endOffset())
+                    || (a.startOffset() == b.startOffset() && a.endOffset() == b.endOffset());
+              } catch (IOException e) {
+                throw new IllegalArgumentException("Failed to retrieve term offset", e);
+              }
+            }
             return a.startPosition() < b.startPosition()
                 || (a.startPosition() == b.startPosition() && a.endPosition() < b.endPosition())
                 || (a.startPosition() == b.startPosition() && a.endPosition() == b.endPosition());

@@ -20,8 +20,8 @@ package org.apache.lucene.util.automaton;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.internal.hppc.BitMixer;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.hppc.BitMixer;
 
 /**
  * A RunAutomaton that does not require DFA. It will lazily determinize on-demand, memorizing the

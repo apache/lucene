@@ -33,6 +33,7 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
@@ -73,13 +74,13 @@ public class PhraseQuery extends Query {
 
     private int slop;
     private final List<Term> terms;
-    private final List<Integer> positions;
+    private final IntArrayList positions;
 
     /** Sole constructor. */
     public Builder() {
       slop = 0;
       terms = new ArrayList<>();
-      positions = new ArrayList<>();
+      positions = new IntArrayList();
     }
 
     /**
@@ -133,12 +134,8 @@ public class PhraseQuery extends Query {
 
     /** Build a phrase query based on the terms that have been added. */
     public PhraseQuery build() {
-      Term[] terms = this.terms.toArray(new Term[this.terms.size()]);
-      int[] positions = new int[this.positions.size()];
-      for (int i = 0; i < positions.length; ++i) {
-        positions[i] = this.positions.get(i);
-      }
-      return new PhraseQuery(slop, terms, positions);
+      Term[] terms = this.terms.toArray(new Term[0]);
+      return new PhraseQuery(slop, terms, positions.toArray());
     }
   }
 

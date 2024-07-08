@@ -17,13 +17,9 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Locale;
-import java.util.Map;
-import java.util.TreeSet;
-import java.util.function.BiConsumer;
-import java.util.function.LongFunction;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
@@ -37,6 +33,11 @@ import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.internal.hppc.LongArrayList;
+import org.apache.lucene.internal.hppc.LongCursor;
+import org.apache.lucene.internal.hppc.LongFloatHashMap;
+import org.apache.lucene.internal.hppc.LongHashSet;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
@@ -147,46 +148,40 @@ public final class JoinUtil {
       IndexSearcher fromSearcher,
       ScoreMode scoreMode)
       throws IOException {
-    TreeSet<Long> joinValues = new TreeSet<>();
-    Map<Long, Float> aggregatedScores = new HashMap<>();
-    Map<Long, Integer> occurrences = new HashMap<>();
+    LongHashSet joinValues = new LongHashSet();
+    LongFloatHashMap aggregatedScores = new LongFloatHashMap();
+    LongIntHashMap occurrences = new LongIntHashMap();
     boolean needsScore = scoreMode != ScoreMode.None;
-    BiConsumer<Long, Float> scoreAggregator;
+    LongFloatProcedure scoreAggregator;
     if (scoreMode == ScoreMode.Max) {
       scoreAggregator =
           (key, score) -> {
-            Float currentValue = aggregatedScores.putIfAbsent(key, score);
-            if (currentValue != null) {
-              aggregatedScores.put(key, Math.max(currentValue, score));
+            int index = aggregatedScores.indexOf(key);
+            if (index < 0) {
+              aggregatedScores.indexInsert(index, key, score);
+            } else {
+              float currentScore = aggregatedScores.indexGet(index);
+              aggregatedScores.indexReplace(index, Math.max(currentScore, score));
             }
           };
     } else if (scoreMode == ScoreMode.Min) {
       scoreAggregator =
           (key, score) -> {
-            Float currentValue = aggregatedScores.putIfAbsent(key, score);
-            if (currentValue != null) {
-              aggregatedScores.put(key, Math.min(currentValue, score));
+            int index = aggregatedScores.indexOf(key);
+            if (index < 0) {
+              aggregatedScores.indexInsert(index, key, score);
+            } else {
+              float currentScore = aggregatedScores.indexGet(index);
+              aggregatedScores.indexReplace(index, Math.min(currentScore, score));
             }
           };
     } else if (scoreMode == ScoreMode.Total) {
-      scoreAggregator =
-          (key, score) -> {
-            Float currentValue = aggregatedScores.putIfAbsent(key, score);
-            if (currentValue != null) {
-              aggregatedScores.put(key, currentValue + score);
-            }
-          };
+      scoreAggregator = aggregatedScores::addTo;
     } else if (scoreMode == ScoreMode.Avg) {
       scoreAggregator =
           (key, score) -> {
-            Float currentSore = aggregatedScores.putIfAbsent(key, score);
-            if (currentSore != null) {
-              aggregatedScores.put(key, currentSore + score);
-            }
-            Integer currentOccurrence = occurrences.putIfAbsent(key, 1);
-            if (currentOccurrence != null) {
-              occurrences.put(key, ++currentOccurrence);
-            }
+            aggregatedScores.addTo(key, score);
+            occurrences.addTo(key, 1);
           };
     } else {
       scoreAggregator =
@@ -195,12 +190,12 @@ public final class JoinUtil {
           };
     }
 
-    LongFunction<Float> joinScorer;
+    LongFloatFunction joinScorer;
     if (scoreMode == ScoreMode.Avg) {
       joinScorer =
           (joinValue) -> {
-            Float aggregatedScore = aggregatedScores.get(joinValue);
-            Integer occurrence = occurrences.get(joinValue);
+            float aggregatedScore = aggregatedScores.get(joinValue);
+            int occurrence = occurrences.get(joinValue);
             return aggregatedScore / occurrence;
           };
     } else {
@@ -222,7 +217,7 @@ public final class JoinUtil {
                   long value = sortedNumericDocValues.nextValue();
                   joinValues.add(value);
                   if (needsScore) {
-                    scoreAggregator.accept(value, scorer.score());
+                    scoreAggregator.apply(value, scorer.score());
                   }
                 }
               }
@@ -271,7 +266,7 @@ public final class JoinUtil {
               }
               joinValues.add(value);
               if (needsScore) {
-                scoreAggregator.accept(value, scorer.score());
+                scoreAggregator.apply(value, scorer.score());
               }
             }
 
@@ -296,7 +291,10 @@ public final class JoinUtil {
     }
     fromSearcher.search(fromQuery, collector);
 
-    Iterator<Long> iterator = joinValues.iterator();
+    LongArrayList joinValuesList = new LongArrayList(joinValues.size());
+    joinValuesList.addAll(joinValues);
+    Arrays.sort(joinValuesList.buffer, 0, joinValuesList.size());
+    Iterator<LongCursor> iterator = joinValuesList.iterator();
 
     final int bytesPerDim;
     final BytesRef encoded = new BytesRef();
@@ -308,10 +306,10 @@ public final class JoinUtil {
             @Override
             public BytesRef next() {
               if (iterator.hasNext()) {
-                long value = iterator.next();
-                IntPoint.encodeDimension((int) value, encoded.bytes, 0);
+                LongCursor value = iterator.next();
+                IntPoint.encodeDimension((int) value.value, encoded.bytes, 0);
                 if (needsScore) {
-                  score = joinScorer.apply(value);
+                  score = joinScorer.apply(value.value);
                 }
                 return encoded;
               } else {
@@ -326,10 +324,10 @@ public final class JoinUtil {
             @Override
             public BytesRef next() {
               if (iterator.hasNext()) {
-                long value = iterator.next();
-                LongPoint.encodeDimension(value, encoded.bytes, 0);
+                LongCursor value = iterator.next();
+                LongPoint.encodeDimension(value.value, encoded.bytes, 0);
                 if (needsScore) {
-                  score = joinScorer.apply(value);
+                  score = joinScorer.apply(value.value);
                 }
                 return encoded;
               } else {
@@ -344,10 +342,11 @@ public final class JoinUtil {
             @Override
             public BytesRef next() {
               if (iterator.hasNext()) {
-                long value = iterator.next();
-                FloatPoint.encodeDimension(Float.intBitsToFloat((int) value), encoded.bytes, 0);
+                LongCursor value = iterator.next();
+                FloatPoint.encodeDimension(
+                    Float.intBitsToFloat((int) value.value), encoded.bytes, 0);
                 if (needsScore) {
-                  score = joinScorer.apply(value);
+                  score = joinScorer.apply(value.value);
                 }
                 return encoded;
               } else {
@@ -362,10 +361,10 @@ public final class JoinUtil {
             @Override
             public BytesRef next() {
               if (iterator.hasNext()) {
-                long value = iterator.next();
-                DoublePoint.encodeDimension(Double.longBitsToDouble(value), encoded.bytes, 0);
+                LongCursor value = iterator.next();
+                DoublePoint.encodeDimension(Double.longBitsToDouble(value.value), encoded.bytes, 0);
                 if (needsScore) {
-                  score = joinScorer.apply(value);
+                  score = joinScorer.apply(value.value);
                 }
                 return encoded;
               } else {
@@ -582,5 +581,17 @@ public final class JoinUtil {
         min,
         max,
         searcher.getTopReaderContext().id());
+  }
+
+  /** Similar to {@link java.util.function.LongFunction} for primitive argument and result. */
+  private interface LongFloatFunction {
+
+    float apply(long value);
+  }
+
+  /** Similar to {@link java.util.function.BiConsumer} for primitive arguments. */
+  private interface LongFloatProcedure {
+
+    void apply(long key, float value);
   }
 }

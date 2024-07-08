@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
@@ -120,8 +121,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       Weight filterWeight,
       TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager)
       throws IOException {
-    Bits liveDocs = ctx.reader().getLiveDocs();
-    int maxDoc = ctx.reader().maxDoc();
+    final LeafReader reader = ctx.reader();
+    final Bits liveDocs = reader.getLiveDocs();
 
     if (filterWeight == null) {
       return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
@@ -132,7 +133,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
+    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, reader.maxDoc());
     final int cost = acceptDocs.cardinality();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
@@ -205,17 +206,17 @@ abstract class AbstractKnnVectorQuery extends Query {
     HitQueue queue = new HitQueue(queueSize, true);
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();
+    DocIdSetIterator vectorIterator = vectorScorer.iterator();
+    DocIdSetIterator conjunction =
+        ConjunctionDISI.createConjunction(List.of(vectorIterator, acceptIterator), List.of());
     int doc;
-    while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+    while ((doc = conjunction.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       // Mark results as partial if timeout is met
       if (queryTimeout != null && queryTimeout.shouldExit()) {
         relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         break;
       }
-
-      boolean advanced = vectorScorer.advanceExact(doc);
-      assert advanced;
-
+      assert vectorIterator.docID() == doc;
       float score = vectorScorer.score();
       if (score > topDoc.score) {
         topDoc.score = score;
@@ -267,19 +268,19 @@ abstract class AbstractKnnVectorQuery extends Query {
       docs[i] = topK.scoreDocs[i].doc;
       scores[i] = topK.scoreDocs[i].score;
     }
-    int[] segmentStarts = findSegmentStarts(reader, docs);
+    int[] segmentStarts = findSegmentStarts(reader.leaves(), docs);
     return new DocAndScoreQuery(docs, scores, maxScore, segmentStarts, reader.getContext().id());
   }
 
-  static int[] findSegmentStarts(IndexReader reader, int[] docs) {
-    int[] starts = new int[reader.leaves().size() + 1];
+  static int[] findSegmentStarts(List<LeafReaderContext> leaves, int[] docs) {
+    int[] starts = new int[leaves.size() + 1];
     starts[starts.length - 1] = docs.length;
     if (starts.length == 2) {
       return starts;
     }
     int resultIndex = 0;
     for (int i = 1; i < starts.length - 1; i++) {
-      int upper = reader.leaves().get(i).docBase;
+      int upper = leaves.get(i).docBase;
       resultIndex = Arrays.binarySearch(docs, resultIndex, docs.length, upper);
       if (resultIndex < 0) {
         resultIndex = -1 - resultIndex;
@@ -383,76 +384,78 @@ abstract class AbstractKnnVectorQuery extends Query {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           if (segmentStarts[context.ord] == segmentStarts[context.ord + 1]) {
             return null;
           }
-          return new Scorer(this) {
-            final int lower = segmentStarts[context.ord];
-            final int upper = segmentStarts[context.ord + 1];
-            int upTo = -1;
+          final var scorer =
+              new Scorer() {
+                final int lower = segmentStarts[context.ord];
+                final int upper = segmentStarts[context.ord + 1];
+                int upTo = -1;
 
-            @Override
-            public DocIdSetIterator iterator() {
-              return new DocIdSetIterator() {
+                @Override
+                public DocIdSetIterator iterator() {
+                  return new DocIdSetIterator() {
+                    @Override
+                    public int docID() {
+                      return docIdNoShadow();
+                    }
+
+                    @Override
+                    public int nextDoc() {
+                      if (upTo == -1) {
+                        upTo = lower;
+                      } else {
+                        ++upTo;
+                      }
+                      return docIdNoShadow();
+                    }
+
+                    @Override
+                    public int advance(int target) throws IOException {
+                      return slowAdvance(target);
+                    }
+
+                    @Override
+                    public long cost() {
+                      return upper - lower;
+                    }
+                  };
+                }
+
+                @Override
+                public float getMaxScore(int docId) {
+                  return maxScore * boost;
+                }
+
+                @Override
+                public float score() {
+                  return scores[upTo] * boost;
+                }
+
+                /**
+                 * move the implementation of docID() into a differently-named method so we can call
+                 * it from DocIDSetIterator.docID() even though this class is anonymous
+                 *
+                 * @return the current docid
+                 */
+                private int docIdNoShadow() {
+                  if (upTo == -1) {
+                    return -1;
+                  }
+                  if (upTo >= upper) {
+                    return NO_MORE_DOCS;
+                  }
+                  return docs[upTo] - context.docBase;
+                }
+
                 @Override
                 public int docID() {
                   return docIdNoShadow();
                 }
-
-                @Override
-                public int nextDoc() {
-                  if (upTo == -1) {
-                    upTo = lower;
-                  } else {
-                    ++upTo;
-                  }
-                  return docIdNoShadow();
-                }
-
-                @Override
-                public int advance(int target) throws IOException {
-                  return slowAdvance(target);
-                }
-
-                @Override
-                public long cost() {
-                  return upper - lower;
-                }
               };
-            }
-
-            @Override
-            public float getMaxScore(int docId) {
-              return maxScore * boost;
-            }
-
-            @Override
-            public float score() {
-              return scores[upTo] * boost;
-            }
-
-            /**
-             * move the implementation of docID() into a differently-named method so we can call it
-             * from DocIDSetIterator.docID() even though this class is anonymous
-             *
-             * @return the current docid
-             */
-            private int docIdNoShadow() {
-              if (upTo == -1) {
-                return -1;
-              }
-              if (upTo >= upper) {
-                return NO_MORE_DOCS;
-              }
-              return docs[upTo] - context.docBase;
-            }
-
-            @Override
-            public int docID() {
-              return docIdNoShadow();
-            }
-          };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

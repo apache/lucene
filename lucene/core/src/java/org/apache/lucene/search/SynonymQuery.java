@@ -276,7 +276,8 @@ public final class SynonymQuery extends Query {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Scorer synonymScorer;
       List<PostingsEnum> iterators = new ArrayList<>();
       List<ImpactsEnum> impacts = new ArrayList<>();
       List<Float> termBoosts = new ArrayList<>();
@@ -308,45 +309,48 @@ public final class SynonymQuery extends Query {
       if (iterators.size() == 1) {
         final TermScorer scorer;
         if (scoreMode == ScoreMode.TOP_SCORES) {
-          scorer = new TermScorer(this, impacts.get(0), simScorer);
+          scorer = new TermScorer(impacts.get(0), simScorer);
         } else {
-          scorer = new TermScorer(this, iterators.get(0), simScorer);
+          scorer = new TermScorer(iterators.get(0), simScorer);
         }
         float boost = termBoosts.get(0);
-        return scoreMode == ScoreMode.COMPLETE_NO_SCORES || boost == 1f
-            ? scorer
-            : new FreqBoostTermScorer(boost, scorer, simScorer);
-      }
+        synonymScorer =
+            scoreMode == ScoreMode.COMPLETE_NO_SCORES || boost == 1f
+                ? scorer
+                : new FreqBoostTermScorer(boost, scorer, simScorer);
+      } else {
 
-      // we use termscorers + disjunction as an impl detail
-      DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
-      for (int i = 0; i < iterators.size(); i++) {
-        PostingsEnum postings = iterators.get(i);
-        final TermScorer termScorer = new TermScorer(this, postings, simScorer);
-        float boost = termBoosts.get(i);
-        final DisiWrapperFreq wrapper = new DisiWrapperFreq(termScorer, boost);
-        queue.add(wrapper);
-      }
-      // Even though it is called approximation, it is accurate since none of
-      // the sub iterators are two-phase iterators.
-      DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
+        // we use termscorers + disjunction as an impl detail
+        DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
+        for (int i = 0; i < iterators.size(); i++) {
+          PostingsEnum postings = iterators.get(i);
+          final TermScorer termScorer = new TermScorer(postings, simScorer);
+          float boost = termBoosts.get(i);
+          final DisiWrapperFreq wrapper = new DisiWrapperFreq(termScorer, boost);
+          queue.add(wrapper);
+        }
+        // Even though it is called approximation, it is accurate since none of
+        // the sub iterators are two-phase iterators.
+        DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
 
-      float[] boosts = new float[impacts.size()];
-      for (int i = 0; i < boosts.length; i++) {
-        boosts[i] = termBoosts.get(i);
-      }
-      ImpactsSource impactsSource = mergeImpacts(impacts.toArray(new ImpactsEnum[0]), boosts);
-      MaxScoreCache maxScoreCache = new MaxScoreCache(impactsSource, simScorer.getSimScorer());
-      ImpactsDISI impactsDisi = new ImpactsDISI(iterator, maxScoreCache);
+        float[] boosts = new float[impacts.size()];
+        for (int i = 0; i < boosts.length; i++) {
+          boosts[i] = termBoosts.get(i);
+        }
+        ImpactsSource impactsSource = mergeImpacts(impacts.toArray(new ImpactsEnum[0]), boosts);
+        MaxScoreCache maxScoreCache = new MaxScoreCache(impactsSource, simScorer.getSimScorer());
+        ImpactsDISI impactsDisi = new ImpactsDISI(iterator, maxScoreCache);
 
-      if (scoreMode == ScoreMode.TOP_SCORES) {
-        // TODO: only do this when this is the top-level scoring clause
-        // (ScorerSupplier#setTopLevelScoringClause) to save the overhead of wrapping with
-        // ImpactsDISI when it would not help
-        iterator = impactsDisi;
-      }
+        if (scoreMode == ScoreMode.TOP_SCORES) {
+          // TODO: only do this when this is the top-level scoring clause
+          // (ScorerSupplier#setTopLevelScoringClause) to save the overhead of wrapping with
+          // ImpactsDISI when it would not help
+          iterator = impactsDisi;
+        }
 
-      return new SynonymScorer(this, queue, iterator, impactsDisi, simScorer);
+        synonymScorer = new SynonymScorer(queue, iterator, impactsDisi, simScorer);
+      }
+      return new DefaultScorerSupplier(synonymScorer);
     }
 
     @Override
@@ -532,12 +536,10 @@ public final class SynonymQuery extends Query {
     private final LeafSimScorer simScorer;
 
     SynonymScorer(
-        Weight weight,
         DisiPriorityQueue queue,
         DocIdSetIterator iterator,
         ImpactsDISI impactsDisi,
         LeafSimScorer simScorer) {
-      super(weight);
       this.queue = queue;
       this.iterator = iterator;
       this.maxScoreCache = impactsDisi.getMaxScoreCache();

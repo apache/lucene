@@ -34,8 +34,6 @@ import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
 
 /**
  * A Monitor contains a set of {@link Query} objects with associated IDs, and efficiently matches
@@ -377,9 +375,7 @@ public class Monitor implements Closeable {
     @Override
     public void matchQuery(final String id, QueryCacheEntry query, QueryIndex.DataValues dataValues)
         throws IOException {
-      Scorer scorer = ((Scorer) dataValues.scorer);
-      Weight w = scorer.getWeight();
-      Matches matches = w.matches(dataValues.ctx, scorer.docID());
+      Matches matches = dataValues.weight.matches(dataValues.ctx, dataValues.docID);
       for (String field : matches) {
         MatchesIterator mi = matches.getMatches(field);
         while (mi.next()) {

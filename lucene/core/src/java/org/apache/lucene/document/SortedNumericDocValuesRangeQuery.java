@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -26,10 +27,11 @@ import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -87,6 +89,9 @@ final class SortedNumericDocValuesRangeQuery extends Query {
     if (lowerValue == Long.MIN_VALUE && upperValue == Long.MAX_VALUE) {
       return new FieldExistsQuery(field);
     }
+    if (lowerValue > upperValue) {
+      return new MatchNoDocsQuery();
+    }
     return super.rewrite(indexSearcher);
   }
 
@@ -101,13 +106,21 @@ final class SortedNumericDocValuesRangeQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+
+        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+            return null;
+          }
+        }
+
         SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
-        final TwoPhaseIterator iterator;
+        TwoPhaseIterator iterator;
         if (singleton != null) {
           iterator =
               new TwoPhaseIterator(singleton) {
@@ -145,7 +158,11 @@ final class SortedNumericDocValuesRangeQuery extends Query {
                 }
               };
         }
-        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+        if (skipper != null) {
+          iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue);
+        }
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
+        return new DefaultScorerSupplier(scorer);
       }
     };
   }

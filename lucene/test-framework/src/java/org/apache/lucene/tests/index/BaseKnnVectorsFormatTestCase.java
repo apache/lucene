@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.index;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.ByteArrayOutputStream;
@@ -48,10 +49,12 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
@@ -714,6 +717,176 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           double delta = fieldVectorEncodings[field] == VectorEncoding.BYTE ? numDocs * 0.01 : 1e-5;
           assertEquals(fieldTotals[field], checksum, delta);
         }
+      }
+    }
+  }
+
+  public void testFloatVectorScorerIteration() throws Exception {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    if (random().nextBoolean()) {
+      iwc.setIndexSort(new Sort(new SortField("sortkey", SortField.Type.INT)));
+    }
+    String fieldName = "field";
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, iwc)) {
+      int numDoc = atLeast(100);
+      int dimension = atLeast(10);
+      if (dimension % 2 != 0) {
+        dimension++;
+      }
+      float[][] values = new float[numDoc][];
+      for (int i = 0; i < numDoc; i++) {
+        if (random().nextInt(7) != 3) {
+          // usually index a vector value for a doc
+          values[i] = randomNormalizedVector(dimension);
+        }
+        add(iw, fieldName, i, values[i], similarityFunction);
+        if (random().nextInt(10) == 2) {
+          iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
+        }
+        if (random().nextInt(10) == 3) {
+          iw.commit();
+        }
+      }
+      float[] vectorToScore = randomNormalizedVector(dimension);
+      try (IndexReader reader = DirectoryReader.open(iw)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
+          if (vectorValues == null) {
+            continue;
+          }
+          if (vectorValues.size() == 0) {
+            assertNull(vectorValues.scorer(vectorToScore));
+            continue;
+          }
+          VectorScorer scorer = vectorValues.scorer(vectorToScore);
+          assertNotNull(scorer);
+          DocIdSetIterator iterator = scorer.iterator();
+          assertSame(iterator, scorer.iterator());
+          assertNotSame(iterator, scorer);
+          // verify scorer iteration scores are valid & iteration with vectorValues is consistent
+          while (iterator.nextDoc() != NO_MORE_DOCS && vectorValues.nextDoc() != NO_MORE_DOCS) {
+            float score = scorer.score();
+            assertTrue(score >= 0f);
+            assertEquals(iterator.docID(), vectorValues.docID());
+          }
+          // verify that a new scorer can be obtained after iteration
+          VectorScorer newScorer = vectorValues.scorer(vectorToScore);
+          assertNotNull(newScorer);
+          assertNotSame(scorer, newScorer);
+          assertNotSame(iterator, newScorer.iterator());
+        }
+      }
+    }
+  }
+
+  public void testByteVectorScorerIteration() throws Exception {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    if (random().nextBoolean()) {
+      iwc.setIndexSort(new Sort(new SortField("sortkey", SortField.Type.INT)));
+    }
+    String fieldName = "field";
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, iwc)) {
+      int numDoc = atLeast(100);
+      int dimension = atLeast(10);
+      if (dimension % 2 != 0) {
+        dimension++;
+      }
+      byte[][] values = new byte[numDoc][];
+      for (int i = 0; i < numDoc; i++) {
+        if (random().nextInt(7) != 3) {
+          // usually index a vector value for a doc
+          values[i] = randomVector8(dimension);
+        }
+        add(iw, fieldName, i, values[i], similarityFunction);
+        if (random().nextInt(10) == 2) {
+          iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
+        }
+        if (random().nextInt(10) == 3) {
+          iw.commit();
+        }
+      }
+      byte[] vectorToScore = randomVector8(dimension);
+      try (IndexReader reader = DirectoryReader.open(iw)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          ByteVectorValues vectorValues = ctx.reader().getByteVectorValues(fieldName);
+          if (vectorValues == null) {
+            continue;
+          }
+          if (vectorValues.size() == 0) {
+            assertNull(vectorValues.scorer(vectorToScore));
+            continue;
+          }
+          VectorScorer scorer = vectorValues.scorer(vectorToScore);
+          assertNotNull(scorer);
+          DocIdSetIterator iterator = scorer.iterator();
+          assertSame(iterator, scorer.iterator());
+          assertNotSame(iterator, scorer);
+          // verify scorer iteration scores are valid & iteration with vectorValues is consistent
+          while (iterator.nextDoc() != NO_MORE_DOCS && vectorValues.nextDoc() != NO_MORE_DOCS) {
+            float score = scorer.score();
+            assertTrue(score >= 0f);
+            assertEquals(iterator.docID(), vectorValues.docID());
+          }
+          // verify that a new scorer can be obtained after iteration
+          VectorScorer newScorer = vectorValues.scorer(vectorToScore);
+          assertNotNull(newScorer);
+          assertNotSame(scorer, newScorer);
+          assertNotSame(iterator, newScorer.iterator());
+        }
+      }
+    }
+  }
+
+  public void testEmptyFloatVectorData() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      var doc1 = new Document();
+      doc1.add(new StringField("id", "0", Field.Store.NO));
+      doc1.add(new KnnFloatVectorField("v", new float[] {2, 3, 5, 6}, DOT_PRODUCT));
+      w.addDocument(doc1);
+
+      var doc2 = new Document();
+      doc2.add(new StringField("id", "1", Field.Store.NO));
+      w.addDocument(doc2);
+
+      w.deleteDocuments(new Term("id", Integer.toString(0)));
+      w.commit();
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        FloatVectorValues values = r.getFloatVectorValues("v");
+        assertNotNull(values);
+        assertEquals(0, values.size());
+        assertNull(values.scorer(new float[] {2, 3, 5, 6}));
+      }
+    }
+  }
+
+  public void testEmptyByteVectorData() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      var doc1 = new Document();
+      doc1.add(new StringField("id", "0", Field.Store.NO));
+      doc1.add(new KnnByteVectorField("v", new byte[] {2, 3, 5, 6}, DOT_PRODUCT));
+      w.addDocument(doc1);
+
+      var doc2 = new Document();
+      doc2.add(new StringField("id", "1", Field.Store.NO));
+      w.addDocument(doc2);
+
+      w.deleteDocuments(new Term("id", Integer.toString(0)));
+      w.commit();
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        ByteVectorValues values = r.getByteVectorValues("v");
+        assertNotNull(values);
+        assertEquals(0, values.size());
+        assertNull(values.scorer(new byte[] {2, 3, 5, 6}));
       }
     }
   }

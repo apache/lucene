@@ -4851,7 +4851,9 @@ public class TestIndexWriter extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        writer.addDocument(new Document());
+        Document d = new Document();
+        d.add(new TextField("f", "a", Field.Store.NO));
+        writer.addDocument(d);
       }
       IllegalArgumentException iae =
           expectThrows(
@@ -4957,6 +4959,79 @@ public class TestIndexWriter extends LuceneTestCase {
       assertEquals(
           "can't add [parent] as non parent document field; this IndexWriter is configured with [parent] as parent document field",
           iae.getMessage());
+    }
+  }
+
+  public void testParentFieldEmptyIndex() throws IOException {
+    try (Directory dir = newMockDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        writer.commit();
+      }
+      IndexWriterConfig iwc2 = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc2.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc2)) {
+        writer.commit();
+      }
+    }
+  }
+
+  public void testDocValuesMixedSkippingIndex() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        Document doc1 = new Document();
+        doc1.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
+        writer.addDocument(doc1);
+
+        Document doc2 = new Document();
+        doc2.add(new SortedNumericDocValuesField("test", random().nextLong()));
+        IllegalArgumentException ex =
+            expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
+        assertEquals(
+            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index: expected 'true', but it has 'false'.",
+            ex.getMessage());
+      }
+    }
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        Document doc1 = new Document();
+        doc1.add(new SortedSetDocValuesField("test", TestUtil.randomBinaryTerm(random())));
+        writer.addDocument(doc1);
+
+        Document doc2 = new Document();
+        doc2.add(SortedSetDocValuesField.indexedField("test", TestUtil.randomBinaryTerm(random())));
+        IllegalArgumentException ex =
+            expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
+        assertEquals(
+            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index: expected 'false', but it has 'true'.",
+            ex.getMessage());
+      }
+    }
+  }
+
+  public void testDocValuesSkippingIndexWithoutDocValues() throws Exception {
+    for (DocValuesType docValuesType :
+        new DocValuesType[] {DocValuesType.NONE, DocValuesType.BINARY}) {
+      FieldType fieldType = new FieldType();
+      fieldType.setStored(true);
+      fieldType.setDocValuesType(docValuesType);
+      fieldType.setDocValuesSkipIndex(true);
+      fieldType.freeze();
+      try (Directory dir = newMockDirectory()) {
+        try (IndexWriter writer =
+            new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+          Document doc1 = new Document();
+          doc1.add(new Field("test", new byte[10], fieldType));
+          IllegalArgumentException ex =
+              expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
+          assertTrue(
+              ex.getMessage()
+                  .startsWith("field 'test' cannot have docValuesSkipIndex set to true"));
+        }
+      }
     }
   }
 }

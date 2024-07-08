@@ -18,7 +18,6 @@
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.apache.tools.ant.types.Commandline
 import org.gradle.api.tasks.testing.logging.*
-import org.apache.lucene.gradle.ErrorReportingTestListener
 
 def resources = scriptResources(buildscript)
 def verboseModeHookInstalled = false
@@ -51,7 +50,7 @@ allprojects {
            includeInReproLine: false
           ],
           [propName: 'tests.jvmargs',
-           value: { -> propertyOrEnvOrDefault("tests.jvmargs", "TEST_JVM_ARGS", isCIBuild ? "" : "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1") },
+           value: { -> envOrDefault("TEST_JVM_ARGS", (isCIBuild || testsDefaultVectorizationRequested()) ? "" : "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1") },
            description: "Arguments passed to each forked JVM."],
           // Other settings.
           [propName: 'tests.neverUpToDate', value: true,
@@ -66,6 +65,8 @@ allprojects {
         }
         return propertyOrDefault(option.propName, option.value)
       }
+      
+      testsDefaultVectorizationRequested = { -> Boolean.parseBoolean(resolvedTestOption('tests.defaultvectorization') as String) }
 
       testsCwd = file("${buildDir}/tmp/tests-cwd")
       testsTmpDir = file(resolvedTestOption("tests.workDir"))
@@ -116,8 +117,6 @@ allprojects {
 
       ignoreFailures = resolvedTestOption("tests.haltonfailure").toBoolean() == false
 
-      jvmArgs Commandline.translateCommandline(resolvedTestOption("tests.jvmargs"))
-      
       // Up to JDK-15 we have to enforce --illegal-access=deny, because we want no code to access
       // JDK internals; JDK-16 and later will default to deny, see https://openjdk.java.net/jeps/396:
       if (rootProject.runtimeJavaVersion < JavaVersion.VERSION_16) {
@@ -133,7 +132,12 @@ allprojects {
         jvmArgs '--add-modules', 'jdk.incubator.vector'
       }
       
-      jvmArgs '--enable-native-access=' + (project.path == ':lucene:core' ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
+      jvmArgs '--enable-native-access=' + (project.path in [
+              ':lucene:core',
+              ':lucene:codecs',
+              ":lucene:distribution.tests",
+              ":lucene:test-framework"
+      ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
 
       def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
       def tempDir = layout.projectDirectory.dir(testsTmpDir.toString())
@@ -196,7 +200,7 @@ allprojects {
       }
 
       def spillDir = getTemporaryDir().toPath()
-      def listener = new ErrorReportingTestListener(test.testLogging, spillDir, testOutputsDir.toPath(), verboseMode)
+      def listener = buildinfra.newErrorReportingTestListener(test.testLogging, spillDir, testOutputsDir.toPath(), verboseMode)
       addTestOutputListener(listener)
       addTestListener(listener)
 

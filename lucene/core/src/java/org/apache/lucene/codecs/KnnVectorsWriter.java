@@ -29,6 +29,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
 
 /** Writes vectors to an index. */
@@ -188,7 +189,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private final List<VectorValuesSub> subs;
       private final DocIDMerger<VectorValuesSub> docIdMerger;
       private final int size;
-
       private int docId;
       VectorValuesSub current;
 
@@ -238,6 +238,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       @Override
       public int dimension() {
         return subs.get(0).values.dimension();
+      }
+
+      @Override
+      public VectorScorer scorer(float[] target) {
+        throw new UnsupportedOperationException();
       }
     }
 
@@ -295,6 +300,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       @Override
       public int dimension() {
         return subs.get(0).values.dimension();
+      }
+
+      @Override
+      public VectorScorer scorer(byte[] target) {
+        throw new UnsupportedOperationException();
       }
     }
   }

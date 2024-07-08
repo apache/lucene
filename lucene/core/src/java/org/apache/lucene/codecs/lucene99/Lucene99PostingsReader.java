@@ -41,6 +41,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -52,6 +53,9 @@ import org.apache.lucene.util.IOUtils;
  * @lucene.experimental
  */
 public final class Lucene99PostingsReader extends PostingsReaderBase {
+
+  /** Maximum byte size of a postings list to be fully prefetched. */
+  private static final int MAX_POSTINGS_SIZE_FOR_FULL_PREFETCH = 16_384;
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -75,7 +79,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99PostingsFormat.DOC_EXTENSION);
     try {
-      docIn = state.directory.openInput(docName, state.context);
+      // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
+      // readahead.
+      docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
       version =
           CodecUtil.checkIndexHeader(
               docIn,
@@ -137,31 +143,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
               + ") != read-time BLOCK_SIZE ("
               + BLOCK_SIZE
               + ")");
-    }
-  }
-
-  /** Read values that have been written using variable-length encoding instead of bit-packing. */
-  static void readVIntBlock(
-      IndexInput docIn,
-      long[] docBuffer,
-      long[] freqBuffer,
-      int num,
-      boolean indexHasFreq,
-      boolean decodeFreq)
-      throws IOException {
-    docIn.readGroupVInts(docBuffer, num);
-    if (indexHasFreq && decodeFreq) {
-      for (int i = 0; i < num; ++i) {
-        freqBuffer[i] = docBuffer[i] & 0x01;
-        docBuffer[i] >>= 1;
-        if (freqBuffer[i] == 0) {
-          freqBuffer[i] = docIn.readVInt();
-        }
-      }
-    } else if (indexHasFreq) {
-      for (int i = 0; i < num; ++i) {
-        docBuffer[i] >>= 1;
-      }
     }
   }
 
@@ -321,6 +302,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     private Lucene99SkipReader skipper;
     private boolean skipped;
+    private boolean prefetchedSkipData;
 
     final IndexInput startDocIn;
 
@@ -393,7 +375,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           // lazy init
           docIn = startDocIn.clone();
         }
-        docIn.seek(docTermStartFP);
+        seekAndPrefetchPostings(docIn, termState);
       }
 
       doc = -1;
@@ -409,6 +391,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
+      prefetchedSkipData = false;
       return this;
     }
 
@@ -475,7 +458,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         blockUpto++;
       } else {
         // Read vInts:
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -501,44 +484,52 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     public int advance(int target) throws IOException {
       // current skip docID < docIDs generated from current buffer <= next skip docID
       // we don't need to skip if target is buffered already
-      if (docFreq > BLOCK_SIZE && target > nextSkipDoc) {
+      if (docFreq > BLOCK_SIZE) {
+        if (target <= nextSkipDoc) {
+          // We don't need skip data yet, but we have evidence that advance() is called, so let's
+          // prefetch skip data in the background.
+          if (prefetchedSkipData == false) {
+            prefetchSkipData(docIn, docTermStartFP, skipOffset);
+            prefetchedSkipData = true;
+          }
+        } else {
+          if (skipper == null) {
+            // Lazy init: first time this enum has ever been used for skipping
+            skipper =
+                new Lucene99SkipReader(
+                    docIn.clone(), MAX_SKIP_LEVELS, indexHasPos, indexHasOffsets, indexHasPayloads);
+          }
 
-        if (skipper == null) {
-          // Lazy init: first time this enum has ever been used for skipping
-          skipper =
-              new Lucene99SkipReader(
-                  docIn.clone(), MAX_SKIP_LEVELS, indexHasPos, indexHasOffsets, indexHasPayloads);
+          if (!skipped) {
+            assert skipOffset != -1;
+            // This is the first time this enum has skipped
+            // since reset() was called; load the skip data:
+            skipper.init(docTermStartFP + skipOffset, docTermStartFP, 0, 0, docFreq);
+            skipped = true;
+          }
+
+          // always plus one to fix the result, since skip position in Lucene99SkipReader
+          // is a little different from MultiLevelSkipListReader
+          final int newDocUpto = skipper.skipTo(target) + 1;
+
+          if (newDocUpto >= blockUpto) {
+            // Skipper moved
+            assert newDocUpto % BLOCK_SIZE == 0 : "got " + newDocUpto;
+            blockUpto = newDocUpto;
+
+            // Force to read next block
+            docBufferUpto = BLOCK_SIZE;
+            accum = skipper.getDoc(); // actually, this is just lastSkipEntry
+            docIn.seek(skipper.getDocPointer()); // now point to the block we want to search
+            // even if freqBuffer were not read from the previous block, we will mark them as read,
+            // as we don't need to skip the previous block freqBuffer in refillDocs,
+            // as we have already positioned docIn where in needs to be.
+            isFreqsRead = true;
+          }
+          // next time we call advance, this is used to
+          // foresee whether skipper is necessary.
+          nextSkipDoc = skipper.getNextSkipDoc();
         }
-
-        if (!skipped) {
-          assert skipOffset != -1;
-          // This is the first time this enum has skipped
-          // since reset() was called; load the skip data:
-          skipper.init(docTermStartFP + skipOffset, docTermStartFP, 0, 0, docFreq);
-          skipped = true;
-        }
-
-        // always plus one to fix the result, since skip position in Lucene99SkipReader
-        // is a little different from MultiLevelSkipListReader
-        final int newDocUpto = skipper.skipTo(target) + 1;
-
-        if (newDocUpto >= blockUpto) {
-          // Skipper moved
-          assert newDocUpto % BLOCK_SIZE == 0 : "got " + newDocUpto;
-          blockUpto = newDocUpto;
-
-          // Force to read next block
-          docBufferUpto = BLOCK_SIZE;
-          accum = skipper.getDoc(); // actually, this is just lastSkipEntry
-          docIn.seek(skipper.getDocPointer()); // now point to the block we want to search
-          // even if freqBuffer were not read from the previous block, we will mark them as read,
-          // as we don't need to skip the previous block freqBuffer in refillDocs,
-          // as we have already positioned docIn where in needs to be.
-          isFreqsRead = true;
-        }
-        // next time we call advance, this is used to
-        // foresee whether skipper is necessary.
-        nextSkipDoc = skipper.getNextSkipDoc();
       }
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
@@ -594,6 +585,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     private Lucene99SkipReader skipper;
     private boolean skipped;
+    private boolean prefetchedSkipData;
 
     final IndexInput startDocIn;
 
@@ -715,7 +707,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           // lazy init
           docIn = startDocIn.clone();
         }
-        docIn.seek(docTermStartFP);
+        seekAndPrefetchPostings(docIn, termState);
       }
       posPendingFP = posTermStartFP;
       payPendingFP = payTermStartFP;
@@ -741,6 +733,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       }
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
+      prefetchedSkipData = false;
       return this;
     }
 
@@ -768,7 +761,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         docBuffer[1] = NO_MORE_DOCS;
         blockUpto++;
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -902,6 +895,13 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
           payloadByteUpto = skipper.getPayloadByteUpto();
         }
         nextSkipDoc = skipper.getNextSkipDoc();
+      } else {
+        // We don't need skip data yet, but we have evidence that advance() is used, so prefetch it
+        // in the background.
+        if (prefetchedSkipData == false) {
+          prefetchSkipData(docIn, docTermStartFP, skipOffset);
+          prefetchedSkipData = true;
+        }
       }
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
@@ -1097,7 +1097,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       this.docIn = Lucene99PostingsReader.this.docIn.clone();
 
       docFreq = termState.docFreq;
-      docIn.seek(termState.docStartFP);
+      seekAndPrefetchPostings(docIn, termState);
+      // Impacts almost certainly need skip data
+      prefetchSkipData(docIn, termState.docStartFP, termState.skipOffset);
 
       doc = -1;
       accum = 0;
@@ -1155,7 +1157,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         }
         blockUpto += BLOCK_SIZE;
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs, true);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
         blockUpto += left;
@@ -1318,7 +1320,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       posTermStartFP = termState.posStartFP;
       payTermStartFP = termState.payStartFP;
       totalTermFreq = termState.totalTermFreq;
-      docIn.seek(docTermStartFP);
+      seekAndPrefetchPostings(docIn, termState);
+      prefetchSkipData(docIn, termState.docStartFP, termState.skipOffset);
       posPendingFP = posTermStartFP;
       posPendingCount = 0;
       if (termState.totalTermFreq < BLOCK_SIZE) {
@@ -1363,7 +1366,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
       }
@@ -1672,7 +1675,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       posTermStartFP = termState.posStartFP;
       payTermStartFP = termState.payStartFP;
       totalTermFreq = termState.totalTermFreq;
-      docIn.seek(docTermStartFP);
+      seekAndPrefetchPostings(docIn, termState);
+      prefetchSkipData(docIn, termState.docStartFP, termState.skipOffset);
       posPendingFP = posTermStartFP;
       payPendingFP = payTermStartFP;
       posPendingCount = 0;
@@ -1753,7 +1757,7 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
               false; // freq block will be loaded lazily when necessary, we don't load it here
         }
       } else {
-        readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
       }
@@ -2046,6 +2050,41 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     @Override
     public long cost() {
       return docFreq;
+    }
+  }
+
+  private void seekAndPrefetchPostings(IndexInput docIn, IntBlockTermState state)
+      throws IOException {
+    if (docIn.getFilePointer() != state.docStartFP) {
+      // Don't prefetch if the input is already positioned at the right offset, which suggests that
+      // the caller is streaming the entire inverted index (e.g. for merging), let the read-ahead
+      // logic do its work instead. Note that this heuristic doesn't work for terms that have skip
+      // data, since skip data is stored after the last term, but handling all terms that have <128
+      // docs is a good start already.
+      docIn.seek(state.docStartFP);
+      if (state.skipOffset < 0) {
+        // This postings list is very short as it doesn't have skip data, prefetch the page that
+        // holds the first byte of the postings list.
+        docIn.prefetch(state.docStartFP, 1);
+      } else if (state.skipOffset <= MAX_POSTINGS_SIZE_FOR_FULL_PREFETCH) {
+        // This postings list is short as it fits on a few pages, prefetch it all, plus one byte to
+        // make sure to include some skip data.
+        docIn.prefetch(state.docStartFP, state.skipOffset + 1);
+      } else {
+        // Default case: prefetch the page that holds the first byte of postings. We'll prefetch
+        // skip data when we have evidence that it is used.
+        docIn.prefetch(state.docStartFP, 1);
+      }
+    }
+    // Note: we don't prefetch positions or offsets, which are less likely to be needed.
+  }
+
+  private void prefetchSkipData(IndexInput docIn, long docStartFP, long skipOffset)
+      throws IOException {
+    if (skipOffset > MAX_POSTINGS_SIZE_FOR_FULL_PREFETCH) {
+      // If skipOffset is less than this value, skip data was already prefetched when doing
+      // #seekAndPrefetchPostings
+      docIn.prefetch(docStartFP + skipOffset, 1);
     }
   }
 
