@@ -141,13 +141,8 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         assertEquals(15L, in.slice("test", 1, in.length() - 1).length());
 
         // ensure not accessible
-        var x = expectThrows(ISE, in::clone);
-        assertTrue(x.getMessage().contains("confined"));
-        x = expectThrows(ISE, () -> in.slice("test", 0, in.length()).clone());
-        assertTrue(x.getMessage().contains("confined"));
-
         Callable<Object> task1 = () -> in.slice("test", 0, in.length());
-        x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task1)));
+        var x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task1)));
         assertTrue(x.getMessage().contains("confined"));
 
         int offset = random().nextInt((int) in.length());

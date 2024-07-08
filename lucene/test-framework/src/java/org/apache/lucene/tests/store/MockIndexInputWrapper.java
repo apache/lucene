@@ -39,6 +39,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
 
   // Which MockIndexInputWrapper we were cloned from, or null if we are not a clone:
   private final MockIndexInputWrapper parent;
+  private final Thread thread;
 
   /** Sole constructor */
   public MockIndexInputWrapper(
@@ -51,6 +52,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     this.parent = parent;
     this.name = name;
     this.dir = dir;
+    this.thread = Thread.currentThread();
   }
 
   @Override
@@ -81,6 +83,12 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     }
     if (parent != null && parent.closed) {
       throw new RuntimeException("Abusing clone of a closed IndexInput!");
+    }
+  }
+
+  private void ensureAccessible() {
+    if (thread != Thread.currentThread()) {
+      throw new RuntimeException("Abusing from another thread!");
     }
   }
 
@@ -127,18 +135,21 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   @Override
   public long getFilePointer() {
     ensureOpen();
+    ensureAccessible();
     return in.getFilePointer();
   }
 
   @Override
   public void seek(long pos) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.seek(pos);
   }
 
   @Override
   public void prefetch(long offset, long length) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.prefetch(offset, length);
   }
 
@@ -151,90 +162,105 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   @Override
   public byte readByte() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readByte();
   }
 
   @Override
   public void readBytes(byte[] b, int offset, int len) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.readBytes(b, offset, len);
   }
 
   @Override
   public void readBytes(byte[] b, int offset, int len, boolean useBuffer) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.readBytes(b, offset, len, useBuffer);
   }
 
   @Override
   public void readFloats(float[] floats, int offset, int len) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.readFloats(floats, offset, len);
   }
 
   @Override
   public short readShort() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readShort();
   }
 
   @Override
   public int readInt() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readInt();
   }
 
   @Override
   public long readLong() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readLong();
   }
 
   @Override
   public String readString() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readString();
   }
 
   @Override
   public int readVInt() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readVInt();
   }
 
   @Override
   public long readVLong() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readVLong();
   }
 
   @Override
   public int readZInt() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readZInt();
   }
 
   @Override
   public long readZLong() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readZLong();
   }
 
   @Override
   public void skipBytes(long numBytes) throws IOException {
     ensureOpen();
+    ensureAccessible();
     super.skipBytes(numBytes);
   }
 
   @Override
   public Map<String, String> readMapOfStrings() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readMapOfStrings();
   }
 
   @Override
   public Set<String> readSetOfStrings() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readSetOfStrings();
   }
 

@@ -103,12 +103,6 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
   }
 
-  void ensureNotConfined() {
-    if (confined) {
-      throw new IllegalStateException("confined");
-    }
-  }
-
   void ensureAccessible() {
     if (confined && curSegment.isAccessibleBy(Thread.currentThread()) == false) {
       throw new IllegalStateException("confined");
@@ -536,7 +530,6 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
   @Override
   public final MemorySegmentIndexInput clone() {
-    ensureNotConfined();
     final MemorySegmentIndexInput clone = buildSlice((String) null, 0L, this.length);
     try {
       clone.seek(getFilePointer());
