@@ -138,15 +138,23 @@ import org.apache.lucene.util.packed.DirectWriter;
  */
 public final class Lucene90DocValuesFormat extends DocValuesFormat {
 
+  private final int skipIndexIntervalSize;
+
   /** Default constructor. */
   public Lucene90DocValuesFormat() {
+    this(DEFAULT_SKIP_INDEX_INTERVAL_SIZE);
+  }
+
+  /** Default constructor. */
+  public Lucene90DocValuesFormat(int skipIndexIntervalSize) {
     super("Lucene90");
+    this.skipIndexIntervalSize = skipIndexIntervalSize;
   }
 
   @Override
   public DocValuesConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     return new Lucene90DocValuesConsumer(
-        state, DATA_CODEC, DATA_EXTENSION, META_CODEC, META_EXTENSION);
+        state, skipIndexIntervalSize, DATA_CODEC, DATA_EXTENSION, META_CODEC, META_EXTENSION);
   }
 
   @Override
@@ -182,6 +190,7 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int TERMS_DICT_REVERSE_INDEX_SIZE = 1 << TERMS_DICT_REVERSE_INDEX_SHIFT;
   static final int TERMS_DICT_REVERSE_INDEX_MASK = TERMS_DICT_REVERSE_INDEX_SIZE - 1;
 
-  static final int SKIP_INDEX_INTERVAL_SHIFT = 12;
-  static final int SKIP_INDEX_INTERVAL_SIZE = 1 << SKIP_INDEX_INTERVAL_SHIFT;
+  private static final int DEFAULT_SKIP_INDEX_INTERVAL_SHIFT = 12;
+  private static final int DEFAULT_SKIP_INDEX_INTERVAL_SIZE =
+      1 << DEFAULT_SKIP_INDEX_INTERVAL_SHIFT;
 }
