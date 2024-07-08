@@ -56,8 +56,8 @@ import org.apache.lucene.store.IndexOutput;
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
  *   <li><b>[vint]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
- *       0, sparse – some documents missing values.
+ *   <li><b>[int8]</b> if equals to -2, empty - no vector values. If equals to -1, dense – all
+ *       documents have values for a field. If equals to 0, sparse – some documents missing values.
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
