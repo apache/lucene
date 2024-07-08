@@ -332,12 +332,13 @@ final class MaxScoreBulkScorer extends BulkScorer {
     // make a difference when using custom scores (like FuzzyQuery), high query-time boosts, or
     // scoring based on wacky weights.
     System.arraycopy(allScorers, 0, scratch, 0, allScorers.length);
+    // Do not use Comparator#comparingDouble below, it might cause unnecessary allocations
     Arrays.sort(
         scratch,
-        (c1, c2) -> {
+        (scorer1, scorer2) -> {
           return Double.compare(
-              (double) c1.maxWindowScore / Math.max(1L, c1.cost),
-              (double) c2.maxWindowScore / Math.max(1L, c2.cost));
+              (double) scorer1.maxWindowScore / Math.max(1L, scorer1.cost),
+              (double) scorer2.maxWindowScore / Math.max(1L, scorer2.cost));
         });
     double maxScoreSum = 0;
     firstEssentialScorer = 0;
