@@ -154,7 +154,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testNumberMergeAwayAllValuesWithSkipper() throws IOException {
-    Directory directory = newDirectory(); //
+    Directory directory = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
     iwconfig.setMergePolicy(newLogMergePolicy());

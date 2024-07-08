@@ -38,6 +38,7 @@ module org.apache.lucene.test_framework {
   exports org.apache.lucene.tests.codecs.cranky;
   exports org.apache.lucene.tests.codecs.mockrandom;
   exports org.apache.lucene.tests.codecs.ramonly;
+  exports org.apache.lucene.tests.codecs.skipper;
   exports org.apache.lucene.tests.codecs.uniformsplit.sharedterms;
   exports org.apache.lucene.tests.codecs.uniformsplit;
   exports org.apache.lucene.tests.codecs.vector;
