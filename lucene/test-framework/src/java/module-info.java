@@ -61,7 +61,8 @@ module org.apache.lucene.test_framework {
       org.apache.lucene.tests.codecs.compressing.HighCompressionCompressingCodec,
       org.apache.lucene.tests.codecs.compressing.LZ4WithPresetCompressingCodec,
       org.apache.lucene.tests.codecs.compressing.dummy.DummyCompressingCodec,
-      org.apache.lucene.tests.codecs.vector.ConfigurableMCodec;
+      org.apache.lucene.tests.codecs.vector.ConfigurableMCodec,
+      org.apache.lucene.tests.codecs.skipper.SkipperCodec;
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.tests.codecs.asserting.AssertingDocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
