@@ -18,7 +18,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13548: Refactor and javadoc update for KNN vector writer classes. (Patrick Zhai)
 
 Optimizations
 ---------------------
