@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -146,6 +147,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
    * Given old doc ids and an id mapping, maps old ordinal to new ordinal. Note: this method return
    * nothing and output are written to parameters
    *
+   * @param oldDocIds the old or current document ordinals. Must not be null.
+   * @param sortMap, the document sorting map for how to make the new ordinals. Must not be null.
    * @param old2NewOrd int[] maps from old ord to new ord
    * @param new2OldOrd int[] maps from new ord to old ord
    * @param newDocsWithField set of new doc ids which has the value
@@ -159,7 +162,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       throws IOException {
     // TODO: a similar function exists in IncrementalHnswGraphMerger#getNewOrdMapping
     //       maybe we can do a further refactoring
+    Objects.requireNonNull(oldDocIds);
+    Objects.requireNonNull(sortMap);
     assert (old2NewOrd != null || new2OldOrd != null || newDocsWithField != null);
+    assert (old2NewOrd == null || old2NewOrd.length == oldDocIds.cardinality());
+    assert (new2OldOrd == null || new2OldOrd.length == oldDocIds.cardinality());
     IntIntHashMap newIdToOldOrd = new IntIntHashMap();
     DocIdSetIterator iterator = oldDocIds.iterator();
     int[] newDocIds = new int[oldDocIds.cardinality()];
