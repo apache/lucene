@@ -300,8 +300,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
-    // The vector delegate will also account for this writer's KnnFieldVectorsWriter objects
-    total += rawVectorDelegate.ramBytesUsed();
+    for (FieldWriter field : fields) {
+      // the field tracks the delegate field usage
+      total += field.ramBytesUsed();
+    }
     return total;
   }
 
@@ -402,7 +404,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private void writeSortingField(
       FieldWriter fieldData, int maxDoc, Sorter.DocMap sortMap, ScalarQuantizer scalarQuantizer)
       throws IOException {
-    final int[] ordMap = new int[fieldData.getDocsWithFieldSet().cardinality()]; // new ord to old ord
+    final int[] ordMap =
+        new int[fieldData.getDocsWithFieldSet().cardinality()]; // new ord to old ord
 
     DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
     mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, null, ordMap, newDocsWithField);

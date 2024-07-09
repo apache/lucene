@@ -174,9 +174,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
-    // The vector delegate will also account for this writer's KnnFieldVectorsWriter objects
-    total += flatVectorWriter.ramBytesUsed();
     for (FieldWriter<?> field : fields) {
+      // the field tracks the delegate field usage
       total += field.ramBytesUsed();
     }
     return total;
@@ -200,8 +199,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   private void writeSortingField(FieldWriter<?> fieldData, Sorter.DocMap sortMap)
       throws IOException {
-    final int[] ordMap = new int[fieldData.getDocsWithFieldSet().cardinality()]; // new ord to old ord
-    final int[] oldOrdMap = new int[fieldData.getDocsWithFieldSet().cardinality()]; // old ord to new ord
+    final int[] ordMap =
+        new int[fieldData.getDocsWithFieldSet().cardinality()]; // new ord to old ord
+    final int[] oldOrdMap =
+        new int[fieldData.getDocsWithFieldSet().cardinality()]; // old ord to new ord
 
     mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, oldOrdMap, ordMap, null);
     // write graph
