@@ -24,11 +24,15 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
 @SuppressWarnings("preview")
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
+
+  private static final ConcurrentHashMap<String, GroupedArena> ARENAS = new ConcurrentHashMap<>();
 
   private final Optional<NativeAccess> nativeAccess;
 
@@ -45,7 +49,8 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
     path = Unwrappable.unwrapAll(path);
 
     boolean success = false;
-    final Arena arena = Arena.ofShared();
+    final Arena arena =
+        GroupedArena.get(IndexFileNames.parseSegmentName(path.getFileName().toString()), ARENAS);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =
