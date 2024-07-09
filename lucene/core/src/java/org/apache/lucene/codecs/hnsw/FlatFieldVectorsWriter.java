@@ -29,11 +29,25 @@ import org.apache.lucene.index.DocsWithFieldSet;
  * @lucene.experimental
  */
 public abstract class FlatFieldVectorsWriter<T> extends KnnFieldVectorsWriter<T> {
+  /**
+   * @return a list of vectors to be written
+   */
   public abstract List<T> getVectors();
 
+  /**
+   * @return the docsWithFieldSet for the field writer
+   */
   public abstract DocsWithFieldSet getDocsWithFieldSet();
 
+  /**
+   * indicates that this writer is done and no new vectors are allowed to be added
+   *
+   * @throws IOException if an I/O error occurs
+   */
   public abstract void finish() throws IOException;
 
+  /**
+   * @return true if the writer is done and no new vectors are allowed to be added
+   */
   public abstract boolean isFinished();
 }

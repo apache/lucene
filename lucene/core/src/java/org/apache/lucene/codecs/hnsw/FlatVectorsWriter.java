@@ -45,8 +45,7 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
   }
 
   /**
-   * Add a new field for indexing, allowing the user to provide a writer that the flat vectors
-   * writer can delegate to if additional indexing logic is required.
+   * Add a new field for indexing
    *
    * @param fieldInfo fieldInfo of the field to add
    * @return a writer for the field
