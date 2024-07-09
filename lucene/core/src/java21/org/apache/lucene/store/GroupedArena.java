@@ -21,8 +21,10 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.index.IndexFileNames;
 
 @SuppressWarnings("preview")
 final class GroupedArena implements Arena {
@@ -35,7 +37,14 @@ final class GroupedArena implements Arena {
 
   private final AtomicInteger refCt;
 
-  static Arena get(String scopeId, ConcurrentHashMap<String, GroupedArena> arenas) {
+  static Arena get(Path p, ConcurrentHashMap<String, GroupedArena> arenas) {
+    String filename = p.getFileName().toString();
+    String segmentName = IndexFileNames.parseSegmentName(filename);
+    if (filename.length() == segmentName.length()) {
+      // no segment found; return a 1-off Arena
+      return Arena.ofShared();
+    }
+    String scopeId = p.getParent().resolve(segmentName).toString();
     Arena ret;
     do {
       boolean[] computed = new boolean[1];
