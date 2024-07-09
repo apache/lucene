@@ -145,9 +145,13 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
     this(DEFAULT_SKIP_INDEX_INTERVAL_SIZE);
   }
 
-  /** Default constructor. */
+  /** Doc values fields format with specified skipIndexIntervalSize. */
   public Lucene90DocValuesFormat(int skipIndexIntervalSize) {
     super("Lucene90");
+    if (skipIndexIntervalSize < 1) {
+      throw new IllegalArgumentException(
+          "skipIndexIntervalSize must be > 0, got [" + skipIndexIntervalSize + "]");
+    }
     this.skipIndexIntervalSize = skipIndexIntervalSize;
   }
 
@@ -190,7 +194,5 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int TERMS_DICT_REVERSE_INDEX_SIZE = 1 << TERMS_DICT_REVERSE_INDEX_SHIFT;
   static final int TERMS_DICT_REVERSE_INDEX_MASK = TERMS_DICT_REVERSE_INDEX_SIZE - 1;
 
-  private static final int DEFAULT_SKIP_INDEX_INTERVAL_SHIFT = 12;
-  private static final int DEFAULT_SKIP_INDEX_INTERVAL_SIZE =
-      1 << DEFAULT_SKIP_INDEX_INTERVAL_SHIFT;
+  private static final int DEFAULT_SKIP_INDEX_INTERVAL_SIZE = 4096;
 }

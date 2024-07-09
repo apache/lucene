@@ -17,20 +17,14 @@
 package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.DocValuesFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests Lucene90DocValuesFormat */
 public class TestLucene90DocValuesFormatVariableSkipInterval extends BaseDocValuesFormatTestCase {
 
   @Override
   protected Codec getCodec() {
-    return new Lucene99Codec() {
-      @Override
-      public DocValuesFormat getDocValuesFormatForField(String name) {
-        return new Lucene90DocValuesFormat(random().nextInt(1 << 3, 1 << 10));
-      }
-    };
+    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(2, 1024)));
   }
 }
