@@ -172,9 +172,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
     total += flatVectorWriter.ramBytesUsed();
-    for (FieldWriter<?> field : fields) {
-      total += field.ramBytesUsed();
-    }
     return total;
   }
 
