@@ -278,6 +278,8 @@ Optimizations
 
 * GITHUB#12941: Don't preserve auxiliary buffer contents in LSBRadixSorter if it grows. (Stefan Vodita)
 
+* GITHUB#13175: Stop double-checking priority queue inserts in some FacetCount classes. (Jakub Slowinski)
+
 Changes in runtime behavior
 ---------------------
 
