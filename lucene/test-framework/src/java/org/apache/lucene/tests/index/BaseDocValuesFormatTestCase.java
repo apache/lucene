@@ -49,7 +49,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.codecs.skipper.SkipperCodec;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -158,7 +157,6 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
     iwconfig.setMergePolicy(newLogMergePolicy());
-    iwconfig.setCodec(SkipperCodec.randomInstance(random()));
     RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
 
     Document doc = new Document();
@@ -192,7 +190,6 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
     iwconfig.setMergePolicy(newLogMergePolicy());
-    iwconfig.setCodec(SkipperCodec.randomInstance(random()));
     RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
 
     Document doc = new Document();
@@ -227,7 +224,6 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
     iwconfig.setMergePolicy(newLogMergePolicy());
-    iwconfig.setCodec(SkipperCodec.randomInstance(random()));
     RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
 
     Document doc = new Document();
@@ -268,7 +264,6 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
     iwconfig.setMergePolicy(newLogMergePolicy());
-    iwconfig.setCodec(SkipperCodec.randomInstance(random()));
     RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
 
     Document doc = new Document();
@@ -309,7 +304,6 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
     iwconfig.setMergePolicy(newLogMergePolicy());
-    iwconfig.setCodec(SkipperCodec.randomInstance(random()));
     RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
 
     Document doc = new Document();
@@ -346,7 +340,6 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     Analyzer analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwconfig = newIndexWriterConfig(analyzer);
     iwconfig.setMergePolicy(newLogMergePolicy());
-    iwconfig.setCodec(SkipperCodec.randomInstance(random()));
     RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, iwconfig);
 
     Document doc = new Document();
@@ -677,9 +670,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
       default -> throw new AssertionError();
     }
     Directory directory = newDirectory();
-    IndexWriterConfig iwconfig = newIndexWriterConfig();
-    iwconfig.setCodec(SkipperCodec.randomInstance(random()));
-    RandomIndexWriter writer = new RandomIndexWriter(random(), directory, iwconfig);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
     int numDocs = 0;
     for (int i = 0; i < totalDocs; i++) {
       Document doc = new Document();

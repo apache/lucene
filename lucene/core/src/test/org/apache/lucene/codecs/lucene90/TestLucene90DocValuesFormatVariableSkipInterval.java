@@ -14,9 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.lucene90;
 
-/**
- * Support for testing {@link org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat} skipper
- * index.
- */
-package org.apache.lucene.tests.codecs.skipper;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99Codec;
+import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
+
+/** Tests Lucene90DocValuesFormat */
+public class TestLucene90DocValuesFormatVariableSkipInterval extends BaseDocValuesFormatTestCase {
+
+  @Override
+  protected Codec getCodec() {
+    return new Lucene99Codec() {
+      @Override
+      public DocValuesFormat getDocValuesFormatForField(String name) {
+        return new Lucene90DocValuesFormat(random().nextInt(1 << 3, 1 << 10));
+      }
+    };
+  }
+}
