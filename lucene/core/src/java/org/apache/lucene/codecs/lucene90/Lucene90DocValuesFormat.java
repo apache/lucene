@@ -148,9 +148,9 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   /** Doc values fields format with specified skipIndexIntervalSize. */
   public Lucene90DocValuesFormat(int skipIndexIntervalSize) {
     super("Lucene90");
-    if (skipIndexIntervalSize < 1) {
+    if (skipIndexIntervalSize < 2) {
       throw new IllegalArgumentException(
-          "skipIndexIntervalSize must be > 0, got [" + skipIndexIntervalSize + "]");
+          "skipIndexIntervalSize must be > 1, got [" + skipIndexIntervalSize + "]");
     }
     this.skipIndexIntervalSize = skipIndexIntervalSize;
   }

@@ -27,4 +27,12 @@ public class TestLucene90DocValuesFormatVariableSkipInterval extends BaseDocValu
   protected Codec getCodec() {
     return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(2, 1024)));
   }
+
+  public void testSkipIndexIntervalSize() {
+    IllegalArgumentException ex =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new Lucene90DocValuesFormat(random().nextInt(Integer.MIN_VALUE, 2)));
+    assertTrue(ex.getMessage().contains("skipIndexIntervalSize must be > 1"));
+  }
 }
