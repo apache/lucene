@@ -174,6 +174,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
+    // The vector delegate will also account for this writer's KnnFieldVectorsWriter objects
     total += flatVectorWriter.ramBytesUsed();
     for (FieldWriter<?> field : fields) {
       total += field.ramBytesUsed();
@@ -199,29 +200,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   private void writeSortingField(FieldWriter<?> fieldData, Sorter.DocMap sortMap)
       throws IOException {
-    final int[] docIdOffsets = new int[sortMap.size()];
-    int offset = 1; // 0 means no vector for this (field, document)
-    DocIdSetIterator iterator = fieldData.getDocsWithFieldSet().iterator();
-    for (int docID = iterator.nextDoc();
-        docID != DocIdSetIterator.NO_MORE_DOCS;
-        docID = iterator.nextDoc()) {
-      int newDocID = sortMap.oldToNew(docID);
-      docIdOffsets[newDocID] = offset++;
-    }
-    DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
-    final int[] ordMap = new int[offset - 1]; // new ord to old ord
-    final int[] oldOrdMap = new int[offset - 1]; // old ord to new ord
-    int ord = 0;
-    int doc = 0;
-    for (int docIdOffset : docIdOffsets) {
-      if (docIdOffset != 0) {
-        ordMap[ord] = docIdOffset - 1;
-        oldOrdMap[docIdOffset - 1] = ord;
-        newDocsWithField.add(doc);
-        ord++;
-      }
-      doc++;
-    }
+    final int[] ordMap = new int[fieldData.getDocsWithFieldSet().cardinality()]; // new ord to old ord
+    final int[] oldOrdMap = new int[fieldData.getDocsWithFieldSet().cardinality()]; // old ord to new ord
+
+    mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, oldOrdMap, ordMap, null);
     // write graph
     long vectorIndexOffset = vectorIndex.getFilePointer();
     OnHeapHnswGraph graph = fieldData.getGraph();

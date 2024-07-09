@@ -43,7 +43,6 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -185,27 +184,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   private void writeSortingField(FieldWriter<?> fieldData, int maxDoc, Sorter.DocMap sortMap)
       throws IOException {
-    final int[] docIdOffsets = new int[sortMap.size()];
-    int offset = 1; // 0 means no vector for this (field, document)
-    DocIdSetIterator iterator = fieldData.docsWithField.iterator();
-    for (int docID = iterator.nextDoc();
-        docID != DocIdSetIterator.NO_MORE_DOCS;
-        docID = iterator.nextDoc()) {
-      int newDocID = sortMap.oldToNew(docID);
-      docIdOffsets[newDocID] = offset++;
-    }
+    final int[] ordMap = new int[fieldData.docsWithField.cardinality()]; // new ord to old ord
+
     DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
-    final int[] ordMap = new int[offset - 1]; // new ord to old ord
-    int ord = 0;
-    int doc = 0;
-    for (int docIdOffset : docIdOffsets) {
-      if (docIdOffset != 0) {
-        ordMap[ord] = docIdOffset - 1;
-        newDocsWithField.add(doc);
-        ord++;
-      }
-      doc++;
-    }
+    mapOldOrdToNewOrd(fieldData.docsWithField, sortMap, null, ordMap, newDocsWithField);
 
     // write vector values
     long vectorDataOffset =

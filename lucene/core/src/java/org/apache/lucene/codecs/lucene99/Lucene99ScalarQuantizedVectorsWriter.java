@@ -300,9 +300,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
-    for (FieldWriter field : fields) {
-      total += field.ramBytesUsed();
-    }
+    // The vector delegate will also account for this writer's KnnFieldVectorsWriter objects
+    total += rawVectorDelegate.ramBytesUsed();
     return total;
   }
 
@@ -403,27 +402,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private void writeSortingField(
       FieldWriter fieldData, int maxDoc, Sorter.DocMap sortMap, ScalarQuantizer scalarQuantizer)
       throws IOException {
-    final int[] docIdOffsets = new int[sortMap.size()];
-    int offset = 1; // 0 means no vector for this (field, document)
-    DocIdSetIterator iterator = fieldData.getDocsWithFieldSet().iterator();
-    for (int docID = iterator.nextDoc();
-        docID != DocIdSetIterator.NO_MORE_DOCS;
-        docID = iterator.nextDoc()) {
-      int newDocID = sortMap.oldToNew(docID);
-      docIdOffsets[newDocID] = offset++;
-    }
+    final int[] ordMap = new int[fieldData.getDocsWithFieldSet().cardinality()]; // new ord to old ord
+
     DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
-    final int[] ordMap = new int[offset - 1]; // new ord to old ord
-    int ord = 0;
-    int doc = 0;
-    for (int docIdOffset : docIdOffsets) {
-      if (docIdOffset != 0) {
-        ordMap[ord] = docIdOffset - 1;
-        newDocsWithField.add(doc);
-        ord++;
-      }
-      doc++;
-    }
+    mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, null, ordMap, newDocsWithField);
 
     // write vector values
     long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
