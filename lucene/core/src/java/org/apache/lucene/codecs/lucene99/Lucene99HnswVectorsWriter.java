@@ -171,6 +171,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
+    // The vector delegate will also account for this writer's KnnFieldVectorsWriter objects
     total += flatVectorWriter.ramBytesUsed();
     return total;
   }
