@@ -215,8 +215,8 @@ public final class VectorUtil {
   /**
    * For xorBitCount we stride over the values as either 64-bits (long) or 32-bits (int) at a time.
    * On ARM Long::bitCount is not vectorized, and therefore produces less than optimal code, when
-   * compared to Integer::bitCount. While Long::bitCount is optimal on x64. TODO: include the
-   * OpenJDK JIRA url
+   * compared to Integer::bitCount. While Long::bitCount is optimal on x64. See
+   * https://bugs.openjdk.org/browse/JDK-8336000
    */
   static final boolean XOR_BIT_COUNT_STRIDE_AS_INT = Constants.OS_ARCH.equals("aarch64");
 
