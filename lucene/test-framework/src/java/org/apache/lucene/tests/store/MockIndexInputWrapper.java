@@ -39,11 +39,16 @@ public class MockIndexInputWrapper extends FilterIndexInput {
 
   // Which MockIndexInputWrapper we were cloned from, or null if we are not a clone:
   private final MockIndexInputWrapper parent;
+  private final boolean confined;
   private final Thread thread;
 
   /** Sole constructor */
   public MockIndexInputWrapper(
-      MockDirectoryWrapper dir, String name, IndexInput delegate, MockIndexInputWrapper parent) {
+      MockDirectoryWrapper dir,
+      String name,
+      IndexInput delegate,
+      MockIndexInputWrapper parent,
+      boolean confined) {
     super("MockIndexInputWrapper(name=" + name + " delegate=" + delegate + ")", delegate);
 
     // If we are a clone then our parent better not be a clone!
@@ -52,6 +57,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     this.parent = parent;
     this.name = name;
     this.dir = dir;
+    this.confined = confined;
     this.thread = Thread.currentThread();
   }
 
@@ -87,7 +93,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   }
 
   private void ensureAccessible() {
-    if (thread != Thread.currentThread()) {
+    if (confined && thread != Thread.currentThread()) {
       throw new RuntimeException("Abusing from another thread!");
     }
   }
@@ -101,7 +107,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     dir.inputCloneCount.incrementAndGet();
     IndexInput iiclone = in.clone();
     MockIndexInputWrapper clone =
-        new MockIndexInputWrapper(dir, name, iiclone, parent != null ? parent : this);
+        new MockIndexInputWrapper(dir, name, iiclone, parent != null ? parent : this, confined);
     // Pending resolution on LUCENE-686 we may want to
     // uncomment this code so that we also track that all
     // clones get closed:
@@ -128,7 +134,8 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     dir.inputCloneCount.incrementAndGet();
     IndexInput slice = in.slice(sliceDescription, offset, length);
     MockIndexInputWrapper clone =
-        new MockIndexInputWrapper(dir, sliceDescription, slice, parent != null ? parent : this);
+        new MockIndexInputWrapper(
+            dir, sliceDescription, slice, parent != null ? parent : this, confined);
     return clone;
   }
 
