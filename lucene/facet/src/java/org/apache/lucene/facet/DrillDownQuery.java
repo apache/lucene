@@ -28,6 +28,8 @@ import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.CollectorOwner;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
