@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.tests.util.hnsw;
+package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -30,7 +30,6 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Utilities for use in tests involving HNSW graphs */
 public class HnswTestUtil {

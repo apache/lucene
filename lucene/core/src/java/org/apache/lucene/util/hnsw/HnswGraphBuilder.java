@@ -165,6 +165,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.infoStream = infoStream;
   }
 
+  @Override
   public OnHeapHnswGraph getCompletedGraph() {
     frozen = true;
     return getGraph();
