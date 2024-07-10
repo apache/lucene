@@ -3,7 +3,6 @@ package org.apache.lucene.sandbox.facet.ranges;
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
-// TODO: copy over class or change modifiers later
 
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.index.LeafReaderContext;
@@ -20,12 +19,11 @@ import java.util.Map;
 
 /**
  * {@link RangeFacetCutter} for ranges of long value that overlap.
- * TODO: it doesn't need to be public?
  * Uses segment tree optimisation to find all matching ranges for a given value
  * <a href="https://blog.mikemccandless.com/2013/12/fast-range-faceting-using-segment-trees.html">fast-range-faceting-
  * using-segment-trees.html</a>
  **/
-public class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
+class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     private final LongRangeNode root;
 
     OverlappingLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource,
@@ -139,6 +137,10 @@ public class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
         }
     }
 
+    /**
+     * TODO: dedup OverlappingMultivaluedRangeFacetLeafCutter and OverlappingSinglevaluedRangeFacetLeafCutter
+     *  code - they are similar but they extend different base classes.
+     */
     static class OverlappingMultivaluedRangeFacetLeafCutter extends LongRangeMultivaluedFacetLeafCutter {
 
         LongRangeNode elementaryIntervalRoot;
@@ -200,6 +202,9 @@ public class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
         @Override
         void maybeRollUp(IntervalTracker rollUpInto) {
+            // TODO: for single valued we can do rollup after we collect for all documents,
+            //  e.g. in reduce method. Maybe we can extend FacetRollup interface to handle this
+            //  case too?
             elementaryIntervalUpto = 0;
             rollupMultiValued(elementaryIntervalRoot);
         }

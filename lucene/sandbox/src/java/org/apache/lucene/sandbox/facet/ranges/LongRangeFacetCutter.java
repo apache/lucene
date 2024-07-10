@@ -17,7 +17,7 @@ import java.util.Objects;
 public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
     MultiLongValuesSource valuesSource;
-    LongValuesSource singleValues; // TODO: refactor - weird that we have both multi and single.
+    LongValuesSource singleValues; // TODO: refactor - weird that we have both multi and single here.
     LongRangeAndPos[] sortedRanges;
 
     int requestedRangeCount;
@@ -32,7 +32,6 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     static final int SKIP_INTERVAL_POSITION = -1;
 
     // Temporary callers should ensure that passed in single values sources are wrapped
-    // TODO: make a common interface for all ValueSources - Long, Double, Multi
     /** add doc **/
     public static LongRangeFacetCutter create(String field, MultiLongValuesSource longValuesSource,
                                               LongValuesSource singleLongValuesSource, LongRange[] longRanges) {
@@ -121,7 +120,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
         //int currentDoc = -1;
 
-        IntervalTracker elementaryIntervalTracker;
+        final IntervalTracker elementaryIntervalTracker;
 
         // TODO: we need it only for overlapping ranges, should not handle it in advanceExact for exclusive ranges.
         IntervalTracker requestedIntervalTracker;
@@ -132,11 +131,12 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
             this.boundaries = boundaries;
             this.pos = pos;
             this.requestedRangeCount = requestedRangeCount;
+            elementaryIntervalTracker = new IntervalTracker.MultiIntervalTracker(boundaries.length);
         }
 
         @Override
         public boolean advanceExact(int doc) throws IOException {
-            // TODO: we don't actualy need these extra checks, do we?
+            // TODO: we don't actually need these extra checks, do we?
             /*if (doc < currentDoc) {
                 throw new IllegalStateException("doc id going backwards");
             }
@@ -148,11 +148,8 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
             }
             //currentDoc = doc;
 
-            if (elementaryIntervalTracker != null) {
-                elementaryIntervalTracker.clear();
-            } else {
-                elementaryIntervalTracker = new IntervalTracker.MultiIntervalTracker(boundaries.length);
-            }
+            elementaryIntervalTracker.clear();
+
             if (requestedIntervalTracker != null) {
                 requestedIntervalTracker.clear();
             }
@@ -173,9 +170,8 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
             }
             maybeRollUp(requestedIntervalTracker);
 
-            //if (elementaryIntervalTracker != null) {
-                elementaryIntervalTracker.freeze();
-            //}
+            elementaryIntervalTracker.freeze();
+
             if (requestedIntervalTracker != null) {
                 requestedIntervalTracker.freeze();
             }
@@ -235,16 +231,16 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
         int currentDoc = -1;
 
-        IntervalTracker elementaryIntervalTracker;
+        final IntervalTracker elementaryIntervalTracker;
 
         IntervalTracker requestedIntervalTracker;
-
 
         LongRangeSinglevaluedFacetLeafCutter(LongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
             this.longValues = longValues;
             this.boundaries = boundaries;
             this.pos = pos;
             this.requestedRangeCount = requestedRangeCount;
+            elementaryIntervalTracker = new IntervalTracker.SingleIntervalTracker();
         }
 
         @Override
@@ -260,11 +256,8 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
             }
             currentDoc = doc;
 
-            if (elementaryIntervalTracker != null) {
-                elementaryIntervalTracker.clear();
-            } else {
-                elementaryIntervalTracker = new IntervalTracker.SingleIntervalTracker();
-            }
+            elementaryIntervalTracker.clear();
+
             if (requestedIntervalTracker != null) {
                 requestedIntervalTracker.clear();
             }
@@ -274,7 +267,6 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
             lastIntervalSeen = processValue(longValues.longValue(), lastIntervalSeen);
             elementaryIntervalTracker.set(lastIntervalSeen);
-
 
             maybeRollUp(requestedIntervalTracker);
 

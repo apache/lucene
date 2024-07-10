@@ -14,9 +14,8 @@ import java.util.List;
 
 /**
  * {@link RangeFacetCutter} for ranges of long value that don't overlap.
- * TODO: it doesn't need to be public?
  * **/
-public class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
+class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
     ExclusiveLongRangeFacetCutter(String field, MultiLongValuesSource longValuesSource,
                                   LongValuesSource singleLongValuesSource, LongRange[] longRanges) {
         super(field, longValuesSource, singleLongValuesSource, longRanges);
@@ -59,6 +58,10 @@ public class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
         }
     }
 
+    /**
+     * TODO: dedup ExclusiveLongRangeMultivalueFacetLeafCutter and ExclusiveLongRangeSinglevalueFacetLeafCutter
+     *  code - they are similar but they extend different base classes.
+     */
     static class ExclusiveLongRangeMultivalueFacetLeafCutter extends LongRangeMultivaluedFacetLeafCutter {
 
         ExclusiveLongRangeMultivalueFacetLeafCutter(MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
