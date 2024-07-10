@@ -14,21 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.fst;
+package org.apache.lucene.codecs.lucene90;
 
-import java.io.IOException;
-import org.apache.lucene.store.DataInput;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
-/** A type of {@link FSTReader} which needs data to be initialized before use */
-public interface FSTStore extends FSTReader {
+/** Tests Lucene90DocValuesFormat */
+public class TestLucene90DocValuesFormatVariableSkipInterval extends BaseDocValuesFormatTestCase {
 
-  /**
-   * Initialize the FSTStore
-   *
-   * @param in the DataInput to read from
-   * @param numBytes the number of bytes to read
-   * @return this FSTStore
-   * @throws IOException if exception occurred during reading the DataInput
-   */
-  FSTStore init(DataInput in, long numBytes) throws IOException;
+  @Override
+  protected Codec getCodec() {
+    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(2, 1024)));
+  }
+
+  public void testSkipIndexIntervalSize() {
+    IllegalArgumentException ex =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new Lucene90DocValuesFormat(random().nextInt(Integer.MIN_VALUE, 2)));
+    assertTrue(ex.getMessage().contains("skipIndexIntervalSize must be > 1"));
+  }
 }

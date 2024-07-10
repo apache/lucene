@@ -89,7 +89,7 @@ public final class Term implements Comparable<Term>, Accountable {
    * Returns the field of this term. The field indicates the part of a document which this term came
    * from.
    */
-  public final String field() {
+  public String field() {
     return field;
   }
 
@@ -97,7 +97,7 @@ public final class Term implements Comparable<Term>, Accountable {
    * Returns the text of this term. In the case of words, this is simply the text of the word. In
    * the case of dates and other types, this is an encoding of the object as a string.
    */
-  public final String text() {
+  public String text() {
     return toString(bytes);
   }
 
@@ -105,7 +105,7 @@ public final class Term implements Comparable<Term>, Accountable {
    * Returns human-readable form of the term text. If the term is not unicode, the raw bytes will be
    * printed instead.
    */
-  public static final String toString(BytesRef termText) {
+  public static String toString(BytesRef termText) {
     // the term might not be text, but usually is. so we make a best effort
     CharsetDecoder decoder =
         StandardCharsets.UTF_8
@@ -124,7 +124,7 @@ public final class Term implements Comparable<Term>, Accountable {
   }
 
   /** Returns the bytes of this term, these should not be modified. */
-  public final BytesRef bytes() {
+  public BytesRef bytes() {
     return bytes;
   }
 
@@ -160,7 +160,7 @@ public final class Term implements Comparable<Term>, Accountable {
    * <p>The ordering of terms is first by field, then by text.
    */
   @Override
-  public final int compareTo(Term other) {
+  public int compareTo(Term other) {
     if (field.equals(other.field)) {
       return bytes.compareTo(other.bytes);
     } else {
@@ -181,7 +181,7 @@ public final class Term implements Comparable<Term>, Accountable {
   }
 
   @Override
-  public final String toString() {
+  public String toString() {
     return field + ":" + text();
   }
 

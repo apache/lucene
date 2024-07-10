@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.codecs.CompoundFormat;
 
 /**
  * Abstract base class for input from a file in a {@link Directory}. A random-access input stream.
@@ -120,6 +121,19 @@ public abstract class IndexInput extends DataInput implements Closeable {
    */
   public abstract IndexInput slice(String sliceDescription, long offset, long length)
       throws IOException;
+
+  /**
+   * Create a slice with a specific {@link ReadAdvice}. This is typically used by {@link
+   * CompoundFormat} implementations to honor the {@link ReadAdvice} of each file within the
+   * compound file.
+   *
+   * <p>The default implementation delegates to {@link #slice(String, long, long)} and ignores the
+   * {@link ReadAdvice}.
+   */
+  public IndexInput slice(String sliceDescription, long offset, long length, ReadAdvice readAdvice)
+      throws IOException {
+    return slice(sliceDescription, offset, length);
+  }
 
   /**
    * Subclasses call this to get the String for resourceDescription of a slice of this {@code

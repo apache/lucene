@@ -68,7 +68,6 @@ public class Checksum extends DefaultTask {
 
   public Checksum() {
     outputDir = new File(getProject().getBuildDir(), "checksums");
-    algorithm = Algorithm.SHA256;
   }
 
   @InputFiles
