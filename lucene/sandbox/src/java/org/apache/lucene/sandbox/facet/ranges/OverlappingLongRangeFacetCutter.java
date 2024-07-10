@@ -5,7 +5,6 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 // TODO: copy over class or change modifiers later
 
-import org.apache.lucene.facet.range.OverlappingLongRangeCounter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.index.LeafReaderContext;
 
