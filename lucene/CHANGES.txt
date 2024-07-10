@@ -40,6 +40,8 @@ Optimizations
 
 * GITHUB#13175: Stop double-checking priority queue inserts in some FacetCount classes. (Jakub Slowinski)
 
+* GITHUB#13538: Slightly reduce heap usage for HNSW and scalar quantized vector writers. (Ben Trent)
+
 Changes in runtime behavior
 ---------------------
 
