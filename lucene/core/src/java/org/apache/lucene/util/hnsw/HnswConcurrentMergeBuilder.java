@@ -107,9 +107,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   @Override
   public OnHeapHnswGraph getCompletedGraph() {
-    if (frozen != true) {
-      throw new IllegalStateException("graph has not been built");
-    }
+    frozen = true;
     return getGraph();
   }
 

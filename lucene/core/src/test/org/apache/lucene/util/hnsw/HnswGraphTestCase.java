@@ -1012,8 +1012,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswConcurrentMergeBuilder builder =
         new HnswConcurrentMergeBuilder(
             taskExecutor, 4, scorerSupplier, 10, 30, new OnHeapHnswGraph(10, size), null);
-    // not built yet
-    expectThrows(IllegalStateException.class, () -> builder.getCompletedGraph());
     builder.setBatchSize(100);
     builder.build(size);
     exec.shutdownNow();
