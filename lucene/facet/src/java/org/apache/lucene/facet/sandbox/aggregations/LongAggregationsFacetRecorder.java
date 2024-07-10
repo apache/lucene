@@ -51,7 +51,7 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     public void reduce(FacetRollup facetRollup) throws IOException {
         // TODO: reduce
 
-        if (facetRollup != null && facetRollup.getDimOrds().nextOrd() != OrdinalIterator.NO_MORE_ORDS) {
+        if (facetRollup != null && facetRollup.getDimOrdsToRollup().nextOrd() != OrdinalIterator.NO_MORE_ORDS) {
             throw new UnsupportedOperationException("Rollup is required, but not implemented");
         }
     }

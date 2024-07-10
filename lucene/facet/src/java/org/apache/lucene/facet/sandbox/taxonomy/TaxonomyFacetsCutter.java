@@ -84,7 +84,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
     }
 
     @Override
-    public OrdinalIterator getDimOrds() {
+    public OrdinalIterator getDimOrdsToRollup() {
         // Rollup any necessary dims:
         Iterator<Map.Entry<String, FacetsConfig.DimConfig>> dimensions = facetsConfig.getDimConfigs()
                 .entrySet()

@@ -25,7 +25,7 @@ public interface FacetRecorder {
      * Reduce leaf recorder results into this recorder.
      * If facetRollup is not null, it also rolls up values.
      *
-     * @throws UnsupportedOperationException if facetRollup is not null and {@link FacetRollup#getDimOrds()} returns at least one
+     * @throws UnsupportedOperationException if facetRollup is not null and {@link FacetRollup#getDimOrdsToRollup()} returns at least one
      *  dimension ord, but this type of record can't be rolled up.
      */
     void reduce(FacetRollup facetRollup) throws IOException;

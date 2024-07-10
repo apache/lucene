@@ -81,7 +81,7 @@ public class CountRecorder implements FacetRecorder, GetRank {
     public void reduce(FacetRollup facetRollup) throws IOException {
         // Don't need to do anything now because we collect all to a sync IntIntMap
         // TODO: would that be faster to collect per leaf and then reduce?
-        OrdinalIterator dimOrds = facetRollup.getDimOrds();
+        OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
         for(int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; ) {
             // TODO: we call addTo because this is what IntTaxonomyFacets does (add to current value).
             //  We might want to just replace the value instead? We should not have current value in the map.
