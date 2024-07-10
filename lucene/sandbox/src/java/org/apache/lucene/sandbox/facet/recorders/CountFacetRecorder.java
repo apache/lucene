@@ -22,14 +22,19 @@ import static org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator.NO_MORE_
  * {@link FacetRecorder} to count facets.
  * TODO: add an option to keep counts in an array, to improve performance for facets with small number of ordinals
  *       e.g. range facets. Options:
+ *  - {@link org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter} can inform {@link FacetLeafRecorder}
+ *    about expected number of facet ordinals ({@link org.apache.lucene.sandbox.facet.FacetFieldCollector} can
+ *    orchestrate that). If expeted facet ord number is below some threshold - use array
+ *    instead of a map?
  *  - first 100/1k counts in array, the rest - in a map; the limit can also be provided in a constructor?
- *    It is similar to what LongValuesFacetCounts do today.
- *  - have a constructor option expeted max ordinal, and if it is set and below some threshold - use array
- *    only?
+ *    It is similar to what LongValuesFacetCounts does today.
  */
 public class CountFacetRecorder implements FacetRecorder {
 
     // TODO: deprecate - it is cheaper to merge during reduce than to lock threads during collection.
+    // TODO: alternatively, we can consider collecting 2 (3, 4, ..., can be parametrizes) slices to a single sync map
+    //       which can reduce thread contention compared to single sync map for all slices; at the same time there will
+    //       be less work for reduce method. So far reduce wasn't a bottleneck for us, but it is definitely not free.
     private final boolean useSyncMap;
 
     /**
@@ -89,7 +94,8 @@ public class CountFacetRecorder implements FacetRecorder {
         // TODO: is that performant enough?
         // TODO: even if this is called before collection started, we want it to use results from the time when nextOrd
         //  is first called. Does ordIterator work like that? I've run some tests that confirmed expected behavior,
-        //  but I'm not sure IntIntMap guarantees that.
+        //  but I'm not sure IntIntMap guarantees that. We should at least add a unit test to make sure it always work
+        //  that way.
         Iterator<IntCursor> ordIterator = values.keys().iterator();
         return new OrdinalIterator() {
             @Override
@@ -133,7 +139,6 @@ public class CountFacetRecorder implements FacetRecorder {
             return;
         }
         // Don't need to do anything now because we collect all to a sync IntIntMap
-        // TODO: would that be faster to collect per leaf and then reduce?
         OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
         for(int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; ) {
             // TODO: we call addTo because this is what IntTaxonomyFacets does (add to current value).
