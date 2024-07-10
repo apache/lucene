@@ -1,8 +1,5 @@
 package org.apache.lucene.sandbox.facet.ranges;
 
-import org.apache.lucene.facet.range.LongRange;
-import org.apache.lucene.facet.range.OverlappingLongRangeCounter;
-
 import java.util.ArrayList;
 import java.util.List;
 
