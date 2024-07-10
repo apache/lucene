@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
@@ -996,6 +997,43 @@ public class TestTermsEnum extends LuceneTestCase {
     r.close();
     w.close();
     d.close();
+  }
+
+  public void testPKLookupWithUpdate() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc;
+    doc = new Document();
+    doc.add(new KeywordField("PK", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "1", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("PK", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "2", Field.Store.NO));
+    writer.updateDocument(new Term("PK", "1"), doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("PK", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "3", Field.Store.NO));
+    // PK updates will be merged to one update.
+    writer.updateDocument(new Term("PK", "1"), doc);
+    writer.flush();
+
+    DirectoryReader reader = writer.getReader(true, false);
+    PerThreadPKLookup pk = new PerThreadPKLookup(reader, "PK");
+
+    int docID = pk.lookup(newBytesRef("1"));
+    assertEquals(2, docID);
+
+    reader.close();
+    writer.close();
+    dir.close();
   }
 
   // Stresses out many-terms-in-root-block case:
