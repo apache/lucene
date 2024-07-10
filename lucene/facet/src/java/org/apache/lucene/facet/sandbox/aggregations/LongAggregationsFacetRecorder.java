@@ -5,6 +5,8 @@ import org.apache.lucene.facet.sandbox.abstracts.FacetLeafCutter;
 import org.apache.lucene.facet.sandbox.abstracts.FacetRecorder;
 import org.apache.lucene.facet.sandbox.abstracts.FacetLeafRecorder;
 import org.apache.lucene.facet.sandbox.abstracts.FacetRollup;
+import org.apache.lucene.facet.sandbox.abstracts.GetRank;
+import org.apache.lucene.facet.sandbox.abstracts.GetTwoRanks;
 import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
 import org.apache.lucene.index.LeafReaderContext;
 
@@ -59,6 +61,41 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     /** Get aggregation value by its id */
     public long getAggregation(int ord, int aggregationId) {
         throw new UnsupportedOperationException("not yet implemented");
+    }
+
+    /**
+     * Exposes the class as {@link GetTwoRanks}.
+     */
+    public GetTwoRanks getTwoRanksView(int rankAggregationId, int secondRankAggregationId) {
+        return new GetTwoRanks() {
+            @Override
+            public long getSecondRank(int ord) {
+                // TODO: overall the entire GetTwoRanks/OrdTwoRanks thingy looks too heavy for the purpose,
+                //  can it be more generic somehow (e.g. don't rely on long/ints) without performance impact?
+                return getAggregation(ord, secondRankAggregationId);
+            }
+
+            @Override
+            public int getRank(int ord) {
+                // TODO: always use count? Do we want to always compute count as part of this facet recorder?
+                //  maybe even extend CountRecorder??
+                // TODO: we shouldn't need to cast
+                return (int) getAggregation(ord, rankAggregationId);
+            }
+        };
+    }
+
+    /**
+     * Get single rank view on the Recorder.
+     * TODO: we don't need this method if we count "count" explicitely and rename GetRank to GetCount?
+     */
+    public GetRank getRankView(final int rankAggregationId) {
+        return new GetRank() {
+            public int getRank(int ord) {
+                // TODO: we shouldn't need to cast
+                return (int) LongAggregationsFacetRecorder.this.getAggregation(ord, rankAggregationId);
+            }
+        };
     }
 
     private static class LongAggregationLeafPayload implements FacetLeafRecorder {

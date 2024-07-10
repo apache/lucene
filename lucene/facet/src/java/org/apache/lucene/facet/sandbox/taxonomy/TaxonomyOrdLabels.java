@@ -20,10 +20,8 @@ public class TaxonomyOrdLabels implements OrdToLabels {
     }
 
     @Override
-    public String getLabel(int ordinal) throws IOException {
-        // TODO: well this is not very flexible. Should we consider returning FacetLabel for this method?
-        FacetLabel facetLabel = taxoReader.getPath(ordinal);
-        return facetLabel.components[facetLabel.length - 1];
+    public FacetLabel getLabel(int ordinal) throws IOException {
+        return taxoReader.getPath(ordinal);
     }
 
     @Override
@@ -32,14 +30,13 @@ public class TaxonomyOrdLabels implements OrdToLabels {
     }
 
     @Override
-    public int getOrd(String label) {
+    public int getOrd(FacetLabel label) {
         // TODO
         throw new UnsupportedOperationException("not yet implemented");
     }
 
     @Override
-    public int[] getOrds(String[] labels) {
-        // TODO: use bulk get ords method
-        throw new UnsupportedOperationException("not yet implemented");
+    public int[] getOrds(FacetLabel[] labels) throws IOException {
+        return taxoReader.getBulkOrdinals(labels);
     }
 }

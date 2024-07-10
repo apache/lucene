@@ -8,11 +8,12 @@ import java.io.IOException;
  * Label to ord bimap interface.
  * TODO: do we need the bulk methods? Should they have other signature, e.g. OrdinalIterator as inputs?
  * TODO: do we want to rely on FacetLabel instead of String?
+ * TODO: there is some overlap with {@link org.apache.lucene.facet.taxonomy.writercache.LabelToOrdinal}, can we reuse something?
  */
 public interface OrdToLabels {
 
     /** get label of one ord */
-    String getLabel(int ordinal) throws IOException;
+    FacetLabel getLabel(int ordinal) throws IOException;
 
     /**
      * get labels for multiple ords
@@ -20,8 +21,8 @@ public interface OrdToLabels {
     FacetLabel[] getLabels(int[] ordinals) throws IOException;
 
     /** get ord for one label */
-    int getOrd(String label);
+    int getOrd(FacetLabel label);
 
     /** get ords for multiple labels */
-    int[] getOrds(String[] labels);
+    int[] getOrds(FacetLabel[] labels) throws IOException;
 }

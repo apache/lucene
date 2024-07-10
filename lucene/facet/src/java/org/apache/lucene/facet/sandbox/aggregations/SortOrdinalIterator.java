@@ -9,6 +9,7 @@ import java.io.IOException;
 
 /**
  * Class that consumes incoming ordinals, sorts them by provided long aggregations, and returns in sorted order.
+ * TODO: do we really want to use Comparable? Using some custom interface that has lessThan might be easier and faster?
  */
 public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements OrdinalIterator {
 
@@ -57,7 +58,7 @@ public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
         return res.getOrd();
     }
 
-    /** Keeps highest results, first by largest int value, then tie break by smallest ord. */
+    /** Keeps highest results, first by largest int value, then tie-break by smallest ord. */
     private static class TopComparableQueue<T extends Comparable<T>> extends PriorityQueue<T> {
 
         /** Sole constructor. */

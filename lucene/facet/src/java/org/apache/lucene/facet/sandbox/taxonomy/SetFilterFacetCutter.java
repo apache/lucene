@@ -18,15 +18,21 @@ import java.io.IOException;
 public final class SetFilterFacetCutter implements FacetCutter {
 
     private final FacetCutter delegate;
+    private final IntSet candidateOrds;
+    private final int maxCandidateOrd;
+    private final int minCandidateOrd;
 
     /** Constructor. */
-    public SetFilterFacetCutter(FacetCutter delegate) {
+    public SetFilterFacetCutter(FacetCutter delegate, IntSet candidateOrds, int maxCandidateOrd, int minCandidateOrd) {
         this.delegate = delegate;
+        this.candidateOrds = candidateOrds;
+        this.maxCandidateOrd = maxCandidateOrd;
+        this.minCandidateOrd = minCandidateOrd;
     }
 
     @Override
     public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
-        return null;
+        return new SetFilterFacetLeafCutter(delegate.createLeafCutter(context), candidateOrds, maxCandidateOrd, minCandidateOrd);
     }
 
     private static class SetFilterFacetLeafCutter implements FacetLeafCutter {

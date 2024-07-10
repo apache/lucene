@@ -16,9 +16,9 @@ public class RangeOrdToLabels implements OrdToLabels {
         ranges = inputRanges;
     }
     @Override
-    public String getLabel(int ordinal) throws IOException {
+    public FacetLabel getLabel(int ordinal) throws IOException {
         if (ordinal >= 0 && ordinal < ranges.length) {
-            return ranges[ordinal].label;
+            return new FacetLabel(ranges[ordinal].label);
         }
         return null;
     }
@@ -33,12 +33,12 @@ public class RangeOrdToLabels implements OrdToLabels {
     }
 
     @Override
-    public int getOrd(String label) {
+    public int getOrd(FacetLabel label) {
         throw new UnsupportedOperationException("Not yet supported for ranges");
     }
 
     @Override
-    public int[] getOrds(String[] labels) {
+    public int[] getOrds(FacetLabel[] labels) {
         throw new UnsupportedOperationException("Not yet supported for ranges");
     }
 }

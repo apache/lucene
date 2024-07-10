@@ -31,8 +31,8 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
     private final TaxonomyReader taxoReader;
     private final String indexFieldName;
 
-    // TODO: init when first added?
-    private List<TaxonomyLeafFacetCutterMultiValue> leafCutters = new ArrayList<>();
+    // TODO: do we need it for anything?
+    //private List<TaxonomyLeafFacetCutterMultiValue> leafCutters = new ArrayList<>();
 
     private ParallelTaxonomyArrays.IntArray parents;
     private ParallelTaxonomyArrays.IntArray children;
@@ -76,7 +76,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
             return null; // TODO: oh not not null!
         }
         TaxonomyLeafFacetCutterMultiValue leafCutter = new TaxonomyLeafFacetCutterMultiValue(multiValued);
-        leafCutters.add(leafCutter);
+        //leafCutters.add(leafCutter);
         return leafCutter;
 
         // TODO: does unwrapping Single valued makes things any faster? We still need to wrap it into FacetLeafCutter

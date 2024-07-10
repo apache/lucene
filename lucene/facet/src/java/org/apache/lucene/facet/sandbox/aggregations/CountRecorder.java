@@ -64,6 +64,9 @@ public class CountRecorder implements FacetRecorder, GetRank {
     @Override
     public OrdinalIterator recordedOrds() {
         // TODO: is that performant enough?
+        // TODO: even if this is called before collection started, we want it to use results from the time when nextOrd
+        //  is first called. Does ordIterator work like that? I've run some tests that confirmed expected behavior,
+        //  but I'm not sure IntIntMap guarantees that.
         Iterator<IntCursor> ordIterator = values.keys().iterator();
         return new OrdinalIterator() {
             @Override
