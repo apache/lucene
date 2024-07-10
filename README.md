@@ -41,13 +41,35 @@ in order to use PIM to execute the query. When using a PimPhraseQuery, the syste
 ## Project Status
 
 This project is currently under development. 
+The implementation of the PimPhraseQuery is functional and the current performance (QPS) when compared to standard Lucene is reported in the benchmarks' section.
+The next step is to improve the score's lower bound computation to reduce the work imbalance between the PIM cores.
 
 ## Building
 
 ### Basic steps:
   
 1. Install OpenJDK 17 or 18.
-2. Clone Lucene's git repository (or download the source distribution).
-3. Run gradle launcher script (`gradlew`).
+2. Clone PIM Lucene's git repository.
+3. Run git submodule update --init.
+4. Make sure cunit is installed on your system (sudo apt install libcunit1-dev).
+5. Run gradle launcher script (`gradlew`).
 
 We'll assume that you know how to get and set up the JDK - if you don't, then we suggest starting at https://jdk.java.net/ and learning more about Java, before returning to this README.
+
+## Benchmarks
+
+### Benchmarking Setup
+
+The machine used has the following characteristics:
+
+<img src="./pictures/bsetup.png" alt="drawing" width="600"/>
+
+The dataset is the english wikipedia dataset, and the set of queries consist in 1036 phrase queries extracted from the luceneutil repository.
+The setup and details of the benchmarks are found [here](https://github.com/upmem/pim-lucene-private/tree/main/lucene/pim-benchmarks/exact_phrase).
+Both standard Lucene and PIM-Lucene are run on the same server.
+
+### Results
+
+The speedup in throughput (QPS) for various number of search threads and top docs is as follows:
+
+<img src="./pictures/bresults.png" alt="drawing" width="600"/>
