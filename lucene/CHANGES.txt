@@ -297,6 +297,9 @@ Bug Fixes
 * GITHUB#13463: Address bug in MultiLeafKnnCollector causing #minCompetitiveSimilarity to stay artificially low in
   some corner cases. (Greg Miller)
 
+* GITHUB#13553: Correct RamUsageEstimate for scalar quantized knn vector formats so that raw vectors are correctly
+  accounted for. (Ben Trent)
+
 Other
 --------------------
 (No changes)
