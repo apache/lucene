@@ -119,12 +119,16 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
-  /** add doc **/
+  /** Convert to a PreciseMultiLongValuesSource. **/
   public final PreciseMultiLongValuesSource toPreciseMultiLongValuesSource() {
     return new PreciseMultiLongValuesSource(this);
   }
 
-  /** add doc **/
+  /**
+   * Convert inner double values to sortable long using NumericUtils.doubleToSortableLong
+   *
+   * TODO: rename to Sortable...?
+   * **/
   public static class PreciseMultiLongValuesSource extends MultiLongValuesSource {
 
     MultiDoubleValuesSource inner;
