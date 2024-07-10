@@ -46,17 +46,11 @@ public class FacetFieldLeafCollector implements LeafCollector {
     public void collect(int doc) throws IOException {
         if (leafCutter == null) {
             leafCutter = cutter.createLeafCutter(context);
+            assert leafRecorder == null;
+            leafRecorder = recorder.getLeafRecorder(context);
         }
-        if (leafCutter.advanceExact(doc) == false) {
-            return;
-        }
-        int curOrd = leafCutter.nextOrd();
-        if (curOrd != FacetLeafCutter.NO_MORE_ORDS) {
-            if (leafRecorder == null) {
-                leafRecorder = recorder.getLeafRecorder(context);
-            }
-            leafRecorder.record(doc, curOrd);
-            for(curOrd = leafCutter.nextOrd(); curOrd != FacetLeafCutter.NO_MORE_ORDS; curOrd = leafCutter.nextOrd()) {
+        if (leafCutter.advanceExact(doc)) {
+            for(int curOrd = leafCutter.nextOrd(); curOrd != FacetLeafCutter.NO_MORE_ORDS; curOrd = leafCutter.nextOrd()) {
                 leafRecorder.record(doc, curOrd);
             }
         }
