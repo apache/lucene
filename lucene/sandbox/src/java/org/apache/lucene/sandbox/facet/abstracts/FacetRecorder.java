@@ -7,7 +7,10 @@ import java.io.IOException;
 /**
  * Record data for each facet of each doc.
  * TODO: do we need FacetRecorderManager similar to CollectorManager, e.g. is getLeafRecorder always thread safe?
- *  If we have a Manager-level recorder, then collection within a slice can be done without "syncronized" which must be faster.
+ *  If we have a Manager-level recorder, then collection within a slice can be done to a single non-sync map, which must be faster.
+ *  In our case, we didn't seem to benefit from it as we have more CPUs than segments in the index.
+ *  Also, slice recorder makes it harder to implement lazy recorder init, as we need to init both
+ *  slice and leaf recorders lazily.
  */
 public interface FacetRecorder {
     /**
