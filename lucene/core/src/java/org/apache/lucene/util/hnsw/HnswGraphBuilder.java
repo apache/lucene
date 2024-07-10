@@ -65,6 +65,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected final OnHeapHnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
+  private boolean frozen;
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
@@ -156,12 +157,17 @@ public class HnswGraphBuilder implements HnswBuilder {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
     addVectors(maxOrd);
-    return hnsw;
+    return getCompletedGraph();
   }
 
   @Override
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
+  }
+
+  public OnHeapHnswGraph getCompletedGraph() {
+    frozen = true;
+    return getGraph();
   }
 
   @Override
@@ -207,6 +213,9 @@ public class HnswGraphBuilder implements HnswBuilder {
        to the newly introduced levels (repeating step 2,3 for new levels) and again try to
        promote the node to entry node.
     */
+    if (frozen) {
+      throw new IllegalStateException("Graph builder is already frozen");
+    }
     RandomVectorScorer scorer = scorerSupplier.scorer(node);
     final int nodeLevel = getRandomGraphLevel(ml, random);
     // first add nodes to all levels
