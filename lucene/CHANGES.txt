@@ -282,6 +282,9 @@ Optimizations
 
 * GITHUB#13538: Slightly reduce heap usage for HNSW and scalar quantized vector writers. (Ben Trent)
 
+* GITHUB#12100: WordBreakSpellChecker.suggestWordBreaks now does a breadth first search, allowing it to return
+  better matches with fewer evaluations (hossman)
+
 Changes in runtime behavior
 ---------------------
 
