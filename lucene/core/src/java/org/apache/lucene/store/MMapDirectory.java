@@ -22,6 +22,7 @@ import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import org.apache.lucene.util.Constants;
@@ -103,6 +104,9 @@ public class MMapDirectory extends FSDirectory {
   public static final long DEFAULT_MAX_CHUNK_SIZE;
 
   final int chunkSizePower;
+
+  private final ConcurrentHashMap<String, AutoCloseable> segmentSharedArenas =
+      new ConcurrentHashMap<>();
 
   /**
    * Create a new MMapDirectory for the named location. The directory is created at the named
@@ -199,14 +203,20 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(path, context, chunkSizePower, preload.test(name, context));
+    return PROVIDER.openInput(
+        path, context, chunkSizePower, preload.test(name, context), segmentSharedArenas);
   }
 
   // visible for tests:
   static final MMapIndexInputProvider PROVIDER;
 
   interface MMapIndexInputProvider {
-    IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+    IndexInput openInput(
+        Path path,
+        IOContext context,
+        int chunkSizePower,
+        boolean preload,
+        ConcurrentHashMap<String, ? extends AutoCloseable> segmentSharedArenas)
         throws IOException;
 
     long getDefaultMaxChunkSize();

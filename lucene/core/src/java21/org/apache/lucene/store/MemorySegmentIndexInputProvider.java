@@ -31,8 +31,6 @@ import org.apache.lucene.util.Unwrappable;
 @SuppressWarnings("preview")
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
 
-  private static final ConcurrentHashMap<String, GroupedArena> ARENAS = new ConcurrentHashMap<>();
-
   private final Optional<NativeAccess> nativeAccess;
 
   MemorySegmentIndexInputProvider() {
@@ -40,7 +38,12 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   @Override
-  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  public IndexInput openInput(
+      Path path,
+      IOContext context,
+      int chunkSizePower,
+      boolean preload,
+      ConcurrentHashMap<String, ? extends AutoCloseable> segmentSharedArenas)
       throws IOException {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
@@ -49,7 +52,11 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
-    final Arena arena = confined ? Arena.ofConfined() : GroupedArena.get(path, ARENAS);
+    @SuppressWarnings("unchecked")
+    final Arena arena =
+        confined
+            ? Arena.ofConfined()
+            : GroupedArena.get(path, (ConcurrentHashMap<String, GroupedArena>) segmentSharedArenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =

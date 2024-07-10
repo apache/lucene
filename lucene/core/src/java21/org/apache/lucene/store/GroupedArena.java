@@ -44,13 +44,12 @@ final class GroupedArena implements Arena {
       // no segment found; return a 1-off Arena
       return Arena.ofShared();
     }
-    String scopeId = p.getParent().resolve(segmentName).toString();
     Arena ret;
     do {
       boolean[] computed = new boolean[1];
       final GroupedArena template =
           arenas.computeIfAbsent(
-              scopeId,
+              segmentName,
               (s) -> {
                 computed[0] = true;
                 return new GroupedArena(s, arenas);
