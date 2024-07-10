@@ -151,13 +151,13 @@ public class BM25NBClassifier implements Classifier<BytesRef> {
     if (!assignedClasses.isEmpty()) {
       Collections.sort(assignedClasses);
       // this is a negative number closest to 0 = a
-      double smax = assignedClasses.get(0).getScore();
+      double smax = assignedClasses.get(0).score();
 
       double sumLog = 0;
       // log(sum(exp(x_n-a)))
       for (ClassificationResult<BytesRef> cr : assignedClasses) {
         // getScore-smax <=0 (both negative, smax is the smallest abs()
-        sumLog += Math.exp(cr.getScore() - smax);
+        sumLog += Math.exp(cr.score() - smax);
       }
       // loga=a+log(sum(exp(x_n-a))) = log(sum(exp(x_n)))
       double loga = smax;
@@ -165,8 +165,8 @@ public class BM25NBClassifier implements Classifier<BytesRef> {
 
       // 1/sum*x = exp(log(x))*1/sum = exp(log(x)-log(sum))
       for (ClassificationResult<BytesRef> cr : assignedClasses) {
-        double scoreDiff = cr.getScore() - loga;
-        returnList.add(new ClassificationResult<>(cr.getAssignedClass(), Math.exp(scoreDiff)));
+        double scoreDiff = cr.score() - loga;
+        returnList.add(new ClassificationResult<>(cr.assignedClass(), Math.exp(scoreDiff)));
       }
     }
     return returnList;

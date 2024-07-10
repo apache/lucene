@@ -108,8 +108,8 @@ public class StringValueFacetCounts extends Facets {
         int totalHits = 0;
         int totalDocs = 0;
         for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
-          totalHits += matchingDocs.totalHits;
-          totalDocs += matchingDocs.context.reader().maxDoc();
+          totalHits += matchingDocs.totalHits();
+          totalDocs += matchingDocs.context().reader().maxDoc();
         }
 
         // No counting needed if there are no hits:
@@ -297,22 +297,22 @@ public class StringValueFacetCounts extends Facets {
     if (matchingDocs.size() == 1) {
 
       FacetsCollector.MatchingDocs hits = matchingDocs.get(0);
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         return;
       }
 
       // Validate state before doing anything else:
-      validateState(hits.context);
+      validateState(hits.context());
 
       // Assuming the state is valid, ordinalMap should be null since we have one segment:
       assert ordinalMap == null;
 
-      countOneSegment(docValues, hits.context.ord, hits, null);
+      countOneSegment(docValues, hits.context().ord, hits, null);
     } else {
 
       // Validate state before doing anything else. We only check the first segment since they
       // should all ladder up to the same top-level reader:
-      validateState(matchingDocs.get(0).context);
+      validateState(matchingDocs.get(0).context());
 
       for (FacetsCollector.MatchingDocs hits : matchingDocs) {
         // Assuming the state is valid, ordinalMap should be non-null and docValues should be
@@ -320,14 +320,14 @@ public class StringValueFacetCounts extends Facets {
         assert ordinalMap != null;
         assert docValues instanceof MultiDocValues.MultiSortedSetDocValues;
 
-        if (hits.totalHits == 0) {
+        if (hits.totalHits() == 0) {
           continue;
         }
 
         MultiDocValues.MultiSortedSetDocValues multiValues =
             (MultiDocValues.MultiSortedSetDocValues) docValues;
 
-        countOneSegment(multiValues.values[hits.context.ord], hits.context.ord, hits, null);
+        countOneSegment(multiValues.values[hits.context().ord], hits.context().ord, hits, null);
       }
     }
   }
@@ -398,7 +398,7 @@ public class StringValueFacetCounts extends Facets {
       assert liveDocs != null;
       it = FacetUtils.liveDocsDISI(valuesIt, liveDocs);
     } else {
-      it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+      it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), valuesIt));
     }
 
     // TODO: yet another option is to count all segs
@@ -438,7 +438,7 @@ public class StringValueFacetCounts extends Facets {
       final LongValues ordMap = ordinalMap.getGlobalOrds(segmentOrd);
       int segmentCardinality = (int) multiValues.getValueCount();
 
-      if (hits != null && hits.totalHits < segmentCardinality / 10) {
+      if (hits != null && hits.totalHits() < segmentCardinality / 10) {
         // Remap every ord to global ord as we iterate:
         if (singleValues != null) {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {

@@ -180,13 +180,5 @@ public class KatakanaRomanizer {
     return null;
   }
 
-  private static class MatchedKeystroke {
-    final int keystrokeLen;
-    final int keystrokeIndex;
-
-    MatchedKeystroke(int keystrokeLen, int keystrokeIndex) {
-      this.keystrokeLen = keystrokeLen;
-      this.keystrokeIndex = keystrokeIndex;
-    }
-  }
+  private record MatchedKeystroke(int keystrokeLen, int keystrokeIndex) {}
 }

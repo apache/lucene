@@ -99,24 +99,15 @@ public final class CustomAnalyzerConfig {
     return List.copyOf(tokenFilterConfigs);
   }
 
-  static class ComponentConfig {
-
-    /* SPI name */
-    private final String name;
-    /* parameter map */
-    private final Map<String, String> params;
+  /**
+   * @param name SPI name
+   * @param params parameter map
+   */
+  record ComponentConfig(String name, Map<String, String> params) {
 
     ComponentConfig(String name, Map<String, String> params) {
       this.name = Objects.requireNonNull(name);
       this.params = Objects.requireNonNull(params);
-    }
-
-    String getName() {
-      return this.name;
-    }
-
-    Map<String, String> getParams() {
-      return this.params;
     }
   }
 }

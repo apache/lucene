@@ -74,7 +74,7 @@ final class SegmentMerger {
     this.fieldInfosBuilder = new FieldInfos.Builder(fieldNumbers);
     Version minVersion = Version.LATEST;
     for (CodecReader reader : readers) {
-      Version leafMinVersion = reader.getMetaData().getMinVersion();
+      Version leafMinVersion = reader.getMetaData().minVersion();
       if (leafMinVersion == null) {
         minVersion = null;
         break;

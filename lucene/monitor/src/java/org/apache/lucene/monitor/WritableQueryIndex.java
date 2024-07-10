@@ -130,15 +130,7 @@ class WritableQueryIndex extends QueryIndex {
     }
   }
 
-  private static class Indexable {
-    final QueryCacheEntry queryCacheEntry;
-    final Document document;
-
-    private Indexable(QueryCacheEntry queryCacheEntry, Document document) {
-      this.queryCacheEntry = queryCacheEntry;
-      this.document = document;
-    }
-  }
+  private record Indexable(QueryCacheEntry queryCacheEntry, Document document) {}
 
   private void populateQueryCache(MonitorQuerySerializer serializer, QueryDecomposer decomposer)
       throws IOException {

@@ -86,11 +86,11 @@ public class PartOfSpeechAttributeImpl extends AttributeImpl implements PartOfSp
         builder.append("+");
       }
       builder
-          .append(morpheme.surfaceForm)
+          .append(morpheme.surfaceForm())
           .append('/')
-          .append(morpheme.posTag.name())
+          .append(morpheme.posTag().name())
           .append('(')
-          .append(morpheme.posTag.description())
+          .append(morpheme.posTag().description())
           .append(')');
     }
     return builder.toString();

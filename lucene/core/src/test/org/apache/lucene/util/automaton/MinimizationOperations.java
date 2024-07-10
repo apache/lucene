@@ -262,15 +262,7 @@ public final class MinimizationOperations {
     return Operations.removeDeadStates(result);
   }
 
-  static final class IntPair {
-
-    final int n1, n2;
-
-    IntPair(int n1, int n2) {
-      this.n1 = n1;
-      this.n2 = n2;
-    }
-  }
+  record IntPair(int n1, int n2) {}
 
   static final class StateList {
 

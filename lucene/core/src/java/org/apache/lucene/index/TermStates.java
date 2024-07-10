@@ -117,7 +117,7 @@ public final class TermStates {
       for (TermStateInfo info : resultInfos) {
         if (info != null) {
           perReaderTermState.register(
-              info.getState(), info.getOrdinal(), info.getDocFreq(), info.getTotalTermFreq());
+              info.state(), info.ordinal(), info.docFreq(), info.totalTermFreq());
         }
       }
     }
@@ -232,38 +232,5 @@ public final class TermStates {
   }
 
   /** Wrapper over TermState, ordinal value, term doc frequency and total term frequency */
-  private static final class TermStateInfo {
-    private final TermState state;
-    private final int ordinal;
-    private final int docFreq;
-    private final long totalTermFreq;
-
-    /** Initialize TermStateInfo */
-    public TermStateInfo(TermState state, int ordinal, int docFreq, long totalTermFreq) {
-      this.state = state;
-      this.ordinal = ordinal;
-      this.docFreq = docFreq;
-      this.totalTermFreq = totalTermFreq;
-    }
-
-    /** Get term state */
-    public TermState getState() {
-      return state;
-    }
-
-    /** Get ordinal value */
-    public int getOrdinal() {
-      return ordinal;
-    }
-
-    /** Get term doc frequency */
-    public int getDocFreq() {
-      return docFreq;
-    }
-
-    /** Get total term frequency */
-    public long getTotalTermFreq() {
-      return totalTermFreq;
-    }
-  }
+  private record TermStateInfo(TermState state, int ordinal, int docFreq, long totalTermFreq) {}
 }

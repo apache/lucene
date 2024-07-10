@@ -161,13 +161,5 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
   }
 
   /** Simple container for a requested range and its original position */
-  private static final class LongRangeAndPos {
-    final LongRange range;
-    final int pos;
-
-    LongRangeAndPos(LongRange range, int pos) {
-      this.range = range;
-      this.pos = pos;
-    }
-  }
+  private record LongRangeAndPos(LongRange range, int pos) {}
 }

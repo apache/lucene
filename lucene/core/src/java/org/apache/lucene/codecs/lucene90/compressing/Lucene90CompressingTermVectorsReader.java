@@ -325,17 +325,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return blockState.docBase <= docID && docID < blockState.docBase + blockState.chunkDocs;
   }
 
-  private static class BlockState {
-    final long startPointer;
-    final int docBase;
-    final int chunkDocs;
-
-    BlockState(long startPointer, int docBase, int chunkDocs) {
-      this.startPointer = startPointer;
-      this.docBase = docBase;
-      this.chunkDocs = chunkDocs;
-    }
-  }
+  private record BlockState(long startPointer, int docBase, int chunkDocs) {}
 
   @Override
   public Fields get(int doc) throws IOException {

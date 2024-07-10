@@ -138,13 +138,13 @@ public class DatasetSplitter {
       // iterate over existing documents
       StoredFields storedFields = originalIndex.storedFields();
       for (GroupDocs<Object> group : topGroups.groups) {
-        assert group.totalHits.relation == TotalHits.Relation.EQUAL_TO;
-        long totalHits = group.totalHits.value;
+        assert group.totalHits().relation == TotalHits.Relation.EQUAL_TO;
+        long totalHits = group.totalHits().value;
         double testSize = totalHits * testRatio;
         int tc = 0;
         double cvSize = totalHits * crossValidationRatio;
         int cvc = 0;
-        for (ScoreDoc scoreDoc : group.scoreDocs) {
+        for (ScoreDoc scoreDoc : group.scoreDocs()) {
 
           // create a new document for indexing
           Document doc = createNewDoc(storedFields, ft, scoreDoc, fieldNames);

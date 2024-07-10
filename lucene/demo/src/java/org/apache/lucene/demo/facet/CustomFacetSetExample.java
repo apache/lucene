@@ -379,7 +379,7 @@ public class CustomFacetSetExample {
 
     @Override
     public boolean matches(long[] dimValues) {
-      return temperatureRange.min <= dimValues[1] && temperatureRange.max >= dimValues[1];
+      return temperatureRange.min() <= dimValues[1] && temperatureRange.max() >= dimValues[1];
     }
   }
 }

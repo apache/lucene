@@ -78,16 +78,8 @@ public class TestScorerPerf extends LuceneTestCase {
     return sets;
   }
 
-  private static final class CountingHitCollectorManager
+  private record CountingHitCollectorManager(boolean validate, FixedBitSet result)
       implements CollectorManager<CountingHitCollector, CountingHitCollector> {
-
-    private final boolean validate;
-    private final FixedBitSet result;
-
-    CountingHitCollectorManager(boolean validate, FixedBitSet result) {
-      this.validate = validate;
-      this.result = result;
-    }
 
     @Override
     public CountingHitCollector newCollector() {

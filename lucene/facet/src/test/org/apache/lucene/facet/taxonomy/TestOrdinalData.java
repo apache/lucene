@@ -57,12 +57,8 @@ public class TestOrdinalData extends FacetTestCase {
           "Bob", 42L,
           "Lisa", 35L);
 
-  private static class OrdinalDataAppender implements BiConsumer<FacetLabel, Document> {
-    private final Map<String, Long> scores;
-
-    private OrdinalDataAppender(Map<String, Long> scores) {
-      this.scores = scores;
-    }
+  private record OrdinalDataAppender(Map<String, Long> scores)
+      implements BiConsumer<FacetLabel, Document> {
 
     @Override
     public void accept(FacetLabel facetLabel, Document doc) {

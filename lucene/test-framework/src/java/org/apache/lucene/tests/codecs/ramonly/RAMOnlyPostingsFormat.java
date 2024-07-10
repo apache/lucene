@@ -327,9 +327,9 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     }
 
     public void finishTerm(BytesRef text, TermStats stats) {
-      assert stats.docFreq > 0;
-      assert stats.docFreq == current.docs.size();
-      current.totalTermFreq = stats.totalTermFreq;
+      assert stats.docFreq() > 0;
+      assert stats.docFreq() == current.docs.size();
+      current.totalTermFreq = stats.totalTermFreq();
       field.termToDocs.put(current.term, current);
     }
 
