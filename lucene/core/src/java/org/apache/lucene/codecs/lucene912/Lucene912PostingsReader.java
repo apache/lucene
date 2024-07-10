@@ -482,11 +482,17 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             lastDocInBlock += docIn.readVInt();
 
             if (target <= lastDocInBlock) {
+              if (indexHasPos) {
+                docIn.readVLong(); // block ttf
+              }
               docIn.readVLong(); // block length
               docIn.skipBytes(docIn.readVLong()); // skip impacts
               break;
             }
             // skip block
+            if (indexHasPos) {
+              docIn.readVLong(); // block ttf
+            }
             docIn.skipBytes(docIn.readVLong());
             blockUpto += BLOCK_SIZE;
           } else {
@@ -559,7 +565,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     // how many positions "behind" we are; nextPosition must
     // skip these to "catch up":
-    private int posPendingCount;
+    private long posPendingCount;
 
     // Lazy pos seek: if != -1 then we must seek to this FP
     // before reading positions:
@@ -765,11 +771,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             lastDocInBlock += docIn.readVInt();
 
             if (target <= lastDocInBlock) {
+              docIn.readVLong(); // block ttf
               docIn.readVLong(); // block length
-              docIn.skipBytes(docIn.readVLong()); // skip impacts
+              docIn.skipBytes(docIn.readVLong()); // impacts
               break;
             }
             // skip block
+            posPendingCount += docIn.readVLong();
             docIn.skipBytes(docIn.readVLong());
             blockUpto += BLOCK_SIZE;
           } else {
@@ -798,14 +806,14 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // blocks only to sum up how many positions to skip
     private void skipPositions() throws IOException {
       // Skip positions now:
-      int toSkip = posPendingCount - freq;
+      long toSkip = posPendingCount - freq;
       // if (DEBUG) {
       //   System.out.println("      FPR.skipPositions: toSkip=" + toSkip);
       // }
 
       final int leftInBlock = BLOCK_SIZE - posBufferUpto;
       if (toSkip < leftInBlock) {
-        int end = posBufferUpto + toSkip;
+        long end = posBufferUpto + toSkip;
         while (posBufferUpto < end) {
           if (indexHasPayloads) {
             payloadByteUpto += payloadLengthBuffer[posBufferUpto];

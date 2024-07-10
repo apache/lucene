@@ -24,6 +24,7 @@ import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.TERMS_C
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.lucene.codecs.BlockTermState;
@@ -331,6 +332,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         pforUtil.encode(freqBuffer, blockOutput);
       }
       skipOutput.writeVInt(docID - lastBlockDocID);
+      if (writePositions) {
+        skipOutput.writeVLong(Arrays.stream(freqBuffer).sum());
+      }
       skipOutput.writeVLong(blockOutput.size());
     }
 
