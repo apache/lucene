@@ -149,7 +149,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
 
   // Opens the input with IOContext.READONCE to ensure slice and clone are appropriately confined
   public void testConfined() throws Exception {
-    assumeTrue("Only testable with memory segments", Runtime.version().feature() >= 19);
+    assumeTrue("Test requires MemorySegmentIndexInput", isMemorySegmentImpl());
     final int size = 16;
     byte[] bytes = new byte[size];
     random().nextBytes(bytes);
