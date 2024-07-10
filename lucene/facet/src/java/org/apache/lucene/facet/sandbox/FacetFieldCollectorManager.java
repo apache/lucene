@@ -18,6 +18,9 @@ public class FacetFieldCollectorManager<V extends FacetRecorder> implements Coll
     private final FacetCutter facetCutter;
     private final V facetRecorder;
 
+    /**
+     * Create collector for a cutter + recorder pair
+     */
     public FacetFieldCollectorManager(FacetCutter facetCutter, V facetRecorder) {
         this.facetCutter = facetCutter;
         this.facetRecorder = facetRecorder;

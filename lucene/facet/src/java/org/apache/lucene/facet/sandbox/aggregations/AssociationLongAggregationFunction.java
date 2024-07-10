@@ -4,6 +4,8 @@ package org.apache.lucene.facet.sandbox.aggregations;
  * Binary operation for longs.
  */
 public abstract class AssociationLongAggregationFunction {
+
+    /** TODO */
     protected AssociationLongAggregationFunction() {
     }
 

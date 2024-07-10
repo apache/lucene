@@ -18,6 +18,7 @@ public final class TaxonomyChildrenOrdinalIterator implements OrdinalIterator {
     private final ParallelTaxonomyArrays.IntArray parents;
     private final int parentOrd;
 
+    /** Create */
     public TaxonomyChildrenOrdinalIterator(FacetRecorder facetRecorder,
                                            ParallelTaxonomyArrays.IntArray parents,
                                            int parentOrd) {

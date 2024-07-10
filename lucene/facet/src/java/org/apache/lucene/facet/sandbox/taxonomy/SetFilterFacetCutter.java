@@ -14,6 +14,11 @@ import java.io.IOException;
  * TODO: implement!
  */
 public class SetFilterFacetCutter implements FacetCutter {
+
+    /** Constructor. */
+    public SetFilterFacetCutter() {
+    }
+
     @Override
     public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
         return null;

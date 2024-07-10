@@ -9,6 +9,10 @@ import org.apache.lucene.index.LeafReaderContext;
  * TODO: we need a method to reduce (merge) results from leafs.
  */
 public interface FacetRecorder {
+
+    /**
+     * Get leaf recorder.
+     */
     FacetLeafRecorder getLeafRecorder(LeafReaderContext context);
 
     /**
@@ -16,4 +20,14 @@ public interface FacetRecorder {
      * TODO: do we really need that here? Should it live somewhere else?
      */
     OrdinalIterator recordedOrds();
+
+    /**
+     * Reduce leaf recorder results into this recorder.
+     */
+    //void reduce();
+
+    /**
+     * Rollup
+     */
+    //void rollup(int fromOrd, int toOrd);
 }

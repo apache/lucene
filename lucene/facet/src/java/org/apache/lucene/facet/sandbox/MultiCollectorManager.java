@@ -21,6 +21,7 @@ public class MultiCollectorManager<V, R> implements CollectorManager<MultiCollec
 
     private final List<CollectorManager<?, ?>> subManagers;
 
+    /** TODO */
     public MultiCollectorManager(List<CollectorManager<?, ?>> subManagers) {
         this.subManagers = subManagers;
     }

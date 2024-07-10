@@ -14,6 +14,7 @@ public class SingleLongAggregationToComparable implements
     private final LongAggregationsFacetRecorder longAggregationsFacetRecorder;
     private final int aggregationId;
 
+    /** TODO */
     public SingleLongAggregationToComparable(LongAggregationsFacetRecorder longAggregationsFacetRecorder,
                                              int aggregationId) {
         this.longAggregationsFacetRecorder = longAggregationsFacetRecorder;
@@ -32,6 +33,7 @@ public class SingleLongAggregationToComparable implements
         return null;
     }
 
+    /** TODO */
     public static class SingleLongAggregationComparable implements Comparable<SingleLongAggregationComparable>,
             GetOrd {
 

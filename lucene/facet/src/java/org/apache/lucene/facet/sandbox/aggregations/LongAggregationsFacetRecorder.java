@@ -12,6 +12,11 @@ import org.apache.lucene.index.LeafReaderContext;
  * TODO: implement!
  */
 public class LongAggregationsFacetRecorder implements FacetRecorder {
+
+    /** TODO */
+    public LongAggregationsFacetRecorder() {
+    }
+
     @Override
     public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) {
         // TODO: init DVS for each field to be aggregated
@@ -24,6 +29,7 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
         return null;
     }
 
+    /** Get aggregation value by its id */
     public long getAggregation(int ord, int aggregationId) {
         // TODO: implement
         return 0L;

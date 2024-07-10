@@ -9,6 +9,7 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
  */
 public class TaxonomyOrdLabels implements OrdToLabels {
 
+    /** Construct */
     public TaxonomyOrdLabels(TaxonomyReader taxoReader) {
         // TODO
     }

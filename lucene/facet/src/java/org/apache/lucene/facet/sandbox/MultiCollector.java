@@ -10,11 +10,17 @@ import java.io.IOException;
 
 /**
  * Wrapper for multiple collectors.
- * TODO: can we reuse existing implementations? I didn't see there is one when I created this class.
- *  exiting implementation relies on Object which makes sense as it can work with Collectors that return different types.
+ * TODO: can we reuse existing implementations? It relies on Object which makes sense as it can work with Collectors that return different types.
  *  In our case type param makes sense so that we don't need to cast results?
  */
 public class MultiCollector<V> implements Collector {
+
+    /**
+     * TODO: implement.
+     */
+    public MultiCollector() {
+    }
+
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
         return new MultiLeafCollector();

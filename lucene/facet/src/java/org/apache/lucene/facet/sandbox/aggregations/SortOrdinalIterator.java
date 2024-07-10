@@ -14,13 +14,21 @@ public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
 
     private final OrdToComparable<T> ordToComparable;
     private final OrdinalIterator sourceOrds;
-    private final TopComparableQueue<T> queue;
+    private final int topN;
+    private TopComparableQueue<T> queue;
+    private boolean queueIsReady = false;
 
+    /** TODO */
     public SortOrdinalIterator(OrdinalIterator sourceOrds,
                                OrdToComparable<T> ordToComparable,
-                               int topN) throws IOException {
+                               int topN) {
         this.sourceOrds = sourceOrds;
         this.ordToComparable = ordToComparable;
+        this.topN = topN;
+    }
+
+    private void fillQueue() throws IOException {
+        assert queueIsReady == false;
         // TODO: current taxonomy implementations limit queue size by taxo reader size too, but this
         //  probably doesn't make sense for large enough taxonomy indexes?
         //  e.g. TopOrdAndIntQueue q = new TopComparableQueue(Math.min(taxoReader.getSize(), topN));
@@ -28,17 +36,20 @@ public class SortOrdinalIterator<T extends Comparable<T> & GetOrd> implements Or
         //  to some Lucene classes already, and there must be good reason to do it?
         //  Note that getAllChildren doesn't use queues, so this is not the reason we are limiting by taxonomy size.
         this.queue = new TopComparableQueue<>(topN);
-        // Compute queue to not do it in nextOrd
-        // TODO: hmm, is that ok to do it in constructor?
         T reuse = null;
         for (int nextOrdinal = sourceOrds.nextOrd(); nextOrdinal != NO_MORE_ORDS;) {
             reuse = ordToComparable.getComparable(nextOrdinal, reuse);
             reuse = queue.insertWithOverflow(reuse);
             nextOrdinal = sourceOrds.nextOrd();
         }
+        queueIsReady = true;
     }
+
     @Override
     public int nextOrd() throws IOException {
+        if (queueIsReady == false) {
+            fillQueue();
+        }
         T res = queue.pop();
         if (res == null) {
             return NO_MORE_ORDS;

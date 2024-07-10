@@ -10,5 +10,8 @@ import java.io.IOException;
  */
 public interface FacetCutter {
 
+    /**
+     * Get cutter for the leaf.
+     */
     FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException;
 }

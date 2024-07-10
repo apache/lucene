@@ -17,6 +17,9 @@ public class FacetFieldCollector implements Collector {
     private final FacetCutter facetCutter;
     private final FacetRecorder facetRecorder;
 
+    /**
+     * Collector for cutter+recorder pair.
+     */
     public FacetFieldCollector(FacetCutter facetCutter, FacetRecorder facetRecorder) {
         this.facetCutter = facetCutter;
         this.facetRecorder = facetRecorder;

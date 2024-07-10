@@ -17,6 +17,12 @@ public class MultiLeafCollector implements LeafCollector {
 
     LeafCollector[] leafCollectors;
 
+    /**
+     * TODO: implement.
+     */
+    public MultiLeafCollector() {
+    }
+
     @Override
     public void setScorer(Scorable scorer) throws IOException {
         // TODO
