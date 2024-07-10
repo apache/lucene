@@ -62,6 +62,12 @@ public class IOContext {
 
   public static final IOContext DEFAULT = new IOContext(Context.DEFAULT);
 
+  /**
+   * This context indicates that the file will be opened, then fully read sequentially then closed.
+   *
+   * <p>The read operations will be performed in the same thread as the thread that opens the
+   * underlying storage.
+   */
   public static final IOContext READONCE = new IOContext(true, false, false);
 
   public static final IOContext READ = new IOContext(false, false, false);

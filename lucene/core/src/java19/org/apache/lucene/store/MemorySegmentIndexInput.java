@@ -48,6 +48,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   final long length;
   final long chunkSizeMask;
   final int chunkSizePower;
+  final boolean confined;
   final MemorySession session;
   final MemorySegment[] segments;
 
@@ -61,14 +62,15 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       MemorySession session,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower) {
+      int chunkSizePower,
+      boolean confined) {
     assert Arrays.stream(segments).map(MemorySegment::session).allMatch(session::equals);
     if (segments.length == 1) {
       return new SingleSegmentImpl(
-          resourceDescription, session, segments[0], length, chunkSizePower);
+          resourceDescription, session, segments[0], length, chunkSizePower, confined);
     } else {
       return new MultiSegmentImpl(
-          resourceDescription, session, segments, 0, length, chunkSizePower);
+          resourceDescription, session, segments, 0, length, chunkSizePower, confined);
     }
   }
 
@@ -77,12 +79,14 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       MemorySession session,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower) {
+      int chunkSizePower,
+      boolean confined) {
     super(resourceDescription);
     this.session = session;
     this.segments = segments;
     this.length = length;
     this.chunkSizePower = chunkSizePower;
+    this.confined = confined;
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
   }
@@ -90,6 +94,12 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   void ensureOpen() {
     if (curSegment == null) {
       throw alreadyClosed(null);
+    }
+  }
+
+  void ensureAccessible() {
+    if (confined && curSegment.session().ownerThread() != Thread.currentThread()) {
+      throw new IllegalStateException("confined");
     }
   }
 
@@ -441,6 +451,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
   MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
     ensureOpen();
+    ensureAccessible();
 
     final long sliceEnd = offset + length;
     final int startIndex = (int) (offset >>> chunkSizePower);
@@ -462,7 +473,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
           null, // clones don't have a MemorySession, as they can't close)
           slices[0].asSlice(offset, length),
           length,
-          chunkSizePower);
+          chunkSizePower,
+          confined);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -470,7 +482,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
           slices,
           offset,
           length,
-          chunkSizePower);
+          chunkSizePower,
+          confined);
     }
   }
 
@@ -510,8 +523,15 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         MemorySession session,
         MemorySegment segment,
         long length,
-        int chunkSizePower) {
-      super(resourceDescription, session, new MemorySegment[] {segment}, length, chunkSizePower);
+        int chunkSizePower,
+        boolean confined) {
+      super(
+          resourceDescription,
+          session,
+          new MemorySegment[] {segment},
+          length,
+          chunkSizePower,
+          confined);
       this.curSegmentIndex = 0;
     }
 
@@ -586,8 +606,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         MemorySegment[] segments,
         long offset,
         long length,
-        int chunkSizePower) {
-      super(resourceDescription, session, segments, length, chunkSizePower);
+        int chunkSizePower,
+        boolean confined) {
+      super(resourceDescription, session, segments, length, chunkSizePower, confined);
       this.offset = offset;
       try {
         seek(0L);

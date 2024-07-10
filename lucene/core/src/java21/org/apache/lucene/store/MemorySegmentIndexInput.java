@@ -49,6 +49,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   final long length;
   final long chunkSizeMask;
   final int chunkSizePower;
+  final boolean confined;
   final Arena arena;
   final MemorySegment[] segments;
 
@@ -62,12 +63,15 @@ abstract class MemorySegmentIndexInput extends IndexInput
       Arena arena,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower) {
+      int chunkSizePower,
+      boolean confined) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
     if (segments.length == 1) {
-      return new SingleSegmentImpl(resourceDescription, arena, segments[0], length, chunkSizePower);
+      return new SingleSegmentImpl(
+          resourceDescription, arena, segments[0], length, chunkSizePower, confined);
     } else {
-      return new MultiSegmentImpl(resourceDescription, arena, segments, 0, length, chunkSizePower);
+      return new MultiSegmentImpl(
+          resourceDescription, arena, segments, 0, length, chunkSizePower, confined);
     }
   }
 
@@ -76,12 +80,14 @@ abstract class MemorySegmentIndexInput extends IndexInput
       Arena arena,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower) {
+      int chunkSizePower,
+      boolean confined) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
     this.length = length;
     this.chunkSizePower = chunkSizePower;
+    this.confined = confined;
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
   }
@@ -89,6 +95,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
   void ensureOpen() {
     if (curSegment == null) {
       throw alreadyClosed(null);
+    }
+  }
+
+  void ensureAccessible() {
+    if (confined && curSegment.isAccessibleBy(Thread.currentThread()) == false) {
+      throw new IllegalStateException("confined");
     }
   }
 
@@ -446,6 +458,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
   MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
     ensureOpen();
+    ensureAccessible();
 
     final long sliceEnd = offset + length;
     final int startIndex = (int) (offset >>> chunkSizePower);
@@ -467,7 +480,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
           null, // clones don't have an Arena, as they can't close)
           slices[0].asSlice(offset, length),
           length,
-          chunkSizePower);
+          chunkSizePower,
+          confined);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -475,7 +489,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
           slices,
           offset,
           length,
-          chunkSizePower);
+          chunkSizePower,
+          confined);
     }
   }
 
@@ -519,8 +534,15 @@ abstract class MemorySegmentIndexInput extends IndexInput
         Arena arena,
         MemorySegment segment,
         long length,
-        int chunkSizePower) {
-      super(resourceDescription, arena, new MemorySegment[] {segment}, length, chunkSizePower);
+        int chunkSizePower,
+        boolean confined) {
+      super(
+          resourceDescription,
+          arena,
+          new MemorySegment[] {segment},
+          length,
+          chunkSizePower,
+          confined);
       this.curSegmentIndex = 0;
     }
 
@@ -605,8 +627,9 @@ abstract class MemorySegmentIndexInput extends IndexInput
         MemorySegment[] segments,
         long offset,
         long length,
-        int chunkSizePower) {
-      super(resourceDescription, arena, segments, length, chunkSizePower);
+        int chunkSizePower,
+        boolean confined) {
+      super(resourceDescription, arena, segments, length, chunkSizePower, confined);
       this.offset = offset;
       try {
         seek(0L);

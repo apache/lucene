@@ -47,7 +47,8 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
     path = Unwrappable.unwrapAll(path);
 
     boolean success = false;
-    final Arena arena = Arena.openShared();
+    final boolean confined = context == IOContext.READONCE;
+    final Arena arena = confined ? Arena.openConfined() : Arena.openShared();
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =
@@ -56,7 +57,8 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
               arena,
               map(arena, resourceDescription, fc, chunkSizePower, preload, fileSize),
               fileSize,
-              chunkSizePower);
+              chunkSizePower,
+              confined);
       success = true;
       return in;
     } finally {
