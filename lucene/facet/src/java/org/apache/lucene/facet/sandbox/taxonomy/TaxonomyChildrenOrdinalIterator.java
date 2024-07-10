@@ -1,6 +1,7 @@
 package org.apache.lucene.facet.sandbox.taxonomy;
 
 import org.apache.lucene.facet.sandbox.abstracts.FacetRecorder;
+import org.apache.lucene.facet.sandbox.abstracts.OrdToLabels;
 import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
 import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 
@@ -24,6 +25,7 @@ public final class TaxonomyChildrenOrdinalIterator implements OrdinalIterator {
                                            int parentOrd) {
         this.sourceOrds = sourceOrds;
         this.parents = parents;
+        assert parentOrd != OrdToLabels.INVALID_ORD: "Parent Ordinal is not valid";
         this.parentOrd = parentOrd;
     }
 
