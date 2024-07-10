@@ -20,6 +20,8 @@ package org.apache.lucene.util.hnsw;
 import static java.lang.Math.log;
 
 import java.io.IOException;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
@@ -28,6 +30,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.hnsw.HnswUtil.Component;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
@@ -160,6 +163,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
     addVectors(maxOrd);
+    finish();
     return getCompletedGraph();
   }
 
@@ -397,6 +401,57 @@ public class HnswGraphBuilder implements HnswBuilder {
       randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
     } while (randDouble == 0.0);
     return ((int) (-log(randDouble) * ml));
+  }
+
+  private void finish() throws IOException {
+    connectComponents();
+  }
+
+  private void connectComponents() throws IOException {
+    List<Component> components = HnswUtil.components(hnsw);
+    if (components.size() > 1) {
+      // connect other components to the largest one
+      Component c0 = components.stream().max(Comparator.comparingInt(Component::size)).get();
+      int[] eps = new int[1];
+      for (Component c : components) {
+        if (c != c0) {
+          beamCandidates.clear();
+          eps[0] = c0.start();
+          RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
+          // find the closest node in the largest component to the lowest-numbered node in this
+          // component
+          graphSearcher.searchLevel(beamCandidates, scorer, 0, eps, hnsw, null);
+          boolean linked = false;
+          while (beamCandidates.size() > 0) {
+            float score = beamCandidates.minimumScore();
+            int c0node = beamCandidates.popNode();
+            // link the nodes, best effort only as they may be full
+            if (tryLink(c0node, c.start(), score)) {
+              linked = true;
+              break;
+            }
+          }
+          /*
+          if (!linked) {
+            // TODO: maybe try some more aggressive measures to ensure linkage
+            // eg we can try pruning to make room, but if we do that we don't want to
+            // create more islands. Or we can consider making the NeighborArray bigger, maybe.
+          }
+          */
+        }
+      }
+    }
+  }
+
+  private boolean tryLink(int n0, int n1, float score) {
+    NeighborArray nbr0 = hnsw.getNeighbors(0, n0);
+    NeighborArray nbr1 = hnsw.getNeighbors(0, n1);
+    if (nbr0.size() == nbr0.nodes().length || nbr1.size() == nbr1.nodes().length) {
+      return false;
+    }
+    nbr0.addOutOfOrder(n1, score);
+    nbr1.addOutOfOrder(n0, score);
+    return true;
   }
 
   /**

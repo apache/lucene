@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.tests.util.hnsw;
+package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -30,17 +30,16 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Utilities for use in tests involving HNSW graphs */
-public class HnswTestUtil {
+public class HnswUtil {
 
   /**
    * Returns true iff level 0 of the graph is fully connected - that is every node is reachable from
    * any entry point.
    */
   public static boolean isFullyConnected(HnswGraph knnValues) throws IOException {
-    return componentSizes(knnValues).size() < 2;
+    return components(knnValues).size() < 2;
   }
 
   /**
@@ -48,28 +47,33 @@ public class HnswTestUtil {
    * there will only be a single component. If the graph is empty, the returned list will be empty.
    */
   public static List<Integer> componentSizes(HnswGraph hnsw) throws IOException {
-    List<Integer> sizes = new ArrayList<>();
+    return components(hnsw).stream().map(Component::size).toList();
+  }
+
+  // Finds all connected components of the graph
+  static List<Component> components(HnswGraph hnsw) throws IOException {
+    List<Component> components = new ArrayList<>();
     FixedBitSet connectedNodes = new FixedBitSet(hnsw.size());
     assert hnsw.size() == hnsw.getNodesOnLevel(0).size();
     int total = 0;
-    while (total < connectedNodes.length()) {
-      int componentSize = traverseConnectedNodes(hnsw, connectedNodes);
-      assert componentSize > 0;
-      sizes.add(componentSize);
-      total += componentSize;
+    int nextClear = 0;
+    while (nextClear != NO_MORE_DOCS) {
+      Component component = traverseConnectedNodes(hnsw, connectedNodes, nextClear);
+      assert component.size() > 0;
+      components.add(component);
+      total += component.size();
+      nextClear = nextClearBit(connectedNodes, component.start());
     }
-    return sizes;
+    assert total == hnsw.size();
+    return components;
   }
 
   // count the nodes in a connected component of the graph and set the bits of its nodes in
   // connectedNodes bitset
-  private static int traverseConnectedNodes(HnswGraph hnswGraph, FixedBitSet connectedNodes)
-      throws IOException {
+  private static Component traverseConnectedNodes(
+      HnswGraph hnswGraph, FixedBitSet connectedNodes, int entryPoint) throws IOException {
     // Start at entry point and search all nodes on this level
-    int entryPoint = nextClearBit(connectedNodes, 0);
-    if (entryPoint == NO_MORE_DOCS) {
-      return 0;
-    }
+    assert connectedNodes.get(entryPoint) == false;
     Deque<Integer> stack = new ArrayDeque<>();
     stack.push(entryPoint);
     int count = 0;
@@ -86,7 +90,7 @@ public class HnswTestUtil {
         stack.push(friendOrd);
       }
     }
-    return count;
+    return new Component(entryPoint, count);
   }
 
   private static int nextClearBit(FixedBitSet bits, int index) {
@@ -96,22 +100,23 @@ public class HnswTestUtil {
     int i = index >> 6;
     long word = ~(barray[i] >> index); // skip all the bits to the right of index
 
+    int next = NO_MORE_DOCS;
     if (word != 0) {
-      return index + Long.numberOfTrailingZeros(word);
-    }
-
-    while (++i < barray.length) {
-      word = ~barray[i];
-      if (word != 0) {
-        int next = (i << 6) + Long.numberOfTrailingZeros(word);
-        if (next >= bits.length()) {
-          return NO_MORE_DOCS;
-        } else {
-          return next;
+      next = index + Long.numberOfTrailingZeros(word);
+    } else {
+      while (++i < barray.length) {
+        word = ~barray[i];
+        if (word != 0) {
+          next = (i << 6) + Long.numberOfTrailingZeros(word);
+          break;
         }
       }
     }
-    return NO_MORE_DOCS;
+    if (next >= bits.length()) {
+      return NO_MORE_DOCS;
+    } else {
+      return next;
+    }
   }
 
   public static boolean graphIsConnected(IndexReader reader, String vectorField)
@@ -129,4 +134,6 @@ public class HnswTestUtil {
     }
     return true;
   }
+
+  record Component(int start, int size) {}
 }
