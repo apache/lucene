@@ -70,6 +70,7 @@ public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
                     }
                     currDoc = doc;
                     valuesCursor = valuesForDoc.iterator();
+                    return true;
                 }
                 return false;
             }
@@ -90,6 +91,20 @@ public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
             return new FacetLabel(String.valueOf(ordToValueMap.get(ordinal)));
         }
         return null;
+    }
+
+    /**
+     * Get value by ordinal.
+     * Should only be called after collection phase.
+     * TODO: we need it to tie break sort by value. Alternatively we can sort by label (then we don't need this method),
+     *   but we would have to convert FacetLabel to "long" to have the same order... Overall, it is probably not
+     *   important to tie break by value, and we can tie break by ord same as for other facetsl; but for now
+     *   we don't want to change results order just in case.
+     * @param ordinal facet ordinal.
+     * @return long value
+     */
+    public long getValue(int ordinal) {
+        return ordToValueMap.get(ordinal);
     }
 
     @Override
