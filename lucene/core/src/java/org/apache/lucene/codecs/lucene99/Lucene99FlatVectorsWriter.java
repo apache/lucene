@@ -27,7 +27,6 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -111,16 +110,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public FlatFieldVectorsWriter<?> addField(
-      FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException {
-    FieldWriter<?> newField = FieldWriter.create(fieldInfo, indexWriter);
+  public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+    FieldWriter<?> newField = FieldWriter.create(fieldInfo);
     fields.add(newField);
     return newField;
-  }
-
-  @Override
-  public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    return addField(fieldInfo, null);
   }
 
   @Override
@@ -131,6 +124,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       } else {
         writeSortingField(field, maxDoc, sortMap);
       }
+      field.finish();
     }
   }
 
@@ -403,22 +397,20 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
+    private boolean finished;
 
     private int lastDocID = -1;
 
-    @SuppressWarnings("unchecked")
-    static FieldWriter<?> create(FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) {
+    static FieldWriter<?> create(FieldInfo fieldInfo) {
       int dim = fieldInfo.getVectorDimension();
       return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> new Lucene99FlatVectorsWriter.FieldWriter<>(
-            fieldInfo, (KnnFieldVectorsWriter<byte[]>) indexWriter) {
+        case BYTE -> new Lucene99FlatVectorsWriter.FieldWriter<byte[]>(fieldInfo) {
           @Override
           public byte[] copyValue(byte[] value) {
             return ArrayUtil.copyOfSubArray(value, 0, dim);
           }
         };
-        case FLOAT32 -> new Lucene99FlatVectorsWriter.FieldWriter<>(
-            fieldInfo, (KnnFieldVectorsWriter<float[]>) indexWriter) {
+        case FLOAT32 -> new Lucene99FlatVectorsWriter.FieldWriter<float[]>(fieldInfo) {
           @Override
           public float[] copyValue(float[] value) {
             return ArrayUtil.copyOfSubArray(value, 0, dim);
@@ -427,8 +419,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       };
     }
 
-    FieldWriter(FieldInfo fieldInfo, KnnFieldVectorsWriter<T> indexWriter) {
-      super(indexWriter);
+    FieldWriter(FieldInfo fieldInfo) {
+      super();
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
@@ -437,6 +429,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public void addValue(int docID, T vectorValue) throws IOException {
+      if (finished) {
+        throw new IllegalStateException("already finished, cannot add more values");
+      }
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
@@ -448,17 +443,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       docsWithField.add(docID);
       vectors.add(copy);
       lastDocID = docID;
-      if (indexingDelegate != null) {
-        indexingDelegate.addValue(docID, copy);
-      }
     }
 
     @Override
     public long ramBytesUsed() {
       long size = SHALLOW_RAM_BYTES_USED;
-      if (indexingDelegate != null) {
-        size += indexingDelegate.ramBytesUsed();
-      }
       if (vectors.size() == 0) return size;
       return size
           + docsWithField.ramBytesUsed()
@@ -467,6 +456,29 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           + (long) vectors.size()
               * fieldInfo.getVectorDimension()
               * fieldInfo.getVectorEncoding().byteSize;
+    }
+
+    @Override
+    public List<T> getVectors() {
+      return vectors;
+    }
+
+    @Override
+    public DocsWithFieldSet getDocsWithFieldSet() {
+      return docsWithField;
+    }
+
+    @Override
+    public void finish() throws IOException {
+      if (finished) {
+        return;
+      }
+      this.finished = true;
+    }
+
+    @Override
+    public boolean isFinished() {
+      return finished;
     }
   }
 
