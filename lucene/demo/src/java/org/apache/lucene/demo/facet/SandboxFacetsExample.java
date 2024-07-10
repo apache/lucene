@@ -382,8 +382,8 @@ public class SandboxFacetsExample {
     //// (2.1) add query and collector dimensions
     q.add("Publish Date", "2010");
     CountRecorder publishDayDimensionRecorder = new CountRecorder();
-    // Note that it is safe to use the same FacetsCutter here because collection for all dimensions
-    // is synconized, i.e. we never collect doc ID that is less than current doc ID across all dimensions.
+    // Note that it is safe to use the same FacetsCutter here because we create Leaf cutter for each leaf for each
+    // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
     FacetFieldCollectorManager<CountRecorder> publishDayDimensionCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
             defaultTaxoCutter, publishDayDimensionRecorder);
     List<CollectorOwner<FacetFieldCollector, CountRecorder>> drillSidewaysOwners = List.of(CollectorOwner.hire(
