@@ -226,9 +226,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         2,
         -1,
         Map.of("a", 100, "b", 50),
-        new LabelAndValue[] {
-          new LabelAndValue("a", 200), new LabelAndValue("b", 150),
-        });
+        new LabelAndValue("a", 200),
+        new LabelAndValue("b", 150));
     assertEquals(
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
@@ -308,9 +307,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         2,
         -1f,
         Map.of("a", 100, "b", 50),
-        new LabelAndValue[] {
-          new LabelAndValue("a", 50.0f), new LabelAndValue("b", 9.999995f),
-        });
+        new LabelAndValue("a", 50.0f),
+        new LabelAndValue("b", 9.999995f));
 
     assertEquals(
         "Wrong count for category 'a'!",
@@ -415,23 +413,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     FacetsCollector fc =
         searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
     Facets facets = getFloatSumFacets("wrong_field", taxoReader, config, fc, null);
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getSpecificValue("float");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("float"));
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(10, "float");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(10, "float"));
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllChildren("float");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllChildren("float"));
   }
 
   public void testMixedTypesInSameIndexField() throws Exception {
@@ -446,10 +432,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     doc.add(new IntAssociationFacetField(14, "a", "x"));
     doc.add(new FloatAssociationFacetField(55.0f, "b", "y"));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          writer.addDocument(config.build(taxoWriter, doc));
-        });
+        IllegalArgumentException.class, () -> writer.addDocument(config.build(taxoWriter, doc)));
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
   }
@@ -466,10 +449,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     Document doc = new Document();
     doc.add(new IntAssociationFacetField(14, "a", "x"));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          writer.addDocument(config.build(taxoWriter, doc));
-        });
+        IllegalArgumentException.class, () -> writer.addDocument(config.build(taxoWriter, doc)));
 
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
@@ -487,10 +467,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     Document doc = new Document();
     doc.add(new IntAssociationFacetField(14, "a", "x"));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          writer.addDocument(config.build(taxoWriter, doc));
-        });
+        IllegalArgumentException.class, () -> writer.addDocument(config.build(taxoWriter, doc)));
 
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
@@ -517,9 +494,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         new String[0],
         2,
         -1,
-        new LabelAndValue[] {
-          new LabelAndValue("a", 100), new LabelAndValue("b", 150),
-        });
+        new LabelAndValue("a", 100),
+        new LabelAndValue("b", 150));
 
     assertEquals(
         "Wrong count for category 'a'!", 100, facets.getSpecificValue("int", "a").intValue());
