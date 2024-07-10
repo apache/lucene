@@ -231,6 +231,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      // TODO: hmm do we want to revert that?
       return this;
     }
   }
