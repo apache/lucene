@@ -38,6 +38,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -271,7 +272,8 @@ public class MultiPhraseQuery extends Query {
           List<PostingsEnum> postings = new ArrayList<>();
 
           for (Term term : terms) {
-            TermState termState = termStates.get(term).get(context);
+            IOSupplier<TermState> supplier = termStates.get(term).get(context);
+            TermState termState = supplier == null ? null : supplier.get();
             if (termState != null) {
               termsEnum.seekExact(term.bytes(), termState);
               postings.add(

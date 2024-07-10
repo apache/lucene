@@ -14,21 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.fst;
+
+package org.apache.lucene.util;
 
 import java.io.IOException;
-import org.apache.lucene.store.DataInput;
 
-/** A type of {@link FSTReader} which needs data to be initialized before use */
-public interface FSTStore extends FSTReader {
+/**
+ * Boolean supplier that is allowed to throw an IOException.
+ *
+ * @see java.util.function.BooleanSupplier
+ */
+@FunctionalInterface
+public interface IOBooleanSupplier {
 
   /**
-   * Initialize the FSTStore
+   * Gets the boolean result.
    *
-   * @param in the DataInput to read from
-   * @param numBytes the number of bytes to read
-   * @return this FSTStore
-   * @throws IOException if exception occurred during reading the DataInput
+   * @return the result
+   * @throws IOException if supplying the result throws an {@link IOException}
    */
-  FSTStore init(DataInput in, long numBytes) throws IOException;
+  boolean get() throws IOException;
 }

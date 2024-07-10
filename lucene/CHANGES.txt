@@ -258,7 +258,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13548: Refactor and javadoc update for KNN vector writer classes. (Patrick Zhai)
 
 Optimizations
 ---------------------
@@ -277,13 +278,51 @@ Optimizations
 
 * GITHUB#12941: Don't preserve auxiliary buffer contents in LSBRadixSorter if it grows. (Stefan Vodita)
 
+* GITHUB#13175: Stop double-checking priority queue inserts in some FacetCount classes. (Jakub Slowinski)
+
+* GITHUB#13538: Slightly reduce heap usage for HNSW and scalar quantized vector writers. (Ben Trent)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#13472: When an executor is provided to the IndexSearcher constructor, the searcher now executes tasks on the
+  thread that invoked a search as well as its configured executor. Users should reduce the executor's thread-count by 1
+  to retain the previous level of parallelism. Moreover, it is now possible to start searches from the same executor
+  that is configured in the IndexSearcher without risk of deadlocking. A separate executor for starting searches is no
+  longer required. (Armin Braun)
+
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#13384: Fix highlighter to use longer passages instead of shorter individual terms. (Zack Kendall)
+
+* GITHUB#13463: Address bug in MultiLeafKnnCollector causing #minCompetitiveSimilarity to stay artificially low in
+  some corner cases. (Greg Miller)
+
+* GITHUB#13553: Correct RamUsageEstimate for scalar quantized knn vector formats so that raw vectors are correctly
+  accounted for. (Ben Trent)
 
 Other
 --------------------
 (No changes)
+
+======================== Lucene 9.11.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#13498: Avoid performance regression by constructing lazily the PointTree in NumericComparator. (Ignacio Vera)
+
+* GITHUB#13501, GITHUB#13478: Remove intra-merge parallelism for everything except HNSW graph merges. (Ben Trent)
+
+* GITHUB#13498, GITHUB#13340: Allow adding a parent field to an index with no fields (Michael Sokolov)
+
+* GITHUB#12431: Fix IndexOutOfBoundsException thrown in DefaultPassageFormatter
+  by unordered matches. (Stephane Campinas)
+
+* GITHUB#13493: StringValueFacetCounts stops throwing NPE when faceting over an empty match-set. (Grebennikov Roman,
+  Stefan Vodita)
+
 
 ======================== Lucene 9.11.0 =======================
 

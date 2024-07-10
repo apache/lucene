@@ -417,16 +417,7 @@ public final class FST<T> implements Accountable {
    * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
    */
   public FST(FSTMetadata<T> metadata, DataInput in) throws IOException {
-    this(metadata, in, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
-  }
-
-  /**
-   * Load a previously saved FST with a metdata object and a FSTStore. If using {@link
-   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
-   * to hold the FST bytes.
-   */
-  public FST(FSTMetadata<T> metadata, DataInput in, FSTStore fstStore) throws IOException {
-    this(metadata, fstStore.init(in, metadata.numBytes));
+    this(metadata, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS, in, metadata.numBytes));
   }
 
   /** Create the FST with a metadata object and a FSTReader. */
