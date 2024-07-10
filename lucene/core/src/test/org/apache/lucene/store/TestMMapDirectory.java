@@ -20,9 +20,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.BeforeClass;
 
 /** Tests MMapDirectory */
@@ -139,6 +144,59 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         in.readBytes(readBytes, 0, readBytes.length);
         assertArrayEquals(bytes, readBytes);
       }
+    }
+  }
+
+  // Opens the input with IOContext.READONCE to ensure slice and clone are appropriately confined
+  public void testConfined() throws Exception {
+    assumeTrue("Only testable with memory segments", Runtime.version().feature() >= 19);
+    final int size = 16;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (Directory dir = new MMapDirectory(createTempDir("testConfined"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
+      var executor = Executors.newFixedThreadPool(1, new NamedThreadFactory("testConfined"));
+      try (var in = dir.openInput("test", IOContext.READONCE)) {
+        // ensure accessible
+        assertEquals(16L, in.slice("test", 0, in.length()).length());
+        assertEquals(15L, in.slice("test", 1, in.length() - 1).length());
+
+        // ensure not accessible
+        Callable<Object> task1 = () -> in.slice("test", 0, in.length());
+        var x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task1)));
+        assertTrue(x.getMessage().contains("confined"));
+
+        int offset = random().nextInt((int) in.length());
+        int length = (int) in.length() - offset;
+        Callable<Object> task2 = () -> in.slice("test", offset, length);
+        x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task2)));
+        assertTrue(x.getMessage().contains("confined"));
+
+        // slice.slice
+        var slice = in.slice("test", 0, in.length());
+        Callable<Object> task3 = () -> slice.slice("test", 0, in.length());
+        x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(task3)));
+        assertTrue(x.getMessage().contains("confined"));
+        // slice.clone
+        x = expectThrows(ISE, () -> getAndUnwrap(executor.submit(slice::clone)));
+        assertTrue(x.getMessage().contains("confined"));
+      } finally {
+        executor.shutdownNow();
+      }
+    }
+  }
+
+  static final Class<IllegalStateException> ISE = IllegalStateException.class;
+
+  static Object getAndUnwrap(Future<Object> future) throws Throwable {
+    try {
+      return future.get();
+    } catch (ExecutionException ee) {
+      throw ee.getCause();
     }
   }
 }

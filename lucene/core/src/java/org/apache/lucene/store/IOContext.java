@@ -43,7 +43,12 @@ public class IOContext {
 
   public final FlushInfo flushInfo;
 
-  /** This flag indicates that the file will be opened, then fully read sequentially then closed. */
+  /**
+   * This flag indicates that the file will be opened, then fully read sequentially then closed.
+   *
+   * <p>The read operations will be performed in the same thread as the thread that opens the
+   * underlying storage.
+   */
   public final boolean readOnce;
 
   /**
