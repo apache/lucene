@@ -41,6 +41,7 @@ public abstract class RangeFacetCutter implements FacetCutter {
     // i.e in we don't have to do it after we finish looking at all docs. We always have to do roll ups after
     // processing a doc (single-valued, multi-valued, exclusive or overlapping)
 
+    // TODO: we don't always have field, e.g. for custom DoubleValuesSources - let's remove it from here?
     String field;
 
     // TODO: make the constructor also take in requested value sources and ranges
