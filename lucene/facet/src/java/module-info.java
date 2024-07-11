@@ -27,9 +27,4 @@ module org.apache.lucene.facet {
   exports org.apache.lucene.facet.taxonomy.writercache;
   exports org.apache.lucene.facet.facetset;
   exports org.apache.lucene.facet.rangeonrange;
-    exports org.apache.lucene.facet.sandbox;
-    exports org.apache.lucene.facet.sandbox.taxonomy;
-    exports org.apache.lucene.facet.sandbox.aggregations;
-    exports org.apache.lucene.facet.sandbox.abstracts;
-    exports org.apache.lucene.facet.sandbox.ranges;
 }

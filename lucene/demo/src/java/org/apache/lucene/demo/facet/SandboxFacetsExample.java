@@ -32,22 +32,22 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
-import org.apache.lucene.facet.sandbox.FacetFieldCollector;
-import org.apache.lucene.facet.sandbox.FacetFieldCollectorManager;
-import org.apache.lucene.facet.sandbox.MultiFacetsRecorder;
-import org.apache.lucene.facet.sandbox.abstracts.OrdToComparable;
-import org.apache.lucene.facet.sandbox.abstracts.OrdToLabels;
-import org.apache.lucene.facet.sandbox.abstracts.OrdinalIterator;
-import org.apache.lucene.facet.sandbox.aggregations.ComparableUtils;
-import org.apache.lucene.facet.sandbox.aggregations.CountRecorder;
-import org.apache.lucene.facet.sandbox.aggregations.LongAggregationsFacetRecorder;
-import org.apache.lucene.facet.sandbox.aggregations.Reducer;
-import org.apache.lucene.facet.sandbox.aggregations.SortOrdinalIterator;
-import org.apache.lucene.facet.sandbox.ranges.LongRangeFacetCutter;
-import org.apache.lucene.facet.sandbox.ranges.RangeOrdToLabels;
-import org.apache.lucene.facet.sandbox.taxonomy.TaxonomyChildrenOrdinalIterator;
-import org.apache.lucene.facet.sandbox.taxonomy.TaxonomyFacetsCutter;
-import org.apache.lucene.facet.sandbox.taxonomy.TaxonomyOrdLabels;
+import org.apache.lucene.sandbox.facet.FacetFieldCollector;
+import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
+import org.apache.lucene.sandbox.facet.MultiFacetsRecorder;
+import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
+import org.apache.lucene.sandbox.facet.abstracts.OrdToLabels;
+import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.aggregations.ComparableUtils;
+import org.apache.lucene.sandbox.facet.aggregations.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.aggregations.LongAggregationsFacetRecorder;
+import org.apache.lucene.sandbox.facet.aggregations.Reducer;
+import org.apache.lucene.sandbox.facet.aggregations.SortOrdinalIterator;
+import org.apache.lucene.sandbox.facet.ranges.LongRangeFacetCutter;
+import org.apache.lucene.sandbox.facet.ranges.RangeOrdToLabels;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyChildrenOrdinalIterator;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyFacetsCutter;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabels;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -69,7 +69,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 
 import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
-import static org.apache.lucene.facet.sandbox.aggregations.ComparableUtils.rankCountOrdToComparable;
+import static org.apache.lucene.sandbox.facet.aggregations.ComparableUtils.rankCountOrdToComparable;
 
 /** Demo for sandbox faceting. */
 public class SandboxFacetsExample {
@@ -144,22 +144,22 @@ public class SandboxFacetsExample {
 
     //// (2) init collector
     TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountRecorder defaultRecorder = new CountRecorder(false);
+    CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
 
-    FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
 
     //// (2.1) if we need to collect data using multiple different collectors, e.g. taxonomy and ranges,
     ////       or even two taxonomy facets that use different Category List Field, we can use MultiCollectorManager, e.g.:
     // TODO: add a demo for it.
     // TaxonomyFacetsCutter publishDateCutter = new TaxonomyFacetsCutter(config.getDimConfig("Publish Date"), taxoReader);
-    // CountRecorder publishDateRecorder = new CountRecorder(false);
-    // FacetFieldCollectorManager<CountRecorder> publishDateCollectorManager = new FacetFieldCollectorManager<>(publishDateCutter, publishDateRecorder);
+    // CountFacetRecorder publishDateRecorder = new CountFacetRecorder(false);
+    // FacetFieldCollectorManager<CountFacetRecorder> publishDateCollectorManager = new FacetFieldCollectorManager<>(publishDateCutter, publishDateRecorder);
     // MultiCollectorManager drillDownCollectorManager = new MultiCollectorManager(authorCollectorManager, publishDateCollectorManager);
     // Object[] results = searcher.search(new MatchAllDocsQuery(), drillDownCollectorManager);
 
     //// (3) search
     // Right now we return the same Recorder we created - so we can ignore results
-    CountRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    CountFacetRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
@@ -206,11 +206,11 @@ public class SandboxFacetsExample {
     inputRanges[1] = new LongRange("5-10", 5, false, 10, true);
 
     LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
-    CountRecorder countRecorder = new CountRecorder(false);
+    CountFacetRecorder countRecorder = new CountFacetRecorder(false);
 
-    FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
-    CountRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    CountFacetRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
 
     OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
@@ -246,11 +246,11 @@ public class SandboxFacetsExample {
     inputRanges[1] = new LongRange("0-10", 0, true, 10, true);
 
     LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
-    CountRecorder countRecorder = new CountRecorder(false);
+    CountFacetRecorder countRecorder = new CountFacetRecorder(false);
 
-    FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
             null, countRecorder);
-    CountRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    CountFacetRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdToLabels ordToLabels = new RangeOrdToLabels(inputRanges);
 
     OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
@@ -299,7 +299,7 @@ public class SandboxFacetsExample {
 
     LongAggregationsFacetRecorder longAggregationsFacetRecorder = LongAggregationsFacetRecorder.create(false, longValuesSources, reducers);
 
-    CountRecorder countRecorder = new CountRecorder(false);
+    CountFacetRecorder countRecorder = new CountFacetRecorder(false);
 
     // Compute both counts and aggregations
     MultiFacetsRecorder multiFacetsRecorder = new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
@@ -361,8 +361,8 @@ public class SandboxFacetsExample {
     //// (2) init collectors
     // Facet collectors
     TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountRecorder defaultRecorder = new CountRecorder(false);
-    FacetFieldCollectorManager<CountRecorder> taxoFacetsCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
+    CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
+    FacetFieldCollectorManager<CountFacetRecorder> taxoFacetsCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
     // Hits collector
     TopScoreDocCollectorManager hitsCollectorManager = new TopScoreDocCollectorManager(2, Integer.MAX_VALUE);
     // Now wrap them with MultiCollectorManager to collect both hits and facets.
@@ -374,7 +374,7 @@ public class SandboxFacetsExample {
     System.out.println("Search results: totalHits: " + topDocs.totalHits + ", collected hits: " + topDocs.scoreDocs.length);
     // FacetFieldCollectorManager returns the same Recorder it gets - so we can ignore read the results from original recorder
     // and ignore this value.
-    //CountRecorder defaultRecorder = (CountRecorder) results[1];
+    //CountFacetRecorder defaultRecorder = (CountFacetRecorder) results[1];
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
@@ -417,9 +417,9 @@ public class SandboxFacetsExample {
 
     //// (2) init collector
     TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountRecorder defaultRecorder = new CountRecorder(false);
+    CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
 
-    FacetFieldCollectorManager<CountRecorder> collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
             defaultTaxoCutter, defaultRecorder);
 
     DrillDownQuery q = new DrillDownQuery(config);
@@ -427,7 +427,7 @@ public class SandboxFacetsExample {
 
     //// (3) search
     // Right now we return the same Recorder we created - so we can ignore results
-    CountRecorder searchResults = searcher.search(q, collectorManager);
+    CountFacetRecorder searchResults = searcher.search(q, collectorManager);
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
@@ -471,20 +471,20 @@ public class SandboxFacetsExample {
 
     //// (2) init drill down query and collectors
     TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountRecorder drillDownRecorder = new CountRecorder(false);
-    FacetFieldCollectorManager<CountRecorder> drillDownCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
+    CountFacetRecorder drillDownRecorder = new CountFacetRecorder(false);
+    FacetFieldCollectorManager<CountFacetRecorder> drillDownCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
             defaultTaxoCutter, drillDownRecorder);
 
     DrillDownQuery q = new DrillDownQuery(config);
 
     //// (2.1) add query and collector dimensions
     q.add("Publish Date", "2010");
-    CountRecorder publishDayDimensionRecorder = new CountRecorder(false);
+    CountFacetRecorder publishDayDimensionRecorder = new CountFacetRecorder(false);
     // Note that it is safe to use the same FacetsCutter here because we create Leaf cutter for each leaf for each
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
-    FacetFieldCollectorManager<CountRecorder> publishDayDimensionCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
+    FacetFieldCollectorManager<CountFacetRecorder> publishDayDimensionCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
             defaultTaxoCutter, publishDayDimensionRecorder);
-    List<CollectorOwner<FacetFieldCollector, CountRecorder>> drillSidewaysOwners = List.of(CollectorOwner.hire(
+    List<CollectorOwner<FacetFieldCollector, CountFacetRecorder>> drillSidewaysOwners = List.of(CollectorOwner.hire(
             publishDayDimensionCollectorManager));
 
     //// (3) search

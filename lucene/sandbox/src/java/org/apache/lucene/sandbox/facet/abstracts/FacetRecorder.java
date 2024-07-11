@@ -1,0 +1,31 @@
+package org.apache.lucene.sandbox.facet.abstracts;
+
+import org.apache.lucene.index.LeafReaderContext;
+
+import java.io.IOException;
+
+/**
+ * Registers which payload we need for a field, and then
+ * generates per leaf payload class that computes the payload.
+ * TODO: do we need FacetRecorderManager similar to CollectorManager, e.g. is getLeafRecorder always thread safe?
+ */
+public interface FacetRecorder {
+    /**
+     * Get leaf recorder.
+     */
+    FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException;
+
+    /**
+     * Return next collected ordinal, or {@link FacetLeafCutter#NO_MORE_ORDS}
+     * TODO: do we really need that here? Should it live somewhere else?
+     */
+    OrdinalIterator recordedOrds();
+    /**
+     * Reduce leaf recorder results into this recorder.
+     * If facetRollup is not null, it also rolls up values.
+     *
+     * @throws UnsupportedOperationException if facetRollup is not null and {@link FacetRollup#getDimOrdsToRollup()} returns at least one
+     *  dimension ord, but this type of record can't be rolled up.
+     */
+    void reduce(FacetRollup facetRollup) throws IOException;
+}
