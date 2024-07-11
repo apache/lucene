@@ -23,9 +23,9 @@ module org.apache.lucene.demo {
   requires org.apache.lucene.queries;
   requires org.apache.lucene.queryparser;
   requires org.apache.lucene.expressions;
-    requires org.apache.lucene.sandbox;
+  requires org.apache.lucene.sandbox;
 
-    exports org.apache.lucene.demo;
+  exports org.apache.lucene.demo;
   exports org.apache.lucene.demo.facet;
   exports org.apache.lucene.demo.knn;
 }

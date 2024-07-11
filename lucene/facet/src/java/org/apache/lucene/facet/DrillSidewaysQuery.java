@@ -22,14 +22,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorOwner;
-import org.apache.lucene.search.LeafCollector;
-import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -57,11 +57,11 @@ class DrillSidewaysQuery extends Query {
    * each {@link LeafReaderContext} using the provided {@link FacetsCollectorManager}s.
    */
   DrillSidewaysQuery(
-          Query baseQuery,
-          CollectorOwner<?, ?> drillDownCollectorOwner,
-          List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners,
-          Query[] drillDownQueries,
-          boolean scoreSubDocsAtOnce) {
+      Query baseQuery,
+      CollectorOwner<?, ?> drillDownCollectorOwner,
+      List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners,
+      Query[] drillDownQueries,
+      boolean scoreSubDocsAtOnce) {
     this.baseQuery = Objects.requireNonNull(baseQuery);
     this.drillDownCollectorOwner = drillDownCollectorOwner;
     this.drillSidewaysCollectorOwners = drillSidewaysCollectorOwners;
@@ -88,11 +88,11 @@ class DrillSidewaysQuery extends Query {
       return super.rewrite(indexSearcher);
     } else {
       return new DrillSidewaysQuery(
-              newQuery,
-              drillDownCollectorOwner,
-              drillSidewaysCollectorOwners,
-              drillDownQueries,
-              scoreSubDocsAtOnce);
+          newQuery,
+          drillDownCollectorOwner,
+          drillSidewaysCollectorOwners,
+          drillDownQueries,
+          scoreSubDocsAtOnce);
     }
   }
 
@@ -159,7 +159,7 @@ class DrillSidewaysQuery extends Query {
           if (drillDownLeafCollector != null) {
             drillDownLeafCollector.finish();
           }
-          for (DrillSidewaysScorer.DocsAndCost dim: dims) {
+          for (DrillSidewaysScorer.DocsAndCost dim : dims) {
             dim.sidewaysLeafCollector.finish();
           }
           return null;

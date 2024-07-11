@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.demo.facet;
 
+import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
+import static org.apache.lucene.sandbox.facet.ComparableUtils.rankCountOrdToComparable;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,22 +35,6 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
-import org.apache.lucene.sandbox.facet.FacetFieldCollector;
-import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
-import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
-import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
-import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
-import org.apache.lucene.sandbox.facet.ComparableUtils;
-import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
-import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
-import org.apache.lucene.sandbox.facet.abstracts.Reducer;
-import org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator;
-import org.apache.lucene.sandbox.facet.ranges.LongRangeFacetCutter;
-import org.apache.lucene.sandbox.facet.ranges.RangeOrdLabelBiMap;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyChildrenOrdinalIterator;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyFacetsCutter;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -56,6 +43,22 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.sandbox.facet.ComparableUtils;
+import org.apache.lucene.sandbox.facet.FacetFieldCollector;
+import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
+import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
+import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.abstracts.Reducer;
+import org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator;
+import org.apache.lucene.sandbox.facet.ranges.LongRangeFacetCutter;
+import org.apache.lucene.sandbox.facet.ranges.RangeOrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
+import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyChildrenOrdinalIterator;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyFacetsCutter;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.search.CollectorOwner;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
@@ -67,9 +70,6 @@ import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
-
-import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
-import static org.apache.lucene.sandbox.facet.ComparableUtils.rankCountOrdToComparable;
 
 /** Demo for sandbox faceting. */
 public class SandboxFacetsExample {
@@ -86,8 +86,8 @@ public class SandboxFacetsExample {
   /** Build the example index. */
   void index() throws IOException {
     IndexWriter indexWriter =
-            new IndexWriter(
-                    indexDir, new IndexWriterConfig(new WhitespaceAnalyzer()).setOpenMode(OpenMode.CREATE));
+        new IndexWriter(
+            indexDir, new IndexWriterConfig(new WhitespaceAnalyzer()).setOpenMode(OpenMode.CREATE));
 
     // Writes facet ords to a separate directory from the main index
     DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
@@ -143,39 +143,51 @@ public class SandboxFacetsExample {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
 
     //// (2) init collector
-    TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
     CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
 
-    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
 
-    //// (2.1) if we need to collect data using multiple different collectors, e.g. taxonomy and ranges,
-    ////       or even two taxonomy facets that use different Category List Field, we can use MultiCollectorManager, e.g.:
+    //// (2.1) if we need to collect data using multiple different collectors, e.g. taxonomy and
+    // ranges,
+    ////       or even two taxonomy facets that use different Category List Field, we can use
+    // MultiCollectorManager, e.g.:
     // TODO: add a demo for it.
-    // TaxonomyFacetsCutter publishDateCutter = new TaxonomyFacetsCutter(config.getDimConfig("Publish Date"), taxoReader);
+    // TaxonomyFacetsCutter publishDateCutter = new
+    // TaxonomyFacetsCutter(config.getDimConfig("Publish Date"), taxoReader);
     // CountFacetRecorder publishDateRecorder = new CountFacetRecorder(false);
-    // FacetFieldCollectorManager<CountFacetRecorder> publishDateCollectorManager = new FacetFieldCollectorManager<>(publishDateCutter, publishDateRecorder);
-    // MultiCollectorManager drillDownCollectorManager = new MultiCollectorManager(authorCollectorManager, publishDateCollectorManager);
+    // FacetFieldCollectorManager<CountFacetRecorder> publishDateCollectorManager = new
+    // FacetFieldCollectorManager<>(publishDateCutter, publishDateRecorder);
+    // MultiCollectorManager drillDownCollectorManager = new
+    // MultiCollectorManager(authorCollectorManager, publishDateCollectorManager);
     // Object[] results = searcher.search(new MatchAllDocsQuery(), drillDownCollectorManager);
 
     //// (3) search
-    // Right now we return the same Recorder we created - so we can ignore results
-    CountFacetRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    // Search returns the same Recorder we created - so we can ignore results
+    searcher.search(new MatchAllDocsQuery(), collectorManager);
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
-            defaultRecorder);
+    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
+        ComparableUtils.countOrdToComparable(defaultRecorder);
     // We don't actually need to use FacetResult, it is up to client what to do with the results.
     // Here we just want to demo that we can still do FacetResult as well
     List<FacetResult> results = new ArrayList<>(2);
     // This object provides labels for ordinals.
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
-    for (String dimension: List.of("Author", "Publish Date")) {
+    for (String dimension : List.of("Author", "Publish Date")) {
       //// (4.1) Chain two ordinal iterators to get top N children
-      OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(defaultRecorder.recordedOrds(), taxoReader.getParallelTaxonomyArrays()
-              .parents(), ordLabels.getOrd(new FacetLabel(dimension)));
-      OrdinalIterator topByCountOrds = new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
-      // Get array of final ordinals - we need to use all of them to get labels first, and then to get counts,
+      OrdinalIterator childrenIternator =
+          new TaxonomyChildrenOrdinalIterator(
+              defaultRecorder.recordedOrds(),
+              taxoReader.getParallelTaxonomyArrays().parents(),
+              ordLabels.getOrd(new FacetLabel(dimension)));
+      OrdinalIterator topByCountOrds =
+          new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
+      // Get array of final ordinals - we need to use all of them to get labels first, and then to
+      // get counts,
       // but OrdinalIterator only allows reading ordinals once.
       int[] resultOrdinals = topByCountOrds.toArray();
 
@@ -183,17 +195,23 @@ public class SandboxFacetsExample {
       FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
       List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
       for (int i = 0; i < resultOrdinals.length; i++) {
-        labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
+        labelsAndValues.add(
+            new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
       }
       // TODO fix value and childCount
-      results.add(new FacetResult(dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+      results.add(
+          new FacetResult(
+              dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
     }
 
     IOUtils.close(indexReader, taxoReader);
     return results;
   }
 
-  /** User runs a query and counts facets for exclusive ranges without collecting the matching documents*/
+  /**
+   * User runs a query and counts facets for exclusive ranges without collecting the matching
+   * documents
+   */
   List<FacetResult> exclusiveRangesCountFacetsOnly() throws IOException {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
@@ -205,17 +223,19 @@ public class SandboxFacetsExample {
     inputRanges[0] = new LongRange("0-5", 0, true, 5, true);
     inputRanges[1] = new LongRange("5-10", 5, false, 10, true);
 
-    LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+    LongRangeFacetCutter longRangeFacetCutter =
+        LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder(false);
 
-    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
-            null, countRecorder);
-    CountFacetRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
+        new FacetFieldCollectorManager<>(longRangeFacetCutter, null, countRecorder);
+    searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdLabelBiMap ordToLabels = new RangeOrdLabelBiMap(inputRanges);
 
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
-            countRecorder);
-    OrdinalIterator topByCountOrds = new TopnOrdinalIterator<>(countRecorder.recordedOrds(), countComparable, 10);
+    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
+        ComparableUtils.countOrdToComparable(countRecorder);
+    OrdinalIterator topByCountOrds =
+        new TopnOrdinalIterator<>(countRecorder.recordedOrds(), countComparable, 10);
 
     List<FacetResult> results = new ArrayList<>(2);
 
@@ -223,15 +243,17 @@ public class SandboxFacetsExample {
     FacetLabel[] labels = ordToLabels.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), countRecorder.getCount(resultOrdinals[i])));
+      labelsAndValues.add(
+          new LabelAndValue(labels[i].getLeaf(), countRecorder.getCount(resultOrdinals[i])));
     }
 
-    results.add(new FacetResult("Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+    results.add(
+        new FacetResult(
+            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
 
     System.out.println("Computed counts");
     IOUtils.close(indexReader);
     return results;
-
   }
 
   List<FacetResult> overlappingRangesCountFacetsOnly() throws IOException {
@@ -245,17 +267,19 @@ public class SandboxFacetsExample {
     inputRanges[0] = new LongRange("0-5", 0, true, 5, true);
     inputRanges[1] = new LongRange("0-10", 0, true, 10, true);
 
-    LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+    LongRangeFacetCutter longRangeFacetCutter =
+        LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder(false);
 
-    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
-            null, countRecorder);
-    CountFacetRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
+        new FacetFieldCollectorManager<>(longRangeFacetCutter, null, countRecorder);
+    searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdLabelBiMap ordToLabels = new RangeOrdLabelBiMap(inputRanges);
 
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
-            countRecorder);
-    OrdinalIterator topByCountOrds = new TopnOrdinalIterator<>(countRecorder.recordedOrds(), countComparable, 10);
+    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
+        ComparableUtils.countOrdToComparable(countRecorder);
+    OrdinalIterator topByCountOrds =
+        new TopnOrdinalIterator<>(countRecorder.recordedOrds(), countComparable, 10);
 
     List<FacetResult> results = new ArrayList<>(2);
 
@@ -263,15 +287,17 @@ public class SandboxFacetsExample {
     FacetLabel[] labels = ordToLabels.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), countRecorder.getCount(resultOrdinals[i])));
+      labelsAndValues.add(
+          new LabelAndValue(labels[i].getLeaf(), countRecorder.getCount(resultOrdinals[i])));
     }
 
-    results.add(new FacetResult("Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+    results.add(
+        new FacetResult(
+            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
 
     System.out.println("Computed counts");
     IOUtils.close(indexReader);
     return results;
-
   }
 
   List<FacetResult> exclusiveRangesAggregationFacets() throws IOException {
@@ -285,7 +311,8 @@ public class SandboxFacetsExample {
     inputRanges[0] = new LongRange("0-5", 0, true, 5, true);
     inputRanges[1] = new LongRange("5-10", 5, false, 10, true);
 
-    LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+    LongRangeFacetCutter longRangeFacetCutter =
+        LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
 
     // initialise the aggregations to be computed - a values source + reducer
     LongValuesSource[] longValuesSources = new LongValuesSource[2];
@@ -297,16 +324,18 @@ public class SandboxFacetsExample {
     longValuesSources[1] = LongValuesSource.fromLongField("Units");
     reducers[1] = Reducer.SUM;
 
-    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder =
+        new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
     CountFacetRecorder countRecorder = new CountFacetRecorder(false);
 
     // Compute both counts and aggregations
-    MultiFacetsRecorder multiFacetsRecorder = new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
+    MultiFacetsRecorder multiFacetsRecorder =
+        new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
 
-    FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter,
-            null, multiFacetsRecorder);
-    MultiFacetsRecorder searchResults = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
+        new FacetFieldCollectorManager<>(longRangeFacetCutter, null, multiFacetsRecorder);
+    searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdLabelBiMap ordToLabels = new RangeOrdLabelBiMap(inputRanges);
 
     // Get recorded ords - use either count/aggregations recorder
@@ -322,17 +351,21 @@ public class SandboxFacetsExample {
     List<LabelAndValue> labelsAndValues;
 
     // Sort results by units:sum and tie-break by count
-    ordToComparable = rankCountOrdToComparable(countRecorder,
-            longAggregationsFacetRecorder, 1);
+    ordToComparable = rankCountOrdToComparable(countRecorder, longAggregationsFacetRecorder, 1);
     topOrds = new TopnOrdinalIterator<>(recordedOrds, ordToComparable, 10);
 
     resultOrdinals = topOrds.toArray();
     labels = ordToLabels.getLabels(resultOrdinals);
     labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 1)));
+      labelsAndValues.add(
+          new LabelAndValue(
+              labels[i].getLeaf(),
+              longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 1)));
     }
-    results.add(new FacetResult("Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+    results.add(
+        new FacetResult(
+            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
 
     // note: previous ordinal iterator was exhausted
     recordedOrds = longAggregationsFacetRecorder.recordedOrds();
@@ -343,15 +376,20 @@ public class SandboxFacetsExample {
     labels = ordToLabels.getLabels(resultOrdinals);
     labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 0)));
+      labelsAndValues.add(
+          new LabelAndValue(
+              labels[i].getLeaf(),
+              longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 0)));
     }
     // TODO: is the tie-break by ord correct? Right now, it gives the higher ord as output
-    results.add(new FacetResult("Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+    results.add(
+        new FacetResult(
+            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
 
     return results;
   }
 
-  /** User runs a query and counts facets.*/
+  /** User runs a query and counts facets. */
   private List<FacetResult> facetsWithSearch() throws IOException {
     //// (1) init readers
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
@@ -360,37 +398,51 @@ public class SandboxFacetsExample {
 
     //// (2) init collectors
     // Facet collectors
-    TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
     CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
-    FacetFieldCollectorManager<CountFacetRecorder> taxoFacetsCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
+    FacetFieldCollectorManager<CountFacetRecorder> taxoFacetsCollectorManager =
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
     // Hits collector
-    TopScoreDocCollectorManager hitsCollectorManager = new TopScoreDocCollectorManager(2, Integer.MAX_VALUE);
+    TopScoreDocCollectorManager hitsCollectorManager =
+        new TopScoreDocCollectorManager(2, Integer.MAX_VALUE);
     // Now wrap them with MultiCollectorManager to collect both hits and facets.
-    MultiCollectorManager collectorManager = new MultiCollectorManager(hitsCollectorManager, taxoFacetsCollectorManager);
+    MultiCollectorManager collectorManager =
+        new MultiCollectorManager(hitsCollectorManager, taxoFacetsCollectorManager);
 
     //// (3) search
     Object[] results = searcher.search(new MatchAllDocsQuery(), collectorManager);
     TopDocs topDocs = (TopDocs) results[0];
-    System.out.println("Search results: totalHits: " + topDocs.totalHits + ", collected hits: " + topDocs.scoreDocs.length);
-    // FacetFieldCollectorManager returns the same Recorder it gets - so we can ignore read the results from original recorder
+    System.out.println(
+        "Search results: totalHits: "
+            + topDocs.totalHits
+            + ", collected hits: "
+            + topDocs.scoreDocs.length);
+    // FacetFieldCollectorManager returns the same Recorder it gets - so we can ignore read the
+    // results from original recorder
     // and ignore this value.
-    //CountFacetRecorder defaultRecorder = (CountFacetRecorder) results[1];
+    // CountFacetRecorder defaultRecorder = (CountFacetRecorder) results[1];
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
-            defaultRecorder);
+    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
+        ComparableUtils.countOrdToComparable(defaultRecorder);
     // We don't actually need to use FacetResult, it is up to client what to do with the results.
     // Here we just want to demo that we can still do FacetResult as well
     List<FacetResult> facetResults = new ArrayList<>(2);
     // This object provides labels for ordinals.
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
-    for (String dimension: List.of("Author", "Publish Date")) {
+    for (String dimension : List.of("Author", "Publish Date")) {
       //// (4.1) Chain two ordinal iterators to get top N children
-      OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(defaultRecorder.recordedOrds(), taxoReader.getParallelTaxonomyArrays()
-              .parents(), taxoReader.getOrdinal(dimension));
-      OrdinalIterator topByCountOrds = new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
-      // Get array of final ordinals - we need to use all of them to get labels first, and then to get counts,
+      OrdinalIterator childrenIternator =
+          new TaxonomyChildrenOrdinalIterator(
+              defaultRecorder.recordedOrds(),
+              taxoReader.getParallelTaxonomyArrays().parents(),
+              taxoReader.getOrdinal(dimension));
+      OrdinalIterator topByCountOrds =
+          new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
+      // Get array of final ordinals - we need to use all of them to get labels first, and then to
+      // get counts,
       // but OrdinalIterator only allows reading ordinals once.
       int[] resultOrdinals = topByCountOrds.toArray();
 
@@ -398,10 +450,13 @@ public class SandboxFacetsExample {
       FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
       List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
       for (int i = 0; i < resultOrdinals.length; i++) {
-        labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
+        labelsAndValues.add(
+            new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
       }
       // TODO fix value and childCount
-      facetResults.add(new FacetResult(dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+      facetResults.add(
+          new FacetResult(
+              dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
     }
 
     IOUtils.close(indexReader, taxoReader);
@@ -416,32 +471,38 @@ public class SandboxFacetsExample {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
 
     //// (2) init collector
-    TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
     CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
 
-    FacetFieldCollectorManager<CountFacetRecorder> collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
-            defaultTaxoCutter, defaultRecorder);
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
 
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("Publish Date", "2010");
 
     //// (3) search
     // Right now we return the same Recorder we created - so we can ignore results
-    CountFacetRecorder searchResults = searcher.search(q, collectorManager);
+    searcher.search(q, collectorManager);
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
-            defaultRecorder);
+    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
+        ComparableUtils.countOrdToComparable(defaultRecorder);
 
     // This object provides labels for ordinals.
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     String dimension = "Author";
     //// (4.1) Chain two ordinal iterators to get top N children
-    OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(defaultRecorder.recordedOrds(),
-            taxoReader.getParallelTaxonomyArrays().parents(), taxoReader.getOrdinal(dimension));
-    OrdinalIterator topByCountOrds = new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
-    // Get array of final ordinals - we need to use all of them to get labels first, and then to get counts,
+    OrdinalIterator childrenIternator =
+        new TaxonomyChildrenOrdinalIterator(
+            defaultRecorder.recordedOrds(),
+            taxoReader.getParallelTaxonomyArrays().parents(),
+            taxoReader.getOrdinal(dimension));
+    OrdinalIterator topByCountOrds =
+        new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
+    // Get array of final ordinals - we need to use all of them to get labels first, and then to get
+    // counts,
     // but OrdinalIterator only allows reading ordinals once.
     int[] resultOrdinals = topByCountOrds.toArray();
 
@@ -449,14 +510,16 @@ public class SandboxFacetsExample {
     FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
+      labelsAndValues.add(
+          new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
     }
 
     IOUtils.close(indexReader, taxoReader);
     // TODO fix value and childCount
     // We don't actually need to use FacetResult, it is up to client what to do with the results.
     // Here we just want to demo that we can still do FacetResult as well
-    return new FacetResult(dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0);
+    return new FacetResult(
+        dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0);
   }
 
   /**
@@ -470,41 +533,53 @@ public class SandboxFacetsExample {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
 
     //// (2) init drill down query and collectors
-    TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
     CountFacetRecorder drillDownRecorder = new CountFacetRecorder(false);
-    FacetFieldCollectorManager<CountFacetRecorder> drillDownCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
-            defaultTaxoCutter, drillDownRecorder);
+    FacetFieldCollectorManager<CountFacetRecorder> drillDownCollectorManager =
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, drillDownRecorder);
 
     DrillDownQuery q = new DrillDownQuery(config);
 
     //// (2.1) add query and collector dimensions
     q.add("Publish Date", "2010");
     CountFacetRecorder publishDayDimensionRecorder = new CountFacetRecorder(false);
-    // Note that it is safe to use the same FacetsCutter here because we create Leaf cutter for each leaf for each
+    // Note that it is safe to use the same FacetsCutter here because we create Leaf cutter for each
+    // leaf for each
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
-    FacetFieldCollectorManager<CountFacetRecorder> publishDayDimensionCollectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter,
-            defaultTaxoCutter, publishDayDimensionRecorder);
-    List<CollectorOwner<FacetFieldCollector, CountFacetRecorder>> drillSidewaysOwners = List.of(CollectorOwner.hire(
-            publishDayDimensionCollectorManager));
+    FacetFieldCollectorManager<CountFacetRecorder> publishDayDimensionCollectorManager =
+        new FacetFieldCollectorManager<>(
+            defaultTaxoCutter, defaultTaxoCutter, publishDayDimensionRecorder);
+    List<CollectorOwner<FacetFieldCollector, CountFacetRecorder>> drillSidewaysOwners =
+        List.of(CollectorOwner.hire(publishDayDimensionCollectorManager));
 
     //// (3) search
     // Right now we return the same Recorder we created - so we can ignore results
     DrillSideways ds = new DrillSideways(searcher, config, taxoReader);
     // We must wrap list of drill sideways owner with unmodifiableList to make generics work.
-    ds.search(q, CollectorOwner.hire(drillDownCollectorManager), Collections.unmodifiableList(drillSidewaysOwners), true);
+    ds.search(
+        q,
+        CollectorOwner.hire(drillDownCollectorManager),
+        Collections.unmodifiableList(drillSidewaysOwners),
+        true);
 
     //// (4) Get top 10 results by count for Author
     List<FacetResult> facetResults = new ArrayList<>(2);
     // This object provides labels for ordinals.
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     // This object is used to get topN results by count
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
-            drillDownRecorder);
+    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
+        ComparableUtils.countOrdToComparable(drillDownRecorder);
     //// (4.1) Chain two ordinal iterators to get top N children
-    OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(drillDownRecorder.recordedOrds(), taxoReader.getParallelTaxonomyArrays()
-            .parents(), taxoReader.getOrdinal("Author"));
-    OrdinalIterator topByCountOrds = new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
-    // Get array of final ordinals - we need to use all of them to get labels first, and then to get counts,
+    OrdinalIterator childrenIternator =
+        new TaxonomyChildrenOrdinalIterator(
+            drillDownRecorder.recordedOrds(),
+            taxoReader.getParallelTaxonomyArrays().parents(),
+            taxoReader.getOrdinal("Author"));
+    OrdinalIterator topByCountOrds =
+        new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
+    // Get array of final ordinals - we need to use all of them to get labels first, and then to get
+    // counts,
     // but OrdinalIterator only allows reading ordinals once.
     int[] resultOrdinals = topByCountOrds.toArray();
 
@@ -512,18 +587,25 @@ public class SandboxFacetsExample {
     FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), drillDownRecorder.getCount(resultOrdinals[i])));
+      labelsAndValues.add(
+          new LabelAndValue(labels[i].getLeaf(), drillDownRecorder.getCount(resultOrdinals[i])));
     }
     // TODO fix value and childCount
-    facetResults.add(new FacetResult("Author", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+    facetResults.add(
+        new FacetResult(
+            "Author", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
 
     //// (5) Same process, but for Publish Date drill sideways dimension
     countComparable = ComparableUtils.countOrdToComparable(publishDayDimensionRecorder);
     //// (4.1) Chain two ordinal iterators to get top N children
-    childrenIternator = new TaxonomyChildrenOrdinalIterator(publishDayDimensionRecorder.recordedOrds(), taxoReader.getParallelTaxonomyArrays()
-            .parents(), taxoReader.getOrdinal("Publish Date"));
+    childrenIternator =
+        new TaxonomyChildrenOrdinalIterator(
+            publishDayDimensionRecorder.recordedOrds(),
+            taxoReader.getParallelTaxonomyArrays().parents(),
+            taxoReader.getOrdinal("Publish Date"));
     topByCountOrds = new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
-    // Get array of final ordinals - we need to use all of them to get labels first, and then to get counts,
+    // Get array of final ordinals - we need to use all of them to get labels first, and then to get
+    // counts,
     // but OrdinalIterator only allows reading ordinals once.
     resultOrdinals = topByCountOrds.toArray();
 
@@ -531,10 +613,14 @@ public class SandboxFacetsExample {
     labels = ordLabels.getLabels(resultOrdinals);
     labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), publishDayDimensionRecorder.getCount(resultOrdinals[i])));
+      labelsAndValues.add(
+          new LabelAndValue(
+              labels[i].getLeaf(), publishDayDimensionRecorder.getCount(resultOrdinals[i])));
     }
     // TODO fix value and childCount
-    facetResults.add(new FacetResult("Publish Date", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+    facetResults.add(
+        new FacetResult(
+            "Publish Date", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
 
     IOUtils.close(indexReader, taxoReader);
     return facetResults;
@@ -564,19 +650,19 @@ public class SandboxFacetsExample {
     return drillSideways();
   }
 
-  /**TODO: add doc**/
+  /** TODO: add doc* */
   public List<FacetResult> runExclusiveRangesCountFacetsOnly() throws IOException {
     index();
     return exclusiveRangesCountFacetsOnly();
   }
 
-  /**TODO: add doc**/
+  /** TODO: add doc* */
   public List<FacetResult> runOverlappingRangesCountFacetsOnly() throws IOException {
     index();
     return overlappingRangesCountFacetsOnly();
   }
 
-  /**TODO: add doc**/
+  /** TODO: add doc* */
   public List<FacetResult> runExclusiveRangesAggregationFacets() throws IOException {
     index();
     return exclusiveRangesAggregationFacets();
