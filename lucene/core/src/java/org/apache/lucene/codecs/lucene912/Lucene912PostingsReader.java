@@ -778,7 +778,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               nextSkipPosFP += docIn.readVLong();
               nextSkipPosUpto = docIn.readVInt();
               if (indexHasOffsets || indexHasPayloads) {
-                nextSkipPayFP = docIn.readVLong();
+                nextSkipPayFP += docIn.readVLong();
                 nextSkipPayUpto = docIn.readVInt();
               }
             }
