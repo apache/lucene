@@ -16,11 +16,8 @@
  */
 package org.apache.lucene.store;
 
-import java.lang.foreign.AddressLayout;
 import java.lang.foreign.Arena;
-import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -97,107 +94,7 @@ final class GroupedArena implements Arena {
   }
 
   @Override
-  public MemorySegment allocate(long byteSize, long byteAlignment) {
-    return backing.allocate(byteSize, byteAlignment);
-  }
-
-  @Override
   public MemorySegment.Scope scope() {
     return backing.scope();
-  }
-
-  @Override
-  public MemorySegment allocateUtf8String(String str) {
-    return backing.allocateUtf8String(str);
-  }
-
-  @Override
-  public MemorySegment allocate(ValueLayout.OfByte layout, byte value) {
-    return backing.allocate(layout, value);
-  }
-
-  @Override
-  public MemorySegment allocate(ValueLayout.OfChar layout, char value) {
-    return backing.allocate(layout, value);
-  }
-
-  @Override
-  public MemorySegment allocate(ValueLayout.OfShort layout, short value) {
-    return backing.allocate(layout, value);
-  }
-
-  @Override
-  public MemorySegment allocate(ValueLayout.OfInt layout, int value) {
-    return backing.allocate(layout, value);
-  }
-
-  @Override
-  public MemorySegment allocate(ValueLayout.OfFloat layout, float value) {
-    return backing.allocate(layout, value);
-  }
-
-  @Override
-  public MemorySegment allocate(ValueLayout.OfLong layout, long value) {
-    return backing.allocate(layout, value);
-  }
-
-  @Override
-  public MemorySegment allocate(ValueLayout.OfDouble layout, double value) {
-    return backing.allocate(layout, value);
-  }
-
-  @Override
-  public MemorySegment allocate(AddressLayout layout, MemorySegment value) {
-    return backing.allocate(layout, value);
-  }
-
-  @Override
-  public MemorySegment allocateArray(ValueLayout.OfByte elementLayout, byte... elements) {
-    return backing.allocateArray(elementLayout, elements);
-  }
-
-  @Override
-  public MemorySegment allocateArray(ValueLayout.OfShort elementLayout, short... elements) {
-    return backing.allocateArray(elementLayout, elements);
-  }
-
-  @Override
-  public MemorySegment allocateArray(ValueLayout.OfChar elementLayout, char... elements) {
-    return backing.allocateArray(elementLayout, elements);
-  }
-
-  @Override
-  public MemorySegment allocateArray(ValueLayout.OfInt elementLayout, int... elements) {
-    return backing.allocateArray(elementLayout, elements);
-  }
-
-  @Override
-  public MemorySegment allocateArray(ValueLayout.OfFloat elementLayout, float... elements) {
-    return backing.allocateArray(elementLayout, elements);
-  }
-
-  @Override
-  public MemorySegment allocateArray(ValueLayout.OfLong elementLayout, long... elements) {
-    return backing.allocateArray(elementLayout, elements);
-  }
-
-  @Override
-  public MemorySegment allocateArray(ValueLayout.OfDouble elementLayout, double... elements) {
-    return backing.allocateArray(elementLayout, elements);
-  }
-
-  @Override
-  public MemorySegment allocate(MemoryLayout layout) {
-    return backing.allocate(layout);
-  }
-
-  @Override
-  public MemorySegment allocateArray(MemoryLayout elementLayout, long count) {
-    return backing.allocateArray(elementLayout, count);
-  }
-
-  @Override
-  public MemorySegment allocate(long byteSize) {
-    return backing.allocate(byteSize);
   }
 }
