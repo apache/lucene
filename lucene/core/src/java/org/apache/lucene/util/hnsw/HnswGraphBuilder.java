@@ -65,6 +65,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected final OnHeapHnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
+  private boolean frozen;
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
@@ -152,16 +153,25 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   @Override
   public OnHeapHnswGraph build(int maxOrd) throws IOException {
+    if (frozen) {
+      throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
+    }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
     addVectors(maxOrd);
-    return hnsw;
+    return getCompletedGraph();
   }
 
   @Override
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
+  }
+
+  @Override
+  public OnHeapHnswGraph getCompletedGraph() {
+    frozen = true;
+    return getGraph();
   }
 
   @Override
@@ -171,6 +181,9 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   /** add vectors in range [minOrd, maxOrd) */
   protected void addVectors(int minOrd, int maxOrd) throws IOException {
+    if (frozen) {
+      throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
+    }
     long start = System.nanoTime(), t = start;
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
@@ -207,6 +220,9 @@ public class HnswGraphBuilder implements HnswBuilder {
        to the newly introduced levels (repeating step 2,3 for new levels) and again try to
        promote the node to entry node.
     */
+    if (frozen) {
+      throw new IllegalStateException("Graph builder is already frozen");
+    }
     RandomVectorScorer scorer = scorerSupplier.scorer(node);
     final int nodeLevel = getRandomGraphLevel(ml, random);
     // first add nodes to all levels
