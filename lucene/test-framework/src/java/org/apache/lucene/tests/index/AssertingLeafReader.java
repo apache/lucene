@@ -1194,11 +1194,13 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public int minDocID(int level) {
       assertThread("Doc values skipper", creationThread);
-      Objects.checkIndex(level, numLevels());
       int minDocID = in.minDocID(level);
       assert minDocID <= in.maxDocID(level);
-      if (level > 0) {
-        assert minDocID <= in.minDocID(level - 1);
+      if (minDocID != -1 && minDocID != DocIdSetIterator.NO_MORE_DOCS) {
+        Objects.checkIndex(level, numLevels());
+      }
+      for (int i = 0; i < level; i++) {
+        assert minDocID >= in.minDocID(i);
       }
       return minDocID;
     }
@@ -1206,12 +1208,13 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public int maxDocID(int level) {
       assertThread("Doc values skipper", creationThread);
-      Objects.checkIndex(level, numLevels());
       int maxDocID = in.maxDocID(level);
-
       assert maxDocID >= in.minDocID(level);
-      if (level > 0) {
-        assert maxDocID >= in.maxDocID(level - 1);
+      if (maxDocID != -1 && maxDocID != DocIdSetIterator.NO_MORE_DOCS) {
+        Objects.checkIndex(level, numLevels());
+      }
+      for (int i = 0; i < level; i++) {
+        assert maxDocID >= in.maxDocID(i);
       }
       return maxDocID;
     }

@@ -19,9 +19,13 @@ package org.apache.lucene.codecs.lucene90;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_MAX_LEVEL;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -43,7 +47,6 @@ import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexOutput;
-import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -207,63 +210,118 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       maxValue = Math.max(maxValue, value);
     }
 
+    void accumulate(SkipAccumulator other) {
+      maxDocID = other.maxDocID;
+      minValue = Math.min(minValue, other.minValue);
+      maxValue = Math.max(maxValue, other.maxValue);
+      docCount += other.docCount;
+    }
+
     void nextDoc(int docID) {
       maxDocID = docID;
       ++docCount;
     }
 
-    void writeTo(DataOutput output) throws IOException {
-      output.writeInt(maxDocID);
-      output.writeInt(minDocID);
-      output.writeLong(maxValue);
-      output.writeLong(minValue);
-      output.writeInt(docCount);
+    public static SkipAccumulator merge(List<SkipAccumulator> list, int index, int length) {
+      SkipAccumulator acc = new SkipAccumulator(list.get(index).minDocID);
+      for (int i = 0; i < length; i++) {
+        acc.accumulate(list.get(index + i));
+      }
+      return acc;
     }
   }
 
   private void writeSkipIndex(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
     assert field.hasDocValuesSkipIndex();
-    // TODO: This disk compression once we introduce levels
-    long start = data.getFilePointer();
-    SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
+    final long start = data.getFilePointer();
+    final SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     long globalMaxValue = Long.MIN_VALUE;
     long globalMinValue = Long.MAX_VALUE;
     int globalDocCount = 0;
     int maxDocId = -1;
+    List<SkipAccumulator> accumulators = new ArrayList<>();
     SkipAccumulator accumulator = null;
-    int counter = 0;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      if (counter == 0) {
+      if (accumulator == null) {
         accumulator = new SkipAccumulator(doc);
+        accumulators.add(accumulator);
       }
       accumulator.nextDoc(doc);
       for (int i = 0, end = values.docValueCount(); i < end; ++i) {
         accumulator.accumulate(values.nextValue());
       }
-      if (++counter == skipIndexIntervalSize) {
+      if (accumulator.docCount == skipIndexIntervalSize) {
         globalMaxValue = Math.max(globalMaxValue, accumulator.maxValue);
         globalMinValue = Math.min(globalMinValue, accumulator.minValue);
         globalDocCount += accumulator.docCount;
         maxDocId = accumulator.maxDocID;
-        accumulator.writeTo(data);
-        counter = 0;
+        accumulator = null;
+        if (accumulators.size()
+            == SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[SKIP_INDEX_MAX_LEVEL - 1]) {
+          writeLevels(accumulators);
+          accumulators.clear();
+        }
       }
     }
 
-    if (counter > 0) {
-      globalMaxValue = Math.max(globalMaxValue, accumulator.maxValue);
-      globalMinValue = Math.min(globalMinValue, accumulator.minValue);
-      globalDocCount += accumulator.docCount;
-      maxDocId = accumulator.maxDocID;
-      accumulator.writeTo(data);
+    if (accumulators.isEmpty() == false) {
+      if (accumulator != null) {
+        globalMaxValue = Math.max(globalMaxValue, accumulator.maxValue);
+        globalMinValue = Math.min(globalMinValue, accumulator.minValue);
+        globalDocCount += accumulator.docCount;
+        maxDocId = accumulator.maxDocID;
+      }
+      writeLevels(accumulators);
     }
     meta.writeLong(start); // record the start in meta
     meta.writeLong(data.getFilePointer() - start); // record the length
+    assert globalDocCount == 0 || globalMaxValue >= globalMinValue;
     meta.writeLong(globalMaxValue);
     meta.writeLong(globalMinValue);
+    assert globalDocCount <= maxDocId + 1;
     meta.writeInt(globalDocCount);
     meta.writeInt(maxDocId);
+  }
+
+  private void writeLevels(List<SkipAccumulator> accumulators) throws IOException {
+    for (int index = 0; index < accumulators.size(); index++) {
+      // compute how many levels we need to write for the current accumulator
+      final int levels = getLevels(index, accumulators.size());
+      // build the levels
+      final SkipAccumulator[] accLevels = new SkipAccumulator[levels];
+      for (int level = 0; level < levels; level++) {
+        accLevels[level] =
+            SkipAccumulator.merge(
+                accumulators, index, SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[level]);
+      }
+      // write the number of levels
+      data.writeByte((byte) levels);
+      // write the maxDocIDs in reverse order. This is done so we don't
+      // need to read all of them in case of slipping
+      for (int level = levels - 1; level >= 0; level--) {
+        data.writeInt(accLevels[level].maxDocID);
+      }
+      // write the rest of the interval in natural order. This is only
+      // read if the interval is competitive.
+      for (int level = 0; level < levels; level++) {
+        data.writeInt(accLevels[level].minDocID);
+        data.writeLong(accLevels[level].maxValue);
+        data.writeLong(accLevels[level].minValue);
+        data.writeInt(accLevels[level].docCount);
+      }
+    }
+  }
+
+  private int getLevels(int index, int size) {
+    final int left = size - index;
+    for (int level = SKIP_INDEX_MAX_LEVEL - 1; level > 0; level--) {
+      final int numberIntervals = SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[level];
+      if (left >= numberIntervals && index % numberIntervals == 0) {
+        return level + 1;
+      }
+    }
+    return 1;
   }
 
   private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
