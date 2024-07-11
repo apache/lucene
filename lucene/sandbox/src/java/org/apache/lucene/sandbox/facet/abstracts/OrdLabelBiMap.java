@@ -1,32 +1,46 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.sandbox.facet.abstracts;
 
+import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 
-import java.io.IOException;
-
 /**
- * Label to ord bimap interface.
- * TODO: move FacetLabel out of taxonomy folder to use it for any facets, not just taxonomy?
- * TODO: there is some overlap with {@link org.apache.lucene.facet.taxonomy.writercache.LabelToOrdinal}, can we reuse something?
+ * Label to ord bimap interface. TODO: move FacetLabel out of taxonomy folder to use it for any
+ * facets, not just taxonomy? TODO: there is some overlap with {@link
+ * org.apache.lucene.facet.taxonomy.writercache.LabelToOrdinal}, can we reuse something?
  */
 public interface OrdLabelBiMap {
 
-    /** Ordinal to return if facet label doesn't exist in {@link #getOrd(FacetLabel)}
-     * and {@link #getOrds(FacetLabel[])} */
-    int INVALID_ORD = -1;
+  /**
+   * Ordinal to return if facet label doesn't exist in {@link #getOrd(FacetLabel)} and {@link
+   * #getOrds(FacetLabel[])}
+   */
+  int INVALID_ORD = -1;
 
-    /** get label of one ord
-     * TODO: what do we return when ordinal is not valid? */
-    FacetLabel getLabel(int ordinal) throws IOException;
+  /** get label of one ord TODO: what do we return when ordinal is not valid? */
+  FacetLabel getLabel(int ordinal) throws IOException;
 
-    /**
-     * get labels for multiple ords
-     */
-    FacetLabel[] getLabels(int[] ordinals) throws IOException;
+  /** get labels for multiple ords */
+  FacetLabel[] getLabels(int[] ordinals) throws IOException;
 
-    /** get ord for one label */
-    int getOrd(FacetLabel label) throws IOException;
+  /** get ord for one label */
+  int getOrd(FacetLabel label) throws IOException;
 
-    /** get ords for multiple labels */
-    int[] getOrds(FacetLabel[] labels) throws IOException;
+  /** get ords for multiple labels */
+  int[] getOrds(FacetLabel[] labels) throws IOException;
 }

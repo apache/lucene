@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.sandbox.facet;
 
+import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
+
+import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -26,13 +30,13 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
 import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
-import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
-import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.Reducer;
 import org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator;
+import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
 import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyChildrenOrdinalIterator;
 import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyFacetsCutter;
@@ -46,11 +50,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
-
 /** Test for {@link org.apache.lucene.sandbox.facet.abstracts.FacetRecorder} */
 public class TestFacetRecorders extends SandboxFacetTestCase {
 
@@ -61,7 +60,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     // Writes facet ords to a separate directory from the
     // main index:
     DirectoryTaxonomyWriter taxoWriter =
-            new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
 
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("Publish Date", true);
@@ -114,7 +113,8 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     Query query = new MatchAllDocsQuery();
 
-    TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
 
     LongValuesSource[] longValuesSources = new LongValuesSource[2];
     Reducer[] reducers = new Reducer[2];
@@ -125,14 +125,16 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     longValuesSources[1] = LongValuesSource.fromLongField("Units");
     reducers[1] = Reducer.SUM;
 
-    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder =
+        new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
     final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
     // Compute both counts and aggregations
-    MultiFacetsRecorder multiFacetsRecorder = new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
+    MultiFacetsRecorder multiFacetsRecorder =
+        new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
 
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
-            new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
     searcher.search(query, collectorManager);
 
     int[] ordsFromCounts = countRecorder.recordedOrds().toArray();
@@ -143,28 +145,28 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     // Retrieve & verify results:
     assertEquals(
-            "dim=Publish Date path=[]\n" +
-                     "  2010 (2,  agg0=4 agg1=11)\n" +
-                     "  2012 (2,  agg0=4 agg1=12)\n" +
-                     "  1999 (1,  agg0=7 agg1=6)\n",
-            getTopChildrenWithLongAggregations(countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder,
-                    null, "Publish Date"));
+        "dim=Publish Date path=[]\n"
+            + "  2010 (2,  agg0=4 agg1=11)\n"
+            + "  2012 (2,  agg0=4 agg1=12)\n"
+            + "  1999 (1,  agg0=7 agg1=6)\n",
+        getTopChildrenWithLongAggregations(
+            countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder, null, "Publish Date"));
     assertEquals(
-            "dim=Author path=[]\n" +
-                     "  Lisa (2,  agg0=4 agg1=7)\n" +
-                     "  Bob (1,  agg0=3 agg1=9)\n" +
-                     "  Susan (1,  agg0=4 agg1=7)\n" +
-                     "  Frank (1,  agg0=7 agg1=6)\n",
-            getTopChildrenWithLongAggregations(countRecorder, taxoReader,10,  2, longAggregationsFacetRecorder,
-                    null, "Author"));
+        "dim=Author path=[]\n"
+            + "  Lisa (2,  agg0=4 agg1=7)\n"
+            + "  Bob (1,  agg0=3 agg1=9)\n"
+            + "  Susan (1,  agg0=4 agg1=7)\n"
+            + "  Frank (1,  agg0=7 agg1=6)\n",
+        getTopChildrenWithLongAggregations(
+            countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder, null, "Author"));
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
   }
 
   /**
-   * Test that counts and long aggregations are correct when different index segments
-   * have different facet ordinals.
+   * Test that counts and long aggregations are correct when different index segments have different
+   * facet ordinals.
    */
   public void testCountAndLongAggregationRecordersMultipleSegments() throws Exception {
     Directory dir = newDirectory();
@@ -173,7 +175,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     // Writes facet ords to a separate directory from the
     // main index:
     DirectoryTaxonomyWriter taxoWriter =
-            new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
 
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("Publish Date", true);
@@ -207,7 +209,8 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     Query query = new MatchAllDocsQuery();
 
-    TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
 
     LongValuesSource[] longValuesSources = new LongValuesSource[2];
     Reducer[] reducers = new Reducer[2];
@@ -218,29 +221,29 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     longValuesSources[1] = LongValuesSource.fromLongField("Units");
     reducers[1] = Reducer.SUM;
 
-    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder =
+        new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
     final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
     // Compute both counts and aggregations
-    MultiFacetsRecorder multiFacetsRecorder = new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
+    MultiFacetsRecorder multiFacetsRecorder =
+        new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
 
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
-            new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
     searcher.search(query, collectorManager);
 
     // Retrieve & verify results:
     assertEquals(
-            "dim=Publish Date path=[]\n" +
-                    "  2010 (1,  agg0=3 agg1=9)\n" +
-                    "  2012 (1,  agg0=4 agg1=2)\n",
-            getTopChildrenWithLongAggregations(countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder,
-                    null, "Publish Date"));
+        "dim=Publish Date path=[]\n"
+            + "  2010 (1,  agg0=3 agg1=9)\n"
+            + "  2012 (1,  agg0=4 agg1=2)\n",
+        getTopChildrenWithLongAggregations(
+            countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder, null, "Publish Date"));
     assertEquals(
-            "dim=Author path=[]\n" +
-                    "  Bob (1,  agg0=3 agg1=9)\n" +
-                    "  Lisa (1,  agg0=4 agg1=2)\n",
-            getTopChildrenWithLongAggregations(countRecorder, taxoReader,10,  2, longAggregationsFacetRecorder,
-                    null, "Author"));
+        "dim=Author path=[]\n" + "  Bob (1,  agg0=3 agg1=9)\n" + "  Lisa (1,  agg0=4 agg1=2)\n",
+        getTopChildrenWithLongAggregations(
+            countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder, null, "Author"));
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
@@ -253,7 +256,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     // Writes facet ords to a separate directory from the
     // main index:
     DirectoryTaxonomyWriter taxoWriter =
-            new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
 
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("Publish Date", true);
@@ -306,7 +309,8 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     Query query = new MatchAllDocsQuery();
 
-    TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
 
     LongValuesSource[] longValuesSources = new LongValuesSource[2];
     Reducer[] reducers = new Reducer[2];
@@ -317,45 +321,49 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     longValuesSources[1] = LongValuesSource.fromLongField("Units");
     reducers[1] = Reducer.SUM;
 
-    LongAggregationsFacetRecorder longAggregationsFacetRecorder = new LongAggregationsFacetRecorder(longValuesSources, reducers);
+    LongAggregationsFacetRecorder longAggregationsFacetRecorder =
+        new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
     final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
     // Compute both counts and aggregations
-    MultiFacetsRecorder multiFacetsRecorder = new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
+    MultiFacetsRecorder multiFacetsRecorder =
+        new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
 
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
-            new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
     searcher.search(query, collectorManager);
 
     // Retrieve & verify results:
     assertEquals(
-            "dim=Publish Date path=[]\n" +
-                    "  2012 (2,  agg0=4 agg1=12)\n" +
-                    "  2010 (2,  agg0=4 agg1=11)\n" +
-                    "  1999 (1,  agg0=7 agg1=6)\n",
-            getTopChildrenWithLongAggregations(countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder,
-                    1, "Publish Date"));
+        "dim=Publish Date path=[]\n"
+            + "  2012 (2,  agg0=4 agg1=12)\n"
+            + "  2010 (2,  agg0=4 agg1=11)\n"
+            + "  1999 (1,  agg0=7 agg1=6)\n",
+        getTopChildrenWithLongAggregations(
+            countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder, 1, "Publish Date"));
     assertEquals(
-            "dim=Author path=[]\n" +
-                    "  Frank (1,  agg0=7 agg1=6)\n" +
-                    "  Lisa (2,  agg0=4 agg1=7)\n" +
-                    "  Susan (1,  agg0=4 agg1=7)\n" +
-                    "  Bob (1,  agg0=3 agg1=9)\n",
-            getTopChildrenWithLongAggregations(countRecorder, taxoReader,10,  2, longAggregationsFacetRecorder,
-                    0, "Author"));
+        "dim=Author path=[]\n"
+            + "  Frank (1,  agg0=7 agg1=6)\n"
+            + "  Lisa (2,  agg0=4 agg1=7)\n"
+            + "  Susan (1,  agg0=4 agg1=7)\n"
+            + "  Bob (1,  agg0=3 agg1=9)\n",
+        getTopChildrenWithLongAggregations(
+            countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder, 0, "Author"));
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
   }
 
-  private String getTopChildrenWithLongAggregations(CountFacetRecorder countFacetRecorder,
-                                                    TaxonomyReader taxoReader,
-                                                    int topN,
-                                                    int numOfAggregations,
-                                                    LongAggregationsFacetRecorder longAggregationsFacetRecorder,
-                                                    Integer sortByLongAggregationId,
-                                                    String dimension,
-                                                    String... path) throws IOException {
+  private String getTopChildrenWithLongAggregations(
+      CountFacetRecorder countFacetRecorder,
+      TaxonomyReader taxoReader,
+      int topN,
+      int numOfAggregations,
+      LongAggregationsFacetRecorder longAggregationsFacetRecorder,
+      Integer sortByLongAggregationId,
+      String dimension,
+      String... path)
+      throws IOException {
     StringBuilder resultBuilder = new StringBuilder();
     resultBuilder.append("dim=");
     resultBuilder.append(dimension);
@@ -365,19 +373,24 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
-    OrdinalIterator childrenIternator = new TaxonomyChildrenOrdinalIterator(countFacetRecorder.recordedOrds(),
-            taxoReader.getParallelTaxonomyArrays()
-                    .parents(), ordLabels.getOrd(new FacetLabel(dimension)));
+    OrdinalIterator childrenIternator =
+        new TaxonomyChildrenOrdinalIterator(
+            countFacetRecorder.recordedOrds(),
+            taxoReader.getParallelTaxonomyArrays().parents(),
+            ordLabels.getOrd(parentLabel));
     final int[] resultOrdinals;
     if (sortByLongAggregationId != null) {
       OrdToComparable<ComparableUtils.LongIntOrdComparable> ordToComparable =
-              ComparableUtils.rankCountOrdToComparable(countFacetRecorder, longAggregationsFacetRecorder, sortByLongAggregationId);
-      OrdinalIterator topByCountOrds = new TopnOrdinalIterator<>(childrenIternator, ordToComparable, topN);
+          ComparableUtils.rankCountOrdToComparable(
+              countFacetRecorder, longAggregationsFacetRecorder, sortByLongAggregationId);
+      OrdinalIterator topByCountOrds =
+          new TopnOrdinalIterator<>(childrenIternator, ordToComparable, topN);
       resultOrdinals = topByCountOrds.toArray();
     } else {
-      OrdToComparable<ComparableUtils.IntOrdComparable> countComparable = ComparableUtils.countOrdToComparable(
-              countFacetRecorder);
-      OrdinalIterator topByCountOrds = new TopnOrdinalIterator<>(childrenIternator, countComparable, topN);
+      OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
+          ComparableUtils.countOrdToComparable(countFacetRecorder);
+      OrdinalIterator topByCountOrds =
+          new TopnOrdinalIterator<>(childrenIternator, countComparable, topN);
       resultOrdinals = topByCountOrds.toArray();
     }
 

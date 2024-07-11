@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.sandbox.facet;
 
+import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetField;
@@ -27,6 +29,7 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyFacetsCutter;
+import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -34,10 +37,14 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 
-import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
-
 /** Test for associations */
 public class TestTaxonomyFacet extends SandboxFacetTestCase {
+
+  public void testConstants() {
+    // It is essential for TaxonomyOrdLabelBiMap that invalid ordinal is the same as for
+    // TaxonomyReader
+    assertEquals(TaxonomyOrdLabelBiMap.INVALID_ORD, TaxonomyReader.INVALID_ORDINAL);
+  }
 
   public void testBasic() throws Exception {
     Directory dir = newDirectory();
@@ -46,7 +53,7 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
     // Writes facet ords to a separate directory from the
     // main index:
     DirectoryTaxonomyWriter taxoWriter =
-            new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
 
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("Publish Date", true);
@@ -86,69 +93,69 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
 
     Query query = new MatchAllDocsQuery();
 
-    TaxonomyFacetsCutter defaultTaxoCutter = new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
     final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-            new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, countRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, countRecorder);
     searcher.search(query, collectorManager);
 
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              getTopChildrenByCount(countRecorder, taxoReader, 0, "Author");
-            });
+        IllegalArgumentException.class,
+        () -> {
+          getTopChildrenByCount(countRecorder, taxoReader, 0, "Author");
+        });
 
     // Retrieve & verify results:
     assertEquals(
-            "dim=Publish Date path=[] value=-5 childCount=3\n  2010 (2)\n  2012 (2)\n  1999 (1)\n",
-            getTopChildrenByCount(countRecorder, taxoReader, 10, "Publish Date").toString());
+        "dim=Publish Date path=[] value=-5 childCount=3\n  2010 (2)\n  2012 (2)\n  1999 (1)\n",
+        getTopChildrenByCount(countRecorder, taxoReader, 10, "Publish Date").toString());
     assertEquals(
-            "dim=Author path=[] value=-5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
-            getTopChildrenByCount(countRecorder, taxoReader, 10, "Author").toString());
-
-
-    assertFacetResult(
-            getAllChildren(countRecorder, taxoReader, "Publish Date"),
-            "Publish Date",
-            new String[0],
-            3,
-            VALUE_CANT_BE_COMPUTED,
-            new LabelAndValue[] {
-                    new LabelAndValue("1999", 1), new LabelAndValue("2010", 2), new LabelAndValue("2012", 2),
-            });
+        "dim=Author path=[] value=-5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        getTopChildrenByCount(countRecorder, taxoReader, 10, "Author").toString());
 
     assertFacetResult(
-            getAllChildren(countRecorder, taxoReader, "Author"),
-            "Author",
-            new String[0],
-            4,
-            VALUE_CANT_BE_COMPUTED,
-            new LabelAndValue[] {
-                    new LabelAndValue("Bob", 1),
-                    new LabelAndValue("Frank", 1),
-                    new LabelAndValue("Lisa", 2),
-                    new LabelAndValue("Susan", 1),
-            });
+        getAllChildren(countRecorder, taxoReader, "Publish Date"),
+        "Publish Date",
+        new String[0],
+        3,
+        VALUE_CANT_BE_COMPUTED,
+        new LabelAndValue[] {
+          new LabelAndValue("1999", 1), new LabelAndValue("2010", 2), new LabelAndValue("2012", 2),
+        });
+
+    assertFacetResult(
+        getAllChildren(countRecorder, taxoReader, "Author"),
+        "Author",
+        new String[0],
+        4,
+        VALUE_CANT_BE_COMPUTED,
+        new LabelAndValue[] {
+          new LabelAndValue("Bob", 1),
+          new LabelAndValue("Frank", 1),
+          new LabelAndValue("Lisa", 2),
+          new LabelAndValue("Susan", 1),
+        });
 
     // Now user drills down on Publish Date/2010:
     DrillDownQuery q2 = new DrillDownQuery(config);
     q2.add("Publish Date", "2010");
     final CountFacetRecorder countRecorder2 = new CountFacetRecorder(random().nextBoolean());
     collectorManager =
-            new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, countRecorder2);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, countRecorder2);
     searcher.search(q2, collectorManager);
 
     assertEquals(
-            "dim=Author path=[] value=-5 childCount=2\n  Bob (1)\n  Lisa (1)\n",
-            getTopChildrenByCount(countRecorder2, taxoReader, 10, "Author").toString());
+        "dim=Author path=[] value=-5 childCount=2\n  Bob (1)\n  Lisa (1)\n",
+        getTopChildrenByCount(countRecorder2, taxoReader, 10, "Author").toString());
 
     assertEquals(1, getSpecificValue(countRecorder2, taxoReader, "Author", "Lisa"));
 
     expectThrows(
-            AssertionError.class,
-            () -> {
-              getTopChildrenByCount(countRecorder2, taxoReader, 10, "Non exitent dim");
-            });
+        AssertionError.class,
+        () -> {
+          getTopChildrenByCount(countRecorder2, taxoReader, 10, "Non exitent dim");
+        });
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
