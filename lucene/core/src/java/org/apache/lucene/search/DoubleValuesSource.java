@@ -123,6 +123,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   private static class PreciseLongDoubleValuesSource extends LongValuesSource {
 
     private final DoubleValuesSource inner;
+
     private PreciseLongDoubleValuesSource(DoubleValuesSource inner) {
       this.inner = inner;
     }
@@ -161,6 +162,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
       PreciseLongDoubleValuesSource that = (PreciseLongDoubleValuesSource) o;
       return Objects.equals(inner, that.inner);
     }
+
     @Override
     public String toString() {
       return "preciseLong(" + inner.toString() + ")";
