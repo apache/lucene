@@ -89,7 +89,7 @@ final class GroupedArena implements Arena {
         }
       }
     } else {
-      assert ct > 0 : "refCt should never be negative; found " + ct;
+      assert ct > 0 : "refCt should always be positive; found " + ct;
     }
   }
 
