@@ -65,7 +65,7 @@ The machine used has the following characteristics:
 <img src="./pictures/bsetup.png" alt="drawing" width="600"/>
 
 The dataset is the english wikipedia dataset, and the set of queries consist in 1036 phrase queries extracted from the luceneutil repository.
-The setup and details of the benchmarks are found [here](https://github.com/upmem/pim-lucene-private/tree/main/lucene/pim-benchmarks/exact_phrase).
+The setup and details of the benchmarks are found [here](https://github.com/upmem/pim-lucene/tree/main/lucene/pim-benchmarks/exact_phrase).
 Both standard Lucene and PIM-Lucene are run on the same server.
 
 ### Results
