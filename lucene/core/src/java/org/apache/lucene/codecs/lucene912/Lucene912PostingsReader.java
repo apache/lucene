@@ -465,6 +465,14 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             nextSkipDoc += docIn.readVInt();
             long impactLength = docIn.readVLong();
             long skipLength = docIn.readVLong();
+            if (indexHasPos) {
+              docIn.readVLong(); // pos FP delta
+              docIn.readVInt(); // pos buffer offset
+              if (indexHasOffsets || indexHasPayloads) {
+                docIn.readVLong(); // pay FP delta
+                docIn.readVInt(); // pay buffer offset
+              }
+            }
             nextSkipOffset = docIn.getFilePointer() + impactLength + skipLength;
 
             if (nextSkipDoc >= target) {
@@ -575,9 +583,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // before reading payloads/offsets:
     private long payPendingFP;
 
-    // Where this term's postings start in the .doc file:
-    private long docTermStartFP;
-
     // Where this term's postings start in the .pos file:
     private long posTermStartFP;
 
@@ -592,8 +597,12 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private int lastDocInBlock;
     private int nextSkipDoc;
-    private long nextSkipOffset;
+    private long nextSkipDocFP;
     private int nextSkipBlockUpto;
+    private long nextSkipPosFP;
+    private int nextSkipPosUpto;
+    private long nextSkipPayFP;
+    private int nextSkipPayUpto;
 
     private boolean needsOffsets; // true if we actually need offsets
     private boolean needsPayloads; // true if we actually need payloads
@@ -656,7 +665,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
       docFreq = termState.docFreq;
-      docTermStartFP = termState.docStartFP;
       posTermStartFP = termState.posStartFP;
       payTermStartFP = termState.payStartFP;
       totalTermFreq = termState.totalTermFreq;
@@ -670,6 +678,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       }
       posPendingFP = posTermStartFP;
       payPendingFP = payTermStartFP;
+      nextSkipPosFP = posTermStartFP;
+      nextSkipPayFP = payTermStartFP;
       posPendingCount = 0;
       if (termState.totalTermFreq < BLOCK_SIZE) {
         lastPosBlockFP = posTermStartFP;
@@ -687,8 +697,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       blockUpto = 0;
       lastDocInBlock = -1;
       nextSkipDoc = -1;
-      nextSkipOffset = termState.docStartFP;
+      nextSkipDocFP = termState.docStartFP;
       nextSkipBlockUpto = 0;
+      nextSkipPosUpto = 0;
+      nextSkipPayUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       return this;
     }
@@ -742,7 +754,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           while (true) {
             accum = nextSkipDoc;
             lastDocInBlock = nextSkipDoc;
-            docIn.seek(nextSkipOffset);
+            docIn.seek(nextSkipDocFP);
+            if (indexHasPos) {
+              posPendingFP = nextSkipPosFP;
+              posPendingCount = nextSkipPosUpto;
+              if (indexHasOffsets || indexHasPayloads) {
+                payPendingFP = nextSkipPayFP;
+                payloadByteUpto = nextSkipPayUpto;
+              }
+            }
             blockUpto = nextSkipBlockUpto;
             nextSkipBlockUpto += SKIP_TOTAL_SIZE;
 
@@ -754,7 +774,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             nextSkipDoc += docIn.readVInt();
             long impactLength = docIn.readVLong();
             long skipLength = docIn.readVLong();
-            nextSkipOffset = docIn.getFilePointer() + impactLength + skipLength;
+            if (indexHasPos) {
+              nextSkipPosFP += docIn.readVLong();
+              nextSkipPosUpto = docIn.readVInt();
+              if (indexHasOffsets || indexHasPayloads) {
+                nextSkipPayFP = docIn.readVLong();
+                nextSkipPayUpto = docIn.readVInt();
+              }
+            }
+            nextSkipDocFP = docIn.getFilePointer() + impactLength + skipLength;
 
             if (nextSkipDoc >= target) {
               // skip impacts
@@ -763,6 +791,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             }
           }
 
+        } else {
+          for (int i = docBufferUpto; i < BLOCK_SIZE; ++i) {
+            posPendingCount += freqBuffer[i];
+          }
         }
 
         while (true) {
@@ -792,11 +824,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       // Now scan
       long doc;
       do {
-        doc = docBuffer[docBufferUpto++];
+        doc = docBuffer[docBufferUpto];
+        freq = (int) freqBuffer[docBufferUpto];
+        posPendingCount += freq;
+        docBufferUpto++;
       } while (doc < target);
 
-      freq = (int) freqBuffer[docBufferUpto - 1];
-      posPendingCount += freq;
+      position = 0;
+      lastStartOffset = 0;
+
       return this.doc = (int) doc;
     }
 

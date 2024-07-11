@@ -77,10 +77,8 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
 
   private int lastBlockDocID;
   private int lastSkipDocID;
-  private long lastBlockPosFP;
-  private long lastBlockPayFP;
-  private int lastBlockPosBufferUpto;
-  private int lastBlockPayloadByteUpto;
+  private long lastSkipPosFP;
+  private long lastSkipPayFP;
 
   private int docID;
   private int lastDocID;
@@ -197,8 +195,10 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     docStartFP = docOut.getFilePointer();
     if (writePositions) {
       posStartFP = posOut.getFilePointer();
+      lastSkipPosFP = posStartFP;
       if (writePayloads || writeOffsets) {
         payStartFP = payOut.getFilePointer();
+        lastSkipPayFP = payStartFP;
       }
     }
     lastDocID = -1;
@@ -216,12 +216,12 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     }
 
     final int docDelta = docID - lastDocID;
-    
+
     if (docID < 0 || docDelta <= 0) {
       throw new CorruptIndexException(
           "docs out of order (" + docID + " <= " + lastDocID + " )", docOut);
     }
-    
+
     docDeltaBuffer[docBufferUpto] = docDelta;
     if (writeFreqs) {
       freqBuffer[docBufferUpto] = termDocFreq;
@@ -328,12 +328,17 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       spareOutput.copyTo(blockOutput);
       spareOutput.reset();
       forDeltaUtil.encodeDeltas(docDeltaBuffer, blockOutput);
+      long blockTTF = 0;
       if (writeFreqs) {
+        if (writePositions) {
+          // Compute it before calling pforUtil, which modifies the array in place
+          blockTTF = Arrays.stream(freqBuffer).sum();System.out.println("Block TTF=" + blockTTF);
+        }
         pforUtil.encode(freqBuffer, blockOutput);
       }
       skipOutput.writeVInt(docID - lastBlockDocID);
       if (writePositions) {
-        skipOutput.writeVLong(Arrays.stream(freqBuffer).sum());
+        skipOutput.writeVLong(blockTTF);
       }
       skipOutput.writeVLong(blockOutput.size());
     }
@@ -349,6 +354,17 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       writeImpacts(skipCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
       docOut.writeVLong(spareOutput.size());
       docOut.writeVLong(skipOutput.size());
+      if (writePositions) {
+        docOut.writeVLong(posOut.getFilePointer() - lastSkipPosFP);
+        docOut.writeVInt(posBufferUpto);
+        lastSkipPosFP = posOut.getFilePointer();
+
+        if (writeOffsets || writePayloads) {
+          docOut.writeVLong(payOut.getFilePointer() - lastSkipPayFP);
+          docOut.writeVInt(payloadByteUpto);
+          lastSkipPayFP = payOut.getFilePointer();
+        }
+      }
       spareOutput.copyTo(docOut);
       spareOutput.reset();
       skipOutput.copyTo(docOut);
@@ -472,7 +488,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     state.posStartFP = posStartFP;
     state.payStartFP = payStartFP;
     state.singletonDocID = singletonDocID;
-    
+
     state.lastPosBlockOffset = lastPosBlockOffset;
     docBufferUpto = 0;
     posBufferUpto = 0;
