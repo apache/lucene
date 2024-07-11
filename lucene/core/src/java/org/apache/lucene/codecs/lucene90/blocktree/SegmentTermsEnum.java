@@ -30,6 +30,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Util;
@@ -307,15 +308,13 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     return true;
   }
 
-  @Override
-  public boolean seekExact(BytesRef target) throws IOException {
-
+  private IOBooleanSupplier prepareSeekExact(BytesRef target, boolean prefetch) throws IOException {
     if (fr.index == null) {
       throw new IllegalStateException("terms index was not loaded");
     }
 
     if (fr.size() > 0 && (target.compareTo(fr.getMin()) < 0 || target.compareTo(fr.getMax()) > 0)) {
-      return false;
+      return null;
     }
 
     term.grow(1 + target.length);
@@ -431,7 +430,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) {
           //   System.out.println("  target is same as current; return true");
           // }
-          return true;
+          return () -> true;
         } else {
           // if (DEBUG) {
           //   System.out.println("  target is same as current but term doesn't exist");
@@ -501,24 +500,30 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) {
           //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
           // }
-          return false;
+          return null;
         }
 
-        currentFrame.loadBlock();
-
-        final SeekStatus result = currentFrame.scanToTerm(target, true);
-        if (result == SeekStatus.FOUND) {
-          // if (DEBUG) {
-          //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-          // }
-          return true;
-        } else {
-          // if (DEBUG) {
-          //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-          // ToStringUtils.bytesRefToString(term));
-          // }
-          return false;
+        if (prefetch) {
+          currentFrame.prefetchBlock();
         }
+
+        return () -> {
+          currentFrame.loadBlock();
+
+          final SeekStatus result = currentFrame.scanToTerm(target, true);
+          if (result == SeekStatus.FOUND) {
+            // if (DEBUG) {
+            //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
+            // }
+            return true;
+          } else {
+            // if (DEBUG) {
+            //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
+            // ToStringUtils.bytesRefToString(term));
+            // }
+            return false;
+          }
+        };
       } else {
         // Follow this arc
         arc = nextArc;
@@ -556,25 +561,42 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       // if (DEBUG) {
       //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
       // }
-      return false;
+      return null;
     }
 
-    currentFrame.loadBlock();
-
-    final SeekStatus result = currentFrame.scanToTerm(target, true);
-    if (result == SeekStatus.FOUND) {
-      // if (DEBUG) {
-      //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-      // }
-      return true;
-    } else {
-      // if (DEBUG) {
-      //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
-      // term.utf8ToString());
-      // }
-
-      return false;
+    if (prefetch) {
+      currentFrame.prefetchBlock();
     }
+
+    return () -> {
+      currentFrame.loadBlock();
+
+      final SeekStatus result = currentFrame.scanToTerm(target, true);
+      if (result == SeekStatus.FOUND) {
+        // if (DEBUG) {
+        //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
+        // }
+        return true;
+      } else {
+        // if (DEBUG) {
+        //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
+        // term.utf8ToString());
+        // }
+
+        return false;
+      }
+    };
+  }
+
+  @Override
+  public IOBooleanSupplier prepareSeekExact(BytesRef target) throws IOException {
+    return prepareSeekExact(target, true);
+  }
+
+  @Override
+  public boolean seekExact(BytesRef target) throws IOException {
+    IOBooleanSupplier termExistsSupplier = prepareSeekExact(target, false);
+    return termExistsSupplier != null && termExistsSupplier.get();
   }
 
   @Override

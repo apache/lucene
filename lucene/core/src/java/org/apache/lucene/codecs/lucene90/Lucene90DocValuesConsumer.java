@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene90;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE;
-import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_INTERVAL_SIZE;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -63,10 +62,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
   IndexOutput data, meta;
   final int maxDoc;
   private byte[] termsDictBuffer;
+  private final int skipIndexIntervalSize;
 
   /** expert: Creates a new writer */
   public Lucene90DocValuesConsumer(
       SegmentWriteState state,
+      int skipIndexIntervalSize,
       String dataCodec,
       String dataExtension,
       String metaCodec,
@@ -96,6 +97,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           state.segmentInfo.getId(),
           state.segmentSuffix);
       maxDoc = state.segmentInfo.maxDoc();
+      this.skipIndexIntervalSize = skipIndexIntervalSize;
       success = true;
     } finally {
       if (!success) {
@@ -239,7 +241,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       for (int i = 0, end = values.docValueCount(); i < end; ++i) {
         accumulator.accumulate(values.nextValue());
       }
-      if (++counter == SKIP_INDEX_INTERVAL_SIZE) {
+      if (++counter == skipIndexIntervalSize) {
         globalMaxValue = Math.max(globalMaxValue, accumulator.maxValue);
         globalMinValue = Math.min(globalMinValue, accumulator.minValue);
         globalDocCount += accumulator.docCount;
