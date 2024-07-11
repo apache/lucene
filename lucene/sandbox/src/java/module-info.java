@@ -17,7 +17,6 @@
 
 /** Various third party contributions and new ideas */
 module org.apache.lucene.sandbox {
-  requires com.carrotsearch.hppc;
   requires org.apache.lucene.core;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.facet;
@@ -28,13 +27,12 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.queries;
   exports org.apache.lucene.sandbox.search;
   exports org.apache.lucene.sandbox.index;
-
   exports org.apache.lucene.sandbox.facet;
   exports org.apache.lucene.sandbox.facet.taxonomy;
   exports org.apache.lucene.sandbox.facet.recorders;
   exports org.apache.lucene.sandbox.facet.abstracts;
   exports org.apache.lucene.sandbox.facet.ranges;
-    exports org.apache.lucene.sandbox.facet.ordinal_iterators;
+  exports org.apache.lucene.sandbox.facet.ordinal_iterators;
   exports org.apache.lucene.sandbox.facet.misc;
 
   provides org.apache.lucene.codecs.PostingsFormat with
