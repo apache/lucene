@@ -30,7 +30,7 @@ final class GroupedArena implements Arena {
 
   private final ConcurrentHashMap<String, GroupedArena> arenas;
 
-  private final Arena backing;
+  private final Arena delegate;
 
   private final AtomicInteger refCt;
 
@@ -67,7 +67,7 @@ final class GroupedArena implements Arena {
   GroupedArena(String scopeId, ConcurrentHashMap<String, GroupedArena> arenas) {
     this.scopeId = scopeId;
     this.arenas = arenas;
-    this.backing = Arena.ofShared();
+    this.delegate = Arena.ofShared();
     this.refCt = new AtomicInteger(1); // initial reference from `arenas` ConcurrentHashMap
   }
 
@@ -85,7 +85,7 @@ final class GroupedArena implements Arena {
           GroupedArena removed = arenas.remove(scopeId);
           assert removed == this;
         } finally {
-          backing.close();
+          delegate.close();
         }
       }
     } else {
@@ -95,6 +95,6 @@ final class GroupedArena implements Arena {
 
   @Override
   public MemorySegment.Scope scope() {
-    return backing.scope();
+    return delegate.scope();
   }
 }
