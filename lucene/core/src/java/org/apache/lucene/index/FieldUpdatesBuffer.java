@@ -356,7 +356,7 @@ final class FieldUpdatesBuffer {
       }
     }
 
-    BytesRef nextTerm() throws IOException {
+    private BytesRef nextTerm() throws IOException {
       if (lookAheadTermIterator != null) {
         if (bufferedUpdate.termValue == null) {
           lookAheadTermIterator.next();

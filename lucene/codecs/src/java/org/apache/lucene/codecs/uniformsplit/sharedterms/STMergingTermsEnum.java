@@ -20,11 +20,11 @@ package org.apache.lucene.codecs.uniformsplit.sharedterms;
 import java.io.IOException;
 import java.util.List;
 import java.util.RandomAccess;
+import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
-import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 
@@ -34,7 +34,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-class STMergingTermsEnum extends TermsEnum {
+class STMergingTermsEnum extends BaseTermsEnum {
 
   protected final String fieldName;
   protected final MultiSegmentsPostingsEnum multiPostingsEnum;
@@ -60,11 +60,6 @@ class STMergingTermsEnum extends TermsEnum {
 
   @Override
   public AttributeSource attributes() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean seekExact(BytesRef text) throws IOException {
     throw new UnsupportedOperationException();
   }
 

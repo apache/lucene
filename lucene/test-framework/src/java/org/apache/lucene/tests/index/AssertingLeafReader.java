@@ -51,6 +51,7 @@ import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.VirtualMethod;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -267,7 +268,8 @@ public class AssertingLeafReader extends FilterLeafReader {
     private enum State {
       INITIAL,
       POSITIONED,
-      UNPOSITIONED
+      UNPOSITIONED,
+      TWO_PHASE_SEEKING;
     };
 
     private State state = State.INITIAL;
@@ -370,6 +372,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void seekExact(long ord) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       super.seekExact(ord);
       state = State.POSITIONED;
     }
@@ -377,6 +380,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public SeekStatus seekCeil(BytesRef term) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert term.isValid();
       SeekStatus result = super.seekCeil(term);
       if (result == SeekStatus.END) {
@@ -390,6 +394,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public boolean seekExact(BytesRef text) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert text.isValid();
       boolean result;
       if (delegateOverridesSeekExact) {
@@ -406,6 +411,27 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+      assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
+      assert text.isValid();
+      IOBooleanSupplier in = this.in.prepareSeekExact(text);
+      if (in == null) {
+        return null;
+      }
+      state = State.TWO_PHASE_SEEKING;
+      return () -> {
+        boolean exists = in.get();
+        if (exists) {
+          state = State.POSITIONED;
+        } else {
+          state = State.UNPOSITIONED;
+        }
+        return exists;
+      };
+    }
+
+    @Override
     public TermState termState() throws IOException {
       assertThread("Terms enums", creationThread);
       assert state == State.POSITIONED : "termState() called on unpositioned TermsEnum";
@@ -415,6 +441,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void seekExact(BytesRef term, TermState state) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert this.state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert term.isValid();
       in.seekExact(term, state);
       this.state = State.POSITIONED;
