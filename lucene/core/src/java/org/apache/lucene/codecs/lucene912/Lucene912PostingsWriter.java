@@ -332,7 +332,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       if (writeFreqs) {
         if (writePositions) {
           // Compute it before calling pforUtil, which modifies the array in place
-          blockTTF = Arrays.stream(freqBuffer).sum();System.out.println("Block TTF=" + blockTTF);
+          blockTTF = Arrays.stream(freqBuffer).sum();
         }
         pforUtil.encode(freqBuffer, blockOutput);
       }
