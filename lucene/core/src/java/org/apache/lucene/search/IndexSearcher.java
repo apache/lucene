@@ -639,16 +639,16 @@ public class IndexSearcher {
   }
 
   /**
-   * Lower-level search API. Search all leaves using the given {@link CollectorOwner}, without calling
-   * {@link CollectorOwner#reduce()} so that clients can reduce and read results themselves.
+   * Lower-level search API. Search all leaves using the given {@link CollectorOwner}, without
+   * calling {@link CollectorOwner#reduce()} so that clients can reduce and read results themselves.
    *
-   * TODO: CollectorOwner has getResults method now (not yet used by anything), so maybe it's ok to call reduce
-   *  in this method?
+   * <p>TODO: CollectorOwner has getResults method now (not yet used by anything), so maybe it's ok
+   * to call reduce in this method?
    *
    * @lucene.experimental
    */
   public <C extends Collector> void searchNoReduce(Query query, CollectorOwner<C, ?> collectorOwner)
-          throws IOException {
+      throws IOException {
     final C firstCollector = collectorOwner.newCollector();
     query = rewrite(query, firstCollector.scoreMode().needsScores());
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
@@ -662,15 +662,15 @@ public class IndexSearcher {
       // there are no segments, nothing to offload to the executor, but we do need to call reduce to
       // create some kind of empty result
       assert leafContexts.isEmpty();
-      //return Collections.singletonList(firstCollector);
-      //return collectorManager.reduce(Collections.singletonList(firstCollector));
+      // return Collections.singletonList(firstCollector);
+      // return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
-      //final List<C> collectors = new ArrayList<>(leafSlices.length);
-      //collectors.add(firstCollector);
+      // final List<C> collectors = new ArrayList<>(leafSlices.length);
+      // collectors.add(firstCollector);
       final ScoreMode scoreMode = firstCollector.scoreMode();
       for (int i = 1; i < leafSlices.length; ++i) {
         final C collector = collectorOwner.newCollector();
-        //collectors.add(collector);
+        // collectors.add(collector);
         if (scoreMode != collector.scoreMode()) {
           throw new IllegalStateException(
               "CollectorManager does not always produce collectors with the same score mode");
@@ -687,8 +687,8 @@ public class IndexSearcher {
             });
       }
       taskExecutor.invokeAll(listTasks);
-      //List<C> results = taskExecutor.invokeAll(listTasks);
-      //return collectorManager.reduce(results);
+      // List<C> results = taskExecutor.invokeAll(listTasks);
+      // return collectorManager.reduce(results);
     }
   }
 

@@ -22,14 +22,15 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Like {@link CollectorManager}, but it owns the collectors its manager creates.
- * Benefit is that clients of the class don't have to worry about keeping the list of collectors,
- * as well as about making the collectors type (C) compatible when reduce is called.
+ * Like {@link CollectorManager}, but it owns the collectors its manager creates. Benefit is that
+ * clients of the class don't have to worry about keeping the list of collectors, as well as about
+ * making the collectors type (C) compatible when reduce is called.
+ *
  * @lucene.experimental
  */
 public final class CollectorOwner<C extends Collector, T> {
 
-  private final CollectorManager<C,T> manager;
+  private final CollectorManager<C, T> manager;
 
   private T result;
   private boolean reduced;
@@ -37,7 +38,8 @@ public final class CollectorOwner<C extends Collector, T> {
   // TODO: Normally, for IndexSearcher, we don't need parallelized write access to the list
   //  because we create new collectors sequentially. But drill sideways creates new collectors in
   //  DrillSidewaysQuery#Weight#bulkScorer which is already called concurrently.
-  //  I think making the list sychronized here is not a huge concern, at the same time, do we want to do something about it?
+  //  I think making the list sychronized here is not a huge concern, at the same time, do we want
+  // to do something about it?
   //  e.g. have boolean property in constructor that makes it threads friendly when set?
   private final List<C> collectors = Collections.synchronizedList(new ArrayList<>());
 
@@ -70,7 +72,8 @@ public final class CollectorOwner<C extends Collector, T> {
 
   public static <C extends Collector, T> CollectorOwner<C, T> hire(CollectorManager<C, T> manager) {
     // TODO: can we guarantee that the manager didn't create any Collectors yet?
-    //  Or should we expect the new owner to be able to reduce only the work the manager has done after it was hired?
+    //  Or should we expect the new owner to be able to reduce only the work the manager has done
+    // after it was hired?
     return new CollectorOwner<>(manager);
   }
 
