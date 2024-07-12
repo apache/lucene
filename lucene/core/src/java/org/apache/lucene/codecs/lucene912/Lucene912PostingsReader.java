@@ -1504,8 +1504,14 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // decode vs vInt decode the block:
     private long lastPosBlockFP;
 
+    // true if we shallow-advanced to a new block that we have not decoded yet
+    private boolean needsRefilling;
+
     // level 0 skip data
     private int lastDocInBlock;
+    private final BytesRefBuilder serializedBlockImpacts = new BytesRefBuilder();
+    private final ByteArrayDataInput serializedBlockImpactsIn = new ByteArrayDataInput();
+    private final MutableImpactList blockImpacts = new MutableImpactList();
     // level 1 skip data
     private int nextSkipDoc;
     private long nextSkipDocFP;
@@ -1642,7 +1648,54 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      // todo
+      if (target > lastDocInBlock) { // advance level 0 skip data
+
+        if (target > nextSkipDoc) { // advance level 1 skip data
+          skipLevel1To(target);
+        } else {
+          for (int i = docBufferUpto; i < BLOCK_SIZE; ++i) {
+            posPendingCount += freqBuffer[i];
+          }
+        }
+
+        // Now advance the 1st skip level
+        while (true) {
+          accum = lastDocInBlock;
+          if (docFreq - blockUpto >= BLOCK_SIZE) {
+            final int token = docIn.readInt();
+            int docDelta = token & 0xFFFFF;
+            long blockLength = token >>> 20;
+            if (token < 0) {
+              docDelta |= docIn.readVInt() << 20;
+              blockLength = (blockLength & 0x7FFL) | docIn.readVLong() << 11;
+            }
+            long blockEndFP = docIn.getFilePointer() + blockLength;
+
+            lastDocInBlock += docDelta;
+
+            if (target <= lastDocInBlock) {
+              final int numImpactBytes = docIn.readVInt();
+              serializedBlockImpacts.growNoCopy(numImpactBytes);
+              docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
+              serializedBlockImpacts.setLength(numImpactBytes);
+              docIn.readByte(); // block ttf
+              docIn.readVLong(); // block ttf
+              break;
+            }
+            // skip block
+            docIn.skipBytes(docIn.readVLong()); // impacts
+            long blockTTF = (docIn.readByte() & 0xFFL) | (docIn.readVLong() << 8);
+            posPendingCount += blockTTF;
+            docIn.seek(blockEndFP);
+            blockUpto += BLOCK_SIZE;
+          } else {
+            lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+            break;
+          }
+        }
+
+        needsRefilling = true;
+      }
     }
 
     @Override
@@ -1673,50 +1726,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > lastDocInBlock) { // advance level 0 skip data
-
-        if (target > nextSkipDoc) { // advance level 1 skip data
-          skipLevel1To(target);
-        } else {
-          for (int i = docBufferUpto; i < BLOCK_SIZE; ++i) {
-            posPendingCount += freqBuffer[i];
-          }
-        }
-
-        // Now advance the 1st skip level
-        while (true) {
-          accum = lastDocInBlock;
-          if (docFreq - blockUpto >= BLOCK_SIZE) {
-            final int token = docIn.readInt();
-            int docDelta = token & 0xFFFFF;
-            long blockLength = token >>> 20;
-            if (token < 0) {
-              docDelta |= docIn.readVInt() << 20;
-              blockLength = (blockLength & 0x7FFL) | docIn.readVLong() << 11;
-            }
-            long blockEndFP = docIn.getFilePointer() + blockLength;
-
-            lastDocInBlock += docDelta;
-
-            docIn.skipBytes(docIn.readVLong()); // impacts
-
-            if (target <= lastDocInBlock) {
-              docIn.readByte(); // block ttf
-              docIn.readVLong(); // block ttf
-              break;
-            }
-            // skip block
-            long blockTTF = (docIn.readByte() & 0xFFL) | (docIn.readVLong() << 8);
-            posPendingCount += blockTTF;
-            docIn.seek(blockEndFP);
-            blockUpto += BLOCK_SIZE;
-          } else {
-            lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
-            break;
-          }
-        }
-
+      advanceShallow(target);
+      if (needsRefilling) {
         refillDocs();
+        needsRefilling = false;
       }
 
       // Now scan
