@@ -175,14 +175,14 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     switch (fieldData.fieldInfo.getVectorEncoding()) {
       case BYTE -> {
-        if (fieldData.isMultiVector) {
+        if (fieldData.fieldInfo.hasMultiVectorValues()) {
           writeByteMultiVectors(fieldData);
         } else {
           writeByteVectors(fieldData);
         }
       }
       case FLOAT32 -> {
-        if (fieldData.isMultiVector) {
+        if (fieldData.fieldInfo.hasMultiVectorValues()) {
           writeFloat32MultiVectors(fieldData);
         } else {
           writeFloat32Vectors(fieldData);
@@ -278,10 +278,10 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
     // write vector values
     long vectorDataOffset =
         switch (fieldData.fieldInfo.getVectorEncoding()) {
-          case BYTE -> (fieldData.isMultiVector)
+          case BYTE -> (fieldData.fieldInfo.hasMultiVectorValues())
               ? writeSortedByteMultiVectors(fieldData, ordMap)
               : writeSortedByteVectors(fieldData, ordMap);
-          case FLOAT32 -> (fieldData.isMultiVector)
+          case FLOAT32 -> (fieldData.fieldInfo.hasMultiVectorValues())
               ? writeSortedFloat32MultiVectors(fieldData, ordMap)
               : writeSortedFloat32Vectors(fieldData, ordMap);
         };
@@ -670,7 +670,6 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
-    private final boolean isMultiVector;
 
     /* Stores start and end offsets for the packed vector data written for each multi-vector value.
      * dataOffsets[ordinal] holds the start offset. dataOffsets[ordinal+1] holds the end offset.
@@ -732,7 +731,6 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       this.vectors = new ArrayList<>();
-      this.isMultiVector = fieldInfo.hasMultiVectorValues();
     }
 
     @Override
