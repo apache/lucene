@@ -857,10 +857,8 @@ final class IndexingChain implements Accountable {
       schema.setVectors(
           fieldType.vectorEncoding(),
           fieldType.vectorSimilarityFunction(),
-          fieldType.vectorDimension());
-    }
-    if (fieldType.isMultiVector()) {
-      schema.setMultiVectors(fieldType.multiVectorAggregate());
+          fieldType.vectorDimension(),
+          fieldType.multiVectorAggregate());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1551,22 +1549,19 @@ final class IndexingChain implements Accountable {
     }
 
     void setVectors(
-        VectorEncoding encoding, VectorSimilarityFunction similarityFunction, int dimension) {
+        VectorEncoding encoding,
+        VectorSimilarityFunction similarityFunction,
+        int dimension,
+        MultiVectorSimilarityFunction.Aggregation multiVectorAggregate) {
       if (vectorDimension == 0) {
         this.vectorEncoding = encoding;
         this.vectorSimilarityFunction = similarityFunction;
         this.vectorDimension = dimension;
+        this.multiVectorAggregate = multiVectorAggregate;
       } else {
         assertSame("vector encoding", vectorEncoding, encoding);
         assertSame("vector similarity function", vectorSimilarityFunction, similarityFunction);
         assertSame("vector dimension", vectorDimension, dimension);
-      }
-    }
-
-    void setMultiVectors(MultiVectorSimilarityFunction.Aggregation multiVectorAggregate) {
-      if (multiVectorAggregate == MultiVectorSimilarityFunction.Aggregation.NONE) {
-        this.multiVectorAggregate = multiVectorAggregate;
-      } else {
         assertSame("multiVectorAggregate", this.multiVectorAggregate, multiVectorAggregate);
       }
     }
