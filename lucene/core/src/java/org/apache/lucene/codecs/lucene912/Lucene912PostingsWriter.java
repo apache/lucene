@@ -316,6 +316,20 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     lastDocID = docID;
   }
 
+  static void writeDocDeltaAndBlockLength(int docDelta, long blockLength, DataOutput out) throws IOException {
+    // Optimistically write the doc delta and the block length on 4 bytes by reserving 20 bits for the doc delta, 11 bits for the block length, and one continuation bit.
+    int token = (docDelta & 0xFFFFF) | ((int) (blockLength & 0x7FFL) << 20);
+    assert token >= 0;
+    if ((docDelta & ~0xFFFFF) != 0 || (blockLength & ~0x7FFL) != 0) {
+      token |= 1 << 31;
+      out.writeInt(token);
+      out.writeVInt(docDelta >> 20);
+      out.writeVLong(blockLength >> 11);
+    } else {
+      out.writeInt(token);
+    }
+  }
+
   private void flushDocBlock(boolean end) throws IOException {
     assert docBufferUpto != 0;
 
@@ -335,11 +349,12 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         }
         pforUtil.encode(freqBuffer, blockOutput);
       }
-      skipOutput.writeVInt(docID - lastBlockDocID);
+      writeDocDeltaAndBlockLength(docID - lastBlockDocID, blockOutput.size(), skipOutput);
       if (writePositions) {
-        skipOutput.writeVLong(blockTTF);
+        // avoid introducing unpredictable branches with a vlong and take advantage of the fact that block TTF is often <= 2^15
+        skipOutput.writeByte((byte) blockTTF);
+        skipOutput.writeVLong(blockTTF >> 8);
       }
-      skipOutput.writeVLong(blockOutput.size());
     }
 
     blockOutput.copyTo(skipOutput);
