@@ -767,8 +767,7 @@ public class MemoryIndex {
         fieldType.vectorDimension(),
         fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
-        false,
-        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+        MultiVectorSimilarityFunction.Aggregation.NONE,
         false,
         false);
   }
@@ -824,7 +823,6 @@ public class MemoryIndex {
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
-              info.fieldInfo.isMultiVector(),
               info.fieldInfo.getMultiVectorAggregate(),
               info.fieldInfo.isSoftDeletesField(),
               info.fieldInfo.isParentField());

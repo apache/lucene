@@ -60,8 +60,7 @@ public class KnnByteMultiVectorField extends Field {
     int dimension = t.get(0).length;
     checkDimensions(t, dimension);
     FieldType type = new FieldType();
-    type.setMultiVectorAttributes(
-        true, dimension, VectorEncoding.BYTE, similarityFunction, aggregation);
+    type.setMultiVectorAttributes(dimension, VectorEncoding.BYTE, similarityFunction, aggregation);
     type.freeze();
     return type;
   }
@@ -77,7 +76,6 @@ public class KnnByteMultiVectorField extends Field {
       int dimension, MultiVectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setMultiVectorAttributes(
-        true,
         dimension,
         VectorEncoding.BYTE,
         similarityFunction.similarityFunction,
@@ -135,7 +133,7 @@ public class KnnByteMultiVectorField extends Field {
         name,
         value,
         VectorSimilarityFunction.EUCLIDEAN,
-        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION);
+        MultiVectorSimilarityFunction.Aggregation.SUM_MAX);
   }
 
   /**

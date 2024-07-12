@@ -380,8 +380,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       FieldVectorProperties fieldVectorProperties,
       FieldMultiVectorProperties fieldMultiVectorProperties) {}
 
-  private record FieldMultiVectorProperties(
-      boolean isMultiVector, MultiVectorSimilarityFunction similarityFunction) {}
+  private record FieldMultiVectorProperties(MultiVectorSimilarityFunction similarityFunction) {}
 
   static final class FieldNumbers {
 
@@ -467,8 +466,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                     fi.getVectorDimension(),
                     fi.getVectorEncoding(),
                     fi.getVectorSimilarityFunction()),
-                new FieldMultiVectorProperties(
-                    fi.isMultiVector(), fi.getMultiVectorSimilarityFunction()));
+                new FieldMultiVectorProperties(fi.getMultiVectorSimilarityFunction()));
         this.fieldProperties.put(fieldName, fieldProperties);
       }
       return fieldProperties.number;
@@ -567,11 +565,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
       FieldMultiVectorProperties multiVectorProps = fieldProperties.fieldMultiVectorProperties;
       verifySameMultiVectorOptions(
           fieldName,
-          multiVectorProps.isMultiVector,
           props.numDimensions,
           props.vectorEncoding,
           multiVectorProps.similarityFunction,
-          fi.isMultiVector(),
           fi.getVectorDimension(),
           fi.getVectorEncoding(),
           fi.getMultiVectorSimilarityFunction());
@@ -619,8 +615,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   VectorEncoding.FLOAT32,
                   VectorSimilarityFunction.EUCLIDEAN,
-                  false,
-                  MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+                  MultiVectorSimilarityFunction.Aggregation.NONE,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)),
                   (parentFieldName != null && parentFieldName.equals(fieldName)));
           addOrGet(fi);
@@ -715,8 +710,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           VectorEncoding.FLOAT32,
           VectorSimilarityFunction.EUCLIDEAN,
-          false,
-          MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+          MultiVectorSimilarityFunction.Aggregation.NONE,
           isSoftDeletesField,
           isParentField);
     }
@@ -839,7 +833,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getVectorDimension(),
               fi.getVectorEncoding(),
               fi.getVectorSimilarityFunction(),
-              fi.isMultiVector(),
               fi.getMultiVectorAggregate(),
               fi.isSoftDeletesField(),
               fi.isParentField());

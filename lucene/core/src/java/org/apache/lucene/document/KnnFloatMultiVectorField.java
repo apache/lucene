@@ -63,7 +63,7 @@ public class KnnFloatMultiVectorField extends Field {
     checkDimensions(t, dimension);
     FieldType type = new FieldType();
     type.setMultiVectorAttributes(
-        true, dimension, VectorEncoding.FLOAT32, similarityFunction, aggregation);
+        dimension, VectorEncoding.FLOAT32, similarityFunction, aggregation);
     type.freeze();
     return type;
   }
@@ -79,7 +79,6 @@ public class KnnFloatMultiVectorField extends Field {
       int dimension, MultiVectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setMultiVectorAttributes(
-        true,
         dimension,
         VectorEncoding.FLOAT32,
         similarityFunction.similarityFunction,
@@ -154,7 +153,7 @@ public class KnnFloatMultiVectorField extends Field {
         name,
         value,
         VectorSimilarityFunction.EUCLIDEAN,
-        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION);
+        MultiVectorSimilarityFunction.Aggregation.SUM_MAX);
   }
 
   /**

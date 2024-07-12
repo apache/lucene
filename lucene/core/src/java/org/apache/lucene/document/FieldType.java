@@ -50,8 +50,7 @@ public class FieldType implements IndexableFieldType {
   private int vectorDimension;
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-  private boolean isMultiVector;
-  private Aggregation multiVectorAggregate = MultiVectorSimilarityFunction.DEFAULT_AGGREGATION;
+  private Aggregation multiVectorAggregate = MultiVectorSimilarityFunction.Aggregation.NONE;
   private Map<String, String> attributes;
 
   /** Create a new mutable FieldType with all of the properties from <code>ref</code> */
@@ -72,7 +71,6 @@ public class FieldType implements IndexableFieldType {
     this.vectorDimension = ref.vectorDimension();
     this.vectorEncoding = ref.vectorEncoding();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
-    this.isMultiVector = ref.isMultiVector();
     this.multiVectorAggregate = ref.multiVectorAggregate();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
@@ -410,22 +408,20 @@ public class FieldType implements IndexableFieldType {
    * Enable multi-vector indexing. Each vector in the multi-vector has the same dimension. Different
    * multi-vector values can vary in the number of vectors.
    *
-   * @param isMultiVector Boolean flag indicating if the field indexes multi-vectors
    * @param dimension Dimension of each vector in the multi-vector
    * @param encoding {@link VectorEncoding} for each value in the multi-vector. Should be the same
    *     for all vectors
    * @param similarityFunction {@link VectorSimilarityFunction} Used to compare multi-vectors during
    *     indexing and search
-   * @param aggregation {@link Aggregation} used to aggregate similarity across multiple vectors
+   * @param aggregation {@link Aggregation} used to aggregate similarity across multiple vectors or
+   *     NONE if not a multi-vectors field
    */
   public void setMultiVectorAttributes(
-      boolean isMultiVector,
       int dimension,
       VectorEncoding encoding,
       VectorSimilarityFunction similarityFunction,
       Aggregation aggregation) {
     checkIfFrozen();
-    this.isMultiVector = isMultiVector;
     this.vectorDimension = dimension;
     this.vectorEncoding = Objects.requireNonNull(encoding);
     this.vectorSimilarityFunction = Objects.requireNonNull(similarityFunction);
@@ -434,7 +430,7 @@ public class FieldType implements IndexableFieldType {
 
   @Override
   public boolean isMultiVector() {
-    return isMultiVector;
+    return (multiVectorAggregate != MultiVectorSimilarityFunction.Aggregation.NONE);
   }
 
   @Override

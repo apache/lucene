@@ -693,7 +693,6 @@ final class IndexingChain implements Accountable {
                 s.vectorDimension,
                 s.vectorEncoding,
                 s.vectorSimilarityFunction,
-                s.isMultiVector,
                 s.multiVectorAggregate,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName()),
                 pf.fieldName.equals(fieldInfos.getParentFieldName())));
@@ -861,7 +860,7 @@ final class IndexingChain implements Accountable {
           fieldType.vectorDimension());
     }
     if (fieldType.isMultiVector()) {
-      schema.setMultiVectors(fieldType.isMultiVector(), fieldType.multiVectorAggregate());
+      schema.setMultiVectors(fieldType.multiVectorAggregate());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1468,9 +1467,8 @@ final class IndexingChain implements Accountable {
     private int vectorDimension = 0;
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    private boolean isMultiVector = false;
     private MultiVectorSimilarityFunction.Aggregation multiVectorAggregate =
-        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION;
+        MultiVectorSimilarityFunction.Aggregation.NONE;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1565,13 +1563,10 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setMultiVectors(
-        boolean isMultiVector, MultiVectorSimilarityFunction.Aggregation multiVectorAggregate) {
-      if (isMultiVector == false) {
-        this.isMultiVector = isMultiVector;
+    void setMultiVectors(MultiVectorSimilarityFunction.Aggregation multiVectorAggregate) {
+      if (multiVectorAggregate == MultiVectorSimilarityFunction.Aggregation.NONE) {
         this.multiVectorAggregate = multiVectorAggregate;
       } else {
-        assertSame("isMultiVector", this.isMultiVector, isMultiVector);
         assertSame("multiVectorAggregate", this.multiVectorAggregate, multiVectorAggregate);
       }
     }
@@ -1600,7 +1595,6 @@ final class IndexingChain implements Accountable {
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
-      assertSame("isMultiVector", fi.isMultiVector(), this.isMultiVector);
       assertSame(
           "multi-vector aggregation", fi.getMultiVectorAggregate(), this.multiVectorAggregate);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);

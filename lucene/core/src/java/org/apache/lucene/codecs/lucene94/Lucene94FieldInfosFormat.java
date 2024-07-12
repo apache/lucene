@@ -227,8 +227,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     vectorDimension,
                     vectorEncoding,
                     vectorDistFunc,
-                    false,
-                    MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+                    MultiVectorSimilarityFunction.Aggregation.NONE,
                     isSoftDeletesField,
                     isParentField);
             infos[i].checkConsistency();

@@ -200,8 +200,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            false,
-            MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+            MultiVectorSimilarityFunction.Aggregation.NONE,
             true,
             false);
     List<Integer> docsDeleted = Arrays.asList(1, 3, 7, 8, DocIdSetIterator.NO_MORE_DOCS);
@@ -242,8 +241,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            false,
-            MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+            MultiVectorSimilarityFunction.Aggregation.NONE,
             true,
             false);
     for (DocValuesFieldUpdates update : updates) {
@@ -310,8 +308,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            false,
-            MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+            MultiVectorSimilarityFunction.Aggregation.NONE,
             true,
             false);
     List<Integer> docsDeleted = Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS);
@@ -383,8 +380,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            false,
-            MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+            MultiVectorSimilarityFunction.Aggregation.NONE,
             true,
             false);
     List<DocValuesFieldUpdates> updates =
@@ -424,8 +420,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            false,
-            MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+            MultiVectorSimilarityFunction.Aggregation.NONE,
             true,
             false);
     updates = Arrays.asList(singleUpdate(Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS), 3, true));

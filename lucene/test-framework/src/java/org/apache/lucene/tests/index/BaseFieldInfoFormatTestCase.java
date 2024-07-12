@@ -331,7 +331,6 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.vectorDimension(),
               fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
-              fieldType.isMultiVector(),
               fieldType.multiVectorAggregate(),
               field.equals(softDeletesField),
               field.equals(parentField));
@@ -467,8 +466,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
-        false,
-        MultiVectorSimilarityFunction.DEFAULT_AGGREGATION,
+        MultiVectorSimilarityFunction.Aggregation.NONE,
         false,
         false);
   }

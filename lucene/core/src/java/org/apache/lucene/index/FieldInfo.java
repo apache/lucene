@@ -65,8 +65,7 @@ public final class FieldInfo {
   private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
 
-  // if true, field is a multi-vector
-  private final boolean isMultiVector;
+  // if not NONE, field is a multi-vector
   private final MultiVectorSimilarityFunction.Aggregation multiVectorAggregate;
   private final MultiVectorSimilarityFunction multiVectorSimilarityFunction;
 
@@ -97,7 +96,6 @@ public final class FieldInfo {
       int vectorDimension,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
-      boolean isMultiVector,
       MultiVectorSimilarityFunction.Aggregation multiVectorAggregate,
       boolean softDeletesField,
       boolean isParentField) {
@@ -127,7 +125,6 @@ public final class FieldInfo {
     this.vectorDimension = vectorDimension;
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
-    this.isMultiVector = isMultiVector;
     this.multiVectorAggregate = multiVectorAggregate;
     this.multiVectorSimilarityFunction =
         new MultiVectorSimilarityFunction(this.vectorSimilarityFunction, this.multiVectorAggregate);
@@ -282,11 +279,9 @@ public final class FieldInfo {
         o.vectorSimilarityFunction);
     verifySameMultiVectorOptions(
         fieldName,
-        this.isMultiVector,
         this.vectorDimension,
         this.vectorEncoding,
         this.multiVectorSimilarityFunction,
-        o.isMultiVector,
         o.vectorDimension,
         o.vectorEncoding,
         o.getMultiVectorSimilarityFunction());
@@ -454,27 +449,21 @@ public final class FieldInfo {
    */
   static void verifySameMultiVectorOptions(
       String fieldName,
-      boolean isT1,
       int vd1,
       VectorEncoding ve1,
       MultiVectorSimilarityFunction tsf1,
-      boolean isT2,
       int vd2,
       VectorEncoding ve2,
       MultiVectorSimilarityFunction tsf2) {
     verifySameVectorOptions(
         fieldName, vd1, ve1, tsf1.similarityFunction, vd2, ve2, tsf2.similarityFunction);
-    if (isT1 != isT2 || tsf1.aggregation != tsf2.aggregation) {
+    if (tsf1.aggregation != tsf2.aggregation) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
-              + "\" from isMultiVector="
-              + isT1
-              + ", multi-vector aggregation="
+              + "\" from multi-vector aggregation="
               + tsf1.aggregation
-              + " to inconsistent isMultiVector="
-              + isT2
-              + ", multi-vector aggregation="
+              + " to inconsistent multi-vector aggregation="
               + tsf2.aggregation);
     }
   }
@@ -592,11 +581,6 @@ public final class FieldInfo {
   /** Returns {@link VectorSimilarityFunction} for the field */
   public VectorSimilarityFunction getVectorSimilarityFunction() {
     return vectorSimilarityFunction;
-  }
-
-  /** Returns true if field is a multi-vector, false otherwise */
-  public boolean isMultiVector() {
-    return isMultiVector;
   }
 
   /** Returns {@link MultiVectorSimilarityFunction.Aggregation} for the field */
@@ -725,7 +709,7 @@ public final class FieldInfo {
 
   /** Returns whether any (numeric) multi-vector values exist for this field */
   public boolean hasMultiVectorValues() {
-    return isMultiVector;
+    return (multiVectorAggregate != MultiVectorSimilarityFunction.Aggregation.NONE);
   }
 
   /** Get a codec attribute value, or null if it does not exist */
