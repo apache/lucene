@@ -39,7 +39,12 @@ public class HnswUtil {
    * any entry point.
    */
   public static boolean isFullyConnected(HnswGraph knnValues) throws IOException {
-    return components(knnValues).size() < 2;
+    for (int level = 0; level < knnValues.numLevels(); level++) {
+      if (components(knnValues, level).size() > 1) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -47,31 +52,59 @@ public class HnswUtil {
    * there will only be a single component. If the graph is empty, the returned list will be empty.
    */
   public static List<Integer> componentSizes(HnswGraph hnsw) throws IOException {
-    return components(hnsw).stream().map(Component::size).toList();
+    return componentSizes(hnsw, 0);
+  }
+
+  /**
+   * Returns the sizes of the distinct graph components on the given level. If the graph is
+   * fully-connected there will only be a single component. If the graph is empty, the returned list
+   * will be empty.
+   */
+  public static List<Integer> componentSizes(HnswGraph hnsw, int level) throws IOException {
+    return components(hnsw, level).stream().map(Component::size).toList();
   }
 
   // Finds all connected components of the graph
-  static List<Component> components(HnswGraph hnsw) throws IOException {
+  static List<Component> components(HnswGraph hnsw, int level) throws IOException {
     List<Component> components = new ArrayList<>();
     FixedBitSet connectedNodes = new FixedBitSet(hnsw.size());
     assert hnsw.size() == hnsw.getNodesOnLevel(0).size();
     int total = 0;
-    int nextClear = 0;
+    HnswGraph.NodesIterator nodesIterator = hnsw.getNodesOnLevel(level);
+    int nextClear = nodesIterator.nextInt();
+    outer:
     while (nextClear != NO_MORE_DOCS) {
-      Component component = traverseConnectedNodes(hnsw, connectedNodes, nextClear);
+      Component component = traverseConnectedNodes(hnsw, level, connectedNodes, nextClear);
       assert component.size() > 0;
       components.add(component);
       total += component.size();
-      nextClear = nextClearBit(connectedNodes, component.start());
+      if (level == 0) {
+        nextClear = nextClearBit(connectedNodes, component.start());
+      } else {
+        while (nodesIterator.hasNext()) {
+          nextClear = nodesIterator.nextInt();
+          if (connectedNodes.get(nextClear) == false) {
+            continue outer;
+          }
+        }
+        nextClear = NO_MORE_DOCS;
+      }
     }
-    assert total == hnsw.size();
+    assert total == hnsw.getNodesOnLevel(level).size()
+        : "total="
+            + total
+            + " level nodes on level "
+            + level
+            + " = "
+            + hnsw.getNodesOnLevel(level).size();
     return components;
   }
 
   // count the nodes in a connected component of the graph and set the bits of its nodes in
   // connectedNodes bitset
   private static Component traverseConnectedNodes(
-      HnswGraph hnswGraph, FixedBitSet connectedNodes, int entryPoint) throws IOException {
+      HnswGraph hnswGraph, int level, FixedBitSet connectedNodes, int entryPoint)
+      throws IOException {
     // Start at entry point and search all nodes on this level
     assert connectedNodes.get(entryPoint) == false;
     Deque<Integer> stack = new ArrayDeque<>();
@@ -84,7 +117,7 @@ public class HnswUtil {
       }
       count++;
       connectedNodes.set(node);
-      hnswGraph.seek(0, node);
+      hnswGraph.seek(level, node);
       int friendOrd;
       while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
         stack.push(friendOrd);

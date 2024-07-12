@@ -137,7 +137,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       HnswGraphSearcher graphSearcher)
       throws IOException {
     if (M <= 0) {
-      throw new IllegalArgumentException("maxConn must be positive");
+      throw new IllegalArgumentException("M (max connections) must be positive");
     }
     if (beamWidth <= 0) {
       throw new IllegalArgumentException("beamWidth must be positive");
@@ -163,7 +163,6 @@ public class HnswGraphBuilder implements HnswBuilder {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
     addVectors(maxOrd);
-    finish();
     return getCompletedGraph();
   }
 
@@ -173,8 +172,11 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph getCompletedGraph() {
-    frozen = true;
+  public OnHeapHnswGraph getCompletedGraph() throws IOException {
+    if (!frozen) {
+      finish();
+      frozen = true;
+    }
     return getGraph();
   }
 
@@ -408,7 +410,23 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   private void connectComponents() throws IOException {
-    List<Component> components = HnswUtil.components(hnsw);
+    long start = System.nanoTime();
+    for (int level = 0; level < hnsw.numLevels(); level++) {
+      if (connectComponents(level) == false) {
+        if (infoStream.isEnabled(HNSW_COMPONENT)) {
+          infoStream.message(HNSW_COMPONENT, "connectComponents failed on level " + level);
+        }
+      }
+    }
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT, "connectComponents " + (System.nanoTime() - start) / 1_000_000 + " ms");
+    }
+  }
+
+  private boolean connectComponents(int level) throws IOException {
+    List<Component> components = HnswUtil.components(hnsw, level);
+    boolean result = true;
     if (components.size() > 1) {
       // connect other components to the largest one
       Component c0 = components.stream().max(Comparator.comparingInt(Component::size)).get();
@@ -431,22 +449,26 @@ public class HnswGraphBuilder implements HnswBuilder {
               break;
             }
           }
-          /*
           if (!linked) {
+            result = false;
             // TODO: maybe try some more aggressive measures to ensure linkage
             // eg we can try pruning to make room, but if we do that we don't want to
             // create more islands. Or we can consider making the NeighborArray bigger, maybe.
           }
-          */
         }
       }
     }
+    return result;
   }
 
+  // Try to link two nodes bidirectionally, return false (and do not link either way) if
+  // either node has the max number of connections already.
   private boolean tryLink(int n0, int n1, float score) {
     NeighborArray nbr0 = hnsw.getNeighbors(0, n0);
     NeighborArray nbr1 = hnsw.getNeighbors(0, n1);
-    if (nbr0.size() == nbr0.nodes().length || nbr1.size() == nbr1.nodes().length) {
+    // must subtract 1 here since the nodes array is one larger than the configured
+    // max neighbors (M / 2M).
+    if (nbr0.size() >= nbr0.nodes().length - 1 || nbr1.size() >= nbr1.nodes().length - 1) {
       return false;
     }
     nbr0.addOutOfOrder(n1, score);
