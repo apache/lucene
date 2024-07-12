@@ -1380,7 +1380,7 @@ public class TestBlockJoin extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(r);
 
     // never matches:
-    Query childQuery = new TermQuery(new Term("childText", "bogus"));
+    Query childQuery = new TermQuery(new Term("childBogusField", "bogus"));
     BitSetProducer parentsFilter =
         new QueryBitSetProducer(new TermQuery(new Term("isParent", "yes")));
     CheckJoinIndex.check(r, parentsFilter);

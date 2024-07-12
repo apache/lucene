@@ -1780,6 +1780,9 @@ public abstract class LuceneTestCase extends Assert {
 
   /** TODO: javadoc */
   public static IOContext newIOContext(Random random, IOContext oldContext) {
+    if (oldContext == IOContext.READONCE) {
+      return oldContext; // don't mess with the READONCE singleton
+    }
     final int randomNumDocs = random.nextInt(4192);
     final int size = random.nextInt(512) * randomNumDocs;
     if (oldContext.flushInfo() != null) {
@@ -1798,19 +1801,16 @@ public abstract class LuceneTestCase extends Assert {
               random.nextBoolean(),
               TestUtil.nextInt(random, 1, 100)));
     } else {
-      // Make a totally random IOContext:
+      // Make a totally random IOContext, except READONCE which has semantic implications
       final IOContext context;
-      switch (random.nextInt(4)) {
+      switch (random.nextInt(3)) {
         case 0:
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = IOContext.READONCE;
-          break;
-        case 2:
           context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
           break;
-        case 3:
+        case 2:
           context = new IOContext(new FlushInfo(randomNumDocs, size));
           break;
         default:

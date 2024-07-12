@@ -38,6 +38,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * A Query that matches documents containing a particular sequence of terms. A PhraseQuery is built
@@ -498,7 +499,8 @@ public class PhraseQuery extends Query {
 
         for (int i = 0; i < terms.length; i++) {
           final Term t = terms[i];
-          final TermState state = states[i].get(context);
+          final IOSupplier<TermState> supplier = states[i].get(context);
+          final TermState state = supplier == null ? null : supplier.get();
           if (state == null) {
             /* term doesnt exist in this segment */
             assert termNotInReader(reader, t) : "no termstate found but term exists in reader";

@@ -20,15 +20,19 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
+import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
@@ -138,6 +142,60 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     @Override
     public int nextDoc() throws IOException {
       return values.nextDoc();
+    }
+  }
+
+  /**
+   * Given old doc ids and an id mapping, maps old ordinal to new ordinal. Note: this method return
+   * nothing and output are written to parameters
+   *
+   * @param oldDocIds the old or current document ordinals. Must not be null.
+   * @param sortMap the document sorting map for how to make the new ordinals. Must not be null.
+   * @param old2NewOrd int[] maps from old ord to new ord
+   * @param new2OldOrd int[] maps from new ord to old ord
+   * @param newDocsWithField set of new doc ids which has the value
+   */
+  public static void mapOldOrdToNewOrd(
+      DocsWithFieldSet oldDocIds,
+      Sorter.DocMap sortMap,
+      int[] old2NewOrd,
+      int[] new2OldOrd,
+      DocsWithFieldSet newDocsWithField)
+      throws IOException {
+    // TODO: a similar function exists in IncrementalHnswGraphMerger#getNewOrdMapping
+    //       maybe we can do a further refactoring
+    Objects.requireNonNull(oldDocIds);
+    Objects.requireNonNull(sortMap);
+    assert (old2NewOrd != null || new2OldOrd != null || newDocsWithField != null);
+    assert (old2NewOrd == null || old2NewOrd.length == oldDocIds.cardinality());
+    assert (new2OldOrd == null || new2OldOrd.length == oldDocIds.cardinality());
+    IntIntHashMap newIdToOldOrd = new IntIntHashMap();
+    DocIdSetIterator iterator = oldDocIds.iterator();
+    int[] newDocIds = new int[oldDocIds.cardinality()];
+    int oldOrd = 0;
+    for (int oldDocId = iterator.nextDoc();
+        oldDocId != DocIdSetIterator.NO_MORE_DOCS;
+        oldDocId = iterator.nextDoc()) {
+      int newId = sortMap.oldToNew(oldDocId);
+      newIdToOldOrd.put(newId, oldOrd);
+      newDocIds[oldOrd] = newId;
+      oldOrd++;
+    }
+
+    Arrays.sort(newDocIds);
+    int newOrd = 0;
+    for (int newDocId : newDocIds) {
+      int currOldOrd = newIdToOldOrd.get(newDocId);
+      if (old2NewOrd != null) {
+        old2NewOrd[currOldOrd] = newOrd;
+      }
+      if (new2OldOrd != null) {
+        new2OldOrd[newOrd] = currOldOrd;
+      }
+      if (newDocsWithField != null) {
+        newDocsWithField.add(newDocId);
+      }
+      newOrd++;
     }
   }
 

@@ -84,10 +84,13 @@ public class PerThreadPKLookup {
     for (int seg = 0; seg < numSegs; seg++) {
       if (termsEnums[seg].seekExact(id)) {
         postingsEnums[seg] = termsEnums[seg].postings(postingsEnums[seg], 0);
-        int docID = postingsEnums[seg].nextDoc();
-        if (docID != PostingsEnum.NO_MORE_DOCS
-            && (liveDocs[seg] == null || liveDocs[seg].get(docID))) {
-          return docBases[seg] + docID;
+        int docID = -1;
+        // TODO: Can we get postings' last Doc directly? and return the last one we find.
+        // TODO: Maybe we should check liveDoc whether null out of the loop?
+        while ((docID = postingsEnums[seg].nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
+          if (liveDocs[seg] == null || liveDocs[seg].get(docID)) {
+            return docBases[seg] + docID;
+          }
         }
         assert hasDeletions;
       }
