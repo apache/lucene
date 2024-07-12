@@ -318,9 +318,8 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
 
   private void flushDocBlock(boolean end) throws IOException {
     assert docBufferUpto != 0;
-    assert end == (docBufferUpto != BLOCK_SIZE);
 
-    if (end) {
+    if (docBufferUpto < BLOCK_SIZE) {
       PostingsUtil.writeVIntBlock(blockOutput, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
     } else {
       writeImpacts(competitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
@@ -499,6 +498,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       state.globalImpacts = globalCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs();
       globalCompetitiveFreqNormAccumulator = new CompetitiveImpactAccumulator();
     } else {
+      state.globalImpacts = null;
       globalCompetitiveFreqNormAccumulator.clear();
     }
   }

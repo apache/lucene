@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import java.util.Collection;
+import java.util.List;
 
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -27,7 +27,6 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsReader.MutableImpactList;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.SegmentReadState;
@@ -57,7 +56,7 @@ public class Lucene912PostingsFormat extends PostingsFormat {
   public static final int BLOCK_SIZE_LOG2 = ForUtil.BLOCK_SIZE_LOG2;
   public static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
-  public static final int SKIP_FACTOR = 8;
+  public static final int SKIP_FACTOR = 64;
   public static final int SKIP_TOTAL_SIZE = SKIP_FACTOR * BLOCK_SIZE;
   public static final int SKIP_MASK = SKIP_TOTAL_SIZE - 1;
 
@@ -144,7 +143,7 @@ public class Lucene912PostingsFormat extends PostingsFormat {
     /**
      * Impacts across the whole postings list.
      */
-    public Collection<Impact> globalImpacts;
+    public List<Impact> globalImpacts;
 
     /** Sole constructor. */
     public IntBlockTermState() {
@@ -168,6 +167,7 @@ public class Lucene912PostingsFormat extends PostingsFormat {
       payStartFP = other.payStartFP;
       lastPosBlockOffset = other.lastPosBlockOffset;
       singletonDocID = other.singletonDocID;
+      globalImpacts = other.globalImpacts;
     }
 
     @Override
