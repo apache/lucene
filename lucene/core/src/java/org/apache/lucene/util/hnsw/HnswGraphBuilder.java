@@ -405,7 +405,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     return ((int) (-log(randDouble) * ml));
   }
 
-  private void finish() throws IOException {
+  void finish() throws IOException {
     connectComponents();
   }
 

@@ -168,5 +168,14 @@ public class HnswUtil {
     return true;
   }
 
+  /**
+   * A component (also "connected component") of a graph is a collection of nodes that are connected
+   * by neighbor links: every node in a connected component is reachable from every other node in
+   * the component. See https://en.wikipedia.org/wiki/Component_(graph_theory). The graph is said to
+   * be "fully connected" <i>iff</i> it has a single component, or it is empty.
+   *
+   * @param start the lowest-numbered node in the component
+   * @param size the number of nodes in the component
+   */
   record Component(int start, int size) {}
 }
