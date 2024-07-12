@@ -340,21 +340,16 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       blockOutput.writeVLong(spareOutput.size());
       spareOutput.copyTo(blockOutput);
       spareOutput.reset();
+      if (writePositions) {
+        long blockTTF = Arrays.stream(freqBuffer).sum();
+        blockOutput.writeByte((byte) blockTTF);
+        blockOutput.writeVLong(blockTTF >> 8);
+      }
       forDeltaUtil.encodeDeltas(docDeltaBuffer, blockOutput);
-      long blockTTF = 0;
       if (writeFreqs) {
-        if (writePositions) {
-          // Compute it before calling pforUtil, which modifies the array in place
-          blockTTF = Arrays.stream(freqBuffer).sum();
-        }
         pforUtil.encode(freqBuffer, blockOutput);
       }
       writeDocDeltaAndBlockLength(docID - lastBlockDocID, blockOutput.size(), skipOutput);
-      if (writePositions) {
-        // avoid introducing unpredictable branches with a vlong and take advantage of the fact that block TTF is often <= 2^15
-        skipOutput.writeByte((byte) blockTTF);
-        skipOutput.writeVLong(blockTTF >> 8);
-      }
     }
 
     blockOutput.copyTo(skipOutput);

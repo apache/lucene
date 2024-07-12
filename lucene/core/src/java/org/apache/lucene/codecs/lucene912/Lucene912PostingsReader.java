@@ -272,8 +272,22 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   @Override
   public ImpactsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags)
       throws IOException {
-    if (state.docFreq >= BLOCK_SIZE && PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false) {
-      return new BlockImpactsEnum(fieldInfo, (IntBlockTermState) state);
+    final boolean indexHasPositions =
+        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    
+    if (state.docFreq >= BLOCK_SIZE && (indexHasPositions == false || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false)) {
+      return new BlockImpactsDocsEnum(fieldInfo, (IntBlockTermState) state);
+    }
+
+    final boolean indexHasOffsets =
+        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
+            >= 0;
+    final boolean indexHasPayloads = fieldInfo.hasPayloads();
+    
+    if (state.docFreq >= BLOCK_SIZE && indexHasPositions
+        && (indexHasOffsets == false || PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS) == false)
+        && (indexHasPayloads == false || PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS) == false)) {
+      return new BlockImpactsPostingsEnum(fieldInfo, (IntBlockTermState) state);
     }
 
     return new SlowImpactsEnum(postings(fieldInfo, state, null, flags));
@@ -482,11 +496,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
 
         lastDocInBlock += docDelta;
+        docIn.skipBytes(docIn.readVLong()); // skip impacts
         if (indexHasPos) {
           docIn.readByte(); // block ttf
           docIn.readVLong(); // block ttf
         }
-        docIn.skipBytes(docIn.readVLong()); // skip impacts
       } else {
         lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
       }
@@ -524,13 +538,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
             lastDocInBlock += docDelta;
 
-            if (indexHasPos) {
-              docIn.readByte(); // block ttf
-              docIn.readVLong(); // block ttf
-            }
-
             if (target <= lastDocInBlock) {
               docIn.skipBytes(docIn.readVLong()); // skip impacts
+              if (indexHasPos) {
+                // skip block TTF
+                docIn.readByte();
+                docIn.readVLong();
+              }
               break;
             }
 
@@ -838,9 +852,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
           lastDocInBlock += docDelta;
 
+          docIn.skipBytes(docIn.readVLong()); // impacts
+
           docIn.readByte();
           docIn.readVLong(); // block ttf
-          docIn.skipBytes(docIn.readVLong()); // impacts
         } else {
           lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
         }
@@ -880,19 +895,21 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               docDelta |= docIn.readVInt() << 20;
               blockLength = (blockLength & 0x7FFL) | docIn.readVLong() << 11;
             }
+            long blockEndFP = docIn.getFilePointer() + blockLength;
 
             lastDocInBlock += docDelta;
+
+            docIn.skipBytes(docIn.readVLong()); // impacts
 
             if (target <= lastDocInBlock) {
               docIn.readByte(); // block ttf
               docIn.readVLong(); // block ttf
-              docIn.skipBytes(docIn.readVLong()); // impacts
               break;
             }
             // skip block
             long blockTTF = (docIn.readByte() & 0xFFL) | (docIn.readVLong() << 8);
             posPendingCount += blockTTF;
-            docIn.skipBytes(blockLength);
+            docIn.seek(blockEndFP);
             blockUpto += BLOCK_SIZE;
           } else {
             lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
@@ -1113,7 +1130,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
   }
 
-  final class BlockImpactsEnum extends ImpactsEnum {
+  final class BlockImpactsDocsEnum extends ImpactsEnum {
 
     final ForUtil forUtil = new ForUtil();
     final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
@@ -1155,7 +1172,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // level 2 skip data
     private final List<Impact> globalImpacts;
 
-    public BlockImpactsEnum(FieldInfo fieldInfo, IntBlockTermState termState) throws IOException {
+    public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState) throws IOException {
       //System.out.println("NEW");
       this.startDocIn = Lucene912PostingsReader.this.docIn;
       this.docIn = null;
@@ -1313,17 +1330,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
             lastDocInBlock += docDelta;
 
-            if (indexHasPos) {
-              docIn.readByte(); // block ttf
-              docIn.readVLong(); // block ttf
-            }
-
             if (target <= lastDocInBlock) {
               blockEndFP = docIn.getFilePointer() + blockLength;
               final int numImpactBytes = docIn.readVInt();
               serializedBlockImpacts.growNoCopy(numImpactBytes);
               docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
               serializedBlockImpacts.setLength(numImpactBytes);
+              if (indexHasPos) {
+                docIn.readByte(); // block ttf
+                docIn.readVLong(); // block ttf
+              }
               break;
             }
             // skip block
@@ -1341,11 +1357,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc >= lastDocInBlock) {
+      if (doc >= lastDocInBlock || needsRefilling) {
         advanceShallow(doc + 1);
-        refillDocs();
-        needsRefilling = false;
-      } else if (needsRefilling) {
         refillDocs();
         needsRefilling = false;
       }
@@ -1436,6 +1449,385 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
 
       };
+    }
+
+    @Override
+    public long cost() {
+      return docFreq;
+    }
+  }
+
+  final class BlockImpactsPostingsEnum extends ImpactsEnum {
+
+    final ForUtil forUtil = new ForUtil();
+    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(forUtil);
+
+    private final long[] docBuffer = new long[BLOCK_SIZE + 1];
+    private final long[] freqBuffer = new long[BLOCK_SIZE];
+    private final long[] posDeltaBuffer = new long[BLOCK_SIZE];
+
+    private int docBufferUpto;
+    private int posBufferUpto;
+
+    final IndexInput startDocIn;
+
+    IndexInput docIn;
+    final IndexInput posIn;
+
+    final boolean indexHasFreq;
+    final boolean indexHasPos;
+    final boolean indexHasOffsets;
+    final boolean indexHasPayloads;
+
+    private int docFreq; // number of docs in this posting list
+    private long totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
+    private int blockUpto; // number of docs in or before the current block
+    private int doc; // doc we last read
+    private long accum; // accumulator for doc deltas
+    private int freq; // freq we last read
+    private int position; // current position
+
+    // how many positions "behind" we are; nextPosition must
+    // skip these to "catch up":
+    private long posPendingCount;
+
+    // Lazy pos seek: if != -1 then we must seek to this FP
+    // before reading positions:
+    private long posPendingFP;
+
+    // Where this term's postings start in the .pos file:
+    private long posTermStartFP;
+
+    // File pointer where the last (vInt encoded) pos delta
+    // block is.  We need this to know whether to bulk
+    // decode vs vInt decode the block:
+    private long lastPosBlockFP;
+
+    // level 0 skip data
+    private int lastDocInBlock;
+    // level 1 skip data
+    private int nextSkipDoc;
+    private long nextSkipDocFP;
+    private int nextSkipBlockUpto;
+    private long nextSkipPosFP;
+    private int nextSkipPosUpto;
+
+    private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
+
+    public BlockImpactsPostingsEnum(FieldInfo fieldInfo, IntBlockTermState termState) throws IOException {
+      this.startDocIn = Lucene912PostingsReader.this.docIn;
+      this.docIn = null;
+      indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      indexHasPos =
+          fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      indexHasOffsets =
+          fieldInfo
+                  .getIndexOptions()
+                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
+              >= 0;
+      indexHasPayloads = fieldInfo.hasPayloads();
+
+      this.posIn = Lucene912PostingsReader.this.posIn.clone();
+
+      // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
+      // advance()
+      docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
+
+      docFreq = termState.docFreq;
+      posTermStartFP = termState.posStartFP;
+      totalTermFreq = termState.totalTermFreq;
+      singletonDocID = termState.singletonDocID;
+      if (docFreq > 1 || true) {
+        if (docIn == null) {
+          // lazy init
+          docIn = startDocIn.clone();
+        }
+        seekAndPrefetchPostings(docIn, termState);
+      }
+      posPendingFP = posTermStartFP;
+      nextSkipPosFP = posTermStartFP;
+      posPendingCount = 0;
+      if (termState.totalTermFreq < BLOCK_SIZE) {
+        lastPosBlockFP = posTermStartFP;
+      } else if (termState.totalTermFreq == BLOCK_SIZE) {
+        lastPosBlockFP = -1;
+      } else {
+        lastPosBlockFP = posTermStartFP + termState.lastPosBlockOffset;
+      }
+
+      doc = -1;
+      accum = -1;
+      blockUpto = 0;
+      lastDocInBlock = -1;
+      nextSkipDoc = -1;
+      nextSkipDocFP = termState.docStartFP;
+      nextSkipBlockUpto = 0;
+      nextSkipPosUpto = 0;
+      docBufferUpto = BLOCK_SIZE;
+    }
+
+    @Override
+    public int freq() throws IOException {
+      return freq;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    private void refillDocs() throws IOException {
+      final int left = docFreq - blockUpto;
+      assert left >= 0;
+
+      if (left >= BLOCK_SIZE) {
+        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        pforUtil.decode(docIn, freqBuffer);
+        blockUpto += BLOCK_SIZE;
+      } else if (docFreq == 1) {
+        docBuffer[0] = singletonDocID;
+        freqBuffer[0] = totalTermFreq;
+        docBuffer[1] = NO_MORE_DOCS;
+        blockUpto++;
+      } else {
+        // Read vInts:
+        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
+        prefixSum(docBuffer, left, accum);
+        docBuffer[left] = NO_MORE_DOCS;
+        blockUpto += left;
+      }
+      accum = docBuffer[BLOCK_SIZE - 1];
+      docBufferUpto = 0;
+      assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+    }
+
+    private void skipLevel1To(int target) throws IOException {
+      while (true) {
+        accum = nextSkipDoc;
+        lastDocInBlock = nextSkipDoc;
+        docIn.seek(nextSkipDocFP);
+        if (indexHasPos) {
+          posPendingFP = nextSkipPosFP;
+          posPendingCount = nextSkipPosUpto;
+        }
+        blockUpto = nextSkipBlockUpto;
+        nextSkipBlockUpto += SKIP_TOTAL_SIZE;
+
+        if (docFreq - blockUpto < SKIP_TOTAL_SIZE) {
+          nextSkipDoc = DocIdSetIterator.NO_MORE_DOCS;
+          break;
+        }
+
+        nextSkipDoc += docIn.readVInt();
+        long impactLength = docIn.readVLong();
+        long skipLength = docIn.readVLong();
+        if (indexHasPos) {
+          nextSkipPosFP += docIn.readVLong();
+          nextSkipPosUpto = docIn.readVInt();
+          if (indexHasOffsets || indexHasPayloads) {
+            docIn.readVLong(); // skip pay fp delta
+            docIn.readVInt(); // skip pay upto
+          }
+        }
+        nextSkipDocFP = docIn.getFilePointer() + impactLength + skipLength;
+
+        if (nextSkipDoc >= target) {
+          // skip impacts
+          docIn.skipBytes(impactLength);
+          break;
+        }
+      }
+    }
+
+    @Override
+    public void advanceShallow(int target) throws IOException {
+      // todo
+    }
+
+    @Override
+    public Impacts getImpacts() throws IOException {
+      return new Impacts() {
+        
+        @Override
+        public int numLevels() {
+          return 1;
+        }
+        
+        @Override
+        public List<Impact> getImpacts(int level) {
+          return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+        }
+        
+        @Override
+        public int getDocIdUpTo(int level) {
+          return NO_MORE_DOCS;
+        }
+      };
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(doc + 1);
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target > lastDocInBlock) { // advance level 0 skip data
+
+        if (target > nextSkipDoc) { // advance level 1 skip data
+          skipLevel1To(target);
+        } else {
+          for (int i = docBufferUpto; i < BLOCK_SIZE; ++i) {
+            posPendingCount += freqBuffer[i];
+          }
+        }
+
+        // Now advance the 1st skip level
+        while (true) {
+          accum = lastDocInBlock;
+          if (docFreq - blockUpto >= BLOCK_SIZE) {
+            final int token = docIn.readInt();
+            int docDelta = token & 0xFFFFF;
+            long blockLength = token >>> 20;
+            if (token < 0) {
+              docDelta |= docIn.readVInt() << 20;
+              blockLength = (blockLength & 0x7FFL) | docIn.readVLong() << 11;
+            }
+            long blockEndFP = docIn.getFilePointer() + blockLength;
+
+            lastDocInBlock += docDelta;
+
+            docIn.skipBytes(docIn.readVLong()); // impacts
+
+            if (target <= lastDocInBlock) {
+              docIn.readByte(); // block ttf
+              docIn.readVLong(); // block ttf
+              break;
+            }
+            // skip block
+            long blockTTF = (docIn.readByte() & 0xFFL) | (docIn.readVLong() << 8);
+            posPendingCount += blockTTF;
+            docIn.seek(blockEndFP);
+            blockUpto += BLOCK_SIZE;
+          } else {
+            lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+            break;
+          }
+        }
+
+        refillDocs();
+      }
+
+      // Now scan
+      long doc;
+      do {
+        doc = docBuffer[docBufferUpto];
+        freq = (int) freqBuffer[docBufferUpto];
+        posPendingCount += freq;
+        docBufferUpto++;
+      } while (doc < target);
+
+      position = 0;
+
+      return this.doc = (int) doc;
+    }
+
+    private void skipPositions() throws IOException {
+      // Skip positions now:
+      long toSkip = posPendingCount - freq;
+      // if (DEBUG) {
+      //   System.out.println("      FPR.skipPositions: toSkip=" + toSkip);
+      // }
+
+      final int leftInBlock = BLOCK_SIZE - posBufferUpto;
+      if (toSkip < leftInBlock) {
+        posBufferUpto += toSkip;
+      } else {
+        toSkip -= leftInBlock;
+        while (toSkip >= BLOCK_SIZE) {
+          assert posIn.getFilePointer() != lastPosBlockFP;
+          pforUtil.skip(posIn);
+          toSkip -= BLOCK_SIZE;
+        }
+        refillPositions();
+        posBufferUpto = (int) toSkip;
+      }
+
+      position = 0;
+    }
+
+    private void refillPositions() throws IOException {
+      if (posIn.getFilePointer() == lastPosBlockFP) {
+        final int count = (int) (totalTermFreq % BLOCK_SIZE);
+        int payloadLength = 0;
+        for (int i = 0; i < count; i++) {
+          int code = posIn.readVInt();
+          if (indexHasPayloads) {
+            if ((code & 1) != 0) {
+              payloadLength = posIn.readVInt();
+            }
+            posDeltaBuffer[i] = code >>> 1;
+            if (payloadLength != 0) {
+              posIn.skipBytes(payloadLength);
+            }
+          } else {
+            posDeltaBuffer[i] = code;
+          }
+
+          if (indexHasOffsets) {
+            int deltaCode = posIn.readVInt();
+            if ((deltaCode & 1) != 0) {
+              posIn.readVInt(); // offset length
+            }
+          }
+        }
+      } else {
+        pforUtil.decode(posIn, posDeltaBuffer);
+      }
+    }
+
+    @Override
+    public int nextPosition() throws IOException {
+      assert posPendingCount > 0;
+
+      if (posPendingFP != -1) {
+        posIn.seek(posPendingFP);
+        posPendingFP = -1;
+
+        // Force buffer refill:
+        posBufferUpto = BLOCK_SIZE;
+      }
+
+      if (posPendingCount > freq) {
+        skipPositions();
+        posPendingCount = freq;
+      }
+
+      if (posBufferUpto == BLOCK_SIZE) {
+        refillPositions();
+        posBufferUpto = 0;
+      }
+      position += posDeltaBuffer[posBufferUpto];
+
+      posBufferUpto++;
+      posPendingCount--;
+      return position;
+    }
+
+    @Override
+    public int startOffset() {
+      return -1;
+    }
+
+    @Override
+    public int endOffset() {
+      return -1;
+    }
+
+    @Override
+    public BytesRef getPayload() {
+      return null;
     }
 
     @Override
