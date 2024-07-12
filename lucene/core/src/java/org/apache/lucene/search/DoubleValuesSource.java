@@ -116,15 +116,15 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
-  public final LongValuesSource toPreciseLongDoubleValuesSource() {
-    return new PreciseLongDoubleValuesSource(this);
+  public final LongValuesSource toSortableLongDoubleValuesSource() {
+    return new SortableLongDoubleValuesSource(this);
   }
 
-  private static class PreciseLongDoubleValuesSource extends LongValuesSource {
+  private static class SortableLongDoubleValuesSource extends LongValuesSource {
 
     private final DoubleValuesSource inner;
 
-    private PreciseLongDoubleValuesSource(DoubleValuesSource inner) {
+    private SortableLongDoubleValuesSource(DoubleValuesSource inner) {
       this.inner = inner;
     }
 
@@ -159,13 +159,13 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
-      PreciseLongDoubleValuesSource that = (PreciseLongDoubleValuesSource) o;
+      SortableLongDoubleValuesSource that = (SortableLongDoubleValuesSource) o;
       return Objects.equals(inner, that.inner);
     }
 
     @Override
     public String toString() {
-      return "preciseLong(" + inner.toString() + ")";
+      return "sortableLong(" + inner.toString() + ")";
     }
 
     @Override
@@ -233,8 +233,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      // TODO: hmm do we want to revert that?
-      return this;
+      return inner.rewrite(searcher).toLongValuesSource();
     }
   }
 

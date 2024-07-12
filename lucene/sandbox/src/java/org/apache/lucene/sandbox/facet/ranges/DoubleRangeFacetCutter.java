@@ -48,9 +48,9 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
     this.singleDoubleValuesSource = MultiDoubleValuesSource.unwrapSingleton(valuesSource);
     this.doubleRanges = doubleRanges;
     if (singleDoubleValuesSource != null) { // TODO: ugly!
-      this.singleLongValuesSource = singleDoubleValuesSource.toPreciseLongDoubleValuesSource();
+      this.singleLongValuesSource = singleDoubleValuesSource.toSortableLongDoubleValuesSource();
     } else {
-      this.multiLongValuesSource = multiDoubleValuesSource.toPreciseMultiLongValuesSource();
+      this.multiLongValuesSource = multiDoubleValuesSource.toSortableMultiLongValuesSource();
     }
     this.longRanges = mapDoubleRangesToLongWithPrecision(doubleRanges);
     this.longRangeFacetCutter =

@@ -119,21 +119,17 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
-  /** Convert to a PreciseMultiLongValuesSource. * */
-  public final PreciseMultiLongValuesSource toPreciseMultiLongValuesSource() {
-    return new PreciseMultiLongValuesSource(this);
+  /** Convert to a SortableMultiLongValuesSource. * */
+  public final SortableMultiLongValuesSource toSortableMultiLongValuesSource() {
+    return new SortableMultiLongValuesSource(this);
   }
 
-  /**
-   * Convert inner double values to sortable long using NumericUtils.doubleToSortableLong
-   *
-   * <p>TODO: rename to Sortable...? *
-   */
-  public static class PreciseMultiLongValuesSource extends MultiLongValuesSource {
+  /** Convert inner double values to sortable long using NumericUtils.doubleToSortableLong */
+  public static class SortableMultiLongValuesSource extends MultiLongValuesSource {
 
     MultiDoubleValuesSource inner;
 
-    PreciseMultiLongValuesSource(MultiDoubleValuesSource inner) {
+    SortableMultiLongValuesSource(MultiDoubleValuesSource inner) {
       this.inner = inner;
     }
 
@@ -173,7 +169,7 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
-      PreciseMultiLongValuesSource that = (PreciseMultiLongValuesSource) o;
+      SortableMultiLongValuesSource that = (SortableMultiLongValuesSource) o;
       return Objects.equals(inner, that.inner);
     }
 
