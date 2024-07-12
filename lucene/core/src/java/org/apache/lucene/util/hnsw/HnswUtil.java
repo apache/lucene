@@ -38,7 +38,7 @@ public class HnswUtil {
    * Returns true iff level 0 of the graph is fully connected - that is every node is reachable from
    * any entry point.
    */
-  public static boolean isFullyConnected(HnswGraph knnValues) throws IOException {
+  public static boolean isRooted(HnswGraph knnValues) throws IOException {
     for (int level = 0; level < knnValues.numLevels(); level++) {
       if (components(knnValues, level).size() > 1) {
         return false;
@@ -152,8 +152,14 @@ public class HnswUtil {
     }
   }
 
-  public static boolean graphIsConnected(IndexReader reader, String vectorField)
-      throws IOException {
+  /**
+   * In graph theory, "connected components" are really defined only for undirected (ie
+   * bidirectional) graphs. Our graphs are directed, because of pruning, but they are *mostly*
+   * undirected. In this case we compute components starting from a single node so what we are
+   * really measuring is whether the graph is a "rooted graph". TODO: measure whether the graph is
+   * "strongly connected" ie there is a path from every node to every other node.
+   */
+  public static boolean graphIsRooted(IndexReader reader, String vectorField) throws IOException {
     for (LeafReaderContext ctx : reader.leaves()) {
       CodecReader codecReader = (CodecReader) FilterLeafReader.unwrap(ctx.reader());
       HnswGraph graph =
@@ -161,7 +167,7 @@ public class HnswUtil {
                   ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
                       .getFieldReader(vectorField))
               .getGraph(vectorField);
-      if (isFullyConnected(graph) == false) {
+      if (isRooted(graph) == false) {
         return false;
       }
     }
@@ -169,10 +175,10 @@ public class HnswUtil {
   }
 
   /**
-   * A component (also "connected component") of a graph is a collection of nodes that are connected
-   * by neighbor links: every node in a connected component is reachable from every other node in
-   * the component. See https://en.wikipedia.org/wiki/Component_(graph_theory). The graph is said to
-   * be "fully connected" <i>iff</i> it has a single component, or it is empty.
+   * A component (also "connected component") of an undirected graph is a collection of nodes that
+   * are connected by neighbor links: every node in a connected component is reachable from every
+   * other node in the component. See https://en.wikipedia.org/wiki/Component_(graph_theory). Such a
+   * graph is said to be "fully connected" <i>iff</i> it has a single component, or it is empty.
    *
    * @param start the lowest-numbered node in the component
    * @param size the number of nodes in the component

@@ -430,19 +430,21 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (components.size() > 1) {
       // connect other components to the largest one
       Component c0 = components.stream().max(Comparator.comparingInt(Component::size)).get();
+      // try even harder to find connections by using twice the beam width
+      GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(beamCandidates.k * 2);
       int[] eps = new int[1];
       for (Component c : components) {
         if (c != c0) {
-          beamCandidates.clear();
+          beam.clear();
           eps[0] = c0.start();
           RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
           // find the closest node in the largest component to the lowest-numbered node in this
           // component
-          graphSearcher.searchLevel(beamCandidates, scorer, 0, eps, hnsw, null);
+          graphSearcher.searchLevel(beam, scorer, 0, eps, hnsw, null);
           boolean linked = false;
-          while (beamCandidates.size() > 0) {
-            float score = beamCandidates.minimumScore();
-            int c0node = beamCandidates.popNode();
+          while (beam.size() > 0) {
+            float score = beam.minimumScore();
+            int c0node = beam.popNode();
             // link the nodes, best effort only as they may be full
             if (tryLink(c0node, c.start(), score)) {
               linked = true;
