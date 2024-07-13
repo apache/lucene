@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
@@ -35,12 +37,12 @@ import org.apache.lucene.util.FixedBitSet;
 public class HnswUtil {
 
   /**
-   * Returns true iff level 0 of the graph is fully connected - that is every node is reachable from
-   * any entry point.
+   * Returns true iff every level of the graph is rooted - that is every node is reachable from the
+   * entry node on each level.
    */
   public static boolean isRooted(HnswGraph knnValues) throws IOException {
     for (int level = 0; level < knnValues.numLevels(); level++) {
-      if (components(knnValues, level).size() > 1) {
+      if (components(knnValues, level, false).size() > 1) {
         return false;
       }
     }
@@ -48,24 +50,40 @@ public class HnswUtil {
   }
 
   /**
-   * Returns the sizes of the distinct graph components on level 0. If the graph is fully-connected
-   * there will only be a single component. If the graph is empty, the returned list will be empty.
+   * Returns true iff every level of the graph is strongly connected - that is every node is
+   * reachable from the every other node.
+   */
+  public static boolean isStronglyConnected(HnswGraph knnValues) throws IOException {
+    for (int level = 0; level < knnValues.numLevels(); level++) {
+      if (components(knnValues, level, true).size() > 1) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Returns the sizes of the distinct strongly-connected graph components on level 0. If the graph
+   * is fully-connected there will only be a single component. If the graph is empty, the returned
+   * list will be empty.
    */
   public static List<Integer> componentSizes(HnswGraph hnsw) throws IOException {
     return componentSizes(hnsw, 0);
   }
 
   /**
-   * Returns the sizes of the distinct graph components on the given level. If the graph is
-   * fully-connected there will only be a single component. If the graph is empty, the returned list
-   * will be empty.
+   * Returns the sizes of the distinct strongly-connected graph components on the given level. If
+   * the graph is strongly-connected there will only be a single component. If the graph is empty,
+   * the returned list will be empty.
    */
   public static List<Integer> componentSizes(HnswGraph hnsw, int level) throws IOException {
-    return components(hnsw, level).stream().map(Component::size).toList();
+    return components(hnsw, level, true).stream().map(Component::size).toList();
   }
 
-  // Finds all connected components of the graph
-  static List<Component> components(HnswGraph hnsw, int level) throws IOException {
+  // Finds connected components of the graph level. If strong==true, check for strongly-connected
+  // (bidirectional links) otherwise check for "rooted" connection from the first node in the graph
+  // level.
+  static List<Component> components(HnswGraph hnsw, int level, boolean strong) throws IOException {
     List<Component> components = new ArrayList<>();
     FixedBitSet connectedNodes = new FixedBitSet(hnsw.size());
     assert hnsw.size() == hnsw.getNodesOnLevel(0).size();
@@ -74,7 +92,7 @@ public class HnswUtil {
     int nextClear = nodesIterator.nextInt();
     outer:
     while (nextClear != NO_MORE_DOCS) {
-      Component component = traverseConnectedNodes(hnsw, level, connectedNodes, nextClear);
+      Component component = markComponent(hnsw, level, connectedNodes, nextClear, strong);
       assert component.size() > 0;
       components.add(component);
       total += component.size();
@@ -100,9 +118,37 @@ public class HnswUtil {
     return components;
   }
 
-  // count the nodes in a connected component of the graph and set the bits of its nodes in
-  // connectedNodes bitset
-  private static Component traverseConnectedNodes(
+  /**
+   * Count the nodes in a component of the graph and set the bits of its nodes in connectedNodes
+   * bitset.
+   *
+   * @param level the level of the graph to check
+   * @param connectedNodes a bitset the size of the entire graph with 1's indicating nodes that have
+   *     been marked as connected. This method updates the bitset.
+   * @param entryPoint a node id to start at
+   * @param strong check for "strongly connected" vs "rooted"
+   */
+  private static Component markComponent(
+      HnswGraph hnswGraph, int level, FixedBitSet connectedNodes, int entryPoint, boolean strong)
+      throws IOException {
+    if (strong) {
+      return markStronglyConnected(hnswGraph, level, connectedNodes, entryPoint);
+    } else {
+      return markRooted(hnswGraph, level, connectedNodes, entryPoint);
+    }
+  }
+
+  /**
+   * Count the nodes in a rooted component of the graph and set the bits of its nodes in
+   * connectedNodes bitset. Rooted means nodes that can be reached from a root node.
+   *
+   * @param hnswGraph the graph to check
+   * @param level the level of the graph to check
+   * @param connectedNodes a bitset the size of the entire graph with 1's indicating nodes that have
+   *     been marked as connected. This method updates the bitset.
+   * @param entryPoint a node id to start at
+   */
+  private static Component markRooted(
       HnswGraph hnswGraph, int level, FixedBitSet connectedNodes, int entryPoint)
       throws IOException {
     // Start at entry point and search all nodes on this level
@@ -124,6 +170,76 @@ public class HnswUtil {
       }
     }
     return new Component(entryPoint, count);
+  }
+
+  /**
+   * Count the nodes in a strongly-connected component of the graph and set the bits of its nodes in
+   * connectedNodes bitset. Strongly-connected means nodes that can all reach other, including the
+   * entry point.
+   *
+   * @param hnswGraph the graph to check
+   * @param level the level of the graph to check
+   * @param visited a bitset the size of the entire graph with 1's indicating nodes that have been
+   *     marked as connected to some component. This method updates the bitset.
+   * @param entryPoint a node id to start at
+   */
+  private static Component markStronglyConnected(
+      HnswGraph hnswGraph, int level, FixedBitSet visited, int entryPoint) throws IOException {
+    // Start at entry point and search all nodes on this level
+    assert visited.get(entryPoint) == false;
+    FixedBitSet componentNodes = new FixedBitSet(visited.length());
+    Set<Integer> stack = new HashSet<>();
+    Set<Integer> revisit = new HashSet<>();
+    stack.add(entryPoint);
+    int count = 0;
+    int lastCount;
+    do {
+      lastCount = count;
+      while (!stack.isEmpty()) {
+        int node = stack.iterator().next();
+        stack.remove(node);
+        if (visited.get(node)) {
+          continue;
+        }
+        // FIXME this stronglyConnected is using the global visited (connectedNodes) map
+        // when it should only be considering nodes connected in *this component*
+        if (node == entryPoint || stronglyConnected(hnswGraph, level, componentNodes, node)) {
+          count++;
+          visited.set(node);
+          componentNodes.set(node);
+        } else {
+          // If this node doesn't link back to any connected nodes then we can't label it "strongly"
+          // connected, at least not yet.  We still might find it is so after labeling more nodes.
+          // Put it on a revisit stack for later evaluation
+          // hmm we also need to prevent adding it to stack so we don't get in a cycle here
+          revisit.add(node);
+        }
+        hnswGraph.seek(level, node);
+        int friendOrd;
+        while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+          if (visited.get(friendOrd) == false && revisit.contains(friendOrd) == false) {
+            stack.add(friendOrd);
+          }
+        }
+      }
+      // swap stack and revisit
+      Set<Integer> swap = stack;
+      stack = revisit;
+      revisit = swap;
+    } while (count > lastCount);
+    return new Component(entryPoint, count);
+  }
+
+  private static boolean stronglyConnected(
+      HnswGraph hnswGraph, int level, FixedBitSet connectedNodes, int node) throws IOException {
+    hnswGraph.seek(level, node);
+    int friendOrd;
+    while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+      if (connectedNodes.get(friendOrd)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static int nextClearBit(FixedBitSet bits, int index) {

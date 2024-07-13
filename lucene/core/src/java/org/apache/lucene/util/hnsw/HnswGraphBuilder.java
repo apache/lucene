@@ -425,7 +425,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   private boolean connectComponents(int level) throws IOException {
-    List<Component> components = HnswUtil.components(hnsw, level);
+    List<Component> components = HnswUtil.components(hnsw, level, true);
     boolean result = true;
     if (components.size() > 1) {
       // connect other components to the largest one
