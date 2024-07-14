@@ -1059,7 +1059,7 @@ public class TestIntervals extends LuceneTestCase {
             });
     assertEquals("Automaton [.ot] expanded to too many terms (limit 1)", e.getMessage());
 
-    checkVisits(Intervals.wildcard(new BytesRef("p.*")), 1);
+    checkVisits(Intervals.regexp(new BytesRef("p.*")), 1);
   }
 
   public void testFuzzyTerm() throws IOException {

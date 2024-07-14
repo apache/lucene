@@ -214,10 +214,7 @@ public final class Intervals {
    * Return an {@link IntervalsSource} over the disjunction of all terms that match a regular
    * expression
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
-   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
-   *
-   * @param regexp regula expression
+   * @param regexp regular expression
    * @throws IllegalStateException if the regex expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
    *     terms
    * @see RegexpQuery for regexp format
@@ -233,7 +230,7 @@ public final class Intervals {
    * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
    * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
-   * @param regexp regula expression
+   * @param regexp regular expression
    * @param maxExpansions the maximum number of terms to expand to
    * @throws IllegalStateException if the regex expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
    *     terms
