@@ -24,11 +24,15 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
 @SuppressWarnings("preview")
-final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
+final class MemorySegmentIndexInputProvider
+    implements MMapDirectory.MMapIndexInputProvider<
+        ConcurrentHashMap<String, RefCountedSharedArena>> {
 
   private final Optional<NativeAccess> nativeAccess;
 
@@ -37,7 +41,12 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   @Override
-  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  public IndexInput openInput(
+      Path path,
+      IOContext context,
+      int chunkSizePower,
+      boolean preload,
+      ConcurrentHashMap<String, RefCountedSharedArena> arenas)
       throws IOException {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
@@ -46,7 +55,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
-    final Arena arena = confined ? Arena.ofConfined() : Arena.ofShared();
+    final Arena arena = confined ? Arena.ofConfined() : getSharedArena(path, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =
@@ -124,5 +133,32 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       startOffset += segSize;
     }
     return segments;
+  }
+
+  public Optional<ConcurrentHashMap<String, RefCountedSharedArena>> attachment() {
+    return Optional.of(new ConcurrentHashMap<>());
+  }
+
+  /**
+   * Gets an arena for the give path, potentially aggregating files from the same segment into a
+   * single ref counted shared arena. A ref counted shared arena, if created will be added to the
+   * given arenas map.
+   */
+  static Arena getSharedArena(Path p, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
+    String filename = p.getFileName().toString();
+    String segmentName = IndexFileNames.parseSegmentName(filename);
+    if (filename.length() == segmentName.length()) {
+      // no segment found; just use a shared segment
+      return Arena.ofShared();
+    }
+
+    while (true) {
+      var refCountedArena =
+          arenas.computeIfAbsent(
+              segmentName, s -> new RefCountedSharedArena(s, () -> arenas.remove(s)));
+      if (refCountedArena.acquire()) {
+        return refCountedArena;
+      }
+    }
   }
 }

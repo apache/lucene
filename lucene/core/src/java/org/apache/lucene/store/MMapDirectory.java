@@ -22,6 +22,7 @@ import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import org.apache.lucene.util.Constants;
@@ -101,6 +102,9 @@ public class MMapDirectory extends FSDirectory {
    * </ul>
    */
   public static final long DEFAULT_MAX_CHUNK_SIZE;
+
+  /** A provider specific context object or null, that will be passed to openInput. */
+  private final Object attachment = PROVIDER.attachment().orElse(null);
 
   final int chunkSizePower;
 
@@ -199,19 +203,26 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(path, context, chunkSizePower, preload.test(name, context));
+    return PROVIDER.openInput(
+        path, context, chunkSizePower, preload.test(name, context), attachment);
   }
 
   // visible for tests:
-  static final MMapIndexInputProvider PROVIDER;
+  static final MMapIndexInputProvider<Object> PROVIDER;
 
-  interface MMapIndexInputProvider {
-    IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  interface MMapIndexInputProvider<A> {
+    IndexInput openInput(
+        Path path, IOContext context, int chunkSizePower, boolean preload, A attachment)
         throws IOException;
 
     long getDefaultMaxChunkSize();
 
     boolean supportsMadvise();
+
+    /** An optional attachment of the provider, that will be passed to openInput. */
+    default Optional<A> attachment() {
+      return Optional.empty();
+    }
 
     default IOException convertMapFailedIOException(
         IOException ioe, String resourceDescription, long bufSize) {
@@ -256,7 +267,7 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
-  private static MMapIndexInputProvider lookupProvider() {
+  private static <A> MMapIndexInputProvider<A> lookupProvider() {
     final var lookup = MethodHandles.lookup();
     try {
       final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
@@ -264,7 +275,7 @@ public class MMapDirectory extends FSDirectory {
       // access through the lookup:
       final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
       try {
-        return (MMapIndexInputProvider) constr.invoke();
+        return (MMapIndexInputProvider<A>) constr.invoke();
       } catch (RuntimeException | Error e) {
         throw e;
       } catch (Throwable th) {

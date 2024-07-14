@@ -16,14 +16,20 @@
  */
 package org.apache.lucene.store;
 
+import static java.util.stream.Collectors.toList;
+
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -170,6 +176,74 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       return future.get();
     } catch (ExecutionException ee) {
       throw ee.getCause();
+    }
+  }
+
+  public void testArenas() throws Exception {
+    // First create a number of file name lists to test with.
+    var exts =
+        List.of(
+            ".si", ".cfs", ".cfe", ".dvd", ".dvm", "nvd", ".nvm", ".fdt", ".vec", ".vex", ".vemf");
+    var names =
+        IntStream.range(0, 50)
+            .mapToObj(i -> "_" + i)
+            .flatMap(s -> exts.stream().map(ext -> s + ext))
+            .collect(toList());
+    IntStream.range(0, 50).mapToObj(i -> "segment_" + i).forEach(names::add);
+    Collections.shuffle(names, random());
+
+    final int size = 6;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (Directory dir = new MMapDirectory(createTempDir("testArenas"))) {
+      for (var name : names) {
+        try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
+          out.writeBytes(bytes, 0, bytes.length);
+        }
+      }
+
+      int nThreads = 10;
+      int perListSize = (names.size() + nThreads) / nThreads;
+      List<List<String>> nameLists =
+          IntStream.range(0, nThreads)
+              .mapToObj(
+                  i ->
+                      names.subList(
+                          perListSize * i, Math.min(perListSize * i + perListSize, names.size())))
+              .toList();
+
+      var threadFactory = new NamedThreadFactory("testArenas");
+      try (var executor = Executors.newFixedThreadPool(nThreads, threadFactory)) {
+        var tasks = nameLists.stream().map(l -> new IndicesOpenTask(l, dir)).toList();
+        var futures = tasks.stream().map(executor::submit).toList();
+        for (var future : futures) {
+          future.get();
+        }
+      }
+      // TODO: check that all arenas are closed and lists empty
+    }
+  }
+
+  static class IndicesOpenTask implements Callable<Void> {
+    final List<String> names;
+    final Directory dir;
+
+    IndicesOpenTask(List<String> names, Directory dir) {
+      this.names = names;
+      this.dir = dir;
+    }
+
+    @Override
+    public Void call() throws Exception {
+      List<IndexInput> closeables = new ArrayList<>();
+      for (var name : names) {
+        closeables.add(dir.openInput(name, IOContext.DEFAULT));
+      }
+      for (IndexInput closeable : closeables) {
+        closeable.close();
+      }
+      return null;
     }
   }
 }
