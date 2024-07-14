@@ -21,6 +21,9 @@ Improvements
 
 * GITHUB#13548: Refactor and javadoc update for KNN vector writer classes. (Patrick Zhai)
 
+* GITHUB#13562: Add Intervals.regexp and Intervals.range methods to produce  IntervalsSource
+  for regexp and range queries. (Mayya Sharipova)
+
 Optimizations
 ---------------------
 
