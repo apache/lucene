@@ -240,7 +240,7 @@ public final class Intervals {
    */
   public static IntervalsSource regexp(BytesRef regexp, int maxExpansions) {
     Automaton automaton = new RegExp(new Term("", regexp).text()).toAutomaton();
-    CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true, false);
+    CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true);
     return new MultiTermIntervalsSource(ca, maxExpansions, regexp.utf8ToString());
   }
 
@@ -283,7 +283,9 @@ public final class Intervals {
       int maxExpansions) {
     Automaton automaton =
         TermRangeQuery.toAutomaton(lowerTerm, upperTerm, includeLower, includeUpper);
-    CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true, true);
+    CompiledAutomaton ca =
+        new CompiledAutomaton(
+            automaton, false, true, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, true);
 
     StringBuilder buffer = new StringBuilder();
     buffer.append("{");
