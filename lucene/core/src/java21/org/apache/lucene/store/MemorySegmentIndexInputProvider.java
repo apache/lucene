@@ -135,8 +135,8 @@ final class MemorySegmentIndexInputProvider
     return segments;
   }
 
-  public Optional<ConcurrentHashMap<String, RefCountedSharedArena>> attachment() {
-    return Optional.of(new ConcurrentHashMap<>());
+  public ConcurrentHashMap<String, RefCountedSharedArena> attachment() {
+    return new ConcurrentHashMap<>();
   }
 
   /**

@@ -22,7 +22,6 @@ import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import org.apache.lucene.util.Constants;
@@ -104,7 +103,7 @@ public class MMapDirectory extends FSDirectory {
   public static final long DEFAULT_MAX_CHUNK_SIZE;
 
   /** A provider specific context object or null, that will be passed to openInput. */
-  private final Object attachment = PROVIDER.attachment().orElse(null);
+  private final Object attachment = PROVIDER.attachment();
 
   final int chunkSizePower;
 
@@ -220,8 +219,8 @@ public class MMapDirectory extends FSDirectory {
     boolean supportsMadvise();
 
     /** An optional attachment of the provider, that will be passed to openInput. */
-    default Optional<A> attachment() {
-      return Optional.empty();
+    default A attachment() {
+      return null;
     }
 
     default IOException convertMapFailedIOException(
