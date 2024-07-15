@@ -1028,6 +1028,40 @@ public class TestIntervals extends LuceneTestCase {
     checkVisits(Intervals.wildcard(new BytesRef("p??")), 1);
   }
 
+  public void testRegexp() throws IOException {
+    IntervalsSource source = Intervals.regexp(new BytesRef(".ot"));
+    checkIntervals(
+        source,
+        "field1",
+        4,
+        new int[][] {
+          {},
+          {2, 2, 10, 10, 17, 17, 27, 27},
+          {5, 5, 10, 10, 21, 21},
+          {3, 3},
+          {2, 2, 10, 10, 17, 17},
+          {}
+        });
+    MatchesIterator mi = getMatches(source, 4, "field1");
+    assertNotNull(mi);
+    assertMatch(mi, 2, 2, 15, 18);
+    assertMatch(mi, 10, 10, 63, 66);
+    assertMatch(mi, 17, 17, 97, 100);
+
+    IllegalStateException e =
+        expectThrows(
+            IllegalStateException.class,
+            () -> {
+              IntervalsSource s = Intervals.regexp(new BytesRef(".ot"), 1);
+              for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+                s.intervals("field1", ctx);
+              }
+            });
+    assertEquals("Automaton [.ot] expanded to too many terms (limit 1)", e.getMessage());
+
+    checkVisits(Intervals.regexp(new BytesRef("p.*")), 1);
+  }
+
   public void testFuzzyTerm() throws IOException {
     IntervalsSource source = Intervals.fuzzyTerm("kot", 1); // matches 'pot'
     checkIntervals(
@@ -1067,6 +1101,41 @@ public class TestIntervals extends LuceneTestCase {
     assertEquals("Automaton [kot~1] expanded to too many terms (limit 1)", e.getMessage());
 
     checkVisits(Intervals.fuzzyTerm("kot", FuzzyQuery.defaultMaxEdits), 1);
+  }
+
+  public void testRange() throws IOException {
+    IntervalsSource source = Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true);
+    checkIntervals(
+        source,
+        "field1",
+        6,
+        new int[][] {
+          {5, 5},
+          {2, 2, 5, 5, 12, 12, 17, 17, 21, 21, 29, 29},
+          {2, 2, 5, 5, 12, 12, 17, 17, 21, 21, 27, 27},
+          {1, 1, 3, 3, 4, 4},
+          {2, 2, 5, 5, 17, 17},
+          {2, 2}
+        });
+    MatchesIterator mi = getMatches(source, 3, "field1");
+    assertNotNull(mi);
+    assertMatch(mi, 1, 1, 4, 8);
+    assertMatch(mi, 3, 3, 15, 18);
+    assertMatch(mi, 4, 4, 19, 24);
+
+    IllegalStateException e =
+        expectThrows(
+            IllegalStateException.class,
+            () -> {
+              IntervalsSource s =
+                  Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true, 1);
+              for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+                s.intervals("field1", ctx);
+              }
+            });
+    assertEquals("Automaton [{cold,hot}] expanded to too many terms (limit 1)", e.getMessage());
+
+    checkVisits(source, 1);
   }
 
   public void testWrappedFilters() throws IOException {

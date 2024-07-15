@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
@@ -46,21 +45,14 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
   }
 
   /**
-   * Add a new field for indexing, allowing the user to provide a writer that the flat vectors
-   * writer can delegate to if additional indexing logic is required.
+   * Add a new field for indexing
    *
    * @param fieldInfo fieldInfo of the field to add
-   * @param indexWriter the writer to delegate to, can be null
    * @return a writer for the field
    * @throws IOException if an I/O error occurs when adding the field
    */
-  public abstract FlatFieldVectorsWriter<?> addField(
-      FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException;
-
   @Override
-  public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    return addField(fieldInfo, null);
-  }
+  public abstract FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException;
 
   /**
    * Write the field for merging, providing a scorer over the newly merged flat vectors. This way
