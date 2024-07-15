@@ -57,19 +57,13 @@ final class RefCountedSharedArena implements Arena {
   }
 
   void release() {
-    int value;
-    while (true) {
-      value = state.get();
-      if (value <= OPEN) {
-        throw new IllegalStateException("already closed");
-      }
-      if (state.compareAndSet(value, value - 1)) {
-        if (value - 1 == OPEN && state.compareAndSet(OPEN, CLOSED)) {
-          removeFromMap.run();
-          arena.close();
-        }
-        return;
-      }
+    int updatedValue = state.decrementAndGet();
+    if (updatedValue < OPEN) {
+      throw new IllegalStateException("already closed");
+    }
+    if (updatedValue == OPEN && state.compareAndSet(OPEN, CLOSED)) {
+      removeFromMap.run();
+      arena.close();
     }
   }
 
