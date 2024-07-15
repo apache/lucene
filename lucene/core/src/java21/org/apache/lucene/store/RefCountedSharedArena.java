@@ -18,8 +18,7 @@ package org.apache.lucene.store;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @SuppressWarnings("preview")
 final class RefCountedSharedArena implements Arena {
@@ -27,26 +26,17 @@ final class RefCountedSharedArena implements Arena {
   static final int OPEN = 0;
   static final int CLOSED = -1;
 
-  static final VarHandle STATE;
-
-  static {
-    try {
-      STATE = MethodHandles.lookup().findVarHandle(RefCountedSharedArena.class, "state", int.class);
-    } catch (Exception ex) {
-      throw new AssertionError(ex);
-    }
-  }
-
   private final String segmentName;
   private final Runnable removeFromMap;
   private final Arena arena;
 
-  int state = OPEN;
+  AtomicInteger state;
 
   RefCountedSharedArena(String segmentName, Runnable removeFromMap) {
     this.segmentName = segmentName;
     this.removeFromMap = removeFromMap;
     this.arena = Arena.ofShared();
+    this.state = new AtomicInteger(OPEN);
   }
 
   // for debugging
@@ -57,11 +47,11 @@ final class RefCountedSharedArena implements Arena {
   boolean acquire() {
     int value;
     while (true) {
-      value = (int) STATE.getVolatile(this);
+      value = state.get();
       if (value < OPEN) {
         return false;
       }
-      if (STATE.compareAndSet(this, value, value + 1)) {
+      if (state.compareAndSet(value, value + 1)) {
         return true;
       }
     }
@@ -70,12 +60,12 @@ final class RefCountedSharedArena implements Arena {
   void release() {
     int value;
     while (true) {
-      value = (int) STATE.getVolatile(this);
+      value = state.get();
       if (value <= OPEN) {
         throw new IllegalStateException("already closed");
       }
-      if (STATE.compareAndSet(this, value, value - 1)) {
-        if (value - 1 == OPEN && STATE.compareAndSet(this, OPEN, CLOSED)) {
+      if (state.compareAndSet(value, value - 1)) {
+        if (value - 1 == OPEN && state.compareAndSet(OPEN, CLOSED)) {
           removeFromMap.run();
           arena.close();
         }
@@ -104,7 +94,7 @@ final class RefCountedSharedArena implements Arena {
     return "RefCountedArena[segmentName="
         + segmentName
         + ", value="
-        + (int) STATE.getVolatile(this)
+        + state.get()
         + ", arena="
         + arena
         + "]";
