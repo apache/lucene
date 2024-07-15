@@ -196,6 +196,12 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
 
   // number of documents in an interval
   private static final int DEFAULT_SKIP_INDEX_INTERVAL_SIZE = 4096;
+  // bytes on an interval:
+  //   * 1 byte : number of levels
+  //   * 16 bytes: min / max value,
+  //   * 8 bytes:  min / max docID
+  //   * 4 bytes: number of documents
+  private static final long SKIP_INDEX_INTERVAL_BYTES = 29L;
   // number of intervals represented as a shift to create a new level, this is 1 << 3 == 8
   // intervals.
   static final int SKIP_INDEX_LEVEL_SHIFT = 3;
@@ -203,25 +209,21 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   // Increasing this number, it increases how much heap we need at index time.
   // we currently need (1 * 8 * 8 * 8)  = 512 accumulators on heap
   static final int SKIP_INDEX_MAX_LEVEL = 4;
-  // how many intervals at level 0 are in each level (1 << (SKIP_INDEX_LEVEL_SHIFT * level)).
-  static int[] SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL = new int[SKIP_INDEX_MAX_LEVEL];
   // number of bytes to skip when skipping a level. It does not take into account the
   // current interval that is being read.
-  static long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL = new long[SKIP_INDEX_MAX_LEVEL];
+  static final long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL = new long[SKIP_INDEX_MAX_LEVEL];
 
   static {
-    for (int level = 0; level < SKIP_INDEX_MAX_LEVEL; level++) {
-      SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[level] = 1 << (SKIP_INDEX_LEVEL_SHIFT * level);
-      if (level > 0) {
-        SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] =
-            // jump from previous level
-            SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level - 1]
-                // add nodes added by new level minus first one
-                + (SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[level] - 1) * 29L
-                // remove the byte levels added in the previous level except the first one
-                - SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[level - 1]
-                + 1;
-      }
+    for (int level = 1; level < SKIP_INDEX_MAX_LEVEL; level++) {
+      final int levelShift = level * SKIP_INDEX_LEVEL_SHIFT;
+      final int prevLevelShift = (level - 1) * SKIP_INDEX_LEVEL_SHIFT;
+      // jump from previous level
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] = SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level - 1];
+      // nodes added by new level minus first one
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] +=
+          ((1 << levelShift) - 1) * SKIP_INDEX_INTERVAL_BYTES;
+      // remove the byte levels added in the previous level except the first one
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] += 1 - (1 << prevLevelShift);
     }
   }
 }

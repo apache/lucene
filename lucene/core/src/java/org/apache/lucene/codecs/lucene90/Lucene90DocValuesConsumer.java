@@ -19,8 +19,8 @@ package org.apache.lucene.codecs.lucene90;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_LEVEL_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_MAX_LEVEL;
-import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -242,6 +242,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     int maxDocId = -1;
     List<SkipAccumulator> accumulators = new ArrayList<>();
     SkipAccumulator accumulator = null;
+    final int maxAccumulators = 1 << (SKIP_INDEX_LEVEL_SHIFT * (SKIP_INDEX_MAX_LEVEL - 1));
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       if (accumulator == null) {
         accumulator = new SkipAccumulator(doc);
@@ -257,8 +258,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         globalDocCount += accumulator.docCount;
         maxDocId = accumulator.maxDocID;
         accumulator = null;
-        if (accumulators.size()
-            == SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[SKIP_INDEX_MAX_LEVEL - 1]) {
+        if (accumulators.size() == maxAccumulators) {
           writeLevels(accumulators);
           accumulators.clear();
         }
@@ -292,8 +292,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       final SkipAccumulator[] accLevels = new SkipAccumulator[levels];
       for (int level = 0; level < levels; level++) {
         accLevels[level] =
-            SkipAccumulator.merge(
-                accumulators, index, SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[level]);
+            SkipAccumulator.merge(accumulators, index, 1 << (SKIP_INDEX_LEVEL_SHIFT * level));
       }
       // write the number of levels
       data.writeByte((byte) levels);
@@ -316,7 +315,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
   private int getLevels(int index, int size) {
     final int left = size - index;
     for (int level = SKIP_INDEX_MAX_LEVEL - 1; level > 0; level--) {
-      final int numberIntervals = SKIP_INDEX_NUMBER_INTERVALS_PER_LEVEL[level];
+      final int numberIntervals = 1 << (SKIP_INDEX_LEVEL_SHIFT * level);
       if (left >= numberIntervals && index % numberIntervals == 0) {
         return level + 1;
       }

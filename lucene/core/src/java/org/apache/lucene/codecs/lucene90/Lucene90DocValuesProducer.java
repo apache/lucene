@@ -1822,7 +1822,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           assert target > maxDocID[0] : "target must be bigger that current interval";
           while (true) {
             levels = input.readByte();
-            assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0 : "level out of range";
+            assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0
+                : "level out of range [" + levels + "]";
             boolean competitive = true;
             // check if current interval is competitive or we can jump to the next position
             for (int level = levels - 1; level >= 0; level--) {
