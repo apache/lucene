@@ -29,8 +29,7 @@ final class RefCountedSharedArena implements Arena {
   private final String segmentName;
   private final Runnable removeFromMap;
   private final Arena arena;
-
-  AtomicInteger state;
+  private final AtomicInteger state;
 
   RefCountedSharedArena(String segmentName, Runnable removeFromMap) {
     this.segmentName = segmentName;
