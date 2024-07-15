@@ -103,7 +103,7 @@ public class MMapDirectory extends FSDirectory {
   public static final long DEFAULT_MAX_CHUNK_SIZE;
 
   /** A provider specific context object or null, that will be passed to openInput. */
-  private final Object attachment = PROVIDER.attachment();
+  final Object attachment = PROVIDER.attachment();
 
   final int chunkSizePower;
 

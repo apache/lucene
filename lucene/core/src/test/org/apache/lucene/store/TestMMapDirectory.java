@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -196,7 +197,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     byte[] bytes = new byte[size];
     random().nextBytes(bytes);
 
-    try (Directory dir = new MMapDirectory(createTempDir("testArenas"))) {
+    try (var dir = new MMapDirectory(createTempDir("testArenas"))) {
       for (var name : names) {
         try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
           out.writeBytes(bytes, 0, bytes.length);
@@ -221,7 +222,11 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
           future.get();
         }
       }
-      // TODO: check that all arenas are closed and lists empty
+
+      if (!(dir.attachment instanceof ConcurrentHashMap<?, ?> map)) {
+        throw new AssertionError("unexpected attachment: " + dir.attachment);
+      }
+      assertEquals(0, map.size());
     }
   }
 
