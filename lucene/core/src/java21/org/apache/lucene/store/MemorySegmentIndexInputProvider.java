@@ -135,6 +135,7 @@ final class MemorySegmentIndexInputProvider
     return segments;
   }
 
+  @Override
   public ConcurrentHashMap<String, RefCountedSharedArena> attachment() {
     return new ConcurrentHashMap<>();
   }
