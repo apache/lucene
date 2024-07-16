@@ -643,12 +643,12 @@ public class IndexSearcher {
    * calling {@link CollectorOwner#getResult()} so that clients can reduce and read results
    * themselves.
    *
-   * <p>TODO: CollectorOwner has getResults method now (not yet used by anything), so maybe it's ok
-   * to call reduce in this method?
+   * <p>Note that this method doesn't return anything - users can access results by calling {@link
+   * CollectorOwner#getResult()}
    *
    * @lucene.experimental
    */
-  public <C extends Collector> void searchNoReduce(Query query, CollectorOwner<C, ?> collectorOwner)
+  public <C extends Collector> void search(Query query, CollectorOwner<C, ?> collectorOwner)
       throws IOException {
     final C firstCollector = collectorOwner.newCollector();
     query = rewrite(query, firstCollector.scoreMode().needsScores());

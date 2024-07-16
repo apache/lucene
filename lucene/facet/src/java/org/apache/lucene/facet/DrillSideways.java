@@ -319,7 +319,7 @@ public class DrillSideways {
       // TODO: the difference is that we used to also call reduce in parallel, but not anymore.
       //  We can think about implementing reduce(executor) which allows parallelism? If doing it
       //  sequentially becomes a problem.
-      searcher.searchNoReduce(query, collectorOwner);
+      searcher.search(query, collectorOwner);
       // TODO: we don't use the results - should we return null? In this case, we can
       // simplify/remove CallableResult class
       return null;
@@ -485,7 +485,7 @@ public class DrillSideways {
     if (drillDownDims.isEmpty()) {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
-      searcher.searchNoReduce(query, drillDownCollectorOwner);
+      searcher.search(query, drillDownCollectorOwner);
       return;
     }
 
@@ -509,7 +509,7 @@ public class DrillSideways {
             drillDownQueries,
             scoreSubDocsAtOnce());
 
-    searcher.searchNoReduce(dsq, drillDownCollectorOwner);
+    searcher.search(dsq, drillDownCollectorOwner);
   }
 
   private void searchConcurrently(
