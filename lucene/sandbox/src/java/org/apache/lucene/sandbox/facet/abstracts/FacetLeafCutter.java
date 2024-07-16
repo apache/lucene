@@ -18,7 +18,13 @@ package org.apache.lucene.sandbox.facet.abstracts;
 
 import java.io.IOException;
 
-/** Interface to be implemented to cut current document into facets. */
+/**
+ * Interface to be implemented to cut documents into facets.
+ *
+ * <p>When {@link #advanceExact(int)} returns true, {@link #nextOrd()} yields all facet ordinals for
+ * the current document. It is illegal to call {@link #nextOrd()} if {@link #advanceExact(int)}
+ * returns false.
+ */
 public interface FacetLeafCutter extends OrdinalIterator {
   /** advance to the next doc */
   boolean advanceExact(int doc) throws IOException;
