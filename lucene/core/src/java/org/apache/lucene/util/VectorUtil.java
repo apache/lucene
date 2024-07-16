@@ -17,6 +17,11 @@
 
 package org.apache.lucene.util;
 
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+
+import java.lang.foreign.*;
+import java.lang.invoke.MethodHandle;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
@@ -160,6 +165,62 @@ public final class VectorUtil {
       u[i] += v[i];
     }
   }
+
+  /** Ankur: Hacky code start */
+  public static final AddressLayout POINTER =
+      ValueLayout.ADDRESS.withTargetLayout(MemoryLayout.sequenceLayout(JAVA_BYTE));
+
+  private static final Linker LINKER = Linker.nativeLinker();
+  private static final SymbolLookup SYMBOL_LOOKUP;
+
+  static {
+    System.loadLibrary("dotProduct");
+    SymbolLookup loaderLookup = SymbolLookup.loaderLookup();
+    SYMBOL_LOOKUP = name -> loaderLookup.find(name).or(() -> LINKER.defaultLookup().find(name));
+  }
+
+  static final FunctionDescriptor dot8sDesc =
+      FunctionDescriptor.of(JAVA_INT, POINTER, POINTER, JAVA_INT);
+
+  static final MethodHandle dot8sMH =
+      SYMBOL_LOOKUP.find("dot8s").map(addr -> LINKER.downcallHandle(addr, dot8sDesc)).orElse(null);
+
+  static final MethodHandle neonVdot8sMH =
+      SYMBOL_LOOKUP
+          .find("vdot8s_neon")
+          .map(addr -> LINKER.downcallHandle(addr, dot8sDesc))
+          .orElse(null);
+
+  static final MethodHandle sveVdot8sMH =
+      SYMBOL_LOOKUP
+          .find("vdot8s_sve")
+          .map(addr -> LINKER.downcallHandle(addr, dot8sDesc))
+          .orElse(null);
+
+  /* chosen C implementation */
+  static final MethodHandle dot8sImpl;
+
+  static {
+    if (sveVdot8sMH != null) {
+      dot8sImpl = sveVdot8sMH;
+    } else if (neonVdot8sMH != null) {
+      dot8sImpl = neonVdot8sMH;
+    } else if (dot8sMH != null) {
+      dot8sImpl = dot8sMH;
+    } else {
+      throw new RuntimeException("c code was not linked!");
+    }
+  }
+
+  public static int dot8s(MemorySegment vec1, MemorySegment vec2, int limit) {
+    try {
+      return (int) dot8sImpl.invokeExact(vec1, vec2, limit);
+    } catch (Throwable ex$) {
+      throw new AssertionError("should not reach here", ex$);
+    }
+  }
+
+  /** Ankur: Hacky code end * */
 
   /**
    * Dot product computed over signed bytes.

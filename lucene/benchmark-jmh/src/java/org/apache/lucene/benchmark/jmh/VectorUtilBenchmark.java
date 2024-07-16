@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.VectorUtil;
@@ -49,7 +52,12 @@ public class VectorUtilBenchmark {
   private float[] floatsB;
   private int expectedhalfByteDotProduct;
 
-  @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
+  private MemorySegment nativeBytesA;
+
+  private MemorySegment nativeBytesB;
+
+  // @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
+  @Param({"768"})
   int size;
 
   @Setup(Level.Iteration)
@@ -84,6 +92,20 @@ public class VectorUtilBenchmark {
       floatsA[i] = random.nextFloat();
       floatsB[i] = random.nextFloat();
     }
+
+    Arena offHeap = Arena.ofAuto();
+    nativeBytesA = offHeap.allocate(size, ValueLayout.JAVA_BYTE.byteAlignment());
+    nativeBytesB = offHeap.allocate(size, ValueLayout.JAVA_BYTE.byteAlignment());
+    for (int i = 0; i < size; ++i) {
+      nativeBytesA.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
+      nativeBytesA.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
+    }
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int dot8s() {
+    return VectorUtil.dot8s(nativeBytesA, nativeBytesB, size);
   }
 
   @Benchmark
