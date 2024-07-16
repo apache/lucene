@@ -37,7 +37,7 @@ public interface FacetRollup {
    * For facets that has hierarchy (levels), return all top level dimension ordinals that require
    * rollup.
    */
-  OrdinalIterator getDimOrdsToRollup();
+  OrdinalIterator getDimOrdsToRollup() throws IOException;
 
   /** For facets that has hierarchy (levels), get all children ordinals for current ord. */
   OrdinalIterator getChildrenOrds(int ord) throws IOException;

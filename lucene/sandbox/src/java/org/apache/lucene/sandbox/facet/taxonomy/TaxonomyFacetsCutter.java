@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.facet.taxonomy;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import org.apache.lucene.facet.FacetsConfig;
@@ -31,10 +32,7 @@ import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
 import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 
-/**
- * {@link FacetCutter} for SortedNumericDocValues field. TODO: can remove "Taxonomy" from the name,
- * it works with other fields too? Cons: Less obvious for users what to use for taxonomy.
- */
+/** {@link FacetCutter} for facets that use taxonomy side-car index. */
 public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
   private final FacetsConfig facetsConfig;
@@ -78,39 +76,48 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     SortedNumericDocValues multiValued =
         DocValues.getSortedNumeric(context.reader(), indexFieldName);
-    if (multiValued == null) {
-      return null; // TODO: oh not not null!
-    }
+    // DocValues.getSortedNumeric never returns null
+    assert multiValued != null;
+    // TODO: if multiValued is emptySortedNumeric we can throw CollectionTerminatedException
+    //       in FacetFieldLeafCollector and save some CPU cycles.
     TaxonomyLeafFacetCutterMultiValue leafCutter =
         new TaxonomyLeafFacetCutterMultiValue(multiValued);
     return leafCutter;
 
-    // TODO: does unwrapping Single valued makes things any faster? We still need to wrap it into
-    // LeafFacetCutter
+    // TODO: does unwrapping Single valued make things any faster? We still need to wrap it into
+    //       LeafFacetCutter
     // NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
   }
 
   @Override
-  public OrdinalIterator getDimOrdsToRollup() {
+  public OrdinalIterator getDimOrdsToRollup() throws IOException {
     // Rollup any necessary dims:
     Iterator<Map.Entry<String, FacetsConfig.DimConfig>> dimensions =
         facetsConfig.getDimConfigs().entrySet().iterator();
+
+    ArrayList<FacetLabel> dimsToRollup = new ArrayList<>();
+
+    while (dimensions.hasNext()) {
+      Map.Entry<String, FacetsConfig.DimConfig> ent = dimensions.next();
+      String dim = ent.getKey();
+      FacetsConfig.DimConfig ft = ent.getValue();
+      if (ft.hierarchical && ft.multiValued == false && ft.indexFieldName.equals(indexFieldName)) {
+        dimsToRollup.add(new FacetLabel(dim));
+      }
+    }
+
+    int[] dimOrdToRollup = taxoReader.getBulkOrdinals(dimsToRollup.toArray(new FacetLabel[0]));
+
     return new OrdinalIterator() {
+      int currentIndex = 0;
+
       @Override
       public int nextOrd() throws IOException {
-        while (dimensions.hasNext()) {
-          Map.Entry<String, FacetsConfig.DimConfig> ent = dimensions.next();
-          String dim = ent.getKey();
-          FacetsConfig.DimConfig ft = ent.getValue();
-          if (ft.hierarchical
-              && ft.multiValued == false
-              && ft.indexFieldName.equals(indexFieldName)) {
-            int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
-            // It can be -1 if this field was declared in the
-            // config but never indexed:
-            if (dimRootOrd != TaxonomyReader.INVALID_ORDINAL) {
-              return dimRootOrd;
-            }
+        for (; currentIndex < dimOrdToRollup.length; currentIndex++) {
+          // It can be invalid if this field was declared in the
+          // config but never indexed
+          if (dimOrdToRollup[currentIndex] != TaxonomyReader.INVALID_ORDINAL) {
+            return dimOrdToRollup[currentIndex];
           }
         }
         return NO_MORE_ORDS;
@@ -126,8 +133,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
       int currentChild = parentOrd;
 
       @Override
-      public int nextOrd() throws IOException {
-        // TODO: kinda ugly, can this be simpler?
+      public int nextOrd() {
         if (currentChild == parentOrd) {
           currentChild = children.get(currentChild);
         } else {
@@ -143,7 +149,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
   private static class TaxonomyLeafFacetCutterMultiValue implements LeafFacetCutter {
     private final SortedNumericDocValues multiValued;
-    private int ordPerDoc;
+    private int ordsInDoc;
 
     private TaxonomyLeafFacetCutterMultiValue(SortedNumericDocValues multiValued) {
       this.multiValued = multiValued;
@@ -151,8 +157,8 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
     @Override
     public int nextOrd() throws IOException {
-      if (ordPerDoc > 0) {
-        ordPerDoc--;
+      if (ordsInDoc > 0) {
+        ordsInDoc--;
         return (int) multiValued.nextValue();
       }
       return LeafFacetCutter.NO_MORE_ORDS;
@@ -161,10 +167,9 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
     @Override
     public boolean advanceExact(int doc) throws IOException {
       if (multiValued.advanceExact(doc)) {
-        ordPerDoc = multiValued.docValueCount();
+        ordsInDoc = multiValued.docValueCount();
         return true;
       }
-      ;
       return false;
     }
   }
