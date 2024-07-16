@@ -240,13 +240,16 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     long globalMinValue = Long.MAX_VALUE;
     int globalDocCount = 0;
     int maxDocId = -1;
-    List<SkipAccumulator> accumulators = new ArrayList<>();
+    final List<List<SkipAccumulator>> accumulators = new ArrayList<>(SKIP_INDEX_MAX_LEVEL);
+    for (int i = 0; i < SKIP_INDEX_MAX_LEVEL; i++) {
+      accumulators.add(new ArrayList<>());
+    }
     SkipAccumulator accumulator = null;
     final int maxAccumulators = 1 << (SKIP_INDEX_LEVEL_SHIFT * (SKIP_INDEX_MAX_LEVEL - 1));
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       if (accumulator == null) {
         accumulator = new SkipAccumulator(doc);
-        accumulators.add(accumulator);
+        accumulators.get(0).add(accumulator);
       }
       accumulator.nextDoc(doc);
       for (int i = 0, end = values.docValueCount(); i < end; ++i) {
@@ -260,7 +263,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         accumulator = null;
         if (accumulators.size() == maxAccumulators) {
           writeLevels(accumulators);
-          accumulators.clear();
+          for (List<SkipAccumulator> accumulatorList : accumulators) {
+            accumulatorList.clear();
+          }
         }
       }
     }
@@ -284,15 +289,18 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     meta.writeInt(maxDocId);
   }
 
-  private void writeLevels(List<SkipAccumulator> accumulators) throws IOException {
-    for (int index = 0; index < accumulators.size(); index++) {
+  private void writeLevels(List<List<SkipAccumulator>> accumulators) throws IOException {
+    for (int i = 1; i < accumulators.size(); i++) {
+      buildLevel(accumulators.get(i), accumulators.get(i - 1));
+    }
+    for (int index = 0; index < accumulators.get(0).size(); index++) {
       // compute how many levels we need to write for the current accumulator
       final int levels = getLevels(index, accumulators.size());
       // build the levels
       final SkipAccumulator[] accLevels = new SkipAccumulator[levels];
       for (int level = 0; level < levels; level++) {
         accLevels[level] =
-            SkipAccumulator.merge(accumulators, index, 1 << (SKIP_INDEX_LEVEL_SHIFT * level));
+            accumulators.get(level).get(index / (1 << (SKIP_INDEX_LEVEL_SHIFT * level)));
       }
       // write the number of levels
       data.writeByte((byte) levels);
@@ -309,6 +317,14 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         data.writeLong(accLevels[level].minValue);
         data.writeInt(accLevels[level].docCount);
       }
+    }
+  }
+
+  private static void buildLevel(
+      List<SkipAccumulator> collector, List<SkipAccumulator> accumulators) {
+    int levelSize = 1 << SKIP_INDEX_MAX_LEVEL;
+    for (int i = 0; i < accumulators.size() - levelSize + 1; i += levelSize) {
+      collector.add(SkipAccumulator.merge(accumulators, i, levelSize));
     }
   }
 
