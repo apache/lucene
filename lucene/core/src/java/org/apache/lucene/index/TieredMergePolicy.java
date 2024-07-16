@@ -564,13 +564,14 @@ public class TieredMergePolicy extends MergePolicy {
             idx < sortedEligible.size()
                 && candidate.size() < mergeFactor
                 && bytesThisMerge < maxMergedSegmentBytes
-                && docCountThisMerge <= allowedDocCount;
+                && (bytesThisMerge < floorSegmentBytes || docCountThisMerge <= allowedDocCount);
             idx++) {
           final SegmentSizeAndDocs segSizeDocs = sortedEligible.get(idx);
           final long segBytes = segSizeDocs.sizeInBytes;
           int segDocCount = segSizeDocs.maxDoc - segSizeDocs.delCount;
           if (totAfterMergeBytes + segBytes > maxMergedSegmentBytes
-              || docCountThisMerge + segDocCount > allowedDocCount) {
+              || (totAfterMergeBytes > floorSegmentBytes
+                  && docCountThisMerge + segDocCount > allowedDocCount)) {
             // Only set hitTooLarge when reaching the maximum byte size, as this will create
             // segments of the maximum size which will no longer be eligible for merging for a long
             // time (until they accumulate enough deletes).
