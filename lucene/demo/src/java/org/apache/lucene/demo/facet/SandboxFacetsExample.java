@@ -78,8 +78,7 @@ public class SandboxFacetsExample {
   private final Directory taxoDir = new ByteBuffersDirectory();
   private final FacetsConfig config = new FacetsConfig();
 
-  /** Empty constructor */
-  public SandboxFacetsExample() {
+  private SandboxFacetsExample() {
     config.setHierarchical("Publish Date", true);
   }
 
@@ -137,7 +136,7 @@ public class SandboxFacetsExample {
 
   /** User runs a query and counts facets only without collecting the matching documents. */
   List<FacetResult> facetsOnly() throws IOException {
-    //// (1) init readers
+    //// (1) init readers and searcher
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
@@ -151,9 +150,8 @@ public class SandboxFacetsExample {
         new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
 
     //// (2.1) if we need to collect data using multiple different collectors, e.g. taxonomy and
-    // ranges,
-    ////       or even two taxonomy facets that use different Category List Field, we can use
-    // MultiCollectorManager, e.g.:
+    ////       ranges, or even two taxonomy facets that use different Category List Field, we can
+    ////       use MultiCollectorManager, e.g.:
     // TODO: add a demo for it.
     // TaxonomyFacetsCutter publishDateCutter = new
     // TaxonomyFacetsCutter(config.getDimConfig("Publish Date"), taxoReader);
@@ -391,7 +389,7 @@ public class SandboxFacetsExample {
 
   /** User runs a query and counts facets. */
   private List<FacetResult> facetsWithSearch() throws IOException {
-    //// (1) init readers
+    //// (1) init readers and searcher
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
@@ -465,7 +463,7 @@ public class SandboxFacetsExample {
 
   /** User drills down on 'Publish Date/2010', and we return facets for 'Author' */
   FacetResult drillDown() throws IOException {
-    //// (1) init readers
+    //// (1) init readers and searcher
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
@@ -527,7 +525,7 @@ public class SandboxFacetsExample {
    * 'Author', using DrillSideways.
    */
   private List<FacetResult> drillSideways() throws IOException {
-    //// (1) init readers
+    //// (1) init readers and searcher
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
