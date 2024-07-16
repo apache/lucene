@@ -293,9 +293,10 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     for (int i = 1; i < accumulators.size(); i++) {
       buildLevel(accumulators.get(i), accumulators.get(i - 1));
     }
-    for (int index = 0; index < accumulators.get(0).size(); index++) {
+    int totalAccumulators = accumulators.get(0).size();
+    for (int index = 0; index < totalAccumulators; index++) {
       // compute how many levels we need to write for the current accumulator
-      final int levels = getLevels(index, accumulators.size());
+      final int levels = getLevels(index, totalAccumulators);
       // build the levels
       final SkipAccumulator[] accLevels = new SkipAccumulator[levels];
       for (int level = 0; level < levels; level++) {
@@ -322,7 +323,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private static void buildLevel(
       List<SkipAccumulator> collector, List<SkipAccumulator> accumulators) {
-    int levelSize = 1 << SKIP_INDEX_MAX_LEVEL;
+    int levelSize = 1 << SKIP_INDEX_LEVEL_SHIFT;
     for (int i = 0; i < accumulators.size() - levelSize + 1; i += levelSize) {
       collector.add(SkipAccumulator.merge(accumulators, i, levelSize));
     }
