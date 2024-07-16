@@ -145,11 +145,11 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     }
 
     @Override
-    public void record(int docId, int facetId) throws IOException {
-      long[] valuesForOrd = perOrdinalValues.get(facetId);
+    public void record(int docId, int facetOrd) throws IOException {
+      long[] valuesForOrd = perOrdinalValues.get(facetOrd);
       if (valuesForOrd == null) {
         valuesForOrd = new long[longValues.length];
-        perOrdinalValues.put(facetId, valuesForOrd);
+        perOrdinalValues.put(facetOrd, valuesForOrd);
       }
 
       LongValues values;

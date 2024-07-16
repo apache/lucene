@@ -182,8 +182,8 @@ public class CountFacetRecorder implements FacetRecorder {
     }
 
     @Override
-    public void record(int docId, int facetId) {
-      this.values.addTo(facetId, 1);
+    public void record(int docId, int facetOrd) {
+      this.values.addTo(facetOrd, 1);
     }
   }
 }

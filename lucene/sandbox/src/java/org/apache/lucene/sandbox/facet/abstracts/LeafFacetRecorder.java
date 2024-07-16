@@ -25,7 +25,7 @@ public interface LeafFacetRecorder {
    * TODO: Rename: collect? accumulate?
    *
    * @param docId document ID
-   * @param facetId facet ordinal
+   * @param facetOrd facet ordinal
    */
-  void record(int docId, int facetId) throws IOException;
+  void record(int docId, int facetOrd) throws IOException;
 }

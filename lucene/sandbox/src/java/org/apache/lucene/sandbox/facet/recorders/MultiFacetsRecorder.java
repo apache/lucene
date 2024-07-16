@@ -73,10 +73,10 @@ public final class MultiFacetsRecorder implements FacetRecorder {
     }
 
     @Override
-    public void record(int docId, int facetId) throws IOException {
+    public void record(int docId, int facetOrd) throws IOException {
       // TODO: handle collection terminated exception
       for (LeafFacetRecorder leafRecorder : delegates) {
-        leafRecorder.record(docId, facetId);
+        leafRecorder.record(docId, facetOrd);
       }
     }
   }

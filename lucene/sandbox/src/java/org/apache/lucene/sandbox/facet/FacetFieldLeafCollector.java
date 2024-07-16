@@ -26,7 +26,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 
-/** LeafCollector that collects and records data for all facetIds for each doc. */
+/** LeafCollector that collects and records data for all facet ordinals for each doc. */
 public class FacetFieldLeafCollector implements LeafCollector {
 
   private final LeafReaderContext context;
@@ -37,15 +37,8 @@ public class FacetFieldLeafCollector implements LeafCollector {
   private LeafFacetRecorder leafRecorder;
 
   /** Constructor */
-  /*public FacetFieldLeafCollector(LeafReaderContext context, LeafFacetCutter leafCutter, LeafFacetRecorder leafPayload) {
-      // TODO: we don't need context param?
-      this.leafCutter = leafCutter;
-      this.leafRecorder = leafPayload;
-  }*/
-
   public FacetFieldLeafCollector(
       LeafReaderContext context, FacetCutter cutter, FacetRecorder recorder) {
-    // TODO: we don't need context param?
     this.context = context;
     this.cutter = cutter;
     this.recorder = recorder;
@@ -53,7 +46,7 @@ public class FacetFieldLeafCollector implements LeafCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
-    // TODO
+    // TODO: do we need scorer for anything here?
   }
 
   @Override
