@@ -23,31 +23,25 @@ apply plugin: 'c'
 
 description = 'Lucene core library'
 model {
-  toolChains {
-    gcc(Gcc) {
-      target("linux_aarch64"){
-        path '/usr/bin/'
-        cCompiler.executable 'gcc10-cc'
-        cCompiler.withArguments { args ->
-          args << "--shared"
-               << "-O3"
-               << "-march=native"
-               << "-funroll-loops"
-        }
-      }
-    }
-    clang(Clang) {
-      target("osx_aarch64"){
-        cCompiler.withArguments { args ->
-          args << "--shared"
-               << "-O3"
-               << "-march=native"
-               << "-funroll-loops"
-        }
-      }
+  binaries {
+    all {
+      cCompiler.args "--shared", "-O3", "-march=native", "-funroll-loops"
     }
   }
 
+  toolChains {
+    gcc(Gcc) {
+        target("linux_aarch64") {
+            cCompiler.executable = System.getenv("CC")
+        }
+    }
+    clang(Clang) {
+        target("osx_aarch64"){
+            cCompiler.executable = System.getenv("CC")
+        }
+    }
+  }
+     
   components {
     dotProduct(NativeLibrarySpec) {
       sources {
