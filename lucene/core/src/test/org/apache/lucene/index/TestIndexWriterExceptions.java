@@ -1275,7 +1275,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     assertTrue("segment generation should be > 0 but got " + gen, gen > 0);
 
     final String segmentsFileName = SegmentInfos.getLastCommitSegmentsFileName(dir);
-    IndexInput in = dir.openInput(segmentsFileName, newIOContext(random()));
+    IndexInput in = dir.openInput(segmentsFileName, IOContext.READONCE);
     IndexOutput out =
         dir.createOutput(
             IndexFileNames.fileNameFromGeneration(IndexFileNames.SEGMENTS, "", 1 + gen),
@@ -1320,7 +1320,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     String fileNameIn = SegmentInfos.getLastCommitSegmentsFileName(dir);
     String fileNameOut =
         IndexFileNames.fileNameFromGeneration(IndexFileNames.SEGMENTS, "", 1 + gen);
-    IndexInput in = dir.openInput(fileNameIn, newIOContext(random()));
+    IndexInput in = dir.openInput(fileNameIn, IOContext.READONCE);
     IndexOutput out = dir.createOutput(fileNameOut, newIOContext(random()));
     long length = in.length();
     for (int i = 0; i < length - 1; i++) {
