@@ -630,17 +630,18 @@ public class IndexSearcher {
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
-    CollectorOwner<C, T> collectorOwner = CollectorOwner.hire(collectorManager);
+    CollectorOwner<C, T> collectorOwner = new CollectorOwner<>(collectorManager);
     final C firstCollector = collectorOwner.newCollector();
     query = rewrite(query, firstCollector.scoreMode().needsScores());
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
     search(weight, collectorOwner, firstCollector);
-    return collectorOwner.reduce();
+    return collectorOwner.getResult();
   }
 
   /**
    * Lower-level search API. Search all leaves using the given {@link CollectorOwner}, without
-   * calling {@link CollectorOwner#reduce()} so that clients can reduce and read results themselves.
+   * calling {@link CollectorOwner#getResult()} so that clients can reduce and read results
+   * themselves.
    *
    * <p>TODO: CollectorOwner has getResults method now (not yet used by anything), so maybe it's ok
    * to call reduce in this method?

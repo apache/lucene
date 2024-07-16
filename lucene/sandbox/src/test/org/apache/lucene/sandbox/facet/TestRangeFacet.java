@@ -534,7 +534,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     ////// First search, no drill-downs:
     DrillDownQuery ddq = new DrillDownQuery(config);
-    ds.search(ddq, CollectorOwner.hire(collectorManager), List.of(), true);
+    ds.search(ddq, new CollectorOwner<>(collectorManager), List.of(), true);
 
     // assertEquals(100, dsr.hits.totalHits.value);
     assertEquals(
@@ -555,8 +555,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     ddq.add("dim", "b");
     ds.search(
         ddq,
-        CollectorOwner.hire(fieldCollectorManager),
-        List.of(CollectorOwner.hire(dimCollectorManager)),
+        new CollectorOwner<>(fieldCollectorManager),
+        List.of(new CollectorOwner<>(dimCollectorManager)),
         true);
 
     // assertEquals(75, dsr.hits.totalHits.value);
@@ -578,8 +578,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     ddq.add("field", LongPoint.newRangeQuery("field", 0L, 10L));
     ds.search(
         ddq,
-        CollectorOwner.hire(dimCollectorManager),
-        List.of(CollectorOwner.hire(fieldCollectorManager)),
+        new CollectorOwner<>(dimCollectorManager),
+        List.of(new CollectorOwner<>(fieldCollectorManager)),
         true);
 
     // assertEquals(11, dsr.hits.totalHits.value);
@@ -1636,13 +1636,13 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     countRecorder = new CountFacetRecorder(random().nextBoolean());
 
     CollectorOwner<DummyTotalHitCountCollector, Integer> totalHitsCollectorOwner =
-        CollectorOwner.hire(DummyTotalHitCountCollector.createManager());
+        new CollectorOwner<>(DummyTotalHitCountCollector.createManager());
     CollectorOwner<FacetFieldCollector, CountFacetRecorder> drillSidewaysCollectorOwner =
-        CollectorOwner.hire(
+        new CollectorOwner<>(
             new FacetFieldCollectorManager<>(doubleRangeFacetCutter, null, countRecorder));
     ds.search(ddq, totalHitsCollectorOwner, List.of(drillSidewaysCollectorOwner), false);
-    assertEquals(1, totalHitsCollectorOwner.reduce().intValue());
-    drillSidewaysCollectorOwner.reduce();
+    assertEquals(1, totalHitsCollectorOwner.getResult().intValue());
+    drillSidewaysCollectorOwner.getResult();
     assertEquals(
         "dim=field path=[] value=-5 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
         getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap)

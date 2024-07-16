@@ -351,10 +351,10 @@ public class DrillSideways {
     if (drillDownFacetsCollectorManager != null) {
       // Make sure we populate a facet collector corresponding to the base query if desired:
       mainCollectorOwner =
-          CollectorOwner.hire(
+          new CollectorOwner<>(
               new MultiCollectorManager(drillDownFacetsCollectorManager, hitCollectorManager));
     } else {
-      mainCollectorOwner = CollectorOwner.hire(hitCollectorManager);
+      mainCollectorOwner = new CollectorOwner<>(hitCollectorManager);
     }
     // Drill sideways dimensions
     final List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners;
@@ -362,7 +362,7 @@ public class DrillSideways {
       drillSidewaysCollectorOwners = new ArrayList<>(query.getDims().size());
       for (int i = 0; i < query.getDims().size(); i++) {
         drillSidewaysCollectorOwners.add(
-            CollectorOwner.hire(createDrillSidewaysFacetsCollectorManager()));
+            new CollectorOwner<>(createDrillSidewaysFacetsCollectorManager()));
       }
     } else {
       drillSidewaysCollectorOwners = null;
@@ -380,12 +380,12 @@ public class DrillSideways {
     if (drillDownFacetsCollectorManager != null) {
       // drill down collected using MultiCollector
       // Extract the results:
-      Object[] drillDownResult = (Object[]) mainCollectorOwner.reduce();
+      Object[] drillDownResult = (Object[]) mainCollectorOwner.getResult();
       facetsCollectorResult = (FacetsCollector) drillDownResult[0];
       hitCollectorResult = (R) drillDownResult[1];
     } else {
       facetsCollectorResult = null;
-      hitCollectorResult = (R) mainCollectorOwner.reduce();
+      hitCollectorResult = (R) mainCollectorOwner.getResult();
     }
 
     // Getting results for drill sideways dimensions (if any)
@@ -399,7 +399,7 @@ public class DrillSideways {
       drillSidewaysCollectors = new FacetsCollector[numDims];
       for (int dim = 0; dim < numDims; dim++) {
         drillSidewaysCollectors[dim] =
-            (FacetsCollector) drillSidewaysCollectorOwners.get(dim).reduce();
+            (FacetsCollector) drillSidewaysCollectorOwners.get(dim).getResult();
       }
     } else {
       drillSidewaysDims = null;
@@ -420,12 +420,12 @@ public class DrillSideways {
    * CollectorOwner}s. It doesn't return anything because it is expected that you read results from
    * provided {@link CollectorOwner}s.
    *
-   * <p>To read the results, run {@link CollectorOwner#reduce()} for drill down and all drill
+   * <p>To read the results, run {@link CollectorOwner#getResult()} for drill down and all drill
    * sideways dimensions.
    *
    * <p>If {@code doReduce} is set to true, this method itself calls {@link
-   * CollectorOwner#reduce()}. Note that results of the call are not returned by this method, so you
-   * can only do that if there is some other way of accessing results from the reduce call.
+   * CollectorOwner#getResult()}. Note that results of the call are not returned by this method, so
+   * you can only do that if there is some other way of accessing results from the reduce call.
    *
    * <p>Note: use {@link Collections#unmodifiableList(List)} to wrap {@code
    * drillSidewaysCollectorOwners} to convince compiler that it is safe to use List here.
@@ -465,10 +465,10 @@ public class DrillSideways {
 
     // TODO: do we want to run reduce in parallel if executor is provided?
     if (doReduce) {
-      drillDownCollectorOwner.reduce();
+      drillDownCollectorOwner.getResult();
       if (drillSidewaysCollectorOwners != null) {
         for (CollectorOwner<?, ?> sidewaysOwner : drillSidewaysCollectorOwners) {
-          sidewaysOwner.reduce();
+          sidewaysOwner.getResult();
         }
       }
     }

@@ -551,7 +551,7 @@ public class SandboxFacetsExample {
         new FacetFieldCollectorManager<>(
             defaultTaxoCutter, defaultTaxoCutter, publishDayDimensionRecorder);
     List<CollectorOwner<FacetFieldCollector, CountFacetRecorder>> drillSidewaysOwners =
-        List.of(CollectorOwner.hire(publishDayDimensionCollectorManager));
+        List.of(new CollectorOwner<>(publishDayDimensionCollectorManager));
 
     //// (3) search
     // Right now we return the same Recorder we created - so we can ignore results
@@ -559,7 +559,7 @@ public class SandboxFacetsExample {
     // We must wrap list of drill sideways owner with unmodifiableList to make generics work.
     ds.search(
         q,
-        CollectorOwner.hire(drillDownCollectorManager),
+        new CollectorOwner<>(drillDownCollectorManager),
         Collections.unmodifiableList(drillSidewaysOwners),
         true);
 

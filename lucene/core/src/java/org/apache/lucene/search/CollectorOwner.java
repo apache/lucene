@@ -18,13 +18,18 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Like {@link CollectorManager}, but it owns the collectors its manager creates. Benefit is that
- * clients of the class don't have to worry about keeping the list of collectors, as well as about
- * making the collectors type (C) compatible when reduce is called.
+ * Like {@link CollectorManager}, but it owns the collectors its manager creates. It is convenient
+ * that clients of the class don't have to worry about keeping the list of collectors, as well as
+ * about making the collectors type (C) compatible when reduce is called. Instance of this class
+ * also caches results of {@link CollectorManager#reduce(Collection)}.
+ *
+ * <p>Note that instance of this class ignores any {@link Collector} created by {@link
+ * CollectorManager#newCollector()} directly, not through {@link #newCollector()}
  *
  * @lucene.experimental
  */
@@ -35,11 +40,11 @@ public final class CollectorOwner<C extends Collector, T> {
   private T result;
   private boolean reduced;
 
-  // TODO: Normally, for IndexSearcher, we don't need parallelized write access to the list
-  //  because we create new collectors sequentially. But drill sideways creates new collectors in
+  // TODO: For IndexSearcher, the list doesn't have to be synchronized
+  //  because we create new collectors sequentially. Drill sideways creates new collectors in
   //  DrillSidewaysQuery#Weight#bulkScorer which is already called concurrently.
-  //  I think making the list sychronized here is not a huge concern, at the same time, do we want
-  // to do something about it?
+  //  I think making the list synchronized here is not a huge concern, at the same time, do we want
+  //  to do something about it?
   //  e.g. have boolean property in constructor that makes it threads friendly when set?
   private final List<C> collectors = Collections.synchronizedList(new ArrayList<>());
 
@@ -58,28 +63,12 @@ public final class CollectorOwner<C extends Collector, T> {
     return collectors.get(i);
   }
 
-  /**
-   * Reduce the results of individual collectors into a meaningful result. For instance a {@link
-   * TopDocsCollector} would compute the {@link TopDocsCollector#topDocs() top docs} of each
-   * collector and then merge them using {@link TopDocs#merge(int, TopDocs[])}. This method must be
-   * called after collection is finished on all provided collectors.
-   */
-  public T reduce() throws IOException {
-    result = manager.reduce(collectors);
-    reduced = true;
-    return result;
-  }
-
-  public static <C extends Collector, T> CollectorOwner<C, T> hire(CollectorManager<C, T> manager) {
-    // TODO: can we guarantee that the manager didn't create any Collectors yet?
-    //  Or should we expect the new owner to be able to reduce only the work the manager has done
-    // after it was hired?
-    return new CollectorOwner<>(manager);
-  }
-
-  public T getResult() {
+  /** Returns result of {@link CollectorManager#reduce(Collection)}. The result is cached. */
+  public T getResult() throws IOException {
     if (reduced == false) {
-      throw new IllegalStateException("reduce() must be called first.");
+      result = manager.reduce(collectors);
+      reduced = true;
+      return result;
     }
     return result;
   }

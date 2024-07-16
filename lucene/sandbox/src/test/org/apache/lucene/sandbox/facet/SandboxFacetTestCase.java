@@ -51,9 +51,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
   // where
   // the same doc belongs to multiple facets (e.g. overlapping ranges and
   // multi value fields). We can add an extra range that includes everything,
-  // or consider supporting overall count in CountFacetRecorder. But it is not exactly the value
-  // we can get now, as this value wouldn't respect top-n cutoff. Is this value a must have facets
-  // feature?
+  // or consider supporting overall count in CountFacetRecorder.
   static final int VALUE_CANT_BE_COMPUTED = -5;
 
   /**
