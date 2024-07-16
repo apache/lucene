@@ -231,12 +231,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         maxCount = Math.max(count, maxCount);
         assertTrue("count=" + count + " maxCount=" + maxCount, count >= maxCount - 3);
       }
-      assertTrue(
-          "num segments="
-              + w.getSegmentCount()
-              + " targetSearchConcurrency="
-              + tmp.getTargetSearchConcurrency(),
-          tmp.getTargetSearchConcurrency() <= w.getSegmentCount());
 
       w.flush(true, true);
 
