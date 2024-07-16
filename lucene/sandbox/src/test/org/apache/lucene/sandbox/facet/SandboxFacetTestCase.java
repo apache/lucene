@@ -377,6 +377,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
       String dimension,
       OrdLabelBiMap ordLabels)
       throws IOException {
+    ComparableUtils.sort(resultOrdinals, ComparableUtils.ordToComparable());
     FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     int childCount = 0;

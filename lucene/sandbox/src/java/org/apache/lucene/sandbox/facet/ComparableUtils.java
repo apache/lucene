@@ -16,10 +16,15 @@
  */
 package org.apache.lucene.sandbox.facet;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.sandbox.facet.abstracts.GetOrd;
 import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
+import org.apache.lucene.util.InPlaceMergeSorter;
 
 /**
  * Collection of static methods to provide most common comparables for sandbox faceting. You can
@@ -143,5 +148,33 @@ public class ComparableUtils {
         return reuse;
       }
     };
+  }
+
+  /**
+   * Sort array of ordinals.
+   *
+   * @param ordinals array of ordinals to sort
+   * @param ordToComparable defines sort order
+   */
+  public static <T extends Comparable<T> & GetOrd> void sort(
+      int[] ordinals, OrdToComparable<T> ordToComparable) throws IOException {
+    List<T> comparables = new ArrayList<>(ordinals.length);
+    for (int i = 0; i < ordinals.length; i++) {
+      comparables.add(ordToComparable.getComparable(ordinals[i], null));
+    }
+    new InPlaceMergeSorter() {
+      @Override
+      protected void swap(int i, int j) {
+        int tmp = ordinals[i];
+        ordinals[i] = ordinals[j];
+        ordinals[j] = tmp;
+        Collections.swap(comparables, i, j);
+      }
+
+      @Override
+      protected int compare(int i, int j) {
+        return comparables.get(j).compareTo(comparables.get(i));
+      }
+    }.sort(0, ordinals.length);
   }
 }
