@@ -27,13 +27,13 @@ final class RefCountedSharedArena implements Arena {
   static final int CLOSED = -1;
 
   private final String segmentName;
-  private final Runnable removeFromMap;
+  private final Runnable onClose;
   private final Arena arena;
   private final AtomicInteger state;
 
-  RefCountedSharedArena(String segmentName, Runnable removeFromMap) {
+  RefCountedSharedArena(String segmentName, Runnable onClose) {
     this.segmentName = segmentName;
-    this.removeFromMap = removeFromMap;
+    this.onClose = onClose;
     this.arena = Arena.ofShared();
     this.state = new AtomicInteger(OPEN);
   }
@@ -62,7 +62,7 @@ final class RefCountedSharedArena implements Arena {
       throw new IllegalStateException("already closed");
     }
     if (updatedValue == OPEN && state.compareAndSet(OPEN, CLOSED)) {
-      removeFromMap.run();
+      onClose.run();
       arena.close();
     }
   }
