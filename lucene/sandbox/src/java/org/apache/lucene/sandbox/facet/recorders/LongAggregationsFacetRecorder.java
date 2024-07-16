@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.sandbox.facet.recorders;
 
+import static org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator.NO_MORE_ORDS;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,7 +41,7 @@ import org.apache.lucene.search.LongValuesSource;
  */
 public class LongAggregationsFacetRecorder implements FacetRecorder {
 
-  private IntObjectHashMap<long[]> perOrdinalValues;
+  private IntObjectHashMap<long[]> values;
   private List<IntObjectHashMap<long[]>> leafValues;
 
   private final LongValuesSource[] longValuesSources;
@@ -50,7 +52,7 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     assert longValuesSources.length == reducers.length;
     this.longValuesSources = longValuesSources;
     this.reducers = reducers;
-    perOrdinalValues = new IntObjectHashMap<>();
+    values = new IntObjectHashMap<>();
     leafValues = Collections.synchronizedList(new ArrayList<>());
   }
 
@@ -67,10 +69,10 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
 
   @Override
   public OrdinalIterator recordedOrds() {
-    if (perOrdinalValues.isEmpty()) {
+    if (values.isEmpty()) {
       return null;
     }
-    Iterator<IntCursor> ordIterator = perOrdinalValues.keys().iterator();
+    Iterator<IntCursor> ordIterator = values.keys().iterator();
     return new OrdinalIterator() {
       @Override
       public int nextOrd() throws IOException {
@@ -85,7 +87,7 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
 
   @Override
   public boolean isEmpty() {
-    return perOrdinalValues.isEmpty();
+    return values.isEmpty();
   }
 
   @Override
@@ -93,13 +95,13 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     boolean firstElement = true;
     for (IntObjectHashMap<long[]> leafValue : leafValues) {
       if (firstElement) {
-        perOrdinalValues = leafValue;
+        values = leafValue;
         firstElement = false;
       } else {
         for (IntObjectHashMap.IntObjectCursor<long[]> elem : leafValue) {
-          long[] vals = perOrdinalValues.get(elem.key);
+          long[] vals = values.get(elem.key);
           if (vals == null) {
-            perOrdinalValues.put(elem.key, elem.value);
+            values.put(elem.key, elem.value);
           } else {
             for (int i = 0; i < longValuesSources.length; i++) {
               vals[i] = reducers[i].reduce(vals[i], elem.value[i]);
@@ -110,11 +112,35 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     }
     if (firstElement) {
       // TODO: do we need empty map by default?
-      perOrdinalValues = new IntObjectHashMap<>();
+      values = new IntObjectHashMap<>();
     }
-    // TODO: implement rollup
     if (facetRollup != null) {
-      throw new UnsupportedOperationException("Rollup is required, but not implemented");
+      OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
+      for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
+        long[] current = values.get(dimOrd);
+        if (current == null) {
+          current = new long[longValuesSources.length];
+          values.put(dimOrd, current);
+        }
+        rollup(current, dimOrd, facetRollup);
+      }
+    }
+  }
+
+  private void rollup(long[] accum, int ord, FacetRollup facetRollup) throws IOException {
+    OrdinalIterator childOrds = facetRollup.getChildrenOrds(ord);
+    for (int nextChild = childOrds.nextOrd();
+        nextChild != NO_MORE_ORDS;
+        nextChild = childOrds.nextOrd()) {
+      long[] current = values.get(nextChild);
+      if (current == null) {
+        current = new long[longValuesSources.length];
+        values.put(ord, current);
+      }
+      rollup(current, ord, facetRollup);
+      for (int i = 0; i < longValuesSources.length; i++) {
+        accum[i] = reducers[i].reduce(accum[i], current[i]);
+      }
     }
   }
 
@@ -122,7 +148,7 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     if (valuesId < 0 || valuesId >= longValuesSources.length) {
       throw new IllegalArgumentException("Invalid request for ordinal values");
     }
-    long[] valuesForOrd = perOrdinalValues.get(ord);
+    long[] valuesForOrd = values.get(ord);
     if (valuesForOrd != null) {
       return valuesForOrd[valuesId];
     }

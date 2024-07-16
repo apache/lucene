@@ -123,24 +123,19 @@ public class CountFacetRecorder implements FacetRecorder {
     if (facetRollup == null) {
       return;
     }
-    // Don't need to do anything now because we collect all to a sync IntIntMap
     OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
-    for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; ) {
-      // TODO: we call addTo because this is what IntTaxonomyFacets does (add to current value).
-      //  We might want to just replace the value instead? We should not have dimOrd in the map.
+    for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
       values.addTo(dimOrd, rollup(dimOrd, facetRollup));
-      dimOrd = dimOrds.nextOrd();
     }
   }
 
   private int rollup(int ord, FacetRollup facetRollup) throws IOException {
     OrdinalIterator childOrds = facetRollup.getChildrenOrds(ord);
     int accum = 0;
-    for (int nextChild = childOrds.nextOrd(); nextChild != NO_MORE_ORDS; ) {
-      // TODO: we call addTo because this is what IntTaxonomyFacets does (add to current value).
-      //  We might want to just replace the value instead? We should not have nextChild in the map.
+    for (int nextChild = childOrds.nextOrd();
+        nextChild != NO_MORE_ORDS;
+        nextChild = childOrds.nextOrd()) {
       accum += values.addTo(nextChild, rollup(nextChild, facetRollup));
-      nextChild = childOrds.nextOrd();
     }
     return accum;
   }
