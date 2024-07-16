@@ -56,7 +56,7 @@ public class Lucene912PostingsFormat extends PostingsFormat {
   public static final int BLOCK_SIZE_LOG2 = ForUtil.BLOCK_SIZE_LOG2;
   public static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
-  public static final int SKIP_FACTOR = 64;
+  public static final int SKIP_FACTOR = 32;
   public static final int SKIP_TOTAL_SIZE = SKIP_FACTOR * BLOCK_SIZE;
   public static final int SKIP_MASK = SKIP_TOTAL_SIZE - 1;
 

@@ -316,20 +316,6 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     lastDocID = docID;
   }
 
-  static void writeDocDeltaAndBlockLength(int docDelta, long blockLength, DataOutput out) throws IOException {
-    // Optimistically write the doc delta and the block length on 4 bytes by reserving 20 bits for the doc delta, 11 bits for the block length, and one continuation bit.
-    int token = (docDelta & 0xFFFFF) | ((int) (blockLength & 0x7FFL) << 20);
-    assert token >= 0;
-    if ((docDelta & ~0xFFFFF) != 0 || (blockLength & ~0x7FFL) != 0) {
-      token |= 1 << 31;
-      out.writeInt(token);
-      out.writeVInt(docDelta >> 20);
-      out.writeVLong(blockLength >> 11);
-    } else {
-      out.writeInt(token);
-    }
-  }
-
   private void flushDocBlock(boolean end) throws IOException {
     assert docBufferUpto != 0;
 
@@ -337,19 +323,26 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       PostingsUtil.writeVIntBlock(blockOutput, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
     } else {
       writeImpacts(competitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
+      assert blockOutput.size() == 0;
       blockOutput.writeVLong(spareOutput.size());
       spareOutput.copyTo(blockOutput);
       spareOutput.reset();
       if (writePositions) {
         long blockTTF = Arrays.stream(freqBuffer).sum();
-        blockOutput.writeByte((byte) blockTTF);
-        blockOutput.writeVLong(blockTTF >> 8);
+        blockOutput.writeVLong(blockTTF);
       }
+      long numSkipBytes = blockOutput.size();
       forDeltaUtil.encodeDeltas(docDeltaBuffer, blockOutput);
       if (writeFreqs) {
         pforUtil.encode(freqBuffer, blockOutput);
       }
-      writeDocDeltaAndBlockLength(docID - lastBlockDocID, blockOutput.size(), skipOutput);
+      
+      spareOutput.writeVInt(docID - lastBlockDocID);
+      spareOutput.writeVLong(blockOutput.size());
+      numSkipBytes += spareOutput.size();
+      skipOutput.writeVLong(numSkipBytes);
+      spareOutput.copyTo(skipOutput);
+      spareOutput.reset();
     }
 
     blockOutput.copyTo(skipOutput);
