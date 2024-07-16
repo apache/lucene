@@ -18,8 +18,8 @@ package org.apache.lucene.sandbox.facet.abstracts;
 
 import java.io.IOException;
 
-/** Facets, that don't contain hits anymore, but */
-public interface FacetLeafRecorder {
+/** Record data for each facet of each doc of a leaf (segment). */
+public interface LeafFacetRecorder {
 
   /**
    * TODO: Rename: collect? accumulate?

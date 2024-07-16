@@ -19,9 +19,9 @@ package org.apache.lucene.sandbox.facet;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetRecorder;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -34,10 +34,10 @@ public class FacetFieldLeafCollector implements LeafCollector {
   private final FacetRecorder recorder;
   private LeafFacetCutter leafCutter;
 
-  private FacetLeafRecorder leafRecorder;
+  private LeafFacetRecorder leafRecorder;
 
   /** Constructor */
-  /*public FacetFieldLeafCollector(LeafReaderContext context, LeafFacetCutter leafCutter, FacetLeafRecorder leafPayload) {
+  /*public FacetFieldLeafCollector(LeafReaderContext context, LeafFacetCutter leafCutter, LeafFacetRecorder leafPayload) {
       // TODO: we don't need context param?
       this.leafCutter = leafCutter;
       this.leafRecorder = leafPayload;

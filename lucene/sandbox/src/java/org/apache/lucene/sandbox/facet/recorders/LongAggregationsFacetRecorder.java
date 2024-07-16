@@ -24,9 +24,9 @@ import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.abstracts.Reducer;
 import org.apache.lucene.search.LongValues;
@@ -55,14 +55,14 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
   }
 
   @Override
-  public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
+  public LeafFacetRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
     LongValues[] longValues = new LongValues[longValuesSources.length];
     for (int i = 0; i < longValuesSources.length; i++) {
       longValues[i] = longValuesSources[i].getValues(context, null);
     }
     IntObjectHashMap<long[]> valuesRecorder = new IntObjectHashMap<>();
     leafValues.add(valuesRecorder);
-    return new LongAggregationsFacetLeafRecorder(longValues, reducers, valuesRecorder);
+    return new LongAggregationsLeafFacetRecorder(longValues, reducers, valuesRecorder);
   }
 
   @Override
@@ -130,14 +130,14 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     return -1; // TODO: missing value, what do we want to return? Zero might be a better option.
   }
 
-  private static class LongAggregationsFacetLeafRecorder implements FacetLeafRecorder {
+  private static class LongAggregationsLeafFacetRecorder implements LeafFacetRecorder {
 
     private final LongValues[] longValues;
 
     private final Reducer[] reducers;
     private final IntObjectHashMap<long[]> perOrdinalValues;
 
-    LongAggregationsFacetLeafRecorder(
+    LongAggregationsLeafFacetRecorder(
         LongValues[] longValues, Reducer[] reducers, IntObjectHashMap<long[]> perOrdinalValues) {
       this.longValues = longValues;
       this.reducers = reducers;

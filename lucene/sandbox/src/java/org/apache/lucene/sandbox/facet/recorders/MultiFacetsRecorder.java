@@ -18,9 +18,9 @@ package org.apache.lucene.sandbox.facet.recorders;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 
 /** {@link FacetRecorder} that contains multiple FacetRecorders. */
@@ -34,11 +34,11 @@ public final class MultiFacetsRecorder implements FacetRecorder {
   }
 
   @Override
-  public FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
+  public LeafFacetRecorder getLeafRecorder(LeafReaderContext context) throws IOException {
     //        TODO: find out why streams gives StackOverFlowError?
-    //        FacetLeafRecorder[] leafDelegates = Arrays.stream(delegates).map(k ->
-    // getLeafRecorder(context)).toArray(FacetLeafRecorder[]::new);
-    FacetLeafRecorder[] leafDelegates = new FacetLeafRecorder[delegates.length];
+    //        LeafFacetRecorder[] leafDelegates = Arrays.stream(delegates).map(k ->
+    // getLeafRecorder(context)).toArray(LeafFacetRecorder[]::new);
+    LeafFacetRecorder[] leafDelegates = new LeafFacetRecorder[delegates.length];
     for (int i = 0; i < delegates.length; i++) {
       leafDelegates[i] = delegates[i].getLeafRecorder(context);
     }
@@ -64,18 +64,18 @@ public final class MultiFacetsRecorder implements FacetRecorder {
     }
   }
 
-  private static final class MultiFacetsLeafRecorder implements FacetLeafRecorder {
+  private static final class MultiFacetsLeafRecorder implements LeafFacetRecorder {
 
-    private final FacetLeafRecorder[] delegates;
+    private final LeafFacetRecorder[] delegates;
 
-    private MultiFacetsLeafRecorder(FacetLeafRecorder[] delegates) {
+    private MultiFacetsLeafRecorder(LeafFacetRecorder[] delegates) {
       this.delegates = delegates;
     }
 
     @Override
     public void record(int docId, int facetId) throws IOException {
       // TODO: handle collection terminated exception
-      for (FacetLeafRecorder leafRecorder : delegates) {
+      for (LeafFacetRecorder leafRecorder : delegates) {
         leafRecorder.record(docId, facetId);
       }
     }

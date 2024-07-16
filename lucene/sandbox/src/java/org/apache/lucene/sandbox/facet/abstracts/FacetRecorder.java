@@ -29,7 +29,7 @@ import org.apache.lucene.index.LeafReaderContext;
  */
 public interface FacetRecorder {
   /** Get leaf recorder. */
-  FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException;
+  LeafFacetRecorder getLeafRecorder(LeafReaderContext context) throws IOException;
 
   /** Return next collected ordinal, or {@link LeafFacetCutter#NO_MORE_ORDS} */
   OrdinalIterator recordedOrds();
