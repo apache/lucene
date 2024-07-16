@@ -113,8 +113,7 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
       perOrdinalValues = new IntObjectHashMap<>();
     }
     // TODO: implement rollup
-    if (facetRollup != null
-        && facetRollup.getDimOrdsToRollup().nextOrd() != OrdinalIterator.NO_MORE_ORDS) {
+    if (facetRollup != null) {
       throw new UnsupportedOperationException("Rollup is required, but not implemented");
     }
   }
