@@ -29,17 +29,17 @@ import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.sandbox.facet.abstracts.FacetLeafRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 
 /**
  * {@link FacetRecorder} to count facets. TODO: add an option to keep counts in an array, to improve
  * performance for facets with small number of ordinals e.g. range facets. Options: - {@link
- * org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter} can inform {@link FacetLeafRecorder}
- * about expected number of facet ordinals ({@link
- * org.apache.lucene.sandbox.facet.FacetFieldCollector} can orchestrate that). If expeted facet ord
- * number is below some threshold - use array instead of a map? - first 100/1k counts in array, the
- * rest - in a map; the limit can also be provided in a constructor? It is similar to what
- * LongValuesFacetCounts does today.
+ * LeafFacetCutter} can inform {@link FacetLeafRecorder} about expected number of facet ordinals
+ * ({@link org.apache.lucene.sandbox.facet.FacetFieldCollector} can orchestrate that). If expeted
+ * facet ord number is below some threshold - use array instead of a map? - first 100/1k counts in
+ * array, the rest - in a map; the limit can also be provided in a constructor? It is similar to
+ * what LongValuesFacetCounts does today.
  */
 public class CountFacetRecorder implements FacetRecorder {
 

@@ -24,7 +24,7 @@ import java.util.Objects;
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
@@ -134,7 +134,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     return false;
   }
 
-  abstract static class LongRangeMultivaluedFacetLeafCutter implements FacetLeafCutter {
+  abstract static class LongRangeMultivaluedLeafFacetCutter implements LeafFacetCutter {
     final MultiLongValues multiLongValues;
     final long[] boundaries;
     final int[] pos;
@@ -149,7 +149,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     // exclusive ranges.
     IntervalTracker requestedIntervalTracker;
 
-    LongRangeMultivaluedFacetLeafCutter(
+    LongRangeMultivaluedLeafFacetCutter(
         MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
       this.multiLongValues = longValues;
       this.boundaries = boundaries;
@@ -246,7 +246,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     void maybeRollUp(IntervalTracker rollUpInto) {}
   }
 
-  abstract static class LongRangeSinglevaluedFacetLeafCutter implements FacetLeafCutter {
+  abstract static class LongRangeSinglevaluedLeafFacetCutter implements LeafFacetCutter {
     final LongValues longValues;
     final long[] boundaries;
     final int[] pos;
@@ -259,7 +259,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
     IntervalTracker requestedIntervalTracker;
 
-    LongRangeSinglevaluedFacetLeafCutter(
+    LongRangeSinglevaluedLeafFacetCutter(
         LongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
       this.longValues = longValues;
       this.boundaries = boundaries;

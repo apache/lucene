@@ -26,7 +26,7 @@ import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
@@ -142,31 +142,31 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   }
 
   @Override
-  public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
+  public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);
-      return new OverlappingSinglevaluedRangeFacetLeafCutter(
+      return new OverlappingSinglevaluedRangeLeafFacetCutter(
           values, boundaries, pos, requestedRangeCount, root);
     } else {
       MultiLongValues values = valuesSource.getValues(context);
-      return new OverlappingMultivaluedRangeFacetLeafCutter(
+      return new OverlappingMultivaluedRangeLeafFacetCutter(
           values, boundaries, pos, requestedRangeCount, root);
     }
   }
 
   /**
-   * TODO: dedup OverlappingMultivaluedRangeFacetLeafCutter and
-   * OverlappingSinglevaluedRangeFacetLeafCutter code - they are similar but they extend different
+   * TODO: dedup OverlappingMultivaluedRangeLeafFacetCutter and
+   * OverlappingSinglevaluedRangeLeafFacetCutter code - they are similar but they extend different
    * base classes.
    */
-  static class OverlappingMultivaluedRangeFacetLeafCutter
-      extends LongRangeMultivaluedFacetLeafCutter {
+  static class OverlappingMultivaluedRangeLeafFacetCutter
+      extends LongRangeMultivaluedLeafFacetCutter {
 
     LongRangeNode elementaryIntervalRoot;
 
     private int elementaryIntervalUpto;
 
-    OverlappingMultivaluedRangeFacetLeafCutter(
+    OverlappingMultivaluedRangeLeafFacetCutter(
         MultiLongValues longValues,
         long[] boundaries,
         int[] pos,
@@ -213,14 +213,14 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     }
   }
 
-  static class OverlappingSinglevaluedRangeFacetLeafCutter
-      extends LongRangeSinglevaluedFacetLeafCutter {
+  static class OverlappingSinglevaluedRangeLeafFacetCutter
+      extends LongRangeSinglevaluedLeafFacetCutter {
 
     LongRangeNode elementaryIntervalRoot;
 
     private int elementaryIntervalUpto;
 
-    OverlappingSinglevaluedRangeFacetLeafCutter(
+    OverlappingSinglevaluedRangeLeafFacetCutter(
         LongValues longValues,
         long[] boundaries,
         int[] pos,

@@ -20,11 +20,11 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
- * Creates {@link FacetLeafCutter} for each leaf. TODO: do we need FacetCutterManager similar to
+ * Creates {@link LeafFacetCutter} for each leaf. TODO: do we need FacetCutterManager similar to
  * CollectorManager, e.g. is createLeafCutter always thread safe?
  */
 public interface FacetCutter {
 
   /** Get cutter for the leaf. */
-  FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException;
+  LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException;
 }

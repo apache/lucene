@@ -22,7 +22,7 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.LongValuesSource;
 
@@ -59,7 +59,7 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
   }
 
   @Override
-  public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
+  public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     return longRangeFacetCutter.createLeafCutter(context);
   }
 }

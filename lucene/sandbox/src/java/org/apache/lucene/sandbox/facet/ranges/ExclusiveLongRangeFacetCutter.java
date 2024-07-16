@@ -23,7 +23,7 @@ import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
@@ -64,27 +64,27 @@ class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
   }
 
   @Override
-  public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
+  public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);
-      return new ExclusiveLongRangeSinglevalueFacetLeafCutter(
+      return new ExclusiveLongRangeSinglevalueLeafFacetCutter(
           values, boundaries, pos, requestedRangeCount);
     } else {
       MultiLongValues values = valuesSource.getValues(context);
-      return new ExclusiveLongRangeMultivalueFacetLeafCutter(
+      return new ExclusiveLongRangeMultivalueLeafFacetCutter(
           values, boundaries, pos, requestedRangeCount);
     }
   }
 
   /**
-   * TODO: dedup ExclusiveLongRangeMultivalueFacetLeafCutter and
-   * ExclusiveLongRangeSinglevalueFacetLeafCutter code - they are similar but they extend different
+   * TODO: dedup ExclusiveLongRangeMultivalueLeafFacetCutter and
+   * ExclusiveLongRangeSinglevalueLeafFacetCutter code - they are similar but they extend different
    * base classes.
    */
-  static class ExclusiveLongRangeMultivalueFacetLeafCutter
-      extends LongRangeMultivaluedFacetLeafCutter {
+  static class ExclusiveLongRangeMultivalueLeafFacetCutter
+      extends LongRangeMultivaluedLeafFacetCutter {
 
-    ExclusiveLongRangeMultivalueFacetLeafCutter(
+    ExclusiveLongRangeMultivalueLeafFacetCutter(
         MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
       super(longValues, boundaries, pos, requestedRangeCount);
     }
@@ -107,9 +107,9 @@ class ExclusiveLongRangeFacetCutter extends LongRangeFacetCutter {
     }
   }
 
-  static class ExclusiveLongRangeSinglevalueFacetLeafCutter
-      extends LongRangeSinglevaluedFacetLeafCutter {
-    ExclusiveLongRangeSinglevalueFacetLeafCutter(
+  static class ExclusiveLongRangeSinglevalueLeafFacetCutter
+      extends LongRangeSinglevaluedLeafFacetCutter {
+    ExclusiveLongRangeSinglevalueLeafFacetCutter(
         LongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
       super(longValues, boundaries, pos, requestedRangeCount);
     }

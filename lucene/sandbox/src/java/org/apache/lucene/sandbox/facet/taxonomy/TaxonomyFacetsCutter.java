@@ -27,8 +27,8 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
 import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 
 /**
@@ -75,7 +75,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
   }
 
   @Override
-  public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
+  public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     SortedNumericDocValues multiValued =
         DocValues.getSortedNumeric(context.reader(), indexFieldName);
     if (multiValued == null) {
@@ -86,7 +86,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
     return leafCutter;
 
     // TODO: does unwrapping Single valued makes things any faster? We still need to wrap it into
-    // FacetLeafCutter
+    // LeafFacetCutter
     // NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
   }
 
@@ -141,7 +141,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
     };
   }
 
-  private static class TaxonomyLeafFacetCutterMultiValue implements FacetLeafCutter {
+  private static class TaxonomyLeafFacetCutterMultiValue implements LeafFacetCutter {
     private final SortedNumericDocValues multiValued;
     private int ordPerDoc;
 
@@ -155,7 +155,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
         ordPerDoc--;
         return (int) multiValued.nextValue();
       }
-      return FacetLeafCutter.NO_MORE_ORDS;
+      return LeafFacetCutter.NO_MORE_ORDS;
     }
 
     @Override

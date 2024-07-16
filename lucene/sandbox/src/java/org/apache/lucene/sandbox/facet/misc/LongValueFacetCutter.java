@@ -28,7 +28,7 @@ import org.apache.lucene.internal.hppc.LongCursor;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.FacetLeafCutter;
+import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
 
 /**
@@ -63,9 +63,9 @@ public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
   }
 
   @Override
-  public FacetLeafCutter createLeafCutter(LeafReaderContext context) throws IOException {
+  public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     SortedNumericDocValues docValues = DocValues.getSortedNumeric(context.reader(), field);
-    return new FacetLeafCutter() {
+    return new LeafFacetCutter() {
       int currDoc = -1;
       final LongHashSet valuesForDoc = new LongHashSet();
       private Iterator<LongCursor> valuesCursor;

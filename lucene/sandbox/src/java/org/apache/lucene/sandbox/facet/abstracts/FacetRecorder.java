@@ -31,7 +31,7 @@ public interface FacetRecorder {
   /** Get leaf recorder. */
   FacetLeafRecorder getLeafRecorder(LeafReaderContext context) throws IOException;
 
-  /** Return next collected ordinal, or {@link FacetLeafCutter#NO_MORE_ORDS} */
+  /** Return next collected ordinal, or {@link LeafFacetCutter#NO_MORE_ORDS} */
   OrdinalIterator recordedOrds();
 
   /** True if there are no records */
