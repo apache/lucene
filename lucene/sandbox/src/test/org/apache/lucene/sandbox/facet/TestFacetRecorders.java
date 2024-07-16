@@ -128,7 +128,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     LongAggregationsFacetRecorder longAggregationsFacetRecorder =
         new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
-    final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+    final CountFacetRecorder countRecorder = new CountFacetRecorder();
     // Compute both counts and aggregations
     MultiFacetsRecorder multiFacetsRecorder =
         new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
@@ -224,7 +224,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     LongAggregationsFacetRecorder longAggregationsFacetRecorder =
         new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
-    final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+    final CountFacetRecorder countRecorder = new CountFacetRecorder();
     // Compute both counts and aggregations
     MultiFacetsRecorder multiFacetsRecorder =
         new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
@@ -324,7 +324,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     LongAggregationsFacetRecorder longAggregationsFacetRecorder =
         new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
-    final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+    final CountFacetRecorder countRecorder = new CountFacetRecorder();
     // Compute both counts and aggregations
     MultiFacetsRecorder multiFacetsRecorder =
         new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);

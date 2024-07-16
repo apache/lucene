@@ -33,47 +33,29 @@ import org.apache.lucene.sandbox.facet.abstracts.LeafFacetRecorder;
 import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 
 /**
- * {@link FacetRecorder} to count facets. TODO: add an option to keep counts in an array, to improve
- * performance for facets with small number of ordinals e.g. range facets. Options: - {@link
- * LeafFacetCutter} can inform {@link LeafFacetRecorder} about expected number of facet ordinals
- * ({@link org.apache.lucene.sandbox.facet.FacetFieldCollector} can orchestrate that). If expeted
- * facet ord number is below some threshold - use array instead of a map? - first 100/1k counts in
- * array, the rest - in a map; the limit can also be provided in a constructor? It is similar to
- * what LongValuesFacetCounts does today.
+ * {@link FacetRecorder} to count facets.
+ *
+ * <p>TODO: add an option to keep counts in an array, to improve performance for facets with small
+ * number of ordinals e.g. range facets. Options: - {@link LeafFacetCutter} can inform {@link
+ * LeafFacetRecorder} about expected number of facet ordinals ({@link
+ * org.apache.lucene.sandbox.facet.FacetFieldCollector} can orchestrate that). If expeted facet ord
+ * number is below some threshold - use array instead of a map? - first 100/1k counts in array, the
+ * rest - in a map; the limit can also be provided in a constructor? It is similar to what
+ * LongValuesFacetCounts does today.
+ *
+ * <p>TODO: We can also consider collecting 2 (3, 4, ..., can be parametrizes) slices to a single
+ * sync map which can reduce thread contention compared to single sync map for all slices; at the
+ * same time there will be less work for reduce method. So far reduce wasn't a bottleneck for us,
+ * but it is definitely not free.
  */
 public class CountFacetRecorder implements FacetRecorder {
-
-  // TODO: deprecate - it is cheaper to merge during reduce than to lock threads during collection.
-  // TODO: alternatively, we can consider collecting 2 (3, 4, ..., can be parametrizes) slices to a
-  // single sync map
-  //       which can reduce thread contention compared to single sync map for all slices; at the
-  // same time there will
-  //       be less work for reduce method. So far reduce wasn't a bottleneck for us, but it is
-  // definitely not free.
-  private final boolean useSyncMap;
-
-  /** Create */
-  public CountFacetRecorder() {
-    this(false);
-  }
-
   IntIntHashMap values;
   List<IntIntHashMap> perLeafValues;
 
-  /**
-   * Create.
-   *
-   * @param useSyncMap if true, use single sync map for all leafs.
-   */
-  public CountFacetRecorder(boolean useSyncMap) {
-    super();
-    if (useSyncMap) {
-      values = new SafeIntIntHashMap();
-    } else {
-      // Has to be synchronizedList as we have one recorder per all slices.
-      perLeafValues = Collections.synchronizedList(new ArrayList<>());
-    }
-    this.useSyncMap = useSyncMap;
+  /** Create. */
+  public CountFacetRecorder() {
+    // Has to be synchronizedList as we have one recorder per all slices.
+    perLeafValues = Collections.synchronizedList(new ArrayList<>());
   }
 
   /** Get count for provided ordinal. */
@@ -91,25 +73,17 @@ public class CountFacetRecorder implements FacetRecorder {
 
   @Override
   public LeafFacetRecorder getLeafRecorder(LeafReaderContext context) {
-    if (useSyncMap) {
-      return new CountLeafRecorder(values);
-    } else {
-      IntIntHashMap leafValues = new IntIntHashMap();
-      perLeafValues.add(leafValues);
-      return new CountLeafRecorder(leafValues);
-    }
+    IntIntHashMap leafValues = new IntIntHashMap();
+    perLeafValues.add(leafValues);
+    return new CountLeafRecorder(leafValues);
   }
 
   @Override
   public OrdinalIterator recordedOrds() {
-    // TODO: is that performant enough?
     // TODO: even if this is called before collection started, we want it to use results from the
-    // time when nextOrd
-    //  is first called. Does ordIterator work like that? I've run some tests that confirmed
-    // expected behavior,
-    //  but I'm not sure IntIntMap guarantees that. We should at least add a unit test to make sure
-    // it always work
-    //  that way.
+    // time when nextOrd is first called. Does ordIterator work like that? I've run some tests that
+    // confirmed expected behavior, but I'm not sure IntIntMap guarantees that. We should at least
+    // add a unit test to make sure it always work that way.
     Iterator<IntCursor> ordIterator = values.keys().iterator();
     return new OrdinalIterator() {
       @Override
@@ -130,22 +104,20 @@ public class CountFacetRecorder implements FacetRecorder {
 
   @Override
   public void reduce(FacetRollup facetRollup) throws IOException {
-    if (useSyncMap == false) {
-      boolean firstElement = true;
-      for (IntIntHashMap leafRecords : perLeafValues) {
-        if (firstElement) {
-          values = leafRecords;
-          firstElement = false;
-        } else {
-          for (IntIntHashMap.IntIntCursor elem : leafRecords) {
-            values.addTo(elem.key, elem.value);
-          }
+    boolean firstElement = true;
+    for (IntIntHashMap leafRecords : perLeafValues) {
+      if (firstElement) {
+        values = leafRecords;
+        firstElement = false;
+      } else {
+        for (IntIntHashMap.IntIntCursor elem : leafRecords) {
+          values.addTo(elem.key, elem.value);
         }
       }
-      if (firstElement) {
-        // TODO: do we need empty map by default?
-        values = new IntIntHashMap();
-      }
+    }
+    if (firstElement) {
+      // TODO: do we need empty map by default?
+      values = new IntIntHashMap();
     }
 
     if (facetRollup == null) {

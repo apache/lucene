@@ -34,11 +34,11 @@ import java.io.IOException;
 public interface FacetRollup {
 
   /**
-   * For facets that has hierarchy (levels), return all top level dimension ordinals that require
+   * For facets that have hierarchy (levels), return all top level dimension ordinals that require
    * rollup.
    */
   OrdinalIterator getDimOrdsToRollup() throws IOException;
 
-  /** For facets that has hierarchy (levels), get all children ordinals for current ord. */
+  /** For facets that have hierarchy (levels), get all children ordinals for given ord. */
   OrdinalIterator getChildrenOrds(int ord) throws IOException;
 }

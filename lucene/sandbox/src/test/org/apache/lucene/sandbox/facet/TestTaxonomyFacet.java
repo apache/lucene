@@ -95,7 +95,7 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
 
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    final CountFacetRecorder countRecorder = new CountFacetRecorder(random().nextBoolean());
+    final CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, countRecorder);
     searcher.search(query, collectorManager);
@@ -140,7 +140,7 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
     // Now user drills down on Publish Date/2010:
     DrillDownQuery q2 = new DrillDownQuery(config);
     q2.add("Publish Date", "2010");
-    final CountFacetRecorder countRecorder2 = new CountFacetRecorder(random().nextBoolean());
+    final CountFacetRecorder countRecorder2 = new CountFacetRecorder();
     collectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, countRecorder2);
     searcher.search(q2, collectorManager);

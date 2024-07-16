@@ -144,7 +144,7 @@ public class SandboxFacetsExample {
     //// (2) init collector
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
+    CountFacetRecorder defaultRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
@@ -223,7 +223,7 @@ public class SandboxFacetsExample {
 
     LongRangeFacetCutter longRangeFacetCutter =
         LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
-    CountFacetRecorder countRecorder = new CountFacetRecorder(false);
+    CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, null, countRecorder);
@@ -267,7 +267,7 @@ public class SandboxFacetsExample {
 
     LongRangeFacetCutter longRangeFacetCutter =
         LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
-    CountFacetRecorder countRecorder = new CountFacetRecorder(false);
+    CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, null, countRecorder);
@@ -325,7 +325,7 @@ public class SandboxFacetsExample {
     LongAggregationsFacetRecorder longAggregationsFacetRecorder =
         new LongAggregationsFacetRecorder(longValuesSources, reducers);
 
-    CountFacetRecorder countRecorder = new CountFacetRecorder(false);
+    CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     // Compute both counts and aggregations
     MultiFacetsRecorder multiFacetsRecorder =
@@ -398,7 +398,7 @@ public class SandboxFacetsExample {
     // Facet collectors
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
+    CountFacetRecorder defaultRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> taxoFacetsCollectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
     // Hits collector
@@ -471,7 +471,7 @@ public class SandboxFacetsExample {
     //// (2) init collector
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountFacetRecorder defaultRecorder = new CountFacetRecorder(false);
+    CountFacetRecorder defaultRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
@@ -533,7 +533,7 @@ public class SandboxFacetsExample {
     //// (2) init drill down query and collectors
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
-    CountFacetRecorder drillDownRecorder = new CountFacetRecorder(false);
+    CountFacetRecorder drillDownRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> drillDownCollectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, drillDownRecorder);
 
@@ -541,7 +541,7 @@ public class SandboxFacetsExample {
 
     //// (2.1) add query and collector dimensions
     q.add("Publish Date", "2010");
-    CountFacetRecorder publishDayDimensionRecorder = new CountFacetRecorder(false);
+    CountFacetRecorder publishDayDimensionRecorder = new CountFacetRecorder();
     // Note that it is safe to use the same FacetsCutter here because we create Leaf cutter for each
     // leaf for each
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
