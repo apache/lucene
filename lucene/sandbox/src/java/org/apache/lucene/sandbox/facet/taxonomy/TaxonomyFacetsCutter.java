@@ -117,7 +117,7 @@ public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
           // It can be invalid if this field was declared in the
           // config but never indexed
           if (dimOrdToRollup[currentIndex] != TaxonomyReader.INVALID_ORDINAL) {
-            return dimOrdToRollup[currentIndex];
+            return dimOrdToRollup[currentIndex++];
           }
         }
         return NO_MORE_ORDS;
