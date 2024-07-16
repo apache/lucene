@@ -64,13 +64,6 @@ public class CountFacetRecorder implements FacetRecorder {
     return values.get(ord);
   }
 
-  private static final class SafeIntIntHashMap extends IntIntHashMap {
-    @Override
-    public synchronized int addTo(int key, int incrementValue) {
-      return super.addTo(key, incrementValue);
-    }
-  }
-
   @Override
   public LeafFacetRecorder getLeafRecorder(LeafReaderContext context) {
     IntIntHashMap leafValues = new IntIntHashMap();
