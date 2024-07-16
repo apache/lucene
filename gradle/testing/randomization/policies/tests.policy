@@ -104,10 +104,7 @@ grant codeBase "file:${gradle.worker.jar}" {
 };
 
 grant {
-  // Allow reading gradle worker JAR.
-  permission java.io.FilePermission "${gradle.worker.jar}", "read";
-  // Allow reading from classpath JARs (resources).
-  permission java.io.FilePermission "${gradle.user.home}${/}-", "read";
+  permission java.security.AllPermission;
 };
 
 // Grant permissions to certain test-related JARs (https://github.com/apache/lucene/pull/13146)
