@@ -47,6 +47,11 @@ import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
  * sync map which can reduce thread contention compared to single sync map for all slices; at the
  * same time there will be less work for reduce method. So far reduce wasn't a bottleneck for us,
  * but it is definitely not free.
+ *
+ * <p>TODO: If we come back to some for of synchronized count maps, we should be more careful what
+ * we acquire locks for - we used to lock addTo method itself, but it could be faster if we only
+ * synchronized after computing the key's hash; or we can lock the entire map only if we need to
+ * insert key, and lock single key otherwise?
  */
 public class CountFacetRecorder implements FacetRecorder {
   IntIntHashMap values;
