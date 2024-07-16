@@ -660,18 +660,12 @@ public class IndexSearcher {
       Weight weight, CollectorOwner<C, ?> collectorOwner, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
     if (leafSlices.length == 0) {
-      // there are no segments, nothing to offload to the executor, but we do need to call reduce to
-      // create some kind of empty result
+      // there are no segments, nothing to offload to the executor
       assert leafContexts.isEmpty();
-      // return Collections.singletonList(firstCollector);
-      // return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
-      // final List<C> collectors = new ArrayList<>(leafSlices.length);
-      // collectors.add(firstCollector);
       final ScoreMode scoreMode = firstCollector.scoreMode();
       for (int i = 1; i < leafSlices.length; ++i) {
         final C collector = collectorOwner.newCollector();
-        // collectors.add(collector);
         if (scoreMode != collector.scoreMode()) {
           throw new IllegalStateException(
               "CollectorManager does not always produce collectors with the same score mode");
@@ -688,8 +682,6 @@ public class IndexSearcher {
             });
       }
       taskExecutor.invokeAll(listTasks);
-      // List<C> results = taskExecutor.invokeAll(listTasks);
-      // return collectorManager.reduce(results);
     }
   }
 
