@@ -25,7 +25,7 @@ public interface OrdinalIterator {
   /** This const is returned by nextOrd when there are no more ordinals. */
   int NO_MORE_ORDS = -1;
 
-  /** Returns next ord for current document or {@link #NO_MORE_ORDS}. * */
+  /** Returns next ord or {@link #NO_MORE_ORDS}. * */
   int nextOrd() throws IOException;
 
   /**
@@ -33,11 +33,12 @@ public interface OrdinalIterator {
    * exhausted.
    */
   default int[] toArray() throws IOException {
-    IntArrayList cache = new IntArrayList();
-    for (int nextOrdinal = this.nextOrd(); nextOrdinal != NO_MORE_ORDS; ) {
-      cache.add(nextOrdinal);
-      nextOrdinal = this.nextOrd();
+    IntArrayList resultList = new IntArrayList();
+    for (int nextOrdinal = this.nextOrd();
+        nextOrdinal != NO_MORE_ORDS;
+        nextOrdinal = this.nextOrd()) {
+      resultList.add(nextOrdinal);
     }
-    return cache.toArray();
+    return resultList.toArray();
   }
 }
