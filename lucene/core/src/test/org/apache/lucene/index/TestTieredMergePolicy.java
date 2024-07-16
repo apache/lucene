@@ -933,16 +933,12 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // Avoid low values of the max merged segment size which prevent this merge policy from scaling
     // well
     mergePolicy.setMaxMergedSegmentMB(TestUtil.nextInt(random(), 1024, 10 * 1024));
-    // Target search concurrency is checked in this test
-    mergePolicy.setTargetSearchConcurrency(TestUtil.nextInt(random(), 10, 20));
     doTestSimulateAppendOnly(mergePolicy, 100_000_000, 10_000);
   }
 
   @Override
   public void testSimulateUpdates() throws IOException {
     TieredMergePolicy mergePolicy = mergePolicy();
-    // Target search concurrency is checked in this test
-    mergePolicy.setTargetSearchConcurrency(TestUtil.nextInt(random(), 10, 20));
     // Avoid low values of the max merged segment size which prevent this merge policy from scaling
     // well
     mergePolicy.setMaxMergedSegmentMB(TestUtil.nextInt(random(), 1024, 10 * 1024));
