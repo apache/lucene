@@ -211,7 +211,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
 
     void accumulate(SkipAccumulator other) {
-      maxDocID = other.maxDocID;
+      minDocID = Math.min(minDocID, other.minDocID);
+      maxDocID = Math.max(maxDocID, other.maxDocID);
       minValue = Math.min(minValue, other.minValue);
       maxValue = Math.max(maxValue, other.maxValue);
       docCount += other.docCount;
@@ -305,14 +306,10 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       }
       // write the number of levels
       data.writeByte((byte) levels);
-      // write the maxDocIDs in reverse order. This is done so we don't
+      // write intervals in reverse order. This is done so we don't
       // need to read all of them in case of slipping
       for (int level = levels - 1; level >= 0; level--) {
         data.writeInt(accLevels[level].maxDocID);
-      }
-      // write the rest of the interval in natural order. This is only
-      // read if the interval is competitive.
-      for (int level = 0; level < levels; level++) {
         data.writeInt(accLevels[level].minDocID);
         data.writeLong(accLevels[level].maxValue);
         data.writeLong(accLevels[level].minValue);

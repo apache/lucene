@@ -214,16 +214,16 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL = new long[SKIP_INDEX_MAX_LEVEL];
 
   static {
+    // Size of the interval minus read bytes (1 byte for level and 4 bytes for maxDocID)
+    SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[0] = SKIP_INDEX_INTERVAL_BYTES - 5L;
     for (int level = 1; level < SKIP_INDEX_MAX_LEVEL; level++) {
-      final int levelShift = level * SKIP_INDEX_LEVEL_SHIFT;
-      final int prevLevelShift = (level - 1) * SKIP_INDEX_LEVEL_SHIFT;
       // jump from previous level
       SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] = SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level - 1];
-      // nodes added by new level minus first one
+      // nodes added by new level
       SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] +=
-          ((1 << levelShift) - 1) * SKIP_INDEX_INTERVAL_BYTES;
-      // remove the byte levels added in the previous level except the first one
-      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] += 1 - (1 << prevLevelShift);
+          (1 << (level * SKIP_INDEX_LEVEL_SHIFT)) * SKIP_INDEX_INTERVAL_BYTES;
+      // remove the byte levels added in the previous level
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] -= (1 << ((level - 1) * SKIP_INDEX_LEVEL_SHIFT));
     }
   }
 }
