@@ -62,7 +62,7 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
     }
   }
 
-  public void testPrefetch() throws IOException {
+  public void testParallelReads() throws IOException {
     try (SerialIOCountingDirectory dir = new SerialIOCountingDirectory(newDirectory())) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         for (int i = 0; i < 10; ++i) {
