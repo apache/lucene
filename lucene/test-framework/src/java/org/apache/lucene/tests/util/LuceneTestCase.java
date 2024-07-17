@@ -3061,7 +3061,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static boolean slowFileExists(Directory dir, String fileName) throws IOException {
     try {
-      dir.openInput(fileName, IOContext.DEFAULT).close();
+      dir.openInput(fileName, IOContext.READONCE).close();
       return true;
     } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
       return false;

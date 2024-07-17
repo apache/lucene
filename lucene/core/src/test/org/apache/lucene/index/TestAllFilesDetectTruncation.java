@@ -152,7 +152,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
           }
 
           try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-              IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+              IndexInput in = dir.openInput(name, IOContext.READONCE)) {
             out.copyBytes(in, victimLength - lostBytes);
           }
         }

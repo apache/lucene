@@ -26,6 +26,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -226,7 +227,7 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
   byte[] buffer = new byte[4096];
 
   private void readFile(Directory dir, String name) throws Exception {
-    IndexInput input = dir.openInput(name, newIOContext(random()));
+    IndexInput input = dir.openInput(name, IOContext.READONCE);
     try {
       long size = dir.fileLength(name);
       long bytesLeft = size;
