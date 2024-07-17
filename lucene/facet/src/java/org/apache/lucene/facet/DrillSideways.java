@@ -531,7 +531,7 @@ public class DrillSideways {
               searcher,
               getDrillDownQuery(query, filters, dim),
               drillSidewaysCollectorOwners.get(i)));
-      i++; // TODO: refactor maybe?
+      i++;
     }
 
     try {

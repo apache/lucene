@@ -119,7 +119,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
   }
 
   private int[] getRangeOrdinals(Range[] inputRanges) {
-    // TODO: it can be fragile, we need better way of getting all ordinals for provided ranges?
+    // Naive method to get a list of facet ordinals for range facets,
+    // it is used to get all range ordinals, including the ones that didn't match any docs.
     int[] result = new int[inputRanges.length];
     for (int i = 0; i < inputRanges.length; i++) {
       result[i] = i;
@@ -1489,8 +1490,6 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     w.close();
     IOUtils.close(r, d);
   }
-
-  /// TODO: continue from here
 
   private static class PlusOneValuesSource extends DoubleValuesSource {
 
