@@ -1681,7 +1681,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               serializedBlockImpacts.growNoCopy(numImpactBytes);
               docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
               serializedBlockImpacts.setLength(numImpactBytes);
-              blockTTF = (docIn.readByte() & 0xFFL) | (docIn.readVLong() << 8);
+              blockTTF = docIn.readVLong();
               break;
             }
             // skip block
