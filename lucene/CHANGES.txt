@@ -288,6 +288,12 @@ Optimizations
 * GITHUB#12100: WordBreakSpellChecker.suggestWordBreaks now does a breadth first search, allowing it to return
   better matches with fewer evaluations (hossman)
 
+* GITHUB#13570, GITHUB#13574, GITHUB#13535: Avoid performance degradation with closing shared Arenas. Index
+files are mmapped one-to-one with the JDK's foreign shared Arena. The JVM deoptimizes the top few frames of
+all threads when closing a shared Arena (see JDK-8335480). We mitigate this situation by 1) using a confined
+Arena where appropriate, and 2) grouping files from the same segment to a single shared Arena.
+(Chris Hegarty, Michael Gibney, Uwe Schindler)
+
 Changes in runtime behavior
 ---------------------
 
