@@ -108,10 +108,10 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
 
     // Retrieve & verify results:
     assertEquals(
-        "dim=Publish Date path=[] value=-5 childCount=3\n  2010 (2)\n  2012 (2)\n  1999 (1)\n",
+        "dim=Publish Date path=[] value=-2147483648 childCount=3\n  2010 (2)\n  2012 (2)\n  1999 (1)\n",
         getTopChildrenByCount(countRecorder, taxoReader, 10, "Publish Date").toString());
     assertEquals(
-        "dim=Author path=[] value=-5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
+        "dim=Author path=[] value=-2147483648 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
         getTopChildrenByCount(countRecorder, taxoReader, 10, "Author").toString());
 
     assertFacetResult(
@@ -146,7 +146,7 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
     searcher.search(q2, collectorManager);
 
     assertEquals(
-        "dim=Author path=[] value=-5 childCount=2\n  Bob (1)\n  Lisa (1)\n",
+        "dim=Author path=[] value=-2147483648 childCount=2\n  Bob (1)\n  Lisa (1)\n",
         getTopChildrenByCount(countRecorder2, taxoReader, 10, "Author").toString());
 
     assertEquals(1, getSpecificValue(countRecorder2, taxoReader, "Author", "Lisa"));

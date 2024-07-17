@@ -110,7 +110,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -178,7 +178,9 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=2\n" + "  110-120 (11)\n" + "  121-130 (10)\n",
+        "dim=field path=[] value=-2147483648 childCount=2\n"
+            + "  110-120 (11)\n"
+            + "  121-130 (10)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -198,7 +200,9 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=2\n" + "  110-120 (11)\n" + "  115-125 (11)\n",
+        "dim=field path=[] value=-2147483648 childCount=2\n"
+            + "  110-120 (11)\n"
+            + "  115-125 (11)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -221,7 +225,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n"
+        "dim=field path=[] value=-2147483648 childCount=5\n"
             + "  [100-110) (10)\n"
             + "  [100-110] (11)\n"
             + "  (190-200) (9)\n"
@@ -284,7 +288,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -331,7 +335,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=6\n  min (1)\n  max (1)\n  all0 (3)\n  all1 (2)\n  all2 (2)\n  all3 (1)\n",
+        "dim=field path=[] value=-2147483648 childCount=6\n  min (1)\n  max (1)\n  all0 (3)\n  all1 (2)\n  all2 (2)\n  all3 (1)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -376,7 +380,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=4\n  0-10 (11)\n  10-20 (11)\n  20-30 (11)\n  30-40 (11)\n",
+        "dim=field path=[] value=-2147483648 childCount=4\n  0-10 (11)\n  10-20 (11)\n  20-30 (11)\n  30-40 (11)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -413,7 +417,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=0\n",
+        "dim=field path=[] value=-2147483648 childCount=0\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -453,7 +457,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=0\n",
+        "dim=field path=[] value=-2147483648 childCount=0\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -539,10 +543,10 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     // assertEquals(100, dsr.hits.totalHits.value);
     assertEquals(
-        "dim=dim path=[] value=-5 childCount=2\n  b (75)\n  a (25)\n",
+        "dim=dim path=[] value=-2147483648 childCount=2\n  b (75)\n  a (25)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
         getAllSortByOrd(
                 getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdLabelBiMap)
             .toString());
@@ -562,10 +566,10 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     // assertEquals(75, dsr.hits.totalHits.value);
     assertEquals(
-        "dim=dim path=[] value=-5 childCount=2\n  b (75)\n  a (25)\n",
+        "dim=dim path=[] value=-2147483648 childCount=2\n  b (75)\n  a (25)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (7)\n  less than or equal to 10 (8)\n  over 90 (7)\n  90 or above (8)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (7)\n  less than or equal to 10 (8)\n  over 90 (7)\n  90 or above (8)\n  over 1000 (0)\n",
         getAllSortByOrd(
                 getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdLabelBiMap)
             .toString());
@@ -585,10 +589,10 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     // assertEquals(11, dsr.hits.totalHits.value);
     assertEquals(
-        "dim=dim path=[] value=-5 childCount=2\n  b (8)\n  a (3)\n",
+        "dim=dim path=[] value=-2147483648 childCount=2\n  b (8)\n  a (3)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
         getAllSortByOrd(
                 getRangeOrdinals(inputRanges), fieldCountRecorder, "field", fieldOrdLabelBiMap)
             .toString());
@@ -631,7 +635,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -677,7 +681,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -735,7 +739,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
     r.close();
@@ -1432,7 +1436,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -1483,7 +1487,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(inputRanges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
+        "dim=field path=[] value=-2147483648 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
         getAllSortByOrd(getRangeOrdinals(inputRanges), countRecorder, "field", ordLabelBiMap)
             .toString());
 
@@ -1608,7 +1612,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     OrdLabelBiMap ordLabelBiMap = new RangeOrdLabelBiMap(ranges);
 
     assertEquals(
-        "dim=field path=[] value=-5 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
+        "dim=field path=[] value=-2147483648 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
         getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap)
             .toString());
     // assertTrue(fastMatchFilter == null || filterWasUsed.get());
@@ -1643,7 +1647,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     assertEquals(1, totalHitsCollectorOwner.getResult().intValue());
     drillSidewaysCollectorOwner.getResult();
     assertEquals(
-        "dim=field path=[] value=-5 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
+        "dim=field path=[] value=-2147483648 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
         getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordLabelBiMap)
             .toString());
 

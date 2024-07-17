@@ -35,9 +35,10 @@ import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
 /**
- * {@link FacetRecorder} that computes multiple long aggregations per facet. TODO: [premature
- * optimization idea] if instead of one array we keep aggregations in two LongVector (one for MAX
- * aggregation and one for SUM) we can benefit from SIMD?
+ * {@link FacetRecorder} that computes multiple long aggregations per facet.
+ *
+ * <p>TODO: [premature optimization idea] if instead of one array we keep aggregations in two
+ * LongVector (one for MAX aggregation and one for SUM) we can benefit from SIMD?
  */
 public class LongAggregationsFacetRecorder implements FacetRecorder {
 

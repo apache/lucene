@@ -46,13 +46,16 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 public abstract class SandboxFacetTestCase extends LuceneTestCase {
-  // we don't have access to overall count for all facets from count recorder,
-  // and we can't compute it as a SUM of values for each facet ID because we need to respect cases
-  // where
-  // the same doc belongs to multiple facets (e.g. overlapping ranges and
-  // multi value fields). We can add an extra range that includes everything,
-  // or consider supporting overall count in CountFacetRecorder.
-  static final int VALUE_CANT_BE_COMPUTED = -5;
+  // TODO: We don't have access to overall count for all facets from count recorder, and we can't
+  // compute it as a SUM of values for each facet ID because we need to respect cases where the same
+  // doc belongs to multiple facets (e.g. overlapping ranges or multi value fields). In most cases
+  // we can already access the value. E.g. for facets with hierarchy (taxonomy or SSDV) we can read
+  // value for parent facet ordinal. I believe the only  case that requires code changes is range
+  // facets. To solve it we can add a parameter to range FacetCutter to assign/yeild special facet
+  // ordinal for every document that matches at least one range from the list. Overall, sandbox
+  // facet tests don't have to use FacetResult, so we change it to assert facet labels and recorded
+  // results directly and avoid need for this constant.
+  static final int VALUE_CANT_BE_COMPUTED = Integer.MIN_VALUE;
 
   /**
    * Utility method that uses {@link FacetLabelReader} to get facet labels for each hit in {@link
