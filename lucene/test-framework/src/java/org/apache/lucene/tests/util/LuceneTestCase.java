@@ -1096,9 +1096,9 @@ public abstract class LuceneTestCase extends Assert {
       tmp.setSegmentsPerTier(TestUtil.nextInt(r, 10, 50));
     }
     if (rarely(r)) {
-      tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 2, 20));
-    } else {
       tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 10, 50));
+    } else {
+      tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 2, 20));
     }
 
     configureRandom(r, tmp);
