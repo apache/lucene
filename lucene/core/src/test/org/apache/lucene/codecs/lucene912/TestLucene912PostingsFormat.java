@@ -267,7 +267,8 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     PostingsEnum pe = termsEnum.postings(null, PostingsEnum.FREQS);
     for (int i = 0; i < 130; ++i) {
       assertEquals(i, pe.nextDoc());
-      assertEquals(i+1, Float.intBitsToFloat(pe.freq() << 15), 0f);
+      int freq = pe.freq();
+      assertEquals(i+1, Float.intBitsToFloat(freq << 15), 0f);
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
     pe = termsEnum.postings(null, PostingsEnum.FREQS);
