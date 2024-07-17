@@ -302,7 +302,7 @@ public class DrillSideways {
     }
   }
 
-  private static class CallableCollector implements Callable<Object> {
+  private static class CallableCollector implements Callable<Void> {
     private final IndexSearcher searcher;
     private final Query query;
     private final CollectorOwner<?, ?> collectorOwner;
@@ -315,7 +315,7 @@ public class DrillSideways {
     }
 
     @Override
-    public Object call() throws Exception {
+    public Void call() throws Exception {
       // TODO: the difference is that we used to also call reduce in parallel, but not anymore.
       //  We can think about implementing reduce(executor) which allows parallelism? If doing it
       //  sequentially becomes a problem.
@@ -536,7 +536,7 @@ public class DrillSideways {
 
     try {
       // Run the query pool
-      final List<Future<Object>> futures = executor.invokeAll(callableCollectors);
+      final List<Future<Void>> futures = executor.invokeAll(callableCollectors);
 
       // Wait for results. We don't read the results as they are collected by CollectorOwners
       for (i = 0; i < futures.size(); i++) {
