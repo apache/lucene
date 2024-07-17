@@ -181,7 +181,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
   }
 
   public void testArenas() throws Exception {
-    // First create a number of file name lists to test with.
+    // First, create a number of segment specific file name lists to test with
     var exts =
         List.of(
             ".si", ".cfs", ".cfe", ".dvd", ".dvm", "nvd", ".nvm", ".fdt", ".vec", ".vex", ".vemf");
@@ -190,7 +190,8 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
             .mapToObj(i -> "_" + i)
             .flatMap(s -> exts.stream().map(ext -> s + ext))
             .collect(toList());
-    IntStream.range(0, 50).mapToObj(i -> "segment_" + i).forEach(names::add);
+    // Second, create a number of non-segment file names
+    IntStream.range(0, 50).mapToObj(i -> "foo" + i).forEach(names::add);
     Collections.shuffle(names, random());
 
     final int size = 6;
