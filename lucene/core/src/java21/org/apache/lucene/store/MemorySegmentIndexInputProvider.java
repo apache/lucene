@@ -25,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
@@ -46,6 +45,7 @@ final class MemorySegmentIndexInputProvider
       IOContext context,
       int chunkSizePower,
       boolean preload,
+      Optional<String> group,
       ConcurrentHashMap<String, RefCountedSharedArena> arenas)
       throws IOException {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
@@ -55,7 +55,7 @@ final class MemorySegmentIndexInputProvider
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
-    final Arena arena = confined ? Arena.ofConfined() : getSharedArena(path, arenas);
+    final Arena arena = confined ? Arena.ofConfined() : getSharedArena(group, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =
@@ -141,22 +141,20 @@ final class MemorySegmentIndexInputProvider
   }
 
   /**
-   * Gets an arena for the give path, potentially aggregating files from the same segment into a
+   * Gets an arena for the given group, potentially aggregating files from the same segment into a
    * single ref counted shared arena. A ref counted shared arena, if created will be added to the
    * given arenas map.
    */
-  static Arena getSharedArena(Path p, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
-    String filename = p.getFileName().toString();
-    String segmentName = IndexFileNames.parseSegmentName(filename);
-    if (filename.length() == segmentName.length()) {
-      // no segment found; just use a shared segment
+  static Arena getSharedArena(
+      Optional<String> group, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
+    if (group.isEmpty()) {
       return Arena.ofShared();
     }
 
+    String key = group.get();
     while (true) {
       var refCountedArena =
-          arenas.computeIfAbsent(
-              segmentName, s -> new RefCountedSharedArena(s, () -> arenas.remove(s)));
+          arenas.computeIfAbsent(key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s)));
       if (refCountedArena.acquire()) {
         return refCountedArena;
       }

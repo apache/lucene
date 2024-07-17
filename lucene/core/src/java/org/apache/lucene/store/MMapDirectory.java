@@ -22,8 +22,11 @@ import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
 
 /**
@@ -83,6 +86,19 @@ public class MMapDirectory extends FSDirectory {
    */
   public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
 
+  /** Argument for {@link #setGroupingFunction(Function)} that configures no grouping. */
+  public static final Function<String, Optional<String>> NO_GROUPING = filename -> Optional.empty();
+
+  /** Argument for {@link #setGroupingFunction(Function)} that configures grouping by segment. */
+  public static final Function<String, Optional<String>> GROUP_BY_SEGMENT =
+      filename -> {
+        String segmentName = IndexFileNames.parseSegmentName(filename);
+        if (filename.length() == segmentName.length()) {
+          return Optional.empty();
+        }
+        return Optional.of(segmentName);
+      };
+
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
    * opening them if they use the {@link ReadAdvice#RANDOM_PRELOAD} advice.
@@ -104,6 +120,8 @@ public class MMapDirectory extends FSDirectory {
 
   /** A provider specific context object or null, that will be passed to openInput. */
   final Object attachment = PROVIDER.attachment();
+
+  Function<String, Optional<String>> groupingFunction;
 
   final int chunkSizePower;
 
@@ -170,6 +188,7 @@ public class MMapDirectory extends FSDirectory {
       throw new IllegalArgumentException("Maximum chunk size for mmap must be >0");
     }
     this.chunkSizePower = Long.SIZE - 1 - Long.numberOfLeadingZeros(maxChunkSize);
+    this.groupingFunction = GROUP_BY_SEGMENT;
     assert (1L << chunkSizePower) <= maxChunkSize;
     assert (1L << chunkSizePower) > (maxChunkSize / 2);
   }
@@ -188,6 +207,21 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
+   * Configures a grouping function for files that are part of the same logical group. The gathering
+   * of files into a logical group is a hint that allows for better handling of resources.
+   *
+   * <p>By default, grouping is {@link #GROUP_BY_SEGMENT}. To disable, invoke this method with
+   * {@link #NO_GROUPING}.
+   *
+   * @param groupingFunction a function that accepts a file name and returns an optional group key.
+   *     If the optional is present, then its value is the logical group to which the file
+   *     belongs. Otherwise, the file name if not associated with any logical group.
+   */
+  public void setGroupingFunction(Function<String, Optional<String>> groupingFunction) {
+    this.groupingFunction = groupingFunction;
+  }
+
+  /**
    * Returns the current mmap chunk size.
    *
    * @see #MMapDirectory(Path, LockFactory, long)
@@ -203,7 +237,12 @@ public class MMapDirectory extends FSDirectory {
     ensureCanRead(name);
     Path path = directory.resolve(name);
     return PROVIDER.openInput(
-        path, context, chunkSizePower, preload.test(name, context), attachment);
+        path,
+        context,
+        chunkSizePower,
+        preload.test(name, context),
+        groupingFunction.apply(name),
+        attachment);
   }
 
   // visible for tests:
@@ -211,7 +250,12 @@ public class MMapDirectory extends FSDirectory {
 
   interface MMapIndexInputProvider<A> {
     IndexInput openInput(
-        Path path, IOContext context, int chunkSizePower, boolean preload, A attachment)
+        Path path,
+        IOContext context,
+        int chunkSizePower,
+        boolean preload,
+        Optional<String> group,
+        A attachment)
         throws IOException;
 
     long getDefaultMaxChunkSize();
