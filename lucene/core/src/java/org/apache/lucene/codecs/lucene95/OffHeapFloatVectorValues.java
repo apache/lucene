@@ -87,6 +87,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     return value;
   }
 
+  @Override
+  public void prefetchOrdinal(int ordinal) throws IOException {
+    slice.prefetch((long) ordinal * byteSize, byteSize);
+  }
+
   public static OffHeapFloatVectorValues load(
       VectorSimilarityFunction vectorSimilarityFunction,
       FlatVectorsScorer flatVectorsScorer,

@@ -142,6 +142,11 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   }
 
   @Override
+  public void prefetchOrdinal(int ordinal) throws IOException {
+    slice.prefetch((long) ordinal * byteSize, byteSize);
+  }
+
+  @Override
   public float getScoreCorrectionConstant() {
     return scoreCorrectionConstant[0];
   }

@@ -158,7 +158,18 @@ public class HnswGraphSearcher {
         foundBetter = false;
         graphSeek(graph, level, currentEp);
         int friendOrd;
-        while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+        int nextFriendOrd = graphNextNeighbor(graph);
+        if (nextFriendOrd == NO_MORE_DOCS) {
+          continue;
+        }
+        if (visited.get(nextFriendOrd) == false) {
+          scorer.prepareToScore(nextFriendOrd);
+        }
+        while ((friendOrd = nextFriendOrd) != NO_MORE_DOCS) {
+          nextFriendOrd = graphNextNeighbor(graph);
+          if (nextFriendOrd != NO_MORE_DOCS && visited.get(nextFriendOrd) == false) {
+            scorer.prepareToScore(nextFriendOrd);
+          }
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
           if (visited.getAndSet(friendOrd)) {
             continue;
@@ -225,7 +236,18 @@ public class HnswGraphSearcher {
       int topCandidateNode = candidates.pop();
       graphSeek(graph, level, topCandidateNode);
       int friendOrd;
-      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+      int nextFriendOrd = graphNextNeighbor(graph);
+      if (nextFriendOrd == NO_MORE_DOCS) {
+        continue;
+      }
+      if (visited.get(nextFriendOrd) == false) {
+        scorer.prepareToScore(nextFriendOrd);
+      }
+      while ((friendOrd = nextFriendOrd) != NO_MORE_DOCS) {
+        nextFriendOrd = graphNextNeighbor(graph);
+        if (nextFriendOrd != NO_MORE_DOCS && visited.get(nextFriendOrd) == false) {
+          scorer.prepareToScore(nextFriendOrd);
+        }
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
