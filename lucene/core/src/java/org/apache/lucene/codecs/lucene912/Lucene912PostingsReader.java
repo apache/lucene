@@ -317,6 +317,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int doc; // doc we last read
     private long accum; // accumulator for doc deltas
 
+    private boolean decodeFreqs;
     // level 0 skip data
     private int lastDocInBlock;
     // level 1 skip data
@@ -325,7 +326,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int nextSkipBlockUpto;
 
     private boolean needsFreq; // true if the caller actually needs frequencies
-    private boolean decodeFreqs;
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
     public BlockDocsEnum(FieldInfo fieldInfo) throws IOException {
@@ -1323,7 +1323,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         while (true) {
           accum = lastDocInBlock;
           if (docFreq - blockUpto >= BLOCK_SIZE) {
-            docIn.readVLong(); // skip len
+            final long skip0Len = docIn.readVLong(); // skip len
+            final long skip0End = docIn.getFilePointer() + skip0Len;
             int docDelta = docIn.readVInt();
             long blockLength = docIn.readVLong();
 
@@ -1335,9 +1336,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               serializedBlockImpacts.growNoCopy(numImpactBytes);
               docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
               serializedBlockImpacts.setLength(numImpactBytes);
-              if (indexHasPos) {
-                docIn.readVLong(); // block ttf
-              }
+              docIn.seek(skip0End);
               break;
             }
             // skip block
