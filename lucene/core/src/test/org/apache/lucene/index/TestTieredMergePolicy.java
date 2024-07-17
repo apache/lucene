@@ -65,6 +65,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       segmentSizes.add(weightedByteSize);
       minSegmentBytes = Math.min(minSegmentBytes, weightedByteSize);
     }
+    Collections.sort(segmentSizes);
 
     final double delPercentage = 100.0 * totalDelCount / totalMaxDoc;
     assertTrue(
@@ -77,12 +78,26 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     long levelSizeBytes = Math.max(minSegmentBytes, (long) (tmp.getFloorSegmentMB() * 1024 * 1024));
     long bytesLeft = totalBytes;
     double allowedSegCount = 0;
+    List<Long> biggestSegments = segmentSizes;
+    if (biggestSegments.size() > tmp.getTargetSearchConcurrency() - 1) {
+      biggestSegments =
+          biggestSegments.subList(
+              biggestSegments.size() - tmp.getTargetSearchConcurrency() + 1,
+              biggestSegments.size());
+    }
+    // Allow whole segments for the targetSearchConcurrency-1 biggest segments
+    for (long size : biggestSegments) {
+      bytesLeft -= size;
+      allowedSegCount++;
+    }
+
     // below we make the assumption that segments that reached the max segment
     // size divided by 2 don't need merging anymore
     int mergeFactor = (int) Math.min(tmp.getSegmentsPerTier(), tmp.getMaxMergeAtOnce());
     while (true) {
       final double segCountLevel = bytesLeft / (double) levelSizeBytes;
-      if (segCountLevel < tmp.getSegmentsPerTier() || levelSizeBytes >= maxMergedSegmentBytes / 2) {
+      if (segCountLevel <= tmp.getSegmentsPerTier()
+          || levelSizeBytes >= maxMergedSegmentBytes / 2) {
         allowedSegCount += Math.ceil(segCountLevel);
         break;
       }
@@ -94,7 +109,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     // It's ok to be over the allowed segment count if none of the most balanced merges are balanced
     // enough
-    Collections.sort(segmentSizes);
     boolean hasBalancedMerges = false;
     for (int i = 0; i < segmentSizes.size() - mergeFactor; ++i) {
       long maxMergeSegmentSize = segmentSizes.get(i + mergeFactor - 1);
@@ -111,11 +125,24 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       }
     }
 
+    // There can be more segments if we can't merge docs because they are balanced between segments.
+    // At least the
+    //  2 smallest segments should be mergeable.
+    // should be 2 segments to merge
+    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc(), totalDelCount);
+    List<Integer> segmentDocs =
+        infos.asList().stream()
+            .map(info -> info.info.maxDoc() - info.getDelCount())
+            .sorted()
+            .toList();
+    boolean eligibleDocsMerge =
+        segmentDocs.size() >= 2 && segmentDocs.get(0) + segmentDocs.get(1) < maxDocsPerSegment;
+
     int numSegments = infos.asList().size();
     assertTrue(
         String.format(
             Locale.ROOT,
-            "mergeFactor=%d minSegmentBytes=%,d maxMergedSegmentBytes=%,d segmentsPerTier=%g maxMergeAtOnce=%d numSegments=%d allowed=%g totalBytes=%,d delPercentage=%g deletesPctAllowed=%g",
+            "mergeFactor=%d minSegmentBytes=%,d maxMergedSegmentBytes=%,d segmentsPerTier=%g maxMergeAtOnce=%d numSegments=%d allowed=%g totalBytes=%,d delPercentage=%g deletesPctAllowed=%g targetNumSegments=%d",
             mergeFactor,
             minSegmentBytes,
             maxMergedSegmentBytes,
@@ -125,8 +152,9 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             allowedSegCount,
             totalBytes,
             delPercentage,
-            tmp.getDeletesPctAllowed()),
-        numSegments <= allowedSegCount || hasBalancedMerges == false);
+            tmp.getDeletesPctAllowed(),
+            tmp.getTargetSearchConcurrency()),
+        numSegments <= allowedSegCount || hasBalancedMerges == false || eligibleDocsMerge == false);
   }
 
   @Override
@@ -208,6 +236,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
       int segmentCount = w.getSegmentCount();
       int targetCount = TestUtil.nextInt(random(), 1, segmentCount);
+
       if (VERBOSE) {
         System.out.println(
             "TEST: merge to " + targetCount + " segs (current count=" + segmentCount + ")");
