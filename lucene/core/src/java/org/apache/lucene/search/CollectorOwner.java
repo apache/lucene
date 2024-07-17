@@ -23,10 +23,10 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Like {@link CollectorManager}, but it owns the collectors its manager creates. It is convenient
- * that clients of the class don't have to worry about keeping the list of collectors, as well as
- * about making the collectors type (C) compatible when reduce is called. Instance of this class
- * also caches results of {@link CollectorManager#reduce(Collection)}.
+ * This class wraps {@link CollectorManager} and owns the collectors the manager creates. It is
+ * convenient that clients of the class don't have to worry about keeping the list of collectors, as
+ * well as about making the collector's type (C) compatible when reduce is called. Instances of this
+ * class cache results of {@link CollectorManager#reduce(Collection)}.
  *
  * <p>Note that instance of this class ignores any {@link Collector} created by {@link
  * CollectorManager#newCollector()} directly, not through {@link #newCollector()}
@@ -68,7 +68,6 @@ public final class CollectorOwner<C extends Collector, T> {
     if (reduced == false) {
       result = manager.reduce(collectors);
       reduced = true;
-      return result;
     }
     return result;
   }
