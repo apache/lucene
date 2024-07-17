@@ -35,9 +35,4 @@ public class TestLucene90DocValuesFormatVariableSkipInterval extends BaseDocValu
             () -> new Lucene90DocValuesFormat(random().nextInt(Integer.MIN_VALUE, 2)));
     assertTrue(ex.getMessage().contains("skipIndexIntervalSize must be > 1"));
   }
-
-  @Override
-  public void testNumericDocValuesWithSkipperMedium() throws Exception {
-    super.testNumericDocValuesWithSkipperMedium();
-  }
 }
