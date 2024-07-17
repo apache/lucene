@@ -1808,7 +1808,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       final long[] minValue = new long[SKIP_INDEX_MAX_LEVEL];
       final long[] maxValue = new long[SKIP_INDEX_MAX_LEVEL];
       final int[] docCount = new int[SKIP_INDEX_MAX_LEVEL];
-      int levels;
+      int levels = 1;
 
       @Override
       public void advance(int target) throws IOException {
