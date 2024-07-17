@@ -299,7 +299,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
     long generation = generationFromSegmentsFileName(segmentFileName);
     // System.out.println(Thread.currentThread() + ": SegmentInfos.readCommit " + segmentFileName);
-    try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName, IOContext.READONCE)) {
+    try (ChecksumIndexInput input =
+        directory.openChecksumInput(segmentFileName, IOContext.READONCE)) {
       try {
         return readCommit(directory, input, generation, minSupportedMajorVersion);
       } catch (EOFException | NoSuchFileException | FileNotFoundException e) {
