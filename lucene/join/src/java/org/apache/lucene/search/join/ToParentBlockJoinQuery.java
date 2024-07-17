@@ -323,7 +323,7 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public float getMaxScore(int upTo) throws IOException {
-      if (scoreMode == ScoreMode.None) {
+      if (scoreMode == ScoreMode.None || scoreMode == ScoreMode.Max) {
         return childScorer.getMaxScore(upTo);
       }
       return Float.POSITIVE_INFINITY;
@@ -331,7 +331,7 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
-      if (scoreMode == ScoreMode.None) {
+      if (scoreMode == ScoreMode.None || scoreMode == ScoreMode.Max) {
         childScorer.setMinCompetitiveScore(minScore);
       }
     }
