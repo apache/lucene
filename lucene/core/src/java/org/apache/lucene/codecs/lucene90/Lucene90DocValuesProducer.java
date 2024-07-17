@@ -1840,7 +1840,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             if (competitive) {
               // adjust levels
               while (levels < SKIP_INDEX_MAX_LEVEL) {
-                if (maxDocID[levels] == -1 || maxDocID[levels] < target) {
+                if (maxDocID[levels] < target) {
                   break;
                 }
                 levels++;
