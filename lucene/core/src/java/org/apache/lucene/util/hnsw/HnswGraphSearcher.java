@@ -158,16 +158,14 @@ public class HnswGraphSearcher {
         foundBetter = false;
         graphSeek(graph, level, currentEp);
         int friendOrd;
-        int nextFriendOrd = graphNextNeighbor(graph);
+        int nextFriendOrd = nextNonVisitedFriendOrd(graph, visited);
         if (nextFriendOrd == NO_MORE_DOCS) {
           continue;
         }
-        if (visited.get(nextFriendOrd) == false) {
-          scorer.prepareToScore(nextFriendOrd);
-        }
+        scorer.prepareToScore(nextFriendOrd);
         while ((friendOrd = nextFriendOrd) != NO_MORE_DOCS) {
-          nextFriendOrd = graphNextNeighbor(graph);
-          if (nextFriendOrd != NO_MORE_DOCS && visited.get(nextFriendOrd) == false) {
+          nextFriendOrd = nextNonVisitedFriendOrd(graph, visited);
+          if (nextFriendOrd != NO_MORE_DOCS) {
             scorer.prepareToScore(nextFriendOrd);
           }
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
@@ -236,16 +234,14 @@ public class HnswGraphSearcher {
       int topCandidateNode = candidates.pop();
       graphSeek(graph, level, topCandidateNode);
       int friendOrd;
-      int nextFriendOrd = graphNextNeighbor(graph);
+      int nextFriendOrd = nextNonVisitedFriendOrd(graph, visited);
       if (nextFriendOrd == NO_MORE_DOCS) {
         continue;
       }
-      if (visited.get(nextFriendOrd) == false) {
-        scorer.prepareToScore(nextFriendOrd);
-      }
+      scorer.prepareToScore(nextFriendOrd);
       while ((friendOrd = nextFriendOrd) != NO_MORE_DOCS) {
-        nextFriendOrd = graphNextNeighbor(graph);
-        if (nextFriendOrd != NO_MORE_DOCS && visited.get(nextFriendOrd) == false) {
+        nextFriendOrd = nextNonVisitedFriendOrd(graph, visited);
+        if (nextFriendOrd != NO_MORE_DOCS) {
           scorer.prepareToScore(nextFriendOrd);
         }
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
@@ -268,6 +264,16 @@ public class HnswGraphSearcher {
         }
       }
     }
+  }
+
+  private int nextNonVisitedFriendOrd(HnswGraph graph, BitSet visited) throws IOException {
+    int friendOrd;
+    while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+      if (visited.get(friendOrd) == false) {
+        return friendOrd;
+      }
+    }
+    return NO_MORE_DOCS;
   }
 
   private void prepareScratchState(int capacity) {
