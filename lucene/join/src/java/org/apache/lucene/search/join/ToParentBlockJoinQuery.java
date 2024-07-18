@@ -316,7 +316,7 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public float getMaxScore(int upTo) throws IOException {
-      if (scoreMode == ScoreMode.None || scoreMode == ScoreMode.Max) {
+      if (scoreMode == ScoreMode.None) {
         return childScorer.getMaxScore(upTo);
       }
       return Float.POSITIVE_INFINITY;
