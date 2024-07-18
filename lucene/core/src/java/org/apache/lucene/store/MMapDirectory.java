@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static org.apache.lucene.index.IndexFileNames.CODEC_FILE_PATTERN;
+
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -97,11 +99,12 @@ public class MMapDirectory extends FSDirectory {
   /** Argument for {@link #setGroupingFunction(Function)} that configures grouping by segment. */
   public static final Function<String, Optional<String>> GROUP_BY_SEGMENT =
       filename -> {
-        String segmentName = IndexFileNames.parseSegmentName(filename);
-        if (filename.length() == segmentName.length()) {
+        if (!CODEC_FILE_PATTERN.matcher(filename).matches()) {
           return Optional.empty();
         }
-        return IndexFileNames.parseSegmentIdentifier(segmentName);
+        String segmentName = IndexFileNames.parseSegmentName(filename).substring(1);
+        long gen = IndexFileNames.parseGeneration(filename);
+        return Optional.of(segmentName + "-" + gen);
       };
 
   /**
