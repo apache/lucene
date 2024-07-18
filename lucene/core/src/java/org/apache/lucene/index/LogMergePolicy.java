@@ -623,9 +623,7 @@ public abstract class LogMergePolicy extends MergePolicy {
           }
           long segmentSize = size(info, mergeContext);
           long segmentDocs = sizeDocs(info, mergeContext);
-          if (mergeSize + segmentSize > maxMergeSize
-              || (mergeSize + segmentSize > minMergeSize
-                  && mergeDocs + segmentDocs > maxMergeDocs)) {
+          if (mergeSize + segmentSize > maxMergeSize || mergeDocs + segmentDocs > maxMergeDocs) {
             // This merge is full, stop adding more segments to it
             if (i == start) {
               // This segment alone is too large, return a singleton merge
