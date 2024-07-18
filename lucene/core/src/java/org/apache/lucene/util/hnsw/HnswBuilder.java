@@ -41,4 +41,12 @@ public interface HnswBuilder {
   void setInfoStream(InfoStream infoStream);
 
   OnHeapHnswGraph getGraph();
+
+  /**
+   * Once this method is called no further updates to the graph are accepted (addGraphNode will
+   * throw IllegalStateException). Final modifications to the graph (eg patching up disconnected
+   * components, re-ordering node ids for better delta compression) may be triggered, so callers
+   * should expect this call to take some time.
+   */
+  OnHeapHnswGraph getCompletedGraph();
 }

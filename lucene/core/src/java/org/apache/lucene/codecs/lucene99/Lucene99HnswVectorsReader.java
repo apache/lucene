@@ -45,6 +45,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -67,10 +68,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
 
+  private final FlatVectorsReader flatVectorsReader;
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorIndex;
-  private final FlatVectorsReader flatVectorsReader;
 
   public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
@@ -92,13 +93,13 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
                 Lucene99HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        readFields(meta, state.fieldInfos);
+        readFields(meta);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
-      vectorIndex =
+      this.vectorIndex =
           openDataInput(
               state,
               versionMeta,
@@ -153,9 +154,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
+  private void readFields(ChecksumIndexInput meta) throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
-      FieldInfo info = infos.fieldInfo(fieldNumber);
+      FieldInfo info = fieldInfos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
@@ -248,45 +249,39 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return;
-    }
-    final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
-    final KnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    if (knnCollector.k() < scorer.maxOrd()) {
-      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
-    } else {
-      // if k is larger than the number of vectors, we can just iterate over all vectors
-      // and collect them
-      for (int i = 0; i < scorer.maxOrd(); i++) {
-        if (acceptedOrds == null || acceptedOrds.get(i)) {
-          if (knnCollector.earlyTerminated()) {
-            break;
-          }
-          knnCollector.incVisitedCount(1);
-          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
-        }
-      }
-    }
+    search(
+        fields.get(field),
+        knnCollector,
+        acceptDocs,
+        VectorEncoding.FLOAT32,
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    search(
+        fields.get(field),
+        knnCollector,
+        acceptDocs,
+        VectorEncoding.BYTE,
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
+  }
+
+  private void search(
+      FieldEntry fieldEntry,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      VectorEncoding vectorEncoding,
+      IOSupplier<RandomVectorScorer> scorerSupplier)
+      throws IOException {
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+        || fieldEntry.vectorEncoding != vectorEncoding) {
       return;
     }
-    final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
+    final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);

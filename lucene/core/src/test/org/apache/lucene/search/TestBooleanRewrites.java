@@ -92,7 +92,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     // make sure to set score=0
     BooleanQuery.Builder query2 = new BooleanQuery.Builder();
     query2.add(new TermQuery(new Term("field", "a")), Occur.FILTER);
-    query2.add(new TermQuery(new Term("field", "b")), Occur.SHOULD);
+    query2.add(new TermQuery(new Term("missing_field", "b")), Occur.SHOULD);
     final Weight weight =
         searcher.createWeight(searcher.rewrite(query2.build()), ScoreMode.COMPLETE, 1);
     final Scorer scorer = weight.scorer(reader.leaves().get(0));

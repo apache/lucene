@@ -41,6 +41,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private InfoStream infoStream = InfoStream.getDefault();
+  private boolean frozen;
 
   public HnswConcurrentMergeBuilder(
       TaskExecutor taskExecutor,
@@ -69,6 +70,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   @Override
   public OnHeapHnswGraph build(int maxOrd) throws IOException {
+    if (frozen) {
+      throw new IllegalStateException("graph has already been built");
+    }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(
           HNSW_COMPONENT,
@@ -84,7 +88,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
-    return workers[0].getGraph();
+    frozen = true;
+    return workers[0].getCompletedGraph();
   }
 
   @Override
@@ -98,6 +103,12 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     for (HnswBuilder worker : workers) {
       worker.setInfoStream(infoStream);
     }
+  }
+
+  @Override
+  public OnHeapHnswGraph getCompletedGraph() {
+    frozen = true;
+    return getGraph();
   }
 
   @Override

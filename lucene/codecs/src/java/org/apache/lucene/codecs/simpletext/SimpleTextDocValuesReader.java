@@ -829,7 +829,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     clone.seek(0);
     // checksum is fixed-width encoded with 20 bytes, plus 1 byte for newline (the space is included
     // in SimpleTextUtil.CHECKSUM):
-    long footerStartPos = data.length() - (SimpleTextUtil.CHECKSUM.length + 21);
+    long footerStartPos = clone.length() - (SimpleTextUtil.CHECKSUM.length + 21);
     ChecksumIndexInput input = new BufferedChecksumIndexInput(clone);
     while (true) {
       SimpleTextUtil.readLine(input, scratch);
