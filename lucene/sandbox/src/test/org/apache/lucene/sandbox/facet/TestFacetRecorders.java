@@ -399,7 +399,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
       int facetOrdinal = resultOrdinals[i];
       int count = countFacetRecorder.getCount(facetOrdinal);
       resultBuilder.append("  ");
-      resultBuilder.append(labels[i].getLeaf());
+      resultBuilder.append(labels[i].lastComponent());
       resultBuilder.append(" (");
       resultBuilder.append(count);
       resultBuilder.append(", ");

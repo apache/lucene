@@ -100,7 +100,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
     int childCount = 0;
     for (int i = 0; i < resultOrdinals.length; i++) {
       int count = countFacetRecorder.getCount(resultOrdinals[i]);
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), count));
+      labelsAndValues.add(new LabelAndValue(labels[i].lastComponent(), count));
       childCount++;
     }
     // int value = countFacetRecorder.getCount(parentOrdinal);
@@ -136,7 +136,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
     int childCount = 0;
     for (int i = 0; i < resultOrdinals.length; i++) {
       int count = countFacetRecorder.getCount(resultOrdinals[i]);
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), count));
+      labelsAndValues.add(new LabelAndValue(labels[i].lastComponent(), count));
       childCount++;
     }
     // int value = countFacetRecorder.getCount(parentOrdinal);
@@ -160,7 +160,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
     int childCount = 0;
     for (int i = 0; i < resultOrdinals.length; i++) {
       int count = countFacetRecorder.getCount(resultOrdinals[i]);
-      labelsAndValues.add(new LabelAndValue(labels[i].getLeaf(), count));
+      labelsAndValues.add(new LabelAndValue(labels[i].lastComponent(), count));
       childCount++;
     }
 

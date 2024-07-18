@@ -194,7 +194,8 @@ public class SandboxFacetsExample {
       List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
       for (int i = 0; i < resultOrdinals.length; i++) {
         labelsAndValues.add(
-            new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
+            new LabelAndValue(
+                labels[i].lastComponent(), defaultRecorder.getCount(resultOrdinals[i])));
       }
       // TODO fix value and childCount
       results.add(
@@ -242,7 +243,7 @@ public class SandboxFacetsExample {
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
       labelsAndValues.add(
-          new LabelAndValue(labels[i].getLeaf(), countRecorder.getCount(resultOrdinals[i])));
+          new LabelAndValue(labels[i].lastComponent(), countRecorder.getCount(resultOrdinals[i])));
     }
 
     results.add(
@@ -286,7 +287,7 @@ public class SandboxFacetsExample {
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
       labelsAndValues.add(
-          new LabelAndValue(labels[i].getLeaf(), countRecorder.getCount(resultOrdinals[i])));
+          new LabelAndValue(labels[i].lastComponent(), countRecorder.getCount(resultOrdinals[i])));
     }
 
     results.add(
@@ -358,7 +359,7 @@ public class SandboxFacetsExample {
     for (int i = 0; i < resultOrdinals.length; i++) {
       labelsAndValues.add(
           new LabelAndValue(
-              labels[i].getLeaf(),
+              labels[i].lastComponent(),
               longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 1)));
     }
     results.add(
@@ -376,7 +377,7 @@ public class SandboxFacetsExample {
     for (int i = 0; i < resultOrdinals.length; i++) {
       labelsAndValues.add(
           new LabelAndValue(
-              labels[i].getLeaf(),
+              labels[i].lastComponent(),
               longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 0)));
     }
     // TODO: is the tie-break by ord correct? Right now, it gives the higher ord as output
@@ -449,7 +450,8 @@ public class SandboxFacetsExample {
       List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
       for (int i = 0; i < resultOrdinals.length; i++) {
         labelsAndValues.add(
-            new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
+            new LabelAndValue(
+                labels[i].lastComponent(), defaultRecorder.getCount(resultOrdinals[i])));
       }
       // TODO fix value and childCount
       facetResults.add(
@@ -509,7 +511,8 @@ public class SandboxFacetsExample {
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
       labelsAndValues.add(
-          new LabelAndValue(labels[i].getLeaf(), defaultRecorder.getCount(resultOrdinals[i])));
+          new LabelAndValue(
+              labels[i].lastComponent(), defaultRecorder.getCount(resultOrdinals[i])));
     }
 
     IOUtils.close(indexReader, taxoReader);
@@ -585,7 +588,8 @@ public class SandboxFacetsExample {
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     for (int i = 0; i < resultOrdinals.length; i++) {
       labelsAndValues.add(
-          new LabelAndValue(labels[i].getLeaf(), drillDownRecorder.getCount(resultOrdinals[i])));
+          new LabelAndValue(
+              labels[i].lastComponent(), drillDownRecorder.getCount(resultOrdinals[i])));
     }
     // TODO fix value and childCount
     facetResults.add(
@@ -612,7 +616,7 @@ public class SandboxFacetsExample {
     for (int i = 0; i < resultOrdinals.length; i++) {
       labelsAndValues.add(
           new LabelAndValue(
-              labels[i].getLeaf(), publishDayDimensionRecorder.getCount(resultOrdinals[i])));
+              labels[i].lastComponent(), publishDayDimensionRecorder.getCount(resultOrdinals[i])));
     }
     // TODO fix value and childCount
     facetResults.add(

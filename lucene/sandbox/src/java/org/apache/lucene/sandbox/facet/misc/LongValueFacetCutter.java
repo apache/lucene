@@ -137,7 +137,7 @@ public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
 
   @Override
   public int getOrd(FacetLabel label) throws IOException {
-    long value = Long.parseLong(label.getLeaf());
+    long value = Long.parseLong(label.lastComponent());
     if (valueToOrdMap.containsKey(value)) {
       return valueToOrdMap.get(value);
     }

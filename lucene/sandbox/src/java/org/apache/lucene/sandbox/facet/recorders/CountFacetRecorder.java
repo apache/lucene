@@ -85,7 +85,7 @@ public class CountFacetRecorder implements FacetRecorder {
     Iterator<IntCursor> ordIterator = values.keys().iterator();
     return new OrdinalIterator() {
       @Override
-      public int nextOrd() throws IOException {
+      public int nextOrd() {
         if (ordIterator.hasNext()) {
           return ordIterator.next().value;
         } else {
