@@ -1824,12 +1824,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             levels = input.readByte();
             assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0
                 : "level out of range [" + levels + "]";
-            boolean competitive = true;
+            boolean valid = true;
             // check if current interval is competitive or we can jump to the next position
             for (int level = levels - 1; level >= 0; level--) {
               if ((maxDocID[level] = input.readInt()) < target) {
                 input.skipBytes(SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level]); // the jump for the level
-                competitive = false;
+                valid = false;
                 break;
               }
               minDocID[level] = input.readInt();
@@ -1837,12 +1837,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               minValue[level] = input.readLong();
               docCount[level] = input.readInt();
             }
-            if (competitive) {
+            if (valid) {
               // adjust levels
-              while (levels < SKIP_INDEX_MAX_LEVEL) {
-                if (maxDocID[levels] < target) {
-                  break;
-                }
+              while (levels < SKIP_INDEX_MAX_LEVEL && maxDocID[levels] >= target) {
                 levels++;
               }
               break;
