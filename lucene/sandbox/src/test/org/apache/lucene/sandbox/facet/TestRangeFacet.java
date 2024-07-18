@@ -539,7 +539,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     ////// First search, no drill-downs:
     DrillDownQuery ddq = new DrillDownQuery(config);
-    ds.search(ddq, new CollectorOwner<>(collectorManager), List.of(), true);
+    ds.search(ddq, new CollectorOwner<>(collectorManager), List.of());
 
     // assertEquals(100, dsr.hits.totalHits.value);
     assertEquals(
@@ -561,8 +561,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     ds.search(
         ddq,
         new CollectorOwner<>(fieldCollectorManager),
-        List.of(new CollectorOwner<>(dimCollectorManager)),
-        true);
+        List.of(new CollectorOwner<>(dimCollectorManager)));
 
     // assertEquals(75, dsr.hits.totalHits.value);
     assertEquals(
@@ -584,8 +583,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     ds.search(
         ddq,
         new CollectorOwner<>(dimCollectorManager),
-        List.of(new CollectorOwner<>(fieldCollectorManager)),
-        true);
+        List.of(new CollectorOwner<>(fieldCollectorManager)));
 
     // assertEquals(11, dsr.hits.totalHits.value);
     assertEquals(
@@ -1643,7 +1641,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     CollectorOwner<FacetFieldCollector, CountFacetRecorder> drillSidewaysCollectorOwner =
         new CollectorOwner<>(
             new FacetFieldCollectorManager<>(doubleRangeFacetCutter, null, countRecorder));
-    ds.search(ddq, totalHitsCollectorOwner, List.of(drillSidewaysCollectorOwner), false);
+    ds.search(ddq, totalHitsCollectorOwner, List.of(drillSidewaysCollectorOwner));
     assertEquals(1, totalHitsCollectorOwner.getResult().intValue());
     drillSidewaysCollectorOwner.getResult();
     assertEquals(

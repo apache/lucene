@@ -423,10 +423,6 @@ public class DrillSideways {
    * <p>To read the results, run {@link CollectorOwner#getResult()} for drill down and all drill
    * sideways dimensions.
    *
-   * <p>If {@code doReduce} is set to true, this method itself calls {@link
-   * CollectorOwner#getResult()}. Note that results of the call are not returned by this method, so
-   * you can only do that if there is some other way of accessing results from the reduce call.
-   *
    * <p>Note: use {@link Collections#unmodifiableList(List)} to wrap {@code
    * drillSidewaysCollectorOwners} to convince compiler that it is safe to use List here.
    *
@@ -434,15 +430,11 @@ public class DrillSideways {
    * because we want each dimensions to be able to use their own types. Alternatively, we can use
    * typesafe heterogeneous container and provide CollectorManager type for each dimension to this
    * method? I do like CollectorOwner approach as it seems more intuitive?
-   *
-   * <p>TODO: deprecate doReduce - always reduce, {@link CollectorOwner#getResult()} can be used by
-   * clients to read results?
    */
   public void search(
       final DrillDownQuery query,
       CollectorOwner<?, ?> drillDownCollectorOwner,
-      List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners,
-      boolean doReduce)
+      List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners)
       throws IOException {
     if (drillDownCollectorOwner == null) {
       throw new IllegalArgumentException(
@@ -463,13 +455,14 @@ public class DrillSideways {
       searchSequentially(query, drillDownCollectorOwner, drillSidewaysCollectorOwners);
     }
 
+    // This method doesn't return results as each dimension might have its own result type.
+    // But we call getResult to trigger results reducing, so that users don't have to worry about
+    // it.
     // TODO: do we want to run reduce in parallel if executor is provided?
-    if (doReduce) {
-      drillDownCollectorOwner.getResult();
-      if (drillSidewaysCollectorOwners != null) {
-        for (CollectorOwner<?, ?> sidewaysOwner : drillSidewaysCollectorOwners) {
-          sidewaysOwner.getResult();
-        }
+    drillDownCollectorOwner.getResult();
+    if (drillSidewaysCollectorOwners != null) {
+      for (CollectorOwner<?, ?> sidewaysOwner : drillSidewaysCollectorOwners) {
+        sidewaysOwner.getResult();
       }
     }
   }

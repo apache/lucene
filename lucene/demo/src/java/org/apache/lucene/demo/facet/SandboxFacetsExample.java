@@ -558,8 +558,7 @@ public class SandboxFacetsExample {
     ds.search(
         q,
         new CollectorOwner<>(drillDownCollectorManager),
-        Collections.unmodifiableList(drillSidewaysOwners),
-        true);
+        Collections.unmodifiableList(drillSidewaysOwners));
 
     //// (4) Get top 10 results by count for Author
     List<FacetResult> facetResults = new ArrayList<>(2);
