@@ -271,11 +271,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       windowMax = (int) Math.min(windowMax, upTo + 1L); // upTo is inclusive
     }
 
-    // Score at least an entire inner window of docs
-    windowMax =
-        Math.max(
-            windowMax, (int) Math.min(Integer.MAX_VALUE, (long) windowMin + INNER_WINDOW_SIZE));
-
     return windowMax;
   }
 
