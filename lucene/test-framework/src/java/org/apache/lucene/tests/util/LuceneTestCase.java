@@ -1053,6 +1053,7 @@ public abstract class LuceneTestCase extends Assert {
   public static LogMergePolicy newLogMergePolicy(Random r) {
     LogMergePolicy logmp = r.nextBoolean() ? new LogDocMergePolicy() : new LogByteSizeMergePolicy();
     logmp.setCalibrateSizeByDeletes(r.nextBoolean());
+    logmp.setTargetSearchConcurrency(TestUtil.nextInt(random(), 1, 16));
     if (rarely(r)) {
       logmp.setMergeFactor(TestUtil.nextInt(r, 2, 9));
     } else {
@@ -1112,14 +1113,14 @@ public abstract class LuceneTestCase extends Assert {
     return logmp;
   }
 
-  public static MergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
+  public static LogMergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
     LogMergePolicy logmp = newLogMergePolicy();
     logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
     logmp.setMergeFactor(mergeFactor);
     return logmp;
   }
 
-  public static MergePolicy newLogMergePolicy(int mergeFactor) {
+  public static LogMergePolicy newLogMergePolicy(int mergeFactor) {
     LogMergePolicy logmp = newLogMergePolicy();
     logmp.setMergeFactor(mergeFactor);
     return logmp;
