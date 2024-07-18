@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Optional;
 import java.util.regex.Pattern;
 import org.apache.lucene.codecs.Codec;
 
@@ -140,6 +141,26 @@ public final class IndexFileNames {
       filename = filename.substring(idx);
     }
     return filename;
+  }
+
+  /**
+   * Parses the segment identifier out of the given segment name.
+   *
+   * @return an optional containing the segment identifier, or an empty optional if the segment name
+   *     does not start with '_' and parse to a valid segment identifier
+   */
+  @SuppressWarnings("unused")
+  public static Optional<String> parseSegmentIdentifier(String segmentName) {
+    if (segmentName.length() > 1 && segmentName.charAt(0) == '_') {
+      String segmentId = segmentName.substring(1);
+      try {
+        Long.parseLong(segmentId, Character.MAX_RADIX);
+        return Optional.of(segmentId);
+      } catch (NumberFormatException unused) {
+        // unable to parse as a segment identifier
+      }
+    }
+    return Optional.empty();
   }
 
   /** Returns the generation from this file name, or 0 if there is no generation. */

@@ -101,7 +101,7 @@ public class MMapDirectory extends FSDirectory {
         if (filename.length() == segmentName.length()) {
           return Optional.empty();
         }
-        return Optional.of(segmentName);
+        return IndexFileNames.parseSegmentIdentifier(segmentName);
       };
 
   /**

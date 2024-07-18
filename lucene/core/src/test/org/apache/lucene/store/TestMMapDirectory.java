@@ -184,7 +184,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     // First, create a number of segment specific file name lists to test with
     var exts =
         List.of(
-            ".si", ".cfs", ".cfe", ".dvd", ".dvm", "nvd", ".nvm", ".fdt", ".vec", ".vex", ".vemf");
+            ".si", ".cfs", ".cfe", ".dvd", ".dvm", ".nvd", ".nvm", ".fdt", ".vec", ".vex", ".vemf");
     var names =
         IntStream.range(0, 50)
             .mapToObj(i -> "_" + i)
@@ -251,5 +251,42 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       }
       return null;
     }
+  }
+
+  public void testGroupBySegmentFunc() {
+    var func = MMapDirectory.GROUP_BY_SEGMENT;
+    assertEquals("0", func.apply("_0.doc").orElseThrow());
+    assertEquals("51", func.apply("_51.si").orElseThrow());
+    assertEquals("5987654321", func.apply("_5987654321.si").orElseThrow());
+    assertEquals("F", func.apply("_F.si").orElseThrow());
+    assertEquals("FF", func.apply("_FF.si").orElseThrow());
+    assertEquals("51A", func.apply("_51A.si").orElseThrow());
+    assertEquals("F51A", func.apply("_F51A.si").orElseThrow());
+    assertEquals("segment", func.apply("_segment.si").orElseThrow());
+
+    assertFalse(func.apply("").isPresent());
+    assertFalse(func.apply("_").isPresent());
+    assertFalse(func.apply("_.si").isPresent());
+    assertFalse(func.apply("foo").isPresent());
+    assertFalse(func.apply("_foo").isPresent());
+    assertFalse(func.apply("__foo").isPresent());
+    assertFalse(func.apply("_segment").isPresent());
+    assertFalse(func.apply("segment.si").isPresent());
+  }
+
+  public void testNoGroupingFunc() {
+    var func = MMapDirectory.NO_GROUPING;
+    assertFalse(func.apply("_0.doc").isPresent());
+    assertFalse(func.apply("_0.si").isPresent());
+    assertFalse(func.apply("_54.si").isPresent());
+    assertFalse(func.apply("_FF.si").isPresent());
+    assertFalse(func.apply("_.si").isPresent());
+    assertFalse(func.apply("foo").isPresent());
+    assertFalse(func.apply("_foo").isPresent());
+    assertFalse(func.apply("__foo").isPresent());
+    assertFalse(func.apply("_segment").isPresent());
+    assertFalse(func.apply("_segment.si").isPresent());
+    assertFalse(func.apply("segment.si").isPresent());
+    assertFalse(func.apply("_51A.si").isPresent());
   }
 }
