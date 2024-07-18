@@ -95,8 +95,6 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       new CompetitiveImpactAccumulator();
   private final CompetitiveImpactAccumulator skipCompetitiveFreqNormAccumulator =
       new CompetitiveImpactAccumulator();
-  private CompetitiveImpactAccumulator globalCompetitiveFreqNormAccumulator =
-      new CompetitiveImpactAccumulator();
 
   private final ByteBuffersDataOutput spareOutput = ByteBuffersDataOutput.newResettableInstance();
   private final ByteBuffersDataOutput blockOutput = ByteBuffersDataOutput.newResettableInstance();
@@ -372,12 +370,10 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       skipOutput.copyTo(docOut);
       skipOutput.reset();
       lastSkipDocID = docID;
-      globalCompetitiveFreqNormAccumulator.addAll(skipCompetitiveFreqNormAccumulator);
       skipCompetitiveFreqNormAccumulator.clear();
     } else if (end) {
       skipOutput.copyTo(docOut);
       skipOutput.reset();
-      globalCompetitiveFreqNormAccumulator.addAll(skipCompetitiveFreqNormAccumulator);
       skipCompetitiveFreqNormAccumulator.clear();
     }
   }
@@ -496,14 +492,6 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     posBufferUpto = 0;
     lastDocID = -1;
     docCount = 0;
-
-    if (state.docFreq > SKIP_TOTAL_SIZE) {
-      state.globalImpacts = globalCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs();
-      globalCompetitiveFreqNormAccumulator = new CompetitiveImpactAccumulator();
-    } else {
-      state.globalImpacts = null;
-      globalCompetitiveFreqNormAccumulator.clear();
-    }
   }
 
   @Override
@@ -543,12 +531,6 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       if (state.lastPosBlockOffset != -1) {
         out.writeVLong(state.lastPosBlockOffset);
       }
-    }
-    if (state.globalImpacts != null) {
-      writeImpacts(state.globalImpacts, spareOutput);
-      out.writeVLong(spareOutput.size());
-      spareOutput.copyTo(out);
-      spareOutput.reset();
     }
     lastState = state;
   }

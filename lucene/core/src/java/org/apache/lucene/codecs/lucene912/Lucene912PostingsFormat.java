@@ -28,7 +28,6 @@ import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
-import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;
@@ -140,10 +139,6 @@ public class Lucene912PostingsFormat extends PostingsFormat {
      */
     public int singletonDocID;
 
-    /**
-     * Impacts across the whole postings list.
-     */
-    public List<Impact> globalImpacts;
 
     /** Sole constructor. */
     public IntBlockTermState() {
@@ -167,7 +162,6 @@ public class Lucene912PostingsFormat extends PostingsFormat {
       payStartFP = other.payStartFP;
       lastPosBlockOffset = other.lastPosBlockOffset;
       singletonDocID = other.singletonDocID;
-      globalImpacts = other.globalImpacts;
     }
 
     @Override

@@ -62,7 +62,7 @@ import org.apache.lucene.util.IOUtils;
  * @lucene.experimental
  */
 public final class Lucene912PostingsReader extends PostingsReaderBase {
-  
+
   private final IndexInput docIn;
   private final IndexInput posIn;
   private final IndexInput payIn;
@@ -221,18 +221,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         termState.lastPosBlockOffset = -1;
       }
     }
-
-    if (termState.docFreq > SKIP_TOTAL_SIZE) {
-      final int numBytes = in.readVInt();
-      byte[] bytes = new byte[numBytes];
-      in.readBytes(bytes, 0, bytes.length);
-      MutableImpactList impacts = new MutableImpactList();
-      readImpacts(new ByteArrayDataInput(bytes), impacts);
-      termState.globalImpacts = impacts;
-    } else {
-      termState.globalImpacts = null;
-    }
-    assert (termState.globalImpacts == null) == termState.docFreq <= SKIP_TOTAL_SIZE : termState.docFreq;
   }
 
   @Override
@@ -274,7 +262,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       throws IOException {
     final boolean indexHasPositions =
         fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-    
+
+
     if (state.docFreq >= BLOCK_SIZE && (indexHasPositions == false || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false)) {
       return new BlockImpactsDocsEnum(fieldInfo, (IntBlockTermState) state);
     }
@@ -283,7 +272,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
             >= 0;
     final boolean indexHasPayloads = fieldInfo.hasPayloads();
-    
+
     if (state.docFreq >= BLOCK_SIZE && indexHasPositions
         && (indexHasOffsets == false || PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS) == false)
         && (indexHasPayloads == false || PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS) == false)) {
@@ -459,7 +448,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       docBufferUpto = 0;
       freqFP = -1;
     }
-    
+
     private void skipLevel1To(int target) throws IOException {
       while (true) {
         accum = nextSkipDoc;
@@ -1160,8 +1149,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private final BytesRefBuilder serializedSkipImpacts = new BytesRefBuilder();
     private final ByteArrayDataInput serializedSkipImpactsIn = new ByteArrayDataInput();
     private final MutableImpactList skipImpacts = new MutableImpactList();
-    // level 2 skip data
-    private final List<Impact> globalImpacts;
 
     public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState) throws IOException {
       //System.out.println("NEW");
@@ -1201,8 +1188,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       nextSkipOffset = termState.docStartFP;
       nextSkipBlockUpto = 0;
       docBufferUpto = BLOCK_SIZE;
-      globalImpacts = termState.globalImpacts;
-      assert (globalImpacts == null) == docFreq <= SKIP_TOTAL_SIZE : docFreq;
       freqFP = -1;
     }
 
@@ -1384,7 +1369,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           if (nextSkipDoc != NO_MORE_DOCS) {
             numLevels++;
           }
-          if (globalImpacts != null || numLevels == 0) {
+          if (numLevels == 0) {
             numLevels++;
           }
           return numLevels;
@@ -1427,10 +1412,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               return skipImpacts;
             }
             level--;
-          }
-
-          if (globalImpacts != null) {
-            return globalImpacts;
           }
 
           return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
@@ -1511,8 +1492,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private final BytesRefBuilder serializedSkipImpacts = new BytesRefBuilder();
     private final ByteArrayDataInput serializedSkipImpactsIn = new ByteArrayDataInput();
     private final MutableImpactList skipImpacts = new MutableImpactList();
-    // level 2 skip data
-    private final List<Impact> globalImpacts;
 
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
@@ -1566,8 +1545,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       nextSkipBlockUpto = 0;
       nextSkipPosUpto = 0;
       docBufferUpto = BLOCK_SIZE;
-      globalImpacts = termState.globalImpacts;
-      assert (globalImpacts == null) == docFreq <= SKIP_TOTAL_SIZE : docFreq;
     }
 
     @Override
@@ -1713,7 +1690,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           if (nextSkipDoc != NO_MORE_DOCS) {
             numLevels++;
           }
-          if (globalImpacts != null || numLevels == 0) {
+          if (numLevels == 0) {
             numLevels++;
           }
           return numLevels;
@@ -1756,10 +1733,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               return skipImpacts;
             }
             level--;
-          }
-
-          if (globalImpacts != null) {
-            return globalImpacts;
           }
 
           return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
