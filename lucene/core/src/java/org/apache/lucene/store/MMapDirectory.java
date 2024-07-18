@@ -45,6 +45,11 @@ import org.apache.lucene.util.Constants;
  * performance of searches on a cold page cache at the expense of slowing down opening an index. See
  * {@link #setPreload(BiPredicate)} for more details.
  *
+ * <p>This class supports grouping of files that are part of the same logical group. This is a hint
+ * that allows for better handling of resources. For example, individual files that are part of the
+ * same segment can be considered part of the same logical group. See {@link
+ * #setGroupingFunction(Function)} for more details.
+ *
  * <p>This class will use the modern {@link java.lang.foreign.MemorySegment} API available since
  * Java 21 which allows to safely unmap previously mmapped files after closing the {@link
  * IndexInput}s. There is no need to enable the "preview feature" of your Java version; it works out
@@ -121,7 +126,7 @@ public class MMapDirectory extends FSDirectory {
   /** A provider specific context object or null, that will be passed to openInput. */
   final Object attachment = PROVIDER.attachment();
 
-  Function<String, Optional<String>> groupingFunction;
+  private Function<String, Optional<String>> groupingFunction = GROUP_BY_SEGMENT;
 
   final int chunkSizePower;
 
@@ -188,7 +193,6 @@ public class MMapDirectory extends FSDirectory {
       throw new IllegalArgumentException("Maximum chunk size for mmap must be >0");
     }
     this.chunkSizePower = Long.SIZE - 1 - Long.numberOfLeadingZeros(maxChunkSize);
-    this.groupingFunction = GROUP_BY_SEGMENT;
     assert (1L << chunkSizePower) <= maxChunkSize;
     assert (1L << chunkSizePower) > (maxChunkSize / 2);
   }
@@ -214,8 +218,8 @@ public class MMapDirectory extends FSDirectory {
    * {@link #NO_GROUPING}.
    *
    * @param groupingFunction a function that accepts a file name and returns an optional group key.
-   *     If the optional is present, then its value is the logical group to which the file
-   *     belongs. Otherwise, the file name if not associated with any logical group.
+   *     If the optional is present, then its value is the logical group to which the file belongs.
+   *     Otherwise, the file name if not associated with any logical group.
    */
   public void setGroupingFunction(Function<String, Optional<String>> groupingFunction) {
     this.groupingFunction = groupingFunction;
