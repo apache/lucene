@@ -1111,19 +1111,11 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     // if (DEBUG) {
     // System.out.println("BTTR.docs seg=" + segment);
     // }
-    if (term().utf8ToString().equals("medium_reosmrt") && docFreq() > 1024) {
-      System.out.println("NOW");
-    }
     currentFrame.decodeMetaData();
     // if (DEBUG) {
     // System.out.println("  state=" + currentFrame.state);
     // }
-    try {
     return fr.parent.postingsReader.impacts(fr.fieldInfo, currentFrame.state, flags);
-    } catch (AssertionError e) {
-      System.out.println(term().utf8ToString());
-      throw e;
-    }
   }
 
   @Override

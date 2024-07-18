@@ -754,7 +754,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     private void refillDocs() throws IOException {
-      //System.out.println("RefillDocs " + docIn.getFilePointer());
       final int left = docFreq - blockUpto;
       assert left >= 0;
 
@@ -1151,7 +1150,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private final MutableImpactList skipImpacts = new MutableImpactList();
 
     public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState) throws IOException {
-      //System.out.println("NEW");
       this.startDocIn = Lucene912PostingsReader.this.docIn;
       this.docIn = null;
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
@@ -1558,7 +1556,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     private void refillDocs() throws IOException {
-      //System.out.println("RefillDocs " + docIn.getFilePointer());
       final int left = docFreq - blockUpto;
       assert left >= 0;
 
