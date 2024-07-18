@@ -20,6 +20,10 @@ New Features
   merge policy to try to have at least this number of segments on the highest
   tier. (Adrien Grand, Carlos Delgado)
 
+* GITHUB#13517: Allow configuring the search concurrency on LogDocMergePolicy
+  and LogByteSizeMergePolicy via a new #setTargetConcurrency setter.
+  (Adrien Grand)
+
 Improvements
 ---------------------
 

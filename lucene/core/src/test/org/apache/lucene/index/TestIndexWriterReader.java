@@ -1004,6 +1004,8 @@ public class TestIndexWriterReader extends LuceneTestCase {
   public void testSegmentWarmer() throws Exception {
     Directory dir = newDirectory();
     final AtomicBoolean didWarm = new AtomicBoolean();
+    LogMergePolicy mp = newLogMergePolicy(10);
+    mp.setTargetSearchConcurrency(1);
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -1017,7 +1019,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                       assertEquals(20, count);
                       didWarm.set(true);
                     })
-                .setMergePolicy(newLogMergePolicy(10)));
+                .setMergePolicy(mp));
 
     Document doc = new Document();
     doc.add(newStringField("foo", "bar", Field.Store.NO));
@@ -1050,6 +1052,8 @@ public class TestIndexWriterReader extends LuceneTestCase {
             return true;
           }
         };
+    LogMergePolicy mp = newLogMergePolicy(10);
+    mp.setTargetSearchConcurrency(1);
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -1058,7 +1062,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                 .setReaderPooling(true)
                 .setInfoStream(infoStream)
                 .setMergedSegmentWarmer(new SimpleMergedSegmentWarmer(infoStream))
-                .setMergePolicy(newLogMergePolicy(10)));
+                .setMergePolicy(mp));
 
     Document doc = new Document();
     doc.add(newStringField("foo", "bar", Field.Store.NO));
