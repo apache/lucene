@@ -27,7 +27,7 @@ import org.apache.lucene.search.CollectorManager;
  * Collector manager for {@link FacetFieldCollector}. Returns the same extension of {@link
  * FacetRecorder} that was used to collect results.
  */
-public class FacetFieldCollectorManager<V extends FacetRecorder>
+public final class FacetFieldCollectorManager<V extends FacetRecorder>
     implements CollectorManager<FacetFieldCollector, V> {
 
   private final FacetCutter facetCutter;

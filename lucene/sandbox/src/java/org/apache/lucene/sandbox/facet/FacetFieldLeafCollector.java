@@ -27,7 +27,7 @@ import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 
 /** LeafCollector that collects and records data for all facet ordinals for each doc. */
-public class FacetFieldLeafCollector implements LeafCollector {
+final class FacetFieldLeafCollector implements LeafCollector {
 
   private final LeafReaderContext context;
   private final FacetCutter cutter;
@@ -36,9 +36,7 @@ public class FacetFieldLeafCollector implements LeafCollector {
 
   private LeafFacetRecorder leafRecorder;
 
-  /** Constructor */
-  public FacetFieldLeafCollector(
-      LeafReaderContext context, FacetCutter cutter, FacetRecorder recorder) {
+  FacetFieldLeafCollector(LeafReaderContext context, FacetCutter cutter, FacetRecorder recorder) {
     this.context = context;
     this.cutter = cutter;
     this.recorder = recorder;
