@@ -45,8 +45,13 @@ public class FacetFieldCollector implements Collector {
 
   @Override
   public ScoreMode scoreMode() {
-    // TODO: We don't need to ever keep scores, do we?
-    // return keepScores ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+    // TODO: Some FacetRecorders might need scores, e.g. to get associated numeric values, see for
+    // example TaxonomyFacetFloatAssociations. Not sure if anyone actually uses it, because
+    // FacetsCollectorManager creates FacetsCollector with keepScores: false. But if someone needs
+    // it, we can add boolean needScores method to FacetRecorder interface, return
+    // ScoreMode.COMPLETE here when the method returns true. FacetRecorders#needScores should be
+    // implemented on case by case basis, e.g. LongAggregationsFacetRecorder can take it as a
+    // constuctor argument, and when it's true call LongValues#getValues with the scores.
     return ScoreMode.COMPLETE_NO_SCORES;
   }
 }

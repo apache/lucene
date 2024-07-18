@@ -46,7 +46,7 @@ public class FacetFieldLeafCollector implements LeafCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
-    // TODO: do we need scorer for anything here?
+    // TODO: see comment in FacetFieldCollector#scoreMode
   }
 
   @Override
