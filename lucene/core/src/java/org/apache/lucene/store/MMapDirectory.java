@@ -105,7 +105,9 @@ public class MMapDirectory extends FSDirectory {
         String groupKey = IndexFileNames.parseSegmentName(filename).substring(1);
         try {
           groupKey += "-" + IndexFileNames.parseGeneration(filename);
-        } catch (NumberFormatException unused) {
+        } catch (
+            @SuppressWarnings("unused")
+            NumberFormatException unused) {
           // does not confirm to the generation syntax, or trash
         }
         return Optional.of(groupKey);
