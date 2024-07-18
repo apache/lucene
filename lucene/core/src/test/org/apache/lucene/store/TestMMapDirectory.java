@@ -266,6 +266,9 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     assertEquals("f51a-0", func.apply("_f51a.si").orElseThrow());
     assertEquals("segment-0", func.apply("_segment.si").orElseThrow());
 
+    // old style
+    assertEquals("5", func.apply("_5_Lucene90FieldsIndex-doc_ids_0.tmp").orElseThrow());
+
     assertFalse(func.apply("").isPresent());
     assertFalse(func.apply("_").isPresent());
     assertFalse(func.apply("_.si").isPresent());

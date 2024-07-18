@@ -102,9 +102,13 @@ public class MMapDirectory extends FSDirectory {
         if (!CODEC_FILE_PATTERN.matcher(filename).matches()) {
           return Optional.empty();
         }
-        String segmentName = IndexFileNames.parseSegmentName(filename).substring(1);
-        long gen = IndexFileNames.parseGeneration(filename);
-        return Optional.of(segmentName + "-" + gen);
+        String groupKey = IndexFileNames.parseSegmentName(filename).substring(1);
+        try {
+          groupKey += "-" + IndexFileNames.parseGeneration(filename);
+        } catch (NumberFormatException unused) {
+          // does not confirm to the generation syntax, or trash
+        }
+        return Optional.of(groupKey);
       };
 
   /**
