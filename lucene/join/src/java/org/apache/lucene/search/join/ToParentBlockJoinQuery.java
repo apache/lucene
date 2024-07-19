@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.ScoreMode.COMPLETE;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
@@ -99,7 +101,16 @@ public class ToParentBlockJoinQuery extends Query {
               .rewrite(new ConstantScoreQuery(childQuery))
               .createWeight(searcher, weightScoreMode, 0f);
     } else {
-      childWeight = childQuery.createWeight(searcher, weightScoreMode, boost);
+      // if the score is needed and the score mode is not max, we force the collection mode to
+      // COMPLETE because the
+      // child query cannot skip non-competitive documents.
+      childWeight =
+          childQuery.createWeight(
+              searcher,
+              weightScoreMode.needsScores() && childScoreMode != ScoreMode.Max
+                  ? COMPLETE
+                  : weightScoreMode,
+              boost);
     }
     return new BlockJoinWeight(this, childWeight, parentsFilter, childScoreMode);
   }
