@@ -17,7 +17,7 @@
 package org.apache.lucene.demo.facet;
 
 import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
-import static org.apache.lucene.sandbox.facet.ComparableUtils.rankCountOrdToComparable;
+import static org.apache.lucene.sandbox.facet.ComparableUtils.ordToComparableRankCountOrd;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -168,8 +168,8 @@ public class SandboxFacetsExample {
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
-        ComparableUtils.countOrdToComparable(defaultRecorder);
+    OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
+        ComparableUtils.ordToComparableCountOrd(defaultRecorder);
     // We don't actually need to use FacetResult, it is up to client what to do with the results.
     // Here we just want to demo that we can still do FacetResult as well
     List<FacetResult> results = new ArrayList<>(2);
@@ -231,8 +231,8 @@ public class SandboxFacetsExample {
     searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdLabelBiMap ordToLabels = new RangeOrdLabelBiMap(inputRanges);
 
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
-        ComparableUtils.countOrdToComparable(countRecorder);
+    OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
+        ComparableUtils.ordToComparableCountOrd(countRecorder);
     OrdinalIterator topByCountOrds =
         new TopnOrdinalIterator<>(countRecorder.recordedOrds(), countComparable, 10);
 
@@ -275,8 +275,8 @@ public class SandboxFacetsExample {
     searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdLabelBiMap ordToLabels = new RangeOrdLabelBiMap(inputRanges);
 
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
-        ComparableUtils.countOrdToComparable(countRecorder);
+    OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
+        ComparableUtils.ordToComparableCountOrd(countRecorder);
     OrdinalIterator topByCountOrds =
         new TopnOrdinalIterator<>(countRecorder.recordedOrds(), countComparable, 10);
 
@@ -343,14 +343,14 @@ public class SandboxFacetsExample {
     // We don't actually need to use FacetResult, it is up to client what to do with the results.
     // Here we just want to demo that we can still do FacetResult as well
     List<FacetResult> results = new ArrayList<>(2);
-    OrdToComparable<ComparableUtils.LongIntOrdComparable> ordToComparable;
+    OrdToComparable<ComparableUtils.ComparableLongIntOrd> ordToComparable;
     OrdinalIterator topOrds;
     int[] resultOrdinals;
     FacetLabel[] labels;
     List<LabelAndValue> labelsAndValues;
 
     // Sort results by units:sum and tie-break by count
-    ordToComparable = rankCountOrdToComparable(countRecorder, longAggregationsFacetRecorder, 1);
+    ordToComparable = ordToComparableRankCountOrd(countRecorder, longAggregationsFacetRecorder, 1);
     topOrds = new TopnOrdinalIterator<>(recordedOrds, ordToComparable, 10);
 
     resultOrdinals = topOrds.toArray();
@@ -369,7 +369,7 @@ public class SandboxFacetsExample {
     // note: previous ordinal iterator was exhausted
     recordedOrds = longAggregationsFacetRecorder.recordedOrds();
     // Sort results by popularity:max and tie-break by count
-    ordToComparable = rankCountOrdToComparable(countRecorder, longAggregationsFacetRecorder, 0);
+    ordToComparable = ordToComparableRankCountOrd(countRecorder, longAggregationsFacetRecorder, 0);
     topOrds = new TopnOrdinalIterator<>(recordedOrds, ordToComparable, 10);
     resultOrdinals = topOrds.toArray();
     labels = ordToLabels.getLabels(resultOrdinals);
@@ -424,8 +424,8 @@ public class SandboxFacetsExample {
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
-        ComparableUtils.countOrdToComparable(defaultRecorder);
+    OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
+        ComparableUtils.ordToComparableCountOrd(defaultRecorder);
     // We don't actually need to use FacetResult, it is up to client what to do with the results.
     // Here we just want to demo that we can still do FacetResult as well
     List<FacetResult> facetResults = new ArrayList<>(2);
@@ -487,8 +487,8 @@ public class SandboxFacetsExample {
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
-        ComparableUtils.countOrdToComparable(defaultRecorder);
+    OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
+        ComparableUtils.ordToComparableCountOrd(defaultRecorder);
 
     // This object provides labels for ordinals.
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
@@ -568,8 +568,8 @@ public class SandboxFacetsExample {
     // This object provides labels for ordinals.
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     // This object is used to get topN results by count
-    OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
-        ComparableUtils.countOrdToComparable(drillDownRecorder);
+    OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
+        ComparableUtils.ordToComparableCountOrd(drillDownRecorder);
     //// (4.1) Chain two ordinal iterators to get top N children
     OrdinalIterator childrenIternator =
         new TaxonomyChildrenOrdinalIterator(
@@ -597,7 +597,7 @@ public class SandboxFacetsExample {
             "Author", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
 
     //// (5) Same process, but for Publish Date drill sideways dimension
-    countComparable = ComparableUtils.countOrdToComparable(publishDayDimensionRecorder);
+    countComparable = ComparableUtils.ordToComparableCountOrd(publishDayDimensionRecorder);
     //// (4.1) Chain two ordinal iterators to get top N children
     childrenIternator =
         new TaxonomyChildrenOrdinalIterator(

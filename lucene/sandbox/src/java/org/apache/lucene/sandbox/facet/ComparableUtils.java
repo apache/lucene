@@ -43,24 +43,13 @@ public class ComparableUtils {
     }
   }
 
-  /** Result of */
-  public static class OrdComparable extends SkeletalGetOrd implements Comparable<OrdComparable> {
-    @Override
-    public int compareTo(OrdComparable o) {
-      return Integer.compare(o.ord, ord);
-    }
-  }
-
-  /**
-   * To sort facet ords by count (descending) with ord as a tie-break (ascending) using provided
-   * {@link CountFacetRecorder}.
-   */
-  public static OrdToComparable<OrdComparable> ordToComparable() {
+  /** {@link OrdToComparable} that can be used to sort by ords (ascending). */
+  public static OrdToComparable<ComparableOrd> ordToComparableOrd() {
     return new OrdToComparable<>() {
       @Override
-      public OrdComparable getComparable(int ord, OrdComparable reuse) {
+      public ComparableOrd getComparable(int ord, ComparableOrd reuse) {
         if (reuse == null) {
-          reuse = new OrdComparable();
+          reuse = new ComparableOrd();
         }
         reuse.ord = ord;
         return reuse;
@@ -68,16 +57,42 @@ public class ComparableUtils {
     };
   }
 
-  /** Result of {@link #countOrdToComparable} method below */
-  public static class IntOrdComparable extends SkeletalGetOrd
-      implements Comparable<IntOrdComparable> {
-    private IntOrdComparable() {}
-    ;
+  /** Used for {@link #ordToComparableOrd} result. */
+  public static class ComparableOrd extends SkeletalGetOrd implements Comparable<ComparableOrd> {
+    @Override
+    public int compareTo(ComparableOrd o) {
+      return Integer.compare(o.ord, ord);
+    }
+  }
+
+  /**
+   * {@link OrdToComparable} that can be used to sort ordinals by count (descending) with ord as a
+   * tie-break (ascending) using provided {@link CountFacetRecorder}.
+   */
+  public static OrdToComparable<ComparableIntOrd> ordToComparableCountOrd(
+      CountFacetRecorder recorder) {
+    return new OrdToComparable<>() {
+      @Override
+      public ComparableIntOrd getComparable(int ord, ComparableIntOrd reuse) {
+        if (reuse == null) {
+          reuse = new ComparableIntOrd();
+        }
+        reuse.ord = ord;
+        reuse.rank = recorder.getCount(ord);
+        return reuse;
+      }
+    };
+  }
+
+  /** Used for {@link #ordToComparableCountOrd} result. */
+  public static class ComparableIntOrd extends SkeletalGetOrd
+      implements Comparable<ComparableIntOrd> {
+    private ComparableIntOrd() {}
 
     private int rank;
 
     @Override
-    public int compareTo(IntOrdComparable o) {
+    public int compareTo(ComparableIntOrd o) {
       int cmp = Integer.compare(rank, o.rank);
       if (cmp == 0) {
         cmp = Integer.compare(o.ord, ord);
@@ -87,35 +102,39 @@ public class ComparableUtils {
   }
 
   /**
-   * To sort facet ords by count (descending) with ord as a tie-break (ascending) using provided
-   * {@link CountFacetRecorder}.
+   * {@link OrdToComparable} to sort ordinals by long aggregation (descending) with tie-break by
+   * count (descending) with ordinal as a tie-break (ascending) using provided {@link
+   * CountFacetRecorder} and {@link LongAggregationsFacetRecorder}.
    */
-  public static OrdToComparable<IntOrdComparable> countOrdToComparable(
-      CountFacetRecorder recorder) {
+  public static OrdToComparable<ComparableLongIntOrd> ordToComparableRankCountOrd(
+      CountFacetRecorder countRecorder,
+      LongAggregationsFacetRecorder longAggregationsFacetRecorder,
+      int aggregationId) {
     return new OrdToComparable<>() {
       @Override
-      public IntOrdComparable getComparable(int ord, IntOrdComparable reuse) {
+      public ComparableLongIntOrd getComparable(int ord, ComparableLongIntOrd reuse) {
         if (reuse == null) {
-          reuse = new IntOrdComparable();
+          reuse = new ComparableLongIntOrd();
         }
         reuse.ord = ord;
-        reuse.rank = recorder.getCount(ord);
+        reuse.secondaryRank = countRecorder.getCount(ord);
+        reuse.primaryRank = longAggregationsFacetRecorder.getRecordedValue(ord, aggregationId);
         return reuse;
       }
     };
   }
 
-  /** Result of {@link #rankCountOrdToComparable} methods below */
-  public static class LongIntOrdComparable extends SkeletalGetOrd
-      implements Comparable<LongIntOrdComparable> {
-    private LongIntOrdComparable() {}
+  /** Used for {@link #ordToComparableRankCountOrd} result. */
+  public static class ComparableLongIntOrd extends SkeletalGetOrd
+      implements Comparable<ComparableLongIntOrd> {
+    private ComparableLongIntOrd() {}
     ;
 
     private int secondaryRank;
     private long primaryRank;
 
     @Override
-    public int compareTo(LongIntOrdComparable o) {
+    public int compareTo(ComparableLongIntOrd o) {
       int cmp = Long.compare(primaryRank, o.primaryRank);
       if (cmp == 0) {
         cmp = Integer.compare(secondaryRank, o.secondaryRank);
@@ -128,30 +147,10 @@ public class ComparableUtils {
   }
 
   /**
-   * To sort facet ords by long aggregation (descending) with tie-break by count (descending) with
-   * ord as a tie-break (ascending) using provided {@link CountFacetRecorder} and {@link
-   * LongAggregationsFacetRecorder}.
-   */
-  public static OrdToComparable<LongIntOrdComparable> rankCountOrdToComparable(
-      CountFacetRecorder countRecorder,
-      LongAggregationsFacetRecorder longAggregationsFacetRecorder,
-      int aggregationId) {
-    return new OrdToComparable<>() {
-      @Override
-      public LongIntOrdComparable getComparable(int ord, LongIntOrdComparable reuse) {
-        if (reuse == null) {
-          reuse = new LongIntOrdComparable();
-        }
-        reuse.ord = ord;
-        reuse.secondaryRank = countRecorder.getCount(ord);
-        reuse.primaryRank = longAggregationsFacetRecorder.getRecordedValue(ord, aggregationId);
-        return reuse;
-      }
-    };
-  }
-
-  /**
    * Sort array of ordinals.
+   *
+   * <p>To get top-n ordinals use {@link
+   * org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator} instead.
    *
    * @param ordinals array of ordinals to sort
    * @param ordToComparable defines sort order

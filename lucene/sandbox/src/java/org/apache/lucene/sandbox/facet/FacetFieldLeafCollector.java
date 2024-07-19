@@ -26,7 +26,10 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 
-/** LeafCollector that collects and records data for all facet ordinals for each doc. */
+/**
+ * {@link LeafCollector} that for each facet ordinal from {@link LeafFacetCutter} records data with
+ * {@link LeafFacetRecorder}.
+ */
 final class FacetFieldLeafCollector implements LeafCollector {
 
   private final LeafReaderContext context;

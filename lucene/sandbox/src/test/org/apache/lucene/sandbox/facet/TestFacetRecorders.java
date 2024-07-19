@@ -380,15 +380,15 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
             ordLabels.getOrd(parentLabel));
     final int[] resultOrdinals;
     if (sortByLongAggregationId != null) {
-      OrdToComparable<ComparableUtils.LongIntOrdComparable> ordToComparable =
-          ComparableUtils.rankCountOrdToComparable(
+      OrdToComparable<ComparableUtils.ComparableLongIntOrd> ordToComparable =
+          ComparableUtils.ordToComparableRankCountOrd(
               countFacetRecorder, longAggregationsFacetRecorder, sortByLongAggregationId);
       OrdinalIterator topByCountOrds =
           new TopnOrdinalIterator<>(childrenIternator, ordToComparable, topN);
       resultOrdinals = topByCountOrds.toArray();
     } else {
-      OrdToComparable<ComparableUtils.IntOrdComparable> countComparable =
-          ComparableUtils.countOrdToComparable(countFacetRecorder);
+      OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
+          ComparableUtils.ordToComparableCountOrd(countFacetRecorder);
       OrdinalIterator topByCountOrds =
           new TopnOrdinalIterator<>(childrenIternator, countComparable, topN);
       resultOrdinals = topByCountOrds.toArray();
