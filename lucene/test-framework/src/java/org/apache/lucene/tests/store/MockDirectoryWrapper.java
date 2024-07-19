@@ -814,6 +814,14 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
 
     context = LuceneTestCase.newIOContext(randomState, context);
     final boolean confined = context == IOContext.READONCE;
+    if (name.startsWith(IndexFileNames.SEGMENTS) && confined == false) {
+      throw new RuntimeException(
+          "MockDirectoryWrapper: opening segments file ["
+              + name
+              + "] with a non-READONCE context["
+              + context
+              + "]");
+    }
     IndexInput delegateInput = in.openInput(name, context);
 
     final IndexInput ii;
