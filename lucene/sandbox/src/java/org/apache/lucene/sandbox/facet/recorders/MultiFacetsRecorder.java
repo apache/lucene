@@ -44,14 +44,14 @@ public final class MultiFacetsRecorder implements FacetRecorder {
 
   @Override
   public OrdinalIterator recordedOrds() {
-    assert delegates.length > 0;
-    return delegates[0].recordedOrds();
+    throw new UnsupportedOperationException(
+        "Not supported, call recordedOrds for sub-recorders instead");
   }
 
   @Override
   public boolean isEmpty() {
-    assert delegates.length > 0;
-    return delegates[0].isEmpty();
+    throw new UnsupportedOperationException(
+        "Not supported, call isEmpty for sub-recorders instead");
   }
 
   @Override

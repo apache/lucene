@@ -177,11 +177,12 @@ public class SandboxFacetsExample {
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     for (String dimension : List.of("Author", "Publish Date")) {
       //// (4.1) Chain two ordinal iterators to get top N children
+      int dimOrdinal = ordLabels.getOrd(new FacetLabel(dimension));
       OrdinalIterator childrenIternator =
           new TaxonomyChildrenOrdinalIterator(
               defaultRecorder.recordedOrds(),
               taxoReader.getParallelTaxonomyArrays().parents(),
-              ordLabels.getOrd(new FacetLabel(dimension)));
+              dimOrdinal);
       OrdinalIterator topByCountOrds =
           new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
       // Get array of final ordinals - we need to use all of them to get labels first, and then to
@@ -197,10 +198,14 @@ public class SandboxFacetsExample {
             new LabelAndValue(
                 labels[i].lastComponent(), defaultRecorder.getCount(resultOrdinals[i])));
       }
-      // TODO fix value and childCount
+      int dimensionValue = defaultRecorder.getCount(dimOrdinal);
       results.add(
           new FacetResult(
-              dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+              dimension,
+              new String[0],
+              dimensionValue,
+              labelsAndValues.toArray(new LabelAndValue[0]),
+              labelsAndValues.size()));
     }
 
     IOUtils.close(indexReader, taxoReader);
@@ -432,12 +437,13 @@ public class SandboxFacetsExample {
     // This object provides labels for ordinals.
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     for (String dimension : List.of("Author", "Publish Date")) {
+      int dimensionOrdinal = taxoReader.getOrdinal(dimension);
       //// (4.1) Chain two ordinal iterators to get top N children
       OrdinalIterator childrenIternator =
           new TaxonomyChildrenOrdinalIterator(
               defaultRecorder.recordedOrds(),
               taxoReader.getParallelTaxonomyArrays().parents(),
-              taxoReader.getOrdinal(dimension));
+              dimensionOrdinal);
       OrdinalIterator topByCountOrds =
           new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
       // Get array of final ordinals - we need to use all of them to get labels first, and then to
@@ -453,10 +459,14 @@ public class SandboxFacetsExample {
             new LabelAndValue(
                 labels[i].lastComponent(), defaultRecorder.getCount(resultOrdinals[i])));
       }
-      // TODO fix value and childCount
+      int dimensionValue = defaultRecorder.getCount(dimensionOrdinal);
       facetResults.add(
           new FacetResult(
-              dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+              dimension,
+              new String[0],
+              dimensionValue,
+              labelsAndValues.toArray(new LabelAndValue[0]),
+              labelsAndValues.size()));
     }
 
     IOUtils.close(indexReader, taxoReader);
@@ -494,11 +504,12 @@ public class SandboxFacetsExample {
     OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     String dimension = "Author";
     //// (4.1) Chain two ordinal iterators to get top N children
+    int dimOrdinal = taxoReader.getOrdinal(dimension);
     OrdinalIterator childrenIternator =
         new TaxonomyChildrenOrdinalIterator(
             defaultRecorder.recordedOrds(),
             taxoReader.getParallelTaxonomyArrays().parents(),
-            taxoReader.getOrdinal(dimension));
+            dimOrdinal);
     OrdinalIterator topByCountOrds =
         new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
     // Get array of final ordinals - we need to use all of them to get labels first, and then to get
@@ -516,11 +527,15 @@ public class SandboxFacetsExample {
     }
 
     IOUtils.close(indexReader, taxoReader);
-    // TODO fix value and childCount
+    int dimensionValue = defaultRecorder.getCount(dimOrdinal);
     // We don't actually need to use FacetResult, it is up to client what to do with the results.
     // Here we just want to demo that we can still do FacetResult as well
     return new FacetResult(
-        dimension, new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0);
+        dimension,
+        new String[0],
+        dimensionValue,
+        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.size());
   }
 
   /**
@@ -571,11 +586,12 @@ public class SandboxFacetsExample {
     OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
         ComparableUtils.ordToComparableCountOrd(drillDownRecorder);
     //// (4.1) Chain two ordinal iterators to get top N children
+    int dimOrdinal = taxoReader.getOrdinal("Author");
     OrdinalIterator childrenIternator =
         new TaxonomyChildrenOrdinalIterator(
             drillDownRecorder.recordedOrds(),
             taxoReader.getParallelTaxonomyArrays().parents(),
-            taxoReader.getOrdinal("Author"));
+            dimOrdinal);
     OrdinalIterator topByCountOrds =
         new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
     // Get array of final ordinals - we need to use all of them to get labels first, and then to get
@@ -591,19 +607,24 @@ public class SandboxFacetsExample {
           new LabelAndValue(
               labels[i].lastComponent(), drillDownRecorder.getCount(resultOrdinals[i])));
     }
-    // TODO fix value and childCount
+    int dimensionValue = drillDownRecorder.getCount(dimOrdinal);
     facetResults.add(
         new FacetResult(
-            "Author", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Author",
+            new String[0],
+            dimensionValue,
+            labelsAndValues.toArray(new LabelAndValue[0]),
+            labelsAndValues.size()));
 
     //// (5) Same process, but for Publish Date drill sideways dimension
     countComparable = ComparableUtils.ordToComparableCountOrd(publishDayDimensionRecorder);
     //// (4.1) Chain two ordinal iterators to get top N children
+    dimOrdinal = taxoReader.getOrdinal("Publish Date");
     childrenIternator =
         new TaxonomyChildrenOrdinalIterator(
             publishDayDimensionRecorder.recordedOrds(),
             taxoReader.getParallelTaxonomyArrays().parents(),
-            taxoReader.getOrdinal("Publish Date"));
+            dimOrdinal);
     topByCountOrds = new TopnOrdinalIterator<>(childrenIternator, countComparable, 10);
     // Get array of final ordinals - we need to use all of them to get labels first, and then to get
     // counts,
@@ -618,10 +639,14 @@ public class SandboxFacetsExample {
           new LabelAndValue(
               labels[i].lastComponent(), publishDayDimensionRecorder.getCount(resultOrdinals[i])));
     }
-    // TODO fix value and childCount
+    dimensionValue = publishDayDimensionRecorder.getCount(dimOrdinal);
     facetResults.add(
         new FacetResult(
-            "Publish Date", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Publish Date",
+            new String[0],
+            dimensionValue,
+            labelsAndValues.toArray(new LabelAndValue[0]),
+            labelsAndValues.size()));
 
     IOUtils.close(indexReader, taxoReader);
     return facetResults;
