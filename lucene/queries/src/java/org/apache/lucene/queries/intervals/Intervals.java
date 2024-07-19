@@ -27,11 +27,15 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.automaton.RegExp;
 
 /**
  * Factory functions for creating {@link IntervalsSource interval sources}.
@@ -204,6 +208,88 @@ public final class Intervals {
             WildcardQuery.toAutomaton(
                 new Term("", wildcard), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
     return new MultiTermIntervalsSource(ca, maxExpansions, wildcard.utf8ToString());
+  }
+
+  /**
+   * Return an {@link IntervalsSource} over the disjunction of all terms that match a regular
+   * expression
+   *
+   * @param regexp regular expression
+   * @throws IllegalStateException if the regex expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
+   *     terms
+   * @see RegexpQuery for regexp format
+   */
+  public static IntervalsSource regexp(BytesRef regexp) {
+    return regexp(regexp, DEFAULT_MAX_EXPANSIONS);
+  }
+
+  /**
+   * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that match a
+   * regular expression
+   *
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
+   *
+   * @param regexp regular expression
+   * @param maxExpansions the maximum number of terms to expand to
+   * @throws IllegalStateException if the regex expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
+   *     terms
+   * @see RegexpQuery for regexp format
+   */
+  public static IntervalsSource regexp(BytesRef regexp, int maxExpansions) {
+    Automaton automaton = new RegExp(new Term("", regexp).text()).toAutomaton();
+    CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true, false);
+    return new MultiTermIntervalsSource(ca, maxExpansions, regexp.utf8ToString());
+  }
+
+  /**
+   * Return an {@link IntervalsSource} over the disjunction of all terms that fall within the given
+   * range
+   *
+   * @param lowerTerm The term text at the lower end of the range
+   * @param upperTerm The term text at the upper end of the range
+   * @param includeLower If true, the <code>lowerTerm</code> is included in the range
+   * @param includeUpper If true, the <code>upperTerm</code> is included in the range
+   * @throws IllegalStateException if the range expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
+   *     terms
+   */
+  public static IntervalsSource range(
+      BytesRef lowerTerm, BytesRef upperTerm, boolean includeLower, boolean includeUpper) {
+    return range(lowerTerm, upperTerm, includeLower, includeUpper, DEFAULT_MAX_EXPANSIONS);
+  }
+
+  /**
+   * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that fall within
+   * the given range
+   *
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
+   *
+   * @param lowerTerm The term text at the lower end of the range
+   * @param upperTerm The term text at the upper end of the range
+   * @param includeLower If true, the <code>lowerTerm</code> is included in the range
+   * @param includeUpper If true, the <code>upperTerm</code> is included in the range
+   * @param maxExpansions the maximum number of terms to expand to
+   * @throws IllegalStateException if the wildcard glob expands to more than {@code maxExpansions}
+   *     terms
+   */
+  public static IntervalsSource range(
+      BytesRef lowerTerm,
+      BytesRef upperTerm,
+      boolean includeLower,
+      boolean includeUpper,
+      int maxExpansions) {
+    Automaton automaton =
+        TermRangeQuery.toAutomaton(lowerTerm, upperTerm, includeLower, includeUpper);
+    CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true, true);
+
+    StringBuilder buffer = new StringBuilder();
+    buffer.append("{");
+    buffer.append(lowerTerm.utf8ToString());
+    buffer.append(",");
+    buffer.append(upperTerm.utf8ToString());
+    buffer.append("}");
+    return new MultiTermIntervalsSource(ca, maxExpansions, buffer.toString());
   }
 
   /**
