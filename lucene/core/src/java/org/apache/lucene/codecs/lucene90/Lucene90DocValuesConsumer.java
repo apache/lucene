@@ -320,12 +320,15 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     return collector;
   }
 
-  private int getLevels(int index, int size) {
-    final int left = size - index;
-    for (int level = SKIP_INDEX_MAX_LEVEL - 1; level > 0; level--) {
-      final int numberIntervals = 1 << (SKIP_INDEX_LEVEL_SHIFT * level);
-      if (left >= numberIntervals && index % numberIntervals == 0) {
-        return level + 1;
+  private static int getLevels(int index, int size) {
+    if (Integer.numberOfTrailingZeros(index) >= SKIP_INDEX_LEVEL_SHIFT) {
+      // TODO: can we do it in constant time rather than linearly with SKIP_INDEX_MAX_LEVEL?
+      final int left = size - index;
+      for (int level = SKIP_INDEX_MAX_LEVEL - 1; level > 0; level--) {
+        final int numberIntervals = 1 << (SKIP_INDEX_LEVEL_SHIFT * level);
+        if (left >= numberIntervals && index % numberIntervals == 0) {
+          return level + 1;
+        }
       }
     }
     return 1;
