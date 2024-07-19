@@ -25,6 +25,7 @@ final class RefCountedSharedArena implements Arena {
 
   static final int OPEN = 0;
   static final int CLOSED = -1;
+  static final int LIMIT = 256;
 
   private final String segmentName;
   private final Runnable onClose;
@@ -47,8 +48,11 @@ final class RefCountedSharedArena implements Arena {
     int value;
     while (true) {
       value = state.get();
-      if (value < OPEN) {
+      if (value >= LIMIT) {
         return false;
+      }
+      if (value < OPEN) {
+        throw new IllegalStateException("already closed");
       }
       if (state.compareAndSet(value, value + 1)) {
         return true;

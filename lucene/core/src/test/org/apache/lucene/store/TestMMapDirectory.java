@@ -253,6 +253,36 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
+  // Opens more files in the same group than the ref counting limit.
+  public void testArenasManySegmentFiles() throws Exception {
+    var names = IntStream.range(0, 1024).mapToObj(i -> "_001.ext" + i).toList();
+
+    final int size = 4;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (var dir = new MMapDirectory(createTempDir("testArenasManySegmentFiles"))) {
+      for (var name : names) {
+        try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
+          out.writeBytes(bytes, 0, bytes.length);
+        }
+      }
+
+      List<IndexInput> closeables = new ArrayList<>();
+      for (var name : names) {
+        closeables.add(dir.openInput(name, IOContext.DEFAULT));
+      }
+      for (IndexInput closeable : closeables) {
+        closeable.close();
+      }
+
+      if (!(dir.attachment instanceof ConcurrentHashMap<?, ?> map)) {
+        throw new AssertionError("unexpected attachment: " + dir.attachment);
+      }
+      assertEquals(0, map.size());
+    }
+  }
+
   public void testGroupBySegmentFunc() {
     var func = MMapDirectory.GROUP_BY_SEGMENT;
     assertEquals("0-0", func.apply("_0.doc").orElseThrow());

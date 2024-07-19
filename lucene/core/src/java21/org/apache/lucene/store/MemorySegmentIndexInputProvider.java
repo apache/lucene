@@ -157,6 +157,8 @@ final class MemorySegmentIndexInputProvider
           arenas.computeIfAbsent(key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s)));
       if (refCountedArena.acquire()) {
         return refCountedArena;
+      } else {
+        arenas.remove(key);
       }
     }
   }
