@@ -113,7 +113,6 @@ public class TestBlockJoinScorer extends LuceneTestCase {
 
   public void testScoreMax() throws IOException {
     try (Directory dir = newDirectory()) {
-      // retain doc id order
       try (RandomIndexWriter w =
           new RandomIndexWriter(
               random(),
@@ -122,22 +121,25 @@ public class TestBlockJoinScorer extends LuceneTestCase {
                   .setMergePolicy(
                       // retain doc id order
                       newLogMergePolicy(random().nextBoolean())))) {
-        for (String[] values :
-            Arrays.asList(
-                new String[] {"A", "B"},
-                new String[] {"A"},
-                new String[] {},
-                new String[] {"A", "B", "C"},
-                new String[] {"B"},
-                new String[] {"B", "C"})) {
-          List<Document> docs = new ArrayList<>();
 
-          Document childDoc = new Document();
-          childDoc.add(newStringField("type", "child", Field.Store.NO));
-          for (String value : values) {
-            childDoc.add(newStringField("value", value, Field.Store.NO));
+        for (String[][] values :
+            Arrays.asList(
+                new String[][] {{"A", "B"}, {"A", "B", "C"}},
+                new String[][] {{"A"}, {"B"}},
+                new String[][] {{}},
+                new String[][] {{"A", "B", "C"}, {"A", "B", "C", "D"}},
+                new String[][] {{"B"}},
+                new String[][] {{"B", "C"}, {"A", "B"}, {"A", "C"}})) {
+
+          List<Document> docs = new ArrayList<>();
+          for (String[] value : values) {
+            Document childDoc = new Document();
+            childDoc.add(newStringField("type", "child", Field.Store.NO));
+            for (String v : value) {
+              childDoc.add(newStringField("value", v, Field.Store.NO));
+            }
+            docs.add(childDoc);
           }
-          docs.add(childDoc);
 
           Document parentDoc = new Document();
           parentDoc.add(newStringField("type", "parent", Field.Store.NO));
@@ -165,6 +167,10 @@ public class TestBlockJoinScorer extends LuceneTestCase {
                     new BoostQuery(
                         new ConstantScoreQuery(new TermQuery(new Term("value", "C"))), 3),
                     BooleanClause.Occur.SHOULD)
+                .add(
+                    new BoostQuery(
+                        new ConstantScoreQuery(new TermQuery(new Term("value", "D"))), 4),
+                    BooleanClause.Occur.SHOULD)
                 .setMinimumNumberShouldMatch(2)
                 .build();
         BitSetProducer parentsFilter =
@@ -177,27 +183,27 @@ public class TestBlockJoinScorer extends LuceneTestCase {
         ss.setTopLevelScoringClause();
         Scorer scorer = ss.get(Long.MAX_VALUE);
 
-        assertEquals(1, scorer.iterator().nextDoc());
-        assertEquals(2 + 1, scorer.score(), 0);
-
-        assertEquals(7, scorer.iterator().nextDoc());
+        assertEquals(2, scorer.iterator().nextDoc());
         assertEquals(2 + 1 + 3, scorer.score(), 0);
 
-        assertEquals(11, scorer.iterator().nextDoc());
-        assertEquals(1 + 3, scorer.score(), 0);
+        assertEquals(10, scorer.iterator().nextDoc());
+        assertEquals(2 + 1 + 3 + 4, scorer.score(), 0);
+
+        assertEquals(16, scorer.iterator().nextDoc());
+        assertEquals(2 + 3, scorer.score(), 0);
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
         ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
         ss.setTopLevelScoringClause();
         scorer = ss.get(Long.MAX_VALUE);
-        scorer.setMinCompetitiveScore(4);
+        scorer.setMinCompetitiveScore(6);
 
-        assertEquals(7, scorer.iterator().nextDoc());
+        assertEquals(2, scorer.iterator().nextDoc());
         assertEquals(2 + 1 + 3, scorer.score(), 0);
 
-        assertEquals(11, scorer.iterator().nextDoc());
-        assertEquals(1 + 3, scorer.score(), 0);
+        assertEquals(10, scorer.iterator().nextDoc());
+        assertEquals(2 + 1 + 3 + 4, scorer.score(), 0);
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
@@ -205,10 +211,10 @@ public class TestBlockJoinScorer extends LuceneTestCase {
         ss.setTopLevelScoringClause();
         scorer = ss.get(Long.MAX_VALUE);
 
-        assertEquals(1, scorer.iterator().nextDoc());
-        assertEquals(2 + 1, scorer.score(), 0);
+        assertEquals(2, scorer.iterator().nextDoc());
+        assertEquals(2 + 1 + 3, scorer.score(), 0);
 
-        scorer.setMinCompetitiveScore(10);
+        scorer.setMinCompetitiveScore(11);
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
       }
