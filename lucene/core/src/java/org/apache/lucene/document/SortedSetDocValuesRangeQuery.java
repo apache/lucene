@@ -18,8 +18,10 @@ package org.apache.lucene.document;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.function.LongPredicate;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -33,6 +35,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
@@ -151,14 +154,31 @@ final class SortedSetDocValuesRangeQuery extends Query {
             }
 
             // no terms matched in this segment
-            // no terms matched in this segment
             if (minOrd > maxOrd
                 || (skipper != null
                     && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()))) {
               return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
             }
 
+            // all terms matched in this segment
+            if (skipper != null
+                && skipper.docCount() == context.reader().maxDoc()
+                && skipper.minValue() >= minOrd
+                && skipper.maxValue() <= maxOrd) {
+              return new ConstantScoreScorer(
+                  score(), scoreMode, DocIdSetIterator.all(skipper.docCount()));
+            }
+
             final SortedDocValues singleton = DocValues.unwrapSingleton(values);
+            if (singleton != null && skipper != null) {
+              final DocIdSetIterator psIterator =
+                  getDocIdSetIteratorOrNullForPrimarySort(
+                      context.reader(), singleton, skipper, minOrd, maxOrd);
+              if (psIterator != null) {
+                return new ConstantScoreScorer(score(), scoreMode, psIterator);
+              }
+            }
+
             TwoPhaseIterator iterator;
             if (singleton != null) {
               iterator =
@@ -215,5 +235,83 @@ final class SortedSetDocValuesRangeQuery extends Query {
         return DocValues.isCacheable(ctx, field);
       }
     };
+  }
+
+  private DocIdSetIterator getDocIdSetIteratorOrNullForPrimarySort(
+      LeafReader reader,
+      SortedDocValues sortedDocValues,
+      DocValuesSkipper skipper,
+      long minOrd,
+      long maxOrd)
+      throws IOException {
+    if (skipper.docCount() != reader.maxDoc()) {
+      return null;
+    }
+    final Sort indexSort = reader.getMetaData().getSort();
+    if (indexSort == null
+        || indexSort.getSort().length == 0
+        || indexSort.getSort()[0].getField().equals(field) == false) {
+      return null;
+    }
+
+    final boolean reverse = indexSort.getSort()[0].getReverse();
+    final int minDocID;
+    final int maxDocID;
+    skipper.advance(0);
+    if (reverse) {
+      minDocID =
+          skipper.maxValue() <= maxOrd
+              ? 0
+              : nextDoc(skipper, sortedDocValues, l -> l <= maxOrd, true);
+      maxDocID =
+          skipper.minValue() >= minOrd
+              ? skipper.docCount()
+              : nextDoc(skipper, sortedDocValues, l -> l < minOrd, true);
+    } else {
+      minDocID =
+          skipper.minValue() >= minOrd
+              ? 0
+              : nextDoc(skipper, sortedDocValues, l -> l >= minOrd, false);
+      maxDocID =
+          skipper.maxValue() <= maxOrd
+              ? skipper.docCount()
+              : nextDoc(skipper, sortedDocValues, l -> l > maxOrd, false);
+    }
+    return minDocID == maxDocID
+        ? DocIdSetIterator.empty()
+        : DocIdSetIterator.range(minDocID, maxDocID);
+  }
+
+  private static int nextDoc(
+      DocValuesSkipper skipper,
+      SortedDocValues docValues,
+      LongPredicate competitive,
+      boolean reverse)
+      throws IOException {
+    while (true) {
+      if (skipper.minDocID(0) == DocIdSetIterator.NO_MORE_DOCS) {
+        return -1; // should not happen
+      }
+      if (competitive.test(reverse ? skipper.minValue(0) : skipper.maxValue(0))) {
+        int doc = docValues.docID();
+        if (skipper.minDocID(0) > doc) {
+          doc = docValues.advance(skipper.minDocID(0));
+        }
+        for (; doc <= skipper.maxDocID(0); doc = docValues.nextDoc()) {
+          if (competitive.test(docValues.ordValue())) {
+            return doc;
+          }
+        }
+      }
+      int maxDocID = skipper.maxDocID(0);
+      int nextLevel = 1;
+      while (nextLevel < skipper.numLevels()
+          && competitive.test(reverse ? skipper.minValue(nextLevel) : skipper.maxValue(nextLevel))
+              == false) {
+        maxDocID = skipper.maxDocID(nextLevel);
+        nextLevel++;
+      }
+      skipper.advance(maxDocID + 1);
+    }
   }
 }
