@@ -49,7 +49,7 @@ public class RangeOrdLabelBiMap implements OrdLabelBiMap {
   public FacetLabel[] getLabels(int[] ordinals) throws IOException {
     FacetLabel[] facetLabels = new FacetLabel[ordinals.length];
     for (int i = 0; i < ordinals.length; i++) {
-      facetLabels[i] = new FacetLabel(ranges[ordinals[i]].label);
+      facetLabels[i] = getLabel(ordinals[i]);
     }
     return facetLabels;
   }

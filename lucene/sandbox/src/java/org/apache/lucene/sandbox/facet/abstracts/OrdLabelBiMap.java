@@ -20,8 +20,11 @@ import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 
 /**
- * Label to ord bimap interface. TODO: move FacetLabel out of taxonomy folder to use it for any
- * facets, not just taxonomy? TODO: there is some overlap with {@link
+ * Label to ord bimap interface.
+ *
+ * <p>TODO: move FacetLabel out of taxonomy folder to use it for any facets, not just taxonomy?
+ *
+ * <p>TODO: there is some overlap with {@link
  * org.apache.lucene.facet.taxonomy.writercache.LabelToOrdinal}, can we reuse something?
  */
 public interface OrdLabelBiMap {
