@@ -21,7 +21,7 @@ import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
 
-/** Get labels for taxonomy ordinals; TODO: implement! */
+/** Map taxonomy labels to ordinals. */
 public class TaxonomyOrdLabelBiMap implements OrdLabelBiMap {
 
   private final TaxonomyReader taxoReader;
