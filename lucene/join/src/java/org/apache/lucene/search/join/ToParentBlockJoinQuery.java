@@ -148,6 +148,11 @@ public class ToParentBlockJoinQuery extends Query {
         public long cost() {
           return childScorerSupplier.cost();
         }
+
+        @Override
+        public void setTopLevelScoringClause() throws IOException {
+          childScorerSupplier.setTopLevelScoringClause();
+        }
       };
     }
 
