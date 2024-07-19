@@ -170,17 +170,16 @@ final class SortedSetDocValuesRangeQuery extends Query {
             }
 
             final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-            if (singleton != null && skipper != null) {
-              final DocIdSetIterator psIterator =
-                  getDocIdSetIteratorOrNullForPrimarySort(
-                      context.reader(), singleton, skipper, minOrd, maxOrd);
-              if (psIterator != null) {
-                return new ConstantScoreScorer(score(), scoreMode, psIterator);
-              }
-            }
-
             TwoPhaseIterator iterator;
             if (singleton != null) {
+              if (skipper != null) {
+                final DocIdSetIterator psIterator =
+                    getDocIdSetIteratorOrNullForPrimarySort(
+                        context.reader(), singleton, skipper, minOrd, maxOrd);
+                if (psIterator != null) {
+                  return new ConstantScoreScorer(score(), scoreMode, psIterator);
+                }
+              }
               iterator =
                   new TwoPhaseIterator(singleton) {
                     @Override
