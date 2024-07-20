@@ -53,8 +53,13 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
+  /** the KNN vector field to search */
   protected final String field;
+
+  /** the number of documents to find */
   protected final int k;
+
+  /** the filter to executed before KNN search */
   private final Query filter;
 
   public AbstractKnnVectorQuery(String field, int k, Query filter) {
@@ -70,18 +75,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
 
-    final Weight filterWeight;
-    if (filter != null) {
-      BooleanQuery booleanQuery =
-          new BooleanQuery.Builder()
-              .add(filter, BooleanClause.Occur.FILTER)
-              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
-              .build();
-      Query rewritten = indexSearcher.rewrite(booleanQuery);
-      filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
-    } else {
-      filterWeight = null;
-    }
+    final Weight filterWeight = createFilterWeight(indexSearcher);
 
     TimeLimitingKnnCollectorManager knnCollectorManager =
         new TimeLimitingKnnCollectorManager(
@@ -102,6 +96,21 @@ abstract class AbstractKnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
+  // Create a Weight for the filter query. The filter will also be enhanced to only match documents
+  // with the KNN vector field.
+  private Weight createFilterWeight(IndexSearcher indexSearcher) throws IOException {
+    if (filter == null) {
+      return null;
+    }
+    BooleanQuery booleanQuery =
+        new BooleanQuery.Builder()
+            .add(filter, BooleanClause.Occur.FILTER)
+            .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
+            .build();
+    Query rewritten = indexSearcher.rewrite(booleanQuery);
+    return indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
+  }
+
   private TopDocs searchLeaf(
       LeafReaderContext ctx,
       Weight filterWeight,
@@ -116,6 +125,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return results;
   }
 
+  // Execute the filter if any and perform KNN search at each segment.
   private TopDocs getLeafResults(
       LeafReaderContext ctx,
       Weight filterWeight,
@@ -156,7 +166,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
   }
 
-  private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
+  static BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
       throws IOException {
     if (liveDocs == null && iterator instanceof BitSetIterator bitSetIterator) {
       // If we already have a BitSet and no deletions, reuse the BitSet
@@ -188,6 +198,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
 
+  // Perform a brute-force search by computing the vector score for each accepted doc and try to
+  // take the top k docs.
   // We allow this to be overridden so that tests can check what search strategy is used
   protected TopDocs exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
@@ -255,6 +267,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     return TopDocs.merge(k, perLeafResults);
   }
 
+  // At this point we already collected top k matching docs, thus we only wrap the cached docs with
+  // their scores here.
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
     int len = topK.scoreDocs.length;
 
@@ -272,6 +286,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     return new DocAndScoreQuery(docs, scores, maxScore, segmentStarts, reader.getContext().id());
   }
 
+  // For each segment, find the first index in <code>docs</code> belong to that segment.
+  // This method essentially partitions <code>docs</code> by segments
   static int[] findSegmentStarts(List<LeafReaderContext> leaves, int[] docs) {
     int[] starts = new int[leaves.size() + 1];
     starts[starts.length - 1] = docs.length;
