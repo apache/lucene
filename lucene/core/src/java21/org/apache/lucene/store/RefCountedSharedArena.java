@@ -66,7 +66,7 @@ final class RefCountedSharedArena implements Arena {
   }
 
   /**
-   * Returns true if the ref count has been increased. Otherwise, false if there are not remaining
+   * Returns true if the ref count has been increased. Otherwise, false if there are no remaining
    * acquires.
    */
   boolean acquire() {
