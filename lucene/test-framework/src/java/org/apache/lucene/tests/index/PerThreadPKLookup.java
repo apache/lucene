@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -37,6 +38,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public class PerThreadPKLookup {
 
+  private IndexReader reader;
   protected final TermsEnum[] termsEnums;
   protected final PostingsEnum[] postingsEnums;
   protected final Bits[] liveDocs;
@@ -44,9 +46,10 @@ public class PerThreadPKLookup {
   protected final int numSegs;
   protected final boolean hasDeletions;
 
-  public PerThreadPKLookup(IndexReader r, String idFieldName) throws IOException {
+  public PerThreadPKLookup(IndexReader reader, String idFieldName) throws IOException {
+    this.reader = reader;
 
-    List<LeafReaderContext> leaves = new ArrayList<>(r.leaves());
+    List<LeafReaderContext> leaves = new ArrayList<>(reader.leaves());
 
     // Larger segments are more likely to have the id, so we sort largest to smallest by numDocs:
     Collections.sort(
@@ -98,4 +101,8 @@ public class PerThreadPKLookup {
   }
 
   // TODO: add reopen method to carry over re-used enums...?
+  public void reopen() throws IOException {
+    DirectoryReader.openIfChanged((DirectoryReader) reader);
+    // TODO: update termsEnums, docBases, liveDocs, etc.
+  }
 }
