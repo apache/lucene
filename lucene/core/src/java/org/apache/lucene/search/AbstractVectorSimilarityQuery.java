@@ -235,9 +235,12 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
             @Override
             public int advance(int target) {
+              assert index >= -1 : "index must >= -1 but got " + index;
               index =
                   Arrays.binarySearch(
                       scoreDocs,
+                      Math.min(index + 1, scoreDocs.length),
+                      scoreDocs.length,
                       new ScoreDoc(target, 0),
                       Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
               if (index < 0) {
