@@ -25,7 +25,8 @@ public class TestLucene90DocValuesFormatVariableSkipInterval extends BaseDocValu
 
   @Override
   protected Codec getCodec() {
-    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(2, 1024)));
+    // small interval size to test with many intervals
+    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(4, 16)));
   }
 
   public void testSkipIndexIntervalSize() {

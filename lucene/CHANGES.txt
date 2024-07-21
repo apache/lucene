@@ -133,6 +133,8 @@ New Features
   DocValuesSkipper abstraction. A new flag is added to FieldType.java that configures whether
   to create a "skip index" for doc values. (Ignacio Vera)
 
+* GITHUB#13563: Add levels to doc values skip index. (Ignacio Vera)
+
 Improvements
 ---------------------
 

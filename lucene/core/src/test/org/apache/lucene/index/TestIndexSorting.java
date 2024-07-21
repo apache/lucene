@@ -154,7 +154,9 @@ public class TestIndexSorting extends LuceneTestCase {
     Sort indexSort = new Sort(sortField, new SortField("id", SortField.Type.INT));
     iwc.setIndexSort(indexSort);
     LogMergePolicy policy = newLogMergePolicy();
-    // make sure that merge factor is always > 2
+    // make sure that merge factor is always > 2 and target search concurrency is no more than 1 to
+    // avoid creating merges that are accidentally sorted
+    policy.setTargetSearchConcurrency(1);
     if (policy.getMergeFactor() <= 2) {
       policy.setMergeFactor(3);
     }
