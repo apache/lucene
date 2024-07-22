@@ -24,7 +24,6 @@ import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.TERMS_C
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
@@ -75,6 +74,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private int payloadByteUpto;
 
   private int lastBlockDocID;
+  private long lastBlockPosFP;
+  private long lastBlockPayFP;
+
   private int lastSkipDocID;
   private long lastSkipPosFP;
   private long lastSkipPayFP;
@@ -192,10 +194,10 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     docStartFP = docOut.getFilePointer();
     if (writePositions) {
       posStartFP = posOut.getFilePointer();
-      lastSkipPosFP = posStartFP;
+      lastSkipPosFP = lastBlockPosFP = posStartFP;
       if (writePayloads || writeOffsets) {
         payStartFP = payOut.getFilePointer();
-        lastSkipPayFP = payStartFP;
+        lastSkipPayFP = lastBlockPayFP = payStartFP;
       }
     }
     lastDocID = -1;
@@ -330,10 +332,17 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         blockOutput.writeVLong(spareOutput.size());
         spareOutput.copyTo(blockOutput);
         spareOutput.reset();
-      }
-      if (writePositions) {
-        long blockTTF = Arrays.stream(freqBuffer).sum();
-        blockOutput.writeVLong(blockTTF);
+        if (writePositions) {
+          blockOutput.writeVLong(posOut.getFilePointer() - lastBlockPosFP);
+          blockOutput.writeVInt(posBufferUpto);
+          lastBlockPosFP = posOut.getFilePointer();
+
+          if (writeOffsets || writePayloads) {
+            blockOutput.writeVLong(payOut.getFilePointer() - lastBlockPayFP);
+            blockOutput.writeVInt(payloadByteUpto);
+            lastBlockPayFP = payOut.getFilePointer();
+          }
+        }
       }
       long numSkipBytes = blockOutput.size();
       forDeltaUtil.encodeDeltas(docDeltaBuffer, blockOutput);
