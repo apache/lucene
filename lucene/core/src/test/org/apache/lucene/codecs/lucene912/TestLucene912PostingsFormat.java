@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
@@ -253,7 +252,7 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     IndexWriter iw = new IndexWriter(dir, iwc);
     for (int i = 0; i < 130; ++i) {
       Document doc = new Document();
-      doc.add(new FeatureField("", "something", i+1));
+      doc.add(new FeatureField("", "something", i + 1));
       iw.addDocument(doc);
     }
     DirectoryReader ir = DirectoryReader.open(iw);
@@ -268,7 +267,7 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     for (int i = 0; i < 130; ++i) {
       assertEquals(i, pe.nextDoc());
       int freq = pe.freq();
-      assertEquals(i+1, Float.intBitsToFloat(freq << 15), 0f);
+      assertEquals(i + 1, Float.intBitsToFloat(freq << 15), 0f);
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
     pe = termsEnum.postings(null, PostingsEnum.FREQS);
@@ -279,7 +278,7 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     iw.close();
     dir.close();
   }
-  
+
   public void test1030PostingAndFreq() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(null);
@@ -287,7 +286,7 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     IndexWriter iw = new IndexWriter(dir, iwc);
     for (int i = 0; i < 1030; ++i) {
       Document doc = new Document();
-      doc.add(new FeatureField("", "something", i+1));
+      doc.add(new FeatureField("", "something", i + 1));
       iw.addDocument(doc);
     }
     DirectoryReader ir = DirectoryReader.open(iw);
@@ -301,7 +300,7 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     PostingsEnum pe = termsEnum.postings(null, PostingsEnum.FREQS);
     for (int i = 0; i < 1030; ++i) {
       assertEquals(i, pe.nextDoc());
-      int encoded = Float.floatToIntBits(i+1) >>> 15;
+      int encoded = Float.floatToIntBits(i + 1) >>> 15;
       float decoded = Float.intBitsToFloat(encoded << 15);
       assertEquals(decoded, Float.intBitsToFloat(pe.freq() << 15), 0f);
     }
@@ -341,8 +340,8 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
     pe = termsEnum.postings(null, PostingsEnum.FREQS);
-    //assertEquals(1029, pe.advance(1029));
-    //assertEquals(1, pe.freq());
+    // assertEquals(1029, pe.advance(1029));
+    // assertEquals(1, pe.freq());
     assertNull(termsEnum.next());
     ir.close();
     iw.close();
@@ -376,8 +375,8 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
     pe = termsEnum.postings(null, PostingsEnum.POSITIONS);
-    //assertEquals(1029, pe.advance(1029));
-    //assertEquals(1, pe.freq());
+    // assertEquals(1029, pe.advance(1029));
+    // assertEquals(1, pe.freq());
     assertNull(termsEnum.next());
     ir.close();
     iw.close();

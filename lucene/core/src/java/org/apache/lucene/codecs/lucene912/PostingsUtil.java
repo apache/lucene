@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 

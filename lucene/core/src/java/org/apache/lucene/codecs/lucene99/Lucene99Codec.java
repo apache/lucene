@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.util.Objects;
-
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.DocValuesFormat;

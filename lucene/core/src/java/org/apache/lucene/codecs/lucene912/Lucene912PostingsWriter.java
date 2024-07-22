@@ -16,17 +16,16 @@
  */
 package org.apache.lucene.codecs.lucene912;
 
+import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.*;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.BLOCK_SIZE;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.DOC_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.*;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.TERMS_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
@@ -203,7 +202,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     lastBlockDocID = -1;
     lastSkipDocID = -1;
     this.norms = norms;
-    competitiveFreqNormAccumulator.clear();
+    if (writeFreqs) {
+      competitiveFreqNormAccumulator.clear();
+    }
   }
 
   @Override
@@ -229,23 +230,25 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     lastPosition = 0;
     lastStartOffset = 0;
 
-    long norm;
-    if (fieldHasNorms) {
-      boolean found = norms.advanceExact(docID);
-      if (found == false) {
-        // This can happen if indexing hits a problem after adding a doc to the
-        // postings but before buffering the norm. Such documents are written
-        // deleted and will go away on the first merge.
-        norm = 1L;
+    if (writeFreqs) {
+      long norm;
+      if (fieldHasNorms) {
+        boolean found = norms.advanceExact(docID);
+        if (found == false) {
+          // This can happen if indexing hits a problem after adding a doc to the
+          // postings but before buffering the norm. Such documents are written
+          // deleted and will go away on the first merge.
+          norm = 1L;
+        } else {
+          norm = norms.longValue();
+          assert norm != 0 : docID;
+        }
       } else {
-        norm = norms.longValue();
-        assert norm != 0 : docID;
+        norm = 1L;
       }
-    } else {
-      norm = 1L;
-    }
 
-    competitiveFreqNormAccumulator.add(writeFreqs ? termDocFreq : 1, norm);
+      competitiveFreqNormAccumulator.add(termDocFreq, norm);
+    }
   }
 
   @Override
@@ -318,13 +321,16 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     assert docBufferUpto != 0;
 
     if (docBufferUpto < BLOCK_SIZE) {
-      PostingsUtil.writeVIntBlock(blockOutput, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
+      PostingsUtil.writeVIntBlock(
+          blockOutput, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
     } else {
-      writeImpacts(competitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
-      assert blockOutput.size() == 0;
-      blockOutput.writeVLong(spareOutput.size());
-      spareOutput.copyTo(blockOutput);
-      spareOutput.reset();
+      if (writeFreqs) {
+        writeImpacts(competitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
+        assert blockOutput.size() == 0;
+        blockOutput.writeVLong(spareOutput.size());
+        spareOutput.copyTo(blockOutput);
+        spareOutput.reset();
+      }
       if (writePositions) {
         long blockTTF = Arrays.stream(freqBuffer).sum();
         blockOutput.writeVLong(blockTTF);
@@ -334,7 +340,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       if (writeFreqs) {
         pforUtil.encode(freqBuffer, blockOutput);
       }
-      
+
       spareOutput.writeVInt(docID - lastBlockDocID);
       spareOutput.writeVLong(blockOutput.size());
       numSkipBytes += spareOutput.size();
@@ -346,13 +352,17 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     blockOutput.copyTo(skipOutput);
     blockOutput.reset();
     lastBlockDocID = docID;
-    skipCompetitiveFreqNormAccumulator.addAll(competitiveFreqNormAccumulator);
-    competitiveFreqNormAccumulator.clear();
+    if (writeFreqs) {
+      skipCompetitiveFreqNormAccumulator.addAll(competitiveFreqNormAccumulator);
+      competitiveFreqNormAccumulator.clear();
+    }
 
     if ((docCount & SKIP_MASK) == 0) {
       docOut.writeVInt(docID - lastSkipDocID);
-      writeImpacts(skipCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
-      docOut.writeVLong(spareOutput.size());
+      if (writeFreqs) {
+        writeImpacts(skipCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
+        docOut.writeVLong(spareOutput.size());
+      }
       docOut.writeVLong(skipOutput.size());
       if (writePositions) {
         docOut.writeVLong(posOut.getFilePointer() - lastSkipPosFP);
@@ -365,8 +375,10 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
           lastSkipPayFP = payOut.getFilePointer();
         }
       }
-      spareOutput.copyTo(docOut);
-      spareOutput.reset();
+      if (writeFreqs) {
+        spareOutput.copyTo(docOut);
+        spareOutput.reset();
+      }
       skipOutput.copyTo(docOut);
       skipOutput.reset();
       lastSkipDocID = docID;
@@ -559,5 +571,4 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       docOut = posOut = payOut = null;
     }
   }
-
 }

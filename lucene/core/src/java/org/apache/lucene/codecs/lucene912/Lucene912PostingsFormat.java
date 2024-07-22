@@ -17,8 +17,6 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import java.util.List;
-
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -52,6 +50,7 @@ public class Lucene912PostingsFormat extends PostingsFormat {
 
   /** Size of blocks. */
   public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
+
   public static final int BLOCK_SIZE_LOG2 = ForUtil.BLOCK_SIZE_LOG2;
   public static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
@@ -78,7 +77,8 @@ public class Lucene912PostingsFormat extends PostingsFormat {
     try {
       FieldsConsumer ret =
           new Lucene90BlockTreeTermsWriter(
-              state, postingsWriter,
+              state,
+              postingsWriter,
               Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
               Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
       success = true;
@@ -138,7 +138,6 @@ public class Lucene912PostingsFormat extends PostingsFormat {
      * totalTermFreq in this case.
      */
     public int singletonDocID;
-
 
     /** Sole constructor. */
     public IntBlockTermState() {
