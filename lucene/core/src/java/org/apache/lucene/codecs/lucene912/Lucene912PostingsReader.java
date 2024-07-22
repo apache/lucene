@@ -798,14 +798,12 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         accum = nextSkipDoc;
         lastDocInBlock = nextSkipDoc;
         docIn.seek(nextSkipDocFP);
-        if (indexHasPos) {
           posPendingFP = nextSkipPosFP;
           posPendingCount = nextSkipPosUpto;
           if (indexHasOffsets || indexHasPayloads) {
             payPendingFP = nextSkipPayFP;
             payloadByteUpto = nextSkipPayUpto;
           }
-        }
         blockUpto = nextSkipBlockUpto;
         nextSkipBlockUpto += SKIP_TOTAL_SIZE;
 
@@ -817,13 +815,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         nextSkipDoc += docIn.readVInt();
         long impactLength = docIn.readVLong();
         long skipLength = docIn.readVLong();
-        if (indexHasPos) {
           nextSkipPosFP += docIn.readVLong();
           nextSkipPosUpto = docIn.readVInt();
           if (indexHasOffsets || indexHasPayloads) {
             nextSkipPayFP += docIn.readVLong();
             nextSkipPayUpto = docIn.readVInt();
-          }
         }
         nextSkipDocFP = docIn.getFilePointer() + impactLength + skipLength;
 
@@ -1604,10 +1600,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         accum = nextSkipDoc;
         lastDocInBlock = nextSkipDoc;
         docIn.seek(nextSkipDocFP);
-        if (indexHasPos) {
           posPendingFP = nextSkipPosFP;
           posPendingCount = nextSkipPosUpto;
-        }
         blockUpto = nextSkipBlockUpto;
         nextSkipBlockUpto += SKIP_TOTAL_SIZE;
 
@@ -1619,13 +1613,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         nextSkipDoc += docIn.readVInt();
         final int numImpactBytes = docIn.readVInt();
         long skipLength = docIn.readVLong();
-        if (indexHasPos) {
           nextSkipPosFP += docIn.readVLong();
           nextSkipPosUpto = docIn.readVInt();
           if (indexHasOffsets || indexHasPayloads) {
             docIn.readVLong(); // skip pay fp delta
             docIn.readVInt(); // skip pay upto
-          }
         }
 
         nextSkipDocFP = docIn.getFilePointer() + numImpactBytes + skipLength;
