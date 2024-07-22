@@ -135,6 +135,9 @@ New Features
 
 * GITHUB#13563: Add levels to doc values skip index. (Ignacio Vera)
 
+* GITHUB#13597: Align doc value skipper interval boundaries when an interval contains a constant
+  value. (Ignacio Vera)
+
 Improvements
 ---------------------
 
