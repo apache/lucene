@@ -54,7 +54,7 @@ public class TestLucene90DocValuesFormatVariableSkipInterval extends BaseDocValu
     final IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
     try (Directory directory = newDirectory();
         RandomIndexWriter writer = new RandomIndexWriter(random(), directory, config)) {
-      int numDocs = random().nextInt(100);
+      final int numDocs = atLeast(100);
       for (int i = 0; i < numDocs; i++) {
         final Document doc = new Document();
         doc.add(NumericDocValuesField.indexedField("dv", 0L));
