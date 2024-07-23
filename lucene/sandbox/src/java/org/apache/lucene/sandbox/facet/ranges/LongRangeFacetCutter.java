@@ -28,7 +28,7 @@ import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
-/** {@link RangeFacetCutter} for ranges of long values. * */
+/** {@link RangeFacetCutter} for ranges of long values. */
 public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
   MultiLongValuesSource valuesSource;
@@ -46,8 +46,10 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
   // it is skipped.
   static final int SKIP_INTERVAL_POSITION = -1;
 
-  // Temporary callers should ensure that passed in single values sources are wrapped
-  /** add doc * */
+  /**
+   * Create {@link org.apache.lucene.sandbox.facet.abstracts.FacetCutter} for provided value source
+   * and long ranges.
+   */
   public static LongRangeFacetCutter create(
       String field,
       MultiLongValuesSource longValuesSource,

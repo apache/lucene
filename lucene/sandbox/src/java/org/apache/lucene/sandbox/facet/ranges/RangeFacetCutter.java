@@ -33,7 +33,7 @@ public abstract class RangeFacetCutter implements FacetCutter {
     this.field = field;
   }
 
-  LongRange[] mapDoubleRangesToLongWithPrecision(DoubleRange[] doubleRanges) {
+  LongRange[] mapDoubleRangesToSortableLong(DoubleRange[] doubleRanges) {
     LongRange[] longRanges = new LongRange[doubleRanges.length];
     for (int i = 0; i < longRanges.length; i++) {
       DoubleRange dr = doubleRanges[i];

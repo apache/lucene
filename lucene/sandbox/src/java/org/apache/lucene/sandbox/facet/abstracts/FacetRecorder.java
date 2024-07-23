@@ -20,12 +20,16 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
- * Record data for each facet of each doc. TODO: do we need FacetRecorderManager similar to
- * CollectorManager, e.g. is getLeafRecorder always thread safe? If we have a Manager-level
- * recorder, then collection within a slice can be done to a single non-sync map, which must be
- * faster. In our case, we didn't seem to benefit from it as we have more CPUs than segments in the
- * index. Also, slice recorder makes it harder to implement lazy recorder init, as we need to init
- * both slice and leaf recorders lazily.
+ * Record data for each facet of each doc.
+ *
+ * <p>TODO: In the next iteration we can add an extra layer between FacetRecorder and
+ * LeafFacetRecorder, e.g. SliceFacetRecorder. The new layer will be created per {@link
+ * org.apache.lucene.search.Collector}, which means that collecting of multiple leafs (segments)
+ * within a slice is sequential and can be done to a single non-sync map to improve performance and
+ * reduce memory consumption. We already tried that, but didn't see any performance improvement.
+ * Given that it also makes lazy leaf recorder init in {@link
+ * org.apache.lucene.sandbox.facet.FacetFieldCollector} trickier, it was decided to rollback the
+ * initial attempt and try again later, in the next iteration.
  */
 public interface FacetRecorder {
   /** Get leaf recorder. */

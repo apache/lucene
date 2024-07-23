@@ -25,8 +25,15 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.util.NumericUtils;
 
-/** {@link RangeFacetCutter} for ranges of double values. * */
+/**
+ * {@link RangeFacetCutter} for ranges of double values.
+ *
+ * <p>Based on {@link org.apache.lucene.facet.range.DoubleRangeFacetCounts}, this class translates
+ * double ranges to long ranges using {@link NumericUtils#doubleToSortableLong} and delegates
+ * faceting work to a {@link LongRangeFacetCutter}.
+ */
 public class DoubleRangeFacetCutter extends RangeFacetCutter {
 
   LongRangeFacetCutter longRangeFacetCutter;
@@ -40,7 +47,7 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
 
   LongRange[] longRanges;
 
-  /** Constructor. TODO: maybe explain how it works? */
+  /** Constructor. */
   public DoubleRangeFacetCutter(
       String field, MultiDoubleValuesSource valuesSource, DoubleRange[] doubleRanges) {
     super(field);
@@ -52,7 +59,7 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
     } else {
       this.multiLongValuesSource = multiDoubleValuesSource.toSortableMultiLongValuesSource();
     }
-    this.longRanges = mapDoubleRangesToLongWithPrecision(doubleRanges);
+    this.longRanges = mapDoubleRangesToSortableLong(doubleRanges);
     this.longRangeFacetCutter =
         LongRangeFacetCutter.create(
             field, multiLongValuesSource, singleLongValuesSource, longRanges);

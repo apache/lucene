@@ -65,7 +65,6 @@ public class CountFacetRecorder implements FacetRecorder {
 
   /** Get count for provided ordinal. */
   public int getCount(int ord) {
-    // TODO: allow or don't allow missing values?
     return values.get(ord);
   }
 
