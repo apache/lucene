@@ -14,5 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/** Sandbox faceting: facet ordinal iterators. */
-package org.apache.lucene.sandbox.facet.ordinal_iterators;
+package org.apache.lucene.sandbox.facet.ordinals;
+
+/** Interface to return an ordinal. */
+public interface GetOrd {
+
+  /** get ordinal. */
+  int getOrd();
+}

@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.sandbox.facet.recorders;
 
-import static org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator.NO_MORE_ORDS;
+import static org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator.NO_MORE_ORDS;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,11 +26,9 @@ import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
-import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
-import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
-import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.LeafFacetRecorder;
-import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
+import org.apache.lucene.sandbox.facet.misc.FacetRollup;
+import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 
 /**
  * {@link FacetRecorder} to count facets.

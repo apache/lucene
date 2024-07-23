@@ -14,5 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/** Sandbox faceting: taxonomy related classes. */
-package org.apache.lucene.sandbox.facet.taxonomy;
+package org.apache.lucene.sandbox.facet.cutters;
+
+import java.io.IOException;
+import org.apache.lucene.index.LeafReaderContext;
+
+/**
+ * Creates {@link LeafFacetCutter} for each leaf. TODO: do we need FacetCutterManager similar to
+ * CollectorManager, e.g. is createLeafCutter always thread safe?
+ */
+public interface FacetCutter {
+
+  /** Get cutter for the leaf. */
+  LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException;
+}

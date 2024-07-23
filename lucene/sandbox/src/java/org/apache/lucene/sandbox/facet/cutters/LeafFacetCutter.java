@@ -14,23 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.abstracts;
+package org.apache.lucene.sandbox.facet.cutters;
+
+import java.io.IOException;
+import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 
 /**
- * Generates {@link Comparable} for provided ordinal. For example it can be used to find topN facet
- * ordinals.
+ * Interface to be implemented to cut documents into facets for an index segment (leaf).
  *
- * @param <T> something ordinals can be compared by.
+ * <p>When {@link #advanceExact(int)} returns true, {@link #nextOrd()} yields all facet ordinals for
+ * the current document. It is illegal to call {@link #nextOrd()} if {@link #advanceExact(int)}
+ * returns false.
  */
-public interface OrdToComparable<T extends Comparable<T>> {
-
-  /**
-   * For given ordinal, get something it can be compared by.
-   *
-   * @param ord ordinal.
-   * @param reuse object that can be reused for building result. If null, new object should be
-   *     created.
-   * @return Comparable.
-   */
-  T getComparable(int ord, T reuse);
+public interface LeafFacetCutter extends OrdinalIterator {
+  /** advance to the next doc */
+  boolean advanceExact(int doc) throws IOException;
 }

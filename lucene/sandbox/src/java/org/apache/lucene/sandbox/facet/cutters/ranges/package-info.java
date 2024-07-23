@@ -14,17 +14,5 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.abstracts;
-
-import java.io.IOException;
-import org.apache.lucene.index.LeafReaderContext;
-
-/**
- * Creates {@link LeafFacetCutter} for each leaf. TODO: do we need FacetCutterManager similar to
- * CollectorManager, e.g. is createLeafCutter always thread safe?
- */
-public interface FacetCutter {
-
-  /** Get cutter for the leaf. */
-  LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException;
-}
+/** Sandbox faceting: Range Faceting */
+package org.apache.lucene.sandbox.facet.cutters.ranges;

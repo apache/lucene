@@ -14,5 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/** Sandbox faceting: Range Faceting */
-package org.apache.lucene.sandbox.facet.ranges;
+package org.apache.lucene.sandbox.facet.recorders;
+
+import java.io.IOException;
+
+/** Record data for each facet of each doc of a leaf (segment). */
+public interface LeafFacetRecorder {
+
+  /**
+   * TODO: Rename: collect? accumulate?
+   *
+   * @param docId document ID
+   * @param facetOrd facet ordinal
+   */
+  void record(int docId, int facetOrd) throws IOException;
+}

@@ -14,12 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.ordinal_iterators;
+package org.apache.lucene.sandbox.facet.ordinals;
 
 import java.io.IOException;
-import org.apache.lucene.sandbox.facet.abstracts.GetOrd;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
-import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
 import org.apache.lucene.util.PriorityQueue;
 
 /**

@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.ranges;
+package org.apache.lucene.sandbox.facet.cutters.ranges;
 
 import java.io.IOException;
-import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 import org.apache.lucene.util.FixedBitSet;
 
 /**

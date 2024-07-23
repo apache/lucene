@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.ranges;
+package org.apache.lucene.sandbox.facet.cutters.ranges;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -24,7 +24,8 @@ import java.util.Objects;
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
-import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
+import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
@@ -46,10 +47,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
   // it is skipped.
   static final int SKIP_INTERVAL_POSITION = -1;
 
-  /**
-   * Create {@link org.apache.lucene.sandbox.facet.abstracts.FacetCutter} for provided value source
-   * and long ranges.
-   */
+  /** Create {@link FacetCutter} for provided value source and long ranges. */
   public static LongRangeFacetCutter create(
       String field,
       MultiLongValuesSource longValuesSource,

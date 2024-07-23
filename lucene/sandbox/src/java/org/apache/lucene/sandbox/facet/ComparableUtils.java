@@ -20,8 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.sandbox.facet.abstracts.GetOrd;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
+import org.apache.lucene.sandbox.facet.ordinals.GetOrd;
+import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -150,7 +150,7 @@ public class ComparableUtils {
    * Sort array of ordinals.
    *
    * <p>To get top-n ordinals use {@link
-   * org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator} instead.
+   * org.apache.lucene.sandbox.facet.ordinals.TopnOrdinalIterator} instead.
    *
    * @param ordinals array of ordinals to sort
    * @param ordToComparable defines sort order

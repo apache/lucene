@@ -24,13 +24,13 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
-import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
-import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
-import org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator;
+import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
+import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.ordinals.TaxonomyChildrenOrdinalIterator;
+import org.apache.lucene.sandbox.facet.ordinals.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyChildrenOrdinalIterator;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public abstract class SandboxFacetTestCase extends LuceneTestCase {

@@ -30,17 +30,18 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
-import org.apache.lucene.sandbox.facet.abstracts.OrdToComparable;
-import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
-import org.apache.lucene.sandbox.facet.abstracts.Reducer;
-import org.apache.lucene.sandbox.facet.ordinal_iterators.TopnOrdinalIterator;
+import org.apache.lucene.sandbox.facet.cutters.TaxonomyFacetsCutter;
+import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
+import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.ordinals.TaxonomyChildrenOrdinalIterator;
+import org.apache.lucene.sandbox.facet.ordinals.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.recorders.FacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyChildrenOrdinalIterator;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyFacetsCutter;
-import org.apache.lucene.sandbox.facet.taxonomy.TaxonomyOrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.recorders.Reducer;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
@@ -50,7 +51,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 
-/** Test for {@link org.apache.lucene.sandbox.facet.abstracts.FacetRecorder} */
+/** Test for {@link FacetRecorder} */
 public class TestFacetRecorders extends SandboxFacetTestCase {
 
   public void testCountAndLongAggregationRecordersBasic() throws Exception {

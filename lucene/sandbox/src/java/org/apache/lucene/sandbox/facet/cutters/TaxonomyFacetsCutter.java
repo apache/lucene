@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.taxonomy;
+package org.apache.lucene.sandbox.facet.cutters;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,10 +27,8 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.FacetRollup;
-import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.misc.FacetRollup;
+import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 
 /** {@link FacetCutter} for facets that use taxonomy side-car index. */
 public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {

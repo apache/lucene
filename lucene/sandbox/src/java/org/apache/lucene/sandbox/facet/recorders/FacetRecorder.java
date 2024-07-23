@@ -14,10 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.abstracts;
+package org.apache.lucene.sandbox.facet.recorders;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
+import org.apache.lucene.sandbox.facet.misc.FacetRollup;
+import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 
 /**
  * Record data for each facet of each doc.

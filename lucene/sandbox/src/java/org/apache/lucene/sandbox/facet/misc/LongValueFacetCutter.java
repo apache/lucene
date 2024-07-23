@@ -27,9 +27,9 @@ import org.apache.lucene.internal.hppc.IntLongHashMap;
 import org.apache.lucene.internal.hppc.LongCursor;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
-import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
+import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
+import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
 
 /**
  * {@link FacetCutter} and {@link OrdLabelBiMap} for distinct long values.

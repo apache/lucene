@@ -14,11 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.ranges;
+package org.apache.lucene.sandbox.facet.cutters.ranges;
 
 import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.LongRange;
-import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.util.NumericUtils;
 
 /** {@link FacetCutter} for ranges * */

@@ -18,10 +18,10 @@ package org.apache.lucene.sandbox.facet;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.sandbox.facet.abstracts.FacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.FacetRecorder;
-import org.apache.lucene.sandbox.facet.abstracts.LeafFacetCutter;
-import org.apache.lucene.sandbox.facet.abstracts.LeafFacetRecorder;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
+import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
+import org.apache.lucene.sandbox.facet.recorders.FacetRecorder;
+import org.apache.lucene.sandbox.facet.recorders.LeafFacetRecorder;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;

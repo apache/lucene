@@ -14,5 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/** Abstractions for sandbox faceting. TODO: expand. */
-package org.apache.lucene.sandbox.facet.abstracts;
+/**
+ * Sandbox faceting: facet cutters, see {@link org.apache.lucene.sandbox.facet.cutters.FacetCutter}
+ * for details.
+ */
+package org.apache.lucene.sandbox.facet.cutters;

@@ -14,11 +14,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.abstracts;
+package org.apache.lucene.sandbox.facet.ordinals;
 
-/** Interface to return an ordinal. */
-public interface GetOrd {
+import java.io.IOException;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
-  /** get ordinal. */
-  int getOrd();
+/** Iterate over ordinals. */
+public interface OrdinalIterator {
+
+  /** This const is returned by nextOrd when there are no more ordinals. */
+  int NO_MORE_ORDS = -1;
+
+  /** Returns next ord or {@link #NO_MORE_ORDS}. * */
+  int nextOrd() throws IOException;
+
+  /**
+   * Convert to int array. Note that after this method is called original OrdinalIterator is
+   * exhausted.
+   */
+  default int[] toArray() throws IOException {
+    IntArrayList resultList = new IntArrayList();
+    for (int nextOrdinal = this.nextOrd();
+        nextOrdinal != NO_MORE_ORDS;
+        nextOrdinal = this.nextOrd()) {
+      resultList.add(nextOrdinal);
+    }
+    return resultList.toArray();
+  }
 }
