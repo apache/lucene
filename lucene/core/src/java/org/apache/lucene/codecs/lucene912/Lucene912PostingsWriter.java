@@ -97,8 +97,21 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private final CompetitiveImpactAccumulator skipCompetitiveFreqNormAccumulator =
       new CompetitiveImpactAccumulator();
 
+  /** Spare output that we use to be able to prepend the encoded length, e.g. impacts. */
   private final ByteBuffersDataOutput spareOutput = ByteBuffersDataOutput.newResettableInstance();
+
+  /**
+   * Output for a single block. This is useful to be able to prepend skip data before each block,
+   * which can only be computed once the block is encoded. The content is then typically copied to
+   * {@link #skipOutput}.
+   */
   private final ByteBuffersDataOutput blockOutput = ByteBuffersDataOutput.newResettableInstance();
+
+  /**
+   * Output for groups of 32 blocks. This is useful to prepend skip data for these 32 blocks, which
+   * can only be done once we have encoded these 32 blocks. The content is then typically copied to
+   * {@link #docCount}.
+   */
   private final ByteBuffersDataOutput skipOutput = ByteBuffersDataOutput.newResettableInstance();
 
   public Lucene912PostingsWriter(SegmentWriteState state) throws IOException {
@@ -319,10 +332,11 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     lastDocID = docID;
   }
 
-  private void flushDocBlock(boolean end) throws IOException {
+  private void flushDocBlock(boolean finishTerm) throws IOException {
     assert docBufferUpto != 0;
 
     if (docBufferUpto < BLOCK_SIZE) {
+      assert finishTerm;
       PostingsUtil.writeVIntBlock(
           blockOutput, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
     } else {
@@ -366,7 +380,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       competitiveFreqNormAccumulator.clear();
     }
 
-    if ((docCount & SKIP_MASK) == 0) {
+    if ((docCount & SKIP_MASK) == 0) { // true every 32 blocks (4,096 docs)
       docOut.writeVInt(docID - lastSkipDocID);
       if (writeFreqs) {
         writeImpacts(skipCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
@@ -392,7 +406,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       skipOutput.reset();
       lastSkipDocID = docID;
       skipCompetitiveFreqNormAccumulator.clear();
-    } else if (end) {
+    } else if (finishTerm) {
       skipOutput.copyTo(docOut);
       skipOutput.reset();
       skipCompetitiveFreqNormAccumulator.clear();

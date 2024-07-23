@@ -17,14 +17,12 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.core.KeywordAnalyzer;
+
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FeatureField;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -314,72 +312,4 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     dir.close();
   }
 
-  public void testPostingAndFreqAndPositions() throws IOException {
-    int n = 2;
-    Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
-    iwc.setCodec(getCodec());
-    IndexWriter iw = new IndexWriter(dir, iwc);
-    for (int i = 0; i < n; ++i) {
-      Document doc = new Document();
-      doc.add(new TextField("", "something", Store.NO));
-      iw.addDocument(doc);
-    }
-    DirectoryReader ir = DirectoryReader.open(iw);
-    LeafReader ar = getOnlyLeafReader(ir);
-    assertEquals(1, ar.getFieldInfos().size());
-    Terms terms = ar.terms("");
-    assertNotNull(terms);
-    TermsEnum termsEnum = terms.iterator();
-    assertNotNull(termsEnum.next());
-    assertEquals(termsEnum.term(), new BytesRef("something"));
-    PostingsEnum pe = termsEnum.postings(null, PostingsEnum.FREQS);
-    for (int i = 0; i < n; ++i) {
-      assertEquals(i, pe.nextDoc());
-      assertEquals(1, pe.freq());
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
-    pe = termsEnum.postings(null, PostingsEnum.FREQS);
-    // assertEquals(1029, pe.advance(1029));
-    // assertEquals(1, pe.freq());
-    assertNull(termsEnum.next());
-    ir.close();
-    iw.close();
-    dir.close();
-  }
-
-  public void testPostingAndFreqAndPositions2() throws IOException {
-    int n = 2;
-    Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
-    iwc.setCodec(getCodec());
-    IndexWriter iw = new IndexWriter(dir, iwc);
-    for (int i = 0; i < n; ++i) {
-      Document doc = new Document();
-      doc.add(new TextField("", "something", Store.NO));
-      iw.addDocument(doc);
-    }
-    DirectoryReader ir = DirectoryReader.open(iw);
-    LeafReader ar = getOnlyLeafReader(ir);
-    assertEquals(1, ar.getFieldInfos().size());
-    Terms terms = ar.terms("");
-    assertNotNull(terms);
-    TermsEnum termsEnum = terms.iterator();
-    assertNotNull(termsEnum.next());
-    assertEquals(termsEnum.term(), new BytesRef("something"));
-    PostingsEnum pe = termsEnum.postings(null, PostingsEnum.POSITIONS);
-    for (int i = 0; i < n; ++i) {
-      assertEquals(i, pe.nextDoc());
-      assertEquals(1, pe.freq());
-      assertEquals(0, pe.nextPosition());
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
-    pe = termsEnum.postings(null, PostingsEnum.POSITIONS);
-    // assertEquals(1029, pe.advance(1029));
-    // assertEquals(1, pe.freq());
-    assertNull(termsEnum.next());
-    ir.close();
-    iw.close();
-    dir.close();
-  }
 }
