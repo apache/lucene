@@ -41,9 +41,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 @SuppressWarnings("preview")
 final class RefCountedSharedArena implements Arena {
 
-  static final int CLOSED = 0;
+  private static final int CLOSED = 0;
   // initial state of 0x400 (1024) maximum permits, and a ref count of 0
-  static final int INITIAL = 0x04000000;
+  private static final int INITIAL = 0x04000000;
+  // minimum value, beyond which permits are exhausted
+  private static final int REMAINING_UNIT = 1 << 16;
+  // acquire decrement; effectively decrements permits and increments ref count
+  private static final int ACQUIRE_DECREMENT = REMAINING_UNIT - 1; // 0xffff
 
   private final String segmentName;
   private final Runnable onClose;
@@ -73,15 +77,10 @@ final class RefCountedSharedArena implements Arena {
     int value;
     while (true) {
       value = state.get();
-      if (value == CLOSED) {
-        throw new IllegalStateException("closed");
-      }
-      final int remaining = value >>> 16;
-      if (remaining == 0) {
+      if (value < REMAINING_UNIT) {
         return false;
       }
-      int newValue = ((remaining - 1) << 16) | ((value & 0xFFFF) + 1);
-      if (this.state.compareAndSet(value, newValue)) {
+      if (this.state.compareAndSet(value, value - ACQUIRE_DECREMENT)) {
         return true;
       }
     }
@@ -92,12 +91,9 @@ final class RefCountedSharedArena implements Arena {
     int value;
     while (true) {
       value = state.get();
-      if (value == CLOSED) {
-        throw new IllegalStateException("closed");
-      }
       final int count = value & 0xFFFF;
       if (count == 0) {
-        throw new IllegalStateException("nothing to release");
+        throw new IllegalStateException(value == CLOSED ? "closed" : "nothing to release");
       }
       final int newValue = count == 1 ? CLOSED : value - 1;
       if (this.state.compareAndSet(value, newValue)) {
