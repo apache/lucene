@@ -1901,8 +1901,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
   }
 
-  private void prefetchPostings(IndexInput docIn, IntBlockTermState state)
-      throws IOException {
+  private void prefetchPostings(IndexInput docIn, IntBlockTermState state) throws IOException {
     if (state.docFreq > 1 && docIn.getFilePointer() != state.docStartFP) {
       // Don't prefetch if the input is already positioned at the right offset, which suggests that
       // the caller is streaming the entire inverted index (e.g. for merging), let the read-ahead
