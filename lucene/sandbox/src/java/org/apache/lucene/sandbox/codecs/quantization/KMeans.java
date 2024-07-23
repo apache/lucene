@@ -338,7 +338,7 @@ public class KMeans {
    *
    * @param centroids the produced centroids
    * @param vectorCentroids for each vector which centroid it belongs to, we use short type, as we
-   *     expect less than 32767 centroids. Can be {@null} if they were not computed.
+   *     expect less than 32767 centroids. Can be {@code null} if they were not computed.
    */
   public record Results(float[][] centroids, short[] vectorCentroids) {}
 }
