@@ -28,9 +28,7 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.search;
   exports org.apache.lucene.sandbox.index;
   exports org.apache.lucene.sandbox.facet;
-  exports org.apache.lucene.sandbox.facet.taxonomy;
   exports org.apache.lucene.sandbox.facet.recorders;
-  exports org.apache.lucene.sandbox.facet.abstracts;
   exports org.apache.lucene.sandbox.facet.cutters.ranges;
   exports org.apache.lucene.sandbox.facet.ordinals;
   exports org.apache.lucene.sandbox.facet.misc;

@@ -20,8 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.sandbox.facet.ordinals.GetOrd;
 import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
+import org.apache.lucene.sandbox.facet.ordinals.OrdinalGetter;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -29,12 +29,12 @@ import org.apache.lucene.util.InPlaceMergeSorter;
 /**
  * Collection of static methods to provide most common comparables for sandbox faceting. You can
  * also use it as an example for creating your own {@link OrdToComparable} to enable custom facets
- * sorting.
+ * top-n and sorting.
  */
 public class ComparableUtils {
   private ComparableUtils() {}
 
-  private static class SkeletalGetOrd implements GetOrd {
+  private static class SkeletalOrdGetter implements OrdinalGetter {
     int ord;
 
     @Override
@@ -58,7 +58,7 @@ public class ComparableUtils {
   }
 
   /** Used for {@link #ordToComparableOrd} result. */
-  public static class ComparableOrd extends SkeletalGetOrd implements Comparable<ComparableOrd> {
+  public static class ComparableOrd extends SkeletalOrdGetter implements Comparable<ComparableOrd> {
     @Override
     public int compareTo(ComparableOrd o) {
       return Integer.compare(o.ord, ord);
@@ -85,7 +85,7 @@ public class ComparableUtils {
   }
 
   /** Used for {@link #ordToComparableCountOrd} result. */
-  public static class ComparableIntOrd extends SkeletalGetOrd
+  public static class ComparableIntOrd extends SkeletalOrdGetter
       implements Comparable<ComparableIntOrd> {
     private ComparableIntOrd() {}
 
@@ -125,7 +125,7 @@ public class ComparableUtils {
   }
 
   /** Used for {@link #ordToComparableRankCountOrd} result. */
-  public static class ComparableLongIntOrd extends SkeletalGetOrd
+  public static class ComparableLongIntOrd extends SkeletalOrdGetter
       implements Comparable<ComparableLongIntOrd> {
     private ComparableLongIntOrd() {}
     ;
@@ -155,7 +155,7 @@ public class ComparableUtils {
    * @param ordinals array of ordinals to sort
    * @param ordToComparable defines sort order
    */
-  public static <T extends Comparable<T> & GetOrd> void sort(
+  public static <T extends Comparable<T> & OrdinalGetter> void sort(
       int[] ordinals, OrdToComparable<T> ordToComparable) throws IOException {
     List<T> comparables = new ArrayList<>(ordinals.length);
     for (int i = 0; i < ordinals.length; i++) {

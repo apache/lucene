@@ -17,7 +17,7 @@
 package org.apache.lucene.sandbox.facet.ordinals;
 
 /** Interface to return an ordinal. */
-public interface GetOrd {
+public interface OrdinalGetter {
 
   /** get ordinal. */
   int getOrd();
