@@ -139,7 +139,7 @@ public class PerThreadPKLookup {
     PostingsEnum[] newPostingsEnums = new PostingsEnum[leaves.size()];
     Bits[] newLiveDocs = new Bits[leaves.size()];
     int[] newDocBases = new int[leaves.size()];
-    Map<SegmentInfo, Integer> newReaderMap = new HashMap<>();
+    Map<SegmentInfo, Integer> newSegmentInfoMap = new HashMap<>();
 
     numSegs = 0;
     hasDeletions = false;
@@ -157,11 +157,11 @@ public class PerThreadPKLookup {
           newDocBases[numSegs] = leaves.get(i).docBase;
           newLiveDocs[numSegs] = leafReader.getLiveDocs();
           hasDeletions |= leafReader.hasDeletions();
-          newReaderMap.put(segmentInfo, numSegs);
+          newSegmentInfoMap.put(segmentInfo, numSegs);
           numSegs++;
         } else {
           // TermsEnum is always null.
-          newReaderMap.put(segmentInfo, -1);
+          newSegmentInfoMap.put(segmentInfo, -1);
         }
       } else {
         // New segment.
@@ -172,10 +172,10 @@ public class PerThreadPKLookup {
           newDocBases[numSegs] = leaves.get(i).docBase;
           newLiveDocs[numSegs] = leafReader.getLiveDocs();
           hasDeletions |= leafReader.hasDeletions();
-          newReaderMap.put(segmentInfo, numSegs);
+          newSegmentInfoMap.put(segmentInfo, numSegs);
           numSegs++;
         } else {
-          newReaderMap.put(segmentInfo, -1);
+          newSegmentInfoMap.put(segmentInfo, -1);
         }
       }
     }
@@ -185,7 +185,7 @@ public class PerThreadPKLookup {
     postingsEnums = newPostingsEnums;
     liveDocs = newLiveDocs;
     docBases = newDocBases;
-    segmentInfoMap = newReaderMap;
+    segmentInfoMap = newSegmentInfoMap;
 
     return (DirectoryReader) reader;
   }
