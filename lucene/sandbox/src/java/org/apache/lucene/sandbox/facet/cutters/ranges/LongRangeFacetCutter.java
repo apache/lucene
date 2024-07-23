@@ -395,6 +395,11 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     }
   }
 
+  /**
+   * Similar to InclusiveRange from LongRangeCounter.
+   *
+   * <p>TODO: dedup
+   */
   static final class InclusiveRange {
     private final long start;
     private final long end;
