@@ -145,28 +145,28 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);
-      return new OverlappingSinglevaluedRangeLeafFacetCutter(
+      return new OverlappingSingleValuedRangeLeafFacetCutter(
           values, boundaries, pos, requestedRangeCount, root);
     } else {
       MultiLongValues values = valuesSource.getValues(context);
-      return new OverlappingMultivaluedRangeLeafFacetCutter(
+      return new OverlappingMultiValuedRangeLeafFacetCutter(
           values, boundaries, pos, requestedRangeCount, root);
     }
   }
 
   /**
-   * TODO: dedup OverlappingMultivaluedRangeLeafFacetCutter and
-   * OverlappingSinglevaluedRangeLeafFacetCutter code - they are similar but they extend different
+   * TODO: dedup OverlappingMultiValuedRangeLeafFacetCutter and
+   * OverlappingSingleValuedRangeLeafFacetCutter code - they are similar but they extend different
    * base classes.
    */
-  static class OverlappingMultivaluedRangeLeafFacetCutter
+  static class OverlappingMultiValuedRangeLeafFacetCutter
       extends LongRangeMultivaluedLeafFacetCutter {
 
     LongRangeNode elementaryIntervalRoot;
 
     private int elementaryIntervalUpto;
 
-    OverlappingMultivaluedRangeLeafFacetCutter(
+    OverlappingMultiValuedRangeLeafFacetCutter(
         MultiLongValues longValues,
         long[] boundaries,
         int[] pos,
@@ -213,14 +213,14 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     }
   }
 
-  static class OverlappingSinglevaluedRangeLeafFacetCutter
-      extends LongRangeSinglevaluedLeafFacetCutter {
+  static class OverlappingSingleValuedRangeLeafFacetCutter
+      extends LongRangeSingleValuedLeafFacetCutter {
 
     LongRangeNode elementaryIntervalRoot;
 
     private int elementaryIntervalUpto;
 
-    OverlappingSinglevaluedRangeLeafFacetCutter(
+    OverlappingSingleValuedRangeLeafFacetCutter(
         LongValues longValues,
         long[] boundaries,
         int[] pos,

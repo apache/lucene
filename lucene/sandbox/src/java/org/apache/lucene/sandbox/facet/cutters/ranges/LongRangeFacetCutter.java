@@ -57,7 +57,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
       return new OverlappingLongRangeFacetCutter(
           field, longValuesSource, singleLongValuesSource, longRanges);
     }
-    return new ExclusiveLongRangeFacetCutter(
+    return new NonOverlappingLongRangeFacetCutter(
         field, longValuesSource, singleLongValuesSource, longRanges);
   }
 
@@ -246,7 +246,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     void maybeRollUp(IntervalTracker rollUpInto) {}
   }
 
-  abstract static class LongRangeSinglevaluedLeafFacetCutter implements LeafFacetCutter {
+  abstract static class LongRangeSingleValuedLeafFacetCutter implements LeafFacetCutter {
     final LongValues longValues;
     final long[] boundaries;
     final int[] pos;
@@ -259,7 +259,7 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
     IntervalTracker requestedIntervalTracker;
 
-    LongRangeSinglevaluedLeafFacetCutter(
+    LongRangeSingleValuedLeafFacetCutter(
         LongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
       this.longValues = longValues;
       this.boundaries = boundaries;
