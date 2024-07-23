@@ -3302,17 +3302,17 @@ public final class CheckIndex implements Closeable {
       if (skipper.maxDocID(0) == NO_MORE_DOCS) {
         break;
       }
+      if (skipper.minDocID(0) < doc) {
+        throw new CheckIndexException(
+            "skipper dv iterator for field: "
+                + fieldName
+                + " reports wrong minDocID, got "
+                + skipper.minDocID(0)
+                + " < "
+                + doc);
+      }
       int levels = skipper.numLevels();
       for (int level = 0; level < levels; level++) {
-        if (skipper.minDocID(level) < doc) {
-          throw new CheckIndexException(
-              "skipper dv iterator for field: "
-                  + fieldName
-                  + " reports wrong minDocID, got "
-                  + skipper.minDocID(level)
-                  + " < "
-                  + doc);
-        }
         if (skipper.minDocID(level) > skipper.maxDocID(level)) {
           throw new CheckIndexException(
               "skipper dv iterator for field: "
