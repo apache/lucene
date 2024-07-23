@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * onClose} runnable is executed. No more references can be acquired.
  *
  * <p>The total number of acquires that can be obtained for the lifetime of an instance of this
- * class is 1024. When the total number of acquires is exhausted, then not more acquires are
+ * class is 1024. When the total number of acquires is exhausted, then no more acquires are
  * permitted and {@link #acquire()} returns false. This is independent of the actual number of the
  * ref count.
  */
