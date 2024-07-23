@@ -30,6 +30,7 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /** KMeans clustering algorithm for vectors */
 public class KMeans {
+  public static final int MAX_NUM_CENTROIDS = Short.MAX_VALUE; // 32767
   public static final int DEFAULT_RESTARTS = 5;
   public static final int DEFAULT_ITRS = 10;
   public static final int DEFAULT_SAMPLE_SIZE = 100_000;
@@ -99,9 +100,9 @@ public class KMeans {
       int iters,
       int sampleSize)
       throws IOException {
-    if (numClusters < 1 || numClusters > Short.MAX_VALUE) {
+    if (numClusters < 1 || numClusters > MAX_NUM_CENTROIDS) {
       throw new IllegalArgumentException(
-          "[numClusters] must be between [1] and [" + Short.MAX_VALUE + "]");
+          "[numClusters] must be between [1] and [" + MAX_NUM_CENTROIDS + "]");
     }
 
     Random random = new Random(seed);
@@ -338,7 +339,8 @@ public class KMeans {
    *
    * @param centroids the produced centroids
    * @param vectorCentroids for each vector which centroid it belongs to, we use short type, as we
-   *     expect less than 32767 centroids. Can be {@code null} if they were not computed.
+   *     expect less than {@code MAX_NUM_CENTROIDS} which is equal to 32767 centroids. Can be {@code
+   *     null} if they were not computed.
    */
   public record Results(float[][] centroids, short[] vectorCentroids) {}
 }
