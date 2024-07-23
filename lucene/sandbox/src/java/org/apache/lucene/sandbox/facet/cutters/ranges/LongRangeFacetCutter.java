@@ -117,6 +117,8 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     }
 
     // Copy before sorting so we don't mess with the caller's original ranges:
+    // TODO: We're going to do this again in the constructor. Can't we come up with a clever way to
+    // avoid doing it twice?
     LongRange[] sortedRanges = new LongRange[ranges.length];
     System.arraycopy(ranges, 0, sortedRanges, 0, ranges.length);
     Arrays.sort(sortedRanges, Comparator.comparingLong(r -> r.min));
