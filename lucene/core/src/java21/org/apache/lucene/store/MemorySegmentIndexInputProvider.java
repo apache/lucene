@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
@@ -141,6 +142,42 @@ final class MemorySegmentIndexInputProvider
   }
 
   /**
+   * This sysprop allows to control the max number of permits that a RefCountedSharedArena will
+   * support for its lifetime. For example, to set the max number of permits to 256, pass the
+   * following on the command line pass {@code
+   * -Dorg.apache.lucene.store.MemorySegmentIndexInputProvider.sharedArenaMaxPermits=256}.
+   */
+  static final String SHARED_ARENA_MAX_PERMITS_SYSPROP =
+      "org.apache.lucene.store.MemorySegmentIndexInputProvider.sharedArenaMaxPermits";
+
+  private static int getSharedArenaMaxPermitsSysprop() {
+    try {
+      int v =
+          Optional.ofNullable(System.getProperty(SHARED_ARENA_MAX_PERMITS_SYSPROP))
+              .map(Integer::valueOf)
+              .orElse(RefCountedSharedArena.DEFAULT_MAX_PERMITS);
+      if (RefCountedSharedArena.validMaxPermits(v) == false) {
+        v = RefCountedSharedArena.DEFAULT_MAX_PERMITS;
+        Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
+            .warning(
+                "Invalid value for sysprop "
+                    + SHARED_ARENA_MAX_PERMITS_SYSPROP
+                    + ", must be positive and <= 0x07FF. The default value will be used.");
+      }
+      return v;
+    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+      Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
+          .warning(
+              "Cannot read sysprop "
+                  + SHARED_ARENA_MAX_PERMITS_SYSPROP
+                  + ", so the default value will be used.");
+      return RefCountedSharedArena.DEFAULT_MAX_PERMITS;
+    }
+  }
+
+  private static final int sharedArenaMaxPermits = getSharedArenaMaxPermitsSysprop();
+
+  /**
    * Gets an arena for the given group, potentially aggregating files from the same segment into a
    * single ref counted shared arena. A ref counted shared arena, if created will be added to the
    * given arenas map.
@@ -153,7 +190,8 @@ final class MemorySegmentIndexInputProvider
 
     String key = group.get();
     var refCountedArena =
-        arenas.computeIfAbsent(key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s)));
+        arenas.computeIfAbsent(
+            key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s), sharedArenaMaxPermits));
     if (refCountedArena.acquire()) {
       return refCountedArena;
     } else {
@@ -163,7 +201,7 @@ final class MemorySegmentIndexInputProvider
             if (v != null && v.acquire()) {
               return v;
             } else {
-              v = new RefCountedSharedArena(s, () -> arenas.remove(s));
+              v = new RefCountedSharedArena(s, () -> arenas.remove(s), sharedArenaMaxPermits);
               v.acquire(); // guaranteed to succeed
               return v;
             }

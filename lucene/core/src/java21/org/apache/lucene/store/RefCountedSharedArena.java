@@ -41,9 +41,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 @SuppressWarnings("preview")
 final class RefCountedSharedArena implements Arena {
 
+  // default maximum permits
+  static final int DEFAULT_MAX_PERMITS = 1024;
+
   private static final int CLOSED = 0;
-  // initial state of 0x400 (1024) maximum permits, and a ref count of 0
-  private static final int INITIAL = 0x04000000;
   // minimum value, beyond which permits are exhausted
   private static final int REMAINING_UNIT = 1 << 16;
   // acquire decrement; effectively decrements permits and increments ref count
@@ -58,10 +59,21 @@ final class RefCountedSharedArena implements Arena {
   private final AtomicInteger state;
 
   RefCountedSharedArena(String segmentName, Runnable onClose) {
+    this(segmentName, onClose, DEFAULT_MAX_PERMITS);
+  }
+
+  RefCountedSharedArena(String segmentName, Runnable onClose, int maxPermits) {
+    if (validMaxPermits(maxPermits) == false) {
+      throw new IllegalArgumentException("invalid max permits: " + maxPermits);
+    }
     this.segmentName = segmentName;
     this.onClose = onClose;
     this.arena = Arena.ofShared();
-    this.state = new AtomicInteger(INITIAL);
+    this.state = new AtomicInteger(maxPermits << 16);
+  }
+
+  static boolean validMaxPermits(int v) {
+    return v > 0 && v <= 0x7FFF;
   }
 
   // for debugging
