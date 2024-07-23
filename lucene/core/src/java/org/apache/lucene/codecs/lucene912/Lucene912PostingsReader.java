@@ -626,14 +626,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // skip these to "catch up":
     private long posPendingCount;
 
-    // Lazy pos seek: if != -1 then we must seek to this FP
-    // before reading positions:
-    private long posPendingFP;
-
-    // Lazy pay seek: if != -1 then we must seek to this FP
-    // before reading payloads/offsets:
-    private long payPendingFP;
-
     // Where this term's postings start in the .pos file:
     private long posTermStartFP;
 
@@ -733,8 +725,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
         seekAndPrefetchPostings(docIn, termState);
       }
-      posPendingFP = posTermStartFP;
-      payPendingFP = payTermStartFP;
       nextSkipPosFP = posTermStartFP;
       nextSkipPayFP = payTermStartFP;
       nextBlockPosFP = posTermStartFP;
@@ -847,12 +837,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       // Now advance level 0 skip data
       accum = lastDocInBlock;
 
-      posPendingFP = nextBlockPosFP;
+      posIn.seek(nextBlockPosFP);
       posPendingCount = nextBlockPosUpto;
       if (indexHasOffsets || indexHasPayloads) {
-        payPendingFP = nextBlockPayFP;
+        payIn.seek(nextBlockPayFP);
         payloadByteUpto = nextBlockPayUpto;
       }
+      posBufferUpto = BLOCK_SIZE;
 
       if (docFreq - blockUpto >= BLOCK_SIZE) {
         docIn.readVLong(); // skip0Len
@@ -893,12 +884,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       while (true) {
         accum = lastDocInBlock;
 
-        posPendingFP = nextBlockPosFP;
+        posIn.seek(nextBlockPosFP);
         posPendingCount = nextBlockPosUpto;
         if (indexHasOffsets || indexHasPayloads) {
-          payPendingFP = nextBlockPayFP;
+          payIn.seek(nextBlockPayFP);
           payloadByteUpto = nextBlockPayUpto;
         }
+        posBufferUpto = BLOCK_SIZE;
 
         if (docFreq - blockUpto >= BLOCK_SIZE) {
           docIn.readVLong(); // skip0Len
@@ -1081,19 +1073,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     @Override
     public int nextPosition() throws IOException {
       assert posPendingCount > 0;
-
-      if (posPendingFP != -1) {
-        posIn.seek(posPendingFP);
-        posPendingFP = -1;
-
-        if (payPendingFP != -1 && payIn != null) {
-          payIn.seek(payPendingFP);
-          payPendingFP = -1;
-        }
-
-        // Force buffer refill:
-        posBufferUpto = BLOCK_SIZE;
-      }
 
       if (posPendingCount > freq) {
         skipPositions();
@@ -1504,10 +1483,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // skip these to "catch up":
     private long posPendingCount;
 
-    // Lazy pos seek: if != -1 then we must seek to this FP
-    // before reading positions:
-    private long posPendingFP;
-
     // Where this term's postings start in the .pos file:
     private long posTermStartFP;
 
@@ -1570,7 +1545,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
         seekAndPrefetchPostings(docIn, termState);
       }
-      posPendingFP = posTermStartFP;
       nextSkipPosFP = posTermStartFP;
       nextBlockPosFP = posTermStartFP;
       posPendingCount = 0;
@@ -1679,8 +1653,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         while (true) {
           accum = lastDocInBlock;
 
-          posPendingFP = nextBlockPosFP;
+          posIn.seek(nextBlockPosFP);
           posPendingCount = nextBlockPosUpto;
+          posBufferUpto = BLOCK_SIZE;
 
           if (docFreq - blockUpto >= BLOCK_SIZE) {
             docIn.readVLong(); // skip len
@@ -1864,14 +1839,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     @Override
     public int nextPosition() throws IOException {
       assert posPendingCount > 0;
-
-      if (posPendingFP != -1) {
-        posIn.seek(posPendingFP);
-        posPendingFP = -1;
-
-        // Force buffer refill:
-        posBufferUpto = BLOCK_SIZE;
-      }
 
       if (posPendingCount > freq) {
         skipPositions();
