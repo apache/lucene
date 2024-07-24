@@ -38,11 +38,10 @@ public class CandidateSetOrdinalIterator implements OrdinalIterator {
 
   @Override
   public int nextOrd() throws IOException {
-    for (int nextOrdinal = sourceOrds.nextOrd(); nextOrdinal != NO_MORE_ORDS; ) {
-      if (candidates.contains(nextOrdinal)) {
-        return nextOrdinal;
+    for (int ord = sourceOrds.nextOrd(); ord != NO_MORE_ORDS; ord = sourceOrds.nextOrd()) {
+      if (candidates.contains(ord)) {
+        return ord;
       }
-      nextOrdinal = sourceOrds.nextOrd();
     }
     return NO_MORE_ORDS;
   }

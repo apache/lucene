@@ -175,7 +175,7 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
 
     @Override
     public String toString() {
-      return "preciseMultiLong(" + inner.toString() + ")";
+      return "sortableMultiLong(" + inner.toString() + ")";
     }
   }
 

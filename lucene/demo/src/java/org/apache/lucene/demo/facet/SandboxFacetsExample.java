@@ -676,20 +676,20 @@ public class SandboxFacetsExample {
     return drillSideways();
   }
 
-  /** TODO: add doc* */
-  public List<FacetResult> runExclusiveRangesCountFacetsOnly() throws IOException {
+  /** Runs the example of non overlapping range facets */
+  public List<FacetResult> runNonOverlappingRangesCountFacetsOnly() throws IOException {
     index();
     return exclusiveRangesCountFacetsOnly();
   }
 
-  /** TODO: add doc* */
+  /** Runs the example of overlapping range facets */
   public List<FacetResult> runOverlappingRangesCountFacetsOnly() throws IOException {
     index();
     return overlappingRangesCountFacetsOnly();
   }
 
-  /** TODO: add doc* */
-  public List<FacetResult> runExclusiveRangesAggregationFacets() throws IOException {
+  /** Runs the example of collecting long aggregations for non overlapping range facets. */
+  public List<FacetResult> runNonOverlappingRangesAggregationFacets() throws IOException {
     index();
     return exclusiveRangesAggregationFacets();
   }
@@ -721,7 +721,7 @@ public class SandboxFacetsExample {
 
     System.out.println("Facet counting example with exclusive ranges:");
     System.out.println("---------------------------------------------");
-    for (FacetResult result : example.runExclusiveRangesCountFacetsOnly()) {
+    for (FacetResult result : example.runNonOverlappingRangesCountFacetsOnly()) {
       System.out.println(result);
     }
 
@@ -733,7 +733,7 @@ public class SandboxFacetsExample {
 
     System.out.println("Facet aggregation example with exclusive ranges:");
     System.out.println("---------------------------------------------");
-    for (FacetResult result : example.runExclusiveRangesAggregationFacets()) {
+    for (FacetResult result : example.runNonOverlappingRangesAggregationFacets()) {
       System.out.println(result);
     }
   }

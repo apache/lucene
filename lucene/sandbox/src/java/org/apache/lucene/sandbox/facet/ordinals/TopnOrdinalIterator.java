@@ -51,10 +51,9 @@ public class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
     // TODO: create queue lazily - skip if first nextOrd is NO_MORE_ORDS ?
     TopComparableQueue<T> queue = new TopComparableQueue<>(topN);
     T reuse = null;
-    for (int nextOrdinal = sourceOrds.nextOrd(); nextOrdinal != NO_MORE_ORDS; ) {
-      reuse = ordToComparable.getComparable(nextOrdinal, reuse);
+    for (int ord = sourceOrds.nextOrd(); ord != NO_MORE_ORDS; ord = sourceOrds.nextOrd()) {
+      reuse = ordToComparable.getComparable(ord, reuse);
       reuse = queue.insertWithOverflow(reuse);
-      nextOrdinal = sourceOrds.nextOrd();
     }
     // Now we need to read from the queue as well as the queue gives the least element, not the top.
     result = new int[queue.size()];

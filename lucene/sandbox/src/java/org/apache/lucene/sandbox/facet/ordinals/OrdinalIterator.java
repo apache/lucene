@@ -34,10 +34,8 @@ public interface OrdinalIterator {
    */
   default int[] toArray() throws IOException {
     IntArrayList resultList = new IntArrayList();
-    for (int nextOrdinal = this.nextOrd();
-        nextOrdinal != NO_MORE_ORDS;
-        nextOrdinal = this.nextOrd()) {
-      resultList.add(nextOrdinal);
+    for (int ord = this.nextOrd(); ord != NO_MORE_ORDS; ord = this.nextOrd()) {
+      resultList.add(ord);
     }
     return resultList.toArray();
   }

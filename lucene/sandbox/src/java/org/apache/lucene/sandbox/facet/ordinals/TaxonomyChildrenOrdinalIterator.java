@@ -40,11 +40,10 @@ public final class TaxonomyChildrenOrdinalIterator implements OrdinalIterator {
 
   @Override
   public int nextOrd() throws IOException {
-    for (int nextOrdinal = sourceOrds.nextOrd(); nextOrdinal != NO_MORE_ORDS; ) {
-      if (parents.get(nextOrdinal) == parentOrd) {
-        return nextOrdinal;
+    for (int ord = sourceOrds.nextOrd(); ord != NO_MORE_ORDS; ord = sourceOrds.nextOrd()) {
+      if (parents.get(ord) == parentOrd) {
+        return ord;
       }
-      nextOrdinal = sourceOrds.nextOrd();
     }
     return NO_MORE_ORDS;
   }
