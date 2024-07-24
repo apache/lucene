@@ -35,9 +35,11 @@ final class MemorySegmentIndexInputProvider
         ConcurrentHashMap<String, RefCountedSharedArena>> {
 
   private final Optional<NativeAccess> nativeAccess;
+  private final int sharedArenaMaxPermits;
 
-  MemorySegmentIndexInputProvider() {
+  MemorySegmentIndexInputProvider(Optional<Integer> maxPermits) {
     this.nativeAccess = NativeAccess.getImplementation();
+    this.sharedArenaMaxPermits = checkMaxPermits(maxPermits);
   }
 
   @Override
@@ -141,48 +143,28 @@ final class MemorySegmentIndexInputProvider
     return new ConcurrentHashMap<>();
   }
 
-  /**
-   * This sysprop allows to control the max number of permits that a RefCountedSharedArena will
-   * support for its lifetime. For example, to set the max number of permits to 256, pass the
-   * following on the command line pass {@code
-   * -Dorg.apache.lucene.store.MemorySegmentIndexInputProvider.sharedArenaMaxPermits=256}.
-   */
-  static final String SHARED_ARENA_MAX_PERMITS_SYSPROP =
-      "org.apache.lucene.store.MemorySegmentIndexInputProvider.sharedArenaMaxPermits";
-
-  private static int getSharedArenaMaxPermitsSysprop() {
-    try {
-      int v =
-          Optional.ofNullable(System.getProperty(SHARED_ARENA_MAX_PERMITS_SYSPROP))
-              .map(Integer::valueOf)
-              .orElse(RefCountedSharedArena.DEFAULT_MAX_PERMITS);
-      if (RefCountedSharedArena.validMaxPermits(v) == false) {
-        v = RefCountedSharedArena.DEFAULT_MAX_PERMITS;
-        Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
-            .warning(
-                "Invalid value for sysprop "
-                    + SHARED_ARENA_MAX_PERMITS_SYSPROP
-                    + ", must be positive and <= 0x07FF. The default value will be used.");
-      }
-      return v;
-    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
-      Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
-          .warning(
-              "Cannot read sysprop "
-                  + SHARED_ARENA_MAX_PERMITS_SYSPROP
-                  + ", so the default value will be used.");
+  private static int checkMaxPermits(Optional<Integer> maxPermits) {
+    if (maxPermits.isEmpty()) {
       return RefCountedSharedArena.DEFAULT_MAX_PERMITS;
     }
+    int v = maxPermits.get();
+    if (RefCountedSharedArena.validMaxPermits(v)) {
+      return v;
+    }
+    Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
+        .warning(
+            "Invalid value for sysprop "
+                + MMapDirectory.SHARED_ARENA_MAX_PERMITS_SYSPROP
+                + ", must be positive and <= 0x07FF. The default value will be used.");
+    return RefCountedSharedArena.DEFAULT_MAX_PERMITS;
   }
-
-  private static final int sharedArenaMaxPermits = getSharedArenaMaxPermitsSysprop();
 
   /**
    * Gets an arena for the given group, potentially aggregating files from the same segment into a
    * single ref counted shared arena. A ref counted shared arena, if created will be added to the
    * given arenas map.
    */
-  static Arena getSharedArena(
+  private Arena getSharedArena(
       Optional<String> group, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
     if (group.isEmpty()) {
       return Arena.ofShared();

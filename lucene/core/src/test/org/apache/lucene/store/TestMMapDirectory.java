@@ -30,6 +30,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.util.Constants;
@@ -181,13 +182,15 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
   }
 
   public void testArenas() throws Exception {
+    Supplier<String> randomGenerationOrNone =
+        () -> random().nextBoolean() ? "_" + random().nextInt(5) : "";
     // First, create a number of segment specific file name lists to test with
     var exts =
         List.of(
             ".si", ".cfs", ".cfe", ".dvd", ".dvm", ".nvd", ".nvm", ".fdt", ".vec", ".vex", ".vemf");
     var names =
         IntStream.range(0, 50)
-            .mapToObj(i -> "_" + i)
+            .mapToObj(i -> "_" + i + randomGenerationOrNone.get())
             .flatMap(s -> exts.stream().map(ext -> s + ext))
             .collect(toList());
     // Second, create a number of non-segment file names
@@ -285,16 +288,18 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
 
   public void testGroupBySegmentFunc() {
     var func = MMapDirectory.GROUP_BY_SEGMENT;
-    assertEquals("0-0", func.apply("_0.doc").orElseThrow());
-    assertEquals("51-0", func.apply("_51.si").orElseThrow());
-    assertEquals("51-1", func.apply("_51_1.si").orElseThrow());
-    assertEquals("51-1", func.apply("_51_1_gg_ff.si").orElseThrow());
-    assertEquals("5987654321-0", func.apply("_5987654321.si").orElseThrow());
-    assertEquals("f-0", func.apply("_f.si").orElseThrow());
-    assertEquals("ff-0", func.apply("_ff.si").orElseThrow());
-    assertEquals("51a-0", func.apply("_51a.si").orElseThrow());
-    assertEquals("f51a-0", func.apply("_f51a.si").orElseThrow());
-    assertEquals("segment-0", func.apply("_segment.si").orElseThrow());
+    assertEquals("0", func.apply("_0.doc").orElseThrow());
+    assertEquals("51", func.apply("_51.si").orElseThrow());
+    assertEquals("51-g", func.apply("_51_1.si").orElseThrow());
+    assertEquals("51-g", func.apply("_51_1_gg_ff.si").orElseThrow());
+    assertEquals("51-g", func.apply("_51_2_gg_ff.si").orElseThrow());
+    assertEquals("51-g", func.apply("_51_3_gg_ff.si").orElseThrow());
+    assertEquals("5987654321", func.apply("_5987654321.si").orElseThrow());
+    assertEquals("f", func.apply("_f.si").orElseThrow());
+    assertEquals("ff", func.apply("_ff.si").orElseThrow());
+    assertEquals("51a", func.apply("_51a.si").orElseThrow());
+    assertEquals("f51a", func.apply("_f51a.si").orElseThrow());
+    assertEquals("segment", func.apply("_segment.si").orElseThrow());
 
     // old style
     assertEquals("5", func.apply("_5_Lucene90FieldsIndex-doc_ids_0.tmp").orElseThrow());

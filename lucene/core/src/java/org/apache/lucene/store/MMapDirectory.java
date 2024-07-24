@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
 
@@ -93,6 +94,18 @@ public class MMapDirectory extends FSDirectory {
    */
   public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
 
+  /**
+   * This sysprop allows to control the total maximum number of mmapped files that can be associated
+   * with a single shared {@link java.lang.foreign.Arena foreign Arena}. For example, to set the max
+   * number of permits to 256, pass the following on the command line pass {@code
+   * -Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=256}. Setting a value of 1
+   * associates one file to one shared arena.
+   *
+   * @lucene.internal
+   */
+  static final String SHARED_ARENA_MAX_PERMITS_SYSPROP =
+      "org.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits";
+
   /** Argument for {@link #setGroupingFunction(Function)} that configures no grouping. */
   public static final Function<String, Optional<String>> NO_GROUPING = filename -> Optional.empty();
 
@@ -104,7 +117,7 @@ public class MMapDirectory extends FSDirectory {
         }
         String groupKey = IndexFileNames.parseSegmentName(filename).substring(1);
         try {
-          groupKey += "-" + IndexFileNames.parseGeneration(filename);
+          groupKey += IndexFileNames.parseGeneration(filename) == 0 ? "" : "-g";
         } catch (
             @SuppressWarnings("unused")
             NumberFormatException unused) {
@@ -323,15 +336,31 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
+  private static Optional<Integer> getSharedArenaMaxPermitsSysprop() {
+    try {
+      return Optional.ofNullable(System.getProperty(SHARED_ARENA_MAX_PERMITS_SYSPROP))
+          .map(Integer::valueOf);
+    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+      Logger.getLogger(MMapDirectory.class.getName())
+          .warning(
+              "Cannot read sysprop "
+                  + SHARED_ARENA_MAX_PERMITS_SYSPROP
+                  + ", so the default value will be used.");
+      return Optional.empty();
+    }
+  }
+
   private static <A> MMapIndexInputProvider<A> lookupProvider() {
+    final var maxPermits = getSharedArenaMaxPermitsSysprop();
     final var lookup = MethodHandles.lookup();
     try {
       final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
       // we use method handles, so we do not need to deal with setAccessible as we have private
       // access through the lookup:
-      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+      final var constr =
+          lookup.findConstructor(cls, MethodType.methodType(void.class, Optional.class));
       try {
-        return (MMapIndexInputProvider<A>) constr.invoke();
+        return (MMapIndexInputProvider<A>) constr.invoke(maxPermits);
       } catch (RuntimeException | Error e) {
         throw e;
       } catch (Throwable th) {
