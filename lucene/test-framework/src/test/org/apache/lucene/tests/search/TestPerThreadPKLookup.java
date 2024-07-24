@@ -69,21 +69,50 @@ public class TestPerThreadPKLookup extends LuceneTestCase {
     doc = new Document();
     doc.add(new KeywordField("PK", "6", Field.Store.NO));
     writer.addDocument(doc);
+    // Update liveDocs.
     writer.deleteDocuments(new Term("PK", "1"));
+    writer.flush();
+
+    // Terms in PK is null.
+    doc = new Document();
+    doc.add(new KeywordField("PK2", "7", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("PK2", "8", Field.Store.NO));
+    writer.addDocument(doc);
     writer.flush();
 
     assertEquals(0, pkLookup.lookup(newBytesRef("1")));
     assertEquals(1, pkLookup.lookup(newBytesRef("2")));
     assertEquals(-1, pkLookup.lookup(newBytesRef("5")));
+    assertEquals(-1, pkLookup.lookup(newBytesRef("8")));
     DirectoryReader reader2 = pkLookup.reopen();
 
     assertEquals(-1, pkLookup.lookup(newBytesRef("1")));
     assertEquals(1, pkLookup.lookup(newBytesRef("2")));
     assertEquals(4, pkLookup.lookup(newBytesRef("5")));
+    assertEquals(-1, pkLookup.lookup(newBytesRef("8")));
+
+    doc = new Document();
+    doc.add(new KeywordField("PK", "9", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("PK", "10", Field.Store.NO));
+    writer.addDocument(doc);
+    writer.flush();
+
+    assertEquals(-1, pkLookup.lookup(newBytesRef("9")));
+    DirectoryReader reader3 = pkLookup.reopen();
+    assertEquals(8, pkLookup.lookup(newBytesRef("9")));
+
+    assertNull(pkLookup.reopen());
 
     writer.close();
     reader1.close();
     reader2.close();
+    reader3.close();
     dir.close();
   }
 
