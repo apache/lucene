@@ -14,14 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.facet.cutters;
 
-apply plugin: 'java-library'
+import java.io.IOException;
+import org.apache.lucene.index.LeafReaderContext;
 
-description = 'Various third party contributions and new ideas'
+/**
+ * Creates {@link LeafFacetCutter} for each leaf. TODO: do we need FacetCutterManager similar to
+ * CollectorManager, e.g. is createLeafCutter always thread safe?
+ */
+public interface FacetCutter {
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
+  /** Get cutter for the leaf. */
+  LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException;
 }

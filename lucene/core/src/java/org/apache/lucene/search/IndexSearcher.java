@@ -630,27 +630,42 @@ public class IndexSearcher {
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
-    final C firstCollector = collectorManager.newCollector();
+    CollectorOwner<C, T> collectorOwner = new CollectorOwner<>(collectorManager);
+    final C firstCollector = collectorOwner.newCollector();
     query = rewrite(query, firstCollector.scoreMode().needsScores());
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
-    return search(weight, collectorManager, firstCollector);
+    search(weight, collectorOwner, firstCollector);
+    return collectorOwner.getResult();
   }
 
-  private <C extends Collector, T> T search(
-      Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
+  /**
+   * Lower-level search API. Search all leaves using the given {@link CollectorOwner}, without
+   * calling {@link CollectorOwner#getResult()} so that clients can reduce and read results
+   * themselves.
+   *
+   * <p>Note that this method doesn't return anything - users can access results by calling {@link
+   * CollectorOwner#getResult()}
+   *
+   * @lucene.experimental
+   */
+  public <C extends Collector> void search(Query query, CollectorOwner<C, ?> collectorOwner)
+      throws IOException {
+    final C firstCollector = collectorOwner.newCollector();
+    query = rewrite(query, firstCollector.scoreMode().needsScores());
+    final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
+    search(weight, collectorOwner, firstCollector);
+  }
+
+  private <C extends Collector> void search(
+      Weight weight, CollectorOwner<C, ?> collectorOwner, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
     if (leafSlices.length == 0) {
-      // there are no segments, nothing to offload to the executor, but we do need to call reduce to
-      // create some kind of empty result
+      // there are no segments, nothing to offload to the executor
       assert leafContexts.isEmpty();
-      return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
-      final List<C> collectors = new ArrayList<>(leafSlices.length);
-      collectors.add(firstCollector);
       final ScoreMode scoreMode = firstCollector.scoreMode();
       for (int i = 1; i < leafSlices.length; ++i) {
-        final C collector = collectorManager.newCollector();
-        collectors.add(collector);
+        final C collector = collectorOwner.newCollector();
         if (scoreMode != collector.scoreMode()) {
           throw new IllegalStateException(
               "CollectorManager does not always produce collectors with the same score mode");
@@ -659,15 +674,14 @@ public class IndexSearcher {
       final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;
-        final C collector = collectors.get(i);
+        final C collector = collectorOwner.getCollector(i);
         listTasks.add(
             () -> {
               search(Arrays.asList(leaves), weight, collector);
               return collector;
             });
       }
-      List<C> results = taskExecutor.invokeAll(listTasks);
-      return collectorManager.reduce(results);
+      taskExecutor.invokeAll(listTasks);
     }
   }
 

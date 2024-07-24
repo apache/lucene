@@ -14,14 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.facet.ordinals;
 
-apply plugin: 'java-library'
+/** Interface to return an ordinal. */
+public interface OrdinalGetter {
 
-description = 'Various third party contributions and new ideas'
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
+  /** get ordinal. */
+  int getOrd();
 }

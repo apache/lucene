@@ -14,14 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.facet.ordinals;
 
-apply plugin: 'java-library'
+/**
+ * Generates {@link Comparable} for provided ordinal. For example it can be used to find topN facet
+ * ordinals.
+ *
+ * @param <T> something ordinals can be compared by.
+ */
+public interface OrdToComparable<T extends Comparable<T>> {
 
-description = 'Various third party contributions and new ideas'
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
+  /**
+   * For given ordinal, get something it can be compared by.
+   *
+   * @param ord ordinal.
+   * @param reuse object that can be reused for building result. If null, new object should be
+   *     created.
+   * @return Comparable.
+   */
+  T getComparable(int ord, T reuse);
 }
