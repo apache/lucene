@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -40,6 +41,35 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestTopDocsCollector extends LuceneTestCase {
+
+  private static final class MyTopDocsCollectorMananger
+      implements CollectorManager<MyTopDocsCollector, MyTopDocsCollector> {
+
+    private final int numHits;
+
+    MyTopDocsCollectorMananger(int numHits) {
+      this.numHits = numHits;
+    }
+
+    @Override
+    public MyTopDocsCollector newCollector() {
+      return new MyTopDocsCollector(numHits);
+    }
+
+    @Override
+    public MyTopDocsCollector reduce(Collection<MyTopDocsCollector> collectors) {
+      int totalHits = 0;
+      MyTopDocsCollector myTopDocsCollector = new MyTopDocsCollector(numHits);
+      for (MyTopDocsCollector collector : collectors) {
+        totalHits += collector.totalHits;
+        for (ScoreDoc scoreDoc : collector.pq) {
+          myTopDocsCollector.pq.insertWithOverflow(scoreDoc);
+        }
+      }
+      myTopDocsCollector.totalHits = totalHits;
+      return myTopDocsCollector;
+    }
+  }
 
   private static final class MyTopDocsCollector extends TopDocsCollector<ScoreDoc> {
 
@@ -125,14 +155,8 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
   private TopDocsCollector<ScoreDoc> doSearch(int numResults) throws IOException {
     Query q = new MatchAllDocsQuery();
-    return doSearch(numResults, q);
-  }
-
-  private TopDocsCollector<ScoreDoc> doSearch(int numResults, Query q) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    TopDocsCollector<ScoreDoc> tdc = new MyTopDocsCollector(numResults);
-    searcher.search(q, tdc);
-    return tdc;
+    return searcher.search(q, new MyTopDocsCollectorMananger(numResults));
   }
 
   private TopDocs doSearchWithThreshold(
