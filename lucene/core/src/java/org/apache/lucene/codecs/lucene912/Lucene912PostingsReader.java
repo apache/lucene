@@ -1369,10 +1369,40 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       }
     }
 
+    private void moveToNextBlock() throws IOException {
+      if (doc >= nextSkipDoc) {
+        skipLevel1To(doc + 1);
+      } else if (needsRefilling) {
+        docIn.seek(blockEndFP);
+        blockUpto += BLOCK_SIZE;
+      }
+
+      accum = lastDocInBlock;
+      if (docFreq - blockUpto >= BLOCK_SIZE) {
+        final long skip0Len = docIn.readVLong(); // skip len
+        final long skip0End = docIn.getFilePointer() + skip0Len;
+        final int docDelta = docIn.readVInt();
+        final long blockLength = docIn.readVLong();
+        lastDocInBlock += docDelta;
+        blockEndFP = docIn.getFilePointer() + blockLength;
+        final int numImpactBytes = docIn.readVInt();
+        serializedBlockImpacts.growNoCopy(numImpactBytes);
+        docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
+        serializedBlockImpacts.setLength(numImpactBytes);
+        docIn.seek(skip0End);
+      } else {
+        lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+      }
+
+      refillDocs();
+      needsRefilling = false;
+    }
+
     @Override
     public int nextDoc() throws IOException {
-      if (doc >= lastDocInBlock || needsRefilling) {
-        advanceShallow(doc + 1);
+      if (doc >= lastDocInBlock) {
+        moveToNextBlock();
+      } else if (needsRefilling) {
         refillDocs();
         needsRefilling = false;
       }
