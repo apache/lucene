@@ -21,7 +21,7 @@ import java.lang.foreign.MemorySegment;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A reference counted share Arena.
+ * A reference counted shared Arena.
  *
  * <p>The purpose of this class is to allow a number of mmapped memory segments to be associated
  * with a single underlying arena in order to avoid closing the underlying arena until all segments
