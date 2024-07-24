@@ -37,7 +37,7 @@ final class MemorySegmentIndexInputProvider
   private final Optional<NativeAccess> nativeAccess;
   private final int sharedArenaMaxPermits;
 
-  MemorySegmentIndexInputProvider(Optional<Integer> maxPermits) {
+  MemorySegmentIndexInputProvider(int maxPermits) {
     this.nativeAccess = NativeAccess.getImplementation();
     this.sharedArenaMaxPermits = checkMaxPermits(maxPermits);
   }
@@ -143,13 +143,9 @@ final class MemorySegmentIndexInputProvider
     return new ConcurrentHashMap<>();
   }
 
-  private static int checkMaxPermits(Optional<Integer> maxPermits) {
-    if (maxPermits.isEmpty()) {
-      return RefCountedSharedArena.DEFAULT_MAX_PERMITS;
-    }
-    int v = maxPermits.get();
-    if (RefCountedSharedArena.validMaxPermits(v)) {
-      return v;
+  private static int checkMaxPermits(int maxPermits) {
+    if (RefCountedSharedArena.validMaxPermits(maxPermits)) {
+      return maxPermits;
     }
     Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
         .warning(
