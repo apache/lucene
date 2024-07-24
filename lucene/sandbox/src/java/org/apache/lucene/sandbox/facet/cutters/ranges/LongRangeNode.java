@@ -98,27 +98,27 @@ final class LongRangeNode {
     }
   }
 
-  /** returns the range start value * */
+  /** returns the range start value */
   public long start() {
     return start;
   }
 
-  /** returns the range end value * */
+  /** returns the range end value */
   public long end() {
     return end;
   }
 
-  /** returns left node of segment tree node * */
+  /** returns left node of segment tree node */
   public LongRangeNode left() {
     return left;
   }
 
-  /** returns right node of segment tree node * */
+  /** returns right node of segment tree node */
   public LongRangeNode right() {
     return right;
   }
 
-  /** returns range indices to output when a query goes through this node: * */
+  /** returns range indices to output when a query goes through this node */
   public List<Integer> outputs() {
     return outputs;
   }

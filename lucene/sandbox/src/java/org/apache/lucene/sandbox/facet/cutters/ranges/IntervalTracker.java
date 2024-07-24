@@ -26,10 +26,8 @@ import org.apache.lucene.util.FixedBitSet;
  * may be reused by clearing the current iterator E.g. LongRangeFacetCutter uses IntervalTracker
  * instances to map ranges to ordinals and track per-range data and retrieve recorded ranges for a
  * data set.
- *
- * <p>TODO: it doesn't have to be public?
  */
-public interface IntervalTracker extends OrdinalIterator {
+interface IntervalTracker extends OrdinalIterator {
   /** track information for the seen input interval * */
   void set(int i);
 
