@@ -24,6 +24,10 @@ abstract class HitsThresholdChecker {
   /** Implementation of HitsThresholdChecker which allows global hit counting */
   private static class GlobalHitsThresholdChecker extends HitsThresholdChecker {
     private final LongAdder globalHitCount = new LongAdder();
+    // Cache whether the threshold has been reached already. It is not volatile or synchronized on
+    // purpose to contain the overhead of reading the value similarly to what String#hashCode()
+    // does. This does not affect correctness.
+    private boolean thresholdReached = false;
 
     GlobalHitsThresholdChecker(int totalHitsThreshold) {
       super(totalHitsThreshold);
@@ -32,12 +36,17 @@ abstract class HitsThresholdChecker {
 
     @Override
     void incrementHitCount() {
-      globalHitCount.increment();
+      if (thresholdReached == false) {
+        globalHitCount.increment();
+      }
     }
 
     @Override
     boolean isThresholdReached() {
-      return globalHitCount.longValue() > getHitsThreshold();
+      if (thresholdReached) {
+        return true;
+      }
+      return thresholdReached = globalHitCount.longValue() > getHitsThreshold();
     }
 
     @Override
