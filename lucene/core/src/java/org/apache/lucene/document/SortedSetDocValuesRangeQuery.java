@@ -253,64 +253,52 @@ final class SortedSetDocValuesRangeQuery extends Query {
       return null;
     }
 
-    final boolean reverse = indexSort.getSort()[0].getReverse();
+    skipper.advance(0);
     final int minDocID;
     final int maxDocID;
-    skipper.advance(0);
-    if (reverse) {
-      minDocID =
-          skipper.maxValue() <= maxOrd
-              ? 0
-              : nextDoc(skipper, sortedDocValues, l -> l <= maxOrd, true);
-      maxDocID =
-          skipper.minValue() >= minOrd
-              ? skipper.docCount()
-              : nextDoc(skipper, sortedDocValues, l -> l < minOrd, true);
+    if (indexSort.getSort()[0].getReverse()) {
+      if (skipper.maxValue() <= maxOrd) {
+        minDocID = 0;
+      } else {
+        skipper.advance(Long.MIN_VALUE, maxOrd);
+        minDocID = nextDoc(skipper.minDocID(0), sortedDocValues, l -> l <= maxOrd);
+      }
+      if (skipper.minValue() >= minOrd) {
+        maxDocID = skipper.docCount();
+      } else {
+        skipper.advance(Long.MIN_VALUE, minOrd);
+        maxDocID = nextDoc(skipper.minDocID(0), sortedDocValues, l -> l < minOrd);
+      }
     } else {
-      minDocID =
-          skipper.minValue() >= minOrd
-              ? 0
-              : nextDoc(skipper, sortedDocValues, l -> l >= minOrd, false);
-      maxDocID =
-          skipper.maxValue() <= maxOrd
-              ? skipper.docCount()
-              : nextDoc(skipper, sortedDocValues, l -> l > maxOrd, false);
+      if (skipper.minValue() >= minOrd) {
+        minDocID = 0;
+      } else {
+        skipper.advance(minOrd, Long.MAX_VALUE);
+        minDocID = nextDoc(skipper.minDocID(0), sortedDocValues, l -> l >= minOrd);
+      }
+      if (skipper.maxValue() <= maxOrd) {
+        maxDocID = skipper.docCount();
+      } else {
+        skipper.advance(maxOrd, Long.MAX_VALUE);
+        maxDocID = nextDoc(skipper.minDocID(0), sortedDocValues, l -> l > maxOrd);
+      }
     }
     return minDocID == maxDocID
         ? DocIdSetIterator.empty()
         : DocIdSetIterator.range(minDocID, maxDocID);
   }
 
-  private static int nextDoc(
-      DocValuesSkipper skipper,
-      SortedDocValues docValues,
-      LongPredicate competitive,
-      boolean reverse)
+  private static int nextDoc(int startDoc, SortedDocValues docValues, LongPredicate predicate)
       throws IOException {
-    while (true) {
-      if (skipper.minDocID(0) == DocIdSetIterator.NO_MORE_DOCS) {
-        return -1; // should not happen
-      }
-      if (competitive.test(reverse ? skipper.minValue(0) : skipper.maxValue(0))) {
-        int doc = docValues.docID();
-        if (skipper.minDocID(0) > doc) {
-          doc = docValues.advance(skipper.minDocID(0));
-        }
-        for (; doc <= skipper.maxDocID(0); doc = docValues.nextDoc()) {
-          if (competitive.test(docValues.ordValue())) {
-            return doc;
-          }
-        }
-      }
-      int maxDocID = skipper.maxDocID(0);
-      int nextLevel = 1;
-      while (nextLevel < skipper.numLevels()
-          && competitive.test(reverse ? skipper.minValue(nextLevel) : skipper.maxValue(nextLevel))
-              == false) {
-        maxDocID = skipper.maxDocID(nextLevel);
-        nextLevel++;
-      }
-      skipper.advance(maxDocID + 1);
+    int doc = docValues.docID();
+    if (startDoc > doc) {
+      doc = docValues.advance(startDoc);
     }
+    for (; doc < DocIdSetIterator.NO_MORE_DOCS; doc = docValues.nextDoc()) {
+      if (predicate.test(docValues.ordValue())) {
+        break;
+      }
+    }
+    return doc;
   }
 }
