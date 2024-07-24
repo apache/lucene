@@ -29,7 +29,7 @@ import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
-/** {@link RangeFacetCutter} for ranges of long values. */
+/** {@link RangeFacetCutter} for ranges of long values. It's based on LongRangeCounter class. */
 public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
   MultiLongValuesSource valuesSource;
@@ -40,7 +40,9 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
   List<InclusiveRange> elementaryIntervals;
 
+  /** elementary interval boundaries used for efficient counting (bsearch to find interval) */
   long[] boundaries;
+
   int[] pos;
 
   // Default interval position, when elementary interval is mapped to this interval
@@ -350,29 +352,20 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
     void maybeRollUp(IntervalTracker rollUpInto) {}
   }
 
-  /** add doc * */
-  public static final class LongRangeAndPos {
+  static final class LongRangeAndPos {
     private final LongRange range;
     private final int pos;
 
-    /**
-     * add doc
-     *
-     * @param range TODO add doc
-     * @param pos TODO add doc
-     */
-    public LongRangeAndPos(LongRange range, int pos) {
+    LongRangeAndPos(LongRange range, int pos) {
       this.range = range;
       this.pos = pos;
     }
 
-    /** add doc * */
-    public LongRange range() {
+    LongRange range() {
       return range;
     }
 
-    /** add doc * */
-    public int pos() {
+    int pos() {
       return pos;
     }
 

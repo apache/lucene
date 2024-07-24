@@ -22,9 +22,9 @@ import java.util.List;
 /**
  * Holds one node of the segment tree.
  *
- * <p>TODO: dedup existing LongRangeNode. TODO: does it have to be public?
+ * <p>TODO: dedup existing LongRangeNode.
  */
-public final class LongRangeNode {
+final class LongRangeNode {
   final LongRangeNode left;
   final LongRangeNode right;
 
@@ -56,14 +56,12 @@ public final class LongRangeNode {
     return sb.toString();
   }
 
-  static void indent(StringBuilder sb, int depth) {
-    for (int i = 0; i < depth; i++) {
-      sb.append("  ");
-    }
+  private static void indent(StringBuilder sb, int depth) {
+    sb.append("  ".repeat(depth));
   }
 
   /** Recursively assigns range outputs to each node. */
-  public void addOutputs(int index, LongRangeFacetCutter.LongRangeAndPos range) {
+  public void addOutputs(LongRangeFacetCutter.LongRangeAndPos range) {
     if (start >= range.range().min && end <= range.range().max) {
       // Our range is fully included in the incoming
       // range; add to our output list:
@@ -74,12 +72,12 @@ public final class LongRangeNode {
     } else if (left != null) {
       assert right != null;
       // Recurse:
-      left.addOutputs(index, range);
-      right.addOutputs(index, range);
+      left.addOutputs(range);
+      right.addOutputs(range);
     }
   }
 
-  void toString(StringBuilder sb, int depth) {
+  private void toString(StringBuilder sb, int depth) {
     indent(sb, depth);
     if (left == null) {
       assert right == null;

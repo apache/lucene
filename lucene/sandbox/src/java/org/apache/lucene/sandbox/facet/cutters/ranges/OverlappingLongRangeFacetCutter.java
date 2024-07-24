@@ -50,8 +50,8 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     root = split(0, elementaryIntervals.size(), elementaryIntervals);
 
     // Set outputs, so we know which range to output for each node in the tree:
-    for (int i = 0; i < sortedRanges.length; i++) {
-      root.addOutputs(i, sortedRanges[i]);
+    for (LongRangeAndPos range : sortedRanges) {
+      root.addOutputs(range);
     }
   }
 
@@ -149,24 +149,24 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
           values, boundaries, pos, requestedRangeCount, root);
     } else {
       MultiLongValues values = valuesSource.getValues(context);
-      return new OverlappingMultiValuedRangeLeafFacetCutter(
+      return new OverlappingMultivaluedRangeLeafFacetCutter(
           values, boundaries, pos, requestedRangeCount, root);
     }
   }
 
   /**
-   * TODO: dedup OverlappingMultiValuedRangeLeafFacetCutter and
+   * TODO: dedup OverlappingMultivaluedRangeLeafFacetCutter and
    * OverlappingSingleValuedRangeLeafFacetCutter code - they are similar but they extend different
    * base classes.
    */
-  static class OverlappingMultiValuedRangeLeafFacetCutter
+  static class OverlappingMultivaluedRangeLeafFacetCutter
       extends LongRangeMultivaluedLeafFacetCutter {
 
     LongRangeNode elementaryIntervalRoot;
 
     private int elementaryIntervalUpto;
 
-    OverlappingMultiValuedRangeLeafFacetCutter(
+    OverlappingMultivaluedRangeLeafFacetCutter(
         MultiLongValues longValues,
         long[] boundaries,
         int[] pos,
