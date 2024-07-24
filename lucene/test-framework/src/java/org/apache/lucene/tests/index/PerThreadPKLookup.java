@@ -112,7 +112,7 @@ public class PerThreadPKLookup {
   }
 
   /**
-   * Reuse old segments termsEnum and postingsEnum.
+   * Reuse loaded segments' termsEnum and postingsEnum.
    *
    * @return null if there are no changes; else, a new DirectoryReader instance which you must
    *     eventually close.
