@@ -219,6 +219,7 @@ public class KMeans {
       // Update distances with the new centroid
       double totalSum = 0;
       for (int j = 0; j < numVectors; j++) {
+        // TODO: replace with RandomVectorScorer::score possible on quantized vectors
         float dist = VectorUtil.squareDistance(vectors.vectorValue(j), initialCentroids[i - 1]);
         if (dist < minDistances[j]) {
           minDistances[j] = dist;
@@ -282,6 +283,7 @@ public class KMeans {
       if (numCentroids > 1) {
         float minSquaredDist = Float.MAX_VALUE;
         for (short c = 0; c < numCentroids; c++) {
+          // TODO: replace with RandomVectorScorer::score possible on quantized vectors
           float squareDist = VectorUtil.squareDistance(centroids[c], vector);
           if (squareDist < minSquaredDist) {
             bestCentroid = c;
