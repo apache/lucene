@@ -92,6 +92,12 @@ public abstract class BitSet implements Bits, Accountable {
    */
   public abstract int nextSetBit(int index);
 
+  /**
+   * Returns the index of the first set bit from start (inclusive) until end (inclusive). {@link
+   * DocIdSetIterator#NO_MORE_DOCS} is returned if there are no more set bits.
+   */
+  public abstract int firstSetBitInRange(int start, int end);
+
   /** Assert that the current doc is -1. */
   protected final void checkUnpositioned(DocIdSetIterator iter) {
     if (iter.docID() != -1) {

@@ -292,6 +292,32 @@ public final class FixedBitSet extends BitSet {
   }
 
   @Override
+  public int firstSetBitInRange(int start, int upperBound) {
+    // Depends on the ghost bits being clear!
+    assert start >= 0 && start < numBits : "index=" + start + ", numBits=" + numBits;
+    assert start <= upperBound : "index=" + start + ", upperBound=" + upperBound;
+    int i = start >> 6;
+    long word = bits[i] >> start; // skip all the bits to the right of index
+
+    if (word != 0) {
+      int res = start + Long.numberOfTrailingZeros(word);
+      return res > upperBound ? DocIdSetIterator.NO_MORE_DOCS : res;
+    }
+
+    int maxWord = Math.min((upperBound >> 6) + 1, numWords);
+
+    while (++i < maxWord) {
+      word = bits[i];
+      if (word != 0) {
+        int res = (i << 6) + Long.numberOfTrailingZeros(word);
+        return res > upperBound ? DocIdSetIterator.NO_MORE_DOCS : res;
+      }
+    }
+
+    return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
   public int prevSetBit(int index) {
     assert index >= 0 && index < numBits : "index=" + index + " numBits=" + numBits;
     int i = index >> 6;
