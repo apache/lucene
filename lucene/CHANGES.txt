@@ -133,6 +133,8 @@ New Features
   DocValuesSkipper abstraction. A new flag is added to FieldType.java that configures whether
   to create a "skip index" for doc values. (Ignacio Vera)
 
+ * GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
+
 Improvements
 ---------------------
 
