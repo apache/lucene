@@ -479,19 +479,21 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           impactLength = 0L;
         }
         long skipLength = docIn.readVLong();
+
+        int posLength = 0;
         if (indexHasPos) {
-          docIn.readVLong(); // pos FP delta
-          docIn.readByte(); // pos buffer offset
+          // pos FP delta and pos buffer offset
+          posLength = Integer.BYTES + Byte.BYTES;
           if (indexHasOffsetsOrPayloads) {
-            docIn.readVLong(); // pay FP delta
-            docIn.readVInt(); // pay buffer offset
+            // pay FP delta and pay buffer offset
+            posLength += 2 * Integer.BYTES;
           }
         }
-        nextSkipOffset = docIn.getFilePointer() + impactLength + skipLength;
+        nextSkipOffset = docIn.getFilePointer() + posLength + impactLength + skipLength;
 
         if (nextSkipDoc >= target) {
-          // skip impacts
-          docIn.skipBytes(impactLength);
+          // skip pos data and impacts
+          docIn.skipBytes(posLength + impactLength);
           break;
         }
       }
@@ -819,11 +821,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         nextSkipDoc += docIn.readVInt();
         long impactLength = docIn.readVLong();
         long skipLength = docIn.readVLong();
-        nextSkipPosFP += docIn.readVLong();
-        nextSkipPosUpto = docIn.readVInt();
+        nextSkipPosFP += docIn.readInt();
+        nextSkipPosUpto = docIn.readByte();
         if (indexHasOffsetsOrPayloads) {
-          nextSkipPayFP += docIn.readVLong();
-          nextSkipPayUpto = docIn.readVInt();
+          nextSkipPayFP += docIn.readInt();
+          nextSkipPayUpto = docIn.readInt();
         }
         nextSkipDocFP = docIn.getFilePointer() + impactLength + skipLength;
 
@@ -1303,15 +1305,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         nextSkipDoc += docIn.readVInt();
         final int numImpactBytes = docIn.readVInt();
         long skipLength = docIn.readVLong();
-        if (indexHasPos) {
-          docIn.readVLong(); // pos FP delta
-          docIn.readByte(); // pos buffer offset
-          if (indexHasOffsetsOrPayloads) {
-            docIn.readVLong(); // pay FP delta
-            docIn.readVInt(); // pay buffer offset
-          }
-        }
 
+        if (indexHasPos) {
+          // pos FP delta and pos buffer offset
+          int numPosBytes = Integer.BYTES + Byte.BYTES;
+          if (indexHasOffsetsOrPayloads) {
+            // pay FP delta and pay buffer offset
+            numPosBytes += 2 * Integer.BYTES;
+          }
+          docIn.skipBytes(numPosBytes);
+        }
         nextSkipOffset = docIn.getFilePointer() + numImpactBytes + skipLength;
 
         if (target <= nextSkipDoc) {
@@ -1671,11 +1674,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         nextSkipDoc += docIn.readVInt();
         final int numImpactBytes = docIn.readVInt();
         long skipLength = docIn.readVLong();
-        nextSkipPosFP += docIn.readVLong();
+        nextSkipPosFP += docIn.readInt();
         nextSkipPosUpto = docIn.readByte();
         if (indexHasOffsetsOrPayloads) {
-          docIn.readVLong(); // skip pay fp delta
-          docIn.readVInt(); // skip pay upto
+          // pay FP delta and pay upto
+          docIn.skipBytes(Integer.BYTES * 2);
         }
 
         nextSkipDocFP = docIn.getFilePointer() + numImpactBytes + skipLength;

@@ -388,13 +388,15 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       }
       docOut.writeVLong(skipOutput.size());
       if (writePositions) {
-        docOut.writeVLong(posOut.getFilePointer() - lastSkipPosFP);
+        // 4,096 docs cannot possibly require more than 2B bytes
+        docOut.writeInt(Math.toIntExact(posOut.getFilePointer() - lastSkipPosFP));
         docOut.writeByte((byte) posBufferUpto);
         lastSkipPosFP = posOut.getFilePointer();
 
         if (writeOffsets || writePayloads) {
-          docOut.writeVLong(payOut.getFilePointer() - lastSkipPayFP);
-          docOut.writeVInt(payloadByteUpto);
+          // 4,096 docs cannot possibly require more than 2B bytes
+          docOut.writeInt(Math.toIntExact(payOut.getFilePointer() - lastSkipPayFP));
+          docOut.writeInt(payloadByteUpto);
           lastSkipPayFP = payOut.getFilePointer();
         }
       }
