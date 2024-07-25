@@ -23,14 +23,16 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
 @SuppressWarnings("preview")
-final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
+final class MemorySegmentIndexInputProvider
+    implements MMapDirectory.MMapIndexInputProvider<Object> {
 
-  public MemorySegmentIndexInputProvider() {
+  public MemorySegmentIndexInputProvider(int unusedMaxPermits) {
     var log = Logger.getLogger(getClass().getName());
     log.info(
         "Using MemorySegmentIndexInput with Java 20; to disable start with -D"
@@ -39,7 +41,13 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   @Override
-  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  public IndexInput openInput(
+      Path path,
+      IOContext context,
+      int chunkSizePower,
+      boolean preload,
+      Optional<String> unusedGroup,
+      Object unusedAttachment)
       throws IOException {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 

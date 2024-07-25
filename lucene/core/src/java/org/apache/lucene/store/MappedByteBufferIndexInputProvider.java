@@ -37,7 +37,8 @@ import org.apache.lucene.store.ByteBufferGuard.BufferCleaner;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
-final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
+final class MappedByteBufferIndexInputProvider
+    implements MMapDirectory.MMapIndexInputProvider<Object> {
 
   private static final Logger LOG =
       Logger.getLogger(MappedByteBufferIndexInputProvider.class.getName());
@@ -62,7 +63,13 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
   }
 
   @Override
-  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  public IndexInput openInput(
+      Path path,
+      IOContext context,
+      int chunkSizePower,
+      boolean preload,
+      Optional<String> group,
+      Object attachment)
       throws IOException {
     if (chunkSizePower > 30) {
       throw new IllegalArgumentException(

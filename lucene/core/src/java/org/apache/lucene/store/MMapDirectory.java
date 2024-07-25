@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static org.apache.lucene.index.IndexFileNames.CODEC_FILE_PATTERN;
+
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -27,7 +29,9 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.logging.Logger;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -46,6 +50,11 @@ import org.apache.lucene.util.SuppressForbidden;
  * <p>This class supports preloading files into physical memory upon opening. This can help improve
  * performance of searches on a cold page cache at the expense of slowing down opening an index. See
  * {@link #setPreload(BiPredicate)} for more details.
+ *
+ * <p>This class supports grouping of files that are part of the same logical group. This is a hint
+ * that allows for better handling of resources. For example, individual files that are part of the
+ * same segment can be considered part of the same logical group. See {@link
+ * #setGroupingFunction(Function)} for more details.
  *
  * <p>Due to <a href="https://bugs.openjdk.org/browse/JDK-4724038">this bug</a> in OpenJDK,
  * MMapDirectory's {@link IndexInput#close} is unable to close the underlying OS file handle. Only
@@ -118,6 +127,41 @@ public class MMapDirectory extends FSDirectory {
   public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
 
   /**
+   * This sysprop allows to control the total maximum number of mmapped files that can be associated
+   * with a single shared {@code java.lang.foreign.Arena foreign Arena}. For example, to set the max
+   * number of permits to 256, pass the following on the command line pass {@code
+   * -Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=256}. Setting a value of 1
+   * associates one file to one shared arena.
+   *
+   * @lucene.internal
+   */
+  public static final String SHARED_ARENA_MAX_PERMITS_SYSPROP =
+      "org.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits";
+
+  /** Argument for {@link #setGroupingFunction(Function)} that configures no grouping. */
+  public static final Function<String, Optional<String>> NO_GROUPING = filename -> Optional.empty();
+
+  /** Argument for {@link #setGroupingFunction(Function)} that configures grouping by segment. */
+  public static final Function<String, Optional<String>> GROUP_BY_SEGMENT =
+      filename -> {
+        if (!CODEC_FILE_PATTERN.matcher(filename).matches()) {
+          return Optional.empty();
+        }
+        String groupKey = IndexFileNames.parseSegmentName(filename).substring(1);
+        try {
+          // keep the original generation (=0) in base group, later generations in extra group
+          if (IndexFileNames.parseGeneration(filename) > 0) {
+            groupKey += "-g";
+          }
+        } catch (
+            @SuppressWarnings("unused")
+            NumberFormatException unused) {
+          // does not confirm to the generation syntax, or trash
+        }
+        return Optional.of(groupKey);
+      };
+
+  /**
    * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
    * opening them if they use the {@link IOContext#LOAD} I/O context.
    */
@@ -158,6 +202,11 @@ public class MMapDirectory extends FSDirectory {
    */
   public static final String ENABLE_MEMORY_SEGMENTS_SYSPROP =
       "org.apache.lucene.store.MMapDirectory.enableMemorySegments";
+
+  /** A provider specific context object or null, that will be passed to openInput. */
+  final Object attachment = PROVIDER.attachment();
+
+  private Function<String, Optional<String>> groupingFunction = GROUP_BY_SEGMENT;
 
   final int chunkSizePower;
 
@@ -313,6 +362,21 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
+   * Configures a grouping function for files that are part of the same logical group. The gathering
+   * of files into a logical group is a hint that allows for better handling of resources.
+   *
+   * <p>By default, grouping is {@link #GROUP_BY_SEGMENT}. To disable, invoke this method with
+   * {@link #NO_GROUPING}.
+   *
+   * @param groupingFunction a function that accepts a file name and returns an optional group key.
+   *     If the optional is present, then its value is the logical group to which the file belongs.
+   *     Otherwise, the file name if not associated with any logical group.
+   */
+  public void setGroupingFunction(Function<String, Optional<String>> groupingFunction) {
+    this.groupingFunction = groupingFunction;
+  }
+
+  /**
    * Returns the current mmap chunk size.
    *
    * @see #MMapDirectory(Path, LockFactory, long)
@@ -327,11 +391,17 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(path, context, chunkSizePower, preload.test(name, context));
+    return PROVIDER.openInput(
+        path,
+        context,
+        chunkSizePower,
+        preload.test(name, context),
+        groupingFunction.apply(name),
+        attachment);
   }
 
   // visible for tests:
-  static final MMapIndexInputProvider PROVIDER;
+  static final MMapIndexInputProvider<Object> PROVIDER;
 
   /** <code>true</code>, if this platform supports unmapping mmapped files. */
   public static final boolean UNMAP_SUPPORTED;
@@ -342,8 +412,14 @@ public class MMapDirectory extends FSDirectory {
    */
   public static final String UNMAP_NOT_SUPPORTED_REASON;
 
-  interface MMapIndexInputProvider {
-    IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  interface MMapIndexInputProvider<A> {
+    IndexInput openInput(
+        Path path,
+        IOContext context,
+        int chunkSizePower,
+        boolean preload,
+        Optional<String> group,
+        A attachment)
         throws IOException;
 
     long getDefaultMaxChunkSize();
@@ -353,6 +429,11 @@ public class MMapDirectory extends FSDirectory {
     String getUnmapNotSupportedReason();
 
     boolean supportsMadvise();
+
+    /** An optional attachment of the provider, that will be passed to openInput. */
+    default A attachment() {
+      return null;
+    }
 
     default IOException convertMapFailedIOException(
         IOException ioe, String resourceDescription, long bufSize) {
@@ -420,10 +501,29 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
-  private static MMapIndexInputProvider lookupProvider() {
-    if (checkMemorySegmentsSysprop() == false) {
-      return new MappedByteBufferIndexInputProvider();
+  private static int getSharedArenaMaxPermitsSysprop() {
+    int ret = 1024; // default value
+    try {
+      String str = System.getProperty(SHARED_ARENA_MAX_PERMITS_SYSPROP);
+      if (str != null) {
+        ret = Integer.parseInt(str);
+      }
+    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+      Logger.getLogger(MMapDirectory.class.getName())
+          .warning(
+              "Cannot read sysprop "
+                  + SHARED_ARENA_MAX_PERMITS_SYSPROP
+                  + ", so the default value will be used.");
     }
+    return ret;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <A> MMapIndexInputProvider<A> lookupProvider() {
+    if (checkMemorySegmentsSysprop() == false) {
+      return (MMapIndexInputProvider<A>) new MappedByteBufferIndexInputProvider();
+    }
+    final var maxPermits = getSharedArenaMaxPermitsSysprop();
     final var lookup = MethodHandles.lookup();
     final int runtimeVersion = Runtime.version().feature();
     if (runtimeVersion >= 19) {
@@ -431,9 +531,10 @@ public class MMapDirectory extends FSDirectory {
         final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
         // we use method handles, so we do not need to deal with setAccessible as we have private
         // access through the lookup:
-        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+        final var constr =
+            lookup.findConstructor(cls, MethodType.methodType(void.class, int.class));
         try {
-          return (MMapIndexInputProvider) constr.invoke();
+          return (MMapIndexInputProvider<A>) constr.invoke(maxPermits);
         } catch (RuntimeException | Error e) {
           throw e;
         } catch (Throwable th) {
@@ -447,7 +548,7 @@ public class MMapDirectory extends FSDirectory {
             "MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
       }
     }
-    return new MappedByteBufferIndexInputProvider();
+    return (MMapIndexInputProvider<A>) new MappedByteBufferIndexInputProvider();
   }
 
   /**
