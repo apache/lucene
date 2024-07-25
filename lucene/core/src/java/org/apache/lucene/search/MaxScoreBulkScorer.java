@@ -25,7 +25,7 @@ import org.apache.lucene.util.MathUtil;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
-  static final int INNER_WINDOW_SIZE = 1 << 11;
+  static final int INNER_WINDOW_SIZE = 1 << 12;
 
   private final int maxDoc;
   // All scorers, sorted by increasing max score.
