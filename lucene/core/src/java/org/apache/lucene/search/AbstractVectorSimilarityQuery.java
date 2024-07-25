@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.search.AbstractKnnVectorQuery.createBitSet;
+import static org.apache.lucene.search.KnnQueryUtils.createBitSet;
+import static org.apache.lucene.search.KnnQueryUtils.createFilterWeight;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -69,10 +70,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     return new Weight(this) {
-      final Weight filterWeight =
-          filter == null
-              ? null
-              : searcher.createWeight(searcher.rewrite(filter), ScoreMode.COMPLETE_NO_SCORES, 1);
+      final Weight filterWeight = createFilterWeight(searcher, filter, field);
 
       @Override
       public Explanation explain(LeafReaderContext context, int doc) throws IOException {

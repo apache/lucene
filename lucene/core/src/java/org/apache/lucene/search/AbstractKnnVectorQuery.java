@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.search.KnnQueryUtils.createBitSet;
+import static org.apache.lucene.search.KnnQueryUtils.createFilterWeight;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -73,9 +75,12 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    // we need to perform search inside rewrite() because we need to get top-k
+    // matches across all segments
+
     IndexReader reader = indexSearcher.getIndexReader();
 
-    final Weight filterWeight = createFilterWeight(indexSearcher);
+    final Weight filterWeight = createFilterWeight(indexSearcher, filter, field);
 
     TimeLimitingKnnCollectorManager knnCollectorManager =
         new TimeLimitingKnnCollectorManager(
@@ -94,21 +99,6 @@ abstract class AbstractKnnVectorQuery extends Query {
       return new MatchNoDocsQuery();
     }
     return createRewrittenQuery(reader, topK);
-  }
-
-  // Create a Weight for the filter query. The filter will also be enhanced to only match documents
-  // with the KNN vector field.
-  private Weight createFilterWeight(IndexSearcher indexSearcher) throws IOException {
-    if (filter == null) {
-      return null;
-    }
-    BooleanQuery booleanQuery =
-        new BooleanQuery.Builder()
-            .add(filter, BooleanClause.Occur.FILTER)
-            .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
-            .build();
-    Query rewritten = indexSearcher.rewrite(booleanQuery);
-    return indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
   }
 
   private TopDocs searchLeaf(
@@ -163,24 +153,6 @@ abstract class AbstractKnnVectorQuery extends Query {
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
       return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
-    }
-  }
-
-  static BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
-      throws IOException {
-    if (liveDocs == null && iterator instanceof BitSetIterator bitSetIterator) {
-      // If we already have a BitSet and no deletions, reuse the BitSet
-      return bitSetIterator.getBitSet();
-    } else {
-      // Create a new BitSet from matching and live docs
-      FilteredDocIdSetIterator filterIterator =
-          new FilteredDocIdSetIterator(iterator) {
-            @Override
-            protected boolean match(int doc) {
-              return liveDocs == null || liveDocs.get(doc);
-            }
-          };
-      return BitSet.of(filterIterator, maxDoc);
     }
   }
 
