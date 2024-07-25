@@ -300,6 +300,13 @@ Optimizations
 * GITHUB#13582: Stop requiring MaxScoreBulkScorer's outer window from having at
   least INNER_WINDOW_SIZE docs. (Adrien Grand)
 
+* GITHUB#13570, GITHUB#13574, GITHUB#13535: Avoid performance degradation with closing shared Arenas.
+  Closing many individual index files can potentially lead to a degradation in execution performance.
+  Index files are mmapped one-to-one with the JDK's foreign shared Arena. The JVM deoptimizes the top
+  few frames of all threads when closing a shared Arena (see JDK-8335480). We mitigate this situation
+  by 1) using a confined Arena where appropriate, and 2) grouping files from the same segment to a
+  single shared Arena. (Chris Hegarty, Michael Gibney, Uwe Schindler)
+
 Changes in runtime behavior
 ---------------------
 
