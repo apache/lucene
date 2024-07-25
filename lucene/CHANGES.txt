@@ -80,10 +80,6 @@ API Changes
 * GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
   and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
 
-* GITHUB#12624, GITHUB#12831: Allow FSTCompiler to stream to any DataOutput while building, and
-  make compile() only return the FSTMetadata. For on-heap (default) use case, please use
-  FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader()) to create the FST. (Anh Dung Bui)
-
 * GITHUB#13146, GITHUB#13148: Remove ByteBufferIndexInput and only use MemorySegment APIs
   for MMapDirectory.  (Uwe Schindler)
 
@@ -132,6 +128,11 @@ New Features
 * GITHUB#13449: Sparse index: optional skip list on top of doc values which is exposed via the
   DocValuesSkipper abstraction. A new flag is added to FieldType.java that configures whether
   to create a "skip index" for doc values. (Ignacio Vera)
+
+* GITHUB#13563: Add levels to doc values skip index. (Ignacio Vera)
+
+* GITHUB#13597: Align doc value skipper interval boundaries when an interval contains a constant
+  value. (Ignacio Vera)
 
 Improvements
 ---------------------
@@ -254,11 +255,23 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#13430: Allow configuring the search concurrency via
+  TieredMergePolicy#setTargetSearchConcurrency. This in-turn instructs the
+  merge policy to try to have at least this number of segments on the highest
+  tier. (Adrien Grand, Carlos Delgado)
+
+* GITHUB#13517: Allow configuring the search concurrency on LogDocMergePolicy
+  and LogByteSizeMergePolicy via a new #setTargetConcurrency setter.
+  (Adrien Grand)
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13548: Refactor and javadoc update for KNN vector writer classes. (Patrick Zhai)
+
+* GITHUB#13562: Add Intervals.regexp and Intervals.range methods to produce  IntervalsSource
+  for regexp and range queries. (Mayya Sharipova)
 
 Optimizations
 ---------------------
@@ -277,6 +290,16 @@ Optimizations
 
 * GITHUB#12941: Don't preserve auxiliary buffer contents in LSBRadixSorter if it grows. (Stefan Vodita)
 
+* GITHUB#13175: Stop double-checking priority queue inserts in some FacetCount classes. (Jakub Slowinski)
+
+* GITHUB#13538: Slightly reduce heap usage for HNSW and scalar quantized vector writers. (Ben Trent)
+
+* GITHUB#12100: WordBreakSpellChecker.suggestWordBreaks now does a breadth first search, allowing it to return
+  better matches with fewer evaluations (hossman)
+
+* GITHUB#13582: Stop requiring MaxScoreBulkScorer's outer window from having at
+  least INNER_WINDOW_SIZE docs. (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
@@ -293,6 +316,9 @@ Bug Fixes
 
 * GITHUB#13463: Address bug in MultiLeafKnnCollector causing #minCompetitiveSimilarity to stay artificially low in
   some corner cases. (Greg Miller)
+
+* GITHUB#13553: Correct RamUsageEstimate for scalar quantized knn vector formats so that raw vectors are correctly
+  accounted for. (Ben Trent)
 
 Other
 --------------------
@@ -523,12 +549,22 @@ API Changes
 
 * GITHUB#12854: Mark DrillSideways#createDrillDownFacetsCollector as @Deprecated. (Greg Miller)
 
+* GITHUB#12624, GITHUB#12831: Allow FSTCompiler to stream to any DataOutput while building, and
+  make compile() only return the FSTMetadata. For on-heap (default) use case, please use
+  FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader()) to create the FST. (Anh Dung Bui)
+
 New Features
 ---------------------
 * GITHUB#12679: Add support for similarity-based vector searches using [Byte|Float]VectorSimilarityQuery. Uses a new
   VectorSimilarityCollector to find all vectors scoring above a `resultSimilarity` while traversing the HNSW graph till
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
   level. (Aditya Prakash, Kaival Parikh)
+
+* GITHUB#12829: For indices newly created as of 9.10.0 onwards, IndexWriter preserves document blocks indexed via
+  IndexWriter#addDocuments or IndexWriter#updateDocuments also when index sorting is configured. Document blocks are
+  maintained alongside their parent documents during sort and merge. IndexWriterConfig accepts a parent field that is used
+  to maintain block orders if index sorting is used. Note, this is fully optional in Lucene 9.x while will be mandatory for
+  indices that use document blocks together with index sorting as of 10.0.0. (Simon Willnauer)
 
 * GITHUB#12336: Index additional data per facet label in the taxonomy. (Shai Erera, Egor Potemkin, Mike McCandless,
   Stefan Vodita)
@@ -621,7 +657,6 @@ Build
 
 Other
 ---------------------
-
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)

@@ -17,13 +17,17 @@
 
 package org.apache.lucene.search;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 /** Used for defining custom algorithms to allow searches to early terminate */
 abstract class HitsThresholdChecker {
   /** Implementation of HitsThresholdChecker which allows global hit counting */
   private static class GlobalHitsThresholdChecker extends HitsThresholdChecker {
-    private final AtomicLong globalHitCount = new AtomicLong();
+    private final LongAdder globalHitCount = new LongAdder();
+    // Cache whether the threshold has been reached already. It is not volatile or synchronized on
+    // purpose to contain the overhead of reading the value similarly to what String#hashCode()
+    // does. This does not affect correctness.
+    private boolean thresholdReached = false;
 
     GlobalHitsThresholdChecker(int totalHitsThreshold) {
       super(totalHitsThreshold);
@@ -32,12 +36,17 @@ abstract class HitsThresholdChecker {
 
     @Override
     void incrementHitCount() {
-      globalHitCount.incrementAndGet();
+      if (thresholdReached == false) {
+        globalHitCount.increment();
+      }
     }
 
     @Override
     boolean isThresholdReached() {
-      return globalHitCount.getAcquire() > getHitsThreshold();
+      if (thresholdReached) {
+        return true;
+      }
+      return thresholdReached = globalHitCount.longValue() > getHitsThreshold();
     }
 
     @Override
