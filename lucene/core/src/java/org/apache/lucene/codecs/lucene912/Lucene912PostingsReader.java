@@ -481,7 +481,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         long skipLength = docIn.readVLong();
         if (indexHasPos) {
           docIn.readVLong(); // pos FP delta
-          docIn.readVInt(); // pos buffer offset
+          docIn.readByte(); // pos buffer offset
           if (indexHasOffsetsOrPayloads) {
             docIn.readVLong(); // pay FP delta
             docIn.readVInt(); // pay buffer offset
@@ -917,7 +917,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           docIn.skipBytes(docIn.readVLong()); // impacts
 
           nextBlockPosFP += docIn.readVLong();
-          nextBlockPosUpto = docIn.readVInt();
+          nextBlockPosUpto = docIn.readByte();
           if (indexHasOffsetsOrPayloads) {
             nextBlockPayFP += docIn.readVLong();
             nextBlockPayUpto = docIn.readVInt();
@@ -1305,7 +1305,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         long skipLength = docIn.readVLong();
         if (indexHasPos) {
           docIn.readVLong(); // pos FP delta
-          docIn.readVInt(); // pos buffer offset
+          docIn.readByte(); // pos buffer offset
           if (indexHasOffsetsOrPayloads) {
             docIn.readVLong(); // pay FP delta
             docIn.readVInt(); // pay buffer offset
@@ -1672,7 +1672,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         final int numImpactBytes = docIn.readVInt();
         long skipLength = docIn.readVLong();
         nextSkipPosFP += docIn.readVLong();
-        nextSkipPosUpto = docIn.readVInt();
+        nextSkipPosUpto = docIn.readByte();
         if (indexHasOffsetsOrPayloads) {
           docIn.readVLong(); // skip pay fp delta
           docIn.readVInt(); // skip pay upto
@@ -1721,7 +1721,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
             serializedBlockImpacts.setLength(numImpactBytes);
             nextBlockPosFP += docIn.readVLong();
-            nextBlockPosUpto = docIn.readVInt();
+            nextBlockPosUpto = docIn.readByte();
             if (indexHasOffsetsOrPayloads) {
               docIn.readVLong(); // block pay fp delta
               docIn.readVInt(); // block pay upto

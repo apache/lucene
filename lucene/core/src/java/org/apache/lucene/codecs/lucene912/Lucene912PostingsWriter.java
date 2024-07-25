@@ -348,7 +348,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         spareOutput.reset();
         if (writePositions) {
           blockOutput.writeVLong(posOut.getFilePointer() - lastBlockPosFP);
-          blockOutput.writeVInt(posBufferUpto);
+          blockOutput.writeByte((byte) posBufferUpto);
           lastBlockPosFP = posOut.getFilePointer();
 
           if (writeOffsets || writePayloads) {
@@ -389,7 +389,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       docOut.writeVLong(skipOutput.size());
       if (writePositions) {
         docOut.writeVLong(posOut.getFilePointer() - lastSkipPosFP);
-        docOut.writeVInt(posBufferUpto);
+        docOut.writeByte((byte) posBufferUpto);
         lastSkipPosFP = posOut.getFilePointer();
 
         if (writeOffsets || writePayloads) {
