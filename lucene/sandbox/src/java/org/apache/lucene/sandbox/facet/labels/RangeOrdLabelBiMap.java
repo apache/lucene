@@ -24,7 +24,7 @@ import org.apache.lucene.facet.taxonomy.FacetLabel;
 /** {@link OrdLabelBiMap} for ranges. */
 public class RangeOrdLabelBiMap implements OrdLabelBiMap {
 
-  Range[] ranges;
+  private final Range[] ranges;
 
   /** Constructor that takes array of Range objects as input * */
   public RangeOrdLabelBiMap(Range[] inputRanges) {

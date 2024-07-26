@@ -31,7 +31,7 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  * also use it as an example for creating your own {@link OrdToComparable} to enable custom facets
  * top-n and sorting.
  */
-public class ComparableUtils {
+public final class ComparableUtils {
   private ComparableUtils() {}
 
   private static class SkeletalOrdGetter implements OrdinalGetter {
@@ -128,7 +128,6 @@ public class ComparableUtils {
   public static class ComparableLongIntOrd extends SkeletalOrdGetter
       implements Comparable<ComparableLongIntOrd> {
     private ComparableLongIntOrd() {}
-    ;
 
     private int secondaryRank;
     private long primaryRank;
@@ -155,7 +154,7 @@ public class ComparableUtils {
    * @param ordinals array of ordinals to sort
    * @param ordToComparable defines sort order
    */
-  public static <T extends Comparable<T> & OrdinalGetter> void sort(
+  public static <T extends Comparable<T>> void sort(
       int[] ordinals, OrdToComparable<T> ordToComparable) throws IOException {
     List<T> comparables = new ArrayList<>(ordinals.length);
     for (int i = 0; i < ordinals.length; i++) {

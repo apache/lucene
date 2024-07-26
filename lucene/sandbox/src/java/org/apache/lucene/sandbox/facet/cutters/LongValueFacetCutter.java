@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.misc;
+package org.apache.lucene.sandbox.facet.cutters;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -27,8 +27,6 @@ import org.apache.lucene.internal.hppc.IntLongHashMap;
 import org.apache.lucene.internal.hppc.LongCursor;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
-import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
-import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
 
 /**
@@ -37,7 +35,7 @@ import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
  * <p>TODO: This class is quite inefficient. Will optimise later. TODO: add support for other value
  * sources e.g: LongValues
  */
-public class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
+public final class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
   private final String field;
   // TODO: consider alternatives if this is a bottleneck
   private final LongIntHashMap valueToOrdMap;

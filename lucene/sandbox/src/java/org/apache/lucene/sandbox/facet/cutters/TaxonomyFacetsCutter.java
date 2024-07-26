@@ -27,11 +27,11 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.sandbox.facet.misc.FacetRollup;
+import org.apache.lucene.sandbox.facet.FacetRollup;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 
 /** {@link FacetCutter} for facets that use taxonomy side-car index. */
-public class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
+public final class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
   private final FacetsConfig facetsConfig;
   private final TaxonomyReader taxoReader;

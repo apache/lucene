@@ -30,7 +30,6 @@ public interface Reducer {
 
   /** Double values reducer. */
   double reduce(double a, double b);
-  ;
 
   /** Reducer that returns MAX of two values. */
   Reducer MAX =

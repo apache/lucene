@@ -23,7 +23,7 @@ import org.apache.lucene.util.PriorityQueue;
  * Class that consumes incoming ordinals, sorts them by provided Comparable, and returns first top N
  * ordinals only.
  */
-public class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
+public final class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
     implements OrdinalIterator {
 
   private final OrdToComparable<T> ordToComparable;

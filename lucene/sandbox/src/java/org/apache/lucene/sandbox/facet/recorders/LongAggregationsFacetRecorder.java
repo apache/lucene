@@ -26,7 +26,7 @@ import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
-import org.apache.lucene.sandbox.facet.misc.FacetRollup;
+import org.apache.lucene.sandbox.facet.FacetRollup;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -37,10 +37,10 @@ import org.apache.lucene.search.LongValuesSource;
  * <p>TODO: [premature optimization idea] if instead of one array we keep aggregations in two
  * LongVector (one for MAX aggregation and one for SUM) we can benefit from SIMD?
  */
-public class LongAggregationsFacetRecorder implements FacetRecorder {
+public final class LongAggregationsFacetRecorder implements FacetRecorder {
 
   private IntObjectHashMap<long[]> values;
-  private List<IntObjectHashMap<long[]>> leafValues;
+  private final List<IntObjectHashMap<long[]>> leafValues;
 
   private final LongValuesSource[] longValuesSources;
   private final Reducer[] reducers;
@@ -50,7 +50,6 @@ public class LongAggregationsFacetRecorder implements FacetRecorder {
     assert longValuesSources.length == reducers.length;
     this.longValuesSources = longValuesSources;
     this.reducers = reducers;
-    values = new IntObjectHashMap<>();
     leafValues = Collections.synchronizedList(new ArrayList<>());
   }
 

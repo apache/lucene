@@ -18,8 +18,8 @@ package org.apache.lucene.sandbox.facet.recorders;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.sandbox.facet.FacetRollup;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
-import org.apache.lucene.sandbox.facet.misc.FacetRollup;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 
 /**

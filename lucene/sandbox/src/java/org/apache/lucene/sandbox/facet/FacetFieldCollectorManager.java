@@ -19,7 +19,6 @@ package org.apache.lucene.sandbox.facet;
 import java.io.IOException;
 import java.util.Collection;
 import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
-import org.apache.lucene.sandbox.facet.misc.FacetRollup;
 import org.apache.lucene.sandbox.facet.recorders.FacetRecorder;
 import org.apache.lucene.search.CollectorManager;
 

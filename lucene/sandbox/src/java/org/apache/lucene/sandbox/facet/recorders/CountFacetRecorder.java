@@ -26,8 +26,8 @@ import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
+import org.apache.lucene.sandbox.facet.FacetRollup;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
-import org.apache.lucene.sandbox.facet.misc.FacetRollup;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 
 /**
@@ -51,9 +51,9 @@ import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
  * synchronized after computing the key's hash; or we can lock the entire map only if we need to
  * insert key, and lock single key otherwise?
  */
-public class CountFacetRecorder implements FacetRecorder {
-  IntIntHashMap values;
-  List<IntIntHashMap> perLeafValues;
+public final class CountFacetRecorder implements FacetRecorder {
+  private IntIntHashMap values;
+  private final List<IntIntHashMap> perLeafValues;
 
   /** Create. */
   public CountFacetRecorder() {
@@ -68,6 +68,9 @@ public class CountFacetRecorder implements FacetRecorder {
 
   @Override
   public LeafFacetRecorder getLeafRecorder(LeafReaderContext context) {
+    // TODO: we are planning to do some experiments with how hash maps are assigned to leaf or slice
+    // recorders, see other TODOs in this class. When we make the decision, we can collect
+    // leaf/slice recorders themselves, not the hashmaps?
     IntIntHashMap leafValues = new IntIntHashMap();
     perLeafValues.add(leafValues);
     return new CountLeafRecorder(leafValues);

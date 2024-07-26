@@ -25,7 +25,7 @@ import org.apache.lucene.internal.hppc.IntHashSet;
  *
  * <p>Can be handy to get results only for specific facets.
  */
-public class CandidateSetOrdinalIterator implements OrdinalIterator {
+public final class CandidateSetOrdinalIterator implements OrdinalIterator {
 
   private final IntHashSet candidates;
   private final OrdinalIterator sourceOrds;
