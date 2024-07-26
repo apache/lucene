@@ -22,19 +22,20 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.util.NumericUtils;
 
 /**
- * {@link RangeFacetCutter} for ranges of double values.
+ * {@link FacetCutter} for ranges of double values.
  *
  * <p>Based on {@link org.apache.lucene.facet.range.DoubleRangeFacetCounts}, this class translates
  * double ranges to long ranges using {@link NumericUtils#doubleToSortableLong} and delegates
  * faceting work to a {@link LongRangeFacetCutter}.
  */
-public class DoubleRangeFacetCutter extends RangeFacetCutter {
+public class DoubleRangeFacetCutter implements FacetCutter {
 
   LongRangeFacetCutter longRangeFacetCutter;
 
@@ -66,5 +67,22 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
   @Override
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     return longRangeFacetCutter.createLeafCutter(context);
+  }
+
+  // TODO: it is exactly the same as DoubleRangeFacetCounts#getLongRanges (protected), we should
+  // dedup
+  private LongRange[] mapDoubleRangesToSortableLong(DoubleRange[] doubleRanges) {
+    LongRange[] longRanges = new LongRange[doubleRanges.length];
+    for (int i = 0; i < longRanges.length; i++) {
+      DoubleRange dr = doubleRanges[i];
+      longRanges[i] =
+          new LongRange(
+              dr.label,
+              NumericUtils.doubleToSortableLong(dr.min),
+              true,
+              NumericUtils.doubleToSortableLong(dr.max),
+              true);
+    }
+    return longRanges;
   }
 }

@@ -27,7 +27,7 @@ import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
-/** {@link RangeFacetCutter} for ranges of long value that don't overlap. * */
+/** {@link LongRangeFacetCutter} for ranges of long value that don't overlap. * */
 class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   NonOverlappingLongRangeFacetCutter(
       MultiLongValuesSource longValuesSource,
