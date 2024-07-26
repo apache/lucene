@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import org.apache.lucene.sandbox.facet.cutters.LongValueFacetCutter;
 import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalGetter;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
@@ -140,6 +142,87 @@ public final class ComparableUtils {
         if (cmp == 0) {
           cmp = Integer.compare(o.ord, ord);
         }
+      }
+      return cmp;
+    }
+  }
+
+  /**
+   * {@link OrdToComparable} to sort ordinals by long value (descending) from {@link
+   * LongValueFacetCutter}.
+   */
+  public static OrdToComparable<ComparableLong> ordToComparableValue(
+      LongValueFacetCutter longValueFacetCutter) {
+    return new OrdToComparable<>() {
+      public ComparableLong getComparable(int ord, ComparableLong reuse) {
+        if (reuse == null) {
+          reuse = new ComparableLong();
+        }
+        reuse.ord = ord;
+        reuse.value = longValueFacetCutter.getValue(ord);
+        return reuse;
+      }
+    };
+  }
+
+  /** Used for {@link #ordToComparableValue} result. */
+  public static final class ComparableLong extends SkeletalOrdGetter
+      implements Comparable<ComparableLong> {
+    private ComparableLong() {}
+
+    private long value;
+
+    @Override
+    public int compareTo(ComparableLong o) {
+      return Long.compare(o.value, value);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj instanceof ComparableLong other) {
+        return other.value == value;
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(value);
+    }
+  }
+
+  /**
+   * {@link OrdToComparable} to sort ordinals by count (descending) from {@link CountFacetRecorder}
+   * with tie-break by long value (ascending) from {@link LongValueFacetCutter}.
+   */
+  public static OrdToComparable<ComparableCountValue> ordToComparableCountValue(
+      CountFacetRecorder countFacetRecorder, LongValueFacetCutter longValueFacetCutter) {
+    return new OrdToComparable<>() {
+      public ComparableCountValue getComparable(int ord, ComparableCountValue reuse) {
+        if (reuse == null) {
+          reuse = new ComparableCountValue();
+        }
+        reuse.ord = ord;
+        reuse.value = longValueFacetCutter.getValue(ord);
+        reuse.count = countFacetRecorder.getCount(ord);
+        return reuse;
+      }
+    };
+  }
+
+  /** Used for {@link #ordToComparableCountValue} result. */
+  public static class ComparableCountValue extends SkeletalOrdGetter
+      implements Comparable<ComparableCountValue> {
+    private ComparableCountValue() {}
+
+    private int count;
+    private long value;
+
+    @Override
+    public int compareTo(ComparableCountValue o) {
+      int cmp = Integer.compare(count, o.count);
+      if (cmp == 0) {
+        cmp = Long.compare(o.value, value);
       }
       return cmp;
     }
