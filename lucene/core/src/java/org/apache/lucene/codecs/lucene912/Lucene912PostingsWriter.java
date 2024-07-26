@@ -49,6 +49,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
 
   static final IntBlockTermState EMPTY_STATE = new IntBlockTermState();
 
+  IndexOutput metaOut;
   IndexOutput docOut;
   IndexOutput posOut;
   IndexOutput payOut;
@@ -97,6 +98,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private final CompetitiveImpactAccumulator skipCompetitiveFreqNormAccumulator =
       new CompetitiveImpactAccumulator();
 
+  private int maxImpactNumBytesAtLevel0;
+  private int maxImpactNumBytesAtLevel1;
+
   /** Spare output that we use to be able to prepend the encoded length, e.g. impacts. */
   private final ByteBuffersDataOutput spareOutput = ByteBuffersDataOutput.newResettableInstance();
 
@@ -115,14 +119,19 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private final ByteBuffersDataOutput skipOutput = ByteBuffersDataOutput.newResettableInstance();
 
   public Lucene912PostingsWriter(SegmentWriteState state) throws IOException {
+    String metaFileName = IndexFileNames.segmentFileName(
+        state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.META_EXTENSION);
     String docFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.DOC_EXTENSION);
+    metaOut = state.directory.createOutput(metaFileName, state.context);
     docOut = state.directory.createOutput(docFileName, state.context);
     IndexOutput posOut = null;
     IndexOutput payOut = null;
     boolean success = false;
     try {
+      CodecUtil.writeIndexHeader(
+          metaOut, META_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           docOut, DOC_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       final ForUtil forUtil = new ForUtil();
@@ -175,7 +184,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       success = true;
     } finally {
       if (!success) {
-        IOUtils.closeWhileHandlingException(docOut, posOut, payOut);
+        IOUtils.closeWhileHandlingException(metaOut, docOut, posOut, payOut);
       }
     }
 
@@ -343,6 +352,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       if (writeFreqs) {
         writeImpacts(competitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
         assert blockOutput.size() == 0;
+        if (spareOutput.size() > maxImpactNumBytesAtLevel0) {
+          maxImpactNumBytesAtLevel0 = Math.toIntExact(spareOutput.size());
+        }
         blockOutput.writeVLong(spareOutput.size());
         spareOutput.copyTo(blockOutput);
         spareOutput.reset();
@@ -387,6 +399,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       if (writeFreqs) {
         writeImpacts(skipCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
         numImpactBytes = spareOutput.size();
+        if (numImpactBytes > maxImpactNumBytesAtLevel1) {
+          maxImpactNumBytesAtLevel1 = Math.toIntExact(numImpactBytes);
+        }
         if (writePositions) {
           spareOutput.writeVLong(posOut.getFilePointer() - lastSkipPosFP);
           spareOutput.writeByte((byte) posBufferUpto);
@@ -595,14 +610,26 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       if (payOut != null) {
         CodecUtil.writeFooter(payOut);
       }
+      if (metaOut != null) {
+        metaOut.writeInt(maxImpactNumBytesAtLevel0);
+        metaOut.writeInt(maxImpactNumBytesAtLevel1);
+        metaOut.writeLong(docOut.getFilePointer());
+        if (posOut != null) {
+          metaOut.writeLong(posOut.getFilePointer());
+          if (payOut != null) {
+            metaOut.writeLong(payOut.getFilePointer());
+          }
+        }
+        CodecUtil.writeFooter(metaOut);
+      }
       success = true;
     } finally {
       if (success) {
-        IOUtils.close(docOut, posOut, payOut);
+        IOUtils.close(metaOut, docOut, posOut, payOut);
       } else {
-        IOUtils.closeWhileHandlingException(docOut, posOut, payOut);
+        IOUtils.closeWhileHandlingException(metaOut, docOut, posOut, payOut);
       }
-      docOut = posOut = payOut = null;
+      metaOut = docOut = posOut = payOut = null;
     }
   }
 }

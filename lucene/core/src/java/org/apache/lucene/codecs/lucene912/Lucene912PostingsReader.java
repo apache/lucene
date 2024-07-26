@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene912;
 
 import static org.apache.lucene.codecs.lucene912.ForUtil.BLOCK_SIZE;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.META_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.PAY_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.POS_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.SKIP_TOTAL_SIZE;
@@ -31,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.RandomAccess;
+
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -46,6 +48,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
@@ -66,10 +69,42 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   private final IndexInput posIn;
   private final IndexInput payIn;
 
+  private final int maxImpactNumBytesAtLevel0;
+  private final int maxImpactNumBytesAtLevel1;
+
   private final int version;
 
   /** Sole constructor. */
   public Lucene912PostingsReader(SegmentReadState state) throws IOException {
+    String metaName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.META_EXTENSION);
+    final long expectedDocFileLength, expectedPosFileLength, expectedPayFileLength;
+    try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
+      version =
+          CodecUtil.checkIndexHeader(
+              metaIn,
+              META_CODEC,
+              VERSION_START,
+              VERSION_CURRENT,
+              state.segmentInfo.getId(),
+              state.segmentSuffix);
+      maxImpactNumBytesAtLevel0 = metaIn.readInt();
+      maxImpactNumBytesAtLevel1 = metaIn.readInt();
+      expectedDocFileLength = metaIn.readLong();
+      if (state.fieldInfos.hasProx()) {
+        expectedPosFileLength = metaIn.readLong();
+        if (state.fieldInfos.hasPayloads() || state.fieldInfos.hasOffsets()) {
+          expectedPayFileLength = metaIn.readLong();
+        } else {
+          expectedPayFileLength = -1;
+        }
+      } else {
+        expectedPosFileLength = -1;
+        expectedPayFileLength = -1;
+      }
+    }
+
     boolean success = false;
     IndexInput docIn = null;
     IndexInput posIn = null;
@@ -87,15 +122,14 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
       // readahead.
       docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
-      version =
-          CodecUtil.checkIndexHeader(
+      CodecUtil.checkIndexHeader(
               docIn,
               DOC_CODEC,
-              VERSION_START,
-              VERSION_CURRENT,
+              version,
+              version,
               state.segmentInfo.getId(),
               state.segmentSuffix);
-      CodecUtil.retrieveChecksum(docIn);
+      CodecUtil.retrieveChecksum(docIn, expectedDocFileLength);
 
       if (state.fieldInfos.hasProx()) {
         String proxName =
@@ -104,7 +138,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         posIn = state.directory.openInput(proxName, state.context);
         CodecUtil.checkIndexHeader(
             posIn, POS_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
-        CodecUtil.retrieveChecksum(posIn);
+        CodecUtil.retrieveChecksum(posIn, expectedPosFileLength);
 
         if (state.fieldInfos.hasPayloads() || state.fieldInfos.hasOffsets()) {
           String payName =
@@ -115,7 +149,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           payIn = state.directory.openInput(payName, state.context);
           CodecUtil.checkIndexHeader(
               payIn, PAY_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
-          CodecUtil.retrieveChecksum(payIn);
+          CodecUtil.retrieveChecksum(payIn, expectedPayFileLength);
         }
       }
 
@@ -1213,6 +1247,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       nextSkipBlockUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       freqFP = -1;
+      serializedBlockImpacts.growNoCopy(maxImpactNumBytesAtLevel0);
+      serializedSkipImpacts.growNoCopy(maxImpactNumBytesAtLevel1);
     }
 
     @Override
@@ -1294,7 +1330,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         if (nextSkipDoc >= target) {
           final long skipEndFP = docIn.readShort() + docIn.getFilePointer();
           final int numImpactBytes = docIn.readShort();
-          serializedSkipImpacts.growNoCopy(numImpactBytes);
           docIn.readBytes(serializedSkipImpacts.bytes(), 0, numImpactBytes);
           serializedSkipImpacts.setLength(numImpactBytes);
           assert indexHasPos || docIn.getFilePointer() == skipEndFP;
@@ -1318,7 +1353,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           if (target <= lastDocInBlock) {
             blockEndFP = docIn.getFilePointer() + blockLength;
             final int numImpactBytes = docIn.readVInt();
-            serializedBlockImpacts.growNoCopy(numImpactBytes);
             docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
             serializedBlockImpacts.setLength(numImpactBytes);
             docIn.seek(skip0End);
@@ -1367,7 +1401,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         lastDocInBlock += docDelta;
         blockEndFP = docIn.getFilePointer() + blockLength;
         final int numImpactBytes = docIn.readVInt();
-        serializedBlockImpacts.growNoCopy(numImpactBytes);
         docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
         serializedBlockImpacts.setLength(numImpactBytes);
         docIn.seek(skip0End);
@@ -1597,6 +1630,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       nextSkipPosUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       posBufferUpto = BLOCK_SIZE;
+      serializedBlockImpacts.growNoCopy(maxImpactNumBytesAtLevel0);
+      serializedSkipImpacts.growNoCopy(maxImpactNumBytesAtLevel1);
     }
 
     @Override
@@ -1655,7 +1690,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         final long skipEndFP = docIn.readShort() + docIn.getFilePointer();
         final int numImpactBytes = docIn.readShort();
         if (nextSkipDoc >= target) {
-          serializedSkipImpacts.growNoCopy(numImpactBytes);
           docIn.readBytes(serializedSkipImpacts.bytes(), 0, numImpactBytes);
           serializedSkipImpacts.setLength(numImpactBytes);
         } else {
@@ -1700,7 +1734,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
           if (target <= lastDocInBlock) {
             final int numImpactBytes = docIn.readVInt();
-            serializedBlockImpacts.growNoCopy(numImpactBytes);
             docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
             serializedBlockImpacts.setLength(numImpactBytes);
             nextBlockPosFP += docIn.readVLong();

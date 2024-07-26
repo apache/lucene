@@ -321,6 +321,9 @@ import org.apache.lucene.util.packed.PackedInts;
  */
 public final class Lucene912PostingsFormat extends PostingsFormat {
 
+  /** Filename extension for some small metadata about how postings are encoded. */
+  public static final String META_EXTENSION = "psm";
+
   /**
    * Filename extension for document number, frequencies, and skip data. See chapter: <a
    * href="#Frequencies">Frequencies and Skip Data</a>
@@ -351,6 +354,7 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
   public static final int SKIP_MASK = SKIP_TOTAL_SIZE - 1;
 
   static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
+  static final String META_CODEC = "Lucene912PostingsWriterMeta";
   static final String DOC_CODEC = "Lucene912PostingsWriterDoc";
   static final String POS_CODEC = "Lucene912PostingsWriterPos";
   static final String PAY_CODEC = "Lucene912PostingsWriterPay";
