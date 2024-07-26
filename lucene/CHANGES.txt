@@ -80,10 +80,6 @@ API Changes
 * GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
   and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)
 
-* GITHUB#12624, GITHUB#12831: Allow FSTCompiler to stream to any DataOutput while building, and
-  make compile() only return the FSTMetadata. For on-heap (default) use case, please use
-  FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader()) to create the FST. (Anh Dung Bui)
-
 * GITHUB#13146, GITHUB#13148: Remove ByteBufferIndexInput and only use MemorySegment APIs
   for MMapDirectory.  (Uwe Schindler)
 
@@ -134,6 +130,9 @@ New Features
   to create a "skip index" for doc values. (Ignacio Vera)
 
 * GITHUB#13563: Add levels to doc values skip index. (Ignacio Vera)
+
+* GITHUB#13597: Align doc value skipper interval boundaries when an interval contains a constant
+  value. (Ignacio Vera)
 
 Improvements
 ---------------------
@@ -300,6 +299,13 @@ Optimizations
 
 * GITHUB#13582: Stop requiring MaxScoreBulkScorer's outer window from having at
   least INNER_WINDOW_SIZE docs. (Adrien Grand)
+
+* GITHUB#13570, GITHUB#13574, GITHUB#13535: Avoid performance degradation with closing shared Arenas.
+  Closing many individual index files can potentially lead to a degradation in execution performance.
+  Index files are mmapped one-to-one with the JDK's foreign shared Arena. The JVM deoptimizes the top
+  few frames of all threads when closing a shared Arena (see JDK-8335480). We mitigate this situation
+  by 1) using a confined Arena where appropriate, and 2) grouping files from the same segment to a
+  single shared Arena. (Chris Hegarty, Michael Gibney, Uwe Schindler)
 
 Changes in runtime behavior
 ---------------------
@@ -550,12 +556,22 @@ API Changes
 
 * GITHUB#12854: Mark DrillSideways#createDrillDownFacetsCollector as @Deprecated. (Greg Miller)
 
+* GITHUB#12624, GITHUB#12831: Allow FSTCompiler to stream to any DataOutput while building, and
+  make compile() only return the FSTMetadata. For on-heap (default) use case, please use
+  FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader()) to create the FST. (Anh Dung Bui)
+
 New Features
 ---------------------
 * GITHUB#12679: Add support for similarity-based vector searches using [Byte|Float]VectorSimilarityQuery. Uses a new
   VectorSimilarityCollector to find all vectors scoring above a `resultSimilarity` while traversing the HNSW graph till
   better-scoring nodes are available, or the best candidate is below a score of `traversalSimilarity` in the lowest
   level. (Aditya Prakash, Kaival Parikh)
+
+* GITHUB#12829: For indices newly created as of 9.10.0 onwards, IndexWriter preserves document blocks indexed via
+  IndexWriter#addDocuments or IndexWriter#updateDocuments also when index sorting is configured. Document blocks are
+  maintained alongside their parent documents during sort and merge. IndexWriterConfig accepts a parent field that is used
+  to maintain block orders if index sorting is used. Note, this is fully optional in Lucene 9.x while will be mandatory for
+  indices that use document blocks together with index sorting as of 10.0.0. (Simon Willnauer)
 
 * GITHUB#12336: Index additional data per facet label in the taxonomy. (Shai Erera, Egor Potemkin, Mike McCandless,
   Stefan Vodita)
@@ -648,7 +664,6 @@ Build
 
 Other
 ---------------------
-
 * GITHUB#11023: Removing some dead code in CheckIndex. (Jakub Slowinski)
 
 * GITHUB#11023: Removing @lucene.experimental tags in testXXX methods in CheckIndex. (Jakub Slowinski)
