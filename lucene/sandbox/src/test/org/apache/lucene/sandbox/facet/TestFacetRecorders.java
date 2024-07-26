@@ -31,7 +31,6 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.sandbox.facet.cutters.TaxonomyFacetsCutter;
-import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
@@ -372,7 +371,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     resultBuilder.append(Arrays.toString(path));
     resultBuilder.append('\n');
 
-    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
+    TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
     OrdinalIterator childrenIternator =
         new TaxonomyChildrenOrdinalIterator(

@@ -16,28 +16,27 @@
  */
 package org.apache.lucene.sandbox.facet.labels;
 
-import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.facet.range.Range;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 
-/** {@link OrdLabelBiMap} for ranges. */
-public class RangeOrdLabelBiMap implements OrdLabelBiMap {
+/** {@link OrdToLabel} for ranges. */
+public class RangeOrdToLabel implements OrdToLabel {
 
   private final Range[] ranges;
 
   /** Constructor that takes array of Range objects as input * */
-  public RangeOrdLabelBiMap(Range[] inputRanges) {
+  public RangeOrdToLabel(Range[] inputRanges) {
     ranges = inputRanges;
   }
 
   /** Constructor that takes List of Range objects as input * */
-  public RangeOrdLabelBiMap(List<? extends Range> inputRanges) {
+  public RangeOrdToLabel(List<? extends Range> inputRanges) {
     ranges = inputRanges.toArray(new Range[0]);
   }
 
   @Override
-  public FacetLabel getLabel(int ordinal) throws IOException {
+  public FacetLabel getLabel(int ordinal) {
     if (ordinal >= 0 && ordinal < ranges.length) {
       return new FacetLabel(ranges[ordinal].label);
     }
@@ -45,21 +44,11 @@ public class RangeOrdLabelBiMap implements OrdLabelBiMap {
   }
 
   @Override
-  public FacetLabel[] getLabels(int[] ordinals) throws IOException {
+  public FacetLabel[] getLabels(int[] ordinals) {
     FacetLabel[] facetLabels = new FacetLabel[ordinals.length];
     for (int i = 0; i < ordinals.length; i++) {
       facetLabels[i] = getLabel(ordinals[i]);
     }
     return facetLabels;
-  }
-
-  @Override
-  public int getOrd(FacetLabel label) {
-    throw new UnsupportedOperationException("Not yet supported for ranges");
-  }
-
-  @Override
-  public int[] getOrds(FacetLabel[] labels) {
-    throw new UnsupportedOperationException("Not yet supported for ranges");
   }
 }

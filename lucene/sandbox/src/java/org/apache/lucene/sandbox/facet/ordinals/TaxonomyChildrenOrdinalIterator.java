@@ -18,7 +18,7 @@ package org.apache.lucene.sandbox.facet.ordinals;
 
 import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
-import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.labels.LabelToOrd;
 
 /** Facets results selector to get top children for selected parent. */
 public final class TaxonomyChildrenOrdinalIterator implements OrdinalIterator {
@@ -34,7 +34,7 @@ public final class TaxonomyChildrenOrdinalIterator implements OrdinalIterator {
       OrdinalIterator sourceOrds, ParallelTaxonomyArrays.IntArray parents, int parentOrd) {
     this.sourceOrds = sourceOrds;
     this.parents = parents;
-    assert parentOrd != OrdLabelBiMap.INVALID_ORD : "Parent Ordinal is not valid";
+    assert parentOrd != LabelToOrd.INVALID_ORD : "Parent Ordinal is not valid";
     this.parentOrd = parentOrd;
   }
 

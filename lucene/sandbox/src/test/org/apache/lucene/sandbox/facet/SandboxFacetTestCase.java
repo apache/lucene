@@ -24,7 +24,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
-import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
@@ -81,7 +81,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
       throws IOException {
     OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
         ComparableUtils.ordToComparableCountOrd(countFacetRecorder);
-    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
+    TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
     OrdinalIterator childrenIterator =
         new TaxonomyChildrenOrdinalIterator(
@@ -118,7 +118,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
       String dimension,
       String... path)
       throws IOException {
-    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
+    TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
     int parentOrdinal = ordLabels.getOrd(parentLabel);
     OrdinalIterator childrenIternator =
@@ -152,7 +152,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
       int[] resultOrdinals,
       CountFacetRecorder countFacetRecorder,
       String dimension,
-      OrdLabelBiMap ordLabels)
+      OrdToLabel ordLabels)
       throws IOException {
     ComparableUtils.sort(resultOrdinals, ComparableUtils.ordToComparableOrd());
     FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
@@ -175,7 +175,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
   int getSpecificValue(
       CountFacetRecorder countFacetRecorder, TaxonomyReader taxoReader, String... path)
       throws IOException {
-    OrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
+    TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel label = new FacetLabel(path);
     int facetOrd = ordLabels.getOrd(label);
     return countFacetRecorder.getCount(facetOrd);

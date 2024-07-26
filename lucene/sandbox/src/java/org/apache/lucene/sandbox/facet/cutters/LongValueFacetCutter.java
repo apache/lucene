@@ -27,15 +27,15 @@ import org.apache.lucene.internal.hppc.IntLongHashMap;
 import org.apache.lucene.internal.hppc.LongCursor;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
-import org.apache.lucene.sandbox.facet.labels.OrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 
 /**
- * {@link FacetCutter} and {@link OrdLabelBiMap} for distinct long values.
+ * {@link FacetCutter} and {@link OrdToLabel} for distinct long values.
  *
  * <p>TODO: This class is quite inefficient. Will optimise later. TODO: add support for other value
  * sources e.g: LongValues
  */
-public final class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
+public final class LongValueFacetCutter implements FacetCutter, OrdToLabel {
   private final String field;
   // TODO: consider alternatives if this is a bottleneck
   private final LongIntHashMap valueToOrdMap;
@@ -111,11 +111,12 @@ public final class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
   }
 
   /**
-   * Get value by ordinal. Should only be called after collection phase. TODO: we need it to tie
-   * break sort by value. Alternatively we can sort by label (then we don't need this method), but
-   * we would have to convert FacetLabel to "long" to have the same order... Overall, it is probably
-   * not important to tie break by value, and we can tie break by ord same as for other facets; but
-   * for now we don't want to change results order just in case.
+   * Get value by ordinal. Should only be called after collection phase.
+   *
+   * <p>TODO: we need it to tie break sort by value. Alternatively we can sort by label (then we
+   * don't need this method), but we would have to convert FacetLabel to "long" to have the same
+   * order... Overall, it is probably not important to tie break by value, and we can tie break by
+   * ord same as for other facets; but for now we don't want to change results order just in case.
    *
    * @param ordinal facet ordinal.
    * @return long value
@@ -131,23 +132,5 @@ public final class LongValueFacetCutter implements FacetCutter, OrdLabelBiMap {
       facetLabels[i] = getLabel(ordinals[i]);
     }
     return facetLabels;
-  }
-
-  @Override
-  public int getOrd(FacetLabel label) throws IOException {
-    long value = Long.parseLong(label.lastComponent());
-    if (valueToOrdMap.containsKey(value)) {
-      return valueToOrdMap.get(value);
-    }
-    return -1;
-  }
-
-  @Override
-  public int[] getOrds(FacetLabel[] labels) throws IOException {
-    int[] ords = new int[labels.length];
-    for (int i = 0; i < labels.length; i++) {
-      ords[i] = getOrd(labels[i]);
-    }
-    return ords;
   }
 }
