@@ -1971,7 +1971,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   }
 
   /**
-   * @see Lucene912PostingsWriter#writeVLong15(org.apache.lucene.store.DataOutput, int)
+   * @see Lucene912PostingsWriter#writeVLong15(org.apache.lucene.store.DataOutput, long)
    */
   static long readVLong15(DataInput in) throws IOException {
     short s = in.readShort();
