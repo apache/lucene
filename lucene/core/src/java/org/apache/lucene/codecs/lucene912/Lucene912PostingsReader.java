@@ -524,7 +524,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         if (docFreq - blockUpto >= BLOCK_SIZE) {
           final long skip0Len = docIn.readVLong(); // skip len
           final long skip0End = docIn.getFilePointer() + skip0Len;
-          int docDelta = docIn.readVInt();
+          int docDelta = readVInt15(docIn);
           lastDocInBlock += docDelta;
 
           if (target <= lastDocInBlock) {
@@ -533,7 +533,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           }
 
           // skip block
-          docIn.skipBytes(docIn.readVLong());
+          docIn.skipBytes(readVLong15(docIn));
           blockUpto += BLOCK_SIZE;
         } else {
           lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
@@ -874,13 +874,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
       if (docFreq - blockUpto >= BLOCK_SIZE) {
         docIn.readVLong(); // skip0Len
-        final int docDelta = docIn.readVInt();
+        final int docDelta = readVInt15(docIn);
         lastDocInBlock += docDelta;
-        docIn.readVLong(); // block length
+        readVLong15(docIn); // block length
         docIn.skipBytes(docIn.readVLong()); // impacts
 
         nextBlockPosFP += docIn.readVLong();
-        nextBlockPosUpto = docIn.readVInt();
+        nextBlockPosUpto = docIn.readByte();
         if (indexHasOffsetsOrPayloads) {
           nextBlockPayFP += docIn.readVLong();
           nextBlockPayUpto = docIn.readVInt();
@@ -894,6 +894,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
+      if (true) return advance(doc+1);
       if (doc >= lastDocInBlock) { // advance level 0 skip data
         moveToNextBlock();
       }
@@ -931,10 +932,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
         if (docFreq - blockUpto >= BLOCK_SIZE) {
           docIn.readVLong(); // skip0Len
-          final int docDelta = docIn.readVInt();
+          final int docDelta = readVInt15(docIn);
           lastDocInBlock += docDelta;
 
-          final long blockLength = docIn.readVLong();
+          final long blockLength = readVLong15(docIn);
           final long blockEndFP = docIn.getFilePointer() + blockLength;
           docIn.skipBytes(docIn.readVLong()); // impacts
 
@@ -1345,8 +1346,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         if (docFreq - blockUpto >= BLOCK_SIZE) {
           final long skip0Len = docIn.readVLong(); // skip len
           final long skip0End = docIn.getFilePointer() + skip0Len;
-          int docDelta = docIn.readVInt();
-          long blockLength = docIn.readVLong();
+          int docDelta = readVInt15(docIn);
+          long blockLength = readVLong15(docIn);
 
           lastDocInBlock += docDelta;
 
@@ -1396,8 +1397,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       if (docFreq - blockUpto >= BLOCK_SIZE) {
         final long skip0Len = docIn.readVLong(); // skip len
         final long skip0End = docIn.getFilePointer() + skip0Len;
-        final int docDelta = docIn.readVInt();
-        final long blockLength = docIn.readVLong();
+        final int docDelta = readVInt15(docIn);
+        final long blockLength = readVLong15(docIn);
         lastDocInBlock += docDelta;
         blockEndFP = docIn.getFilePointer() + blockLength;
         final int numImpactBytes = docIn.readVInt();
@@ -1726,8 +1727,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
         if (docFreq - blockUpto >= BLOCK_SIZE) {
           docIn.readVLong(); // skip len
-          int docDelta = docIn.readVInt();
-          long blockLength = docIn.readVLong();
+          int docDelta = readVInt15(docIn);
+          long blockLength = readVLong15(docIn);
           blockEndFP = docIn.getFilePointer() + blockLength;
 
           lastDocInBlock += docDelta;
@@ -1954,6 +1955,30 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     @Override
     public long cost() {
       return docFreq;
+    }
+  }
+
+  /**
+   * @see Lucene912PostingsWriter#writeVInt15(org.apache.lucene.store.DataOutput, int)
+   */
+  static int readVInt15(DataInput in) throws IOException {
+    short s = in.readShort();
+    if (s >= 0) {
+      return s;
+    } else {
+      return (s & 0x7FFF) | (in.readVInt() << 15);
+    }
+  }
+
+  /**
+   * @see Lucene912PostingsWriter#writeVLong15(org.apache.lucene.store.DataOutput, int)
+   */
+  static long readVLong15(DataInput in) throws IOException {
+    short s = in.readShort();
+    if (s >= 0) {
+      return s;
+    } else {
+      return (s & 0x7FFFL) | (in.readVLong() << 15);
     }
   }
 

@@ -341,6 +341,28 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     lastDocID = docID;
   }
 
+  /**
+   * Special vints that are encoded on 2 bytes if they require 15 bits or less.
+   * VInt becomes especially slow when the number of bytes is variable, so this special layout helps in the case when the number likely requires 15 bits or less
+   */
+  static void writeVInt15(DataOutput out, int v) throws IOException {
+    assert v >= 0;
+    writeVLong15(out, v);
+  }
+
+  /**
+   * @see #writeVInt15(DataOutput, int)
+   */
+  static void writeVLong15(DataOutput out, long v) throws IOException {
+    assert v >= 0;
+    if ((v & ~0x7FFFL) == 0) {
+      out.writeShort((short) v);
+    } else {
+      out.writeShort((short) (0x8000 | (v & 0x7FFF)));
+      out.writeVLong(v >> 15);
+    }
+  }
+
   private void flushDocBlock(boolean finishTerm) throws IOException {
     assert docBufferUpto != 0;
 
@@ -376,8 +398,10 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         pforUtil.encode(freqBuffer, blockOutput);
       }
 
-      spareOutput.writeVInt(docID - lastBlockDocID);
-      spareOutput.writeVLong(blockOutput.size());
+      // docID - lastBlockDocID is at least 128, so it can never fit a single byte with a vint
+      // Even if we subtracted 128, only extremely dense blocks would be eligible to a single byte so let's go with 2 bytes right away
+      writeVInt15(spareOutput, docID - lastBlockDocID);
+      writeVLong15(spareOutput, blockOutput.size());
       numSkipBytes += spareOutput.size();
       skipOutput.writeVLong(numSkipBytes);
       spareOutput.copyTo(skipOutput);
