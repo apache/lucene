@@ -382,30 +382,39 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
 
     if ((docCount & SKIP_MASK) == 0) { // true every 32 blocks (4,096 docs)
       docOut.writeVInt(docID - lastSkipDocID);
+      long numImpactBytes = spareOutput.size();
+      final long level1End;
       if (writeFreqs) {
         writeImpacts(skipCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
-        docOut.writeVLong(spareOutput.size());
-      }
-      docOut.writeVLong(skipOutput.size());
-      if (writePositions) {
-        // 4,096 docs cannot possibly require more than 2B bytes
-        docOut.writeInt(Math.toIntExact(posOut.getFilePointer() - lastSkipPosFP));
-        docOut.writeByte((byte) posBufferUpto);
-        lastSkipPosFP = posOut.getFilePointer();
-
-        if (writeOffsets || writePayloads) {
-          // 4,096 docs cannot possibly require more than 2B bytes
-          docOut.writeInt(Math.toIntExact(payOut.getFilePointer() - lastSkipPayFP));
-          docOut.writeInt(payloadByteUpto);
-          lastSkipPayFP = payOut.getFilePointer();
+        numImpactBytes = spareOutput.size();
+        if (writePositions) {
+          spareOutput.writeVLong(posOut.getFilePointer() - lastSkipPosFP);
+          spareOutput.writeByte((byte) posBufferUpto);
+          lastSkipPosFP = posOut.getFilePointer();
+          if (writeOffsets || writePayloads) {
+            spareOutput.writeVLong(payOut.getFilePointer() - lastSkipPayFP);
+            spareOutput.writeVInt(payloadByteUpto);
+            lastSkipPayFP = payOut.getFilePointer();
+          }
         }
-      }
-      if (writeFreqs) {
+        final long level1Len = 2 * Short.BYTES + spareOutput.size() + skipOutput.size();
+        docOut.writeVLong(level1Len);
+        level1End = docOut.getFilePointer() + level1Len;
+        // There are at most 128 impacts, that require at most 2 bytes each
+        assert numImpactBytes <= Short.MAX_VALUE;
+        // Like impacts plus a few vlongs, still way under the max short value
+        assert spareOutput.size() + Short.BYTES <= Short.MAX_VALUE;
+        docOut.writeShort((short) (spareOutput.size() + Short.BYTES));
+        docOut.writeShort((short) numImpactBytes);
         spareOutput.copyTo(docOut);
         spareOutput.reset();
+      } else {
+        docOut.writeVLong(skipOutput.size());
+        level1End = docOut.getFilePointer() + skipOutput.size();
       }
       skipOutput.copyTo(docOut);
       skipOutput.reset();
+      assert docOut.getFilePointer() == level1End : docOut.getFilePointer() + " " + level1End;
       lastSkipDocID = docID;
       skipCompetitiveFreqNormAccumulator.clear();
     } else if (finishTerm) {

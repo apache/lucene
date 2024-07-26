@@ -18,11 +18,14 @@ package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
 
+import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FeatureField;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -277,14 +280,14 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     dir.close();
   }
 
-  public void test1030PostingAndFreq() throws IOException {
+  public void test10000PostingAndFreqAndPos() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
     iwc.setCodec(getCodec());
     IndexWriter iw = new IndexWriter(dir, iwc);
-    for (int i = 0; i < 1030; ++i) {
+    for (int i = 0; i < 10000; ++i) {
       Document doc = new Document();
-      doc.add(new FeatureField("", "something", i + 1));
+      doc.add(new TextField("", "something", Store.NO));
       iw.addDocument(doc);
     }
     DirectoryReader ir = DirectoryReader.open(iw);
@@ -295,17 +298,13 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     TermsEnum termsEnum = terms.iterator();
     assertNotNull(termsEnum.next());
     assertEquals(termsEnum.term(), new BytesRef("something"));
-    PostingsEnum pe = termsEnum.postings(null, PostingsEnum.FREQS);
-    for (int i = 0; i < 1030; ++i) {
+    PostingsEnum pe = termsEnum.postings(null, PostingsEnum.POSITIONS);
+    for (int i = 0; i < 10000; ++i) {
       assertEquals(i, pe.nextDoc());
-      int encoded = Float.floatToIntBits(i + 1) >>> 15;
-      float decoded = Float.intBitsToFloat(encoded << 15);
-      assertEquals(decoded, Float.intBitsToFloat(pe.freq() << 15), 0f);
+      assertEquals(1, pe.freq());
+      assertEquals(0, pe.nextPosition());
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
-    pe = termsEnum.postings(null, PostingsEnum.FREQS);
-    assertEquals(1029, pe.advance(1029));
-    assertEquals(1028f, Float.intBitsToFloat(pe.freq() << 15), 0f);
     assertNull(termsEnum.next());
     ir.close();
     iw.close();

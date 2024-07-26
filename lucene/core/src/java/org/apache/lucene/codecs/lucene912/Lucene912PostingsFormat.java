@@ -165,10 +165,10 @@ import org.apache.lucene.util.packed.PackedInts;
  *         <li>PackedBlock --&gt; Level0SkipData, PackedDocDeltaBlock, PackedFreqBlock?
  *         <li>VIntBlock --&gt;
  *             &lt;DocDelta[,Freq?]&gt;<sup>DocFreq-PackedBlockSize*PackedDocBlockNum</sup>
- *         <li>Level1SkipData --&gt; DocDelta, ImpactLength, SkipLength, PosFPDelta?, NextPosUpto?,
- *             PayFPDelta?, NextPayByteUpto?, Impacts?
- *         <li>Level0SkipData --&gt; Skip0Length, DocDelta, PackedBlockLength, ImpactLength?,
- *             Impacts?, PosFPDelta?, NextPosUpto?, PayFPDelta?, NextPayByteUpto?
+ *         <li>Level1SkipData --&gt; DocDelta, DocFPDelta, Skip1Length?, ImpactLength?, Impacts?,
+ *             PosFPDelta?, NextPosUpto?, PayFPDelta?, NextPayByteUpto?
+ *         <li>Level0SkipData --&gt; Skip0Length, DocDelta, DocFPDelta, PackedBlockLength,
+ *             ImpactLength?, Impacts?, PosFPDelta?, NextPosUpto?, PayFPDelta?, NextPayByteUpto?
  *         <li>PackedFreqBlock --&gt; {@link PackedInts PackedInts}, uses patching
  *         <li>PackedDocDeltaBlock --&gt; {@link PackedInts PackedInts}, does not use patching
  *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}

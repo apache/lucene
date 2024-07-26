@@ -472,28 +472,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
 
         nextSkipDoc += docIn.readVInt();
-        long impactLength;
-        if (indexHasFreq) {
-          impactLength = docIn.readVLong();
-        } else {
-          impactLength = 0L;
-        }
-        long skipLength = docIn.readVLong();
-
-        int posLength = 0;
-        if (indexHasPos) {
-          // pos FP delta and pos buffer offset
-          posLength = Integer.BYTES + Byte.BYTES;
-          if (indexHasOffsetsOrPayloads) {
-            // pay FP delta and pay buffer offset
-            posLength += 2 * Integer.BYTES;
-          }
-        }
-        nextSkipOffset = docIn.getFilePointer() + posLength + impactLength + skipLength;
+        nextSkipOffset = docIn.readVLong() + docIn.getFilePointer();
 
         if (nextSkipDoc >= target) {
-          // skip pos data and impacts
-          docIn.skipBytes(posLength + impactLength);
+          if (indexHasFreq) {
+            // skip impacts and pos skip data
+            docIn.skipBytes(docIn.readShort());
+          }
           break;
         }
       }
@@ -819,19 +804,20 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
 
         nextSkipDoc += docIn.readVInt();
-        long impactLength = docIn.readVLong();
-        long skipLength = docIn.readVLong();
-        nextSkipPosFP += docIn.readInt();
+        long delta = docIn.readVLong();
+        nextSkipDocFP = delta + docIn.getFilePointer();
+
+        final long skipEndFP = docIn.readShort() + docIn.getFilePointer();
+        docIn.skipBytes(docIn.readShort()); // impacts
+        nextSkipPosFP += docIn.readVLong();
         nextSkipPosUpto = docIn.readByte();
         if (indexHasOffsetsOrPayloads) {
-          nextSkipPayFP += docIn.readInt();
-          nextSkipPayUpto = docIn.readInt();
+          nextSkipPayFP += docIn.readVLong();
+          nextSkipPayUpto = docIn.readVInt();
         }
-        nextSkipDocFP = docIn.getFilePointer() + impactLength + skipLength;
+        assert docIn.getFilePointer() == skipEndFP;
 
         if (nextSkipDoc >= target) {
-          // skip impacts
-          docIn.skipBytes(impactLength);
           break;
         }
       }
@@ -1303,24 +1289,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
 
         nextSkipDoc += docIn.readVInt();
-        final int numImpactBytes = docIn.readVInt();
-        long skipLength = docIn.readVLong();
+        nextSkipOffset = docIn.readVLong() + docIn.getFilePointer();
 
-        if (indexHasPos) {
-          // pos FP delta and pos buffer offset
-          int numPosBytes = Integer.BYTES + Byte.BYTES;
-          if (indexHasOffsetsOrPayloads) {
-            // pay FP delta and pay buffer offset
-            numPosBytes += 2 * Integer.BYTES;
-          }
-          docIn.skipBytes(numPosBytes);
-        }
-        nextSkipOffset = docIn.getFilePointer() + numImpactBytes + skipLength;
-
-        if (target <= nextSkipDoc) {
+        if (nextSkipDoc >= target) {
+          final long skipEndFP = docIn.readShort() + docIn.getFilePointer();
+          final int numImpactBytes = docIn.readShort();
           serializedSkipImpacts.growNoCopy(numImpactBytes);
           docIn.readBytes(serializedSkipImpacts.bytes(), 0, numImpactBytes);
           serializedSkipImpacts.setLength(numImpactBytes);
+          assert indexHasPos || docIn.getFilePointer() == skipEndFP;
+          docIn.seek(skipEndFP);
           break;
         }
       }
@@ -1672,21 +1650,23 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
 
         nextSkipDoc += docIn.readVInt();
-        final int numImpactBytes = docIn.readVInt();
-        long skipLength = docIn.readVLong();
-        nextSkipPosFP += docIn.readInt();
-        nextSkipPosUpto = docIn.readByte();
-        if (indexHasOffsetsOrPayloads) {
-          // pay FP delta and pay upto
-          docIn.skipBytes(Integer.BYTES * 2);
-        }
+        nextSkipDocFP = docIn.readVLong() + docIn.getFilePointer();
 
-        nextSkipDocFP = docIn.getFilePointer() + numImpactBytes + skipLength;
-
+        final long skipEndFP = docIn.readShort() + docIn.getFilePointer();
+        final int numImpactBytes = docIn.readShort();
         if (nextSkipDoc >= target) {
           serializedSkipImpacts.growNoCopy(numImpactBytes);
           docIn.readBytes(serializedSkipImpacts.bytes(), 0, numImpactBytes);
           serializedSkipImpacts.setLength(numImpactBytes);
+        } else {
+          docIn.skipBytes(numImpactBytes);
+        }
+        nextSkipPosFP += docIn.readVLong();
+        nextSkipPosUpto = docIn.readByte();
+        assert indexHasOffsetsOrPayloads || docIn.getFilePointer() == skipEndFP;
+
+        if (nextSkipDoc >= target) {
+          docIn.seek(skipEndFP);
           break;
         }
       }
