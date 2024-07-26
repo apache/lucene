@@ -23,16 +23,13 @@ import org.apache.lucene.util.NumericUtils;
 
 /** {@link FacetCutter} for ranges * */
 public abstract class RangeFacetCutter implements FacetCutter {
-  // TODO: we don't always have field, e.g. for custom DoubleValuesSources - let's remove it from
-  // here?
-  String field;
 
   // TODO: make the constructor also take in requested value sources and ranges
   // Ranges can be done now, we need to make a common interface for ValueSources
-  RangeFacetCutter(String field) {
-    this.field = field;
-  }
+  RangeFacetCutter() {}
 
+  // TODO: it is exactly the same as DoubleRangeFacetCounts#getLongRanges (protected), we should
+  // dedup
   LongRange[] mapDoubleRangesToSortableLong(DoubleRange[] doubleRanges) {
     LongRange[] longRanges = new LongRange[doubleRanges.length];
     for (int i = 0; i < longRanges.length; i++) {

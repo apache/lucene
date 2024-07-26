@@ -48,9 +48,8 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
   LongRange[] longRanges;
 
   /** Constructor. */
-  public DoubleRangeFacetCutter(
-      String field, MultiDoubleValuesSource valuesSource, DoubleRange[] doubleRanges) {
-    super(field);
+  public DoubleRangeFacetCutter(MultiDoubleValuesSource valuesSource, DoubleRange[] doubleRanges) {
+    super();
     this.multiDoubleValuesSource = valuesSource;
     this.singleDoubleValuesSource = MultiDoubleValuesSource.unwrapSingleton(valuesSource);
     this.doubleRanges = doubleRanges;
@@ -61,8 +60,7 @@ public class DoubleRangeFacetCutter extends RangeFacetCutter {
     }
     this.longRanges = mapDoubleRangesToSortableLong(doubleRanges);
     this.longRangeFacetCutter =
-        LongRangeFacetCutter.create(
-            field, multiLongValuesSource, singleLongValuesSource, longRanges);
+        LongRangeFacetCutter.create(multiLongValuesSource, singleLongValuesSource, longRanges);
   }
 
   @Override

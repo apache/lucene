@@ -30,11 +30,10 @@ import org.apache.lucene.search.LongValuesSource;
 /** {@link RangeFacetCutter} for ranges of long value that don't overlap. * */
 class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   NonOverlappingLongRangeFacetCutter(
-      String field,
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges) {
-    super(field, longValuesSource, singleLongValuesSource, longRanges);
+    super(longValuesSource, singleLongValuesSource, longRanges);
   }
 
   @Override

@@ -101,7 +101,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -169,7 +169,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -192,7 +192,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         };
 
     valuesSource = MultiLongValuesSource.fromLongField("field");
-    longRangeFacetCutter = LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+    longRangeFacetCutter = LongRangeFacetCutter.create(valuesSource, inputRanges);
     countRecorder = new CountFacetRecorder();
 
     collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter, null, countRecorder);
@@ -217,7 +217,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         };
 
     valuesSource = MultiLongValuesSource.fromLongField("field");
-    longRangeFacetCutter = LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+    longRangeFacetCutter = LongRangeFacetCutter.create(valuesSource, inputRanges);
     countRecorder = new CountFacetRecorder();
 
     collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter, null, countRecorder);
@@ -279,7 +279,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -326,7 +326,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -371,7 +371,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -408,7 +408,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -448,7 +448,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -521,8 +521,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
           new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, false)
         };
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
-    LongRangeFacetCutter fieldCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+    LongRangeFacetCutter fieldCutter = LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder fieldCountRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> fieldCollectorManager =
         new FacetFieldCollectorManager<>(fieldCutter, null, fieldCountRecorder);
@@ -621,7 +620,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiDoubleValuesSource valuesSource = MultiDoubleValuesSource.fromDoubleField("field");
     DoubleRangeFacetCutter doubleRangeFacetCutter =
-        new DoubleRangeFacetCutter("field", valuesSource, inputRanges);
+        new DoubleRangeFacetCutter(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -667,7 +666,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiDoubleValuesSource valuesSource = MultiDoubleValuesSource.fromDoubleField("field");
     DoubleRangeFacetCutter doubleRangeFacetCutter =
-        new DoubleRangeFacetCutter("field", valuesSource, inputRanges);
+        new DoubleRangeFacetCutter(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -725,7 +724,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiDoubleValuesSource valuesSource = MultiDoubleValuesSource.fromDoubleField("field");
     DoubleRangeFacetCutter doubleRangeFacetCutter =
-        new DoubleRangeFacetCutter("field", valuesSource, inputRanges);
+        new DoubleRangeFacetCutter(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -869,7 +868,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         mvs = MultiLongValuesSource.fromLongField("field");
       }
 
-      LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("field", mvs, ranges);
+      LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create(mvs, ranges);
       CountFacetRecorder countRecorder = new CountFacetRecorder();
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -1032,7 +1031,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       }*/
       final MultiLongValuesSource mvs = MultiLongValuesSource.fromLongField("field");
 
-      LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create("field", mvs, ranges);
+      LongRangeFacetCutter longRangeFacetCutter = LongRangeFacetCutter.create(mvs, ranges);
       CountFacetRecorder countRecorder = new CountFacetRecorder();
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -1193,8 +1192,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         mvs = MultiDoubleValuesSource.fromDoubleField("field");
       }
 
-      DoubleRangeFacetCutter doubleRangeFacetCutter =
-          new DoubleRangeFacetCutter("field", mvs, ranges);
+      DoubleRangeFacetCutter doubleRangeFacetCutter = new DoubleRangeFacetCutter(mvs, ranges);
       CountFacetRecorder countRecorder = new CountFacetRecorder();
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -1351,8 +1349,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         fastMatchFilter = null;
       }*/
       final MultiDoubleValuesSource mvs = MultiDoubleValuesSource.fromDoubleField("field");
-      DoubleRangeFacetCutter doubleRangeFacetCutter =
-          new DoubleRangeFacetCutter("field", mvs, ranges);
+      DoubleRangeFacetCutter doubleRangeFacetCutter = new DoubleRangeFacetCutter(mvs, ranges);
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(doubleRangeFacetCutter, null, countRecorder);
@@ -1422,7 +1419,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -1473,7 +1470,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiLongValuesSource valuesSource = MultiLongValuesSource.fromLongField("field");
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("field", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -1598,7 +1595,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     MultiDoubleValuesSource valuesSource = MultiDoubleValuesSource.fromSingleValued(vs);
     DoubleRangeFacetCutter doubleRangeFacetCutter =
-        new DoubleRangeFacetCutter("field", valuesSource, ranges);
+        new DoubleRangeFacetCutter(valuesSource, ranges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =

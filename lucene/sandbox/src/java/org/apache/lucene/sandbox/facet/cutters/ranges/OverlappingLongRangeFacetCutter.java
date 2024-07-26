@@ -40,11 +40,10 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   private final LongRangeNode root;
 
   OverlappingLongRangeFacetCutter(
-      String field,
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges) {
-    super(field, longValuesSource, singleLongValuesSource, longRanges);
+    super(longValuesSource, singleLongValuesSource, longRanges);
 
     // Build binary tree on top of intervals:
     root = split(0, elementaryIntervals.size(), elementaryIntervals);

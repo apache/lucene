@@ -227,7 +227,7 @@ public class SandboxFacetsExample {
     inputRanges[1] = new LongRange("5-10", 5, false, 10, true);
 
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -271,7 +271,7 @@ public class SandboxFacetsExample {
     inputRanges[1] = new LongRange("0-10", 0, true, 10, true);
 
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
@@ -315,7 +315,7 @@ public class SandboxFacetsExample {
     inputRanges[1] = new LongRange("5-10", 5, false, 10, true);
 
     LongRangeFacetCutter longRangeFacetCutter =
-        LongRangeFacetCutter.create("Price", valuesSource, inputRanges);
+        LongRangeFacetCutter.create(valuesSource, inputRanges);
 
     // initialise the aggregations to be computed - a values source + reducer
     LongValuesSource[] longValuesSources = new LongValuesSource[2];

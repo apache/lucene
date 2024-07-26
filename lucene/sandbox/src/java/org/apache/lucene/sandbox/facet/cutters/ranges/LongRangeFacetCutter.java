@@ -51,31 +51,29 @@ public abstract class LongRangeFacetCutter extends RangeFacetCutter {
 
   /** Create {@link FacetCutter} for provided value source and long ranges. */
   public static LongRangeFacetCutter create(
-      String field,
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges) {
     if (areOverlappingRanges(longRanges)) {
       return new OverlappingLongRangeFacetCutter(
-          field, longValuesSource, singleLongValuesSource, longRanges);
+          longValuesSource, singleLongValuesSource, longRanges);
     }
     return new NonOverlappingLongRangeFacetCutter(
-        field, longValuesSource, singleLongValuesSource, longRanges);
+        longValuesSource, singleLongValuesSource, longRanges);
   }
 
   public static LongRangeFacetCutter create(
-      String field, MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
-    return create(field, longValuesSource, null, longRanges);
+      MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
+    return create(longValuesSource, null, longRanges);
   }
 
   // caller handles conversion of Doubles and DoubleRange to Long and LongRange
   // ranges need not be sorted
   LongRangeFacetCutter(
-      String field,
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges) {
-    super(field);
+    super();
     valuesSource = longValuesSource;
     if (singleLongValuesSource != null) {
       singleValues = singleLongValuesSource;
