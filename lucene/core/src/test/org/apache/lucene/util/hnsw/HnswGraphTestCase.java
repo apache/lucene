@@ -218,6 +218,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors.size());
+    expectThrows(IllegalStateException.class, () -> builder.addGraphNode(0));
 
     // Recreate the graph while indexing with the same random seed and write it out
     HnswGraphBuilder.randSeed = seed;
@@ -1014,13 +1015,15 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     builder.setBatchSize(100);
     builder.build(size);
     exec.shutdownNow();
-    OnHeapHnswGraph graph = builder.getGraph();
+    OnHeapHnswGraph graph = builder.getCompletedGraph();
     assertTrue(graph.entryNode() != -1);
     assertEquals(size, graph.size());
     assertEquals(size - 1, graph.maxNodeId());
     for (int l = 0; l < graph.numLevels(); l++) {
       assertNotNull(graph.getNodesOnLevel(l));
     }
+    // cannot build twice
+    expectThrows(IllegalStateException.class, () -> builder.build(size));
   }
 
   public void testAllNodesVisitedInSingleLevel() throws IOException {

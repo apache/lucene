@@ -133,6 +133,21 @@ final class SegmentTermsEnumFrame {
     loadBlock();
   }
 
+  void prefetchBlock() throws IOException {
+    if (nextEnt != -1) {
+      // Already loaded
+      return;
+    }
+
+    // Clone the IndexInput lazily, so that consumers
+    // that just pull a TermsEnum to
+    // seekExact(TermState) don't pay this cost:
+    ste.initIndexInput();
+
+    // TODO: Could we know the number of bytes to prefetch?
+    ste.in.prefetch(fp, 1);
+  }
+
   /* Does initial decode of next block of terms; this
   doesn't actually decode the docFreq, totalTermFreq,
   postings details (frq/prx offset, etc.) metadata;

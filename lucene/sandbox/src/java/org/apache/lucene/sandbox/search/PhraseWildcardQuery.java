@@ -56,6 +56,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.mutable.MutableValueBool;
 
 /**
@@ -387,7 +388,8 @@ public class PhraseWildcardQuery extends Query {
       Terms terms = leafReaderContext.reader().terms(term.field());
       if (terms != null) {
         checkTermsHavePositions(terms);
-        TermState termState = termStates.get(leafReaderContext);
+        IOSupplier<TermState> supplier = termStates.get(leafReaderContext);
+        TermState termState = supplier == null ? null : supplier.get();
         if (termState != null) {
           termMatchesInSegment = true;
           numMatches++;
