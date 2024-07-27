@@ -92,7 +92,7 @@ public class TestLucene99ScalarQuantizedVectorsWriter extends LuceneTestCase {
         new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors);
     ScalarQuantizer scalarQuantizer =
         Lucene99ScalarQuantizedVectorsWriter.buildScalarQuantizer(
-          vectorValues, 30, vectorSimilarityFunction, confidenceInterval, bits);
+            vectorValues, 30, vectorSimilarityFunction, confidenceInterval, bits);
     assertEquals(expectedQuantiles[0], scalarQuantizer.getLowerQuantile(), 0.0001f);
     assertEquals(expectedQuantiles[1], scalarQuantizer.getUpperQuantile(), 0.0001f);
   }
