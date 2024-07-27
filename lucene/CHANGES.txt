@@ -12,6 +12,8 @@ API Changes
 
 * GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov) 
 
+* GITHUB#13612: Hunspell: add Suggester#proceedPastRep to avoid losing relevant suggestions. (Peter Gromov)
+
 New Features
 ---------------------
 
