@@ -128,6 +128,11 @@ public final class VectorUtil {
     return v;
   }
 
+  public static boolean isUnitVector(float[] v) {
+    double l1norm = IMPL.dotProduct(v, v);
+    return Math.abs(l1norm - 1.0d) <= 1e-4;
+  }
+
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm.
    *

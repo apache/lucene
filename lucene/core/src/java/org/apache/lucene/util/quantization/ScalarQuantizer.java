@@ -30,6 +30,7 @@ import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.Selector;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Will scalar quantize float vectors into `int8` byte values. This is a lossy transformation.
@@ -113,6 +114,7 @@ public class ScalarQuantizer {
    */
   public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert src.length == dest.length;
+    assert similarityFunction != VectorSimilarityFunction.COSINE || VectorUtil.isUnitVector(src);
     float correction = 0;
     for (int i = 0; i < src.length; i++) {
       correction += quantizeFloat(src[i], dest, i);
@@ -332,6 +334,7 @@ public class ScalarQuantizer {
       int totalVectorCount,
       byte bits)
       throws IOException {
+    assert function != VectorSimilarityFunction.COSINE;
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
