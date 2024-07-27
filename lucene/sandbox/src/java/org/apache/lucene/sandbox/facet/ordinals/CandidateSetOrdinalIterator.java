@@ -17,29 +17,35 @@
 package org.apache.lucene.sandbox.facet.ordinals;
 
 import java.io.IOException;
-import org.apache.lucene.internal.hppc.IntHashSet;
+import org.apache.lucene.sandbox.facet.recorders.FacetRecorder;
 
 /**
  * {@link OrdinalIterator} that filters out ordinals from delegate if they are not in the candidate
- * set.
+ * set. Can be handy to get results only for specific facets.
  *
- * <p>Can be handy to get results only for specific facets.
+ * <p>Note that candidate ordinals might be relatively expensive to obtain, e.g. for taxonomy facets
+ * it requires index lookup. In this case, it is recommended to check if {@link
+ * FacetRecorder#isEmpty()} is false before creating candidates.
  */
 public final class CandidateSetOrdinalIterator implements OrdinalIterator {
 
-  private final IntHashSet candidates;
-  private final OrdinalIterator sourceOrds;
+  private final OrdinalIterator candidateOrdinalIterator;
+  private final FacetRecorder facetRecorder;
 
   /** Constructor. */
-  public CandidateSetOrdinalIterator(OrdinalIterator sourceOrds, int[] candidates) {
-    this.candidates = IntHashSet.from(candidates);
-    this.sourceOrds = sourceOrds;
+  public CandidateSetOrdinalIterator(FacetRecorder facetRecorder, int[] candidates) {
+    // TODO: if candidates size >> number of ordinals in facetRecorder, it is more efficient to
+    // iterate ordinals from FacetRecorder, and check if candidates contain them
+    this.candidateOrdinalIterator = OrdinalIterator.fromArray(candidates);
+    this.facetRecorder = facetRecorder;
   }
 
   @Override
   public int nextOrd() throws IOException {
-    for (int ord = sourceOrds.nextOrd(); ord != NO_MORE_ORDS; ord = sourceOrds.nextOrd()) {
-      if (candidates.contains(ord)) {
+    for (int ord = candidateOrdinalIterator.nextOrd();
+        ord != NO_MORE_ORDS;
+        ord = candidateOrdinalIterator.nextOrd()) {
+      if (facetRecorder.contains(ord)) {
         return ord;
       }
     }

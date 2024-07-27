@@ -123,8 +123,16 @@ public final class CountFacetRecorder implements FacetRecorder {
     }
     OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
     for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
-      values.addTo(dimOrd, rollup(dimOrd, facetRollup));
+      int rolledUp = rollup(dimOrd, facetRollup);
+      if (rolledUp > 0) {
+        values.addTo(dimOrd, rolledUp);
+      }
     }
+  }
+
+  @Override
+  public boolean contains(int ordinal) {
+    return values.containsKey(ordinal);
   }
 
   private int rollup(int ord, FacetRollup facetRollup) throws IOException {
@@ -133,7 +141,13 @@ public final class CountFacetRecorder implements FacetRecorder {
     for (int nextChild = childOrds.nextOrd();
         nextChild != NO_MORE_ORDS;
         nextChild = childOrds.nextOrd()) {
-      accum += values.addTo(nextChild, rollup(nextChild, facetRollup));
+      int rolledUp = rollup(nextChild, facetRollup);
+      // Don't rollup zeros to not add ordinals that we don't actually have counts for to the map
+      if (rolledUp > 0) {
+        accum += values.addTo(nextChild, rolledUp);
+      } else {
+        accum += values.get(nextChild);
+      }
     }
     return accum;
   }

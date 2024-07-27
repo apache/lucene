@@ -26,6 +26,7 @@ import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.ordinals.CandidateSetOrdinalIterator;
 import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.ordinals.TaxonomyChildrenOrdinalIterator;
@@ -179,5 +180,20 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
     FacetLabel label = new FacetLabel(path);
     int facetOrd = ordLabels.getOrd(label);
     return countFacetRecorder.getCount(facetOrd);
+  }
+
+  int[] getCountsForRecordedCandidates(
+      CountFacetRecorder countFacetRecorder, TaxonomyReader taxoReader, FacetLabel[] candidates)
+      throws IOException {
+    TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
+    // OrdinalIterator candidateOrds = OrdinalIterator.fromArray());
+    int[] resultOrds =
+        new CandidateSetOrdinalIterator(countFacetRecorder, ordLabels.getOrds(candidates))
+            .toArray();
+    int[] counts = new int[resultOrds.length];
+    for (int i = 0; i < resultOrds.length; i++) {
+      counts[i] = countFacetRecorder.getCount(resultOrds[i]);
+    }
+    return counts;
   }
 }

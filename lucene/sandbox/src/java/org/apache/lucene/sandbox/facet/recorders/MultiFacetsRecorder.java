@@ -59,6 +59,12 @@ public final class MultiFacetsRecorder implements FacetRecorder {
     }
   }
 
+  @Override
+  public boolean contains(int ordinal) {
+    throw new UnsupportedOperationException(
+        "Not supported, call contains for sub-recorders instead");
+  }
+
   private static final class MultiFacetsLeafRecorder implements LeafFacetRecorder {
 
     private final LeafFacetRecorder[] delegates;

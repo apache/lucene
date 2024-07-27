@@ -52,4 +52,7 @@ public interface FacetRecorder {
    *     be rolled up.
    */
   void reduce(FacetRollup facetRollup) throws IOException;
+
+  /** Check if any data was recorded for provided facet ordinal. */
+  boolean contains(int ordinal);
 }

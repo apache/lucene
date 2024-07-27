@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
@@ -30,8 +32,10 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.sandbox.facet.cutters.TaxonomyFacetsCutter;
 import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
+import org.apache.lucene.sandbox.facet.ordinals.CandidateSetOrdinalIterator;
 import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.ordinals.TaxonomyChildrenOrdinalIterator;
@@ -46,6 +50,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
@@ -64,9 +69,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("Publish Date", true);
-    // TODO: we only set it to true because rollup is not implemented for Long aggregations yet.
-    //  let's remove this line once it is implemented!
-    config.setMultiValued("Publish Date", true);
+    config.setMultiValued("Publish Date", random().nextBoolean());
 
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
@@ -75,13 +78,15 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     doc.add(new FacetField("Publish Date", "2010", "10", "15"));
     doc.add(new NumericDocValuesField("Units", 9));
     doc.add(new DoubleDocValuesField("Popularity", 3.5d));
+    doc.add(new StringField("Availability", "yes", Field.Store.NO));
     writer.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
     doc.add(new FacetField("Author", "Lisa"));
-    doc.add(new FacetField("Publish Date", "2010", "10", "20"));
+    doc.add(new FacetField("Publish Date", "2010"));
     doc.add(new NumericDocValuesField("Units", 2));
     doc.add(new DoubleDocValuesField("Popularity", 4.1D));
+    doc.add(new StringField("Availability", "yes", Field.Store.NO));
     writer.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
@@ -89,6 +94,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     doc.add(new FacetField("Publish Date", "2012", "1", "1"));
     doc.add(new NumericDocValuesField("Units", 5));
     doc.add(new DoubleDocValuesField("Popularity", 3.9D));
+    doc.add(new StringField("Availability", "yes", Field.Store.NO));
     writer.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
@@ -96,6 +102,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     doc.add(new FacetField("Publish Date", "2012", "1", "7"));
     doc.add(new NumericDocValuesField("Units", 7));
     doc.add(new DoubleDocValuesField("Popularity", 4D));
+    doc.add(new StringField("Availability", "yes", Field.Store.NO));
     writer.addDocument(config.build(taxoWriter, doc));
 
     doc = new Document();
@@ -103,6 +110,16 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     doc.add(new FacetField("Publish Date", "1999", "5", "5"));
     doc.add(new NumericDocValuesField("Units", 6));
     doc.add(new DoubleDocValuesField("Popularity", 7.9D));
+    doc.add(new StringField("Availability", "yes", Field.Store.NO));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    // Add a document that is not returned by a query
+    doc = new Document();
+    doc.add(new FacetField("Author", "John"));
+    doc.add(new FacetField("Publish Date", "2024", "11", "12"));
+    doc.add(new NumericDocValuesField("Units", 200));
+    doc.add(new DoubleDocValuesField("Popularity", 13D));
+    doc.add(new StringField("Availability", "no", Field.Store.NO));
     writer.addDocument(config.build(taxoWriter, doc));
 
     // NRT open
@@ -111,7 +128,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    Query query = new MatchAllDocsQuery();
+    Query query = new TermQuery(new Term("Availability", "yes"));
 
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
@@ -160,6 +177,36 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
         getTopChildrenWithLongAggregations(
             countRecorder, taxoReader, 10, 2, longAggregationsFacetRecorder, null, "Author"));
 
+    assertArrayEquals(
+        new long[] {11, 6},
+        getAggregationForRecordedCandidates(
+            longAggregationsFacetRecorder,
+            1,
+            taxoReader,
+            new FacetLabel[] {
+              new FacetLabel("Publish Date", "2010"),
+              // Not in the index - skipped
+              new FacetLabel("Publish Date", "2025"),
+              // Not matched by the query - skipped
+              new FacetLabel("Publish Date", "2024"),
+              new FacetLabel("Publish Date", "1999"),
+            }));
+
+    assertArrayEquals(
+        new long[] {7, 6},
+        getAggregationForRecordedCandidates(
+            longAggregationsFacetRecorder,
+            1,
+            taxoReader,
+            new FacetLabel[] {
+              new FacetLabel("Author", "Lisa"),
+              // Not in the index - skipped
+              new FacetLabel("Author", "Christofer"),
+              // Not matched by the query - skipped
+              new FacetLabel("Author", "John"),
+              new FacetLabel("Author", "Frank"),
+            }));
+
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
   }
@@ -179,9 +226,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("Publish Date", true);
-    // TODO: we only set it to true because rollup is not implemented for Long aggregations yet.
-    //  let's remove this line once it is implemented!
-    config.setMultiValued("Publish Date", true);
+    config.setMultiValued("Publish Date", random().nextBoolean());
 
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
@@ -260,9 +305,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("Publish Date", true);
-    // TODO: we only set it to true because rollup is not implemented for Long aggregations yet.
-    //  let's remove this line once it is implemented!
-    config.setMultiValued("Publish Date", true);
+    config.setMultiValued("Publish Date", random().nextBoolean());
 
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
@@ -414,5 +457,22 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     }
     // int value = countFacetRecorder.getCount(parentOrdinal);
     return resultBuilder.toString();
+  }
+
+  long[] getAggregationForRecordedCandidates(
+      LongAggregationsFacetRecorder aggregationsRecorder,
+      int aggregationId,
+      TaxonomyReader taxoReader,
+      FacetLabel[] candidates)
+      throws IOException {
+    TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
+    int[] resultOrds =
+        new CandidateSetOrdinalIterator(aggregationsRecorder, ordLabels.getOrds(candidates))
+            .toArray();
+    long[] result = new long[resultOrds.length];
+    for (int i = 0; i < resultOrds.length; i++) {
+      result[i] = aggregationsRecorder.getRecordedValue(resultOrds[i], aggregationId);
+    }
+    return result;
   }
 }

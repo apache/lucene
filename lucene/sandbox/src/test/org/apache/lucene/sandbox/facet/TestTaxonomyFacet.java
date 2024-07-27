@@ -23,6 +23,7 @@ import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
+import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -150,6 +151,18 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
         getTopChildrenByCount(countRecorder2, taxoReader, 10, "Author").toString());
 
     assertEquals(1, getSpecificValue(countRecorder2, taxoReader, "Author", "Lisa"));
+
+    assertArrayEquals(
+        new int[] {1, 1},
+        getCountsForRecordedCandidates(
+            countRecorder2,
+            taxoReader,
+            new FacetLabel[] {
+              new FacetLabel("Author", "Lisa"),
+              new FacetLabel("Author", "Susan"), // 0 count, filtered out
+              new FacetLabel("Author", "DoesNotExist"), // Doesn't exist in the index, filtered out
+              new FacetLabel("Author", "Bob"),
+            }));
 
     expectThrows(
         AssertionError.class,

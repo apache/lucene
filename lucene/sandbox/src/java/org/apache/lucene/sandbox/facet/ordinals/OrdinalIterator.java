@@ -39,4 +39,24 @@ public interface OrdinalIterator {
     }
     return resultList.toArray();
   }
+
+  /** Convert int array to ordinal iterator. */
+  static OrdinalIterator fromArray(int[] source) {
+    return new OrdinalIterator() {
+      int cursor;
+
+      @Override
+      public int nextOrd() throws IOException {
+        int ord;
+        while (cursor < source.length) {
+          ord = source[cursor++];
+          // NO_MORE_ORDS should be returned only after we read the entire array.
+          if (ord != NO_MORE_ORDS) {
+            return ord;
+          }
+        }
+        return NO_MORE_ORDS;
+      }
+    };
+  }
 }

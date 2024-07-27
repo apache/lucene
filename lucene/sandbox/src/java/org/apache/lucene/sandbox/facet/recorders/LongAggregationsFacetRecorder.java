@@ -66,9 +66,6 @@ public final class LongAggregationsFacetRecorder implements FacetRecorder {
 
   @Override
   public OrdinalIterator recordedOrds() {
-    if (values.isEmpty()) {
-      return null;
-    }
     Iterator<IntCursor> ordIterator = values.keys().iterator();
     return new OrdinalIterator() {
       @Override
@@ -114,31 +111,38 @@ public final class LongAggregationsFacetRecorder implements FacetRecorder {
     if (facetRollup != null) {
       OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
       for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
-        long[] current = values.get(dimOrd);
-        if (current == null) {
-          current = new long[longValuesSources.length];
-          values.put(dimOrd, current);
-        }
-        rollup(current, dimOrd, facetRollup);
+        rollup(values.get(dimOrd), dimOrd, facetRollup);
       }
     }
   }
 
-  private void rollup(long[] accum, int ord, FacetRollup facetRollup) throws IOException {
+  @Override
+  public boolean contains(int ordinal) {
+    return values.containsKey(ordinal);
+  }
+
+  /**
+   * Rollup all child values of ord to accum, and return accum. Accum param can be null. In this
+   * case, if recursive rollup for every child returns null, this method returns null. Otherwise,
+   * accum is initialized.
+   */
+  private long[] rollup(long[] accum, int ord, FacetRollup facetRollup) throws IOException {
     OrdinalIterator childOrds = facetRollup.getChildrenOrds(ord);
     for (int nextChild = childOrds.nextOrd();
         nextChild != NO_MORE_ORDS;
         nextChild = childOrds.nextOrd()) {
-      long[] current = values.get(nextChild);
-      if (current == null) {
-        current = new long[longValuesSources.length];
-        values.put(ord, current);
-      }
-      rollup(current, ord, facetRollup);
-      for (int i = 0; i < longValuesSources.length; i++) {
-        accum[i] = reducers[i].reduce(accum[i], current[i]);
+      long[] current = rollup(values.get(nextChild), nextChild, facetRollup);
+      if (current != null) {
+        if (accum == null) {
+          accum = new long[longValuesSources.length];
+          values.put(ord, accum);
+        }
+        for (int i = 0; i < longValuesSources.length; i++) {
+          accum[i] = reducers[i].reduce(accum[i], current[i]);
+        }
       }
     }
+    return accum;
   }
 
   public long getRecordedValue(int ord, int valuesId) {
