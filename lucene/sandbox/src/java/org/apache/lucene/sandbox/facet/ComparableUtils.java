@@ -45,13 +45,13 @@ public final class ComparableUtils {
     }
   }
 
-  /** {@link ComparableSupplier} that can be used to sort by ords (ascending). */
-  public static ComparableSupplier<ComparableOrd> ordToComparableOrd() {
+  /** {@link ComparableSupplier} to sort by ords (ascending). */
+  public static ComparableSupplier<ByOrdinalComparable> byOrdinal() {
     return new ComparableSupplier<>() {
       @Override
-      public ComparableOrd getComparable(int ord, ComparableOrd reuse) {
+      public ByOrdinalComparable getComparable(int ord, ByOrdinalComparable reuse) {
         if (reuse == null) {
-          reuse = new ComparableOrd();
+          reuse = new ByOrdinalComparable();
         }
         reuse.ord = ord;
         return reuse;
@@ -59,43 +59,43 @@ public final class ComparableUtils {
     };
   }
 
-  /** Used for {@link #ordToComparableOrd} result. */
-  public static class ComparableOrd extends SkeletalOrdGetter implements Comparable<ComparableOrd> {
+  /** Used for {@link #byOrdinal} result. */
+  public static class ByOrdinalComparable extends SkeletalOrdGetter
+      implements Comparable<ByOrdinalComparable> {
     @Override
-    public int compareTo(ComparableOrd o) {
+    public int compareTo(ByOrdinalComparable o) {
       return Integer.compare(o.ord, ord);
     }
   }
 
   /**
-   * {@link ComparableSupplier} that can be used to sort ordinals by count (descending) with ord as
-   * a tie-break (ascending) using provided {@link CountFacetRecorder}.
+   * {@link ComparableSupplier} to sort ordinals by count (descending) with ord as a tie-break
+   * (ascending) using provided {@link CountFacetRecorder}.
    */
-  public static ComparableSupplier<ComparableIntOrd> ordToComparableCountOrd(
-      CountFacetRecorder recorder) {
+  public static ComparableSupplier<ByCountComparable> byCount(CountFacetRecorder recorder) {
     return new ComparableSupplier<>() {
       @Override
-      public ComparableIntOrd getComparable(int ord, ComparableIntOrd reuse) {
+      public ByCountComparable getComparable(int ord, ByCountComparable reuse) {
         if (reuse == null) {
-          reuse = new ComparableIntOrd();
+          reuse = new ByCountComparable();
         }
         reuse.ord = ord;
-        reuse.rank = recorder.getCount(ord);
+        reuse.count = recorder.getCount(ord);
         return reuse;
       }
     };
   }
 
-  /** Used for {@link #ordToComparableCountOrd} result. */
-  public static class ComparableIntOrd extends SkeletalOrdGetter
-      implements Comparable<ComparableIntOrd> {
-    private ComparableIntOrd() {}
+  /** Used for {@link #byCount} result. */
+  public static class ByCountComparable extends SkeletalOrdGetter
+      implements Comparable<ByCountComparable> {
+    private ByCountComparable() {}
 
-    private int rank;
+    private int count;
 
     @Override
-    public int compareTo(ComparableIntOrd o) {
-      int cmp = Integer.compare(rank, o.rank);
+    public int compareTo(ByCountComparable o) {
+      int cmp = Integer.compare(count, o.count);
       if (cmp == 0) {
         cmp = Integer.compare(o.ord, ord);
       }
@@ -105,18 +105,18 @@ public final class ComparableUtils {
 
   /**
    * {@link ComparableSupplier} to sort ordinals by long aggregation (descending) with tie-break by
-   * count (descending) with ordinal as a tie-break (ascending) using provided {@link
-   * CountFacetRecorder} and {@link LongAggregationsFacetRecorder}.
+   * count (descending) or by ordinal (ascending) using provided {@link CountFacetRecorder} and
+   * {@link LongAggregationsFacetRecorder}.
    */
-  public static ComparableSupplier<ComparableLongIntOrd> ordToComparableRankCountOrd(
+  public static ComparableSupplier<ByAggregatedValueComparable> byAggregatedValue(
       CountFacetRecorder countRecorder,
       LongAggregationsFacetRecorder longAggregationsFacetRecorder,
       int aggregationId) {
     return new ComparableSupplier<>() {
       @Override
-      public ComparableLongIntOrd getComparable(int ord, ComparableLongIntOrd reuse) {
+      public ByAggregatedValueComparable getComparable(int ord, ByAggregatedValueComparable reuse) {
         if (reuse == null) {
-          reuse = new ComparableLongIntOrd();
+          reuse = new ByAggregatedValueComparable();
         }
         reuse.ord = ord;
         reuse.secondaryRank = countRecorder.getCount(ord);
@@ -126,16 +126,16 @@ public final class ComparableUtils {
     };
   }
 
-  /** Used for {@link #ordToComparableRankCountOrd} result. */
-  public static class ComparableLongIntOrd extends SkeletalOrdGetter
-      implements Comparable<ComparableLongIntOrd> {
-    private ComparableLongIntOrd() {}
+  /** Used for {@link #byAggregatedValue} result. */
+  public static class ByAggregatedValueComparable extends SkeletalOrdGetter
+      implements Comparable<ByAggregatedValueComparable> {
+    private ByAggregatedValueComparable() {}
 
     private int secondaryRank;
     private long primaryRank;
 
     @Override
-    public int compareTo(ComparableLongIntOrd o) {
+    public int compareTo(ByAggregatedValueComparable o) {
       int cmp = Long.compare(primaryRank, o.primaryRank);
       if (cmp == 0) {
         cmp = Integer.compare(secondaryRank, o.secondaryRank);
@@ -148,15 +148,15 @@ public final class ComparableUtils {
   }
 
   /**
-   * {@link ComparableSupplier} to sort ordinals by long value (descending) from {@link
-   * LongValueFacetCutter}.
+   * {@link ComparableSupplier} to sort ordinals by long value from {@link LongValueFacetCutter}
+   * (descending).
    */
-  public static ComparableSupplier<ComparableLong> ordToComparableValue(
+  public static ComparableSupplier<ByLongValueComparable> byLongValueComparable(
       LongValueFacetCutter longValueFacetCutter) {
     return new ComparableSupplier<>() {
-      public ComparableLong getComparable(int ord, ComparableLong reuse) {
+      public ByLongValueComparable getComparable(int ord, ByLongValueComparable reuse) {
         if (reuse == null) {
-          reuse = new ComparableLong();
+          reuse = new ByLongValueComparable();
         }
         reuse.ord = ord;
         reuse.value = longValueFacetCutter.getValue(ord);
@@ -165,21 +165,21 @@ public final class ComparableUtils {
     };
   }
 
-  /** Used for {@link #ordToComparableValue} result. */
-  public static final class ComparableLong extends SkeletalOrdGetter
-      implements Comparable<ComparableLong> {
-    private ComparableLong() {}
+  /** Used for {@link #byLongValueComparable} result. */
+  public static final class ByLongValueComparable extends SkeletalOrdGetter
+      implements Comparable<ByLongValueComparable> {
+    private ByLongValueComparable() {}
 
     private long value;
 
     @Override
-    public int compareTo(ComparableLong o) {
+    public int compareTo(ByLongValueComparable o) {
       return Long.compare(o.value, value);
     }
 
     @Override
     public boolean equals(Object obj) {
-      if (obj instanceof ComparableLong other) {
+      if (obj instanceof ByLongValueComparable other) {
         return other.value == value;
       }
       return false;
@@ -195,12 +195,13 @@ public final class ComparableUtils {
    * {@link ComparableSupplier} to sort ordinals by count (descending) from {@link
    * CountFacetRecorder} with tie-break by long value (ascending) from {@link LongValueFacetCutter}.
    */
-  public static ComparableSupplier<ComparableCountValue> ordToComparableCountValue(
+  public static ComparableSupplier<ByCountAndLongValueComparable> byCount(
       CountFacetRecorder countFacetRecorder, LongValueFacetCutter longValueFacetCutter) {
     return new ComparableSupplier<>() {
-      public ComparableCountValue getComparable(int ord, ComparableCountValue reuse) {
+      public ByCountAndLongValueComparable getComparable(
+          int ord, ByCountAndLongValueComparable reuse) {
         if (reuse == null) {
-          reuse = new ComparableCountValue();
+          reuse = new ByCountAndLongValueComparable();
         }
         reuse.ord = ord;
         reuse.value = longValueFacetCutter.getValue(ord);
@@ -210,16 +211,16 @@ public final class ComparableUtils {
     };
   }
 
-  /** Used for {@link #ordToComparableCountValue} result. */
-  public static class ComparableCountValue extends SkeletalOrdGetter
-      implements Comparable<ComparableCountValue> {
-    private ComparableCountValue() {}
+  /** Used for {@link #byCount} result. */
+  public static class ByCountAndLongValueComparable extends SkeletalOrdGetter
+      implements Comparable<ByCountAndLongValueComparable> {
+    private ByCountAndLongValueComparable() {}
 
     private int count;
     private long value;
 
     @Override
-    public int compareTo(ComparableCountValue o) {
+    public int compareTo(ByCountAndLongValueComparable o) {
       int cmp = Integer.compare(count, o.count);
       if (cmp == 0) {
         cmp = Long.compare(o.value, value);

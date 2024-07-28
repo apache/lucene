@@ -758,8 +758,8 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       CountFacetRecorder countRecorder)
       throws IOException {
     int[] resultOrdinals = countRecorder.recordedOrds().toArray();
-    ComparableSupplier<ComparableUtils.ComparableLong> comparableSupplier =
-        ComparableUtils.ordToComparableValue(longValuesFacetCutter);
+    ComparableSupplier<ComparableUtils.ByLongValueComparable> comparableSupplier =
+        ComparableUtils.byLongValueComparable(longValuesFacetCutter);
 
     ComparableUtils.sort(resultOrdinals, comparableSupplier);
 
@@ -790,8 +790,8 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       LongValueFacetCutter longValuesFacetCutter,
       CountFacetRecorder countRecorder)
       throws IOException {
-    ComparableSupplier<ComparableUtils.ComparableCountValue> comparableSupplier =
-        ComparableUtils.ordToComparableCountValue(countRecorder, longValuesFacetCutter);
+    ComparableSupplier<ComparableUtils.ByCountAndLongValueComparable> comparableSupplier =
+        ComparableUtils.byCount(countRecorder, longValuesFacetCutter);
 
     OrdinalIterator topByCountOrds =
         new TopnOrdinalIterator<>(countRecorder.recordedOrds(), comparableSupplier, topN);

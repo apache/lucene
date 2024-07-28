@@ -80,8 +80,8 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
       String dimension,
       String... path)
       throws IOException {
-    ComparableSupplier<ComparableUtils.ComparableIntOrd> countComparable =
-        ComparableUtils.ordToComparableCountOrd(countFacetRecorder);
+    ComparableSupplier<ComparableUtils.ByCountComparable> countComparable =
+        ComparableUtils.byCount(countFacetRecorder);
     TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
     OrdinalIterator childrenIterator =
@@ -155,7 +155,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
       String dimension,
       OrdToLabel ordLabels)
       throws IOException {
-    ComparableUtils.sort(resultOrdinals, ComparableUtils.ordToComparableOrd());
+    ComparableUtils.sort(resultOrdinals, ComparableUtils.byOrdinal());
     FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
     int childCount = 0;
