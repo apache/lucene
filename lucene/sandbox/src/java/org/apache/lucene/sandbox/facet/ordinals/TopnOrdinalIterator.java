@@ -26,7 +26,7 @@ import org.apache.lucene.util.PriorityQueue;
 public final class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
     implements OrdinalIterator {
 
-  private final OrdToComparable<T> ordToComparable;
+  private final ComparableSupplier<T> comparableSupplier;
   private final OrdinalIterator sourceOrds;
   private final int topN;
   private int[] result;
@@ -34,12 +34,12 @@ public final class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
 
   /** Constructor. */
   public TopnOrdinalIterator(
-      OrdinalIterator sourceOrds, OrdToComparable<T> ordToComparable, int topN) {
+      OrdinalIterator sourceOrds, ComparableSupplier<T> comparableSupplier, int topN) {
     if (topN <= 0) {
       throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
     }
     this.sourceOrds = sourceOrds;
-    this.ordToComparable = ordToComparable;
+    this.comparableSupplier = comparableSupplier;
     this.topN = topN;
   }
 
@@ -52,7 +52,7 @@ public final class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
     TopComparableQueue<T> queue = new TopComparableQueue<>(topN);
     T reuse = null;
     for (int ord = sourceOrds.nextOrd(); ord != NO_MORE_ORDS; ord = sourceOrds.nextOrd()) {
-      reuse = ordToComparable.getComparable(ord, reuse);
+      reuse = comparableSupplier.getComparable(ord, reuse);
       reuse = queue.insertWithOverflow(reuse);
     }
     // Now we need to read from the queue as well as the queue gives the least element, not the top.

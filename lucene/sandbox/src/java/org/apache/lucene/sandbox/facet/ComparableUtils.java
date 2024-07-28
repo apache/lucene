@@ -22,7 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.sandbox.facet.cutters.LongValueFacetCutter;
-import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
+import org.apache.lucene.sandbox.facet.ordinals.ComparableSupplier;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalGetter;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
@@ -30,8 +30,8 @@ import org.apache.lucene.util.InPlaceMergeSorter;
 
 /**
  * Collection of static methods to provide most common comparables for sandbox faceting. You can
- * also use it as an example for creating your own {@link OrdToComparable} to enable custom facets
- * top-n and sorting.
+ * also use it as an example for creating your own {@link ComparableSupplier} to enable custom
+ * facets top-n and sorting.
  */
 public final class ComparableUtils {
   private ComparableUtils() {}
@@ -45,9 +45,9 @@ public final class ComparableUtils {
     }
   }
 
-  /** {@link OrdToComparable} that can be used to sort by ords (ascending). */
-  public static OrdToComparable<ComparableOrd> ordToComparableOrd() {
-    return new OrdToComparable<>() {
+  /** {@link ComparableSupplier} that can be used to sort by ords (ascending). */
+  public static ComparableSupplier<ComparableOrd> ordToComparableOrd() {
+    return new ComparableSupplier<>() {
       @Override
       public ComparableOrd getComparable(int ord, ComparableOrd reuse) {
         if (reuse == null) {
@@ -68,12 +68,12 @@ public final class ComparableUtils {
   }
 
   /**
-   * {@link OrdToComparable} that can be used to sort ordinals by count (descending) with ord as a
-   * tie-break (ascending) using provided {@link CountFacetRecorder}.
+   * {@link ComparableSupplier} that can be used to sort ordinals by count (descending) with ord as
+   * a tie-break (ascending) using provided {@link CountFacetRecorder}.
    */
-  public static OrdToComparable<ComparableIntOrd> ordToComparableCountOrd(
+  public static ComparableSupplier<ComparableIntOrd> ordToComparableCountOrd(
       CountFacetRecorder recorder) {
-    return new OrdToComparable<>() {
+    return new ComparableSupplier<>() {
       @Override
       public ComparableIntOrd getComparable(int ord, ComparableIntOrd reuse) {
         if (reuse == null) {
@@ -104,15 +104,15 @@ public final class ComparableUtils {
   }
 
   /**
-   * {@link OrdToComparable} to sort ordinals by long aggregation (descending) with tie-break by
+   * {@link ComparableSupplier} to sort ordinals by long aggregation (descending) with tie-break by
    * count (descending) with ordinal as a tie-break (ascending) using provided {@link
    * CountFacetRecorder} and {@link LongAggregationsFacetRecorder}.
    */
-  public static OrdToComparable<ComparableLongIntOrd> ordToComparableRankCountOrd(
+  public static ComparableSupplier<ComparableLongIntOrd> ordToComparableRankCountOrd(
       CountFacetRecorder countRecorder,
       LongAggregationsFacetRecorder longAggregationsFacetRecorder,
       int aggregationId) {
-    return new OrdToComparable<>() {
+    return new ComparableSupplier<>() {
       @Override
       public ComparableLongIntOrd getComparable(int ord, ComparableLongIntOrd reuse) {
         if (reuse == null) {
@@ -148,12 +148,12 @@ public final class ComparableUtils {
   }
 
   /**
-   * {@link OrdToComparable} to sort ordinals by long value (descending) from {@link
+   * {@link ComparableSupplier} to sort ordinals by long value (descending) from {@link
    * LongValueFacetCutter}.
    */
-  public static OrdToComparable<ComparableLong> ordToComparableValue(
+  public static ComparableSupplier<ComparableLong> ordToComparableValue(
       LongValueFacetCutter longValueFacetCutter) {
-    return new OrdToComparable<>() {
+    return new ComparableSupplier<>() {
       public ComparableLong getComparable(int ord, ComparableLong reuse) {
         if (reuse == null) {
           reuse = new ComparableLong();
@@ -192,12 +192,12 @@ public final class ComparableUtils {
   }
 
   /**
-   * {@link OrdToComparable} to sort ordinals by count (descending) from {@link CountFacetRecorder}
-   * with tie-break by long value (ascending) from {@link LongValueFacetCutter}.
+   * {@link ComparableSupplier} to sort ordinals by count (descending) from {@link
+   * CountFacetRecorder} with tie-break by long value (ascending) from {@link LongValueFacetCutter}.
    */
-  public static OrdToComparable<ComparableCountValue> ordToComparableCountValue(
+  public static ComparableSupplier<ComparableCountValue> ordToComparableCountValue(
       CountFacetRecorder countFacetRecorder, LongValueFacetCutter longValueFacetCutter) {
-    return new OrdToComparable<>() {
+    return new ComparableSupplier<>() {
       public ComparableCountValue getComparable(int ord, ComparableCountValue reuse) {
         if (reuse == null) {
           reuse = new ComparableCountValue();
@@ -235,13 +235,13 @@ public final class ComparableUtils {
    * org.apache.lucene.sandbox.facet.ordinals.TopnOrdinalIterator} instead.
    *
    * @param ordinals array of ordinals to sort
-   * @param ordToComparable defines sort order
+   * @param comparableSupplier defines sort order
    */
   public static <T extends Comparable<T>> void sort(
-      int[] ordinals, OrdToComparable<T> ordToComparable) throws IOException {
+      int[] ordinals, ComparableSupplier<T> comparableSupplier) throws IOException {
     List<T> comparables = new ArrayList<>(ordinals.length);
     for (int i = 0; i < ordinals.length; i++) {
-      comparables.add(ordToComparable.getComparable(ordinals[i], null));
+      comparables.add(comparableSupplier.getComparable(ordinals[i], null));
     }
     new InPlaceMergeSorter() {
       @Override

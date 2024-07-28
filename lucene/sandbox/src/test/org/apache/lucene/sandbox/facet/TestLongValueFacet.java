@@ -34,7 +34,7 @@ import org.apache.lucene.facet.LongValueFacetCounts;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.sandbox.facet.cutters.LongValueFacetCutter;
-import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
+import org.apache.lucene.sandbox.facet.ordinals.ComparableSupplier;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.ordinals.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
@@ -758,10 +758,10 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       CountFacetRecorder countRecorder)
       throws IOException {
     int[] resultOrdinals = countRecorder.recordedOrds().toArray();
-    OrdToComparable<ComparableUtils.ComparableLong> ordToComparable =
+    ComparableSupplier<ComparableUtils.ComparableLong> comparableSupplier =
         ComparableUtils.ordToComparableValue(longValuesFacetCutter);
 
-    ComparableUtils.sort(resultOrdinals, ordToComparable);
+    ComparableUtils.sort(resultOrdinals, comparableSupplier);
 
     FacetLabel[] labels = longValuesFacetCutter.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
@@ -790,11 +790,11 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       LongValueFacetCutter longValuesFacetCutter,
       CountFacetRecorder countRecorder)
       throws IOException {
-    OrdToComparable<ComparableUtils.ComparableCountValue> ordToComparable =
+    ComparableSupplier<ComparableUtils.ComparableCountValue> comparableSupplier =
         ComparableUtils.ordToComparableCountValue(countRecorder, longValuesFacetCutter);
 
     OrdinalIterator topByCountOrds =
-        new TopnOrdinalIterator<>(countRecorder.recordedOrds(), ordToComparable, topN);
+        new TopnOrdinalIterator<>(countRecorder.recordedOrds(), comparableSupplier, topN);
 
     int[] resultOrdinals = topByCountOrds.toArray();
 

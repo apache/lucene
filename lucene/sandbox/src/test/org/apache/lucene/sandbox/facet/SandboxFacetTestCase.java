@@ -27,7 +27,7 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.ordinals.CandidateSetOrdinalIterator;
-import org.apache.lucene.sandbox.facet.ordinals.OrdToComparable;
+import org.apache.lucene.sandbox.facet.ordinals.ComparableSupplier;
 import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.ordinals.TaxonomyChildrenOrdinalIterator;
 import org.apache.lucene.sandbox.facet.ordinals.TopnOrdinalIterator;
@@ -80,7 +80,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
       String dimension,
       String... path)
       throws IOException {
-    OrdToComparable<ComparableUtils.ComparableIntOrd> countComparable =
+    ComparableSupplier<ComparableUtils.ComparableIntOrd> countComparable =
         ComparableUtils.ordToComparableCountOrd(countFacetRecorder);
     TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);

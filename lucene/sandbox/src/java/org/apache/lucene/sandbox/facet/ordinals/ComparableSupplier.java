@@ -22,7 +22,7 @@ package org.apache.lucene.sandbox.facet.ordinals;
  *
  * @param <T> something ordinals can be compared by.
  */
-public interface OrdToComparable<T extends Comparable<T>> {
+public interface ComparableSupplier<T extends Comparable<T>> {
 
   /**
    * For given ordinal, get something it can be compared by.
