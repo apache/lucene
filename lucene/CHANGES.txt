@@ -246,6 +246,8 @@ Other
 
 * GITHUB#13499: Remove usage of TopScoreDocCollector + TopFieldCollector deprecated methods (#create, #createSharedManager) (Jakub Slowinski)
 
+* GITHUB#13499: Removing all deprecated TopScoreDocCollector + TopFieldCollector methods (#create, #createSharedManager) (Jakub Slowinski)
+
 ======================== Lucene 9.12.0 =======================
 
 API Changes
