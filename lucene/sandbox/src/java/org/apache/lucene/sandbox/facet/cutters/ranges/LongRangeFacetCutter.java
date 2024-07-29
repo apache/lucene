@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
@@ -332,36 +331,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     void maybeRollUp(IntervalTracker rollUpInto) {}
   }
 
-  static final class LongRangeAndPos {
-    private final LongRange range;
-    private final int pos;
-
-    LongRangeAndPos(LongRange range, int pos) {
-      this.range = range;
-      this.pos = pos;
-    }
-
-    LongRange range() {
-      return range;
-    }
-
-    int pos() {
-      return pos;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == this) return true;
-      if (obj == null || obj.getClass() != this.getClass()) return false;
-      var that = (LongRangeAndPos) obj;
-      return Objects.equals(this.range, that.range) && this.pos == that.pos;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(range, pos);
-    }
-
+  record LongRangeAndPos(LongRange range, int pos) {
     @Override
     public String toString() {
       return "LongRangeAndPos[" + "range=" + range + ", " + "pos=" + pos + ']';
@@ -373,39 +343,11 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
    *
    * <p>TODO: dedup
    */
-  static final class InclusiveRange {
-    private final long start;
-    private final long end;
-
-    InclusiveRange(long start, long end) {
-      this.start = start;
-      this.end = end;
-    }
+  record InclusiveRange(long start, long end) {
 
     @Override
     public String toString() {
       return start + " to " + end;
-    }
-
-    public long start() {
-      return start;
-    }
-
-    public long end() {
-      return end;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == this) return true;
-      if (obj == null || obj.getClass() != this.getClass()) return false;
-      var that = (InclusiveRange) obj;
-      return this.start == that.start && this.end == that.end;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(start, end);
     }
   }
 }
