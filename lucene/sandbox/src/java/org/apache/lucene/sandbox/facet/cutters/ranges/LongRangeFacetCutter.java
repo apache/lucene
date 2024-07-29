@@ -50,7 +50,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   static final int SKIP_INTERVAL_POSITION = -1;
 
   /** Create {@link FacetCutter} for provided value source and long ranges. */
-  static LongRangeFacetCutter create(
+  static LongRangeFacetCutter createSingleOrMultiValued(
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges) {
@@ -64,7 +64,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
   public static LongRangeFacetCutter create(
       MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
-    return create(longValuesSource, null, longRanges);
+    return createSingleOrMultiValued(longValuesSource, null, longRanges);
   }
 
   // caller handles conversion of Doubles and DoubleRange to Long and LongRange

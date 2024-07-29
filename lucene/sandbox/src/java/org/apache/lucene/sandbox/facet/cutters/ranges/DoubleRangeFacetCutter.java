@@ -61,7 +61,8 @@ public class DoubleRangeFacetCutter implements FacetCutter {
     }
     this.longRanges = mapDoubleRangesToSortableLong(doubleRanges);
     this.longRangeFacetCutter =
-        LongRangeFacetCutter.create(multiLongValuesSource, singleLongValuesSource, longRanges);
+        LongRangeFacetCutter.createSingleOrMultiValued(
+            multiLongValuesSource, singleLongValuesSource, longRanges);
   }
 
   @Override
