@@ -1167,4 +1167,21 @@ public class IndexSearcher {
       }
     }
   }
+
+  /**
+   * Whether the provided leaf slices include leaf partitions.
+   *
+   * @param leafSlices the leaf slices
+   * @return true if the provided leaf slices include leaf partition, false if they all target
+   *     entire segments.
+   */
+  public static boolean hasLeafPartitions(IndexSearcher.LeafSlice[] leafSlices) {
+    Set<LeafReaderContext> seenContexts = new HashSet<>();
+    for (IndexSearcher.LeafSlice leafSlice : leafSlices) {
+      for (IndexSearcher.LeafReaderContextPartition leafPartition : leafSlice.leaves) {
+        seenContexts.add(leafPartition.ctx);
+      }
+    }
+    return seenContexts.size() != leafSlices.length;
+  }
 }

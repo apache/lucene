@@ -93,9 +93,6 @@ class DrillSidewaysScorer extends BulkScorer {
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int maxDoc)
       throws IOException {
-    // TODO this class does not support scoring within the provided range of doc ids, in fact the
-    // range is ignored.
-    // Though it looks like DrillSideways makes assumptions around this too.
     if (min != 0) {
       throw new IllegalArgumentException("min must be 0, got " + min);
     }

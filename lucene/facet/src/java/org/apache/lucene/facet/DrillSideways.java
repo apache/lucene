@@ -127,6 +127,9 @@ public class DrillSideways {
     this.taxoReader = taxoReader;
     this.state = state;
     this.executor = executor;
+    if (IndexSearcher.hasLeafPartitions(searcher.getSlices())) {
+      throw new IllegalStateException("DrillSideways does not support intra-segment concurrency");
+    }
   }
 
   /**
