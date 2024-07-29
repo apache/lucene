@@ -50,7 +50,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   static final int SKIP_INTERVAL_POSITION = -1;
 
   /** Create {@link FacetCutter} for provided value source and long ranges. */
-  public static LongRangeFacetCutter create(
+  static LongRangeFacetCutter create(
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges) {
