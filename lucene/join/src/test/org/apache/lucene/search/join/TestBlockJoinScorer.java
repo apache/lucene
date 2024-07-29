@@ -171,7 +171,6 @@ public class TestBlockJoinScorer extends LuceneTestCase {
                     new BoostQuery(
                         new ConstantScoreQuery(new TermQuery(new Term("value", "D"))), 4),
                     BooleanClause.Occur.SHOULD)
-                .setMinimumNumberShouldMatch(2)
                 .build();
         BitSetProducer parentsFilter =
             new QueryBitSetProducer(new TermQuery(new Term("type", "parent")));
@@ -186,8 +185,14 @@ public class TestBlockJoinScorer extends LuceneTestCase {
         assertEquals(2, scorer.iterator().nextDoc());
         assertEquals(2 + 1 + 3, scorer.score(), 0);
 
+        assertEquals(5, scorer.iterator().nextDoc());
+        assertEquals(2, scorer.score(), 0);
+
         assertEquals(10, scorer.iterator().nextDoc());
         assertEquals(2 + 1 + 3 + 4, scorer.score(), 0);
+
+        assertEquals(12, scorer.iterator().nextDoc());
+        assertEquals(1, scorer.score(), 0);
 
         assertEquals(16, scorer.iterator().nextDoc());
         assertEquals(2 + 3, scorer.score(), 0);
