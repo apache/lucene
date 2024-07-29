@@ -125,11 +125,11 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.DOC_EXTENSION);
     metaOut = state.directory.createOutput(metaFileName, state.context);
-    docOut = state.directory.createOutput(docFileName, state.context);
     IndexOutput posOut = null;
     IndexOutput payOut = null;
     boolean success = false;
     try {
+      docOut = state.directory.createOutput(docFileName, state.context);
       CodecUtil.writeIndexHeader(
           metaOut, META_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.writeIndexHeader(

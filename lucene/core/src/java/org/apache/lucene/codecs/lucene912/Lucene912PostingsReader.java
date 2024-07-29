@@ -869,6 +869,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       if (nextBlockPosFP >= posIn.getFilePointer()) {
         posIn.seek(nextBlockPosFP);
         posPendingCount = nextBlockPosUpto;
+        if (indexHasOffsetsOrPayloads) {
+          assert nextBlockPayFP >= payIn.getFilePointer();
+          payIn.seek(nextBlockPayFP);
+          payloadByteUpto = nextBlockPayUpto;
+        }
         posBufferUpto = BLOCK_SIZE;
       }
 
@@ -894,7 +899,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (true) return advance(doc+1);
       if (doc >= lastDocInBlock) { // advance level 0 skip data
         moveToNextBlock();
       }
@@ -920,6 +924,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           posIn.seek(nextBlockPosFP);
           posPendingCount = nextBlockPosUpto;
           if (indexHasOffsetsOrPayloads) {
+            assert nextBlockPayFP >= payIn.getFilePointer();
             payIn.seek(nextBlockPayFP);
             payloadByteUpto = nextBlockPayUpto;
           }
@@ -1842,7 +1847,18 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      return advance(doc + 1);
+      advanceShallow(doc + 1);
+      if (needsRefilling) {
+        refillDocs();
+        needsRefilling = false;
+      }
+
+      doc = (int) docBuffer[docBufferUpto];
+      freq = (int) freqBuffer[docBufferUpto];
+      posPendingCount+= freq;
+      docBufferUpto++;
+      position = 0;
+      return this.doc;
     }
 
     @Override
