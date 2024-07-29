@@ -115,7 +115,7 @@ public class Lucene912Codec extends Codec {
    * @param mode stored fields compression mode to use for newly flushed/merged segments.
    */
   public Lucene912Codec(Mode mode) {
-    super("Lucene99");
+    super("Lucene912");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene912PostingsFormat();
@@ -171,7 +171,7 @@ public class Lucene912Codec extends Codec {
   /**
    * Returns the postings format that should be used for writing new segments of <code>field</code>.
    *
-   * <p>The default implementation always returns "Lucene99".
+   * <p>The default implementation always returns "Lucene912".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation,
@@ -184,7 +184,7 @@ public class Lucene912Codec extends Codec {
    * Returns the docvalues format that should be used for writing new segments of <code>field</code>
    * .
    *
-   * <p>The default implementation always returns "Lucene99".
+   * <p>The default implementation always returns "Lucene90".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation.
@@ -196,7 +196,7 @@ public class Lucene912Codec extends Codec {
   /**
    * Returns the vectors format that should be used for writing new segments of <code>field</code>
    *
-   * <p>The default implementation always returns "Lucene95".
+   * <p>The default implementation always returns "Lucene99HnswVectorsFormat".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation.

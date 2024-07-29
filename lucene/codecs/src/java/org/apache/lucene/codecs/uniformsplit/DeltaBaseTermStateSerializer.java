@@ -17,13 +17,13 @@
 
 package org.apache.lucene.codecs.uniformsplit;
 
-import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.BLOCK_SIZE;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsWriter;
+import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene912.Lucene912PostingsReader;
+import org.apache.lucene.codecs.lucene912.Lucene912PostingsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.TermState;
@@ -34,7 +34,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * {@link TermState} serializer which encodes each file pointer as a delta relative to a base file
- * pointer. It differs from {@link Lucene99PostingsWriter#encodeTerm} which encodes each file
+ * pointer. It differs from {@link Lucene912PostingsWriter#encodeTerm} which encodes each file
  * pointer as a delta relative to the previous file pointer.
  *
  * <p>It automatically sets the base file pointer to the first valid file pointer for doc start FP,
@@ -95,7 +95,7 @@ public class DeltaBaseTermStateSerializer implements Accountable {
   /**
    * Writes a {@link BlockTermState} to the provided {@link DataOutput}.
    *
-   * <p>Simpler variant of {@link Lucene99PostingsWriter#encodeTerm(DataOutput, FieldInfo,
+   * <p>Simpler variant of {@link Lucene912PostingsWriter#encodeTerm(DataOutput, FieldInfo,
    * BlockTermState, boolean)}.
    */
   public void writeTermState(
@@ -140,15 +140,12 @@ public class DeltaBaseTermStateSerializer implements Accountable {
         termStatesOutput.writeVLong(intTermState.lastPosBlockOffset);
       }
     }
-    if (intTermState.skipOffset != -1) {
-      termStatesOutput.writeVLong(intTermState.skipOffset);
-    }
   }
 
   /**
    * Reads a {@link BlockTermState} from the provided {@link DataInput}.
    *
-   * <p>Simpler variant of {@link Lucene99PostingsReader#decodeTerm(DataInput, FieldInfo,
+   * <p>Simpler variant of {@link Lucene912PostingsReader#decodeTerm(DataInput, FieldInfo,
    * BlockTermState, boolean)}.
    *
    * @param reuse {@link BlockTermState} to reuse; or null to create a new one.
@@ -190,9 +187,6 @@ public class DeltaBaseTermStateSerializer implements Accountable {
         intTermState.lastPosBlockOffset = termStatesInput.readVLong();
       }
     }
-    if (intTermState.docFreq > BLOCK_SIZE) {
-      intTermState.skipOffset = termStatesInput.readVLong();
-    }
     return intTermState;
   }
 
@@ -210,7 +204,6 @@ public class DeltaBaseTermStateSerializer implements Accountable {
     termState.docStartFP = 0;
     termState.posStartFP = 0;
     termState.payStartFP = 0;
-    termState.skipOffset = -1;
     termState.lastPosBlockOffset = -1;
     termState.singletonDocID = -1;
 

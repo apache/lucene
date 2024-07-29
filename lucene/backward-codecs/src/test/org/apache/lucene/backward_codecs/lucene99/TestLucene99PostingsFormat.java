@@ -14,22 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene99.Lucene99ScoreSkipReader.readImpacts;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99ScoreSkipReader.readImpacts;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.lucene.backward_codecs.lucene99.Lucene99ScoreSkipReader.MutableImpactList;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.lucene90.blocktree.FieldReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Stats;
-import org.apache.lucene.codecs.lucene99.Lucene99ScoreSkipReader.MutableImpactList;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -41,7 +45,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
-  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene99PostingsFormat());
+  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene99RWPostingsFormat());
 
   @Override
   protected Codec getCodec() {
@@ -77,7 +81,7 @@ public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          new Lucene99PostingsFormat(minItemsInBlock, maxItemsInBlock);
+          new Lucene99RWPostingsFormat(minItemsInBlock, maxItemsInBlock);
         });
   }
 

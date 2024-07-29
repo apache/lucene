@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.RandomAccess;
-
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -80,7 +79,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.META_EXTENSION);
     final long expectedDocFileLength, expectedPosFileLength, expectedPayFileLength;
-    try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
+    ChecksumIndexInput metaIn = null;
+    boolean success = false;
+    try {
+      metaIn = state.directory.openChecksumInput(metaName);
       version =
           CodecUtil.checkIndexHeader(
               metaIn,
@@ -103,9 +105,24 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         expectedPosFileLength = -1;
         expectedPayFileLength = -1;
       }
+      CodecUtil.checkFooter(metaIn, null);
+      success = true;
+    } catch (Throwable t) {
+      if (metaIn != null) {
+        CodecUtil.checkFooter(metaIn, t);
+        throw new AssertionError("unreachable");
+      } else {
+        throw t;
+      }
+    } finally {
+      if (success) {
+        metaIn.close();
+      } else {
+        IOUtils.closeWhileHandlingException(metaIn);
+      }
     }
 
-    boolean success = false;
+    success = false;
     IndexInput docIn = null;
     IndexInput posIn = null;
     IndexInput payIn = null;
@@ -123,12 +140,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       // readahead.
       docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
       CodecUtil.checkIndexHeader(
-              docIn,
-              DOC_CODEC,
-              version,
-              version,
-              state.segmentInfo.getId(),
-              state.segmentSuffix);
+          docIn, DOC_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.retrieveChecksum(docIn, expectedDocFileLength);
 
       if (state.fieldInfos.hasProx()) {
@@ -376,19 +388,17 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     public boolean canReuse(IndexInput docIn, FieldInfo fieldInfo) {
       return docIn == startDocIn
-              && indexHasFreq
-                  == (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0)
-              && indexHasPos
-                  == (fieldInfo
-                          .getIndexOptions()
-                          .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
-                      >= 0)
-              && indexHasOffsetsOrPayloads
-                  == fieldInfo
+          && indexHasFreq
+              == (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0)
+          && indexHasPos
+              == (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
+                  >= 0)
+          && indexHasOffsetsOrPayloads
+              == (fieldInfo
                           .getIndexOptions()
                           .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
                       >= 0
-          || fieldInfo.hasPayloads();
+                  || fieldInfo.hasPayloads());
     }
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
@@ -1855,7 +1865,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
       doc = (int) docBuffer[docBufferUpto];
       freq = (int) freqBuffer[docBufferUpto];
-      posPendingCount+= freq;
+      posPendingCount += freq;
       docBufferUpto++;
       position = 0;
       return this.doc;

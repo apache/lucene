@@ -30,7 +30,7 @@ import org.apache.lucene.store.DataOutput;
 final class ForUtil {
 
   static final int BLOCK_SIZE = 128;
-  static final int BLOCK_SIZE_LOG2 = 7;
+  private static final int BLOCK_SIZE_LOG2 = 7;
 
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);

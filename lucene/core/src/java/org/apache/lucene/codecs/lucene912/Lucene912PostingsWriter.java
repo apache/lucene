@@ -119,8 +119,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private final ByteBuffersDataOutput skipOutput = ByteBuffersDataOutput.newResettableInstance();
 
   public Lucene912PostingsWriter(SegmentWriteState state) throws IOException {
-    String metaFileName = IndexFileNames.segmentFileName(
-        state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.META_EXTENSION);
+    String metaFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.META_EXTENSION);
     String docFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.DOC_EXTENSION);
@@ -342,8 +343,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   }
 
   /**
-   * Special vints that are encoded on 2 bytes if they require 15 bits or less.
-   * VInt becomes especially slow when the number of bytes is variable, so this special layout helps in the case when the number likely requires 15 bits or less
+   * Special vints that are encoded on 2 bytes if they require 15 bits or less. VInt becomes
+   * especially slow when the number of bytes is variable, so this special layout helps in the case
+   * when the number likely requires 15 bits or less
    */
   static void writeVInt15(DataOutput out, int v) throws IOException {
     assert v >= 0;
@@ -399,7 +401,8 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       }
 
       // docID - lastBlockDocID is at least 128, so it can never fit a single byte with a vint
-      // Even if we subtracted 128, only extremely dense blocks would be eligible to a single byte so let's go with 2 bytes right away
+      // Even if we subtracted 128, only extremely dense blocks would be eligible to a single byte
+      // so let's go with 2 bytes right away
       writeVInt15(spareOutput, docID - lastBlockDocID);
       writeVLong15(spareOutput, blockOutput.size());
       numSkipBytes += spareOutput.size();

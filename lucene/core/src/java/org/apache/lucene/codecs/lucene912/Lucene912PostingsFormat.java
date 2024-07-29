@@ -26,7 +26,6 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -342,7 +341,6 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
   /** Size of blocks. */
   public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
 
-  public static final int BLOCK_SIZE_LOG2 = ForUtil.BLOCK_SIZE_LOG2;
   public static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
   /** We insert skip data on every block and every SKIP_FACTOR=32 blocks. */
@@ -362,8 +360,28 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
+  private final int minTermBlockSize;
+  private final int maxTermBlockSize;
+
+  /** Creates {@code Lucene912PostingsFormat} with default settings. */
   public Lucene912PostingsFormat() {
+    this(
+        Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
+        Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
+  }
+
+  /**
+   * Creates {@code Lucene912PostingsFormat} with custom values for {@code minBlockSize} and {@code
+   * maxBlockSize} passed to block terms dictionary.
+   *
+   * @see
+   *     Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)
+   */
+  public Lucene912PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
     super("Lucene912");
+    Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
+    this.minTermBlockSize = minTermBlockSize;
+    this.maxTermBlockSize = maxTermBlockSize;
   }
 
   @Override
@@ -373,10 +391,7 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
     try {
       FieldsConsumer ret =
           new Lucene90BlockTreeTermsWriter(
-              state,
-              postingsWriter,
-              Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
-              Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
+              state, postingsWriter, minTermBlockSize, maxTermBlockSize);
       success = true;
       return ret;
     } finally {
@@ -402,7 +417,7 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
   }
 
   /**
-   * Holds all state required for {@link Lucene99PostingsReader} to produce a {@link
+   * Holds all state required for {@link Lucene912PostingsReader} to produce a {@link
    * org.apache.lucene.index.PostingsEnum} without re-seeking the terms dict.
    *
    * @lucene.internal
