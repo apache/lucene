@@ -31,18 +31,19 @@ import org.apache.lucene.search.LongValuesSource;
 /** {@link FacetCutter} for ranges of long values. It's based on LongRangeCounter class. */
 public abstract class LongRangeFacetCutter implements FacetCutter {
 
-  MultiLongValuesSource valuesSource;
-  LongValuesSource singleValues; // TODO: refactor - weird that we have both multi and single here.
-  LongRangeAndPos[] sortedRanges;
+  final MultiLongValuesSource valuesSource;
+  final LongValuesSource
+      singleValues; // TODO: refactor - weird that we have both multi and single here.
+  final LongRangeAndPos[] sortedRanges;
 
-  int requestedRangeCount;
+  final int requestedRangeCount;
 
-  List<InclusiveRange> elementaryIntervals;
+  final List<InclusiveRange> elementaryIntervals;
 
   /** elementary interval boundaries used for efficient counting (bsearch to find interval) */
-  long[] boundaries;
+  final long[] boundaries;
 
-  int[] pos;
+  final int[] pos;
 
   // Default interval position, when elementary interval is mapped to this interval
   // it is skipped.
