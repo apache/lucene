@@ -533,7 +533,7 @@ public class DrillSideways {
 
       // Wait for results. We don't read the results as they are collected by CollectorOwners
       for (i = 0; i < futures.size(); i++) {
-        futures.get(0).get();
+        futures.get(i).get();
       }
     } catch (InterruptedException e) {
       throw new ThreadInterruptedException(e);
