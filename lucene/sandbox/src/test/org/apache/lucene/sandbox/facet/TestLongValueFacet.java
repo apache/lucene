@@ -759,7 +759,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       throws IOException {
     int[] resultOrdinals = countRecorder.recordedOrds().toArray();
     ComparableSupplier<ComparableUtils.ByLongValueComparable> comparableSupplier =
-        ComparableUtils.byLongValueComparable(longValuesFacetCutter);
+        ComparableUtils.byLongValue(longValuesFacetCutter);
 
     ComparableUtils.sort(resultOrdinals, comparableSupplier);
 

@@ -151,7 +151,7 @@ public final class ComparableUtils {
    * {@link ComparableSupplier} to sort ordinals by long value from {@link LongValueFacetCutter}
    * (descending).
    */
-  public static ComparableSupplier<ByLongValueComparable> byLongValueComparable(
+  public static ComparableSupplier<ByLongValueComparable> byLongValue(
       LongValueFacetCutter longValueFacetCutter) {
     return new ComparableSupplier<>() {
       public ByLongValueComparable getComparable(int ord, ByLongValueComparable reuse) {
@@ -165,7 +165,7 @@ public final class ComparableUtils {
     };
   }
 
-  /** Used for {@link #byLongValueComparable} result. */
+  /** Used for {@link #byLongValue} result. */
   public static final class ByLongValueComparable extends SkeletalOrdGetter
       implements Comparable<ByLongValueComparable> {
     private ByLongValueComparable() {}
