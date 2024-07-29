@@ -244,6 +244,8 @@ Other
 
 * GITHUB#13332: Improve MissingDoclet linter to check records correctly. (Uwe Schindler)
 
+* GITHUB#13499: Remove usage of TopScoreDocCollector + TopFieldCollector deprecated methods (#create, #createSharedManager) (Jakub Slowinski)
+
 ======================== Lucene 9.12.0 =======================
 
 API Changes
