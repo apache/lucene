@@ -17,7 +17,6 @@
 package org.apache.lucene.sandbox.facet.cutters;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -26,8 +25,6 @@ import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.internal.hppc.IntCursor;
-import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.internal.hppc.IntLongHashMap;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
@@ -62,37 +59,30 @@ public final class LongValueFacetCutter implements FacetCutter, OrdToLabel {
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     SortedNumericDocValues docValues = DocValues.getSortedNumeric(context.reader(), field);
     return new LeafFacetCutter() {
-      int currDoc = -1;
-      final IntHashSet valuesForDoc = new IntHashSet();
-      private Iterator<IntCursor> perDocValuesCursor;
+      int docValueCount;
+      long lastDocValue;
+      int docValueCursor;
 
       @Override
       public boolean advanceExact(int doc) throws IOException {
-        if (doc < currDoc) {
-          return false;
-        }
-        if (doc == currDoc) {
-          return true;
-        }
         if (docValues.advanceExact(doc)) {
-          valuesForDoc.clear();
-          int numValues = docValues.docValueCount();
-          for (int i = 0; i < numValues; i++) {
-            long value = docValues.nextValue();
-            int ordinal = valueToOrdMap.computeIfAbsent(value, maxOrdinal::incrementAndGet);
-            valuesForDoc.add(ordinal);
-          }
-          currDoc = doc;
-          perDocValuesCursor = valuesForDoc.iterator();
+          docValueCount = docValues.docValueCount();
+          docValueCursor = 0;
           return true;
         }
         return false;
       }
 
       @Override
-      public int nextOrd() {
-        if (perDocValuesCursor.hasNext()) {
-          return perDocValuesCursor.next().value;
+      public int nextOrd() throws IOException {
+        while (docValueCursor++ < docValueCount) {
+          long value = docValues.nextValue();
+          // SortedNumericDocValues can have duplicates, but values are sorted, so we only need to
+          // check previous value to remove duplicates
+          if (docValueCursor == 1 || value != lastDocValue) {
+            lastDocValue = value;
+            return valueToOrdMap.computeIfAbsent(value, maxOrdinal::incrementAndGet);
+          }
         }
         return NO_MORE_ORDS;
       }
