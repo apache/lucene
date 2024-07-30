@@ -279,6 +279,9 @@ Improvements
 * GITHUB#13562: Add Intervals.regexp and Intervals.range methods to produce  IntervalsSource
   for regexp and range queries. (Mayya Sharipova)
 
+* GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
+
 Optimizations
 ---------------------
 
