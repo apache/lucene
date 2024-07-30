@@ -66,6 +66,7 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
   private boolean fieldHasOffsets;
   private boolean fieldHasPayloads;
 
+  /** Sole constructor. */
   public Lucene99SkipWriter(
       int maxSkipLevels,
       int blockSize,
@@ -92,6 +93,7 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
     }
   }
 
+  /** Reset state for the given index options. */
   public void setField(
       boolean fieldHasPositions, boolean fieldHasOffsets, boolean fieldHasPayloads) {
     this.fieldHasPositions = fieldHasPositions;
@@ -211,6 +213,7 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
     competitiveFreqNorms.clear();
   }
 
+  /** Write impacts to the given output. */
   public static void writeImpacts(CompetitiveImpactAccumulator acc, DataOutput out)
       throws IOException {
     Collection<Impact> impacts = acc.getCompetitiveFreqNormPairs();
