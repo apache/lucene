@@ -64,16 +64,17 @@ public class BlockJoinSelector {
           return false;
         }
 
-        final int lastPotentialChild = docID - 1;
-
-        final int firstPotentialChild = parents.prevSetBit(lastPotentialChild) + 1;
-        if (firstPotentialChild < docID) {
-          for (int child = children.firstSetBitInRange(firstPotentialChild, lastPotentialChild);
-              child != DocIdSetIterator.NO_MORE_DOCS;
-              child = children.firstSetBitInRange(child + 1, lastPotentialChild)) {
-            if (docsWithValue.get(child)) {
-              return true;
-            }
+        final int firstPotentialChild = parents.prevSetBit(docID - 1) + 1;
+        assert firstPotentialChild <= docID;
+        if (firstPotentialChild == docID) {
+          // no children
+          return false;
+        }
+        for (int child = children.nextSetBit(firstPotentialChild, docID);
+            child != DocIdSetIterator.NO_MORE_DOCS;
+            child = children.nextSetBit(child + 1, docID)) {
+          if (docsWithValue.get(child)) {
+            return true;
           }
         }
 

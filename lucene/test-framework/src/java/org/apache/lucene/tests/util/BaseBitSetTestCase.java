@@ -105,19 +105,19 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     }
   }
 
-  /** Test {@link BitSet#firstSetBitInRange(int, int)}. */
-  public void testNextSetBitWithUpperBound() throws IOException {
+  /** Test {@link BitSet#nextSetBit(int, int)}. */
+  public void testNextSetBitInRange() throws IOException {
     Random random = random();
     final int numBits = 1 + random().nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
       BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
       T set2 = copyOf(set1, numBits);
       for (int start = 0; start < numBits; ++start) {
-        int end = RandomNumbers.randomIntBetween(random, start, numBits - 1);
+        int end = RandomNumbers.randomIntBetween(random, start + 1, numBits);
         assertEquals(
             "start=" + start + ", end=" + end + ", numBits=" + numBits,
-            set1.firstSetBitInRange(start, end),
-            set2.firstSetBitInRange(start, end));
+            set1.nextSetBit(start, end),
+            set2.nextSetBit(start, end));
       }
     }
   }
@@ -350,9 +350,9 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     }
 
     @Override
-    public int firstSetBitInRange(int start, int upperBound) {
+    public int nextSetBit(int start, int upperBound) {
       int res = nextSetBit(start);
-      return res > upperBound ? DocIdSetIterator.NO_MORE_DOCS : res;
+      return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
     }
   }
 }
