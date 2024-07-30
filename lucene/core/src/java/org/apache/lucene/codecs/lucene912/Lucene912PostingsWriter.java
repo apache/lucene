@@ -473,7 +473,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     assert docOut.getFilePointer() == level1End : docOut.getFilePointer() + " " + level1End;
   }
 
-  private void writeImpacts(Collection<Impact> impacts, DataOutput out) throws IOException {
+  static void writeImpacts(Collection<Impact> impacts, DataOutput out) throws IOException {
     Impact previous = new Impact(0, 0);
     for (Impact impact : impacts) {
       assert impact.freq > previous.freq;
