@@ -147,7 +147,9 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
         byte[] b = new byte[Math.toIntExact(in.length())];
         in.readBytes(b, 0, b.length);
         List<Impact> impacts2 =
-            Lucene912PostingsReader.readImpacts(new ByteArrayDataInput(b), new MutableImpactList());
+            Lucene912PostingsReader.readImpacts(
+                new ByteArrayDataInput(b),
+                new MutableImpactList(impacts.size() + random().nextInt(3)));
         assertEquals(impacts, impacts2);
       }
     }

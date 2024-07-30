@@ -25,6 +25,7 @@ import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.VERSION
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
@@ -99,7 +100,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private final CompetitiveImpactAccumulator level1CompetitiveFreqNormAccumulator =
       new CompetitiveImpactAccumulator();
 
+  private int maxNumImpactsAtLevel0;
   private int maxImpactNumBytesAtLevel0;
+  private int maxNumImpactsAtLevel1;
   private int maxImpactNumBytesAtLevel1;
 
   /** Scratch output that we use to be able to prepend the encoded length, e.g. impacts. */
@@ -376,7 +379,11 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
           level0Output, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
     } else {
       if (writeFreqs) {
-        writeImpacts(level0FreqNormAccumulator.getCompetitiveFreqNormPairs(), scratchOutput);
+        List<Impact> impacts = level0FreqNormAccumulator.getCompetitiveFreqNormPairs();
+        if (impacts.size() > maxNumImpactsAtLevel0) {
+          maxNumImpactsAtLevel0 = impacts.size();
+        }
+        writeImpacts(impacts, scratchOutput);
         assert level0Output.size() == 0;
         if (scratchOutput.size() > maxImpactNumBytesAtLevel0) {
           maxImpactNumBytesAtLevel0 = Math.toIntExact(scratchOutput.size());
@@ -437,8 +444,11 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     long numImpactBytes = scratchOutput.size();
     final long level1End;
     if (writeFreqs) {
-      writeImpacts(
-          level1CompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), scratchOutput);
+      List<Impact> impacts = level1CompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs();
+      if (impacts.size() > maxNumImpactsAtLevel1) {
+        maxNumImpactsAtLevel1 = impacts.size();
+      }
+      writeImpacts(impacts, scratchOutput);
       numImpactBytes = scratchOutput.size();
       if (numImpactBytes > maxImpactNumBytesAtLevel1) {
         maxImpactNumBytesAtLevel1 = Math.toIntExact(numImpactBytes);
@@ -645,7 +655,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         CodecUtil.writeFooter(payOut);
       }
       if (metaOut != null) {
+        metaOut.writeInt(maxNumImpactsAtLevel0);
         metaOut.writeInt(maxImpactNumBytesAtLevel0);
+        metaOut.writeInt(maxNumImpactsAtLevel1);
         metaOut.writeInt(maxImpactNumBytesAtLevel1);
         metaOut.writeLong(docOut.getFilePointer());
         if (posOut != null) {

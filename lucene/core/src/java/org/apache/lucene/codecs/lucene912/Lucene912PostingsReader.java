@@ -68,7 +68,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   private final IndexInput posIn;
   private final IndexInput payIn;
 
+  private final int maxNumImpactsAtLevel0;
   private final int maxImpactNumBytesAtLevel0;
+  private final int maxNumImpactsAtLevel1;
   private final int maxImpactNumBytesAtLevel1;
 
   private final int version;
@@ -91,7 +93,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
+      maxNumImpactsAtLevel0 = metaIn.readInt();
       maxImpactNumBytesAtLevel0 = metaIn.readInt();
+      maxNumImpactsAtLevel1 = metaIn.readInt();
       maxImpactNumBytesAtLevel1 = metaIn.readInt();
       expectedDocFileLength = metaIn.readLong();
       if (state.fieldInfos.hasProx()) {
@@ -1213,16 +1217,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // level 0 skip data
     private int level0LastDocID;
     private long level0DocEndFP;
-    private final BytesRefBuilder level0SerializedImpacts = new BytesRefBuilder();
+    private final BytesRef level0SerializedImpacts;
     private final ByteArrayDataInput level0SerializedImpactsIn = new ByteArrayDataInput();
-    private final MutableImpactList level0Impacts = new MutableImpactList();
+    private final MutableImpactList level0Impacts;
     // level 1 skip data
     private int level1LastDocID;
     private long level1DocEndFP;
     private int level1DocCountUpto;
-    private final BytesRefBuilder level1SerializedImpacts = new BytesRefBuilder();
+    private final BytesRef level1SerializedImpacts;
     private final ByteArrayDataInput level1SerializedImpactsIn = new ByteArrayDataInput();
-    private final MutableImpactList level1Impacts = new MutableImpactList();
+    private final MutableImpactList level1Impacts;
 
     public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
@@ -1264,8 +1268,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       level1DocCountUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       freqFP = -1;
-      level0SerializedImpacts.growNoCopy(maxImpactNumBytesAtLevel0);
-      level1SerializedImpacts.growNoCopy(maxImpactNumBytesAtLevel1);
+      level0SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel0);
+      level1SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel1);
+      level0Impacts = new MutableImpactList(maxNumImpactsAtLevel0);
+      level1Impacts = new MutableImpactList(maxNumImpactsAtLevel1);
     }
 
     @Override
@@ -1347,8 +1353,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         if (level1LastDocID >= target) {
           long skip1EndFP = docIn.readShort() + docIn.getFilePointer();
           int numImpactBytes = docIn.readShort();
-          docIn.readBytes(level1SerializedImpacts.bytes(), 0, numImpactBytes);
-          level1SerializedImpacts.setLength(numImpactBytes);
+          docIn.readBytes(level1SerializedImpacts.bytes, 0, numImpactBytes);
+          level1SerializedImpacts.length = numImpactBytes;
           assert indexHasPos || docIn.getFilePointer() == skip1EndFP;
           docIn.seek(skip1EndFP);
           break;
@@ -1371,8 +1377,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           if (target <= level0LastDocID) {
             level0DocEndFP = docIn.getFilePointer() + blockLength;
             int numImpactBytes = docIn.readVInt();
-            docIn.readBytes(level0SerializedImpacts.bytes(), 0, numImpactBytes);
-            level0SerializedImpacts.setLength(numImpactBytes);
+            docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
+            level0SerializedImpacts.length = numImpactBytes;
             docIn.seek(skip0End);
             break;
           }
@@ -1420,8 +1426,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         level0LastDocID += docDelta;
         level0DocEndFP = docIn.getFilePointer() + blockLength;
         final int numImpactBytes = docIn.readVInt();
-        docIn.readBytes(level0SerializedImpacts.bytes(), 0, numImpactBytes);
-        level0SerializedImpacts.setLength(numImpactBytes);
+        docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
+        level0SerializedImpacts.length = numImpactBytes;
         docIn.seek(skip0End);
       } else {
         level0LastDocID = DocIdSetIterator.NO_MORE_DOCS;
@@ -1500,7 +1506,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           if (level0LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
               level0SerializedImpactsIn.reset(
-                  level0SerializedImpacts.bytes(), 0, level0SerializedImpacts.length());
+                  level0SerializedImpacts.bytes, 0, level0SerializedImpacts.length);
               readImpacts(level0SerializedImpactsIn, level0Impacts);
               return level0Impacts;
             }
@@ -1510,7 +1516,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           if (level1LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
               level1SerializedImpactsIn.reset(
-                  level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
+                  level1SerializedImpacts.bytes, 0, level1SerializedImpacts.length);
               readImpacts(level1SerializedImpactsIn, level1Impacts);
               return level1Impacts;
             }
@@ -1582,7 +1588,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int level0BlockPosUpto;
     private final BytesRefBuilder level0SerializedImpacts = new BytesRefBuilder();
     private final ByteArrayDataInput level0SerializedImpactsIn = new ByteArrayDataInput();
-    private final MutableImpactList level0Impacts = new MutableImpactList();
+    private final MutableImpactList level0Impacts;
     // level 1 skip data
     private int level1LastDocID;
     private long level1DocEndFP;
@@ -1591,7 +1597,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int level1BlockPosUpto;
     private final BytesRefBuilder level1SerializedImpacts = new BytesRefBuilder();
     private final ByteArrayDataInput level1SerializedImpactsIn = new ByteArrayDataInput();
-    private final MutableImpactList level1Impacts = new MutableImpactList();
+    private final MutableImpactList level1Impacts;
 
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
@@ -1651,6 +1657,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       posBufferUpto = BLOCK_SIZE;
       level0SerializedImpacts.growNoCopy(maxImpactNumBytesAtLevel0);
       level1SerializedImpacts.growNoCopy(maxImpactNumBytesAtLevel1);
+      level0Impacts = new MutableImpactList(maxNumImpactsAtLevel0);
+      level1Impacts = new MutableImpactList(maxNumImpactsAtLevel1);
     }
 
     @Override
@@ -2024,8 +2032,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   }
 
   static class MutableImpactList extends AbstractList<Impact> implements RandomAccess {
-    int length = 1;
-    Impact[] impacts = new Impact[] {new Impact(Integer.MAX_VALUE, 1L)};
+    int length;
+    final Impact[] impacts;
+
+    MutableImpactList(int capacity) {
+      impacts = new Impact[capacity];
+      for (int i = 0; i < capacity; ++i) {
+        impacts[i] = new Impact(Integer.MAX_VALUE, 1L);
+      }
+    }
 
     @Override
     public Impact get(int index) {
@@ -2039,15 +2054,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   }
 
   static MutableImpactList readImpacts(ByteArrayDataInput in, MutableImpactList reuse) {
-    int maxNumImpacts = in.length(); // at most one impact per byte
-    if (reuse.impacts.length < maxNumImpacts) {
-      int oldLength = reuse.impacts.length;
-      reuse.impacts = ArrayUtil.grow(reuse.impacts, maxNumImpacts);
-      for (int i = oldLength; i < reuse.impacts.length; ++i) {
-        reuse.impacts[i] = new Impact(Integer.MAX_VALUE, 1L);
-      }
-    }
-
     int freq = 0;
     long norm = 0;
     int length = 0;
