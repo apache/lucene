@@ -21,7 +21,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -34,14 +36,17 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.hamcrest.Matchers;
 
 public class TestIndexSearcher extends LuceneTestCase {
   Directory dir;
@@ -292,5 +297,219 @@ public class TestIndexSearcher extends LuceneTestCase {
   public void testNullExecutorNonNullTaskExecutor() {
     IndexSearcher indexSearcher = new IndexSearcher(reader);
     assertNotNull(indexSearcher.getTaskExecutor());
+  }
+
+  /*
+   * The goal of this test is to ensure that when multiple concurrent slices are
+   * being searched, and one of the concurrent tasks throws an Exception, the other
+   * tasks become aware of it (via the ExceptionBasedQueryTimeout in IndexSearcher)
+   * and exit immediately rather than completing their search actions.
+   *
+   * To test this:
+   * - a concurrent Executor is used to ensure concurrent tasks are running
+   * - the MatchAllOrThrowExceptionQuery is used to ensure that one of the search
+   *   tasks throws an Exception
+   * - a testing ExceptionBasedTimeoutWrapper is used to track the number of times
+   *   and early exit happens
+   * - a CountDownLatch is used to synchronize the task that is going to throw an Exception
+   *   with another task that is in the ExceptionBasedQueryTimeout.shouldExit method,
+   *   ensuring the Exception is thrown while at least one other task is still running
+   * - a second CountDownLatch is used to synchronize between the
+   *   ExceptionBasedQueryTimeout.notifyExceptionThrown call (coming from the task thread
+   *   where the exception is thrown) and the ExceptionBasedQueryTimeout.shouldExit method
+   *   to ensure that at least one task has shouldExit return true (for an early exit)
+   * - an atomic earlyExitCounter tracks how many tasks exited early due to
+   *   TimeLimitingBulkScorer.TimeExceededException in the TimeLimitingBulkScorer
+   */
+  public void testMultipleSegmentsWithExceptionCausesEarlyTerminationOfRunningTasks() {
+    // skip this test when only one leaf, since one leaf means one task
+    // and the TimeLimitingBulkScorer will NOT be added in IndexSearcher
+    if (reader.leaves().size() <= 1) {
+      return;
+    }
+    // tracks how many tasks exited early due to Exception being thrown in another task
+    AtomicInteger earlyExitCounter = new AtomicInteger(0);
+    // task that throws an Exception waits on this latch to ensure at least one task is checking the
+    // QueryTimeout.shouldExit method before it throws the Exception
+    CountDownLatch shouldExitLatch = new CountDownLatch(1);
+    // latch used by the ExceptionBasedQueryTimeoutWrapper to ensure that the shouldExit method
+    // of at least one task waits until the ExceptionBasedQueryTimeout.notifyExceptionThrown method
+    // is called before checking getting the shouldExit method
+    CountDownLatch exceptionThrownLatch = new CountDownLatch(1);
+    ExecutorService executorService =
+        Executors.newFixedThreadPool(7, new NamedThreadFactory("concurrentSlicesTest"));
+    try {
+      IndexSearcher searcher =
+          new IndexSearcher(reader, executorService) {
+            @Override
+            protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+              return slices(leaves, 1, 1);
+            }
+
+            @Override
+            BulkScorer createTimeLimitingBulkScorer(BulkScorer scorer, QueryTimeout queryTimeout) {
+              return new TimeLimitingBulkScorerWrapper(earlyExitCounter, scorer, queryTimeout);
+            }
+
+            @Override
+            void addExceptionBasedQueryTimeout(QueryTimeout delegate) {
+              setTimeout(
+                  new ExceptionBasedQueryTimeoutWrapper(
+                      shouldExitLatch, exceptionThrownLatch, delegate));
+            }
+          };
+
+      MatchAllOrThrowExceptionQuery query = new MatchAllOrThrowExceptionQuery(shouldExitLatch);
+      RuntimeException exc = expectThrows(RuntimeException.class, () -> searcher.search(query, 10));
+      assertThat(
+          exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery Exception"));
+      assertThat(earlyExitCounter.get(), Matchers.greaterThan(0));
+
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  private static class ExceptionBasedQueryTimeoutWrapper
+      extends IndexSearcher.ExceptionBasedQueryTimeout {
+    private final CountDownLatch shouldExitLatch;
+    private final CountDownLatch exceptionThrownLatch;
+
+    public ExceptionBasedQueryTimeoutWrapper(
+        CountDownLatch shouldExitLatch,
+        CountDownLatch exceptionThrownLatch,
+        QueryTimeout delegate) {
+      super(delegate);
+      this.shouldExitLatch = shouldExitLatch;
+      this.exceptionThrownLatch = exceptionThrownLatch;
+    }
+
+    // called on the thread of the task that threw an Exception
+    @Override
+    public void notifyExceptionThrown() {
+      super.notifyExceptionThrown();
+      exceptionThrownLatch.countDown();
+    }
+
+    @Override
+    public boolean shouldExit() {
+      // notifies other tasks that this task is in the shouldExit method
+      shouldExitLatch.countDown();
+      try {
+        // wait until at least one task has been notified that an exception was thrown
+        exceptionThrownLatch.await(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        throw new RuntimeException("Unexpected timeout of latch await", e);
+      }
+      return super.shouldExit();
+    }
+  }
+
+  private static class MatchAllOrThrowExceptionQuery extends Query {
+
+    private final CountDownLatch shouldExitLatch;
+    private final AtomicInteger numExceptionsToThrow;
+    private final Query delegate;
+
+    /**
+     * Throws an Exception out of the {@code scorer} method the first time it is called. Otherwise,
+     * it delegates all calls to the MatchAllDocsQuery.
+     */
+    public MatchAllOrThrowExceptionQuery(CountDownLatch shouldExitLatch) {
+      this.numExceptionsToThrow = new AtomicInteger(1);
+      this.shouldExitLatch = shouldExitLatch;
+      this.delegate = new MatchAllDocsQuery();
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      Weight matchAllWeight = delegate.createWeight(searcher, scoreMode, boost);
+
+      return new Weight(delegate) {
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return matchAllWeight.isCacheable(ctx);
+        }
+
+        @Override
+        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+          return matchAllWeight.explain(context, doc);
+        }
+
+        @Override
+        public Scorer scorer(LeafReaderContext context) throws IOException {
+          // only throw exception when the counter hits 1 (so only one exception gets thrown)
+          if (numExceptionsToThrow.getAndDecrement() == 1) {
+            try {
+              // wait until we know another task is in the QueryTimeout.shouldExit method
+              // before throwing an Exception to ensure at least one shouldExit method
+              // returns true causing another task to exit early
+              shouldExitLatch.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+              throw new RuntimeException(e);
+            }
+            throw new RuntimeException("MatchAllOrThrowExceptionQuery Exception");
+          }
+          return matchAllWeight.scorer(context);
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      delegate.visit(visitor);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "MatchAllOrThrowExceptionQuery";
+    }
+
+    @Override
+    public int hashCode() {
+      return delegate.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return other == this;
+    }
+  }
+
+  static class TimeLimitingBulkScorerWrapper extends BulkScorer {
+    private final TimeLimitingBulkScorer delegate;
+    private final AtomicInteger earlyExitCounter;
+
+    /**
+     * Wraps a {@link TimeLimitingBulkScorer}, recording the counts of how many times {@link
+     * TimeLimitingBulkScorer.TimeExceededException} is thrown from the {@code score} method.
+     *
+     * @param earlyExitCounter counter to increment when {@link
+     *     TimeLimitingBulkScorer.TimeExceededException} is caught
+     * @param scorer to pass to {@link TimeLimitingBulkScorer} constructor
+     * @param queryTimeout to pass to {@link TimeLimitingBulkScorer} constructor
+     */
+    public TimeLimitingBulkScorerWrapper(
+        AtomicInteger earlyExitCounter, BulkScorer scorer, QueryTimeout queryTimeout) {
+      this.earlyExitCounter = earlyExitCounter;
+      this.delegate = new TimeLimitingBulkScorer(scorer, queryTimeout);
+    }
+
+    @Override
+    public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+        throws IOException {
+      try {
+        return delegate.score(collector, acceptDocs, min, max);
+      } catch (TimeLimitingBulkScorer.TimeExceededException tee) {
+        earlyExitCounter.incrementAndGet();
+        throw tee;
+      }
+    }
+
+    @Override
+    public long cost() {
+      return delegate.cost();
+    }
   }
 }

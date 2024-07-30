@@ -656,14 +656,24 @@ public class IndexSearcher {
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
+      if (collectors.size() > 1) {
+        addExceptionBasedQueryTimeout(queryTimeout);
+      }
       final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;
         final C collector = collectors.get(i);
         listTasks.add(
             () -> {
-              search(Arrays.asList(leaves), weight, collector);
-              return collector;
+              try {
+                search(Arrays.asList(leaves), weight, collector);
+                return collector;
+              } catch (Exception e) {
+                if (queryTimeout instanceof ExceptionBasedQueryTimeout eqt) {
+                  eqt.notifyExceptionThrown();
+                }
+                throw e;
+              }
             });
       }
       List<C> results = taskExecutor.invokeAll(listTasks);
@@ -709,7 +719,7 @@ public class IndexSearcher {
         scorerSupplier.setTopLevelScoringClause();
         BulkScorer scorer = scorerSupplier.bulkScorer();
         if (queryTimeout != null) {
-          scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
+          scorer = createTimeLimitingBulkScorer(scorer, queryTimeout);
         }
         try {
           scorer.score(leafCollector, ctx.reader().getLiveDocs());
@@ -939,6 +949,27 @@ public class IndexSearcher {
   }
 
   /**
+   * Package private so that it can be overridden for testing.
+   *
+   * @lucene.internal
+   */
+  void addExceptionBasedQueryTimeout(QueryTimeout delegate) {
+    setTimeout(new ExceptionBasedQueryTimeout(delegate));
+  }
+
+  /**
+   * Created to allow tests to override this method with a test-based BulkScorer.
+   *
+   * @param scorer to pass to the {@link TimeLimitingBulkScorer} constructor
+   * @param queryTimeout to pass to the {@link TimeLimitingBulkScorer} constructor
+   * @return {@link TimeLimitingBulkScorer}
+   * @lucene.internal
+   */
+  BulkScorer createTimeLimitingBulkScorer(BulkScorer scorer, QueryTimeout queryTimeout) {
+    return new TimeLimitingBulkScorer(scorer, queryTimeout);
+  }
+
+  /**
    * Thrown when an attempt is made to add more than {@link #getMaxClauseCount()} clauses. This
    * typically happens if a PrefixQuery, FuzzyQuery, WildcardQuery, or TermRangeQuery is expanded to
    * many terms during search.
@@ -1011,6 +1042,39 @@ public class IndexSearcher {
         }
       }
       return leafSlices;
+    }
+  }
+
+  /**
+   * A QueryTimeout implementation that returns true from {@code shouldExit} if it has been notified
+   * that an Exception was thrown. It also wraps any existing QueryTimeout that has been set on the
+   * IndexSearcher and checks its underlying shouldExit result.
+   *
+   * <p>Use this when doing concurrent searches of slices to cause other slice tasks to abort early
+   * if any of their siblings throw an Exception, so the entire search can fail fast.
+   */
+  static class ExceptionBasedQueryTimeout implements QueryTimeout {
+
+    private final QueryTimeout delegate;
+    private volatile boolean exceptionThrown;
+
+    public ExceptionBasedQueryTimeout(QueryTimeout delegate) {
+      if (delegate == null) {
+        // create a no-op timeout to avoid 'if' checks in shouldExit
+        this.delegate = () -> false;
+      } else {
+        this.delegate = delegate;
+      }
+      this.exceptionThrown = false;
+    }
+
+    public void notifyExceptionThrown() {
+      exceptionThrown = true;
+    }
+
+    @Override
+    public boolean shouldExit() {
+      return exceptionThrown || delegate.shouldExit();
     }
   }
 }
