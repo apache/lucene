@@ -1953,6 +1953,7 @@ public abstract class LuceneTestCase extends Assert {
         ret = random.nextBoolean() ? new IndexSearcher(r) : new IndexSearcher(r.getContext());
       }
       ret.setSimilarity(classEnvRule.similarity);
+      ret.setIOConcurrencySumMaxDocThreshold(TestUtil.nextInt(random(), 0, r.maxDoc()));
       return ret;
     } else {
       final ExecutorService ex;
@@ -1999,6 +2000,7 @@ public abstract class LuceneTestCase extends Assert {
       if (random().nextBoolean()) {
         ret.setTimeout(() -> false);
       }
+      ret.setIOConcurrencySumMaxDocThreshold(TestUtil.nextInt(random(), 0, r.maxDoc()));
       return ret;
     }
   }

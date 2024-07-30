@@ -17,10 +17,12 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -31,6 +33,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
@@ -41,6 +44,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 /**
@@ -106,6 +110,8 @@ public class IndexSearcher {
 
   private static final int MAX_SEGMENTS_PER_SLICE = 5;
 
+  private static final int DEFAULT_IO_CONCURRENCY_SUM_MAX_DOC_THRESHOLD = 1_000_000;
+
   final IndexReader reader; // package private for testing!
 
   // NOTE: these members might change in incompatible ways
@@ -129,6 +135,8 @@ public class IndexSearcher {
 
   private QueryCache queryCache = DEFAULT_QUERY_CACHE;
   private QueryCachingPolicy queryCachingPolicy = DEFAULT_CACHING_POLICY;
+
+  private int ioConcurrencySumMaxDocThreshold = DEFAULT_IO_CONCURRENCY_SUM_MAX_DOC_THRESHOLD;
 
   /**
    * Expert: returns a default Similarity instance. In general, this method is only called to
@@ -415,6 +423,31 @@ public class IndexSearcher {
   }
 
   /**
+   * Expert: Configure the amount of inter-segment I/O concurrency that can be performed. See {@link
+   * #getIOConcurrencySumMaxDocThreshold()} for more details.
+   */
+  public void setIOConcurrencySumMaxDocThreshold(int ioConcurrencySumMaxDocThreshold) {
+    if (ioConcurrencySumMaxDocThreshold < 0) {
+      throw new IllegalArgumentException(
+          "ioConcurrencySumMaxDocThreshold must be >= 0, got " + ioConcurrencySumMaxDocThreshold);
+    }
+    this.ioConcurrencySumMaxDocThreshold = ioConcurrencySumMaxDocThreshold;
+  }
+
+  /**
+   * Expert: Get the amount of inter-segment I/O concurrency that can be performed. This threshold
+   * works in such a way that a single search thread will only attempt to perform I/O concurrently
+   * across multiple segments if the sum of their {@link LeafReader#maxDoc() maxDoc} is less than or
+   * equal to the configured threshold. Effectively, I/O is performed concurrently on few large
+   * segments or many small segments.
+   *
+   * <p>The default value is 1,000,000.
+   */
+  public int getIOConcurrencySumMaxDocThreshold() {
+    return ioConcurrencySumMaxDocThreshold;
+  }
+
+  /**
    * Count how many documents match the given query. May be faster than counting number of hits by
    * collecting all matches, as the number of hits is retrieved from the index statistics when
    * possible.
@@ -690,43 +723,76 @@ public class IndexSearcher {
 
     collector.setWeight(weight);
 
-    // TODO: should we make this
-    // threaded...? the Collector could be sync'd?
-    // always use single thread:
-    for (LeafReaderContext ctx : leaves) { // search each subreader
-      final LeafCollector leafCollector;
-      try {
-        leafCollector = collector.getLeafCollector(ctx);
-      } catch (
-          @SuppressWarnings("unused")
-          CollectionTerminatedException e) {
-        // there is no doc of interest in this reader context
-        // continue with the following leaf
-        continue;
+    // Below we perform inter-segment I/O concurrency, by pulling ScorerSuppliers across multiple
+    // segments without evaluating them immediately, so that prefetching for these ScorerSuppliers
+    // can happen concurrently.
+    // This approach introduces a risk though, that we prefetch data into the page cache for two
+    // segments A and B, but then evaluating the query on segment A causes data for segment B to be
+    // evicted from the cache. In order to mitigate this risk, a threshold is used, which configures
+    // the maximum sum of maxDoc of LeafReaders whose I/O is performed concurrently.
+    final long[] pendingMaxDoc = new long[1];
+    final Deque<IORunnable> pendingLeafSearches = new ArrayDeque<>();
+
+    for (LeafReaderContext ctx : leaves) {
+
+      while (pendingLeafSearches.isEmpty() == false
+          && pendingMaxDoc[0] + ctx.reader().maxDoc() > ioConcurrencySumMaxDocThreshold) {
+        // We cannot queue more work without hitting the threshold, so poll from the queue.
+        pendingLeafSearches.poll().run();
       }
-      ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
-      if (scorerSupplier != null) {
-        scorerSupplier.setTopLevelScoringClause();
-        BulkScorer scorer = scorerSupplier.bulkScorer();
-        if (queryTimeout != null) {
-          scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
-        }
-        try {
-          scorer.score(leafCollector, ctx.reader().getLiveDocs());
-        } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
-          // collection was terminated prematurely
-          // continue with the following leaf
-        } catch (
-            @SuppressWarnings("unused")
-            TimeLimitingBulkScorer.TimeExceededException e) {
-          partialResult = true;
-        }
-      }
-      // Note: this is called if collection ran successfully, including the above special cases of
-      // CollectionTerminatedException and TimeExceededException, but no other exception.
-      leafCollector.finish();
+
+      // NOTE: this calls implicitly starts prefetching data that may be needed to evaluate the
+      // query in the background.
+      final ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+
+      pendingMaxDoc[0] += ctx.reader().maxDoc();
+
+      pendingLeafSearches.add(
+          () -> {
+            final LeafCollector leafCollector;
+            try {
+              // TODO: Would be nice to call this right after Weight#scorerSupplier but this breaks
+              // ordering assumptions of getLeafCollector/collect/finish calls.
+              leafCollector = collector.getLeafCollector(ctx);
+            } catch (
+                @SuppressWarnings("unused")
+                CollectionTerminatedException e) {
+              // there is no doc of interest in this reader context
+              // continue with the following leaf
+              return;
+            }
+
+            if (scorerSupplier != null) {
+              scorerSupplier.setTopLevelScoringClause();
+              BulkScorer scorer = scorerSupplier.bulkScorer();
+              if (queryTimeout != null) {
+                scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
+              }
+              try {
+                scorer.score(leafCollector, ctx.reader().getLiveDocs());
+              } catch (
+                  @SuppressWarnings("unused")
+                  CollectionTerminatedException e) {
+                // collection was terminated prematurely
+                // continue with the following leaf
+              } catch (
+                  @SuppressWarnings("unused")
+                  TimeLimitingBulkScorer.TimeExceededException e) {
+                partialResult = true;
+              }
+            }
+
+            // Note: this is called if collection ran successfully, including the above special
+            // cases of CollectionTerminatedException and TimeExceededException, but no other
+            // exception.
+            leafCollector.finish();
+
+            pendingMaxDoc[0] -= ctx.reader().maxDoc();
+          });
+    }
+
+    for (IORunnable leafSearch : pendingLeafSearches) {
+      leafSearch.run();
     }
   }
 
