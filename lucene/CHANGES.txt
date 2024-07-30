@@ -259,6 +259,10 @@ API Changes
 
 * GITHUB#13612: Hunspell: add Suggester#proceedPastRep to avoid losing relevant suggestions. (Peter Gromov)
 
+* GITHUB#13603: Introduced `IndexSearcher#searchLeaf(LeafReaderContext, Weight, Collector)` protected method to
+  facilitate customizing per-leaf behavior of search without requiring to override
+  `search(LeafReaderContext[], Weight, Collector)` which requires overriding the entire loop across the leaves (Luca Cavanna)
+
 New Features
 ---------------------
 
