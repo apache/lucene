@@ -30,8 +30,8 @@ import org.apache.lucene.search.TotalHits.Relation;
 /**
  * A {@link Collector} that sorts by {@link SortField} using {@link FieldComparator}s.
  *
- * <p>See the {@link #create(org.apache.lucene.search.Sort, int, int)} method for instantiating a
- * TopFieldCollector.
+ * <p>See the constructor of {@link TopFieldCollectorManager} for instantiating a
+ * TopFieldCollectorManager with support for concurrency in IndexSearcher.
  *
  * @lucene.experimental
  */
@@ -388,73 +388,6 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         }
       }
     }
-  }
-
-  /**
-   * Creates a new {@link TopFieldCollector} from the given arguments.
-   *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>.
-   *
-   * @param sort the sort criteria (SortFields).
-   * @param numHits the number of results to collect.
-   * @param totalHitsThreshold the number of docs to count accurately. If the query matches more
-   *     than {@code totalHitsThreshold} hits then its hit count will be a lower bound. On the other
-   *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
-   *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
-   *     count accurate, but this will also make query processing slower.
-   * @return a {@link TopFieldCollector} instance which will sort the results by the sort criteria.
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static TopFieldCollector create(Sort sort, int numHits, int totalHitsThreshold) {
-    return new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold, false)
-        .newCollector();
-  }
-
-  /**
-   * Creates a new {@link TopFieldCollector} from the given arguments.
-   *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>.
-   *
-   * @param sort the sort criteria (SortFields).
-   * @param numHits the number of results to collect.
-   * @param after only hits after this FieldDoc will be collected
-   * @param totalHitsThreshold the number of docs to count accurately. If the query matches more
-   *     than {@code totalHitsThreshold} hits then its hit count will be a lower bound. On the other
-   *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
-   *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
-   *     count accurate, but this will also make query processing slower. Setting totalHitsThreshold
-   *     less than {@link Integer#MAX_VALUE} instructs Lucene to skip non-competitive documents
-   *     whenever possible. For numeric sort fields the skipping functionality works when the same
-   *     field is indexed both with doc values and points. In this case, there is an assumption that
-   *     the same data is stored in these points and doc values.
-   * @return a {@link TopFieldCollector} instance which will sort the results by the sort criteria.
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static TopFieldCollector create(
-      Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
-    return new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, false)
-        .newCollector();
-  }
-
-  /**
-   * Create a CollectorManager which uses a shared hit counter to maintain number of hits and a
-   * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments if the
-   * primary sort is by relevancy.
-   *
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopFieldCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static CollectorManager<TopFieldCollector, TopFieldDocs> createSharedManager(
-      Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
-
-    return new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, true);
   }
 
   /**

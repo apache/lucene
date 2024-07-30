@@ -53,16 +53,21 @@ public class Suggester {
   private final Dictionary dictionary;
   private final SuggestibleEntryCache suggestibleCache;
   private final FragmentChecker fragmentChecker;
+  private final boolean proceedPastRep;
 
   public Suggester(Dictionary dictionary) {
-    this(dictionary, null, FragmentChecker.EVERYTHING_POSSIBLE);
+    this(dictionary, null, FragmentChecker.EVERYTHING_POSSIBLE, false);
   }
 
   private Suggester(
-      Dictionary dictionary, SuggestibleEntryCache suggestibleCache, FragmentChecker checker) {
+      Dictionary dictionary,
+      SuggestibleEntryCache suggestibleCache,
+      FragmentChecker checker,
+      boolean proceedPastRep) {
     this.dictionary = dictionary;
     this.suggestibleCache = suggestibleCache;
     this.fragmentChecker = checker;
+    this.proceedPastRep = proceedPastRep;
   }
 
   /**
@@ -71,8 +76,8 @@ public class Suggester {
    * entries are stored as fast-to-iterate plain words instead of highly compressed prefix trees.
    */
   public Suggester withSuggestibleEntryCache() {
-    return new Suggester(
-        dictionary, SuggestibleEntryCache.buildCache(dictionary.words), fragmentChecker);
+    SuggestibleEntryCache cache = SuggestibleEntryCache.buildCache(dictionary.words);
+    return new Suggester(dictionary, cache, fragmentChecker, proceedPastRep);
   }
 
   /**
@@ -80,7 +85,17 @@ public class Suggester {
    * the performance of the "Modification" phase performance.
    */
   public Suggester withFragmentChecker(FragmentChecker checker) {
-    return new Suggester(dictionary, suggestibleCache, checker);
+    return new Suggester(dictionary, suggestibleCache, checker, proceedPastRep);
+  }
+
+  /**
+   * Returns a copy of this suggester instance that doesn't stop after encountering acceptable words
+   * after applying REP rules. By default, Hunspell stops when it finds any, but this behavior may
+   * not always be desirable, e.g., if we have "REP i ea", "tims" be replaced only by "teams" and
+   * not "times", which could also be meant.
+   */
+  public Suggester proceedPastRep() {
+    return new Suggester(dictionary, suggestibleCache, fragmentChecker, true);
   }
 
   /**
@@ -174,7 +189,8 @@ public class Suggester {
     }
 
     boolean hasGoodSuggestions =
-        new ModifyingSuggester(suggestionSpeller, suggestions, word, wordCase, fragmentChecker)
+        new ModifyingSuggester(
+                suggestionSpeller, suggestions, word, wordCase, fragmentChecker, proceedPastRep)
             .suggest();
 
     if (!hasGoodSuggestions && dictionary.maxNGramSuggestions > 0) {

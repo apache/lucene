@@ -34,8 +34,9 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopFieldDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.ArrayUtil;
@@ -253,13 +254,11 @@ public class FacetsCollector extends SimpleCollector {
           throw new IllegalArgumentException("after must be a FieldDoc; got " + after);
         }
         hitsCollector =
-            TopFieldCollector.create(
-                sort,
-                n,
-                (FieldDoc) after,
-                Integer.MAX_VALUE); // TODO: can we disable exact hit counts
+            new TopFieldCollectorManager(sort, n, (FieldDoc) after, Integer.MAX_VALUE, false)
+                .newCollector(); // TODO: can we disable exact hit counts
       } else {
-        hitsCollector = TopScoreDocCollector.create(n, after, Integer.MAX_VALUE);
+        hitsCollector =
+            new TopScoreDocCollectorManager(n, after, Integer.MAX_VALUE, false).newCollector();
       }
       searcher.search(q, MultiCollector.wrap(hitsCollector, fc));
 
