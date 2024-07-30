@@ -108,6 +108,8 @@ API Changes
 
 * GITHUB#13410: Removed Scorer#getWeight (Sanjay Dutt, Adrien Grand)
 
+* GITHUB#13499: Remove deprecated TopScoreDocCollector + TopFieldCollector methods (#create, #createSharedManager) (Jakub Slowinski)
+
 New Features
 ---------------------
 
@@ -244,6 +246,8 @@ Other
 
 * GITHUB#13332: Improve MissingDoclet linter to check records correctly. (Uwe Schindler)
 
+* GITHUB#13499: Remove usage of TopScoreDocCollector + TopFieldCollector deprecated methods (#create, #createSharedManager) (Jakub Slowinski)
+
 ======================== Lucene 9.12.0 =======================
 
 API Changes
@@ -252,6 +256,8 @@ API Changes
 * GITHUB#13281: Mark COSINE VectorSimilarityFunction as deprecated. (Pulkit Gupta)
 
 * GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov) 
+
+* GITHUB#13612: Hunspell: add Suggester#proceedPastRep to avoid losing relevant suggestions. (Peter Gromov)
 
 New Features
 ---------------------
