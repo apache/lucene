@@ -313,6 +313,12 @@ Optimizations
   by 1) using a confined Arena where appropriate, and 2) grouping files from the same segment to a
   single shared Arena. (Chris Hegarty, Michael Gibney, Uwe Schindler)
 
+* GITHUB#13585: Lucene912PostingsFormat, the new default postings format, now
+  only has 2 levels of skip data, which are inlined into postings instead of
+  being stored at the end of postings lists. This translates into better
+  performance for queries that need skipping such as conjunctions.
+  (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
