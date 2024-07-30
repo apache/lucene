@@ -18,10 +18,10 @@ package org.apache.lucene.codecs.lucene912;
 
 import static org.apache.lucene.codecs.lucene912.ForUtil.BLOCK_SIZE;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.LEVEL1_NUM_DOCS;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.META_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.PAY_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.SKIP_TOTAL_SIZE;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.TERMS_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.VERSION_START;
@@ -354,16 +354,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private int docFreq; // number of docs in this posting list
     private long totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
-    private int blockUpto; // number of docs in or before the current block
+    private int docCountUpto; // number of docs in or before the current block
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private long prevDocID; // last doc ID of the previous block
 
     // level 0 skip data
-    private int lastDocInBlock;
+    private int level0LastDocID;
     // level 1 skip data
-    private int nextSkipDoc;
-    private long nextSkipOffset;
-    private int nextSkipBlockUpto;
+    private int level1LastDocID;
+    private long level1DocEndOffset;
+    private int level1DocCountUpto;
 
     private boolean needsFreq; // true if the caller actually needs frequencies
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
@@ -418,12 +418,12 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         // not fill more than `docFreq` entries.
         Arrays.fill(freqBuffer, 0, Math.min(ForUtil.BLOCK_SIZE, docFreq), 1);
       }
-      accum = -1;
-      blockUpto = 0;
-      lastDocInBlock = -1;
-      nextSkipDoc = -1;
-      nextSkipOffset = termState.docStartFP;
-      nextSkipBlockUpto = 0;
+      prevDocID = -1;
+      docCountUpto = 0;
+      level0LastDocID = -1;
+      level1LastDocID = -1;
+      level1DocEndOffset = termState.docStartFP;
+      level1DocCountUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       freqFP = -1;
       return this;
@@ -465,9 +465,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     private void refillFullBlock() throws IOException {
-      assert docFreq - blockUpto >= BLOCK_SIZE;
+      assert docFreq - docCountUpto >= BLOCK_SIZE;
 
-      forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+      forDeltaUtil.decodeAndPrefixSum(docIn, prevDocID, docBuffer);
 
       if (indexHasFreq) {
         if (needsFreq) {
@@ -475,14 +475,14 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
         pforUtil.skip(docIn);
       }
-      blockUpto += BLOCK_SIZE;
-      accum = docBuffer[BLOCK_SIZE - 1];
+      docCountUpto += BLOCK_SIZE;
+      prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
 
     private void refillRemainder() throws IOException {
-      final int left = docFreq - blockUpto;
+      final int left = docFreq - docCountUpto;
       assert left >= 0;
       assert left < BLOCK_SIZE;
 
@@ -490,13 +490,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
-        blockUpto++;
+        docCountUpto++;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
-        prefixSum(docBuffer, left, accum);
+        prefixSum(docBuffer, left, prevDocID);
         docBuffer[left] = NO_MORE_DOCS;
-        blockUpto += left;
+        docCountUpto += left;
       }
       docBufferUpto = 0;
       freqFP = -1;
@@ -504,21 +504,21 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private void skipLevel1To(int target) throws IOException {
       while (true) {
-        accum = nextSkipDoc;
-        lastDocInBlock = nextSkipDoc;
-        docIn.seek(nextSkipOffset);
-        blockUpto = nextSkipBlockUpto;
-        nextSkipBlockUpto += SKIP_TOTAL_SIZE;
+        prevDocID = level1LastDocID;
+        level0LastDocID = level1LastDocID;
+        docIn.seek(level1DocEndOffset);
+        docCountUpto = level1DocCountUpto;
+        level1DocCountUpto += LEVEL1_NUM_DOCS;
 
-        if (docFreq - blockUpto < SKIP_TOTAL_SIZE) {
-          nextSkipDoc = DocIdSetIterator.NO_MORE_DOCS;
+        if (docFreq - docCountUpto < LEVEL1_NUM_DOCS) {
+          level1LastDocID = DocIdSetIterator.NO_MORE_DOCS;
           break;
         }
 
-        nextSkipDoc += docIn.readVInt();
-        nextSkipOffset = docIn.readVLong() + docIn.getFilePointer();
+        level1LastDocID += docIn.readVInt();
+        level1DocEndOffset = docIn.readVLong() + docIn.getFilePointer();
 
-        if (nextSkipDoc >= target) {
+        if (level1LastDocID >= target) {
           if (indexHasFreq) {
             // skip impacts and pos skip data
             docIn.skipBytes(docIn.readShort());
@@ -530,48 +530,49 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private void skipLevel0To(int target) throws IOException {
       while (true) {
-        accum = lastDocInBlock;
-        if (docFreq - blockUpto >= BLOCK_SIZE) {
-          final long skip0Len = docIn.readVLong(); // skip len
-          final long skip0End = docIn.getFilePointer() + skip0Len;
+        prevDocID = level0LastDocID;
+        if (docFreq - docCountUpto >= BLOCK_SIZE) {
+          long skip0NumBytes = docIn.readVLong();
+          // end offset of skip data (before the actual data starts)
+          long skip0EndFP = docIn.getFilePointer() + skip0NumBytes;
           int docDelta = readVInt15(docIn);
-          lastDocInBlock += docDelta;
+          level0LastDocID += docDelta;
 
-          if (target <= lastDocInBlock) {
-            docIn.seek(skip0End);
+          if (target <= level0LastDocID) {
+            docIn.seek(skip0EndFP);
             break;
           }
 
           // skip block
           docIn.skipBytes(readVLong15(docIn));
-          blockUpto += BLOCK_SIZE;
+          docCountUpto += BLOCK_SIZE;
         } else {
-          lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+          level0LastDocID = DocIdSetIterator.NO_MORE_DOCS;
           break;
         }
       }
     }
 
-    private void moveToNextBlock() throws IOException {
-      if (doc >= nextSkipDoc) { // advance skip data on level 1
+    private void moveToNextLevel0Block() throws IOException {
+      if (doc == level1LastDocID) { // advance skip data on level 1
         skipLevel1To(doc + 1);
       }
 
-      accum = lastDocInBlock;
-      if (docFreq - blockUpto >= BLOCK_SIZE) {
+      prevDocID = level0LastDocID;
+      if (docFreq - docCountUpto >= BLOCK_SIZE) {
         docIn.skipBytes(docIn.readVLong());
         refillFullBlock();
-        lastDocInBlock = (int) docBuffer[BLOCK_SIZE - 1];
+        level0LastDocID = (int) docBuffer[BLOCK_SIZE - 1];
       } else {
-        lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+        level0LastDocID = DocIdSetIterator.NO_MORE_DOCS;
         refillRemainder();
       }
     }
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc >= lastDocInBlock) { // advance skip data on level 0
-        moveToNextBlock();
+      if (doc == level0LastDocID) { // advance skip data on level 0
+        moveToNextLevel0Block();
       }
 
       return this.doc = (int) docBuffer[docBufferUpto++];
@@ -579,15 +580,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > lastDocInBlock) { // advance skip data on level 0
+      if (target > level0LastDocID) { // advance skip data on level 0
 
-        if (target > nextSkipDoc) { // advance skip data on level 1
+        if (target > level1LastDocID) { // advance skip data on level 1
           skipLevel1To(target);
         }
 
         skipLevel0To(target);
 
-        if (docFreq - blockUpto >= BLOCK_SIZE) {
+        if (docFreq - docCountUpto >= BLOCK_SIZE) {
           refillFullBlock();
         } else {
           refillRemainder();
@@ -646,9 +647,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private int docFreq; // number of docs in this posting list
     private long totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
-    private int blockUpto; // number of docs in or before the current block
+    private int docCountUpto; // number of docs in or before the current block
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private long prevDocID; // last doc ID of the previous block
     private int freq; // freq we last read
     private int position; // current position
 
@@ -669,19 +670,19 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private long lastPosBlockFP;
 
     // level 0 skip data
-    private int lastDocInBlock;
-    private long nextBlockPosFP;
-    private int nextBlockPosUpto;
-    private long nextBlockPayFP;
-    private int nextBlockPayUpto;
+    private int level0LastDocID;
+    private long level0PosEndFP;
+    private int level0BlockPosUpto;
+    private long levelPayEndFP;
+    private int level0BlockPayUpto;
     // level 1 skip data
-    private int nextSkipDoc;
-    private long nextSkipDocFP;
-    private int nextSkipBlockUpto;
-    private long nextSkipPosFP;
-    private int nextSkipPosUpto;
-    private long nextSkipPayFP;
-    private int nextSkipPayUpto;
+    private int level1LastDocID;
+    private long level1DocEndFP;
+    private int level1DocCountUpto;
+    private long level1PosEndFP;
+    private int level1BlockPosUpto;
+    private long level1PayEndFP;
+    private int level1BlockPayUpto;
 
     private boolean needsOffsets; // true if we actually need offsets
     private boolean needsPayloads; // true if we actually need payloads
@@ -760,10 +761,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       if (indexHasOffsetsOrPayloads) {
         payIn.seek(payTermStartFP);
       }
-      nextSkipPosFP = posTermStartFP;
-      nextSkipPayFP = payTermStartFP;
-      nextBlockPosFP = posTermStartFP;
-      nextBlockPayFP = payTermStartFP;
+      level1PosEndFP = posTermStartFP;
+      level1PayEndFP = payTermStartFP;
+      level0PosEndFP = posTermStartFP;
+      levelPayEndFP = payTermStartFP;
       posPendingCount = 0;
       payloadByteUpto = 0;
       if (termState.totalTermFreq < BLOCK_SIZE) {
@@ -778,16 +779,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       this.needsPayloads = PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS);
 
       doc = -1;
-      accum = -1;
-      blockUpto = 0;
-      lastDocInBlock = -1;
-      nextSkipDoc = -1;
-      nextSkipDocFP = termState.docStartFP;
-      nextSkipBlockUpto = 0;
-      nextSkipPosUpto = 0;
-      nextSkipPayUpto = 0;
-      nextBlockPosUpto = 0;
-      nextBlockPayUpto = 0;
+      prevDocID = -1;
+      docCountUpto = 0;
+      level0LastDocID = -1;
+      level1LastDocID = -1;
+      level1DocEndFP = termState.docStartFP;
+      level1DocCountUpto = 0;
+      level1BlockPosUpto = 0;
+      level1BlockPayUpto = 0;
+      level0BlockPosUpto = 0;
+      level0BlockPayUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       posBufferUpto = BLOCK_SIZE;
       return this;
@@ -804,104 +805,104 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     private void refillDocs() throws IOException {
-      final int left = docFreq - blockUpto;
+      final int left = docFreq - docCountUpto;
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        forDeltaUtil.decodeAndPrefixSum(docIn, prevDocID, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
-        blockUpto += BLOCK_SIZE;
+        docCountUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
-        blockUpto++;
+        docCountUpto++;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
-        prefixSum(docBuffer, left, accum);
+        prefixSum(docBuffer, left, prevDocID);
         docBuffer[left] = NO_MORE_DOCS;
-        blockUpto += left;
+        docCountUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+      prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
 
     private void skipLevel1To(int target) throws IOException {
       while (true) {
-        accum = nextSkipDoc;
-        lastDocInBlock = nextSkipDoc;
-        docIn.seek(nextSkipDocFP);
-        nextBlockPosFP = nextSkipPosFP;
-        nextBlockPosUpto = nextSkipPosUpto;
+        prevDocID = level1LastDocID;
+        level0LastDocID = level1LastDocID;
+        docIn.seek(level1DocEndFP);
+        level0PosEndFP = level1PosEndFP;
+        level0BlockPosUpto = level1BlockPosUpto;
         if (indexHasOffsetsOrPayloads) {
-          nextBlockPayFP = nextSkipPayFP;
-          nextBlockPayUpto = nextSkipPayUpto;
+          levelPayEndFP = level1PayEndFP;
+          level0BlockPayUpto = level1BlockPayUpto;
         }
-        blockUpto = nextSkipBlockUpto;
-        nextSkipBlockUpto += SKIP_TOTAL_SIZE;
+        docCountUpto = level1DocCountUpto;
+        level1DocCountUpto += LEVEL1_NUM_DOCS;
 
-        if (docFreq - blockUpto < SKIP_TOTAL_SIZE) {
-          nextSkipDoc = DocIdSetIterator.NO_MORE_DOCS;
+        if (docFreq - docCountUpto < LEVEL1_NUM_DOCS) {
+          level1LastDocID = DocIdSetIterator.NO_MORE_DOCS;
           break;
         }
 
-        nextSkipDoc += docIn.readVInt();
+        level1LastDocID += docIn.readVInt();
         long delta = docIn.readVLong();
-        nextSkipDocFP = delta + docIn.getFilePointer();
+        level1DocEndFP = delta + docIn.getFilePointer();
 
-        final long skipEndFP = docIn.readShort() + docIn.getFilePointer();
+        long skip1EndFP = docIn.readShort() + docIn.getFilePointer();
         docIn.skipBytes(docIn.readShort()); // impacts
-        nextSkipPosFP += docIn.readVLong();
-        nextSkipPosUpto = docIn.readByte();
+        level1PosEndFP += docIn.readVLong();
+        level1BlockPosUpto = docIn.readByte();
         if (indexHasOffsetsOrPayloads) {
-          nextSkipPayFP += docIn.readVLong();
-          nextSkipPayUpto = docIn.readVInt();
+          level1PayEndFP += docIn.readVLong();
+          level1BlockPayUpto = docIn.readVInt();
         }
-        assert docIn.getFilePointer() == skipEndFP;
+        assert docIn.getFilePointer() == skip1EndFP;
 
-        if (nextSkipDoc >= target) {
+        if (level1LastDocID >= target) {
           break;
         }
       }
     }
 
-    private void moveToNextBlock() throws IOException {
-      if (doc >= nextSkipDoc) { // advance level 1 skip data
+    private void moveToNextLevel0Block() throws IOException {
+      if (doc == level1LastDocID) { // advance level 1 skip data
         skipLevel1To(doc + 1);
       }
 
       // Now advance level 0 skip data
-      accum = lastDocInBlock;
+      prevDocID = level0LastDocID;
 
       assert docBufferUpto == BLOCK_SIZE;
-      if (nextBlockPosFP >= posIn.getFilePointer()) {
-        posIn.seek(nextBlockPosFP);
-        posPendingCount = nextBlockPosUpto;
+      if (level0PosEndFP >= posIn.getFilePointer()) {
+        posIn.seek(level0PosEndFP);
+        posPendingCount = level0BlockPosUpto;
         if (indexHasOffsetsOrPayloads) {
-          assert nextBlockPayFP >= payIn.getFilePointer();
-          payIn.seek(nextBlockPayFP);
-          payloadByteUpto = nextBlockPayUpto;
+          assert levelPayEndFP >= payIn.getFilePointer();
+          payIn.seek(levelPayEndFP);
+          payloadByteUpto = level0BlockPayUpto;
         }
         posBufferUpto = BLOCK_SIZE;
       }
 
-      if (docFreq - blockUpto >= BLOCK_SIZE) {
-        docIn.readVLong(); // skip0Len
-        final int docDelta = readVInt15(docIn);
-        lastDocInBlock += docDelta;
+      if (docFreq - docCountUpto >= BLOCK_SIZE) {
+        docIn.readVLong(); // skip0 num bytes
+        int docDelta = readVInt15(docIn);
+        level0LastDocID += docDelta;
         readVLong15(docIn); // block length
         docIn.skipBytes(docIn.readVLong()); // impacts
 
-        nextBlockPosFP += docIn.readVLong();
-        nextBlockPosUpto = docIn.readByte();
+        level0PosEndFP += docIn.readVLong();
+        level0BlockPosUpto = docIn.readByte();
         if (indexHasOffsetsOrPayloads) {
-          nextBlockPayFP += docIn.readVLong();
-          nextBlockPayUpto = docIn.readVInt();
+          levelPayEndFP += docIn.readVLong();
+          level0BlockPayUpto = docIn.readVInt();
         }
       } else {
-        lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+        level0LastDocID = DocIdSetIterator.NO_MORE_DOCS;
       }
 
       refillDocs();
@@ -909,8 +910,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc >= lastDocInBlock) { // advance level 0 skip data
-        moveToNextBlock();
+      if (doc == level0LastDocID) { // advance level 0 skip data
+        moveToNextLevel0Block();
       }
 
       this.doc = (int) docBuffer[docBufferUpto];
@@ -924,19 +925,19 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private void skipLevel0To(int target) throws IOException {
       while (true) {
-        accum = lastDocInBlock;
+        prevDocID = level0LastDocID;
 
         // If nextBlockPosFP is less than the current FP, it means that the block of positions for
         // the first docs of the next block are already decoded. In this case we just accumulate
         // frequencies into posPendingCount instead of seeking backwards and decoding the same pos
         // block again.
-        if (nextBlockPosFP >= posIn.getFilePointer()) {
-          posIn.seek(nextBlockPosFP);
-          posPendingCount = nextBlockPosUpto;
+        if (level0PosEndFP >= posIn.getFilePointer()) {
+          posIn.seek(level0PosEndFP);
+          posPendingCount = level0BlockPosUpto;
           if (indexHasOffsetsOrPayloads) {
-            assert nextBlockPayFP >= payIn.getFilePointer();
-            payIn.seek(nextBlockPayFP);
-            payloadByteUpto = nextBlockPayUpto;
+            assert levelPayEndFP >= payIn.getFilePointer();
+            payIn.seek(levelPayEndFP);
+            payloadByteUpto = level0BlockPayUpto;
           }
           posBufferUpto = BLOCK_SIZE;
         } else {
@@ -945,30 +946,30 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           }
         }
 
-        if (docFreq - blockUpto >= BLOCK_SIZE) {
-          docIn.readVLong(); // skip0Len
-          final int docDelta = readVInt15(docIn);
-          lastDocInBlock += docDelta;
+        if (docFreq - docCountUpto >= BLOCK_SIZE) {
+          docIn.readVLong(); // skip0 num bytes
+          int docDelta = readVInt15(docIn);
+          level0LastDocID += docDelta;
 
-          final long blockLength = readVLong15(docIn);
-          final long blockEndFP = docIn.getFilePointer() + blockLength;
+          long blockLength = readVLong15(docIn);
+          long blockEndFP = docIn.getFilePointer() + blockLength;
           docIn.skipBytes(docIn.readVLong()); // impacts
 
-          nextBlockPosFP += docIn.readVLong();
-          nextBlockPosUpto = docIn.readByte();
+          level0PosEndFP += docIn.readVLong();
+          level0BlockPosUpto = docIn.readByte();
           if (indexHasOffsetsOrPayloads) {
-            nextBlockPayFP += docIn.readVLong();
-            nextBlockPayUpto = docIn.readVInt();
+            levelPayEndFP += docIn.readVLong();
+            level0BlockPayUpto = docIn.readVInt();
           }
 
-          if (target <= lastDocInBlock) {
+          if (target <= level0LastDocID) {
             break;
           }
 
           docIn.seek(blockEndFP);
-          blockUpto += BLOCK_SIZE;
+          docCountUpto += BLOCK_SIZE;
         } else {
-          lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+          level0LastDocID = DocIdSetIterator.NO_MORE_DOCS;
           break;
         }
       }
@@ -976,9 +977,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > lastDocInBlock) { // advance level 0 skip data
+      if (target > level0LastDocID) { // advance level 0 skip data
 
-        if (target > nextSkipDoc) { // advance level 1 skip data
+        if (target > level1LastDocID) { // advance level 1 skip data
           skipLevel1To(target);
         }
 
@@ -1201,27 +1202,27 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     final boolean indexHasOffsetsOrPayloads;
 
     private int docFreq; // number of docs in this posting list
-    private int blockUpto; // number of docs in or before the current block
+    private int docCountUpto; // number of docs in or before the current block
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private long prevDocID; // last doc ID of the previous block
     private long freqFP;
 
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
 
     // level 0 skip data
-    private int lastDocInBlock;
-    private long blockEndFP;
-    private final BytesRefBuilder serializedBlockImpacts = new BytesRefBuilder();
-    private final ByteArrayDataInput serializedBlockImpactsIn = new ByteArrayDataInput();
-    private final MutableImpactList blockImpacts = new MutableImpactList();
+    private int level0LastDocID;
+    private long level0DocEndFP;
+    private final BytesRefBuilder level0SerializedImpacts = new BytesRefBuilder();
+    private final ByteArrayDataInput level0SerializedImpactsIn = new ByteArrayDataInput();
+    private final MutableImpactList level0Impacts = new MutableImpactList();
     // level 1 skip data
-    private int nextSkipDoc;
-    private long nextSkipOffset;
-    private int nextSkipBlockUpto;
-    private final BytesRefBuilder serializedSkipImpacts = new BytesRefBuilder();
-    private final ByteArrayDataInput serializedSkipImpactsIn = new ByteArrayDataInput();
-    private final MutableImpactList skipImpacts = new MutableImpactList();
+    private int level1LastDocID;
+    private long level1DocEndFP;
+    private int level1DocCountUpto;
+    private final BytesRefBuilder level1SerializedImpacts = new BytesRefBuilder();
+    private final ByteArrayDataInput level1SerializedImpactsIn = new ByteArrayDataInput();
+    private final MutableImpactList level1Impacts = new MutableImpactList();
 
     public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
@@ -1255,16 +1256,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         // not fill more than `docFreq` entries.
         Arrays.fill(freqBuffer, 0, Math.min(ForUtil.BLOCK_SIZE, docFreq), 1);
       }
-      accum = -1;
-      blockUpto = 0;
-      lastDocInBlock = -1;
-      nextSkipDoc = -1;
-      nextSkipOffset = termState.docStartFP;
-      nextSkipBlockUpto = 0;
+      prevDocID = -1;
+      docCountUpto = 0;
+      level0LastDocID = -1;
+      level1LastDocID = -1;
+      level1DocEndFP = termState.docStartFP;
+      level1DocCountUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       freqFP = -1;
-      serializedBlockImpacts.growNoCopy(maxImpactNumBytesAtLevel0);
-      serializedSkipImpacts.growNoCopy(maxImpactNumBytesAtLevel1);
+      level0SerializedImpacts.growNoCopy(maxImpactNumBytesAtLevel0);
+      level1SerializedImpacts.growNoCopy(maxImpactNumBytesAtLevel1);
     }
 
     @Override
@@ -1303,53 +1304,53 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     private void refillDocs() throws IOException {
-      final int left = docFreq - blockUpto;
+      final int left = docFreq - docCountUpto;
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        forDeltaUtil.decodeAndPrefixSum(docIn, prevDocID, docBuffer);
 
         if (indexHasFreq) {
           freqFP = docIn.getFilePointer();
           pforUtil.skip(docIn);
         }
-        blockUpto += BLOCK_SIZE;
+        docCountUpto += BLOCK_SIZE;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
-        prefixSum(docBuffer, left, accum);
+        prefixSum(docBuffer, left, prevDocID);
         docBuffer[left] = NO_MORE_DOCS;
         freqFP = -1;
-        blockUpto += left;
+        docCountUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+      prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
 
     private void skipLevel1To(int target) throws IOException {
       while (true) {
-        accum = nextSkipDoc;
-        lastDocInBlock = nextSkipDoc;
-        docIn.seek(nextSkipOffset);
-        blockUpto = nextSkipBlockUpto;
-        nextSkipBlockUpto += SKIP_TOTAL_SIZE;
+        prevDocID = level1LastDocID;
+        level0LastDocID = level1LastDocID;
+        docIn.seek(level1DocEndFP);
+        docCountUpto = level1DocCountUpto;
+        level1DocCountUpto += LEVEL1_NUM_DOCS;
 
-        if (docFreq - blockUpto < SKIP_TOTAL_SIZE) {
-          nextSkipDoc = DocIdSetIterator.NO_MORE_DOCS;
+        if (docFreq - docCountUpto < LEVEL1_NUM_DOCS) {
+          level1LastDocID = DocIdSetIterator.NO_MORE_DOCS;
           break;
         }
 
-        nextSkipDoc += docIn.readVInt();
-        nextSkipOffset = docIn.readVLong() + docIn.getFilePointer();
+        level1LastDocID += docIn.readVInt();
+        level1DocEndFP = docIn.readVLong() + docIn.getFilePointer();
 
-        if (nextSkipDoc >= target) {
-          final long skipEndFP = docIn.readShort() + docIn.getFilePointer();
-          final int numImpactBytes = docIn.readShort();
-          docIn.readBytes(serializedSkipImpacts.bytes(), 0, numImpactBytes);
-          serializedSkipImpacts.setLength(numImpactBytes);
-          assert indexHasPos || docIn.getFilePointer() == skipEndFP;
-          docIn.seek(skipEndFP);
+        if (level1LastDocID >= target) {
+          long skip1EndFP = docIn.readShort() + docIn.getFilePointer();
+          int numImpactBytes = docIn.readShort();
+          docIn.readBytes(level1SerializedImpacts.bytes(), 0, numImpactBytes);
+          level1SerializedImpacts.setLength(numImpactBytes);
+          assert indexHasPos || docIn.getFilePointer() == skip1EndFP;
+          docIn.seek(skip1EndFP);
           break;
         }
       }
@@ -1357,28 +1358,30 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private void skipLevel0To(int target) throws IOException {
       while (true) {
-        accum = lastDocInBlock;
-        if (docFreq - blockUpto >= BLOCK_SIZE) {
-          final long skip0Len = docIn.readVLong(); // skip len
-          final long skip0End = docIn.getFilePointer() + skip0Len;
+        prevDocID = level0LastDocID;
+        if (docFreq - docCountUpto >= BLOCK_SIZE) {
+          long skip0NumBytes = docIn.readVLong();
+          // end offset of skip data (before the actual data starts)
+          long skip0End = docIn.getFilePointer() + skip0NumBytes;
           int docDelta = readVInt15(docIn);
           long blockLength = readVLong15(docIn);
 
-          lastDocInBlock += docDelta;
+          level0LastDocID += docDelta;
 
-          if (target <= lastDocInBlock) {
-            blockEndFP = docIn.getFilePointer() + blockLength;
-            final int numImpactBytes = docIn.readVInt();
-            docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
-            serializedBlockImpacts.setLength(numImpactBytes);
+          if (target <= level0LastDocID) {
+            level0DocEndFP = docIn.getFilePointer() + blockLength;
+            int numImpactBytes = docIn.readVInt();
+            docIn.readBytes(level0SerializedImpacts.bytes(), 0, numImpactBytes);
+            level0SerializedImpacts.setLength(numImpactBytes);
             docIn.seek(skip0End);
             break;
           }
+
           // skip block
           docIn.skipBytes(blockLength);
-          blockUpto += BLOCK_SIZE;
+          docCountUpto += BLOCK_SIZE;
         } else {
-          lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+          level0LastDocID = DocIdSetIterator.NO_MORE_DOCS;
           break;
         }
       }
@@ -1386,12 +1389,12 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      if (target > lastDocInBlock) { // advance skip data on level 0
-        if (target > nextSkipDoc) { // advance skip data on level 1
+      if (target > level0LastDocID) { // advance skip data on level 0
+        if (target > level1LastDocID) { // advance skip data on level 1
           skipLevel1To(target);
         } else if (needsRefilling) {
-          docIn.seek(blockEndFP);
-          blockUpto += BLOCK_SIZE;
+          docIn.seek(level0DocEndFP);
+          docCountUpto += BLOCK_SIZE;
         }
 
         skipLevel0To(target);
@@ -1400,28 +1403,28 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       }
     }
 
-    private void moveToNextBlock() throws IOException {
-      if (doc >= nextSkipDoc) {
+    private void moveToNextLevel0Block() throws IOException {
+      if (doc == level1LastDocID) {
         skipLevel1To(doc + 1);
       } else if (needsRefilling) {
-        docIn.seek(blockEndFP);
-        blockUpto += BLOCK_SIZE;
+        docIn.seek(level0DocEndFP);
+        docCountUpto += BLOCK_SIZE;
       }
 
-      accum = lastDocInBlock;
-      if (docFreq - blockUpto >= BLOCK_SIZE) {
+      prevDocID = level0LastDocID;
+      if (docFreq - docCountUpto >= BLOCK_SIZE) {
         final long skip0Len = docIn.readVLong(); // skip len
         final long skip0End = docIn.getFilePointer() + skip0Len;
         final int docDelta = readVInt15(docIn);
         final long blockLength = readVLong15(docIn);
-        lastDocInBlock += docDelta;
-        blockEndFP = docIn.getFilePointer() + blockLength;
+        level0LastDocID += docDelta;
+        level0DocEndFP = docIn.getFilePointer() + blockLength;
         final int numImpactBytes = docIn.readVInt();
-        docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
-        serializedBlockImpacts.setLength(numImpactBytes);
+        docIn.readBytes(level0SerializedImpacts.bytes(), 0, numImpactBytes);
+        level0SerializedImpacts.setLength(numImpactBytes);
         docIn.seek(skip0End);
       } else {
-        lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+        level0LastDocID = DocIdSetIterator.NO_MORE_DOCS;
       }
 
       refillDocs();
@@ -1430,8 +1433,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc >= lastDocInBlock) {
-        moveToNextBlock();
+      if (doc == level0LastDocID) {
+        moveToNextLevel0Block();
       } else if (needsRefilling) {
         refillDocs();
         needsRefilling = false;
@@ -1442,7 +1445,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > lastDocInBlock || needsRefilling) {
+      if (target > level0LastDocID || needsRefilling) {
         advanceShallow(target);
         refillDocs();
         needsRefilling = false;
@@ -1461,10 +1464,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         @Override
         public int numLevels() {
           int numLevels = 0;
-          if (lastDocInBlock != NO_MORE_DOCS) {
+          if (level0LastDocID != NO_MORE_DOCS) {
             numLevels++;
           }
-          if (nextSkipDoc != NO_MORE_DOCS) {
+          if (level1LastDocID != NO_MORE_DOCS) {
             numLevels++;
           }
           if (numLevels == 0) {
@@ -1475,16 +1478,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
         @Override
         public int getDocIdUpTo(int level) {
-          if (lastDocInBlock != NO_MORE_DOCS) {
+          if (level0LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              return lastDocInBlock;
+              return level0LastDocID;
             }
             level--;
           }
 
-          if (nextSkipDoc != NO_MORE_DOCS) {
+          if (level1LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              return nextSkipDoc;
+              return level1LastDocID;
             }
             level--;
           }
@@ -1494,22 +1497,22 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
         @Override
         public List<Impact> getImpacts(int level) {
-          if (lastDocInBlock != NO_MORE_DOCS) {
+          if (level0LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              serializedBlockImpactsIn.reset(
-                  serializedBlockImpacts.bytes(), 0, serializedBlockImpacts.length());
-              readImpacts(serializedBlockImpactsIn, blockImpacts);
-              return blockImpacts;
+              level0SerializedImpactsIn.reset(
+                  level0SerializedImpacts.bytes(), 0, level0SerializedImpacts.length());
+              readImpacts(level0SerializedImpactsIn, level0Impacts);
+              return level0Impacts;
             }
             level--;
           }
 
-          if (nextSkipDoc != NO_MORE_DOCS) {
+          if (level1LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              serializedSkipImpactsIn.reset(
-                  serializedSkipImpacts.bytes(), 0, serializedSkipImpacts.length());
-              readImpacts(serializedSkipImpactsIn, skipImpacts);
-              return skipImpacts;
+              level1SerializedImpactsIn.reset(
+                  level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
+              readImpacts(level1SerializedImpactsIn, level1Impacts);
+              return level1Impacts;
             }
             level--;
           }
@@ -1551,9 +1554,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private int docFreq; // number of docs in this posting list
     private long totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
-    private int blockUpto; // number of docs in or before the current block
+    private int docCountUpto; // number of docs in or before the current block
     private int doc; // doc we last read
-    private long accum; // accumulator for doc deltas
+    private long prevDocID; // last doc ID of the previous block
     private int freq; // freq we last read
     private int position; // current position
 
@@ -1573,22 +1576,22 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private boolean needsRefilling;
 
     // level 0 skip data
-    private int lastDocInBlock;
-    private long blockEndFP;
-    private long nextBlockPosFP;
-    private int nextBlockPosUpto;
-    private final BytesRefBuilder serializedBlockImpacts = new BytesRefBuilder();
-    private final ByteArrayDataInput serializedBlockImpactsIn = new ByteArrayDataInput();
-    private final MutableImpactList blockImpacts = new MutableImpactList();
+    private int level0LastDocID;
+    private long level0DocEndFP;
+    private long level0PosEndFP;
+    private int level0BlockPosUpto;
+    private final BytesRefBuilder level0SerializedImpacts = new BytesRefBuilder();
+    private final ByteArrayDataInput level0SerializedImpactsIn = new ByteArrayDataInput();
+    private final MutableImpactList level0Impacts = new MutableImpactList();
     // level 1 skip data
-    private int nextSkipDoc;
-    private long nextSkipDocFP;
-    private int nextSkipBlockUpto;
-    private long nextSkipPosFP;
-    private int nextSkipPosUpto;
-    private final BytesRefBuilder serializedSkipImpacts = new BytesRefBuilder();
-    private final ByteArrayDataInput serializedSkipImpactsIn = new ByteArrayDataInput();
-    private final MutableImpactList skipImpacts = new MutableImpactList();
+    private int level1LastDocID;
+    private long level1DocEndFP;
+    private int level1DocCountUpto;
+    private long level1PosEndFP;
+    private int level1BlockPosUpto;
+    private final BytesRefBuilder level1SerializedImpacts = new BytesRefBuilder();
+    private final ByteArrayDataInput level1SerializedImpactsIn = new ByteArrayDataInput();
+    private final MutableImpactList level1Impacts = new MutableImpactList();
 
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
@@ -1625,8 +1628,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         prefetchPostings(docIn, termState);
       }
       posIn.seek(posTermStartFP);
-      nextSkipPosFP = posTermStartFP;
-      nextBlockPosFP = posTermStartFP;
+      level1PosEndFP = posTermStartFP;
+      level0PosEndFP = posTermStartFP;
       posPendingCount = 0;
       if (termState.totalTermFreq < BLOCK_SIZE) {
         lastPosBlockFP = posTermStartFP;
@@ -1637,17 +1640,17 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       }
 
       doc = -1;
-      accum = -1;
-      blockUpto = 0;
-      lastDocInBlock = -1;
-      nextSkipDoc = -1;
-      nextSkipDocFP = termState.docStartFP;
-      nextSkipBlockUpto = 0;
-      nextSkipPosUpto = 0;
+      prevDocID = -1;
+      docCountUpto = 0;
+      level0LastDocID = -1;
+      level1LastDocID = -1;
+      level1DocEndFP = termState.docStartFP;
+      level1DocCountUpto = 0;
+      level1BlockPosUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       posBufferUpto = BLOCK_SIZE;
-      serializedBlockImpacts.growNoCopy(maxImpactNumBytesAtLevel0);
-      serializedSkipImpacts.growNoCopy(maxImpactNumBytesAtLevel1);
+      level0SerializedImpacts.growNoCopy(maxImpactNumBytesAtLevel0);
+      level1SerializedImpacts.growNoCopy(maxImpactNumBytesAtLevel1);
     }
 
     @Override
@@ -1661,62 +1664,62 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     private void refillDocs() throws IOException {
-      final int left = docFreq - blockUpto;
+      final int left = docFreq - docCountUpto;
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
+        forDeltaUtil.decodeAndPrefixSum(docIn, prevDocID, docBuffer);
         pforUtil.decode(docIn, freqBuffer);
-        blockUpto += BLOCK_SIZE;
+        docCountUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
-        blockUpto++;
+        docCountUpto++;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
-        prefixSum(docBuffer, left, accum);
+        prefixSum(docBuffer, left, prevDocID);
         docBuffer[left] = NO_MORE_DOCS;
-        blockUpto += left;
+        docCountUpto += left;
       }
-      accum = docBuffer[BLOCK_SIZE - 1];
+      prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
     }
 
     private void skipLevel1To(int target) throws IOException {
       while (true) {
-        accum = nextSkipDoc;
-        lastDocInBlock = nextSkipDoc;
-        docIn.seek(nextSkipDocFP);
-        nextBlockPosFP = nextSkipPosFP;
-        nextBlockPosUpto = nextSkipPosUpto;
-        blockUpto = nextSkipBlockUpto;
-        nextSkipBlockUpto += SKIP_TOTAL_SIZE;
+        prevDocID = level1LastDocID;
+        level0LastDocID = level1LastDocID;
+        docIn.seek(level1DocEndFP);
+        level0PosEndFP = level1PosEndFP;
+        level0BlockPosUpto = level1BlockPosUpto;
+        docCountUpto = level1DocCountUpto;
+        level1DocCountUpto += LEVEL1_NUM_DOCS;
 
-        if (docFreq - blockUpto < SKIP_TOTAL_SIZE) {
-          nextSkipDoc = DocIdSetIterator.NO_MORE_DOCS;
+        if (docFreq - docCountUpto < LEVEL1_NUM_DOCS) {
+          level1LastDocID = DocIdSetIterator.NO_MORE_DOCS;
           break;
         }
 
-        nextSkipDoc += docIn.readVInt();
-        nextSkipDocFP = docIn.readVLong() + docIn.getFilePointer();
+        level1LastDocID += docIn.readVInt();
+        level1DocEndFP = docIn.readVLong() + docIn.getFilePointer();
 
-        final long skipEndFP = docIn.readShort() + docIn.getFilePointer();
-        final int numImpactBytes = docIn.readShort();
-        if (nextSkipDoc >= target) {
-          docIn.readBytes(serializedSkipImpacts.bytes(), 0, numImpactBytes);
-          serializedSkipImpacts.setLength(numImpactBytes);
+        long skip1EndFP = docIn.readShort() + docIn.getFilePointer();
+        int numImpactBytes = docIn.readShort();
+        if (level1LastDocID >= target) {
+          docIn.readBytes(level1SerializedImpacts.bytes(), 0, numImpactBytes);
+          level1SerializedImpacts.setLength(numImpactBytes);
         } else {
           docIn.skipBytes(numImpactBytes);
         }
-        nextSkipPosFP += docIn.readVLong();
-        nextSkipPosUpto = docIn.readByte();
-        assert indexHasOffsetsOrPayloads || docIn.getFilePointer() == skipEndFP;
+        level1PosEndFP += docIn.readVLong();
+        level1BlockPosUpto = docIn.readByte();
+        assert indexHasOffsetsOrPayloads || docIn.getFilePointer() == skip1EndFP;
 
-        if (nextSkipDoc >= target) {
-          docIn.seek(skipEndFP);
+        if (level1LastDocID >= target) {
+          docIn.seek(skip1EndFP);
           break;
         }
       }
@@ -1724,15 +1727,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private void skipLevel0To(int target) throws IOException {
       while (true) {
-        accum = lastDocInBlock;
+        prevDocID = level0LastDocID;
 
         // If nextBlockPosFP is less than the current FP, it means that the block of positions for
         // the first docs of the next block are already decoded. In this case we just accumulate
         // frequencies into posPendingCount instead of seeking backwards and decoding the same pos
         // block again.
-        if (nextBlockPosFP >= posIn.getFilePointer()) {
-          posIn.seek(nextBlockPosFP);
-          posPendingCount = nextBlockPosUpto;
+        if (level0PosEndFP >= posIn.getFilePointer()) {
+          posIn.seek(level0PosEndFP);
+          posPendingCount = level0BlockPosUpto;
           posBufferUpto = BLOCK_SIZE;
         } else {
           for (int i = docBufferUpto; i < BLOCK_SIZE; ++i) {
@@ -1740,34 +1743,34 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           }
         }
 
-        if (docFreq - blockUpto >= BLOCK_SIZE) {
-          docIn.readVLong(); // skip len
+        if (docFreq - docCountUpto >= BLOCK_SIZE) {
+          docIn.readVLong(); // skip0 num bytes
           int docDelta = readVInt15(docIn);
           long blockLength = readVLong15(docIn);
-          blockEndFP = docIn.getFilePointer() + blockLength;
+          level0DocEndFP = docIn.getFilePointer() + blockLength;
 
-          lastDocInBlock += docDelta;
+          level0LastDocID += docDelta;
 
-          if (target <= lastDocInBlock) {
-            final int numImpactBytes = docIn.readVInt();
-            docIn.readBytes(serializedBlockImpacts.bytes(), 0, numImpactBytes);
-            serializedBlockImpacts.setLength(numImpactBytes);
-            nextBlockPosFP += docIn.readVLong();
-            nextBlockPosUpto = docIn.readByte();
+          if (target <= level0LastDocID) {
+            int numImpactBytes = docIn.readVInt();
+            docIn.readBytes(level0SerializedImpacts.bytes(), 0, numImpactBytes);
+            level0SerializedImpacts.setLength(numImpactBytes);
+            level0PosEndFP += docIn.readVLong();
+            level0BlockPosUpto = docIn.readByte();
             if (indexHasOffsetsOrPayloads) {
-              docIn.readVLong(); // block pay fp delta
-              docIn.readVInt(); // block pay upto
+              docIn.readVLong(); // pay fp delta
+              docIn.readVInt(); // pay upto
             }
             break;
           }
           // skip block
           docIn.skipBytes(docIn.readVLong()); // impacts
-          nextBlockPosFP += docIn.readVLong();
-          nextBlockPosUpto = docIn.readVInt();
-          docIn.seek(blockEndFP);
-          blockUpto += BLOCK_SIZE;
+          level0PosEndFP += docIn.readVLong();
+          level0BlockPosUpto = docIn.readVInt();
+          docIn.seek(level0DocEndFP);
+          docCountUpto += BLOCK_SIZE;
         } else {
-          lastDocInBlock = DocIdSetIterator.NO_MORE_DOCS;
+          level0LastDocID = DocIdSetIterator.NO_MORE_DOCS;
           break;
         }
       }
@@ -1775,13 +1778,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      if (target > lastDocInBlock) { // advance level 0 skip data
+      if (target > level0LastDocID) { // advance level 0 skip data
 
-        if (target > nextSkipDoc) { // advance skip data on level 1
+        if (target > level1LastDocID) { // advance skip data on level 1
           skipLevel1To(target);
         } else if (needsRefilling) {
-          docIn.seek(blockEndFP);
-          blockUpto += BLOCK_SIZE;
+          docIn.seek(level0DocEndFP);
+          docCountUpto += BLOCK_SIZE;
         }
 
         skipLevel0To(target);
@@ -1797,10 +1800,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         @Override
         public int numLevels() {
           int numLevels = 0;
-          if (lastDocInBlock != NO_MORE_DOCS) {
+          if (level0LastDocID != NO_MORE_DOCS) {
             numLevels++;
           }
-          if (nextSkipDoc != NO_MORE_DOCS) {
+          if (level1LastDocID != NO_MORE_DOCS) {
             numLevels++;
           }
           if (numLevels == 0) {
@@ -1811,16 +1814,16 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
         @Override
         public int getDocIdUpTo(int level) {
-          if (lastDocInBlock != NO_MORE_DOCS) {
+          if (level0LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              return lastDocInBlock;
+              return level0LastDocID;
             }
             level--;
           }
 
-          if (nextSkipDoc != NO_MORE_DOCS) {
+          if (level1LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              return nextSkipDoc;
+              return level1LastDocID;
             }
             level--;
           }
@@ -1830,22 +1833,22 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
         @Override
         public List<Impact> getImpacts(int level) {
-          if (lastDocInBlock != NO_MORE_DOCS) {
+          if (level0LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              serializedBlockImpactsIn.reset(
-                  serializedBlockImpacts.bytes(), 0, serializedBlockImpacts.length());
-              readImpacts(serializedBlockImpactsIn, blockImpacts);
-              return blockImpacts;
+              level0SerializedImpactsIn.reset(
+                  level0SerializedImpacts.bytes(), 0, level0SerializedImpacts.length());
+              readImpacts(level0SerializedImpactsIn, level0Impacts);
+              return level0Impacts;
             }
             level--;
           }
 
-          if (nextSkipDoc != NO_MORE_DOCS) {
+          if (level1LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              serializedSkipImpactsIn.reset(
-                  serializedSkipImpacts.bytes(), 0, serializedSkipImpacts.length());
-              readImpacts(serializedSkipImpactsIn, skipImpacts);
-              return skipImpacts;
+              level1SerializedImpactsIn.reset(
+                  level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
+              readImpacts(level1SerializedImpactsIn, level1Impacts);
+              return level1Impacts;
             }
             level--;
           }

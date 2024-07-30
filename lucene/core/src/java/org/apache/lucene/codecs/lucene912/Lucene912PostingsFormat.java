@@ -344,12 +344,12 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
   public static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
   /** We insert skip data on every block and every SKIP_FACTOR=32 blocks. */
-  public static final int SKIP_FACTOR = 32;
+  public static final int LEVEL1_FACTOR = 32;
 
   /** Total number of docs covered by level 1 skip data: 32 * 128 = 4,096 */
-  public static final int SKIP_TOTAL_SIZE = SKIP_FACTOR * BLOCK_SIZE;
+  public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
 
-  public static final int SKIP_MASK = SKIP_TOTAL_SIZE - 1;
+  public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
   static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
   static final String META_CODEC = "Lucene912PostingsWriterMeta";

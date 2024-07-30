@@ -45,6 +45,7 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
+/** Writer for {@link Lucene912PostingsFormat}. */
 public class Lucene912PostingsWriter extends PushPostingsWriterBase {
 
   static final IntBlockTermState EMPTY_STATE = new IntBlockTermState();
@@ -74,13 +75,13 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private byte[] payloadBytes;
   private int payloadByteUpto;
 
-  private int lastBlockDocID;
-  private long lastBlockPosFP;
-  private long lastBlockPayFP;
+  private int level0LastDocID;
+  private long level0LastPosFP;
+  private long level0LastPayFP;
 
-  private int lastSkipDocID;
-  private long lastSkipPosFP;
-  private long lastSkipPayFP;
+  private int level1LastDocID;
+  private long level1LastPosFP;
+  private long level1LastPayFP;
 
   private int docID;
   private int lastDocID;
@@ -93,31 +94,32 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
 
   private boolean fieldHasNorms;
   private NumericDocValues norms;
-  private final CompetitiveImpactAccumulator competitiveFreqNormAccumulator =
+  private final CompetitiveImpactAccumulator level0FreqNormAccumulator =
       new CompetitiveImpactAccumulator();
-  private final CompetitiveImpactAccumulator skipCompetitiveFreqNormAccumulator =
+  private final CompetitiveImpactAccumulator level1CompetitiveFreqNormAccumulator =
       new CompetitiveImpactAccumulator();
 
   private int maxImpactNumBytesAtLevel0;
   private int maxImpactNumBytesAtLevel1;
 
-  /** Spare output that we use to be able to prepend the encoded length, e.g. impacts. */
-  private final ByteBuffersDataOutput spareOutput = ByteBuffersDataOutput.newResettableInstance();
+  /** Scratch output that we use to be able to prepend the encoded length, e.g. impacts. */
+  private final ByteBuffersDataOutput scratchOutput = ByteBuffersDataOutput.newResettableInstance();
 
   /**
    * Output for a single block. This is useful to be able to prepend skip data before each block,
    * which can only be computed once the block is encoded. The content is then typically copied to
-   * {@link #skipOutput}.
+   * {@link #level1Output}.
    */
-  private final ByteBuffersDataOutput blockOutput = ByteBuffersDataOutput.newResettableInstance();
+  private final ByteBuffersDataOutput level0Output = ByteBuffersDataOutput.newResettableInstance();
 
   /**
    * Output for groups of 32 blocks. This is useful to prepend skip data for these 32 blocks, which
    * can only be done once we have encoded these 32 blocks. The content is then typically copied to
    * {@link #docCount}.
    */
-  private final ByteBuffersDataOutput skipOutput = ByteBuffersDataOutput.newResettableInstance();
+  private final ByteBuffersDataOutput level1Output = ByteBuffersDataOutput.newResettableInstance();
 
+  /** Sole constructor. */
   public Lucene912PostingsWriter(SegmentWriteState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -217,18 +219,18 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     docStartFP = docOut.getFilePointer();
     if (writePositions) {
       posStartFP = posOut.getFilePointer();
-      lastSkipPosFP = lastBlockPosFP = posStartFP;
+      level1LastPosFP = level0LastPosFP = posStartFP;
       if (writePayloads || writeOffsets) {
         payStartFP = payOut.getFilePointer();
-        lastSkipPayFP = lastBlockPayFP = payStartFP;
+        level1LastPayFP = level0LastPayFP = payStartFP;
       }
     }
     lastDocID = -1;
-    lastBlockDocID = -1;
-    lastSkipDocID = -1;
+    level0LastDocID = -1;
+    level1LastDocID = -1;
     this.norms = norms;
     if (writeFreqs) {
-      competitiveFreqNormAccumulator.clear();
+      level0FreqNormAccumulator.clear();
     }
   }
 
@@ -272,7 +274,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         norm = 1L;
       }
 
-      competitiveFreqNormAccumulator.add(termDocFreq, norm);
+      level0FreqNormAccumulator.add(termDocFreq, norm);
     }
   }
 
@@ -371,99 +373,104 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     if (docBufferUpto < BLOCK_SIZE) {
       assert finishTerm;
       PostingsUtil.writeVIntBlock(
-          blockOutput, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
+          level0Output, docDeltaBuffer, freqBuffer, docBufferUpto, writeFreqs);
     } else {
       if (writeFreqs) {
-        writeImpacts(competitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
-        assert blockOutput.size() == 0;
-        if (spareOutput.size() > maxImpactNumBytesAtLevel0) {
-          maxImpactNumBytesAtLevel0 = Math.toIntExact(spareOutput.size());
+        writeImpacts(level0FreqNormAccumulator.getCompetitiveFreqNormPairs(), scratchOutput);
+        assert level0Output.size() == 0;
+        if (scratchOutput.size() > maxImpactNumBytesAtLevel0) {
+          maxImpactNumBytesAtLevel0 = Math.toIntExact(scratchOutput.size());
         }
-        blockOutput.writeVLong(spareOutput.size());
-        spareOutput.copyTo(blockOutput);
-        spareOutput.reset();
+        level0Output.writeVLong(scratchOutput.size());
+        scratchOutput.copyTo(level0Output);
+        scratchOutput.reset();
         if (writePositions) {
-          blockOutput.writeVLong(posOut.getFilePointer() - lastBlockPosFP);
-          blockOutput.writeByte((byte) posBufferUpto);
-          lastBlockPosFP = posOut.getFilePointer();
+          level0Output.writeVLong(posOut.getFilePointer() - level0LastPosFP);
+          level0Output.writeByte((byte) posBufferUpto);
+          level0LastPosFP = posOut.getFilePointer();
 
           if (writeOffsets || writePayloads) {
-            blockOutput.writeVLong(payOut.getFilePointer() - lastBlockPayFP);
-            blockOutput.writeVInt(payloadByteUpto);
-            lastBlockPayFP = payOut.getFilePointer();
+            level0Output.writeVLong(payOut.getFilePointer() - level0LastPayFP);
+            level0Output.writeVInt(payloadByteUpto);
+            level0LastPayFP = payOut.getFilePointer();
           }
         }
       }
-      long numSkipBytes = blockOutput.size();
-      forDeltaUtil.encodeDeltas(docDeltaBuffer, blockOutput);
+      long numSkipBytes = level0Output.size();
+      forDeltaUtil.encodeDeltas(docDeltaBuffer, level0Output);
       if (writeFreqs) {
-        pforUtil.encode(freqBuffer, blockOutput);
+        pforUtil.encode(freqBuffer, level0Output);
       }
 
       // docID - lastBlockDocID is at least 128, so it can never fit a single byte with a vint
       // Even if we subtracted 128, only extremely dense blocks would be eligible to a single byte
       // so let's go with 2 bytes right away
-      writeVInt15(spareOutput, docID - lastBlockDocID);
-      writeVLong15(spareOutput, blockOutput.size());
-      numSkipBytes += spareOutput.size();
-      skipOutput.writeVLong(numSkipBytes);
-      spareOutput.copyTo(skipOutput);
-      spareOutput.reset();
+      writeVInt15(scratchOutput, docID - level0LastDocID);
+      writeVLong15(scratchOutput, level0Output.size());
+      numSkipBytes += scratchOutput.size();
+      level1Output.writeVLong(numSkipBytes);
+      scratchOutput.copyTo(level1Output);
+      scratchOutput.reset();
     }
 
-    blockOutput.copyTo(skipOutput);
-    blockOutput.reset();
-    lastBlockDocID = docID;
+    level0Output.copyTo(level1Output);
+    level0Output.reset();
+    level0LastDocID = docID;
     if (writeFreqs) {
-      skipCompetitiveFreqNormAccumulator.addAll(competitiveFreqNormAccumulator);
-      competitiveFreqNormAccumulator.clear();
+      level1CompetitiveFreqNormAccumulator.addAll(level0FreqNormAccumulator);
+      level0FreqNormAccumulator.clear();
     }
 
-    if ((docCount & SKIP_MASK) == 0) { // true every 32 blocks (4,096 docs)
-      docOut.writeVInt(docID - lastSkipDocID);
-      long numImpactBytes = spareOutput.size();
-      final long level1End;
-      if (writeFreqs) {
-        writeImpacts(skipCompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), spareOutput);
-        numImpactBytes = spareOutput.size();
-        if (numImpactBytes > maxImpactNumBytesAtLevel1) {
-          maxImpactNumBytesAtLevel1 = Math.toIntExact(numImpactBytes);
-        }
-        if (writePositions) {
-          spareOutput.writeVLong(posOut.getFilePointer() - lastSkipPosFP);
-          spareOutput.writeByte((byte) posBufferUpto);
-          lastSkipPosFP = posOut.getFilePointer();
-          if (writeOffsets || writePayloads) {
-            spareOutput.writeVLong(payOut.getFilePointer() - lastSkipPayFP);
-            spareOutput.writeVInt(payloadByteUpto);
-            lastSkipPayFP = payOut.getFilePointer();
-          }
-        }
-        final long level1Len = 2 * Short.BYTES + spareOutput.size() + skipOutput.size();
-        docOut.writeVLong(level1Len);
-        level1End = docOut.getFilePointer() + level1Len;
-        // There are at most 128 impacts, that require at most 2 bytes each
-        assert numImpactBytes <= Short.MAX_VALUE;
-        // Like impacts plus a few vlongs, still way under the max short value
-        assert spareOutput.size() + Short.BYTES <= Short.MAX_VALUE;
-        docOut.writeShort((short) (spareOutput.size() + Short.BYTES));
-        docOut.writeShort((short) numImpactBytes);
-        spareOutput.copyTo(docOut);
-        spareOutput.reset();
-      } else {
-        docOut.writeVLong(skipOutput.size());
-        level1End = docOut.getFilePointer() + skipOutput.size();
-      }
-      skipOutput.copyTo(docOut);
-      skipOutput.reset();
-      assert docOut.getFilePointer() == level1End : docOut.getFilePointer() + " " + level1End;
-      lastSkipDocID = docID;
-      skipCompetitiveFreqNormAccumulator.clear();
+    if ((docCount & LEVEL1_MASK) == 0) { // true every 32 blocks (4,096 docs)
+      writeLevel1SkipData();
+      level1LastDocID = docID;
+      level1CompetitiveFreqNormAccumulator.clear();
     } else if (finishTerm) {
-      skipOutput.copyTo(docOut);
-      skipOutput.reset();
-      skipCompetitiveFreqNormAccumulator.clear();
+      level1Output.copyTo(docOut);
+      level1Output.reset();
+      level1CompetitiveFreqNormAccumulator.clear();
     }
+  }
+
+  private void writeLevel1SkipData() throws IOException {
+    docOut.writeVInt(docID - level1LastDocID);
+    long numImpactBytes = scratchOutput.size();
+    final long level1End;
+    if (writeFreqs) {
+      writeImpacts(
+          level1CompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs(), scratchOutput);
+      numImpactBytes = scratchOutput.size();
+      if (numImpactBytes > maxImpactNumBytesAtLevel1) {
+        maxImpactNumBytesAtLevel1 = Math.toIntExact(numImpactBytes);
+      }
+      if (writePositions) {
+        scratchOutput.writeVLong(posOut.getFilePointer() - level1LastPosFP);
+        scratchOutput.writeByte((byte) posBufferUpto);
+        level1LastPosFP = posOut.getFilePointer();
+        if (writeOffsets || writePayloads) {
+          scratchOutput.writeVLong(payOut.getFilePointer() - level1LastPayFP);
+          scratchOutput.writeVInt(payloadByteUpto);
+          level1LastPayFP = payOut.getFilePointer();
+        }
+      }
+      final long level1Len = 2 * Short.BYTES + scratchOutput.size() + level1Output.size();
+      docOut.writeVLong(level1Len);
+      level1End = docOut.getFilePointer() + level1Len;
+      // There are at most 128 impacts, that require at most 2 bytes each
+      assert numImpactBytes <= Short.MAX_VALUE;
+      // Like impacts plus a few vlongs, still way under the max short value
+      assert scratchOutput.size() + Short.BYTES <= Short.MAX_VALUE;
+      docOut.writeShort((short) (scratchOutput.size() + Short.BYTES));
+      docOut.writeShort((short) numImpactBytes);
+      scratchOutput.copyTo(docOut);
+      scratchOutput.reset();
+    } else {
+      docOut.writeVLong(level1Output.size());
+      level1End = docOut.getFilePointer() + level1Output.size();
+    }
+    level1Output.copyTo(docOut);
+    level1Output.reset();
+    assert docOut.getFilePointer() == level1End : docOut.getFilePointer() + " " + level1End;
   }
 
   private void writeImpacts(Collection<Impact> impacts, DataOutput out) throws IOException {
