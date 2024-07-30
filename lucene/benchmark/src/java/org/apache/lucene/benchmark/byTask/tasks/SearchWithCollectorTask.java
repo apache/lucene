@@ -37,7 +37,11 @@ public class SearchWithCollectorTask extends SearchTask {
     // check to make sure either the doc is being stored
     PerfRunData runData = getRunData();
     Config config = runData.getConfig();
-    clnName = config.get("collector.class", "");
+    if (config.get("collector.class", null) != null) {
+      throw new IllegalArgumentException(
+          "collector.class is no longer supported as a config parameter, use collector.manager.class instead to provide a CollectorManager class name");
+    }
+    clnName = config.get("collector.manager.class", "");
   }
 
   @Override
