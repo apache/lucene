@@ -748,13 +748,14 @@ public class IndexSearcher {
    * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
    *     clauses.
    */
-  protected void searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)  throws IOException {
+  protected void searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)
+      throws IOException {
     final LeafCollector leafCollector;
     try {
       leafCollector = collector.getLeafCollector(ctx);
     } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
+        @SuppressWarnings("unused")
+        CollectionTerminatedException e) {
       // there is no doc of interest in this reader context
       // continue with the following leaf
       return;
@@ -767,20 +768,19 @@ public class IndexSearcher {
       try {
         scorer.score(leafCollector, ctx.reader().getLiveDocs());
       } catch (
-              @SuppressWarnings("unused")
-              CollectionTerminatedException e) {
+          @SuppressWarnings("unused")
+          CollectionTerminatedException e) {
         // collection was terminated prematurely
         // continue with the following leaf
       } catch (
-              @SuppressWarnings("unused")
-              TimeLimitingBulkScorer.TimeExceededException e) {
+          @SuppressWarnings("unused")
+          TimeLimitingBulkScorer.TimeExceededException e) {
         partialResult = true;
       }
     }
     // Note: this is called if collection ran successfully, including the above special cases of
     // CollectionTerminatedException and TimeExceededException, but no other exception.
     leafCollector.finish();
-
   }
 
   /**
