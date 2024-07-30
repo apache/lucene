@@ -270,9 +270,8 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       throw new CorruptIndexException("invalid bytes length: " + numBytes, in);
     }
 
-    BytesRef bytes = new BytesRef();
+    BytesRef bytes = new BytesRef(numBytes);
     bytes.length = numBytes;
-    bytes.bytes = new byte[numBytes];
     in.readBytes(bytes.bytes, 0, numBytes);
 
     return bytes;
