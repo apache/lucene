@@ -101,7 +101,7 @@ public final class FieldReader extends Terms {
     */
     BytesRef emptyOutput = metadata.getEmptyOutput();
     if (rootCode.equals(emptyOutput) == false) {
-      // TODO: this branch is never taken?
+      // TODO: this branch is never taken
       assert false;
       this.rootCode = rootCode;
     } else {
