@@ -470,7 +470,7 @@ public final class JoinUtil {
    * <p>This join has certain restrictions and requirements: 1) A document can only refer to one
    * other document. (but can be referred by one or more documents) 2) Documents on each side of the
    * join must be distinguishable. Typically this can be done by adding an extra field that
-   * identifies the "from" and "to" side and then the fromQuery and toQuery must take the this into
+   * identifies the "from" and "to" side and then the fromQuery and toQuery must take this into
    * account. 3) There must be a single sorted doc values join field used by both the "from" and
    * "to" documents. This join field should store the join values as UTF-8 strings. 4) An ordinal
    * map must be provided that is created on top of the join field.
