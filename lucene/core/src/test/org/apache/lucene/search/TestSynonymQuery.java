@@ -165,7 +165,7 @@ public class TestSynonymQuery extends LuceneTestCase {
   }
 
   public void testScores() throws IOException {
-    doTestScores(2);
+    doTestScores(1);
     doTestScores(Integer.MAX_VALUE);
   }
 
@@ -211,7 +211,7 @@ public class TestSynonymQuery extends LuceneTestCase {
   }
 
   public void testBoosts() throws IOException {
-    doTestBoosts(2);
+    doTestBoosts(1);
     doTestBoosts(Integer.MAX_VALUE);
   }
 

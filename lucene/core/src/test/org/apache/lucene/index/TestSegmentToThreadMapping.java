@@ -17,29 +17,24 @@
 
 package org.apache.lucene.index;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.Version;
 
 public class TestSegmentToThreadMapping extends LuceneTestCase {
 
-  public LeafReader dummyIndexReader(final int maxDoc) {
+  private static LeafReader dummyIndexReader(final int maxDoc) {
     return new LeafReader() {
       @Override
       public int maxDoc() {
@@ -160,83 +155,128 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     };
   }
 
-  public void testSingleSlice() {
-    LeafReader largeSegmentReader = dummyIndexReader(50_000);
-    LeafReader firstMediumSegmentReader = dummyIndexReader(30_000);
-    LeafReader secondMediumSegmentReader = dummyIndexReader(30__000);
-    LeafReader thirdMediumSegmentReader = dummyIndexReader(30_000);
+  private static List<LeafReaderContext> createLeafReaderContexts(int... maxDocs) {
     List<LeafReaderContext> leafReaderContexts = new ArrayList<>();
+    for (int maxDoc : maxDocs) {
+      leafReaderContexts.add(new LeafReaderContext(dummyIndexReader(maxDoc)));
+    }
+    Collections.shuffle(leafReaderContexts, random());
+    return leafReaderContexts;
+  }
 
-    leafReaderContexts.add(new LeafReaderContext(largeSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(firstMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(secondMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(thirdMediumSegmentReader));
+  public void testSingleSlice() {
+    List<LeafReaderContext> leafReaderContexts =
+        createLeafReaderContexts(50_000, 30_000, 30_000, 30_000);
+    IndexSearcher.LeafSlice[] resultSlices =
+        IndexSearcher.slices(leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(4, 10));
+    assertEquals(1, resultSlices.length);
+    assertEquals(4, resultSlices[0].leaves.length);
+  }
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
-
-    assertTrue(resultSlices.length == 1);
-
-    final LeafReaderContext[] leaves = resultSlices[0].leaves;
-
-    assertTrue(leaves.length == 4);
+  public void testMaxSegmentsPerSlice() {
+    List<LeafReaderContext> leafReaderContexts =
+        createLeafReaderContexts(50_000, 30_000, 30_000, 30_000);
+    {
+      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 3);
+      assertEquals(2, resultSlices.length);
+      assertEquals(3, resultSlices[0].leaves.length);
+      assertEquals(110_000, resultSlices[0].getNumDocs());
+      assertEquals(1, resultSlices[1].leaves.length);
+      assertEquals(30_000, resultSlices[1].getNumDocs());
+    }
+    {
+      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 2);
+      assertEquals(2, resultSlices.length);
+      assertEquals(2, resultSlices[0].leaves.length);
+      assertEquals(80_000, resultSlices[0].getNumDocs());
+      assertEquals(2, resultSlices[1].leaves.length);
+      assertEquals(60_000, resultSlices[1].getNumDocs());
+    }
+    {
+      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 1);
+      assertEquals(4, resultSlices.length);
+      assertEquals(1, resultSlices[0].leaves.length);
+      assertEquals(50_000, resultSlices[0].getNumDocs());
+      assertEquals(1, resultSlices[1].leaves.length);
+      assertEquals(30_000, resultSlices[1].getNumDocs());
+      assertEquals(1, resultSlices[2].leaves.length);
+      assertEquals(30_000, resultSlices[2].getNumDocs());
+      assertEquals(1, resultSlices[3].leaves.length);
+      assertEquals(30_000, resultSlices[3].getNumDocs());
+    }
   }
 
   public void testSmallSegments() {
-    LeafReader firstMediumSegmentReader = dummyIndexReader(10_000);
-    LeafReader secondMediumSegmentReader = dummyIndexReader(10_000);
-    LeafReader thirdMediumSegmentReader = dummyIndexReader(10_000);
-    LeafReader fourthMediumSegmentReader = dummyIndexReader(10_000);
-    LeafReader fifthMediumSegmentReader = dummyIndexReader(10_000);
-    LeafReader sixthMediumSegmentReader = dummyIndexReader(10_000);
-    LeafReader seventhLargeSegmentReader = dummyIndexReader(130_000);
-    LeafReader eigthLargeSegmentReader = dummyIndexReader(130_000);
-    List<LeafReaderContext> leafReaderContexts = new ArrayList<>();
+    List<LeafReaderContext> leafReaderContexts =
+        createLeafReaderContexts(10_000, 10_000, 10_000, 10_000, 10_000, 10_000, 130_000, 130_000);
 
-    leafReaderContexts.add(new LeafReaderContext(firstMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(secondMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(thirdMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(fourthMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(fifthMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(sixthMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(seventhLargeSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(eigthLargeSegmentReader));
+    {
+      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+      assertEquals(3, resultSlices.length);
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
-
-    assertTrue(resultSlices.length == 3);
-
-    final LeafReaderContext[] firstSliceleaves = resultSlices[0].leaves;
-    final LeafReaderContext[] secondSliceleaves = resultSlices[1].leaves;
-    final LeafReaderContext[] thirdSliceleaves = resultSlices[2].leaves;
-
-    assertTrue(firstSliceleaves.length == 2);
-    assertTrue(secondSliceleaves.length == 5);
-    assertTrue(thirdSliceleaves.length == 1);
+      assertEquals(2, resultSlices[0].leaves.length);
+      assertEquals(260_000, resultSlices[0].getNumDocs());
+      assertEquals(5, resultSlices[1].leaves.length);
+      assertEquals(50_000, resultSlices[1].getNumDocs());
+      assertEquals(1, resultSlices[2].leaves.length);
+      assertEquals(10_000, resultSlices[2].getNumDocs());
+    }
+    {
+      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 130_000, 5);
+      assertEquals(3, resultSlices.length);
+      // this is odd, because we allow two segments in the same slice with both size ==
+      // maxDocsPerSlice
+      assertEquals(2, resultSlices[0].leaves.length);
+      assertEquals(260_000, resultSlices[0].getNumDocs());
+      assertEquals(5, resultSlices[1].leaves.length);
+      assertEquals(50_000, resultSlices[1].getNumDocs());
+      assertEquals(1, resultSlices[2].leaves.length);
+      assertEquals(10_000, resultSlices[2].getNumDocs());
+    }
   }
 
   public void testLargeSlices() {
-    LeafReader largeSegmentReader = dummyIndexReader(290_900);
-    LeafReader firstMediumSegmentReader = dummyIndexReader(170_000);
-    LeafReader secondMediumSegmentReader = dummyIndexReader(170_000);
-    LeafReader thirdMediumSegmentReader = dummyIndexReader(170_000);
-    List<LeafReaderContext> leafReaderContexts = new ArrayList<>();
+    List<LeafReaderContext> leafReaderContexts =
+        createLeafReaderContexts(290_900, 170_000, 170_000, 170_000);
+    IndexSearcher.LeafSlice[] resultSlices =
+        IndexSearcher.slices(leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(5, 10));
 
-    leafReaderContexts.add(new LeafReaderContext(largeSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(firstMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(secondMediumSegmentReader));
-    leafReaderContexts.add(new LeafReaderContext(thirdMediumSegmentReader));
+    assertEquals(4, resultSlices.length);
+    assertEquals(1, resultSlices[0].leaves.length);
+    assertEquals(145_450, resultSlices[0].getNumDocs());
+    assertEquals(1, resultSlices[1].leaves.length);
+    assertEquals(145_450, resultSlices[1].getNumDocs());
+    assertEquals(2, resultSlices[2].leaves.length);
+    assertEquals(340_000, resultSlices[2].getNumDocs());
+    assertEquals(1, resultSlices[3].leaves.length);
+    assertEquals(170_000, resultSlices[3].getNumDocs());
+  }
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+  public void testSingleSegmentPartitions() {
+    List<LeafReaderContext> leafReaderContexts = createLeafReaderContexts(750_001);
+    IndexSearcher.LeafSlice[] resultSlices =
+        IndexSearcher.slices(leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(1, 10));
 
-    assertTrue(resultSlices.length == 3);
+    assertEquals(4, resultSlices.length);
+    assertEquals(1, resultSlices[0].leaves.length);
+    assertEquals(187_500, resultSlices[0].getNumDocs());
+    assertEquals(1, resultSlices[1].leaves.length);
+    assertEquals(187_500, resultSlices[1].getNumDocs());
+    assertEquals(1, resultSlices[2].leaves.length);
+    assertEquals(187_500, resultSlices[2].getNumDocs());
+    assertEquals(1, resultSlices[3].leaves.length);
+    assertEquals(187_501, resultSlices[3].getNumDocs());
+  }
 
-    final LeafReaderContext[] firstSliceleaves = resultSlices[0].leaves;
-    final LeafReaderContext[] secondSliceleaves = resultSlices[1].leaves;
-    final LeafReaderContext[] thirdSliceleaves = resultSlices[2].leaves;
+  public void testExtremePartitioning() {
+    List<LeafReaderContext> leafReaderContexts = createLeafReaderContexts(2, 5, 10);
+    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 1, 1);
 
-    assertTrue(firstSliceleaves.length == 1);
-    assertTrue(secondSliceleaves.length == 2);
-    assertTrue(thirdSliceleaves.length == 1);
+    assertEquals(17, resultSlices.length);
+    for (IndexSearcher.LeafSlice leafSlice : resultSlices) {
+      assertEquals(1, leafSlice.getNumDocs());
+      assertEquals(1, leafSlice.leaves.length);
+    }
   }
 
   public void testIntraSliceDocIDOrder() throws Exception {
@@ -251,33 +291,18 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    ExecutorService service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestSegmentToThreadMapping"));
-    IndexSearcher s = new IndexSearcher(r, service);
-    Query query = new MatchAllDocsQuery();
-
-    s.search(query, Integer.MAX_VALUE);
-
+    IndexSearcher s = new IndexSearcher(r, command -> {});
     IndexSearcher.LeafSlice[] slices = s.getSlices();
     assertNotNull(slices);
 
     for (IndexSearcher.LeafSlice leafSlice : slices) {
-      LeafReaderContext[] leafReaderContexts = leafSlice.leaves;
-      int previousDocBase = leafReaderContexts[0].docBase;
+      int previousDocBase = leafSlice.leaves[0].ctx.docBase;
 
-      for (LeafReaderContext leafReaderContext : leafReaderContexts) {
-        assertTrue(previousDocBase <= leafReaderContext.docBase);
-        previousDocBase = leafReaderContext.docBase;
+      for (IndexSearcher.LeafReaderContextPartition leafReaderContextPartition : leafSlice.leaves) {
+        assertTrue(previousDocBase <= leafReaderContextPartition.ctx.docBase);
+        previousDocBase = leafReaderContextPartition.ctx.docBase;
       }
     }
-
-    service.shutdown();
     IOUtils.close(r, dir);
   }
 

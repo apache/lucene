@@ -288,9 +288,7 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
     ReducedRandomSamplingFacetsCollector(
         int sampleSize, long seed, Collection<RandomSamplingFacetsCollector> facetsCollectors) {
       super(sampleSize, seed);
-      facetsCollectors.forEach(
-          facetsCollector ->
-              getOriginalMatchingDocs().addAll(facetsCollector.getOriginalMatchingDocs()));
+      this.getOriginalMatchingDocs().addAll(reduceMatchingDocs(facetsCollectors));
     }
   }
 }

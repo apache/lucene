@@ -447,119 +447,126 @@ public class TestRangeFacetCounts extends FacetTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Directory td = newDirectory();
     DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(td, IndexWriterConfig.OpenMode.CREATE);
+    IndexReader r = null;
+    TaxonomyReader tr = null;
+    try {
+      FacetsConfig config = new FacetsConfig();
 
-    FacetsConfig config = new FacetsConfig();
+      for (long l = 0; l < 100; l++) {
+        Document doc = new Document();
+        // For computing range facet counts:
+        doc.add(new NumericDocValuesField("field", l));
+        // For drill down by numeric range:
+        doc.add(new LongPoint("field", l));
 
-    for (long l = 0; l < 100; l++) {
-      Document doc = new Document();
-      // For computing range facet counts:
-      doc.add(new NumericDocValuesField("field", l));
-      // For drill down by numeric range:
-      doc.add(new LongPoint("field", l));
-
-      if ((l & 3) == 0) {
-        doc.add(new FacetField("dim", "a"));
-      } else {
-        doc.add(new FacetField("dim", "b"));
+        if ((l & 3) == 0) {
+          doc.add(new FacetField("dim", "a"));
+        } else {
+          doc.add(new FacetField("dim", "b"));
+        }
+        w.addDocument(config.build(tw, doc));
       }
-      w.addDocument(config.build(tw, doc));
-    }
 
-    final IndexReader r = w.getReader();
+      r = w.getReader();
 
-    final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
+      tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
-    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
-    // timeouts whose implementation scores one window of doc IDs at a time.
-    s.setTimeout(null);
+      IndexSearcher s = newSearcher(r, false, false);
+      assumeFalse(
+          "DrillSideways does not support intra-segment concurrency",
+          IndexSearcher.hasLeafPartitions(s.getSlices()));
+      // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+      // timeouts whose implementation scores one window of doc IDs at a time.
+      s.setTimeout(null);
 
-    if (VERBOSE) {
-      System.out.println("TEST: searcher=" + s);
-    }
+      if (VERBOSE) {
+        System.out.println("TEST: searcher=" + s);
+      }
 
-    DrillSideways ds =
-        new DrillSideways(s, config, tr) {
+      DrillSideways ds =
+          new DrillSideways(s, config, tr) {
 
-          @Override
-          protected Facets buildFacetsResult(
-              FacetsCollector drillDowns,
-              FacetsCollector[] drillSideways,
-              String[] drillSidewaysDims)
-              throws IOException {
-            FacetsCollector dimFC = drillDowns;
-            FacetsCollector fieldFC = drillDowns;
-            if (drillSideways != null) {
-              for (int i = 0; i < drillSideways.length; i++) {
-                String dim = drillSidewaysDims[i];
-                if (dim.equals("field")) {
-                  fieldFC = drillSideways[i];
-                } else {
-                  dimFC = drillSideways[i];
+            @Override
+            protected Facets buildFacetsResult(
+                FacetsCollector drillDowns,
+                FacetsCollector[] drillSideways,
+                String[] drillSidewaysDims)
+                throws IOException {
+              FacetsCollector dimFC = drillDowns;
+              FacetsCollector fieldFC = drillDowns;
+              if (drillSideways != null) {
+                for (int i = 0; i < drillSideways.length; i++) {
+                  String dim = drillSidewaysDims[i];
+                  if (dim.equals("field")) {
+                    fieldFC = drillSideways[i];
+                  } else {
+                    dimFC = drillSideways[i];
+                  }
                 }
               }
+
+              Map<String, Facets> byDim = new HashMap<>();
+              byDim.put(
+                  "field",
+                  new LongRangeFacetCounts(
+                      "field",
+                      fieldFC,
+                      new LongRange("less than 10", 0L, true, 10L, false),
+                      new LongRange("less than or equal to 10", 0L, true, 10L, true),
+                      new LongRange("over 90", 90L, false, 100L, false),
+                      new LongRange("90 or above", 90L, true, 100L, false),
+                      new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, false)));
+              byDim.put("dim", getTaxonomyFacetCounts(taxoReader, config, dimFC));
+              return new MultiFacets(byDim, null);
             }
 
-            Map<String, Facets> byDim = new HashMap<>();
-            byDim.put(
-                "field",
-                new LongRangeFacetCounts(
-                    "field",
-                    fieldFC,
-                    new LongRange("less than 10", 0L, true, 10L, false),
-                    new LongRange("less than or equal to 10", 0L, true, 10L, true),
-                    new LongRange("over 90", 90L, false, 100L, false),
-                    new LongRange("90 or above", 90L, true, 100L, false),
-                    new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, false)));
-            byDim.put("dim", getTaxonomyFacetCounts(taxoReader, config, dimFC));
-            return new MultiFacets(byDim, null);
-          }
+            @Override
+            protected boolean scoreSubDocsAtOnce() {
+              return random().nextBoolean();
+            }
+          };
 
-          @Override
-          protected boolean scoreSubDocsAtOnce() {
-            return random().nextBoolean();
-          }
-        };
+      // First search, no drill downs:
+      DrillDownQuery ddq = new DrillDownQuery(config);
+      DrillSidewaysResult dsr = ds.search(null, ddq, 10);
 
-    // First search, no drill downs:
-    DrillDownQuery ddq = new DrillDownQuery(config);
-    DrillSidewaysResult dsr = ds.search(null, ddq, 10);
+      assertEquals(100, dsr.hits.totalHits.value);
+      assertEquals(
+          "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
+          dsr.facets.getTopChildren(10, "dim").toString());
+      assertEquals(
+          "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
+          dsr.facets.getTopChildren(10, "field").toString());
 
-    assertEquals(100, dsr.hits.totalHits.value);
-    assertEquals(
-        "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
-        dsr.facets.getTopChildren(10, "dim").toString());
-    assertEquals(
-        "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
-        dsr.facets.getTopChildren(10, "field").toString());
+      // Second search, drill down on dim=b:
+      ddq = new DrillDownQuery(config);
+      ddq.add("dim", "b");
+      dsr = ds.search(null, ddq, 10);
 
-    // Second search, drill down on dim=b:
-    ddq = new DrillDownQuery(config);
-    ddq.add("dim", "b");
-    dsr = ds.search(null, ddq, 10);
+      assertEquals(75, dsr.hits.totalHits.value);
+      assertEquals(
+          "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
+          dsr.facets.getTopChildren(10, "dim").toString());
+      assertEquals(
+          "dim=field path=[] value=16 childCount=4\n  90 or above (8)\n  less than or equal to 10 (8)\n  less than 10 (7)\n  over 90 (7)\n",
+          dsr.facets.getTopChildren(10, "field").toString());
 
-    assertEquals(75, dsr.hits.totalHits.value);
-    assertEquals(
-        "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
-        dsr.facets.getTopChildren(10, "dim").toString());
-    assertEquals(
-        "dim=field path=[] value=16 childCount=4\n  90 or above (8)\n  less than or equal to 10 (8)\n  less than 10 (7)\n  over 90 (7)\n",
-        dsr.facets.getTopChildren(10, "field").toString());
+      // Third search, drill down on "less than or equal to 10":
+      ddq = new DrillDownQuery(config);
+      ddq.add("field", LongPoint.newRangeQuery("field", 0L, 10L));
+      dsr = ds.search(null, ddq, 10);
 
-    // Third search, drill down on "less than or equal to 10":
-    ddq = new DrillDownQuery(config);
-    ddq.add("field", LongPoint.newRangeQuery("field", 0L, 10L));
-    dsr = ds.search(null, ddq, 10);
-
-    assertEquals(11, dsr.hits.totalHits.value);
-    assertEquals(
-        "dim=dim path=[] value=11 childCount=2\n  b (8)\n  a (3)\n",
-        dsr.facets.getTopChildren(10, "dim").toString());
-    assertEquals(
-        "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
-        dsr.facets.getTopChildren(10, "field").toString());
-    w.close();
-    IOUtils.close(tw, tr, td, r, d);
+      assertEquals(11, dsr.hits.totalHits.value);
+      assertEquals(
+          "dim=dim path=[] value=11 childCount=2\n  b (8)\n  a (3)\n",
+          dsr.facets.getTopChildren(10, "dim").toString());
+      assertEquals(
+          "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
+          dsr.facets.getTopChildren(10, "field").toString());
+    } finally {
+      w.close();
+      IOUtils.close(tw, tr, td, r, d);
+    }
   }
 
   public void testBasicDouble() throws Exception {
@@ -1711,40 +1718,44 @@ public class TestRangeFacetCounts extends FacetTestCase {
     // Test simple drill-down:
     assertEquals(1, s.search(ddq, 10).totalHits.value);
 
-    // Test drill-sideways after drill-down
-    DrillSideways ds =
-        new DrillSideways(s, config, (TaxonomyReader) null) {
+    if (IndexSearcher.hasLeafPartitions(s.getSlices()) == false) {
+      // stop here the test if there are leaf partitions: DrillSideways does not support
+      // intra-segment concurrency
 
-          @Override
-          protected Facets buildFacetsResult(
-              FacetsCollector drillDowns,
-              FacetsCollector[] drillSideways,
-              String[] drillSidewaysDims)
-              throws IOException {
-            assert drillSideways.length == 1;
-            return new DoubleRangeFacetCounts(
-                "field",
-                MultiDoubleValuesSource.fromSingleValued(vs),
-                drillSideways[0],
-                fastMatchFilter,
-                ranges);
-          }
+      // Test drill-sideways after drill-down
+      DrillSideways ds =
+          new DrillSideways(s, config, (TaxonomyReader) null) {
 
-          @Override
-          protected boolean scoreSubDocsAtOnce() {
-            return random().nextBoolean();
-          }
-        };
+            @Override
+            protected Facets buildFacetsResult(
+                FacetsCollector drillDowns,
+                FacetsCollector[] drillSideways,
+                String[] drillSidewaysDims)
+                throws IOException {
+              assert drillSideways.length == 1;
+              return new DoubleRangeFacetCounts(
+                  "field",
+                  MultiDoubleValuesSource.fromSingleValued(vs),
+                  drillSideways[0],
+                  fastMatchFilter,
+                  ranges);
+            }
 
-    DrillSidewaysResult dsr = ds.search(ddq, 10);
-    assertEquals(1, dsr.hits.totalHits.value);
-    assertEquals(
-        "dim=field path=[] value=3 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
-        dsr.facets.getAllChildren("field").toString());
-    assertEquals(
-        "dim=field path=[] value=3 childCount=5\n  < 10 (3)\n  < 20 (3)\n  < 5 (3)\n  < 50 (3)\n  < 2 (1)\n",
-        dsr.facets.getTopChildren(5, "field").toString());
+            @Override
+            protected boolean scoreSubDocsAtOnce() {
+              return random().nextBoolean();
+            }
+          };
 
+      DrillSidewaysResult dsr = ds.search(ddq, 10);
+      assertEquals(1, dsr.hits.totalHits.value);
+      assertEquals(
+          "dim=field path=[] value=3 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
+          dsr.facets.getAllChildren("field").toString());
+      assertEquals(
+          "dim=field path=[] value=3 childCount=5\n  < 10 (3)\n  < 20 (3)\n  < 5 (3)\n  < 50 (3)\n  < 2 (1)\n",
+          dsr.facets.getTopChildren(5, "field").toString());
+    }
     writer.close();
     IOUtils.close(r, dir);
   }

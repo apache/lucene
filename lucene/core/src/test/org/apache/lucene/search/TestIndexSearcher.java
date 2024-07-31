@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -280,7 +281,10 @@ public class TestIndexSearcher extends LuceneTestCase {
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
             ArrayList<LeafSlice> slices = new ArrayList<>();
             for (LeafReaderContext ctx : leaves) {
-              slices.add(new LeafSlice(Arrays.asList(ctx)));
+              slices.add(
+                  new LeafSlice(
+                      Collections.singletonList(
+                          LeafReaderContextPartition.createForEntireSegment(ctx))));
             }
             return slices.toArray(new LeafSlice[0]);
           }
@@ -292,5 +296,34 @@ public class TestIndexSearcher extends LuceneTestCase {
   public void testNullExecutorNonNullTaskExecutor() {
     IndexSearcher indexSearcher = new IndexSearcher(reader);
     assertNotNull(indexSearcher.getTaskExecutor());
+  }
+
+  public void testSegmentPartitionsSameSlice() {
+    IndexSearcher indexSearcher =
+        new IndexSearcher(reader, Runnable::run) {
+          @Override
+          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+            List<LeafSlice> slices = new ArrayList<>();
+            for (LeafReaderContext ctx : leaves) {
+              slices.add(
+                  new LeafSlice(
+                      new ArrayList<>(
+                          List.of(
+                              LeafReaderContextPartition.createFromAndTo(ctx, 0, 1),
+                              LeafReaderContextPartition.createFrom(ctx, 1)))));
+            }
+            return slices.toArray(new LeafSlice[0]);
+          }
+        };
+    try {
+      indexSearcher.getSlices();
+      fail("should throw exception");
+    } catch (IllegalStateException e) {
+      assertEquals(
+          "The same slice targets multiple partitions of the same leaf reader. "
+              + "A segment should rather get partitioned to be searched concurrently from as many slices as the "
+              + "number of partitions it is split into.",
+          e.getMessage());
+    }
   }
 }
