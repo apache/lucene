@@ -65,6 +65,12 @@ Optimizations
 * GITHUB#13582: Stop requiring MaxScoreBulkScorer's outer window from having at
   least INNER_WINDOW_SIZE docs. (Adrien Grand)
 
+* GITHUB#13585: Lucene912PostingsFormat, the new default postings format, now
+  only has 2 levels of skip data, which are inlined into postings instead of
+  being stored at the end of postings lists. This translates into better
+  performance for queries that need skipping such as conjunctions.
+  (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 

@@ -14,16 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.backward_codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene99;
 
-import static org.apache.lucene.backward_codecs.lucene90.Lucene90ScoreSkipReader.readImpacts;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99ScoreSkipReader.readImpacts;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.backward_codecs.lucene90.Lucene90ScoreSkipReader.MutableImpactList;
-import org.apache.lucene.backward_codecs.lucene99.Lucene99SkipWriter;
+import org.apache.lucene.backward_codecs.lucene99.Lucene99ScoreSkipReader.MutableImpactList;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.lucene90.blocktree.FieldReader;
@@ -34,6 +33,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -42,9 +42,10 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
-public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
-  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene90RWPostingsFormat());
+public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
+  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene99RWPostingsFormat());
 
   @Override
   protected Codec getCodec() {
@@ -74,6 +75,22 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
     r.close();
     w.close();
     d.close();
+  }
+
+  private void shouldFail(int minItemsInBlock, int maxItemsInBlock) {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new Lucene99RWPostingsFormat(minItemsInBlock, maxItemsInBlock);
+        });
+  }
+
+  public void testInvalidBlockSizes() throws Exception {
+    shouldFail(0, 0);
+    shouldFail(10, 8);
+    shouldFail(-1, 10);
+    shouldFail(10, -1);
+    shouldFail(10, 12);
   }
 
   public void testImpactSerialization() throws IOException {
@@ -127,5 +144,14 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
         assertEquals(impacts, impacts2);
       }
     }
+  }
+
+  @Override
+  protected void subCheckBinarySearch(TermsEnum termsEnum) throws Exception {
+    // 10004a matched block's entries: [100001, 100003, ..., 100049].
+    // if target greater than the last entry of the matched block,
+    // termsEnum.term should be the next leaf block's first entry.
+    assertEquals(TermsEnum.SeekStatus.NOT_FOUND, termsEnum.seekCeil(new BytesRef("10004a")));
+    assertEquals(termsEnum.term(), new BytesRef("100051"));
   }
 }

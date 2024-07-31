@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import java.io.IOException;
 import org.apache.lucene.store.Directory;

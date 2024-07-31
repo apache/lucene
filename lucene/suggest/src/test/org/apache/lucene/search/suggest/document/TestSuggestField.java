@@ -965,7 +965,7 @@ public class TestSuggestField extends LuceneTestCase {
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           CompletionPostingsFormat.FSTLoadMode fstLoadMode =
               RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
-          PostingsFormat postingsFormat = new Completion99PostingsFormat(fstLoadMode);
+          PostingsFormat postingsFormat = new Completion912PostingsFormat(fstLoadMode);
 
           @Override
           public PostingsFormat postingsFormat() {

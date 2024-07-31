@@ -21,8 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
+import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat;
+import org.apache.lucene.codecs.lucene912.Lucene912PostingsReader;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -398,10 +398,10 @@ public class PhraseQuery extends Query {
   /**
    * A guess of the average number of simple operations for the initial seek and buffer refill per
    * document for the positions of a term. See also {@link
-   * Lucene99PostingsReader.BlockImpactsPostingsEnum#nextPosition()}.
+   * Lucene912PostingsReader.BlockImpactsPostingsEnum#nextPosition()}.
    *
    * <p>Aside: Instead of being constant this could depend among others on {@link
-   * Lucene99PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
+   * Lucene912PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
    * TermsEnum#totalTermFreq()}, {@link DocIdSetIterator#cost()} (expected number of matching docs),
    * {@link LeafReader#maxDoc()} (total number of docs in the segment), and the seek time and block
    * size of the device storing the index.
@@ -410,7 +410,7 @@ public class PhraseQuery extends Query {
 
   /**
    * Number of simple operations in {@link
-   * Lucene99PostingsReader.BlockImpactsPostingsEnum#nextPosition()} when no seek or buffer refill
+   * Lucene912PostingsReader.BlockImpactsPostingsEnum#nextPosition()} when no seek or buffer refill
    * is done.
    */
   private static final int TERM_OPS_PER_POS = 7;

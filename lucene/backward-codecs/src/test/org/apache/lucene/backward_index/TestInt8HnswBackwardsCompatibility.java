@@ -20,9 +20,9 @@ import static org.apache.lucene.backward_index.TestBasicBackwardsCompatibility.a
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;

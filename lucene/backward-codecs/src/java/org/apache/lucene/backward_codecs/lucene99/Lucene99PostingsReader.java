@@ -14,23 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene99.ForUtil.BLOCK_SIZE;
-import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.DOC_CODEC;
-import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.MAX_SKIP_LEVELS;
-import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.TERMS_CODEC;
-import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.VERSION_CURRENT;
-import static org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.VERSION_START;
+import static org.apache.lucene.backward_codecs.lucene99.ForUtil.BLOCK_SIZE;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat.MAX_SKIP_LEVELS;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat.POS_CODEC;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat.VERSION_CURRENT;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat.VERSION_START;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;

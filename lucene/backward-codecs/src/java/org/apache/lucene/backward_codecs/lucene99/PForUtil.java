@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -27,15 +27,6 @@ import org.apache.lucene.util.packed.PackedInts;
 final class PForUtil {
 
   private static final int MAX_EXCEPTIONS = 7;
-
-  // IDENTITY_PLUS_ONE[i] == i + 1
-  private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil.BLOCK_SIZE];
-
-  static {
-    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
-      IDENTITY_PLUS_ONE[i] = i + 1;
-    }
-  }
 
   static boolean allEqual(long[] l) {
     for (int i = 1; i < ForUtil.BLOCK_SIZE; ++i) {
