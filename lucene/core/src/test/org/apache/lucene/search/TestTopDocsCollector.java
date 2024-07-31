@@ -46,7 +46,6 @@ public class TestTopDocsCollector extends LuceneTestCase {
       implements CollectorManager<MyTopDocsCollector, MyTopDocsCollector> {
 
     private final int numHits;
-    private int idx = 0;
 
     MyTopDocsCollectorMananger(int numHits) {
       this.numHits = numHits;
@@ -54,9 +53,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
     @Override
     public MyTopDocsCollector newCollector() {
-      MyTopDocsCollector myTopDocsCollector = new MyTopDocsCollector(numHits, idx);
-      idx += numHits;
-      return myTopDocsCollector;
+      return new MyTopDocsCollector(numHits);
     }
 
     @Override
@@ -76,16 +73,10 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
   private static final class MyTopDocsCollector extends TopDocsCollector<ScoreDoc> {
 
-    private int idx;
-
-    public MyTopDocsCollector(int size, int startIdx) {
-      super(new HitQueue(size, false));
-      this.idx = startIdx;
-    }
+    private int idx = 0;
 
     public MyTopDocsCollector(int size) {
       super(new HitQueue(size, false));
-      this.idx = 0;
     }
 
     @Override
@@ -105,7 +96,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
         @Override
         public void collect(int doc) {
           ++totalHits;
-          pq.insertWithOverflow(new ScoreDoc(doc + base, scores[idx++]));
+          pq.insertWithOverflow(new ScoreDoc(doc + base, scores[context.docBase + idx++]));
         }
 
         @Override
