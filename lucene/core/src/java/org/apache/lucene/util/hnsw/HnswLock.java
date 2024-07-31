@@ -27,7 +27,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * HnswConcurrentMerger and its HnswGraphBuilders.
  */
 public class HnswLock {
-  private static final int NUM_LOCKS = 128;
+  private static final int NUM_LOCKS = 512;
   private final ReentrantReadWriteLock[] locks;
   private final OnHeapHnswGraph graph;
 
