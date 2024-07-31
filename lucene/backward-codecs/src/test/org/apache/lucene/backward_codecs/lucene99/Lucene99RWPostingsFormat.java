@@ -14,58 +14,54 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.memory;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.FieldsConsumer;
-import org.apache.lucene.codecs.FieldsProducer;
-import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsReader;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsWriter;
-import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
 
-/** FST term dict + Lucene50PBF */
-public final class FSTPostingsFormat extends PostingsFormat {
-  public FSTPostingsFormat() {
-    super("FST50");
+public class Lucene99RWPostingsFormat extends Lucene99PostingsFormat {
+
+  private final int minTermBlockSize;
+  private final int maxTermBlockSize;
+
+  /** Creates {@code Lucene99PostingsFormat} with default settings. */
+  public Lucene99RWPostingsFormat() {
+    this(
+        Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
+        Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
   }
 
-  @Override
-  public String toString() {
-    return getName();
+  /**
+   * Creates {@code Lucene99PostingsFormat} with custom values for {@code minBlockSize} and {@code
+   * maxBlockSize} passed to block terms dictionary.
+   *
+   * @see
+   *     Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)
+   */
+  public Lucene99RWPostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
+    super();
+    Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
+    this.minTermBlockSize = minTermBlockSize;
+    this.maxTermBlockSize = maxTermBlockSize;
   }
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene912PostingsWriter(state);
-
+    PostingsWriterBase postingsWriter = new Lucene99PostingsWriter(state);
     boolean success = false;
     try {
-      FieldsConsumer ret = new FSTTermsWriter(state, postingsWriter);
+      FieldsConsumer ret =
+          new Lucene90BlockTreeTermsWriter(
+              state, postingsWriter, minTermBlockSize, maxTermBlockSize);
       success = true;
       return ret;
     } finally {
       if (!success) {
         IOUtils.closeWhileHandlingException(postingsWriter);
-      }
-    }
-  }
-
-  @Override
-  public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene912PostingsReader(state);
-    boolean success = false;
-    try {
-      FieldsProducer ret = new FSTTermsReader(state, postingsReader);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
       }
     }
   }

@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -79,7 +80,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
 
   @Override
   protected Codec getCodec() {
-    return new Lucene99Codec() {
+    return new Lucene912Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return format;
@@ -95,7 +96,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 dir,
                 newIndexWriterConfig()
                     .setCodec(
-                        new Lucene99Codec() {
+                        new Lucene912Codec() {
                           @Override
                           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                             return new Lucene99HnswScalarQuantizedVectorsFormat(
