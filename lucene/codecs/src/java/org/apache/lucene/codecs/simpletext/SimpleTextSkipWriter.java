@@ -60,8 +60,8 @@ class SimpleTextSkipWriter extends MultiLevelSkipListWriter {
 
   SimpleTextSkipWriter(SegmentWriteState writeState) throws IOException {
     super(BLOCK_SIZE, skipMultiplier, maxSkipLevels, writeState.segmentInfo.maxDoc());
-    curCompetitiveFreqNorms = new CompetitiveImpactAccumulator[maxSkipLevels];
-    for (int i = 0; i < maxSkipLevels; ++i) {
+    curCompetitiveFreqNorms = new CompetitiveImpactAccumulator[numberOfSkipLevels];
+    for (int i = 0; i < numberOfSkipLevels; ++i) {
       curCompetitiveFreqNorms[i] = new CompetitiveImpactAccumulator();
     }
     resetSkip();

@@ -46,8 +46,8 @@ import org.apache.lucene.store.IndexOutput;
  * uptos(position, payload). 4. start offset.
  */
 final class Lucene50SkipWriter extends MultiLevelSkipListWriter {
-  private int[] lastSkipDoc;
-  private long[] lastSkipDocPointer;
+  private final int[] lastSkipDoc;
+  private final long[] lastSkipDocPointer;
   private long[] lastSkipPosPointer;
   private long[] lastSkipPayPointer;
   private int[] lastPayloadByteUpto;
@@ -62,7 +62,7 @@ final class Lucene50SkipWriter extends MultiLevelSkipListWriter {
   private long curPayPointer;
   private int curPosBufferUpto;
   private int curPayloadByteUpto;
-  private CompetitiveImpactAccumulator[] curCompetitiveFreqNorms;
+  private final CompetitiveImpactAccumulator[] curCompetitiveFreqNorms;
   private boolean fieldHasPositions;
   private boolean fieldHasOffsets;
   private boolean fieldHasPayloads;
@@ -80,16 +80,16 @@ final class Lucene50SkipWriter extends MultiLevelSkipListWriter {
     this.payOut = payOut;
 
     lastSkipDoc = new int[maxSkipLevels];
-    lastSkipDocPointer = new long[maxSkipLevels];
+    lastSkipDocPointer = new long[numberOfSkipLevels];
     if (posOut != null) {
-      lastSkipPosPointer = new long[maxSkipLevels];
+      lastSkipPosPointer = new long[numberOfSkipLevels];
       if (payOut != null) {
-        lastSkipPayPointer = new long[maxSkipLevels];
+        lastSkipPayPointer = new long[numberOfSkipLevels];
       }
-      lastPayloadByteUpto = new int[maxSkipLevels];
+      lastPayloadByteUpto = new int[numberOfSkipLevels];
     }
-    curCompetitiveFreqNorms = new CompetitiveImpactAccumulator[maxSkipLevels];
-    for (int i = 0; i < maxSkipLevels; ++i) {
+    curCompetitiveFreqNorms = new CompetitiveImpactAccumulator[numberOfSkipLevels];
+    for (int i = 0; i < numberOfSkipLevels; ++i) {
       curCompetitiveFreqNorms[i] = new CompetitiveImpactAccumulator();
     }
   }
