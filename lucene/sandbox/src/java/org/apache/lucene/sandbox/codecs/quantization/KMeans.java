@@ -19,13 +19,16 @@ package org.apache.lucene.sandbox.codecs.quantization;
 import static org.apache.lucene.sandbox.codecs.quantization.SampleReader.createSampleReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /** KMeans clustering algorithm for vectors */
@@ -100,21 +103,32 @@ public class KMeans {
       int iters,
       int sampleSize)
       throws IOException {
+    if (vectors.size() == 0) {
+      return null;
+    }
     if (numClusters < 1 || numClusters > MAX_NUM_CENTROIDS) {
       throw new IllegalArgumentException(
           "[numClusters] must be between [1] and [" + MAX_NUM_CENTROIDS + "]");
     }
+    // adjust sampleSize and numClusters
+    sampleSize = Math.max(sampleSize, 100 * numClusters);
+    if (sampleSize > vectors.size()) {
+      sampleSize = vectors.size();
+      // Decrease the number of clusters if needed
+      int maxNumClusters = Math.max(1, sampleSize / 100);
+      numClusters = Math.min(numClusters, maxNumClusters);
+    }
 
     Random random = new Random(seed);
     float[][] centroids;
-    if (numClusters > 1) {
+    if (numClusters == 1) {
+      centroids = new float[1][vectors.dimension()];
+    } else {
       RandomAccessVectorValues.Floats sampleVectors =
           vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
       KMeans kmeans =
           new KMeans(sampleVectors, numClusters, random, initializationMethod, restarts, iters);
       centroids = kmeans.computeCentroids(normalizeCenters);
-    } else {
-      centroids = new float[1][vectors.dimension()];
     }
 
     short[] vectorCentroids = null;
@@ -122,7 +136,7 @@ public class KMeans {
     if (assignCentroidsToVectors) {
       vectorCentroids = new short[vectors.size()];
       // Use kahan summation to get more precise results
-      KMeans.runKMeansStep(vectors, random, centroids, vectorCentroids, true, normalizeCenters);
+      KMeans.runKMeansStep(vectors, centroids, vectorCentroids, true, normalizeCenters);
     }
     return new Results(centroids, vectorCentroids);
   }
@@ -156,10 +170,14 @@ public class KMeans {
             case RESERVOIR_SAMPLING -> initializeReservoirSampling();
             case PLUS_PLUS -> initializePlusPlus();
           };
-
+      double prevSquaredDist = Double.MAX_VALUE;
       for (int iter = 0; iter < iters; iter++) {
-        squaredDist =
-            runKMeansStep(vectors, random, centroids, vectorCentroids, false, normalizeCenters);
+        squaredDist = runKMeansStep(vectors, centroids, vectorCentroids, false, normalizeCenters);
+        // Check for convergence
+        if (prevSquaredDist < squaredDist) {
+          break;
+        }
+        prevSquaredDist = squaredDist;
       }
       if (squaredDist < minSquaredDist) {
         minSquaredDist = squaredDist;
@@ -229,11 +247,11 @@ public class KMeans {
 
       // Randomly select next centroid
       double r = totalSum * random.nextDouble();
-      double cummulativeSum = 0;
+      double cumulativeSum = 0;
       int nextCentroidIndex = -1;
       for (int j = 0; j < numVectors; j++) {
-        cummulativeSum += minDistances[j];
-        if (cummulativeSum >= r) {
+        cumulativeSum += minDistances[j];
+        if (cumulativeSum >= r && minDistances[j] > 0) {
           nextCentroidIndex = j;
           break;
         }
@@ -249,7 +267,6 @@ public class KMeans {
    * Run kmeans step
    *
    * @param vectors float vectors
-   * @param random random
    * @param centroids centroids, new calculated centroids are written here
    * @param docCentroids for each document which centroid it belongs to, results will be written
    *     here
@@ -260,7 +277,6 @@ public class KMeans {
    */
   private static double runKMeansStep(
       RandomAccessVectorValues.Floats vectors,
-      Random random,
       float[][] centroids,
       short[] docCentroids,
       boolean useKahanSummation,
@@ -278,7 +294,6 @@ public class KMeans {
     double sumSquaredDist = 0;
     for (int docID = 0; docID < vectors.size(); docID++) {
       float[] vector = vectors.vectorValue(docID);
-
       short bestCentroid = 0;
       if (numCentroids > 1) {
         float minSquaredDist = Float.MAX_VALUE;
@@ -307,19 +322,18 @@ public class KMeans {
       docCentroids[docID] = bestCentroid;
     }
 
+    List<Integer> unassignedCentroids = new ArrayList<>();
     for (int c = 0; c < numCentroids; c++) {
       if (newCentroidSize[c] > 0) {
         for (int dim = 0; dim < newCentroids[c].length; dim++) {
           centroids[c][dim] = newCentroids[c][dim] / newCentroidSize[c];
         }
       } else {
-        // this centroid did not get any points, assign a random data point to it
-        int rndIdx = random.nextInt(docCentroids.length);
-        float[] vector = vectors.vectorValue(rndIdx);
-        for (int dim = 0; dim < newCentroids[c].length; dim++) {
-          centroids[c][dim] = vector[dim];
-        }
+        unassignedCentroids.add(c);
       }
+    }
+    if (unassignedCentroids.size() > 0) {
+      assignCentroids(vectors, centroids, unassignedCentroids);
     }
     if (normalizeCentroids) {
       for (int c = 0; c < centroids.length; c++) {
@@ -327,6 +341,38 @@ public class KMeans {
       }
     }
     return sumSquaredDist;
+  }
+
+  /**
+   * For centroids that did not get any points, assign outlying points to them chose points by
+   * descending distance to the current centroid set
+   */
+  static void assignCentroids(
+      RandomAccessVectorValues.Floats vectors,
+      float[][] centroids,
+      List<Integer> unassignedCentroidsIdxs)
+      throws IOException {
+    int[] assignedCentroidsIdxs = new int[centroids.length - unassignedCentroidsIdxs.size()];
+    int assignedIndex = 0;
+    for (int i = 0; i < centroids.length; i++) {
+      if (unassignedCentroidsIdxs.contains(i) == false) {
+        assignedCentroidsIdxs[assignedIndex++] = i;
+      }
+    }
+    NeighborQueue queue = new NeighborQueue(unassignedCentroidsIdxs.size(), false);
+    for (int i = 0; i < vectors.size(); i++) {
+      float[] vector = vectors.vectorValue(i);
+      for (short j = 0; j < assignedCentroidsIdxs.length; j++) {
+        float squareDist = VectorUtil.squareDistance(centroids[assignedCentroidsIdxs[j]], vector);
+        queue.insertWithOverflow(i, squareDist);
+      }
+    }
+    for (int i = 0; i < unassignedCentroidsIdxs.size(); i++) {
+      float[] vector = vectors.vectorValue(queue.topNode());
+      int unassignedCentroidIdx = unassignedCentroidsIdxs.get(i);
+      centroids[unassignedCentroidIdx] = ArrayUtil.copyArray(vector);
+      queue.pop();
+    }
   }
 
   /** Kmeans initialization methods */

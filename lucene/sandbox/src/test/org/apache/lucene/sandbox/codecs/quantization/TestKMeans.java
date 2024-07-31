@@ -18,7 +18,8 @@
 package org.apache.lucene.sandbox.codecs.quantization;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -26,18 +27,16 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 public class TestKMeans extends LuceneTestCase {
 
   public void testKMeansAPI() throws IOException {
-    int nVectors = random().nextInt(50, 1000);
-    int nClusters = random().nextInt(1, nVectors / 20);
+    int nClusters = random().nextInt(1, 10);
+    int nVectors = random().nextInt(nClusters * 100, nClusters * 200);
     int dims = random().nextInt(2, 20);
     int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
-    float[][] vectors = generateData(nVectors, dims, nClusters);
-    RandomAccessVectorValues.Floats vectorValues =
-        RandomAccessVectorValues.fromFloats(Arrays.asList(vectors), dims);
+    RandomAccessVectorValues.Floats vectors = generateData(nVectors, dims, nClusters);
 
     // default case
     {
-      KMeans.Results results = KMeans.cluster(vectorValues, similarityFunction, nClusters);
+      KMeans.Results results = KMeans.cluster(vectors, similarityFunction, nClusters);
       assertEquals(nClusters, results.centroids().length);
       assertEquals(nVectors, results.vectorCentroids().length);
     }
@@ -53,7 +52,7 @@ public class TestKMeans extends LuceneTestCase {
 
       KMeans.Results results =
           KMeans.cluster(
-              vectorValues,
+              vectors,
               nClusters,
               assignCentroidsToVectors,
               random().nextLong(),
@@ -71,8 +70,57 @@ public class TestKMeans extends LuceneTestCase {
     }
   }
 
-  private static float[][] generateData(int nSamples, int nDims, int nClusters) {
-    float[][] data = new float[nSamples][nDims];
+  public void testKMeansSpecialCases() throws IOException {
+    {
+      // nClusters > nVectors
+      int nClusters = 20;
+      int nVectors = 10;
+      RandomAccessVectorValues.Floats vectors = generateData(nVectors, 5, nClusters);
+      KMeans.Results results =
+          KMeans.cluster(vectors, VectorSimilarityFunction.EUCLIDEAN, nClusters);
+      // assert that we get 1 centroid, as nClusters will be adjusted
+      assertEquals(1, results.centroids().length);
+      assertEquals(nVectors, results.vectorCentroids().length);
+    }
+    {
+      // small sample size
+      int sampleSize = 2;
+      int nClusters = 2;
+      int nVectors = 300;
+      RandomAccessVectorValues.Floats vectors = generateData(nVectors, 5, nClusters);
+      KMeans.KmeansInitializationMethod initializationMethod =
+          KMeans.KmeansInitializationMethod.PLUS_PLUS;
+      KMeans.Results results =
+          KMeans.cluster(
+              vectors,
+              nClusters,
+              true,
+              random().nextLong(),
+              initializationMethod,
+              false,
+              1,
+              2,
+              sampleSize);
+      assertEquals(nClusters, results.centroids().length);
+      assertEquals(nVectors, results.vectorCentroids().length);
+    }
+    {
+      // test unassigned centroids
+      int nClusters = 4;
+      int nVectors = 400;
+      RandomAccessVectorValues.Floats vectors = generateData(nVectors, 5, nClusters);
+      KMeans.Results results =
+          KMeans.cluster(vectors, VectorSimilarityFunction.EUCLIDEAN, nClusters);
+      float[][] centroids = results.centroids();
+      List<Integer> unassignedIdxs = List.of(0, 3);
+      KMeans.assignCentroids(vectors, centroids, unassignedIdxs);
+      assertEquals(nClusters, centroids.length);
+    }
+  }
+
+  private static RandomAccessVectorValues.Floats generateData(
+      int nSamples, int nDims, int nClusters) {
+    List<float[]> vectors = new ArrayList<>(nSamples);
     float[][] centroids = new float[nClusters][nDims];
     // Generate random centroids
     for (int i = 0; i < nClusters; i++) {
@@ -83,10 +131,12 @@ public class TestKMeans extends LuceneTestCase {
     // Generate data points around centroids
     for (int i = 0; i < nSamples; i++) {
       int cluster = random().nextInt(nClusters);
+      float[] vector = new float[nDims];
       for (int j = 0; j < nDims; j++) {
-        data[i][j] = centroids[cluster][j] + random().nextFloat() * 10 - 5;
+        vector[j] = centroids[cluster][j] + random().nextFloat() * 10 - 5;
       }
+      vectors.add(vector);
     }
-    return data;
+    return RandomAccessVectorValues.fromFloats(vectors, nDims);
   }
 }
