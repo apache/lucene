@@ -78,7 +78,6 @@ public final class FieldReader extends Terms {
     this.sumTotalTermFreq = sumTotalTermFreq;
     this.sumDocFreq = sumDocFreq;
     this.docCount = docCount;
-    this.rootCode = rootCode;
     this.minTerm = minTerm;
     this.maxTerm = maxTerm;
     // if (DEBUG) {
@@ -100,6 +99,14 @@ public final class FieldReader extends Terms {
      w.close();
      }
     */
+    BytesRef emptyOutput = metadata.getEmptyOutput();
+    if (rootCode.equals(emptyOutput) == false) {
+      // TODO: this branch is never taken
+      assert false;
+      this.rootCode = rootCode;
+    } else {
+      this.rootCode = emptyOutput;
+    }
   }
 
   long readVLongOutput(DataInput in) throws IOException {
