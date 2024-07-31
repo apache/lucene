@@ -72,9 +72,6 @@ public class TestTopDocsCollector extends LuceneTestCase {
   }
 
   private static final class MyTopDocsCollector extends TopDocsCollector<ScoreDoc> {
-
-    private int idx = 0;
-
     public MyTopDocsCollector(int size) {
       super(new HitQueue(size, false));
     }
@@ -92,6 +89,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       final int base = context.docBase;
       return new LeafCollector() {
+        private int idx = 0;
 
         @Override
         public void collect(int doc) {
