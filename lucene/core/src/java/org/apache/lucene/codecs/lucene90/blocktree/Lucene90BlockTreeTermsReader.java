@@ -199,6 +199,11 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
             final int docCount = metaIn.readVInt();
             BytesRef minTerm = readBytesRef(metaIn);
             BytesRef maxTerm = readBytesRef(metaIn);
+            if (numTerms == 1) {
+              assert maxTerm.equals(minTerm);
+              // save heap for edge case of a single term only so min == max
+              maxTerm = minTerm;
+            }
             if (docCount < 0
                 || docCount > state.segmentInfo.maxDoc()) { // #docs with field must be <= #docs
               throw new CorruptIndexException(
