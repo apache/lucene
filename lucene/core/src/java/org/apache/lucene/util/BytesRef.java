@@ -68,7 +68,7 @@ public final class BytesRef implements Comparable<BytesRef>, Cloneable {
    * both be zero.
    */
   public BytesRef(int capacity) {
-    this.bytes = new byte[capacity];
+    this.bytes = capacity == 0 ? EMPTY_BYTES : new byte[capacity];
   }
 
   /**
@@ -77,7 +77,7 @@ public final class BytesRef implements Comparable<BytesRef>, Cloneable {
    * @param text This must be well-formed unicode text, with no unpaired surrogates.
    */
   public BytesRef(CharSequence text) {
-    this(new byte[UnicodeUtil.maxUTF8Length(text.length())]);
+    this(UnicodeUtil.maxUTF8Length(text.length()));
     length = UnicodeUtil.UTF16toUTF8(text, 0, text.length(), bytes);
   }
 
