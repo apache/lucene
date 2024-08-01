@@ -18,6 +18,8 @@ API Changes
   facilitate customizing per-leaf behavior of search without requiring to override
   `search(LeafReaderContext[], Weight, Collector)` which requires overriding the entire loop across the leaves (Luca Cavanna)
 
+* GITHUB#13559: Add BitSet#nextSetBit(int, int) to get the index of the first set bit in range. (Egor Potemkin)
+
 New Features
 ---------------------
 
