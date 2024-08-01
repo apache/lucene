@@ -444,6 +444,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       if (freqFP != -1) {
         docIn.seek(freqFP);
         pforUtil.decode(docIn, freqBuffer);
+        freqFP = -1;
       }
 
       return (int) freqBuffer[docBufferUpto - 1];
