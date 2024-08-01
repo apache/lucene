@@ -320,9 +320,11 @@ public class SparseFixedBitSet extends BitSet {
   }
 
   /** Return the first document that occurs on or after the provided block index. */
-  private int firstDoc(int i4096) {
+  private int firstDoc(int i4096, int i4096upper) {
+    assert i4096upper <= indices.length
+        : "i4096upper=" + i4096 + ", indices.length=" + indices.length;
     long index = 0;
-    while (i4096 < indices.length) {
+    while (i4096 < i4096upper) {
       index = indices[i4096];
       if (index != 0) {
         final int i64 = Long.numberOfTrailingZeros(index);
@@ -353,12 +355,45 @@ public class SparseFixedBitSet extends BitSet {
     final long indexBits = index >>> i64 >>> 1;
     if (indexBits == 0) {
       // no more bits are set in the current block of 4096 bits, go to the next one
-      return firstDoc(i4096 + 1);
+      return firstDoc(i4096 + 1, indices.length);
     }
     // there are still set bits
     i64 += 1 + Long.numberOfTrailingZeros(indexBits);
     final long bits = bitArray[o];
     return (i64 << 6) | Long.numberOfTrailingZeros(bits);
+  }
+
+  @Override
+  public int nextSetBit(int start, int upperBound) {
+    assert start < length;
+    assert upperBound > start;
+    final int i4096 = start >>> 12;
+    final long index = indices[i4096];
+    final long[] bitArray = this.bits[i4096];
+    int i64 = start >>> 6;
+    final long i64bit = 1L << i64;
+    int o = Long.bitCount(index & (i64bit - 1));
+    if ((index & i64bit) != 0) {
+      // There is at least one bit that is set in the current long, check if
+      // one of them is after i
+      final long bits = bitArray[o] >>> start; // shifts are mod 64
+      if (bits != 0) {
+        int res = start + Long.numberOfTrailingZeros(bits);
+        return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+      }
+      o += 1;
+    }
+    final long indexBits = index >>> i64 >>> 1;
+    if (indexBits == 0) {
+      // no more bits are set in the current block of 4096 bits, go to the next one
+      int res = firstDoc(i4096 + 1, blockCount(upperBound));
+      return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+    }
+    // there are still set bits
+    i64 += 1 + Long.numberOfTrailingZeros(indexBits);
+    final long bits = bitArray[o];
+    int res = (i64 << 6) | Long.numberOfTrailingZeros(bits);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
   }
 
   /** Return the last document that occurs on or before the provided block index. */

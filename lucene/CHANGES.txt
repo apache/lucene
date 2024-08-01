@@ -108,7 +108,10 @@ API Changes
 
 * GITHUB#13410: Removed Scorer#getWeight (Sanjay Dutt, Adrien Grand)
 
+* GITHUB#13559: Add BitSet#nextSetBit(int, int) to get the index of the first set bit in range. (Egor Potemkin)
+
 * GITHUB#13499: Remove deprecated TopScoreDocCollector + TopFieldCollector methods (#create, #createSharedManager) (Jakub Slowinski)
+
 
 New Features
 ---------------------
