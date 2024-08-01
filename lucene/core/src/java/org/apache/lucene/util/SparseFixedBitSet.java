@@ -355,7 +355,7 @@ public class SparseFixedBitSet extends BitSet {
    */
   private int nextSetBitInRange(int start, int upperBound) {
     assert start < length;
-    assert upperBound > start;
+    assert upperBound > start && upperBound <= length : "upperBound=" + upperBound + ", start=" + start + ", length=" + length;
     final int i4096 = start >>> 12;
     final long index = indices[i4096];
     final long[] bitArray = this.bits[i4096];
