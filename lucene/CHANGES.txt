@@ -71,6 +71,8 @@ Optimizations
   performance for queries that need skipping such as conjunctions.
   (Adrien Grand)
 
+* GITHUB#13581: OnHeapHnswGraph no longer allocates a lock for every graph node (Mike Sokolov)
+
 Changes in runtime behavior
 ---------------------
 
