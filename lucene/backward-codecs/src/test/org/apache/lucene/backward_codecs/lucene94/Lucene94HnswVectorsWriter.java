@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -358,8 +359,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     int size = neighbors.size();
     vectorIndex.writeInt(size);
 
-    // Destructively modify; it's ok we are discarding it after this
-    int[] nnodes = neighbors.nodes();
+    int[] nnodes = neighbors.nodesCopy();
     for (int i = 0; i < size; i++) {
       nnodes[i] = oldToNewMap[nnodes[i]];
     }
@@ -486,10 +486,9 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.nodes();
-        Arrays.sort(nnodes, 0, size);
+        Arrays.sort(neighbors.scoreNodes, 0, size, Comparator.comparingInt(o -> o.node));
         for (int i = 0; i < size; i++) {
-          int nnode = nnodes[i];
+          int nnode = neighbors.scoreNodes[i].node;
           assert nnode < countOnLevel0 : "node too large: " + nnode + ">=" + countOnLevel0;
           vectorIndex.writeInt(nnode);
         }

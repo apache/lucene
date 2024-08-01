@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.NeighborArray.ScoreNode;
 
 public class TestNeighborArray extends LuceneTestCase {
 
@@ -132,8 +133,18 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(7, 8);
     neighbors.addOutOfOrder(6, 7);
     neighbors.addOutOfOrder(4, 5);
-    int[] unchecked = neighbors.sort(null);
-    assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
+    ScoreNode[] uncheckedScoreNodes = neighbors.sort(null);
+    ScoreNode[] exp =
+        new ScoreNode[] {
+          new ScoreNode(1, 2),
+          new ScoreNode(2, 3),
+          new ScoreNode(3, 4),
+          new ScoreNode(4, 5),
+          new ScoreNode(5, 6),
+          new ScoreNode(6, 7),
+          new ScoreNode(7, 8)
+        };
+    assertScoreNodesEqual(exp, uncheckedScoreNodes);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
     assertScoresEqual(new float[] {2, 3, 4, 5, 6, 7, 8}, neighbors);
 
@@ -145,8 +156,12 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors2.addOutOfOrder(6, 7);
     neighbors2.addOutOfOrder(5, 6);
     neighbors2.addOutOfOrder(3, 4);
-    unchecked = neighbors2.sort(null);
-    assertArrayEquals(new int[] {2, 3, 5, 6}, unchecked);
+    uncheckedScoreNodes = neighbors2.sort(null);
+    exp =
+        new ScoreNode[] {
+          new ScoreNode(2, 3), new ScoreNode(3, 4), new ScoreNode(5, 6), new ScoreNode(6, 7),
+        };
+    assertScoreNodesEqual(exp, uncheckedScoreNodes);
     assertNodesEqual(new int[] {0, 1, 2, 3, 4, 5, 6}, neighbors2);
     assertScoresEqual(new float[] {1, 2, 3, 4, 5, 6, 7}, neighbors2);
   }
@@ -162,8 +177,18 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(7, 1);
     neighbors.addOutOfOrder(6, 2);
     neighbors.addOutOfOrder(4, 4);
-    int[] unchecked = neighbors.sort(null);
-    assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
+    ScoreNode[] uncheckedScoreNodes = neighbors.sort(null);
+    ScoreNode[] exp =
+        new ScoreNode[] {
+          new ScoreNode(1, 7),
+          new ScoreNode(2, 6),
+          new ScoreNode(3, 5),
+          new ScoreNode(4, 4),
+          new ScoreNode(5, 3),
+          new ScoreNode(6, 2),
+          new ScoreNode(7, 1)
+        };
+    assertScoreNodesEqual(exp, uncheckedScoreNodes);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
 
@@ -175,8 +200,12 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors2.addOutOfOrder(7, 1);
     neighbors2.addOutOfOrder(6, 2);
     neighbors2.addOutOfOrder(4, 4);
-    unchecked = neighbors2.sort(null);
-    assertArrayEquals(new int[] {2, 3, 5, 6}, unchecked);
+    uncheckedScoreNodes = neighbors2.sort(null);
+    exp =
+        new ScoreNode[] {
+          new ScoreNode(3, 5), new ScoreNode(4, 4), new ScoreNode(6, 2), new ScoreNode(7, 1),
+        };
+    assertScoreNodesEqual(exp, uncheckedScoreNodes);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors2);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors2);
   }
@@ -191,8 +220,19 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(7, Float.NaN);
     neighbors.addOutOfOrder(6, Float.NaN);
     neighbors.addOutOfOrder(4, Float.NaN);
-    int[] unchecked = neighbors.sort((TestRandomVectorScorer) nodeId -> 7 - nodeId + 1);
-    assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
+    ScoreNode[] uncheckedScoreNodes =
+        neighbors.sort((TestRandomVectorScorer) nodeId -> 7 - nodeId + 1);
+    ScoreNode[] exp =
+        new ScoreNode[] {
+          new ScoreNode(1, 7),
+          new ScoreNode(2, 6),
+          new ScoreNode(3, 5),
+          new ScoreNode(4, 4),
+          new ScoreNode(5, 3),
+          new ScoreNode(6, 2),
+          new ScoreNode(7, 1)
+        };
+    assertScoreNodesEqual(exp, uncheckedScoreNodes);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
   }
@@ -207,21 +247,40 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(17, Float.NaN);
     neighbors.addOutOfOrder(16, Float.NaN);
     neighbors.addOutOfOrder(14, Float.NaN);
-    int[] unchecked = neighbors.sort((TestRandomVectorScorer) nodeId -> 7 - nodeId + 11);
-    assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
+    ScoreNode[] uncheckedScoreNodes =
+        neighbors.sort((TestRandomVectorScorer) nodeId -> 7 - nodeId + 11);
+    ScoreNode[] exp =
+        new ScoreNode[] {
+          new ScoreNode(11, 7),
+          new ScoreNode(12, 6),
+          new ScoreNode(13, 5),
+          new ScoreNode(14, 4),
+          new ScoreNode(15, 3),
+          new ScoreNode(16, 2),
+          new ScoreNode(17, 1)
+        };
+    assertScoreNodesEqual(exp, uncheckedScoreNodes);
     assertNodesEqual(new int[] {11, 12, 13, 14, 15, 16, 17}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
   }
 
+  private void assertScoreNodesEqual(ScoreNode[] expected, ScoreNode[] found) {
+    assertEquals(expected.length, found.length);
+    for (int i = 0; i < found.length; i++) {
+      assertEquals(expected[i].node, found[i].node);
+      assertEquals(expected[i].score, found[i].score, 0.01f);
+    }
+  }
+
   private void assertScoresEqual(float[] scores, NeighborArray neighbors) {
     for (int i = 0; i < scores.length; i++) {
-      assertEquals(scores[i], neighbors.scores()[i], 0.01f);
+      assertEquals(scores[i], neighbors.scoreNodes[i].score, 0.01f);
     }
   }
 
   private void assertNodesEqual(int[] nodes, NeighborArray neighbors) {
     for (int i = 0; i < nodes.length; i++) {
-      assertEquals(nodes[i], neighbors.nodes()[i]);
+      assertEquals(nodes[i], neighbors.scoreNodes[i].node);
     }
   }
 

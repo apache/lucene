@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.Comparator;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -299,10 +300,9 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.nodes();
-        Arrays.sort(nnodes, 0, size);
+        Arrays.sort(neighbors.scoreNodes, 0, size, Comparator.comparingInt(o -> o.node));
         for (int i = 0; i < size; i++) {
-          int nnode = nnodes[i];
+          int nnode = neighbors.scoreNodes[i].node;
           assert nnode < countOnLevel0 : "node too large: " + nnode + ">=" + countOnLevel0;
           vectorIndex.writeInt(nnode);
         }

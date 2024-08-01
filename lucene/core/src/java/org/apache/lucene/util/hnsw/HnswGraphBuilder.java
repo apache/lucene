@@ -326,11 +326,11 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (mask[i] == false) {
         continue;
       }
-      int nbr = candidates.nodes()[i];
+      int nbr = candidates.scoreNodes[i].node;
       NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
       nbrsOfNbr.rwlock.writeLock().lock();
       try {
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
+        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scoreNodes[i].score, nbr, scorerSupplier);
       } finally {
         nbrsOfNbr.rwlock.writeLock().unlock();
       }
@@ -348,8 +348,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
-      int cNode = candidates.nodes()[i];
-      float cScore = candidates.scores()[i];
+      int cNode = candidates.scoreNodes[i].node;
+      float cScore = candidates.scoreNodes[i].score;
       assert cNode <= hnsw.maxNodeId();
       if (diversityCheck(cNode, cScore, neighbors)) {
         mask[i] = true;
@@ -383,7 +383,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       throws IOException {
     RandomVectorScorer scorer = scorerSupplier.scorer(candidate);
     for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
+      float neighborSimilarity = scorer.score(neighbors.scoreNodes[i].node);
       if (neighborSimilarity >= score) {
         return false;
       }
