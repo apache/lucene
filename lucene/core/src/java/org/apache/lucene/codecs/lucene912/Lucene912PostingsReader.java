@@ -366,7 +366,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int level0LastDocID;
     // level 1 skip data
     private int level1LastDocID;
-    private long level1DocEndOffset;
+    private long level1DocEndFP;
     private int level1DocCountUpto;
 
     private boolean needsFreq; // true if the caller actually needs frequencies
@@ -409,11 +409,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       docFreq = termState.docFreq;
       totalTermFreq = indexHasFreq ? termState.totalTermFreq : docFreq;
       singletonDocID = termState.singletonDocID;
-      if (docIn == null) {
-        // lazy init
-        docIn = startDocIn.clone();
+      if (docFreq > 1) {
+        if (docIn == null) {
+          // lazy init
+          docIn = startDocIn.clone();
+        }
+        prefetchPostings(docIn, termState);
       }
-      prefetchPostings(docIn, termState);
 
       doc = -1;
       this.needsFreq = PostingsEnum.featureRequested(flags, PostingsEnum.FREQS);
@@ -425,8 +427,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       prevDocID = -1;
       docCountUpto = 0;
       level0LastDocID = -1;
-      level1LastDocID = -1;
-      level1DocEndOffset = termState.docStartFP;
+      if (docFreq < LEVEL1_NUM_DOCS) {
+        level1LastDocID = NO_MORE_DOCS;
+        if (docFreq > 1) {
+          docIn.seek(termState.docStartFP);
+        }
+      } else {
+        level1LastDocID = -1;
+        level1DocEndFP = termState.docStartFP;
+      }
       level1DocCountUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       freqFP = -1;
@@ -510,7 +519,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       while (true) {
         prevDocID = level1LastDocID;
         level0LastDocID = level1LastDocID;
-        docIn.seek(level1DocEndOffset);
+        docIn.seek(level1DocEndFP);
         docCountUpto = level1DocCountUpto;
         level1DocCountUpto += LEVEL1_NUM_DOCS;
 
@@ -520,7 +529,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
 
         level1LastDocID += docIn.readVInt();
-        level1DocEndOffset = docIn.readVLong() + docIn.getFilePointer();
+        level1DocEndFP = docIn.readVLong() + docIn.getFilePointer();
 
         if (level1LastDocID >= target) {
           if (indexHasFreq) {
@@ -677,7 +686,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int level0LastDocID;
     private long level0PosEndFP;
     private int level0BlockPosUpto;
-    private long levelPayEndFP;
+    private long level0PayEndFP;
     private int level0BlockPayUpto;
     // level 1 skip data
     private int level1LastDocID;
@@ -754,7 +763,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       payTermStartFP = termState.payStartFP;
       totalTermFreq = termState.totalTermFreq;
       singletonDocID = termState.singletonDocID;
-      if (docFreq > 1 || true) {
+      if (docFreq > 1) {
         if (docIn == null) {
           // lazy init
           docIn = startDocIn.clone();
@@ -768,7 +777,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       level1PosEndFP = posTermStartFP;
       level1PayEndFP = payTermStartFP;
       level0PosEndFP = posTermStartFP;
-      levelPayEndFP = payTermStartFP;
+      level0PayEndFP = payTermStartFP;
       posPendingCount = 0;
       payloadByteUpto = 0;
       if (termState.totalTermFreq < BLOCK_SIZE) {
@@ -786,8 +795,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       prevDocID = -1;
       docCountUpto = 0;
       level0LastDocID = -1;
-      level1LastDocID = -1;
-      level1DocEndFP = termState.docStartFP;
+      if (docFreq < LEVEL1_NUM_DOCS) {
+        level1LastDocID = NO_MORE_DOCS;
+        if (docFreq > 1) {
+          docIn.seek(termState.docStartFP);
+        }
+      } else {
+        level1LastDocID = -1;
+        level1DocEndFP = termState.docStartFP;
+      }
       level1DocCountUpto = 0;
       level1BlockPosUpto = 0;
       level1BlockPayUpto = 0;
@@ -841,7 +857,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         level0PosEndFP = level1PosEndFP;
         level0BlockPosUpto = level1BlockPosUpto;
         if (indexHasOffsetsOrPayloads) {
-          levelPayEndFP = level1PayEndFP;
+          level0PayEndFP = level1PayEndFP;
           level0BlockPayUpto = level1BlockPayUpto;
         }
         docCountUpto = level1DocCountUpto;
@@ -885,8 +901,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         posIn.seek(level0PosEndFP);
         posPendingCount = level0BlockPosUpto;
         if (indexHasOffsetsOrPayloads) {
-          assert levelPayEndFP >= payIn.getFilePointer();
-          payIn.seek(levelPayEndFP);
+          assert level0PayEndFP >= payIn.getFilePointer();
+          payIn.seek(level0PayEndFP);
           payloadByteUpto = level0BlockPayUpto;
         }
         posBufferUpto = BLOCK_SIZE;
@@ -902,7 +918,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         level0PosEndFP += docIn.readVLong();
         level0BlockPosUpto = docIn.readByte();
         if (indexHasOffsetsOrPayloads) {
-          levelPayEndFP += docIn.readVLong();
+          level0PayEndFP += docIn.readVLong();
           level0BlockPayUpto = docIn.readVInt();
         }
       } else {
@@ -939,8 +955,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           posIn.seek(level0PosEndFP);
           posPendingCount = level0BlockPosUpto;
           if (indexHasOffsetsOrPayloads) {
-            assert levelPayEndFP >= payIn.getFilePointer();
-            payIn.seek(levelPayEndFP);
+            assert level0PayEndFP >= payIn.getFilePointer();
+            payIn.seek(level0PayEndFP);
             payloadByteUpto = level0BlockPayUpto;
           }
           posBufferUpto = BLOCK_SIZE;
@@ -962,7 +978,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           level0PosEndFP += docIn.readVLong();
           level0BlockPosUpto = docIn.readByte();
           if (indexHasOffsetsOrPayloads) {
-            levelPayEndFP += docIn.readVLong();
+            level0PayEndFP += docIn.readVLong();
             level0BlockPayUpto = docIn.readVInt();
           }
 
@@ -1246,7 +1262,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
 
       docFreq = termState.docFreq;
-      if (docFreq > 1 || true) {
+      if (docFreq > 1) {
         if (docIn == null) {
           // lazy init
           docIn = startDocIn.clone();
@@ -1263,8 +1279,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       prevDocID = -1;
       docCountUpto = 0;
       level0LastDocID = -1;
-      level1LastDocID = -1;
-      level1DocEndFP = termState.docStartFP;
+      if (docFreq < LEVEL1_NUM_DOCS) {
+        level1LastDocID = NO_MORE_DOCS;
+        if (docFreq > 1) {
+          docIn.seek(termState.docStartFP);
+        }
+      } else {
+        level1LastDocID = -1;
+        level1DocEndFP = termState.docStartFP;
+      }
       level1DocCountUpto = 0;
       docBufferUpto = BLOCK_SIZE;
       freqFP = -1;
@@ -1626,7 +1649,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       posTermStartFP = termState.posStartFP;
       totalTermFreq = termState.totalTermFreq;
       singletonDocID = termState.singletonDocID;
-      if (docFreq > 1 || true) {
+      if (docFreq > 1) {
         if (docIn == null) {
           // lazy init
           docIn = startDocIn.clone();
@@ -1649,8 +1672,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       prevDocID = -1;
       docCountUpto = 0;
       level0LastDocID = -1;
-      level1LastDocID = -1;
-      level1DocEndFP = termState.docStartFP;
+      if (docFreq < LEVEL1_NUM_DOCS) {
+        level1LastDocID = NO_MORE_DOCS;
+        if (docFreq > 1) {
+          docIn.seek(termState.docStartFP);
+        }
+      } else {
+        level1LastDocID = -1;
+        level1DocEndFP = termState.docStartFP;
+      }
       level1DocCountUpto = 0;
       level1BlockPosUpto = 0;
       docBufferUpto = BLOCK_SIZE;
@@ -2020,7 +2050,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   }
 
   private void prefetchPostings(IndexInput docIn, IntBlockTermState state) throws IOException {
-    if (state.docFreq > 1 && docIn.getFilePointer() != state.docStartFP) {
+    assert state.docFreq > 1; // Singletons are inlined in the terms dict, nothing to prefetch
+    if (docIn.getFilePointer() != state.docStartFP) {
       // Don't prefetch if the input is already positioned at the right offset, which suggests that
       // the caller is streaming the entire inverted index (e.g. for merging), let the read-ahead
       // logic do its work instead. Note that this heuristic doesn't work for terms that have skip
