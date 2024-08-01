@@ -341,18 +341,12 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     }
 
     @Override
-    public int nextSetBit(int i) {
-      int next = bitSet.nextSetBit(i);
-      if (next == -1) {
+    public int nextSetBit(int start, int upperBound) {
+      int next = bitSet.nextSetBit(start);
+      if (next == -1 || next >= upperBound) {
         next = DocIdSetIterator.NO_MORE_DOCS;
       }
       return next;
-    }
-
-    @Override
-    public int nextSetBit(int start, int upperBound) {
-      int res = nextSetBit(start);
-      return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
     }
   }
 }
