@@ -63,6 +63,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       beamCandidates; // for levels of graph where we add the node
 
   protected final OnHeapHnswGraph hnsw;
+  protected final HnswLock hnswLock;
 
   private InfoStream infoStream = InfoStream.getDefault();
 
@@ -109,6 +110,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         beamWidth,
         seed,
         hnsw,
+        null,
         new HnswGraphSearcher(new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.size())));
   }
 
@@ -130,6 +132,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       int beamWidth,
       long seed,
       OnHeapHnswGraph hnsw,
+      HnswLock hnswLock,
       HnswGraphSearcher graphSearcher)
       throws IOException {
     if (M <= 0) {
@@ -145,6 +148,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
     this.hnsw = hnsw;
+    this.hnswLock = hnswLock;
     this.graphSearcher = graphSearcher;
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
@@ -311,12 +315,14 @@ public class HnswGraphBuilder implements HnswBuilder {
         continue;
       }
       int nbr = candidates.nodes()[i];
-      NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-      nbrsOfNbr.rwlock.writeLock().lock();
-      try {
+      if (hnswLock != null) {
+        try (HnswLock.LockedRow rowLock = hnswLock.write(level, nbr)) {
+          NeighborArray nbrsOfNbr = rowLock.row;
+          nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
+        }
+      } else {
+        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
         nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
-      } finally {
-        nbrsOfNbr.rwlock.writeLock().unlock();
       }
     }
   }
