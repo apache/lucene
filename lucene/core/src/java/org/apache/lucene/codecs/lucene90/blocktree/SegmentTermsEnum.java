@@ -276,10 +276,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         //   System.out.println("        skip rewind!");
         // }
       }
-      assert length == f.prefix;
+      assert length == f.prefixLength;
     } else {
       f.nextEnt = -1;
-      f.prefix = length;
+      f.prefixLength = length;
       f.state.termBlockOrd = 0;
       f.fpOrig = f.fp = fp;
       f.lastSubFP = -1;
@@ -489,7 +489,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // toHex(targetLabel));
         // }
 
-        validIndexPrefix = currentFrame.prefix;
+        validIndexPrefix = currentFrame.prefixLength;
         // validIndexPrefix = targetUpto;
 
         currentFrame.scanToFloorFrame(target);
@@ -545,7 +545,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
 
     // validIndexPrefix = targetUpto;
-    validIndexPrefix = currentFrame.prefix;
+    validIndexPrefix = currentFrame.prefixLength;
 
     currentFrame.scanToFloorFrame(target);
 
@@ -750,7 +750,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // targetLabel);
         // }
 
-        validIndexPrefix = currentFrame.prefix;
+        validIndexPrefix = currentFrame.prefixLength;
         // validIndexPrefix = targetUpto;
 
         currentFrame.scanToFloorFrame(target);
@@ -808,7 +808,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
 
     // validIndexPrefix = targetUpto;
-    validIndexPrefix = currentFrame.prefix;
+    validIndexPrefix = currentFrame.prefixLength;
 
     currentFrame.scanToFloorFrame(target);
 
@@ -846,7 +846,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       while (true) {
         SegmentTermsEnumFrame f = getFrame(ord);
         assert f != null;
-        final BytesRef prefix = new BytesRef(term.get().bytes, 0, f.prefix);
+        final BytesRef prefix = new BytesRef(term.get().bytes, 0, f.prefixLength);
         if (f.nextEnt == -1) {
           out.println(
               "    frame "
@@ -857,7 +857,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                   + f.fp
                   + (f.isFloor ? (" (fpOrig=" + f.fpOrig + ")") : "")
                   + " prefixLen="
-                  + f.prefix
+                  + f.prefixLength
                   + " prefix="
                   + prefix
                   + (f.nextEnt == -1 ? "" : (" (of " + f.entCount + ")"))
@@ -885,7 +885,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                   + f.fp
                   + (f.isFloor ? (" (fpOrig=" + f.fpOrig + ")") : "")
                   + " prefixLen="
-                  + f.prefix
+                  + f.prefixLength
                   + " prefix="
                   + prefix
                   + " nextEnt="
@@ -910,12 +910,14 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         }
         if (fr.index != null) {
           assert !isSeekFrame || f.arc != null : "isSeekFrame=" + isSeekFrame + " f.arc=" + f.arc;
-          if (f.prefix > 0 && isSeekFrame && f.arc.label() != (term.byteAt(f.prefix - 1) & 0xFF)) {
+          if (f.prefixLength > 0
+              && isSeekFrame
+              && f.arc.label() != (term.byteAt(f.prefixLength - 1) & 0xFF)) {
             out.println(
                 "      broken seek state: arc.label="
                     + (char) f.arc.label()
                     + " vs term byte="
-                    + (char) (term.byteAt(f.prefix - 1) & 0xFF));
+                    + (char) (term.byteAt(f.prefixLength - 1) & 0xFF));
             throw new RuntimeException("seek state is broken");
           }
           BytesRef output = Util.get(fr.index, prefix);
@@ -943,7 +945,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         if (f == currentFrame) {
           break;
         }
-        if (f.prefix == validIndexPrefix) {
+        if (f.prefixLength == validIndexPrefix) {
           isSeekFrame = false;
         }
         ord++;
@@ -1024,7 +1026,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         // Note that the seek state (last seek) has been
         // invalidated beyond this depth
-        validIndexPrefix = Math.min(validIndexPrefix, currentFrame.prefix);
+        validIndexPrefix = Math.min(validIndexPrefix, currentFrame.prefixLength);
         // if (DEBUG) {
         // System.out.println("  reset validIndexPrefix=" + validIndexPrefix);
         // }

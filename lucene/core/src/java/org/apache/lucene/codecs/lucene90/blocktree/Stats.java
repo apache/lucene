@@ -116,10 +116,10 @@ public class Stats {
       nonFloorBlockCount++;
     }
 
-    if (blockCountByPrefixLen.length <= frame.prefix) {
-      blockCountByPrefixLen = ArrayUtil.grow(blockCountByPrefixLen, 1 + frame.prefix);
+    if (blockCountByPrefixLen.length <= frame.prefixLength) {
+      blockCountByPrefixLen = ArrayUtil.grow(blockCountByPrefixLen, 1 + frame.prefixLength);
     }
-    blockCountByPrefixLen[frame.prefix]++;
+    blockCountByPrefixLen[frame.prefixLength]++;
     startBlockCount++;
     totalBlockSuffixBytes += frame.totalSuffixBytes;
     totalUncompressedBlockSuffixBytes += frame.suffixesReader.length();
