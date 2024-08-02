@@ -773,6 +773,13 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
             maxVal <= skipper.maxValue(0));
       }
       docCount += skipper.docCount(0);
+      for (int level = 1; level < skipper.numLevels(); level++) {
+        assertTrue(skipper.minDocID(0) >= skipper.minDocID(level));
+        assertTrue(skipper.maxDocID(0) <= skipper.maxDocID(level));
+        assertTrue(skipper.minValue(0) >= skipper.minValue(level));
+        assertTrue(skipper.maxValue(0) <= skipper.maxValue(level));
+        assertTrue(skipper.docCount(0) < skipper.docCount(level));
+      }
     }
 
     assertEquals(docCount, skipper.docCount());
@@ -784,19 +791,23 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     if (skipper == null) {
       return;
     }
+    int nextLevel = 0;
     while (true) {
-      int doc = random().nextInt(skipper.maxDocID(0), maxDoc + 1) + 1;
+      int doc = random().nextInt(skipper.maxDocID(nextLevel), maxDoc + 1) + 1;
       skipper.advance(doc);
       if (skipper.minDocID(0) == NO_MORE_DOCS) {
         assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
         return;
       }
       if (iterator.advanceExact(doc)) {
-        assertTrue(iterator.docID() >= skipper.minDocID(0));
-        assertTrue(iterator.docID() <= skipper.maxDocID(0));
-        assertTrue(iterator.minValue() >= skipper.minValue(0));
-        assertTrue(iterator.maxValue() <= skipper.maxValue(0));
+        for (int level = 0; level < skipper.numLevels(); level++) {
+          assertTrue(iterator.docID() >= skipper.minDocID(level));
+          assertTrue(iterator.docID() <= skipper.maxDocID(level));
+          assertTrue(iterator.minValue() >= skipper.minValue(level));
+          assertTrue(iterator.maxValue() <= skipper.maxValue(level));
+        }
       }
+      nextLevel = random().nextInt(skipper.numLevels());
     }
   }
 

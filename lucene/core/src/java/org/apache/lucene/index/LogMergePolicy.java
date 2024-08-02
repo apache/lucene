@@ -90,6 +90,12 @@ public abstract class LogMergePolicy extends MergePolicy {
   /** If true, we pro-rate a segment's size by the percentage of non-deleted documents. */
   protected boolean calibrateSizeByDeletes = true;
 
+  /**
+   * Target search concurrency. This merge policy will avoid creating segments that have more than
+   * {@code maxDoc / targetSearchConcurrency} documents.
+   */
+  protected int targetSearchConcurrency = 1;
+
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   public LogMergePolicy() {
     super(DEFAULT_NO_CFS_RATIO, MergePolicy.DEFAULT_MAX_CFS_SEGMENT_SIZE);
@@ -129,6 +135,28 @@ public abstract class LogMergePolicy extends MergePolicy {
    */
   public boolean getCalibrateSizeByDeletes() {
     return calibrateSizeByDeletes;
+  }
+
+  /**
+   * Sets the target search concurrency. This prevents creating segments that are bigger than
+   * maxDoc/targetSearchConcurrency, which in turn makes the work parallelizable into
+   * targetSearchConcurrency slices of similar doc counts.
+   *
+   * <p><b>NOTE:</b> Configuring a value greater than 1 will increase the number of segments in the
+   * index linearly with the value of {@code targetSearchConcurrency} and also increase write
+   * amplification.
+   */
+  public void setTargetSearchConcurrency(int targetSearchConcurrency) {
+    if (targetSearchConcurrency < 1) {
+      throw new IllegalArgumentException(
+          "targetSearchConcurrency must be >= 1 (got " + targetSearchConcurrency + ")");
+    }
+    this.targetSearchConcurrency = targetSearchConcurrency;
+  }
+
+  /** Returns the target search concurrency. */
+  public int getTargetSearchConcurrency() {
+    return targetSearchConcurrency;
   }
 
   /**
@@ -484,8 +512,10 @@ public abstract class LogMergePolicy extends MergePolicy {
 
     final Set<SegmentCommitInfo> mergingSegments = mergeContext.getMergingSegments();
 
+    int totalDocCount = 0;
     for (int i = 0; i < numSegments; i++) {
       final SegmentCommitInfo info = infos.info(i);
+      totalDocCount += sizeDocs(info, mergeContext);
       long size = size(info, mergeContext);
 
       // Floor tiny segments
@@ -574,6 +604,9 @@ public abstract class LogMergePolicy extends MergePolicy {
             "  level " + levelBottom + " to " + maxLevel + ": " + (1 + upto - start) + " segments",
             mergeContext);
       }
+
+      final int maxMergeDocs =
+          Math.min(this.maxMergeDocs, Math.ceilDiv(totalDocCount, targetSearchConcurrency));
 
       // Finally, record all merges that are viable at this level:
       int end = start + mergeFactor;

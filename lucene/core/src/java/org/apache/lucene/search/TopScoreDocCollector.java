@@ -191,62 +191,6 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     }
   }
 
-  /**
-   * Creates a new {@link TopScoreDocCollector} given the number of hits to collect and the number
-   * of hits to count accurately.
-   *
-   * <p><b>NOTE</b>: If the total hit count of the top docs is less than or exactly {@code
-   * totalHitsThreshold} then this value is accurate. On the other hand, if the {@link
-   * TopDocs#totalHits} value is greater than {@code totalHitsThreshold} then its value is a lower
-   * bound of the hit count. A value of {@link Integer#MAX_VALUE} will make the hit count accurate
-   * but will also likely make query processing slower.
-   *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>, and fill the array with sentinel objects.
-   *
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static TopScoreDocCollector create(int numHits, int totalHitsThreshold) {
-    return new TopScoreDocCollectorManager(numHits, null, totalHitsThreshold, false).newCollector();
-  }
-
-  /**
-   * Creates a new {@link TopScoreDocCollector} given the number of hits to collect, the bottom of
-   * the previous page, and the number of hits to count accurately.
-   *
-   * <p><b>NOTE</b>: If the total hit count of the top docs is less than or exactly {@code
-   * totalHitsThreshold} then this value is accurate. On the other hand, if the {@link
-   * TopDocs#totalHits} value is greater than {@code totalHitsThreshold} then its value is a lower
-   * bound of the hit count. A value of {@link Integer#MAX_VALUE} will make the hit count accurate
-   * but will also likely make query processing slower.
-   *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>, and fill the array with sentinel objects.
-   *
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static TopScoreDocCollector create(int numHits, ScoreDoc after, int totalHitsThreshold) {
-    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, false)
-        .newCollector();
-  }
-
-  /**
-   * Create a CollectorManager which uses a shared hit counter to maintain number of hits and a
-   * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments
-   *
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static CollectorManager<TopScoreDocCollector, TopDocs> createSharedManager(
-      int numHits, ScoreDoc after, int totalHitsThreshold) {
-    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, true);
-  }
-
   int docBase;
   ScoreDoc pqTop;
   final HitsThresholdChecker hitsThresholdChecker;

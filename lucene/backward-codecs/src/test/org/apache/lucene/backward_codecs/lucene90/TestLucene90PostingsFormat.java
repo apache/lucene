@@ -23,12 +23,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.backward_codecs.lucene90.Lucene90ScoreSkipReader.MutableImpactList;
+import org.apache.lucene.backward_codecs.lucene99.Lucene99SkipWriter;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.lucene90.blocktree.FieldReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Stats;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99SkipWriter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -75,22 +74,6 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
     r.close();
     w.close();
     d.close();
-  }
-
-  private void shouldFail(int minItemsInBlock, int maxItemsInBlock) {
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new Lucene99PostingsFormat(minItemsInBlock, maxItemsInBlock);
-        });
-  }
-
-  public void testInvalidBlockSizes() throws Exception {
-    shouldFail(0, 0);
-    shouldFail(10, 8);
-    shouldFail(-1, 10);
-    shouldFail(10, -1);
-    shouldFail(10, 12);
   }
 
   public void testImpactSerialization() throws IOException {
