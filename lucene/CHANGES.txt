@@ -38,6 +38,8 @@ Improvements
 * GITHUB#13562: Add Intervals.regexp and Intervals.range methods to produce  IntervalsSource
   for regexp and range queries. (Mayya Sharipova)
 
+* GITHUB#13625: Remove BitSet#nextSetBit code duplication. (Greg Miller)
+
 Optimizations
 ---------------------
 
