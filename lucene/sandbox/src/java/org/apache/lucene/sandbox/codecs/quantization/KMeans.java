@@ -174,7 +174,7 @@ public class KMeans {
       for (int iter = 0; iter < iters; iter++) {
         squaredDist = runKMeansStep(vectors, centroids, vectorCentroids, false, normalizeCenters);
         // Check for convergence
-        if (prevSquaredDist <= (squaredDist+ 1e-6)) {
+        if (prevSquaredDist <= (squaredDist + 1e-6)) {
           break;
         }
         prevSquaredDist = squaredDist;
