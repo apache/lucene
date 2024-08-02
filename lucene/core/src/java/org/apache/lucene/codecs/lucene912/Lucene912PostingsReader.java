@@ -341,7 +341,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   final class BlockDocsEnum extends PostingsEnum {
 
     final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
+    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
     final PForUtil pforUtil = new PForUtil(forUtil);
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
@@ -624,7 +624,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   final class EverythingEnum extends PostingsEnum {
 
     final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
+    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
     final PForUtil pforUtil = new PForUtil(forUtil);
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
@@ -1207,7 +1207,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   final class BlockImpactsDocsEnum extends ImpactsEnum {
 
     final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
+    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
     final PForUtil pforUtil = new PForUtil(forUtil);
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
@@ -1561,7 +1561,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   final class BlockImpactsPostingsEnum extends ImpactsEnum {
 
     final ForUtil forUtil = new ForUtil();
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
+    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
     final PForUtil pforUtil = new PForUtil(forUtil);
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];

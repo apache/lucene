@@ -63,10 +63,11 @@ final class PForUtil {
       max = Math.max(max, top.get(i));
     }
 
-    final int maxBitsRequired = PackedInts.bitsRequired(max);
+    final int maxBitsRequired = ForUtil.computeActualBitsPerValue(PackedInts.bitsRequired(max));
     // We store the patch on a byte, so we can't decrease the number of bits required by more than 8
     final int patchedBitsRequired =
-        Math.max(PackedInts.bitsRequired(topValue), maxBitsRequired - 8);
+        ForUtil.computeActualBitsPerValue(
+            Math.max(PackedInts.bitsRequired(topValue), maxBitsRequired - 8));
     int numExceptions = 0;
     final long maxUnpatchedValue = (1L << patchedBitsRequired) - 1;
     for (int i = 2; i <= top.size(); ++i) {
@@ -96,7 +97,13 @@ final class PForUtil {
       out.writeByte((byte) (numExceptions << 5));
       out.writeVLong(longs[0]);
     } else {
-      final int token = (numExceptions << 5) | patchedBitsRequired;
+      final int token;
+      if (patchedBitsRequired == 32) {
+        assert numExceptions == 0;
+        token = 0xFF;
+      } else {
+        token = (numExceptions << 5) | patchedBitsRequired;
+      }
       out.writeByte((byte) token);
       forUtil.encode(longs, patchedBitsRequired, out);
     }
@@ -106,8 +113,15 @@ final class PForUtil {
   /** Decode 128 integers into {@code ints}. */
   void decode(DataInput in, long[] longs) throws IOException {
     final int token = Byte.toUnsignedInt(in.readByte());
-    final int bitsPerValue = token & 0x1f;
-    final int numExceptions = token >>> 5;
+    final int bitsPerValue;
+    final int numExceptions;
+    if (token == 0xFF) {
+      bitsPerValue = 32;
+      numExceptions = 0;
+    } else {
+      bitsPerValue = token & 0x1f;
+      numExceptions = token >>> 5;
+    }
     if (bitsPerValue == 0) {
       Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, in.readVLong());
     } else {
@@ -122,8 +136,15 @@ final class PForUtil {
   /** Skip 128 integers. */
   void skip(DataInput in) throws IOException {
     final int token = Byte.toUnsignedInt(in.readByte());
-    final int bitsPerValue = token & 0x1f;
-    final int numExceptions = token >>> 5;
+    final int bitsPerValue;
+    final int numExceptions;
+    if (token == 0xFF) {
+      bitsPerValue = 32;
+      numExceptions = 0;
+    } else {
+      bitsPerValue = token & 0x1f;
+      numExceptions = token >>> 5;
+    }
     if (bitsPerValue == 0) {
       in.readVLong();
       in.skipBytes((numExceptions << 1));
