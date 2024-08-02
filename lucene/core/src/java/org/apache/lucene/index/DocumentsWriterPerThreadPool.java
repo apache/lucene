@@ -140,6 +140,11 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
     final long ramBytesUsed = state.ramBytesUsed();
     assert contains(state)
         : "we tried to add a DWPT back to the pool but the pool doesn't know about this DWPT";
+    // If we are closed we don't add the DWPT back to the free list. It has to be a "new" DWPT
+    if (state.deleteQueue.isAdvanced()) {
+      state.unlock();
+      return;
+    }
     freeList.addAndUnlock(state, ramBytesUsed);
   }
 

@@ -67,6 +67,45 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
     }
   }
 
+  public void testLockReleaseWithAdvancedDeleteQueue() throws IOException {
+    try (Directory directory = newDirectory()) {
+      DocumentsWriterDeleteQueue deleteQueue = new DocumentsWriterDeleteQueue(null);
+      DocumentsWriterPerThreadPool pool =
+          new DocumentsWriterPerThreadPool(
+              () ->
+                  new DocumentsWriterPerThread(
+                      Version.LATEST.major,
+                      "",
+                      directory,
+                      directory,
+                      newIndexWriterConfig(),
+                      deleteQueue,
+                      null,
+                      new AtomicLong(),
+                      false));
+
+      DocumentsWriterPerThread first = pool.getAndLock();
+      assertEquals(1, pool.size());
+      DocumentsWriterPerThread second = pool.getAndLock();
+      assertEquals(2, pool.size());
+      assertNotSame(first, second);
+      deleteQueue.advanceQueue(pool.size());
+      // first should not be placed back into the free list
+      pool.marksAsFreeAndUnlock(first);
+      DocumentsWriterPerThread third = pool.getAndLock();
+      assertNotSame(first, third);
+      assertEquals(3, pool.size());
+      pool.checkout(third);
+      assertEquals(2, pool.size());
+      pool.marksAsFreeAndUnlock(second);
+      for (DocumentsWriterPerThread lastPerThead : pool.filterAndLock(x -> true)) {
+        pool.checkout(lastPerThead);
+        lastPerThead.unlock();
+      }
+      assertEquals(0, pool.size());
+    }
+  }
+
   public void testCloseWhileNewWritersLocked() throws IOException, InterruptedException {
     try (Directory directory = newDirectory()) {
       DocumentsWriterPerThreadPool pool =
