@@ -20,6 +20,7 @@ package org.apache.lucene.analysis.synonym;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -34,35 +35,40 @@ import org.apache.lucene.util.fst.OffHeapFSTStore;
 /**
  * Wraps an {@link FSDirectory} to read and write a compiled {@link SynonymMap}. When reading, the
  * FST and output words are kept off-heap.
+ *
+ * @lucene.experimental
  */
 public class SynonymMapDirectory implements Closeable {
   private final SynonymMapFormat synonymMapFormat =
       new SynonymMapFormat(); // TODO -- Should this be more flexible/codec-like? Less?
   private final Directory directory;
+  private final List<Closeable> resources = new ArrayList<>();
 
   public SynonymMapDirectory(Path path) throws IOException {
     directory = FSDirectory.open(path);
   }
 
-  public IndexOutput fstOutput() throws IOException {
+  IndexOutput fstOutput() throws IOException {
     return synonymMapFormat.getFSTOutput(directory);
   }
 
-  public WordsOutput wordsOutput() throws IOException {
+  WordsOutput wordsOutput() throws IOException {
     return synonymMapFormat.getWordsOutput(directory);
   }
 
-  public void writeMetadata(
-      int wordCount, int maxHorizontalContext, FST.FSTMetadata<BytesRef> fstMetadata)
+  void writeMetadata(int wordCount, int maxHorizontalContext, FST.FSTMetadata<BytesRef> fstMetadata)
       throws IOException {
-    synonymMapFormat.writeMetadata(directory, wordCount, maxHorizontalContext, fstMetadata);
+    synonymMapFormat.writeMetadata(
+        directory, new SynonymMetadata(wordCount, maxHorizontalContext, fstMetadata));
   }
 
-  public SynonymMap readMap() throws IOException {
-    return synonymMapFormat.readSynonymMap(directory);
+  SynonymMap readMap() throws IOException {
+    CloseableSynonymMap closeableSynonymMap = synonymMapFormat.readSynonymMap(directory);
+    resources.add(closeableSynonymMap);
+    return closeableSynonymMap.map;
   }
 
-  public boolean hasSynonyms() throws IOException {
+  boolean hasSynonyms() throws IOException {
     // TODO should take the path to the synonyms file to compare file hash against file used to
     // build the directory
     return directory.listAll().length > 0;
@@ -70,6 +76,9 @@ public class SynonymMapDirectory implements Closeable {
 
   @Override
   public void close() throws IOException {
+    for (Closeable c : resources) {
+      c.close();
+    }
     directory.close();
   }
 
@@ -77,20 +86,30 @@ public class SynonymMapDirectory implements Closeable {
    * Abstraction to support writing individual output words to the directory. Should be closed after
    * the last word is written.
    */
-  public abstract static class WordsOutput implements Closeable {
+  abstract static class WordsOutput implements Closeable {
     public abstract void addWord(BytesRef word) throws IOException;
   }
+
+  private record CloseableSynonymMap(SynonymMap map, IndexInput indexInput) implements Closeable {
+    @Override
+    public void close() throws IOException {
+      indexInput.close();
+    }
+  }
+
+  private record SynonymMetadata(
+      int wordCount, int maxHorizontalContext, FST.FSTMetadata<BytesRef> fstMetadata) {}
 
   private static class SynonymMapFormat {
     private static final String FST_FILE = "synonyms.fst";
     private static final String WORDS_FILE = "synonyms.wrd";
     private static final String METADATA_FILE = "synonyms.mdt";
 
-    public IndexOutput getFSTOutput(Directory directory) throws IOException {
+    private IndexOutput getFSTOutput(Directory directory) throws IOException {
       return directory.createOutput(FST_FILE, IOContext.DEFAULT);
     }
 
-    public WordsOutput getWordsOutput(Directory directory) throws IOException {
+    private WordsOutput getWordsOutput(Directory directory) throws IOException {
       IndexOutput wordsOutput = directory.createOutput(WORDS_FILE, IOContext.DEFAULT);
       return new WordsOutput() {
         @Override
@@ -107,16 +126,12 @@ public class SynonymMapDirectory implements Closeable {
     }
     ;
 
-    public void writeMetadata(
-        Directory directory,
-        int wordCount,
-        int maxHorizontalContext,
-        FST.FSTMetadata<BytesRef> fstMetadata)
+    private void writeMetadata(Directory directory, SynonymMetadata synonymMetadata)
         throws IOException {
       try (IndexOutput metadataOutput = directory.createOutput(METADATA_FILE, IOContext.DEFAULT)) {
-        metadataOutput.writeVInt(wordCount);
-        metadataOutput.writeVInt(maxHorizontalContext);
-        fstMetadata.save(metadataOutput);
+        metadataOutput.writeVInt(synonymMetadata.wordCount);
+        metadataOutput.writeVInt(synonymMetadata.maxHorizontalContext);
+        synonymMetadata.fstMetadata.save(metadataOutput);
       }
       directory.sync(List.of(FST_FILE, WORDS_FILE, METADATA_FILE));
     }
@@ -131,28 +146,25 @@ public class SynonymMapDirectory implements Closeable {
       }
     }
 
-    public SynonymMap readSynonymMap(Directory directory) throws IOException {
+    private CloseableSynonymMap readSynonymMap(Directory directory) throws IOException {
       SynonymMetadata synonymMetadata = readMetadata(directory);
+      IndexInput in = directory.openInput(FST_FILE, IOContext.DEFAULT);
       FST<BytesRef> fst =
           FST.fromFSTReader(
-              synonymMetadata.fstMetadata,
-              new OffHeapFSTStore(
-                      directory.openInput(FST_FILE, IOContext.DEFAULT),
-                      0,
-                      synonymMetadata.fstMetadata
-              ));
-      OnHeapBytesRefHashLike words;
+              synonymMetadata.fstMetadata, new OffHeapFSTStore(in, 0, synonymMetadata.fstMetadata));
+      OnHeapSynonymDictionary words;
       try (IndexInput wordsInput = directory.openInput(WORDS_FILE, IOContext.DEFAULT)) {
-        words = new OnHeapBytesRefHashLike(synonymMetadata.wordCount, wordsInput);
+        words = new OnHeapSynonymDictionary(synonymMetadata.wordCount, wordsInput);
       }
-      return new SynonymMap(fst, words, synonymMetadata.maxHorizontalContext);
+      SynonymMap map = new SynonymMap(fst, words, synonymMetadata.maxHorizontalContext);
+      return new CloseableSynonymMap(map, in);
     }
 
-    private static class OnHeapBytesRefHashLike extends SynonymMap.BytesRefHashLike {
+    private static class OnHeapSynonymDictionary extends SynonymMap.SynonymDictionary {
       private final int[] bytesStartArray;
       private final byte[] wordBytes;
 
-      public OnHeapBytesRefHashLike(int wordCount, IndexInput wordsFile) throws IOException {
+      private OnHeapSynonymDictionary(int wordCount, IndexInput wordsFile) throws IOException {
         bytesStartArray = new int[wordCount + 1];
         int pos = 0;
         for (int i = 0; i < wordCount; i++) {
@@ -175,19 +187,6 @@ public class SynonymMapDirectory implements Closeable {
         scratch.bytes = wordBytes;
         scratch.offset = bytesStartArray[id];
         scratch.length = bytesStartArray[id + 1] - bytesStartArray[id];
-      }
-    }
-
-    private static class SynonymMetadata {
-      final int wordCount;
-      final int maxHorizontalContext;
-      final FST.FSTMetadata<BytesRef> fstMetadata;
-
-      SynonymMetadata(
-          int wordCount, int maxHorizontalContext, FST.FSTMetadata<BytesRef> fstMetadata) {
-        this.wordCount = wordCount;
-        this.maxHorizontalContext = maxHorizontalContext;
-        this.fstMetadata = fstMetadata;
       }
     }
   }

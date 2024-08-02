@@ -54,12 +54,24 @@ public class SynonymMap {
   public final FST<BytesRef> fst;
 
   /** map&lt;ord, outputword&gt; */
-  public final BytesRefHashLike words;
+  public final SynonymDictionary words;
 
   /** maxHorizontalContext: maximum context we need on the tokenstream */
   public final int maxHorizontalContext;
 
-  public SynonymMap(FST<BytesRef> fst, BytesRefHashLike words, int maxHorizontalContext) {
+  public SynonymMap(FST<BytesRef> fst, BytesRefHash words, int maxHorizontalContext) {
+    this(
+        fst,
+        new SynonymDictionary() {
+          @Override
+          public void get(int id, BytesRef scratch) {
+            words.get(id, scratch);
+          }
+        },
+        maxHorizontalContext);
+  }
+
+  SynonymMap(FST<BytesRef> fst, SynonymDictionary words, int maxHorizontalContext) {
     this.fst = fst;
     this.words = words;
     this.maxHorizontalContext = maxHorizontalContext;
@@ -225,7 +237,7 @@ public class SynonymMap {
     }
 
     /**
-     * Builds an {@link SynonymMap} and returns it. If directory is non-null, it will write the
+     * Builds a {@link SynonymMap} and returns it. If directory is non-null, it will write the
      * compiled SynonymMap to disk and return an off-heap version.
      */
     public SynonymMap build(SynonymMapDirectory directory) throws IOException {
@@ -319,18 +331,11 @@ public class SynonymMap {
         return directory.readMap();
       }
       FST<BytesRef> fst = FST.fromFSTReader(fstMetaData, fstCompiler.getFSTReader());
-      BytesRefHashLike wordsLike =
-          new BytesRefHashLike() {
-            @Override
-            public void get(int id, BytesRef scratch) {
-              words.get(id, scratch);
-            }
-          };
-      return new SynonymMap(fst, wordsLike, maxHorizontalContext);
+      return new SynonymMap(fst, words, maxHorizontalContext);
     }
   }
 
-  abstract static class BytesRefHashLike {
+  abstract static class SynonymDictionary {
     public abstract void get(int id, BytesRef scratch) throws IOException;
   }
 
