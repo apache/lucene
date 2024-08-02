@@ -75,6 +75,7 @@ public class PerThreadPKLookup {
     docBases = new int[leaves.size()];
     numSegs = 0;
     hasDeletions = false;
+
     for (int i = 0; i < leaves.size(); i++) {
       LeafReader leafReader = leaves.get(i).reader();
       Terms terms = leafReader.terms(idFieldName);
@@ -89,6 +90,68 @@ public class PerThreadPKLookup {
         numSegs++;
       } else {
         segmentInfoMap.put(segmentInfo, -1);
+      }
+    }
+  }
+
+  private PerThreadPKLookup(PerThreadPKLookup oldLookup, DirectoryReader reader)
+      throws IOException {
+    this.idFieldName = oldLookup.idFieldName;
+    this.reader = reader;
+
+    List<LeafReaderContext> leaves = new ArrayList<>(reader.leaves());
+    // Larger segments are more likely to have the id, so we sort largest to smallest by numDocs:
+    Collections.sort(
+        leaves,
+        new Comparator<LeafReaderContext>() {
+          @Override
+          public int compare(LeafReaderContext c1, LeafReaderContext c2) {
+            return c2.reader().numDocs() - c1.reader().numDocs();
+          }
+        });
+
+    termsEnums = new TermsEnum[leaves.size()];
+    postingsEnums = new PostingsEnum[leaves.size()];
+    liveDocs = new Bits[leaves.size()];
+    docBases = new int[leaves.size()];
+    segmentInfoMap = new HashMap<>();
+    numSegs = 0;
+    hasDeletions = false;
+
+    for (int i = 0; i < leaves.size(); i++) {
+      LeafReader leafReader = leaves.get(i).reader();
+      SegmentInfo segmentInfo = ((SegmentReader) leafReader).getSegmentInfo().info;
+      if (oldLookup.segmentInfoMap.containsKey(segmentInfo)) {
+        // Reuse termsEnum, postingsEnum.
+        Integer seg = oldLookup.segmentInfoMap.get(segmentInfo);
+        if (seg > -1) {
+          termsEnums[numSegs] = oldLookup.termsEnums[seg];
+          postingsEnums[numSegs] = oldLookup.postingsEnums[seg];
+          assert termsEnums[numSegs] != null;
+          // Update liveDocs.
+          docBases[numSegs] = leaves.get(i).docBase;
+          liveDocs[numSegs] = leafReader.getLiveDocs();
+          hasDeletions |= leafReader.hasDeletions();
+          segmentInfoMap.put(segmentInfo, numSegs);
+          numSegs++;
+        } else {
+          // TermsEnum is always null.
+          segmentInfoMap.put(segmentInfo, -1);
+        }
+      } else {
+        // New segment.
+        Terms terms = leafReader.terms(idFieldName);
+        if (terms != null) {
+          termsEnums[numSegs] = terms.iterator();
+          assert termsEnums[numSegs] != null;
+          docBases[numSegs] = leaves.get(i).docBase;
+          liveDocs[numSegs] = leafReader.getLiveDocs();
+          hasDeletions |= leafReader.hasDeletions();
+          segmentInfoMap.put(segmentInfo, numSegs);
+          numSegs++;
+        } else {
+          segmentInfoMap.put(segmentInfo, -1);
+        }
       }
     }
   }
@@ -114,79 +177,25 @@ public class PerThreadPKLookup {
   /**
    * Reuse loaded segments' termsEnum and postingsEnum.
    *
-   * @return null if there are no changes; else, a new DirectoryReader instance which you must
-   *     eventually close.
+   * @return null if there are no changes; else, a new PerThreadPKLookup instance which you must
+   *     eventually close its reader by {@link #closeReader}.
    * @throws IOException if there is a low-level IO error.
    */
-  public DirectoryReader reopen() throws IOException {
+  public PerThreadPKLookup reopen() throws IOException {
     DirectoryReader newReader = DirectoryReader.openIfChanged((DirectoryReader) reader);
     if (newReader == null) {
       return null;
     }
 
-    List<LeafReaderContext> leaves = new ArrayList<>(newReader.leaves());
-    // Larger segments are more likely to have the id, so we sort largest to smallest by numDocs:
-    Collections.sort(
-        leaves,
-        new Comparator<LeafReaderContext>() {
-          @Override
-          public int compare(LeafReaderContext c1, LeafReaderContext c2) {
-            return c2.reader().numDocs() - c1.reader().numDocs();
-          }
-        });
+    return new PerThreadPKLookup(this, newReader);
+  }
 
-    TermsEnum[] newTermsEnums = new TermsEnum[leaves.size()];
-    PostingsEnum[] newPostingsEnums = new PostingsEnum[leaves.size()];
-    Bits[] newLiveDocs = new Bits[leaves.size()];
-    int[] newDocBases = new int[leaves.size()];
-    Map<SegmentInfo, Integer> newSegmentInfoMap = new HashMap<>();
-
-    numSegs = 0;
-    hasDeletions = false;
-    for (int i = 0; i < leaves.size(); i++) {
-      LeafReader leafReader = leaves.get(i).reader();
-      SegmentInfo segmentInfo = ((SegmentReader) leafReader).getSegmentInfo().info;
-      if (segmentInfoMap.containsKey(segmentInfo)) {
-        // Reuse termsEnum, postingsEnum.
-        Integer seg = segmentInfoMap.get(segmentInfo);
-        if (seg > -1) {
-          newTermsEnums[numSegs] = termsEnums[seg];
-          newPostingsEnums[numSegs] = postingsEnums[seg];
-          assert newTermsEnums[numSegs] != null;
-          // Update liveDocs.
-          newDocBases[numSegs] = leaves.get(i).docBase;
-          newLiveDocs[numSegs] = leafReader.getLiveDocs();
-          hasDeletions |= leafReader.hasDeletions();
-          newSegmentInfoMap.put(segmentInfo, numSegs);
-          numSegs++;
-        } else {
-          // TermsEnum is always null.
-          newSegmentInfoMap.put(segmentInfo, -1);
-        }
-      } else {
-        // New segment.
-        Terms terms = leafReader.terms(idFieldName);
-        if (terms != null) {
-          newTermsEnums[numSegs] = terms.iterator();
-          assert newTermsEnums[numSegs] != null;
-          newDocBases[numSegs] = leaves.get(i).docBase;
-          newLiveDocs[numSegs] = leafReader.getLiveDocs();
-          hasDeletions |= leafReader.hasDeletions();
-          newSegmentInfoMap.put(segmentInfo, numSegs);
-          numSegs++;
-        } else {
-          newSegmentInfoMap.put(segmentInfo, -1);
-        }
-      }
-    }
-
-    reader = newReader;
-    termsEnums = newTermsEnums;
-    postingsEnums = newPostingsEnums;
-    liveDocs = newLiveDocs;
-    docBases = newDocBases;
-    segmentInfoMap = newSegmentInfoMap;
-
-    return (DirectoryReader) reader;
+  /**
+   * Close reader.
+   *
+   * @throws IOException if there is a low-level IO error
+   */
+  public void closeReader() throws IOException {
+    reader.close();
   }
 }

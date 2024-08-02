@@ -60,7 +60,7 @@ public class TestPerThreadPKLookup extends LuceneTestCase {
     writer.flush();
 
     DirectoryReader reader1 = DirectoryReader.open(writer);
-    PerThreadPKLookup pkLookup = new PerThreadPKLookup(reader1, "PK");
+    PerThreadPKLookup pkLookup1 = new PerThreadPKLookup(reader1, "PK");
 
     doc = new Document();
     doc.add(new KeywordField("PK", "5", Field.Store.NO));
@@ -83,16 +83,16 @@ public class TestPerThreadPKLookup extends LuceneTestCase {
     writer.addDocument(doc);
     writer.flush();
 
-    assertEquals(0, pkLookup.lookup(newBytesRef("1")));
-    assertEquals(1, pkLookup.lookup(newBytesRef("2")));
-    assertEquals(-1, pkLookup.lookup(newBytesRef("5")));
-    assertEquals(-1, pkLookup.lookup(newBytesRef("8")));
-    DirectoryReader reader2 = pkLookup.reopen();
+    assertEquals(0, pkLookup1.lookup(newBytesRef("1")));
+    assertEquals(1, pkLookup1.lookup(newBytesRef("2")));
+    assertEquals(-1, pkLookup1.lookup(newBytesRef("5")));
+    assertEquals(-1, pkLookup1.lookup(newBytesRef("8")));
+    PerThreadPKLookup pkLookup2 = pkLookup1.reopen();
 
-    assertEquals(-1, pkLookup.lookup(newBytesRef("1")));
-    assertEquals(1, pkLookup.lookup(newBytesRef("2")));
-    assertEquals(4, pkLookup.lookup(newBytesRef("5")));
-    assertEquals(-1, pkLookup.lookup(newBytesRef("8")));
+    assertEquals(-1, pkLookup2.lookup(newBytesRef("1")));
+    assertEquals(1, pkLookup2.lookup(newBytesRef("2")));
+    assertEquals(4, pkLookup2.lookup(newBytesRef("5")));
+    assertEquals(-1, pkLookup2.lookup(newBytesRef("8")));
 
     doc = new Document();
     doc.add(new KeywordField("PK", "9", Field.Store.NO));
@@ -103,16 +103,17 @@ public class TestPerThreadPKLookup extends LuceneTestCase {
     writer.addDocument(doc);
     writer.flush();
 
-    assertEquals(-1, pkLookup.lookup(newBytesRef("9")));
-    DirectoryReader reader3 = pkLookup.reopen();
-    assertEquals(8, pkLookup.lookup(newBytesRef("9")));
+    assertEquals(-1, pkLookup2.lookup(newBytesRef("9")));
+    PerThreadPKLookup pkLookup3 = pkLookup2.reopen();
+    assertEquals(8, pkLookup3.lookup(newBytesRef("9")));
 
-    assertNull(pkLookup.reopen());
+    assertNull(pkLookup3.reopen());
 
     writer.close();
     reader1.close();
-    reader2.close();
-    reader3.close();
+    pkLookup1.closeReader();
+    pkLookup2.closeReader();
+    pkLookup3.closeReader();
     dir.close();
   }
 
