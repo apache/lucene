@@ -137,6 +137,8 @@ New Features
 * GITHUB#13597: Align doc value skipper interval boundaries when an interval contains a constant
   value. (Ignacio Vera)
 
+* GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
+
 Improvements
 ---------------------
 
