@@ -43,27 +43,27 @@ import org.apache.lucene.util.BytesRef;
 public class TestTopDocsMerge extends LuceneTestCase {
 
   private static class ShardSearcher extends IndexSearcher {
-    private final List<LeafReaderContext> ctx;
+    private final LeafReaderContext ctx;
 
     public ShardSearcher(LeafReaderContext ctx, IndexReaderContext parent) {
       super(parent);
-      this.ctx = Collections.singletonList(ctx);
+      this.ctx = ctx;
     }
 
     public void search(Weight weight, Collector collector) throws IOException {
-      search(ctx, weight, collector);
+      searchLeaf(ctx, weight, collector);
     }
 
     public TopDocs search(Weight weight, int topN) throws IOException {
       TopScoreDocCollector collector =
           new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE, false).newCollector();
-      search(ctx, weight, collector);
+      searchLeaf(ctx, weight, collector);
       return collector.topDocs();
     }
 
     @Override
     public String toString() {
-      return "ShardSearcher(" + ctx.get(0) + ")";
+      return "ShardSearcher(" + ctx + ")";
     }
   }
 
