@@ -678,6 +678,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       Float confidenceInterval,
       byte bits)
       throws IOException {
+    if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
+      floatVectorValues = new NormalizedFloatVectorValues(floatVectorValues);
+      vectorSimilarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    }
     if (confidenceInterval != null && confidenceInterval == DYNAMIC_CONFIDENCE_INTERVAL) {
       return ScalarQuantizer.fromVectorsAutoInterval(
           floatVectorValues, vectorSimilarityFunction, numVectors, bits);
@@ -798,10 +802,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       if (floatVectors.size() == 0) {
         return new ScalarQuantizer(0, 0, bits);
       }
-      FloatVectorValues floatVectorValues = new FloatVectorWrapper(floatVectors, normalize);
       ScalarQuantizer quantizer =
           buildScalarQuantizer(
-              floatVectorValues,
+              new FloatVectorWrapper(floatVectors),
               floatVectors.size(),
               fieldInfo.getVectorSimilarityFunction(),
               confidenceInterval,
@@ -852,14 +855,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   static class FloatVectorWrapper extends FloatVectorValues {
     private final List<float[]> vectorList;
-    private final float[] copy;
-    private final boolean normalize;
     protected int curDoc = -1;
 
-    FloatVectorWrapper(List<float[]> vectorList, boolean normalize) {
+    FloatVectorWrapper(List<float[]> vectorList) {
       this.vectorList = vectorList;
-      this.copy = new float[vectorList.get(0).length];
-      this.normalize = normalize;
     }
 
     @Override
@@ -876,11 +875,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     public float[] vectorValue() throws IOException {
       if (curDoc == -1 || curDoc >= vectorList.size()) {
         throw new IOException("Current doc not set or too many iterations");
-      }
-      if (normalize) {
-        System.arraycopy(vectorList.get(curDoc), 0, copy, 0, copy.length);
-        VectorUtil.l2normalize(copy);
-        return copy;
       }
       return vectorList.get(curDoc);
     }
@@ -950,13 +944,16 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
               // quantization?
               || scalarQuantizer.getBits() <= 4
               || shouldRequantize(reader.getQuantizationState(fieldInfo.name), scalarQuantizer)) {
+            FloatVectorValues toQuantize =
+                mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name);
+            if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE) {
+              toQuantize = new NormalizedFloatVectorValues(toQuantize);
+            }
             sub =
                 new QuantizedByteVectorValueSub(
                     mergeState.docMaps[i],
                     new QuantizedFloatVectorValues(
-                        mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name),
-                        fieldInfo.getVectorSimilarityFunction(),
-                        scalarQuantizer));
+                        toQuantize, fieldInfo.getVectorSimilarityFunction(), scalarQuantizer));
           } else {
             sub =
                 new QuantizedByteVectorValueSub(
@@ -1043,7 +1040,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     private final FloatVectorValues values;
     private final ScalarQuantizer quantizer;
     private final byte[] quantizedVector;
-    private final float[] normalizedVector;
     private float offsetValue = 0f;
 
     private final VectorSimilarityFunction vectorSimilarityFunction;
@@ -1056,11 +1052,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.quantizer = quantizer;
       this.quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
-        this.normalizedVector = new float[values.dimension()];
-      } else {
-        this.normalizedVector = null;
-      }
     }
 
     @Override
@@ -1112,15 +1103,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     private void quantize() throws IOException {
-      if (vectorSimilarityFunction == VectorSimilarityFunction.COSINE) {
-        System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
-        VectorUtil.l2normalize(normalizedVector);
-        offsetValue =
-            quantizer.quantize(normalizedVector, quantizedVector, vectorSimilarityFunction);
-      } else {
-        offsetValue =
-            quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
-      }
+      offsetValue =
+          quantizer.quantize(values.vectorValue(), quantizedVector, vectorSimilarityFunction);
     }
   }
 
@@ -1215,6 +1199,62 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  static final class NormalizedFloatVectorValues extends FloatVectorValues {
+    private final FloatVectorValues values;
+    private final float[] normalizedVector;
+    int curDoc = -1;
+
+    public NormalizedFloatVectorValues(FloatVectorValues values) {
+      this.values = values;
+      this.normalizedVector = new float[values.dimension()];
+    }
+
+    @Override
+    public int dimension() {
+      return values.dimension();
+    }
+
+    @Override
+    public int size() {
+      return values.size();
+    }
+
+    @Override
+    public float[] vectorValue() throws IOException {
+      return normalizedVector;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int docID() {
+      return values.docID();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      curDoc = values.nextDoc();
+      if (curDoc != NO_MORE_DOCS) {
+        System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
+        VectorUtil.l2normalize(normalizedVector);
+      }
+      return curDoc;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      curDoc = values.advance(target);
+      if (curDoc != NO_MORE_DOCS) {
+        System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
+        VectorUtil.l2normalize(normalizedVector);
+      }
+      return curDoc;
     }
   }
 }

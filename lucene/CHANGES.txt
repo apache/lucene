@@ -97,6 +97,9 @@ Bug Fixes
 * GITHUB#13553: Correct RamUsageEstimate for scalar quantized knn vector formats so that raw vectors are correctly
   accounted for. (Ben Trent)
 
+* GITHUB#13615: Correct scalar quantization when used in conjunction with COSINE similarity. Vectors are normalized
+  before quantization to ensure the cosine similarity is correctly calculated. (Ben Trent)
+
 Other
 ---------------------
 (No changes)
