@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -61,6 +61,7 @@ public class Lucene99SkipReader extends MultiLevelSkipListReader {
   private long lastDocPointer;
   private int lastPosBufferUpto;
 
+  /** Sole constructor. */
   public Lucene99SkipReader(
       IndexInput skipStream,
       int maxSkipLevels,
@@ -98,6 +99,7 @@ public class Lucene99SkipReader extends MultiLevelSkipListReader {
     return df % ForUtil.BLOCK_SIZE == 0 ? df - 1 : df;
   }
 
+  /** Initialize state. */
   public void init(
       long skipPointer, long docBasePointer, long posBasePointer, long payBasePointer, int df)
       throws IOException {
@@ -125,22 +127,27 @@ public class Lucene99SkipReader extends MultiLevelSkipListReader {
     return lastDocPointer;
   }
 
+  /** Returns the pointer in the pos file. */
   public long getPosPointer() {
     return lastPosPointer;
   }
 
+  /** Return the start offset in the position block. */
   public int getPosBufferUpto() {
     return lastPosBufferUpto;
   }
 
+  /** Returns the pointer in the pay file. */
   public long getPayPointer() {
     return lastPayPointer;
   }
 
+  /** Return the number of bytes in the pay block that belongs to docs from the previous block. */
   public int getPayloadByteUpto() {
     return lastPayloadByteUpto;
   }
 
+  /** Return the next skip doc, no skipping can be performed until this doc. */
   public int getNextSkipDoc() {
     return skipDoc[0];
   }
@@ -199,7 +206,7 @@ public class Lucene99SkipReader extends MultiLevelSkipListReader {
     return delta;
   }
 
-  // The default impl skips impacts
+  /** Read impacts. The default implementation skips them. */
   protected void readImpacts(int level, IndexInput skipStream) throws IOException {
     skipStream.skipBytes(skipStream.readVInt());
   }
