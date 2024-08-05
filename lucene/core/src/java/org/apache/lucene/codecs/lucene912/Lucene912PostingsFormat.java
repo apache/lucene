@@ -14,14 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
-import org.apache.lucene.codecs.MultiLevelSkipListWriter;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
@@ -36,7 +35,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
- * Lucene 9.9 postings format, which encodes postings in packed integer blocks for fast decode.
+ * Lucene 9.12 postings format, which encodes postings in packed integer blocks for fast decode.
  *
  * <p>Basic idea:
  *
@@ -48,7 +47,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *       <p>In VInt blocks, integers are encoded as {@link DataOutput#writeVInt VInt}: the block
  *       size is variable.
  *   <li><b>Block structure</b>:
- *       <p>When the postings are long enough, Lucene99PostingsFormat will try to encode most
+ *       <p>When the postings are long enough, Lucene912PostingsFormat will try to encode most
  *       integer data as a packed block.
  *       <p>Take a term with 259 documents as an example, the first 256 document ids are encoded as
  *       two packed blocks, while the remaining 3 are encoded as one VInt block.
@@ -57,10 +56,10 @@ import org.apache.lucene.util.packed.PackedInts;
  *       <p>This strategy is applied to pairs: &lt;document number, frequency&gt;, &lt;position,
  *       payload length&gt;, &lt;position, offset start, offset length&gt;, and &lt;position,
  *       payload length, offsetstart, offset length&gt;.
- *   <li><b>Skipdata settings</b>:
- *       <p>The structure of skip table is quite similar to previous version of Lucene. Skip
- *       interval is the same as block size, and each skip entry points to the beginning of each
- *       block. However, for the first block, skip data is omitted.
+ *   <li><b>Skipdata</b>:
+ *       <p>Skipdata is interleaved with blocks on 2 levels. Level 0 skip data is interleaved
+ *       between every packed block. Level 1 skip data is interleaved between every 32 packed
+ *       blocks.
  *   <li><b>Positions, Payloads, and Offsets</b>:
  *       <p>A position is an integer indicating where the term occurs within one document. A payload
  *       is a blob of metadata associated with current position. An offset is a pair of integers
@@ -102,10 +101,10 @@ import org.apache.lucene.util.packed.PackedInts;
  *       <ul>
  *         <li>PostingsHeader --&gt; Header, PackedBlockSize
  *         <li>TermMetadata --&gt; (DocFPDelta|SingletonDocID), PosFPDelta?, PosVIntBlockFPDelta?,
- *             PayFPDelta?, SkipFPDelta?
+ *             PayFPDelta?
  *         <li>Header, --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
  *         <li>PackedBlockSize, SingletonDocID --&gt; {@link DataOutput#writeVInt VInt}
- *         <li>DocFPDelta, PosFPDelta, PayFPDelta, PosVIntBlockFPDelta, SkipFPDelta --&gt; {@link
+ *         <li>DocFPDelta, PosFPDelta, PayFPDelta, PosVIntBlockFPDelta --&gt; {@link
  *             DataOutput#writeVLong VLong}
  *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  *       </ul>
@@ -135,9 +134,6 @@ import org.apache.lucene.util.packed.PackedInts;
  *             whether current block is packed format or VInt. When packed format, payloads and
  *             offsets are fetched from .pay, otherwise from .pos. (this value is neglected when
  *             total number of positions i.e. totalTermFreq is less or equal to PackedBlockSize).
- *         <li>SkipFPDelta determines the position of this term's SkipData within the .doc file. In
- *             particular, it is the length of the TermFreq data. SkipDelta is only stored if
- *             DocFreq is not smaller than SkipMinimum (i.e. 128 in Lucene99PostingsFormat).
  *         <li>SingletonDocID is an optimization when a term only appears in one document. In this
  *             case, instead of writing a file pointer to the .doc file (DocFPDelta), and then a
  *             VIntBlock at that location, the single document ID is written to the term dictionary.
@@ -161,26 +157,19 @@ import org.apache.lucene.util.packed.PackedInts;
  *       IndexOptions#DOCS}). Skip data is saved at the end of each term's postings. The skip data
  *       is saved once for the entire postings list.
  *       <ul>
- *         <li>docFile(.doc) --&gt; Header, &lt;TermFreqs, SkipData?&gt;<sup>TermCount</sup>, Footer
+ *         <li>docFile(.doc) --&gt; Header, &lt;TermFreqs&gt;<sup>TermCount</sup>, Footer
  *         <li>Header --&gt; {@link CodecUtil#writeIndexHeader IndexHeader}
- *         <li>TermFreqs --&gt; &lt;PackedBlock&gt; <sup>PackedDocBlockNum</sup>, VIntBlock?
- *         <li>PackedBlock --&gt; PackedDocDeltaBlock, PackedFreqBlock?
- *         <li>VIntBlock --&gt; &lt;DocDelta[,
- *             Freq?]&gt;<sup>DocFreq-PackedBlockSize*PackedDocBlockNum</sup>
- *         <li>SkipData --&gt; &lt;&lt;SkipLevelLength, SkipLevel&gt; <sup>NumSkipLevels-1</sup>,
- *             SkipLevel&gt;, SkipDatum?
- *         <li>SkipLevel --&gt; &lt;SkipDatum&gt; <sup>TrimmedDocFreq/(PackedBlockSize^(Level +
- *             1))</sup>
- *         <li>SkipDatum --&gt; DocSkip, DocFPSkip, &lt;PosFPSkip, PosBlockOffset, PayLength?,
- *             PayFPSkip?&gt;?, ImpactLength, &lt;CompetitiveFreqDelta, CompetitiveNormDelta?&gt;
- *             <sup>ImpactCount</sup>, SkipChildLevelPointer?
+ *         <li>TermFreqs --&gt; &lt;PackedBlock32&gt; <sup>PackedDocBlockNum/32</sup>, VIntBlock?
+ *         <li>PackedBlock32 --&gt; Level1SkipData, &lt;PackedBlock&gt; <sup>32</sup>
+ *         <li>PackedBlock --&gt; Level0SkipData, PackedDocDeltaBlock, PackedFreqBlock?
+ *         <li>VIntBlock --&gt;
+ *             &lt;DocDelta[,Freq?]&gt;<sup>DocFreq-PackedBlockSize*PackedDocBlockNum</sup>
+ *         <li>Level1SkipData --&gt; DocDelta, DocFPDelta, Skip1NumBytes?, ImpactLength?, Impacts?,
+ *             PosFPDelta?, NextPosUpto?, PayFPDelta?, NextPayByteUpto?
+ *         <li>Level0SkipData --&gt; Skip0NumBytes, DocDelta, DocFPDelta, PackedBlockLength,
+ *             ImpactLength?, Impacts?, PosFPDelta?, NextPosUpto?, PayFPDelta?, NextPayByteUpto?
  *         <li>PackedFreqBlock --&gt; {@link PackedInts PackedInts}, uses patching
  *         <li>PackedDocDeltaBlock --&gt; {@link PackedInts PackedInts}, does not use patching
- *         <li>DocDelta, Freq, DocSkip, DocFPSkip, PosFPSkip, PosBlockOffset, PayByteUpto,
- *             PayFPSkip, ImpactLength, CompetitiveFreqDelta --&gt; {@link DataOutput#writeVInt
- *             VInt}
- *         <li>CompetitiveNormDelta --&gt; {@link DataOutput#writeZLong ZLong}
- *         <li>SkipChildLevelPointer --&gt; {@link DataOutput#writeVLong VLong}
  *         <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  *       </ul>
  *       <p>Notes:
@@ -212,24 +201,14 @@ import org.apache.lucene.util.packed.PackedInts;
  *             <p>7,4
  *         <li>PackedDocBlockNum is the number of packed blocks for current term's docids or
  *             frequencies. In particular, PackedDocBlockNum = floor(DocFreq/PackedBlockSize)
- *         <li>TrimmedDocFreq = DocFreq % PackedBlockSize == 0 ? DocFreq - 1 : DocFreq. We use this
- *             trick since the definition of skip entry is a little different from base interface.
- *             In {@link MultiLevelSkipListWriter}, skip data is assumed to be saved for
- *             skipInterval<sup>th</sup>, 2*skipInterval<sup>th</sup> ... posting in the list.
- *             However, in Lucene99PostingsFormat, the skip data is saved for
- *             skipInterval+1<sup>th</sup>, 2*skipInterval+1<sup>th</sup> ... posting
- *             (skipInterval==PackedBlockSize in this case). When DocFreq is multiple of
- *             PackedBlockSize, MultiLevelSkipListWriter will expect one more skip data than
- *             Lucene99SkipWriter.
- *         <li>SkipDatum is the metadata of one skip entry. For the first block (no matter packed or
- *             VInt), it is omitted.
- *         <li>DocSkip records the document number of every PackedBlockSize<sup>th</sup> document
- *             number in the postings (i.e. last document number in each packed block). On disk it
- *             is stored as the difference from previous value in the sequence.
- *         <li>DocFPSkip records the file offsets of each block (excluding )posting at
- *             PackedBlockSize+1<sup>th</sup>, 2*PackedBlockSize+1<sup>th</sup> ... , in DocFile.
- *             The file offsets are relative to the start of current term's TermFreqs. On disk it is
- *             also stored as the difference from previous SkipDatum in the sequence.
+ *         <li>On skip data, DocDelta is the delta between the last doc of the previous block - or
+ *             -1 if there is no previous block - and the last doc of this block. This helps know by
+ *             how much the doc ID should be incremented in case the block gets skipped.
+ *         <li>Skip0Length is the length of skip data at level 0. Encoding it is useful when skip
+ *             data is never needed to quickly skip over skip data, e.g. if only using nextDoc(). It
+ *             is also used when only the first fields of skip data are needed, in order to skip
+ *             over remaining fields without reading them.
+ *         <li>ImpactLength and Impacts are only stored if frequencies are indexed.
  *         <li>Since positions and payloads are also block encoded, the skip should skip to related
  *             block first, then fetch the values according to in-block offset. PosFPSkip and
  *             PayFPSkip record the file offsets of related block in .pos and .pay, respectively.
@@ -339,7 +318,10 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * @lucene.experimental
  */
-public final class Lucene99PostingsFormat extends PostingsFormat {
+public final class Lucene912PostingsFormat extends PostingsFormat {
+
+  /** Filename extension for some small metadata about how postings are encoded. */
+  public static final String META_EXTENSION = "psm";
 
   /**
    * Filename extension for document number, frequencies, and skip data. See chapter: <a
@@ -359,53 +341,52 @@ public final class Lucene99PostingsFormat extends PostingsFormat {
   /** Size of blocks. */
   public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
 
-  /**
-   * Expert: The maximum number of skip levels. Smaller values result in slightly smaller indexes,
-   * but slower skipping in big posting lists.
-   */
-  static final int MAX_SKIP_LEVELS = 10;
+  public static final int BLOCK_MASK = BLOCK_SIZE - 1;
+
+  /** We insert skip data on every block and every SKIP_FACTOR=32 blocks. */
+  public static final int LEVEL1_FACTOR = 32;
+
+  /** Total number of docs covered by level 1 skip data: 32 * 128 = 4,096 */
+  public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
+
+  public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
   static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
-  static final String DOC_CODEC = "Lucene99PostingsWriterDoc";
-  static final String POS_CODEC = "Lucene99PostingsWriterPos";
-  static final String PAY_CODEC = "Lucene99PostingsWriterPay";
+  static final String META_CODEC = "Lucene912PostingsWriterMeta";
+  static final String DOC_CODEC = "Lucene912PostingsWriterDoc";
+  static final String POS_CODEC = "Lucene912PostingsWriterPos";
+  static final String PAY_CODEC = "Lucene912PostingsWriterPay";
 
-  // Increment version to change it
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
   private final int minTermBlockSize;
   private final int maxTermBlockSize;
 
-  /** Creates {@code Lucene99PostingsFormat} with default settings. */
-  public Lucene99PostingsFormat() {
+  /** Creates {@code Lucene912PostingsFormat} with default settings. */
+  public Lucene912PostingsFormat() {
     this(
         Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
         Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
   }
 
   /**
-   * Creates {@code Lucene99PostingsFormat} with custom values for {@code minBlockSize} and {@code
+   * Creates {@code Lucene912PostingsFormat} with custom values for {@code minBlockSize} and {@code
    * maxBlockSize} passed to block terms dictionary.
    *
    * @see
    *     Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)
    */
-  public Lucene99PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
-    super("Lucene99");
+  public Lucene912PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
+    super("Lucene912");
     Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
     this.minTermBlockSize = minTermBlockSize;
     this.maxTermBlockSize = maxTermBlockSize;
   }
 
   @Override
-  public String toString() {
-    return getName();
-  }
-
-  @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene99PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene912PostingsWriter(state);
     boolean success = false;
     try {
       FieldsConsumer ret =
@@ -422,7 +403,7 @@ public final class Lucene99PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene99PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene912PostingsReader(state);
     boolean success = false;
     try {
       FieldsProducer ret = new Lucene90BlockTreeTermsReader(postingsReader, state);
@@ -436,7 +417,7 @@ public final class Lucene99PostingsFormat extends PostingsFormat {
   }
 
   /**
-   * Holds all state required for {@link Lucene99PostingsReader} to produce a {@link
+   * Holds all state required for {@link Lucene912PostingsReader} to produce a {@link
    * org.apache.lucene.index.PostingsEnum} without re-seeking the terms dict.
    *
    * @lucene.internal
@@ -450,12 +431,6 @@ public final class Lucene99PostingsFormat extends PostingsFormat {
 
     /** file pointer to the start of the payloads enumeration, in {@link #PAY_EXTENSION} file */
     public long payStartFP;
-
-    /**
-     * file offset for the start of the skip list, relative to docStartFP, if there are more than
-     * {@link ForUtil#BLOCK_SIZE} docs; otherwise -1
-     */
-    public long skipOffset;
 
     /**
      * file offset for the last position in the last block, if there are more than {@link
@@ -477,7 +452,6 @@ public final class Lucene99PostingsFormat extends PostingsFormat {
 
     /** Sole constructor. */
     public IntBlockTermState() {
-      skipOffset = -1;
       lastPosBlockOffset = -1;
       singletonDocID = -1;
     }
@@ -497,7 +471,6 @@ public final class Lucene99PostingsFormat extends PostingsFormat {
       posStartFP = other.posStartFP;
       payStartFP = other.payStartFP;
       lastPosBlockOffset = other.lastPosBlockOffset;
-      skipOffset = other.skipOffset;
       singletonDocID = other.singletonDocID;
     }
 

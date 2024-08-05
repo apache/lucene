@@ -1571,20 +1571,20 @@ public class TestGrouping extends LuceneTestCase {
   }
 
   private static class ShardSearcher extends IndexSearcher {
-    private final List<LeafReaderContext> ctx;
+    private final LeafReaderContext ctx;
 
     public ShardSearcher(LeafReaderContext ctx, IndexReaderContext parent) {
       super(parent);
-      this.ctx = Collections.singletonList(ctx);
+      this.ctx = ctx;
     }
 
     public void search(Weight weight, Collector collector) throws IOException {
-      search(ctx, weight, collector);
+      searchLeaf(ctx, weight, collector);
     }
 
     @Override
     public String toString() {
-      return "ShardSearcher(" + ctx.get(0).reader() + ")";
+      return "ShardSearcher(" + ctx.reader() + ")";
     }
   }
 }

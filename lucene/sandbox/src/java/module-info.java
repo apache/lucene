@@ -22,6 +22,7 @@ module org.apache.lucene.sandbox {
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.idversion;
+  exports org.apache.lucene.sandbox.codecs.quantization;
   exports org.apache.lucene.sandbox.document;
   exports org.apache.lucene.sandbox.queries;
   exports org.apache.lucene.sandbox.search;

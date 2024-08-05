@@ -281,7 +281,7 @@ public class MemoryIndex {
       /**
        * Returns the offset of the currently written slice. The returned value should be used as the
        * end offset to initialize a {@link SliceReader} once this slice is fully written or to reset
-       * the this writer if another slice needs to be written.
+       * the writer if another slice needs to be written.
        */
       public int getCurrentOffset() {
         return offset;
