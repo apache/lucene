@@ -47,6 +47,8 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
  */
 public final class VectorUtil {
 
+  private static final float EPSILON = 1e-4f;
+
   private static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
 
@@ -123,7 +125,7 @@ public final class VectorUtil {
 
   public static boolean isUnitVector(float[] v) {
     double l1norm = IMPL.dotProduct(v, v);
-    return Math.abs(l1norm - 1.0d) <= 1e-4;
+    return Math.abs(l1norm - 1.0d) <= EPSILON;
   }
 
   /**
@@ -143,7 +145,7 @@ public final class VectorUtil {
         return v;
       }
     }
-    if (Math.abs(l1norm - 1.0d) <= 1e-5) {
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
       return v;
     }
     int dim = v.length;
