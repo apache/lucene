@@ -288,6 +288,8 @@ Improvements
 
 * GITHUB#13625: Remove BitSet#nextSetBit code duplication. (Greg Miller)
 
+* GITHUB#13633: Add ability to read/write knn vector values to a MemoryIndex. (Ben Trent)
+
 Optimizations
 ---------------------
 
