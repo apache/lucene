@@ -139,6 +139,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   protected TopDocs approximateSearch(
       LeafReaderContext context,
       Bits acceptDocs,
+      DocIdSetIterator seedDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
@@ -147,7 +148,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     if (collector == null) {
       return NO_RESULTS;
     }
-    context.reader().searchNearestVectors(field, query, collector, acceptDocs);
+    context.reader().searchNearestVectors(field, query, collector, acceptDocs, seedDocs);
     return collector.topDocs();
   }
 

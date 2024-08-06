@@ -39,6 +39,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
@@ -1651,11 +1652,19 @@ public class MemoryIndex {
 
     @Override
     public void searchNearestVectors(
-        String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+        String field,
+        float[] target,
+        KnnCollector knnCollector,
+        Bits acceptDocs,
+        DocIdSetIterator seedDocs) {}
 
     @Override
     public void searchNearestVectors(
-        String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+        String field,
+        byte[] target,
+        KnnCollector knnCollector,
+        Bits acceptDocs,
+        DocIdSetIterator seedDocs) {}
 
     @Override
     public void checkIntegrity() throws IOException {

@@ -89,7 +89,7 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
       try (IndexReader reader = DirectoryReader.open(w)) {
         LeafReader r = getOnlyLeafReader(reader);
         TopKnnCollector collector = new TopKnnCollector(3, Integer.MAX_VALUE);
-        r.searchNearestVectors("v1", vectors[0], collector, null);
+        r.searchNearestVectors("v1", vectors[0], collector, null, null);
         TopDocs topDocs = collector.topDocs();
         assertEquals(3, topDocs.scoreDocs.length);
 

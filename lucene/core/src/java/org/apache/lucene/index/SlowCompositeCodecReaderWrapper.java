@@ -963,13 +963,23 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+    public void search(
+        String field,
+        float[] target,
+        KnnCollector knnCollector,
+        Bits acceptDocs,
+        DocIdSetIterator seeds)
         throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+    public void search(
+        String field,
+        byte[] target,
+        KnnCollector knnCollector,
+        Bits acceptDocs,
+        DocIdSetIterator seeds)
         throws IOException {
       throw new UnsupportedOperationException();
     }

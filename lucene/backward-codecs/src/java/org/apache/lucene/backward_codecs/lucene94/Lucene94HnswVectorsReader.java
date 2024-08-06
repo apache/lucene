@@ -35,6 +35,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -261,7 +262,12 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(
+      String field,
+      float[] target,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -277,11 +283,17 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+        vectorValues.getAcceptOrds(acceptDocs),
+        seedDocs);
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(
+      String field,
+      byte[] target,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -297,7 +309,8 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+        vectorValues.getAcceptOrds(acceptDocs),
+        seedDocs);
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {

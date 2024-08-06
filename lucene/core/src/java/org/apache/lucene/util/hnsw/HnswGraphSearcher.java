@@ -20,6 +20,8 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.BitSet;
@@ -68,6 +70,43 @@ public class HnswGraphSearcher {
         new HnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+  }
+
+  /**
+   * Searches the HNSW graph for for the nerest neighbors of a query vector, starting from the
+   * provided entry points.
+   *
+   * @param scorer the scorer to compare the query with the nodes
+   * @param knnCollector a collector of top knn results to be returned
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param entryPointOrds the entry points for search.
+   */
+  public static void search(
+      RandomVectorScorer scorer,
+      KnnCollector knnCollector,
+      HnswGraph graph,
+      Bits acceptOrds,
+      DocIdSetIterator entryPointOrds)
+      throws IOException {
+    ArrayList<Integer> entryPointOrdInts = new ArrayList<Integer>();
+    if (entryPointOrds != null) {
+      int entryPointOrdInt;
+      while ((entryPointOrdInt = entryPointOrds.nextDoc()) != NO_MORE_DOCS) {
+        entryPointOrdInts.add(entryPointOrdInt);
+      }
+    }
+    if (entryPointOrdInts.size() == 0) {
+      search(scorer, knnCollector, graph, acceptOrds);
+    } else {
+      HnswGraphSearcher graphSearcher =
+          new HnswGraphSearcher(
+              new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(graph.size()));
+      int[] entryPointOrdIntsArr = entryPointOrdInts.stream().mapToInt(Integer::intValue).toArray();
+      graphSearcher.searchLevel(knnCollector, scorer, 0, entryPointOrdIntsArr, graph, acceptOrds);
+    }
   }
 
   /**

@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -251,7 +252,13 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public final TopDocs searchNearestVectors(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+      String field,
+      float[] target,
+      int k,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs,
+      int visitedLimit)
+      throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
@@ -265,7 +272,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
     KnnCollector collector = new TopKnnCollector(k, visitedLimit);
-    searchNearestVectors(field, target, collector, acceptDocs);
+    searchNearestVectors(field, target, collector, acceptDocs, seedDocs);
     return collector.topDocs();
   }
 
@@ -295,7 +302,13 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public final TopDocs searchNearestVectors(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+      String field,
+      byte[] target,
+      int k,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs,
+      int visitedLimit)
+      throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
@@ -309,7 +322,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
       return TopDocsCollector.EMPTY_TOPDOCS;
     }
     KnnCollector collector = new TopKnnCollector(k, visitedLimit);
-    searchNearestVectors(field, target, collector, acceptDocs);
+    searchNearestVectors(field, target, collector, acceptDocs, seedDocs);
     return collector.topDocs();
   }
 
@@ -337,10 +350,17 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @param knnCollector collector with settings for gathering the vector results.
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @param seedDocs {@link Bits} that represents an initial set of documents to seed the search, or
+   *     {@code null} if a full search is to be conducted.
    * @lucene.experimental
    */
   public abstract void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+      String field,
+      float[] target,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs)
+      throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -366,10 +386,17 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @param knnCollector collector with settings for gathering the vector results.
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @param seedDocs {@link Bits} that represents an initial set of documents to seed the search, or
+   *     {@code null} if a full search is to be conducted.
    * @lucene.experimental
    */
   public abstract void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+      String field,
+      byte[] target,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs)
+      throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

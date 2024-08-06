@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
@@ -56,13 +57,23 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(
+      String field,
+      float[] target,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs)
       throws IOException {
     // don't scan stored field data. If we didn't index it, produce no search results
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(
+      String field,
+      byte[] target,
+      KnnCollector knnCollector,
+      Bits acceptDoc,
+      DocIdSetIterator seedDocs)
       throws IOException {
     // don't scan stored field data. If we didn't index it, produce no search results
   }

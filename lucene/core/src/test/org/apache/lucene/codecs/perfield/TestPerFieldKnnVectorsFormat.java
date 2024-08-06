@@ -95,11 +95,12 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
                 new float[] {1, 2, 3},
                 10,
                 reader.getLiveDocs(),
+                null,
                 Integer.MAX_VALUE);
         assertEquals(0, hits.scoreDocs.length);
         hits =
             reader.searchNearestVectors(
-                "id", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "id", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), null, Integer.MAX_VALUE);
         assertEquals(0, hits.scoreDocs.length);
       }
     }
@@ -146,12 +147,12 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
             reader.searchNearestVectors(
-                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), null, Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
             reader.searchNearestVectors(
-                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), null, Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }

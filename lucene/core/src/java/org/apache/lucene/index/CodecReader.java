@@ -25,6 +25,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
@@ -260,7 +261,12 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field,
+      float[] target,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs)
+      throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
@@ -269,12 +275,17 @@ public abstract class CodecReader extends LeafReader {
       // Field does not exist or does not index vectors
       return;
     }
-    getVectorReader().search(field, target, knnCollector, acceptDocs);
+    getVectorReader().search(field, target, knnCollector, acceptDocs, seedDocs);
   }
 
   @Override
   public final void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field,
+      byte[] target,
+      KnnCollector knnCollector,
+      Bits acceptDocs,
+      DocIdSetIterator seedDocs)
+      throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
@@ -283,7 +294,7 @@ public abstract class CodecReader extends LeafReader {
       // Field does not exist or does not index vectors
       return;
     }
-    getVectorReader().search(field, target, knnCollector, acceptDocs);
+    getVectorReader().search(field, target, knnCollector, acceptDocs, seedDocs);
   }
 
   @Override

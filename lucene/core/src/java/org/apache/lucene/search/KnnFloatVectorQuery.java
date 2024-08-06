@@ -31,8 +31,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, Bits)} to perform nearest
- * neighbour search.
+ * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, Bits, DocIdSetIterator)} to
+ * perform nearest neighbour search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
  * executes the filter for each leaf, then chooses a strategy dynamically:
@@ -73,7 +73,22 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnFloatVectorQuery(String field, float[] target, int k, Query filter) {
-    super(field, k, filter);
+    this(field, target, k, filter, null);
+  }
+
+  /**
+   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
+   * given field. <code>target</code> vector.
+   *
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find
+   * @param filter a filter applied before the vector search
+   * @param seed a query that is executed to seed the vector search
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   */
+  public KnnFloatVectorQuery(String field, float[] target, int k, Query filter, Query seed) {
+    super(field, k, filter, seed);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
   }
 
@@ -81,6 +96,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   protected TopDocs approximateSearch(
       LeafReaderContext context,
       Bits acceptDocs,
+      DocIdSetIterator seedDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
@@ -94,7 +110,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
     if (Math.min(knnCollector.k(), floatVectorValues.size()) == 0) {
       return NO_RESULTS;
     }
-    reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
+    reader.searchNearestVectors(field, target, knnCollector, acceptDocs, seedDocs);
     TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
   }

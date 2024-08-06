@@ -49,8 +49,20 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   }
 
   @Override
+  KnnFloatVectorQuery getKnnVectorQuery(
+      String field, float[] query, int k, Query queryFilter, Query seedQuery) {
+    return new KnnFloatVectorQuery(field, query, k, queryFilter, seedQuery);
+  }
+
+  @Override
   AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, vec, k, query);
+    return new ThrowingKnnVectorQuery(field, vec, k, query, null);
+  }
+
+  @Override
+  AbstractKnnVectorQuery getThrowingKnnVectorQuery(
+      String field, float[] vec, int k, Query query, Query seedQuery) {
+    return new ThrowingKnnVectorQuery(field, vec, k, query, seedQuery);
   }
 
   @Override
@@ -254,8 +266,8 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   private static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
 
-    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
-      super(field, target, k, filter);
+    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter, Query seed) {
+      super(field, target, k, filter, seed);
     }
 
     @Override

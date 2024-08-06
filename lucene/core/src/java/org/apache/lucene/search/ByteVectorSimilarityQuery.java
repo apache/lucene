@@ -110,7 +110,7 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
       throws IOException {
     KnnCollector collector =
         new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitLimit);
-    context.reader().searchNearestVectors(field, target, collector, acceptDocs);
+    context.reader().searchNearestVectors(field, target, collector, acceptDocs, null);
     return collector.topDocs();
   }
 
