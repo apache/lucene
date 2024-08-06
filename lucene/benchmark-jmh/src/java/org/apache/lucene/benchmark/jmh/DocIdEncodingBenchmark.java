@@ -59,7 +59,8 @@ public class DocIdEncodingBenchmark {
     try (Scanner fileReader =
         new Scanner(
             Objects.requireNonNull(
-                DocIdEncodingBenchmark.class.getResourceAsStream("/docIds_bpv21.txt")),
+                DocIdEncodingBenchmark.class.getResourceAsStream(
+                    "/org.apache.lucene.benchmark.jmh/docIds_bpv21.txt")),
             Charset.defaultCharset())) {
       while (fileReader.hasNextLine()) {
         String sequence = fileReader.nextLine().trim();
