@@ -64,13 +64,13 @@ public class DocIdEncodingBenchmark {
     @Benchmark
     public void performEncodeDecode() throws IOException {
         try (Directory dir = new NIOFSDirectory(TMP_DIR)) {
-            String innerDirName = String.join("_", "docIdJmhData_", docIdEncoder.getClass().getSimpleName(), String.valueOf(System.nanoTime()));
-            try (IndexOutput out = dir.createOutput(innerDirName, IOContext.DEFAULT)) {
+            String dataFile = String.join("_", "docIdJmhData_", docIdEncoder.getClass().getSimpleName(), String.valueOf(System.nanoTime()));
+            try (IndexOutput out = dir.createOutput(dataFile, IOContext.DEFAULT)) {
                 for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
                     docIdEncoder.encode(out, 0, DOC_IDS.length, DOC_IDS);
                 }
             }
-            try (IndexInput in = dir.openInput(innerDirName, IOContext.DEFAULT)) {
+            try (IndexInput in = dir.openInput(dataFile, IOContext.DEFAULT)) {
                 for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
                     docIdEncoder.decode(in, 0, DOC_IDS.length, scratch);
                 }
