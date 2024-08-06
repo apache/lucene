@@ -17,11 +17,8 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -39,13 +36,14 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 1, time = 5)
-@Measurement(iterations = 10, time = 8)
+@Measurement(iterations = 5, time = 8)
 @Fork(value = 1)
 public class DocIdEncodingBenchmark {
 
@@ -108,32 +106,30 @@ public class DocIdEncodingBenchmark {
 
   private DocIdEncoder docIdEncoder;
 
-  private static final Path TMP_DIR;
-
-  static {
-    try {
-      TMP_DIR = Files.createTempDirectory("docIdJmh");
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
+  private Path tmpDir;
 
   private final int[] scratch = new int[512];
 
-  @Setup(Level.Iteration)
+  @Setup(Level.Trial)
   public void init() throws IOException {
+    tmpDir = Files.createTempDirectory("docIdJmh");
     docIdEncoder = DocIdEncoder.Factory.fromName(encoderName);
+  }
+
+  @TearDown
+  public void finish() throws IOException {
+    Files.delete(tmpDir);
   }
 
   @Benchmark
   public void performEncodeDecode() throws IOException {
-    try (Directory dir = new NIOFSDirectory(TMP_DIR)) {
-      String dataFile =
-          String.join(
-              "_",
-              "docIdJmhData_",
-              docIdEncoder.getClass().getSimpleName(),
-              String.valueOf(System.nanoTime()));
+    String dataFile =
+        String.join(
+            "_",
+            "docIdJmhData_",
+            docIdEncoder.getClass().getSimpleName(),
+            String.valueOf(System.nanoTime()));
+    try (Directory dir = new NIOFSDirectory(tmpDir)) {
       try (IndexOutput out = dir.createOutput(dataFile, IOContext.DEFAULT)) {
         for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
           docIdEncoder.encode(out, 0, DOC_IDS.length, DOC_IDS);
@@ -145,23 +141,7 @@ public class DocIdEncodingBenchmark {
         }
       }
     } finally {
-      Files.walkFileTree(
-          TMP_DIR,
-          new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
-              Files.delete(file);
-              return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
-                throws IOException {
-              Files.delete(dir);
-              return FileVisitResult.CONTINUE;
-            }
-          });
+      Files.delete(tmpDir.resolve(dataFile));
     }
   }
 
