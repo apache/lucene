@@ -19,160 +19,21 @@ package org.apache.lucene.monitor.outsidepackage;
 
 import java.io.IOException;
 import java.util.Collections;
-import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.DocValuesSkipper;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.LeafMetaData;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermVectors;
-import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.memory.MemoryIndex;
 import org.apache.lucene.monitor.CandidateMatcher;
 import org.apache.lucene.monitor.QueryMatch;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.Version;
 import org.junit.Test;
 
 public class TestCandidateMatcherVisibility {
 
-  // Dummy empty IndexReader for use in creating a matcher
-  private LeafReader dummyIndexReader() {
-    return new LeafReader() {
-      @Override
-      public int maxDoc() {
-        return 0;
-      }
-
-      @Override
-      public int numDocs() {
-        return 0;
-      }
-
-      @Override
-      public FieldInfos getFieldInfos() {
-        return FieldInfos.EMPTY;
-      }
-
-      @Override
-      public Bits getLiveDocs() {
-        return null;
-      }
-
-      @Override
-      public Terms terms(String field) throws IOException {
-        return null;
-      }
-
-      @Override
-      public TermVectors termVectors() {
-        return TermVectors.EMPTY;
-      }
-
-      @Override
-      public NumericDocValues getNumericDocValues(String field) {
-        return null;
-      }
-
-      @Override
-      public BinaryDocValues getBinaryDocValues(String field) {
-        return null;
-      }
-
-      @Override
-      public SortedDocValues getSortedDocValues(String field) {
-        return null;
-      }
-
-      @Override
-      public SortedNumericDocValues getSortedNumericDocValues(String field) {
-        return null;
-      }
-
-      @Override
-      public SortedSetDocValues getSortedSetDocValues(String field) {
-        return null;
-      }
-
-      @Override
-      public NumericDocValues getNormValues(String field) {
-        return null;
-      }
-
-      @Override
-      public DocValuesSkipper getDocValuesSkipper(String field) {
-        return null;
-      }
-
-      @Override
-      public PointValues getPointValues(String field) {
-        return null;
-      }
-
-      @Override
-      public FloatVectorValues getFloatVectorValues(String field) {
-        return null;
-      }
-
-      @Override
-      public ByteVectorValues getByteVectorValues(String field) {
-        return null;
-      }
-
-      @Override
-      public void searchNearestVectors(
-          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
-
-      @Override
-      public void searchNearestVectors(
-          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
-
-      @Override
-      protected void doClose() {}
-
-      @Override
-      public StoredFields storedFields() {
-        return new StoredFields() {
-          @Override
-          public void document(int doc, StoredFieldVisitor visitor) {}
-        };
-      }
-
-      @Override
-      public void checkIntegrity() throws IOException {}
-
-      @Override
-      public LeafMetaData getMetaData() {
-        return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
-      }
-
-      @Override
-      public CacheHelper getCoreCacheHelper() {
-        return null;
-      }
-
-      @Override
-      public CacheHelper getReaderCacheHelper() {
-        return null;
-      }
-    };
-  }
-
   private CandidateMatcher<QueryMatch> newCandidateMatcher() {
-    // Dummy searcher for use in creating a matcher
-    final IndexSearcher mockSearcher = new IndexSearcher(dummyIndexReader());
-    return QueryMatch.SIMPLE_MATCHER.createMatcher(mockSearcher);
+    // Index and searcher for use in creating a matcher
+    MemoryIndex index = new MemoryIndex();
+    final IndexSearcher searcher = index.createSearcher();
+    return QueryMatch.SIMPLE_MATCHER.createMatcher(searcher);
   }
 
   @Test
