@@ -17,11 +17,12 @@
 
 from math import gcd
 
-"""Code generation for ForUtil.java"""
+"""Code generation for ForDeltaUtil.java"""
 
-FAST_BITS_PER_VALUE = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20, 24, 32]
-OUTPUT_FILE = "ForUtil.java"
-PRIMITIVE_SIZE = [8, 16, 32]
+# 9 is included because it has faster prefix sum than 10 as the prefix sum can be performed on 16-bit integeres
+FAST_BITS_PER_VALUE = [1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 14, 16, 20, 24, 32]
+OUTPUT_FILE = "ForDeltaUtil.java"
+PRIMITIVE_SIZE = [16, 32]
 HEADER = """// This file has been automatically generated, DO NOT EDIT
 
 /*
@@ -46,16 +47,37 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.packed.PackedInts;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
 // Encodes multiple integers in a long to get SIMD-like speedups.
-// If bitsPerValue <= 8 then we pack 8 ints per long
-// else if bitsPerValue <= 16 we pack 4 ints per long
+// If bitsPerValue <= 9 then we pack 4 ints per long
 // else we pack 2 ints per long
-public final class ForUtil {
+// This allows computing a prefix sum without overflowing.
+public final class ForDeltaUtil {
 
   static final int BLOCK_SIZE = 128;
   private static final int BLOCK_SIZE_LOG2 = 7;
+  private static final int ONE_BLOCK_SIZE_FOURTH = BLOCK_SIZE / 4;
+  private static final int TWO_BLOCK_SIZE_FOURTHS = BLOCK_SIZE / 2;
+  private static final int THREE_BLOCK_SIZE_FOURTHS = 3 * BLOCK_SIZE / 4;
+
+  // IDENTITY_PLUS_ONE[i] == i+1
+  private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil.BLOCK_SIZE];
+
+  static {
+    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+      IDENTITY_PLUS_ONE[i] = i + 1;
+    }
+  }
+
+  private static void prefixSumOfOnes(long[] arr, long base) {
+    System.arraycopy(IDENTITY_PLUS_ONE, 0, arr, 0, ForUtil.BLOCK_SIZE);
+    // This loop gets auto-vectorized
+    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+      arr[i] += base;
+    }
+  }
 
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
@@ -65,48 +87,12 @@ public final class ForUtil {
     return expandMask32(mask16 | (mask16 << 16));
   }
 
-  private static long expandMask8(long mask8) {
-    return expandMask16(mask8 | (mask8 << 8));
-  }
-
   private static long mask32(int bitsPerValue) {
     return expandMask32((1L << bitsPerValue) - 1);
   }
 
   private static long mask16(int bitsPerValue) {
     return expandMask16((1L << bitsPerValue) - 1);
-  }
-
-  private static long mask8(int bitsPerValue) {
-    return expandMask8((1L << bitsPerValue) - 1);
-  }
-
-  private static void expand8(long[] arr) {
-    for (int i = 0; i < 16; ++i) {
-      long l = arr[i];
-      arr[i] = (l >>> 56) & 0xFFL;
-      arr[16 + i] = (l >>> 48) & 0xFFL;
-      arr[32 + i] = (l >>> 40) & 0xFFL;
-      arr[48 + i] = (l >>> 32) & 0xFFL;
-      arr[64 + i] = (l >>> 24) & 0xFFL;
-      arr[80 + i] = (l >>> 16) & 0xFFL;
-      arr[96 + i] = (l >>> 8) & 0xFFL;
-      arr[112 + i] = l & 0xFFL;
-    }
-  }
-
-  private static void collapse8(long[] arr) {
-    for (int i = 0; i < 16; ++i) {
-      arr[i] =
-          (arr[i] << 56)
-              | (arr[16 + i] << 48)
-              | (arr[32 + i] << 40)
-              | (arr[48 + i] << 32)
-              | (arr[64 + i] << 24)
-              | (arr[80 + i] << 16)
-              | (arr[96 + i] << 8)
-              | arr[112 + i];
-    }
   }
 
   private static void expand16(long[] arr) {
@@ -139,6 +125,137 @@ public final class ForUtil {
     }
   }
 
+  private static void prefixSum16(long[] arr, long base) {
+    // When the number of bits per value is 9 or less, we can sum up all values in a block without
+    // risking overflowing a 16-bits integer. This allows computing the prefix sum by summing up 4
+    // values at once.
+    innerPrefixSum16(arr);
+    expand16(arr);
+    final long l0 = base;
+    final long l1 = l0 + arr[ONE_BLOCK_SIZE_FOURTH - 1];
+    final long l2 = l1 + arr[TWO_BLOCK_SIZE_FOURTHS - 1];
+    final long l3 = l2 + arr[THREE_BLOCK_SIZE_FOURTHS - 1];
+
+    for (int i = 0; i < ONE_BLOCK_SIZE_FOURTH; ++i) {
+      arr[i] += l0;
+      arr[ONE_BLOCK_SIZE_FOURTH + i] += l1;
+      arr[TWO_BLOCK_SIZE_FOURTHS + i] += l2;
+      arr[THREE_BLOCK_SIZE_FOURTHS + i] += l3;
+    }
+  }
+
+  private static void prefixSum32(long[] arr, long base) {
+    arr[0] += base << 32;
+    innerPrefixSum32(arr);
+    expand32(arr);
+    final long l = arr[BLOCK_SIZE/2-1];
+    for (int i = BLOCK_SIZE/2; i < BLOCK_SIZE; ++i) {
+      arr[i] += l;
+    }
+  }
+
+  // For some reason, unrolling seems to help
+  private static void innerPrefixSum16(long[] arr) {
+    arr[1] += arr[0];
+    arr[2] += arr[1];
+    arr[3] += arr[2];
+    arr[4] += arr[3];
+    arr[5] += arr[4];
+    arr[6] += arr[5];
+    arr[7] += arr[6];
+    arr[8] += arr[7];
+    arr[9] += arr[8];
+    arr[10] += arr[9];
+    arr[11] += arr[10];
+    arr[12] += arr[11];
+    arr[13] += arr[12];
+    arr[14] += arr[13];
+    arr[15] += arr[14];
+    arr[16] += arr[15];
+    arr[17] += arr[16];
+    arr[18] += arr[17];
+    arr[19] += arr[18];
+    arr[20] += arr[19];
+    arr[21] += arr[20];
+    arr[22] += arr[21];
+    arr[23] += arr[22];
+    arr[24] += arr[23];
+    arr[25] += arr[24];
+    arr[26] += arr[25];
+    arr[27] += arr[26];
+    arr[28] += arr[27];
+    arr[29] += arr[28];
+    arr[30] += arr[29];
+    arr[31] += arr[30];
+  }
+
+  // For some reason unrolling seems to help
+  private static void innerPrefixSum32(long[] arr) {
+    arr[1] += arr[0];
+    arr[2] += arr[1];
+    arr[3] += arr[2];
+    arr[4] += arr[3];
+    arr[5] += arr[4];
+    arr[6] += arr[5];
+    arr[7] += arr[6];
+    arr[8] += arr[7];
+    arr[9] += arr[8];
+    arr[10] += arr[9];
+    arr[11] += arr[10];
+    arr[12] += arr[11];
+    arr[13] += arr[12];
+    arr[14] += arr[13];
+    arr[15] += arr[14];
+    arr[16] += arr[15];
+    arr[17] += arr[16];
+    arr[18] += arr[17];
+    arr[19] += arr[18];
+    arr[20] += arr[19];
+    arr[21] += arr[20];
+    arr[22] += arr[21];
+    arr[23] += arr[22];
+    arr[24] += arr[23];
+    arr[25] += arr[24];
+    arr[26] += arr[25];
+    arr[27] += arr[26];
+    arr[28] += arr[27];
+    arr[29] += arr[28];
+    arr[30] += arr[29];
+    arr[31] += arr[30];
+    arr[32] += arr[31];
+    arr[33] += arr[32];
+    arr[34] += arr[33];
+    arr[35] += arr[34];
+    arr[36] += arr[35];
+    arr[37] += arr[36];
+    arr[38] += arr[37];
+    arr[39] += arr[38];
+    arr[40] += arr[39];
+    arr[41] += arr[40];
+    arr[42] += arr[41];
+    arr[43] += arr[42];
+    arr[44] += arr[43];
+    arr[45] += arr[44];
+    arr[46] += arr[45];
+    arr[47] += arr[46];
+    arr[48] += arr[47];
+    arr[49] += arr[48];
+    arr[50] += arr[49];
+    arr[51] += arr[50];
+    arr[52] += arr[51];
+    arr[53] += arr[52];
+    arr[54] += arr[53];
+    arr[55] += arr[54];
+    arr[56] += arr[55];
+    arr[57] += arr[56];
+    arr[58] += arr[57];
+    arr[59] += arr[58];
+    arr[60] += arr[59];
+    arr[61] += arr[60];
+    arr[62] += arr[61];
+    arr[63] += arr[62];
+  }
+
   /**
    * Compute the number of bits per value that should be used when {@code bitsPerValue} bits are
    * required.
@@ -158,11 +275,7 @@ public final class ForUtil {
     assert Arrays.binarySearch(FAST_BITS_PER_VALUE, bitsPerValue) >= 0 : bitsPerValue;
     final int nextPrimitive;
     final int numLongs;
-    if (bitsPerValue <= 8) {
-      nextPrimitive = 8;
-      numLongs = BLOCK_SIZE / 8;
-      collapse8(longs);
-    } else if (bitsPerValue <= 16) {
+    if (bitsPerValue <= 9) {
       nextPrimitive = 16;
       numLongs = BLOCK_SIZE / 4;
       collapse16(longs);
@@ -186,9 +299,7 @@ public final class ForUtil {
 
     final int remainingBitsPerLong = shift + bitsPerValue;
     final long maskRemainingBitsPerLong;
-    if (nextPrimitive == 8) {
-      maskRemainingBitsPerLong = MASKS8[remainingBitsPerLong];
-    } else if (nextPrimitive == 16) {
+    if (nextPrimitive == 16) {
       maskRemainingBitsPerLong = MASKS16[remainingBitsPerLong];
     } else {
       maskRemainingBitsPerLong = MASKS32[remainingBitsPerLong];
@@ -206,10 +317,7 @@ public final class ForUtil {
         }
       } else {
         final long mask1, mask2;
-        if (nextPrimitive == 8) {
-          mask1 = MASKS8[remainingBitsPerValue];
-          mask2 = MASKS8[remainingBitsPerLong - remainingBitsPerValue];
-        } else if (nextPrimitive == 16) {
+        if (nextPrimitive == 16) {
           mask1 = MASKS16[remainingBitsPerValue];
           mask2 = MASKS16[remainingBitsPerLong - remainingBitsPerValue];
         } else {
@@ -240,6 +348,41 @@ public final class ForUtil {
     for (int i = 0; i < count; ++i) {
       b[bi + i] = (a[i] >>> shift) & mask;
     }
+  }
+
+  /**
+   * Encode deltas of a strictly monotonically increasing sequence of integers. The provided {@code
+   * longs} are expected to be deltas between consecutive values.
+   */
+  void encodeDeltas(long[] longs, DataOutput out) throws IOException {
+    if (longs[0] == 1 && PForUtil.allEqual(longs)) { // happens with very dense postings
+      out.writeByte((byte) 0);
+    } else {
+      long or = 0;
+      for (long l : longs) {
+        or |= l;
+      }
+      assert or != 0;
+      int bitsPerValue = PackedInts.bitsRequired(or);
+      bitsPerValue = computeActualBitsPerValue(bitsPerValue);
+      out.writeByte((byte) bitsPerValue);
+      encode(longs, bitsPerValue, out);
+    }
+  }
+
+  /** Decode deltas, compute the prefix sum and add {@code base} to all decoded longs. */
+  void decodeAndPrefixSum(DataInput in, long base, long[] longs) throws IOException {
+    final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
+    if (bitsPerValue == 0) {
+      prefixSumOfOnes(longs, base);
+    } else {
+      decodeAndPrefixSum(bitsPerValue, in, base, longs);
+    }
+  }
+
+  void skip(DataInput in) throws IOException {
+    final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
+    in.skipBytes(numBytes(bitsPerValue));
   }
 
 """
@@ -300,16 +443,12 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
 
 def writeDecode(bpv, f):
   next_primitive = 32
-  if bpv <= 8:
-    next_primitive = 8
-  elif bpv <= 16:
+  if bpv <= 9:
     next_primitive = 16
   f.write('  private static void decode%d(DataInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
   num_values_per_long = 64 / next_primitive
-  if bpv == next_primitive:
-    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
-  else:
-    f.write('    in.readLongs(tmp, 0, %d);\n' %(bpv*2))
+  f.write('    in.readLongs(tmp, 0, %d);\n' %(bpv*2))
+  if bpv != next_primitive:
     shift = next_primitive - bpv
     o = 0
     while shift >= 0:
@@ -344,29 +483,28 @@ if __name__ == '__main__':
   // used when the idx is a variable
 """)
   for primitive_size in PRIMITIVE_SIZE:
-    for bpv in FAST_BITS_PER_VALUE:
-      if bpv >= primitive_size:
-        break
-      f.write('  private static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive_size, bpv, primitive_size, bpv))
+    for bpv in range(33):
+      if bpv < primitive_size:
+        f.write('  private static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive_size, bpv, primitive_size, bpv))
 
   f.write("""
   // public for benchmarking
-  /** Decode 128 integers into {@code longs}. */
-  public void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
+  /**
+   * Delta-decode 128 integers into {@code longs}.
+   */
+  public void decodeAndPrefixSum(int bitsPerValue, DataInput in, long base, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in FAST_BITS_PER_VALUE:
     next_primitive = 32
-    if bpv <= 8:
-      next_primitive = 8
-    elif bpv <= 16:
+    if bpv <= 9:
       next_primitive = 16
-    f.write('      case %d:\n' %bpv)
-    f.write('        decode%d(in, tmp, longs);\n' %bpv)
-    f.write('        expand%d(longs);\n' %next_primitive)
-    f.write('        break;\n')
-  f.write('      default:\n')
-  f.write('        throw new UnsupportedOperationException(\"bpv=\" + bitsPerValue);\n')
+    f.write('    case %d:\n' %bpv)
+    f.write('      decode%d(in, tmp, longs);\n' %bpv)
+    f.write('      prefixSum%d(longs, base);\n' %next_primitive)
+    f.write('      break;\n')
+  f.write('    default:\n')
+  f.write('      throw new UnsupportedOperationException(\"bpv=\" + bitsPerValue);\n')
   f.write('    }\n')
   f.write('  }\n')
 
