@@ -38,16 +38,17 @@ public class TestPForUtil extends LuceneTestCase {
     final Directory d = new ByteBuffersDirectory();
     final long endPointer = encodeTestData(iterations, values, d);
 
+    ForUtil forUtil = new ForUtil();
     IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-    PostingDecodingUtil util = PostingDecodingUtil.wrap(in);
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    PostingIndexInput postingIn = new PostingIndexInput(in, forUtil);
+    final PForUtil pforUtil = new PForUtil(forUtil);
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {
         pforUtil.skip(in);
         continue;
       }
       final long[] restored = new long[ForUtil.BLOCK_SIZE];
-      pforUtil.decode(in, util, restored);
+      pforUtil.decode(postingIn, restored);
       int[] ints = new int[ForUtil.BLOCK_SIZE];
       for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
         ints[j] = Math.toIntExact(restored[j]);

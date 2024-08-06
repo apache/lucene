@@ -43,6 +43,7 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
+import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
@@ -52,7 +53,7 @@ import org.apache.lucene.store.DataOutput;
 // else we pack 2 ints per long
 public final class ForUtil {
 
-  static final int BLOCK_SIZE = 128;
+  public static final int BLOCK_SIZE = 128;
   private static final int BLOCK_SIZE_LOG2 = 7;
 
   private static long expandMask32(long mask32) {
@@ -467,7 +468,7 @@ if __name__ == '__main__':
 
   f.write("""
   /** Decode 128 integers into {@code longs}. */
-  public void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
+  void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -491,7 +492,7 @@ if __name__ == '__main__':
   /**
    * Delta-decode 128 integers into {@code longs}.
    */
-  public void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
+  void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):

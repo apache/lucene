@@ -14,48 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.util.Optional;
-import java.util.function.Function;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
-import org.apache.lucene.store.IndexInput;
 
 /** Utility class to decode postings. */
 public abstract class PostingDecodingUtil {
-
-  private static Function<IndexInput, PostingDecodingUtil> lookup() {
-    final var vectorMod =
-        Optional.ofNullable(VectorizationProvider.class.getModule().getLayer())
-            .orElse(ModuleLayer.boot())
-            .findModule("jdk.incubator.vector");
-    vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
-    try {
-      final var lookup = MethodHandles.lookup();
-      final var cls =
-          lookup.findClass(
-              "org.apache.lucene.internal.vectorization.MemorySegmentPostingDecodingUtilProvider");
-      final var ctor = lookup.findConstructor(cls, MethodType.methodType(void.class));
-      return (Function<IndexInput, PostingDecodingUtil>) ctor.invoke();
-    } catch (RuntimeException | Error e) {
-      throw e;
-    } catch (Throwable th) {
-      throw new AssertionError(th);
-    }
-  }
-
-  private static final class Holder {
-    private Holder() {}
-
-    static final Function<IndexInput, PostingDecodingUtil> LOOKUP = lookup();
-  }
-
-  public static PostingDecodingUtil wrap(IndexInput in) throws IOException {
-    return Holder.LOOKUP.apply(in);
-  }
 
   /**
    * Read {@code count} longs. This number must not exceed 64. Apply shift {@code bShift} and mask

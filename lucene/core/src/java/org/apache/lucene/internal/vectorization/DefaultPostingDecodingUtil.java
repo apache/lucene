@@ -17,10 +17,9 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene912.PostingDecodingUtil;
 import org.apache.lucene.store.IndexInput;
 
-public class DefaultPostingDecodingUtil extends PostingDecodingUtil {
+final class DefaultPostingDecodingUtil extends PostingDecodingUtil {
 
   protected final IndexInput in;
 

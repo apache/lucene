@@ -19,6 +19,7 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
+import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
@@ -28,7 +29,7 @@ import org.apache.lucene.store.DataOutput;
 // else we pack 2 ints per long
 public final class ForUtil {
 
-  static final int BLOCK_SIZE = 128;
+  public static final int BLOCK_SIZE = 128;
   private static final int BLOCK_SIZE_LOG2 = 7;
 
   private static long expandMask32(long mask32) {
@@ -409,7 +410,7 @@ public final class ForUtil {
   private static final long MASK32_24 = MASKS32[24];
 
   /** Decode 128 integers into {@code longs}. */
-  public void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
+  void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
     switch (bitsPerValue) {
       case 1:
         decode1(pdu, tmp, longs);
@@ -515,7 +516,7 @@ public final class ForUtil {
   }
 
   /** Delta-decode 128 integers into {@code longs}. */
-  public void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs)
+  void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs)
       throws IOException {
     switch (bitsPerValue) {
       case 1:

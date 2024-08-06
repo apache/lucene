@@ -19,26 +19,29 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteOrder;
+import java.util.Optional;
 import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
-import org.apache.lucene.codecs.lucene912.PostingDecodingUtil;
 import org.apache.lucene.store.IndexInput;
 
-public class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
+final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
+
+  static Optional<PostingDecodingUtil> wrap(IndexInput in, MemorySegment memorySegment) {
+    if (64 % LONG_SPECIES.length() != 0) {
+      // Required to meet PostingDecodingUtil's contract that we do not write entries past index 64
+      // for any `count` in 0..64.
+      return Optional.empty();
+    }
+    return Optional.of(new MemorySegmentPostingDecodingUtil(in, memorySegment));
+  }
 
   private static final VectorSpecies<Long> LONG_SPECIES = VectorSpecies.ofPreferred(long.class);
 
   private final IndexInput in;
   private final MemorySegment memorySegment;
 
-  MemorySegmentPostingDecodingUtil(IndexInput in, MemorySegment memorySegment) {
-    if (64 % LONG_SPECIES.length() != 0) {
-      // Required to meet PostingDecodingUtil's contract that we do not write entries past index 64
-      // for any `count` in 0..64.
-      throw new UnsupportedOperationException(
-          "This implementation is only applicable if 64 is a multiple of the length of the preferred long species");
-    }
+  private MemorySegmentPostingDecodingUtil(IndexInput in, MemorySegment memorySegment) {
     this.in = in;
     this.memorySegment = memorySegment;
   }

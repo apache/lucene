@@ -14,10 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.internal.vectorization;
 
-import java.util.Arrays;
-import org.apache.lucene.internal.vectorization.DefaultPostingDecodingUtil;
+import org.apache.lucene.codecs.lucene912.ForUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -25,6 +24,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 
 public class TestPostingDecodingUtil extends LuceneTestCase {
 
@@ -40,7 +40,8 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
       }
       try (IndexInput in = dir.openInput("tests.bin", IOContext.DEFAULT)) {
         PostingDecodingUtil defaultUtil = new DefaultPostingDecodingUtil(in);
-        PostingDecodingUtil optimizedUtil = PostingDecodingUtil.wrap(in);
+        PostingDecodingUtil optimizedUtil =
+            VectorizationProvider.lookup(true).getPostingDecodingUtil(in);
         assertNotSame(defaultUtil.getClass(), optimizedUtil.getClass());
 
         long[] expectedB = new long[ForUtil.BLOCK_SIZE];
@@ -67,14 +68,18 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           in.seek(startFP);
           optimizedUtil.splitLongs(count, actualB, bShift, bMask, actualC, cMask);
           assertEquals(expectedEndFP, in.getFilePointer());
-          assertArrayEquals(Arrays.copyOf(expectedB, count), Arrays.copyOf(actualB, count));
-          assertArrayEquals(Arrays.copyOf(expectedC, count), Arrays.copyOf(actualC, count));
           assertArrayEquals(
-              Arrays.copyOfRange(expectedB, 64, expectedB.length),
-              Arrays.copyOfRange(actualB, 64, actualB.length));
+              ArrayUtil.copyOfSubArray(expectedB, 0, count),
+              ArrayUtil.copyOfSubArray(actualB, 0, count));
           assertArrayEquals(
-              Arrays.copyOfRange(expectedC, 64, expectedC.length),
-              Arrays.copyOfRange(actualC, 64, actualC.length));
+              ArrayUtil.copyOfSubArray(expectedC, 0, count),
+              ArrayUtil.copyOfSubArray(actualC, 0, count));
+          assertArrayEquals(
+              ArrayUtil.copyOfSubArray(expectedB, 64, expectedB.length),
+              ArrayUtil.copyOfSubArray(actualB, 64, actualB.length));
+          assertArrayEquals(
+              ArrayUtil.copyOfSubArray(expectedC, 64, expectedC.length),
+              ArrayUtil.copyOfSubArray(actualC, 64, actualC.length));
         }
       }
     }

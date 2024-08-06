@@ -64,12 +64,13 @@ public class TestForDeltaUtil extends LuceneTestCase {
     {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-      PostingDecodingUtil util = PostingDecodingUtil.wrap(in);
-      final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(new ForUtil());
+      ForUtil forUtil = new ForUtil();
+      PostingIndexInput postingIn = new PostingIndexInput(in, forUtil);
+      final ForDeltaUtil forDeltaUtil = new ForDeltaUtil(forUtil);
       for (int i = 0; i < iterations; ++i) {
         long base = 0;
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
-        forDeltaUtil.decodeAndPrefixSum(in, util, base, restored);
+        forDeltaUtil.decodeAndPrefixSum(postingIn, base, restored);
         final long[] expected = new long[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           expected[j] = values[i * ForUtil.BLOCK_SIZE + j];

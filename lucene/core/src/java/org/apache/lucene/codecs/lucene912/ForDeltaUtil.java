@@ -22,7 +22,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.packed.PackedInts;
 
 /** Utility class to encode/decode increasing sequences of 128 integers. */
-public class ForDeltaUtil {
+final class ForDeltaUtil {
 
   // IDENTITY_PLUS_ONE[i] == i+1
   private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil.BLOCK_SIZE];
@@ -43,7 +43,7 @@ public class ForDeltaUtil {
 
   private final ForUtil forUtil;
 
-  public ForDeltaUtil(ForUtil forUtil) {
+  ForDeltaUtil(ForUtil forUtil) {
     this.forUtil = forUtil;
   }
 
@@ -67,13 +67,12 @@ public class ForDeltaUtil {
   }
 
   /** Decode deltas, compute the prefix sum and add {@code base} to all decoded longs. */
-  public void decodeAndPrefixSum(DataInput in, PostingDecodingUtil pdu, long base, long[] longs)
-      throws IOException {
-    final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
+  void decodeAndPrefixSum(PostingIndexInput in, long base, long[] longs) throws IOException {
+    final int bitsPerValue = Byte.toUnsignedInt(in.in.readByte());
     if (bitsPerValue == 0) {
       prefixSumOfOnes(longs, base);
     } else {
-      forUtil.decodeAndPrefixSum(bitsPerValue, pdu, base, longs);
+      in.decodeAndPrefixSum(bitsPerValue, base, longs);
     }
   }
 

@@ -22,7 +22,7 @@ import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.lucene912.ForUtil;
-import org.apache.lucene.codecs.lucene912.PostingDecodingUtil;
+import org.apache.lucene.codecs.lucene912.PostingIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -52,12 +52,12 @@ import org.openjdk.jmh.infra.Blackhole;
 @Fork(
     value = 3,
     jvmArgsAppend = {"-Xmx1g", "-Xms1g", "-XX:+AlwaysPreTouch"})
-public class ForUtilBenchmark {
+public class PostingIndexInputBenchmark {
 
   private Path path;
   private Directory dir;
   private IndexInput in;
-  private PostingDecodingUtil pdu;
+  private PostingIndexInput postingIn;
   private final ForUtil forUtil = new ForUtil();
   private final long[] values = new long[128];
 
@@ -76,7 +76,7 @@ public class ForUtilBenchmark {
       }
     }
     in = dir.openInput("docs", IOContext.DEFAULT);
-    pdu = PostingDecodingUtil.wrap(in);
+    postingIn = new PostingIndexInput(in, forUtil);
   }
 
   @TearDown(Level.Trial)
@@ -93,19 +93,14 @@ public class ForUtilBenchmark {
   @Benchmark
   public void decode(Blackhole bh) throws IOException {
     in.seek(3); // random unaligned offset
-    forUtil.decode(bpv, pdu, values);
+    postingIn.decode(bpv, values);
     bh.consume(values);
   }
 
   @Benchmark
   public void decodeAndPrefixSum(Blackhole bh) throws IOException {
     in.seek(3); // random unaligned offset
-    forUtil.decodeAndPrefixSum(bpv, pdu, 100, values);
+    postingIn.decodeAndPrefixSum(bpv, 100, values);
     bh.consume(values);
-  }
-
-  public static void main(String[] args) throws Exception {
-    ForUtilBenchmark b = new ForUtilBenchmark();
-    b.setup();
   }
 }
