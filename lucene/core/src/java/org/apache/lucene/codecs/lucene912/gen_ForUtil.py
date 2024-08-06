@@ -46,11 +46,13 @@ import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
 
-// Inspired from https://fulmicoton.com/posts/bitpacking/
-// Encodes multiple integers in a long to get SIMD-like speedups.
-// If bitsPerValue <= 8 then we pack 8 ints per long
-// else if bitsPerValue <= 16 we pack 4 ints per long
-// else we pack 2 ints per long
+/**
+ * Inspired from https://fulmicoton.com/posts/bitpacking/
+ * Encodes multiple integers in a long to get SIMD-like speedups.
+ * If bitsPerValue &lt;= 8 then we pack 8 ints per long
+ * else if bitsPerValue &lt;= 16 we pack 4 ints per long
+ * else we pack 2 ints per long
+ */
 public final class ForUtil {
 
   public static final int BLOCK_SIZE = 128;
