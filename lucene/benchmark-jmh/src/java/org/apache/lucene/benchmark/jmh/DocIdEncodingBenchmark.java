@@ -64,7 +64,6 @@ public class DocIdEncodingBenchmark {
     static {
         try {
             TMP_DIR = Files.createTempDirectory("docIdJmh");
-            System.out.println(TMP_DIR.toString());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
