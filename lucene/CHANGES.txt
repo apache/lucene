@@ -108,6 +108,9 @@ API Changes
 
 * GITHUB#13410: Removed Scorer#getWeight (Sanjay Dutt, Adrien Grand)
 
+* GITHUB#13499: Remove deprecated TopScoreDocCollector + TopFieldCollector methods (#create, #createSharedManager) (Jakub Slowinski)
+
+
 New Features
 ---------------------
 
@@ -133,6 +136,8 @@ New Features
 
 * GITHUB#13597: Align doc value skipper interval boundaries when an interval contains a constant
   value. (Ignacio Vera)
+
+* GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
 
 Improvements
 ---------------------
@@ -244,14 +249,22 @@ Other
 
 * GITHUB#13332: Improve MissingDoclet linter to check records correctly. (Uwe Schindler)
 
+* GITHUB#13499: Remove usage of TopScoreDocCollector + TopFieldCollector deprecated methods (#create, #createSharedManager) (Jakub Slowinski)
+
 ======================== Lucene 9.12.0 =======================
 
 API Changes
 ---------------------
 
-* GITHUB#13281: Mark COSINE VectorSimilarityFunction as deprecated. (Pulkit Gupta)
+* GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov)
 
-* GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov) 
+* GITHUB#13612: Hunspell: add Suggester#proceedPastRep to avoid losing relevant suggestions. (Peter Gromov)
+
+* GITHUB#13603: Introduced `IndexSearcher#searchLeaf(LeafReaderContext, Weight, Collector)` protected method to
+  facilitate customizing per-leaf behavior of search without requiring to override
+  `search(LeafReaderContext[], Weight, Collector)` which requires overriding the entire loop across the leaves (Luca Cavanna)
+
+* GITHUB#13559: Add BitSet#nextSetBit(int, int) to get the index of the first set bit in range. (Egor Potemkin)
 
 New Features
 ---------------------
@@ -272,6 +285,11 @@ Improvements
 
 * GITHUB#13562: Add Intervals.regexp and Intervals.range methods to produce  IntervalsSource
   for regexp and range queries. (Mayya Sharipova)
+
+* GITHUB#13625: Remove BitSet#nextSetBit code duplication. (Greg Miller)
+
+* GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
 
 Optimizations
 ---------------------
@@ -300,6 +318,21 @@ Optimizations
 * GITHUB#13582: Stop requiring MaxScoreBulkScorer's outer window from having at
   least INNER_WINDOW_SIZE docs. (Adrien Grand)
 
+* GITHUB#13570, GITHUB#13574, GITHUB#13535: Avoid performance degradation with closing shared Arenas.
+  Closing many individual index files can potentially lead to a degradation in execution performance.
+  Index files are mmapped one-to-one with the JDK's foreign shared Arena. The JVM deoptimizes the top
+  few frames of all threads when closing a shared Arena (see JDK-8335480). We mitigate this situation
+  by 1) using a confined Arena where appropriate, and 2) grouping files from the same segment to a
+  single shared Arena. (Chris Hegarty, Michael Gibney, Uwe Schindler)
+
+* GITHUB#13585: Lucene912PostingsFormat, the new default postings format, now
+  only has 2 levels of skip data, which are inlined into postings instead of
+  being stored at the end of postings lists. This translates into better
+  performance for queries that need skipping such as conjunctions.
+  (Adrien Grand)
+
+* GITHUB#13581: OnHeapHnswGraph no longer allocates a lock for every graph node (Mike Sokolov)
+
 Changes in runtime behavior
 ---------------------
 
@@ -319,6 +352,9 @@ Bug Fixes
 
 * GITHUB#13553: Correct RamUsageEstimate for scalar quantized knn vector formats so that raw vectors are correctly
   accounted for. (Ben Trent)
+
+* GITHUB#13615: Correct scalar quantization when used in conjunction with COSINE similarity. Vectors are normalized
+  before quantization to ensure the cosine similarity is correctly calculated. (Ben Trent)
 
 Other
 --------------------

@@ -90,7 +90,17 @@ public abstract class BitSet implements Bits, Accountable {
    * Returns the index of the first set bit starting at the index specified. {@link
    * DocIdSetIterator#NO_MORE_DOCS} is returned if there are no more set bits.
    */
-  public abstract int nextSetBit(int index);
+  public int nextSetBit(int index) {
+    // Default implementation. Subclasses may be able to override with a more performant
+    // implementation.
+    return nextSetBit(index, length());
+  }
+
+  /**
+   * Returns the index of the first set bit from start (inclusive) until end (exclusive). {@link
+   * DocIdSetIterator#NO_MORE_DOCS} is returned if there are no more set bits.
+   */
+  public abstract int nextSetBit(int start, int end);
 
   /** Assert that the current doc is -1. */
   protected final void checkUnpositioned(DocIdSetIterator iter) {
