@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 1, time = 5)
-@Measurement(iterations = 3, time = 8)
+@Measurement(iterations = 10, time = 8)
 @Fork(value = 1)
 public class DocIdEncodingBenchmark {
 
