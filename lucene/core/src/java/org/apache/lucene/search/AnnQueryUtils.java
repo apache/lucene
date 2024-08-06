@@ -21,11 +21,11 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 
-/** Common utilities for KNN queries. */
-class KnnQueryUtils {
+/** Common utilities for ANN queries. */
+class AnnQueryUtils {
 
   /** private constructor */
-  private KnnQueryUtils() {}
+  private AnnQueryUtils() {}
 
   /**
    * Create a bit set for a set of matching docs which are also not deleted.
@@ -58,7 +58,7 @@ class KnnQueryUtils {
 
   /**
    * Create a Weight for the filtered query. The filter will also be enhanced to only match
-   * documents with value in the KNN vector field.
+   * documents with value in the vector field.
    *
    * @param indexSearcher the index searcher to rewrite and create weight
    * @param filter the filter query
