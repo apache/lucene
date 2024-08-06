@@ -47,6 +47,10 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(value = 1)
 public class DocIdEncodingBenchmark {
 
+  /**
+   * Taken from one leaf block of BKD Tree in NYC Taxi dataset which fits under the condition for
+   * BPV_21 as the condition <i>max <= 0x001FFFFF</i> is met with this array.
+   */
   private static final int[] DOC_IDS =
       new int[] {
         270868, 1354402, 1001357, 1188141, 614345, 823249, 955812, 524727, 33848, 920354, 912964,
@@ -116,7 +120,7 @@ public class DocIdEncodingBenchmark {
     docIdEncoder = DocIdEncoder.Factory.fromName(encoderName);
   }
 
-  @TearDown
+  @TearDown(Level.Trial)
   public void finish() throws IOException {
     Files.delete(tmpDir);
   }
@@ -145,6 +149,10 @@ public class DocIdEncodingBenchmark {
     }
   }
 
+  /**
+   * Extend this interface to add a new implementation used for DocId Encoding and Decoding. These
+   * are taken from org.apache.lucene.util.bkd.DocIdsWriter.
+   */
   public interface DocIdEncoder {
     public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException;
 
@@ -252,6 +260,9 @@ public class DocIdEncodingBenchmark {
     }
   }
 
+  /**
+   * Variation of @{@link Bit21With2StepsAddEncoder} but uses 3 loops to decode the array of DocIds.
+   */
   static class Bit21With3StepsAddEncoder implements DocIdEncoder {
 
     @Override
