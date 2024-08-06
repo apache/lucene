@@ -132,13 +132,13 @@ public abstract class PointRangeQuery extends Query {
        * minPackedValue and maxPackedValue are same for non-range inputs like doc's value
        */
       private boolean isOutside(byte[] minPackedValue, byte[] maxPackedValue, int offset) {
-          return (comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0
-                  || comparator.compare(minPackedValue, offset, upperPoint, offset) > 0);
+        return (comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0
+            || comparator.compare(minPackedValue, offset, upperPoint, offset) > 0);
       }
 
       private boolean matches(byte[] packedValue) {
         int offset = 0;
-        for (int dim = 0; dim < numDims; dim++, offset+=bytesPerDim) {
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
           if (isOutside(packedValue, packedValue, offset)) {
             return false;
           }
@@ -151,7 +151,7 @@ public abstract class PointRangeQuery extends Query {
         boolean crosses = false;
         int offset = 0;
 
-        for (int dim = 0; dim < numDims; dim++, offset+=bytesPerDim) {
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
 
           if (isOutside(minPackedValue, maxPackedValue, offset)) {
             return Relation.CELL_OUTSIDE_QUERY;
