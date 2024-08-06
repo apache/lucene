@@ -14,20 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
-import java.lang.foreign.MemorySegment;
+import org.apache.lucene.codecs.lucene912.PostingDecodingUtil;
+import org.apache.lucene.store.IndexInput;
 
-/**
- * Provides access to the backing memory segment.
- *
- * <p>Expert API, allows access to the backing memory.
- */
-public interface MemorySegmentAccessInput extends RandomAccessInput, Cloneable {
+public class DefaultPostingDecodingUtil extends PostingDecodingUtil {
 
-  /** Returns the memory segment for a given position and length, or null. */
-  MemorySegment segmentSliceOrNull(long pos, long len) throws IOException;
+  protected final IndexInput in;
 
-  MemorySegmentAccessInput clone();
+  public DefaultPostingDecodingUtil(IndexInput in) {
+    this.in = in;
+  }
+
+  @Override
+  public void splitLongs(int count, long[] b, int bShift, long bMask, long[] c, long cMask)
+      throws IOException {
+    assert count <= 64;
+    in.readLongs(c, 0, count);
+    // The below loop is auto-vectorized
+    for (int i = 0; i < count; ++i) {
+      b[i] = (c[i] >>> bShift) & bMask;
+      c[i] &= cMask;
+    }
+  }
 }

@@ -39,6 +39,7 @@ public class TestPForUtil extends LuceneTestCase {
     final long endPointer = encodeTestData(iterations, values, d);
 
     IndexInput in = d.openInput("test.bin", IOContext.READONCE);
+    PostingDecodingUtil util = PostingDecodingUtil.wrap(in);
     final PForUtil pforUtil = new PForUtil(new ForUtil());
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {
@@ -46,7 +47,7 @@ public class TestPForUtil extends LuceneTestCase {
         continue;
       }
       final long[] restored = new long[ForUtil.BLOCK_SIZE];
-      pforUtil.decode(in, restored);
+      pforUtil.decode(in, util, restored);
       int[] ints = new int[ForUtil.BLOCK_SIZE];
       for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
         ints[j] = Math.toIntExact(restored[j]);

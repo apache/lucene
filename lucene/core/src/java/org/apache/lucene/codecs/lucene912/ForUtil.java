@@ -19,7 +19,6 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
 // Inspired from https://fulmicoton.com/posts/bitpacking/
@@ -27,7 +26,7 @@ import org.apache.lucene.store.DataOutput;
 // If bitsPerValue <= 8 then we pack 8 ints per long
 // else if bitsPerValue <= 16 we pack 4 ints per long
 // else we pack 2 ints per long
-final class ForUtil {
+public final class ForUtil {
 
   static final int BLOCK_SIZE = 128;
   private static final int BLOCK_SIZE_LOG2 = 7;
@@ -300,13 +299,13 @@ final class ForUtil {
     return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
-  private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
-      throws IOException {
+  private static void decodeSlow(
+      int bitsPerValue, PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {
     final int numLongs = bitsPerValue << 1;
-    in.readLongs(tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
-    int longsIdx = 0;
-    int shift = 32 - bitsPerValue;
+    pdu.splitLongs(numLongs, longs, 32 - bitsPerValue, mask, tmp, -1L);
+    int longsIdx = numLongs;
+    int shift = 32 - 2 * bitsPerValue;
     for (; shift >= 0; shift -= bitsPerValue) {
       shiftLongs(tmp, numLongs, longs, longsIdx, shift, mask);
       longsIdx += numLongs;
@@ -342,24 +341,25 @@ final class ForUtil {
     }
   }
 
-  private static final long[] MASKS8 = new long[8];
-  private static final long[] MASKS16 = new long[16];
-  private static final long[] MASKS32 = new long[32];
+  private static final long[] MASKS8 = new long[9];
+  private static final long[] MASKS16 = new long[17];
+  private static final long[] MASKS32 = new long[33];
 
   static {
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i <= 8; ++i) {
       MASKS8[i] = mask8(i);
     }
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i <= 16; ++i) {
       MASKS16[i] = mask16(i);
     }
-    for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i <= 32; ++i) {
       MASKS32[i] = mask32(i);
     }
   }
 
   // mark values in array as final longs to avoid the cost of reading array, arrays should only be
   // used when the idx is a variable
+  private static final long MASK8_0 = MASKS8[0];
   private static final long MASK8_1 = MASKS8[1];
   private static final long MASK8_2 = MASKS8[2];
   private static final long MASK8_3 = MASKS8[3];
@@ -367,6 +367,8 @@ final class ForUtil {
   private static final long MASK8_5 = MASKS8[5];
   private static final long MASK8_6 = MASKS8[6];
   private static final long MASK8_7 = MASKS8[7];
+  private static final long MASK8_8 = MASKS8[8];
+  private static final long MASK16_0 = MASKS16[0];
   private static final long MASK16_1 = MASKS16[1];
   private static final long MASK16_2 = MASKS16[2];
   private static final long MASK16_3 = MASKS16[3];
@@ -381,6 +383,7 @@ final class ForUtil {
   private static final long MASK16_13 = MASKS16[13];
   private static final long MASK16_14 = MASKS16[14];
   private static final long MASK16_15 = MASKS16[15];
+  private static final long MASK16_16 = MASKS16[16];
   private static final long MASK32_1 = MASKS32[1];
   private static final long MASK32_2 = MASKS32[2];
   private static final long MASK32_3 = MASKS32[3];
@@ -406,221 +409,221 @@ final class ForUtil {
   private static final long MASK32_24 = MASKS32[24];
 
   /** Decode 128 integers into {@code longs}. */
-  void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
+  public void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
     switch (bitsPerValue) {
       case 1:
-        decode1(in, tmp, longs);
+        decode1(pdu, tmp, longs);
         expand8(longs);
         break;
       case 2:
-        decode2(in, tmp, longs);
+        decode2(pdu, tmp, longs);
         expand8(longs);
         break;
       case 3:
-        decode3(in, tmp, longs);
+        decode3(pdu, tmp, longs);
         expand8(longs);
         break;
       case 4:
-        decode4(in, tmp, longs);
+        decode4(pdu, tmp, longs);
         expand8(longs);
         break;
       case 5:
-        decode5(in, tmp, longs);
+        decode5(pdu, tmp, longs);
         expand8(longs);
         break;
       case 6:
-        decode6(in, tmp, longs);
+        decode6(pdu, tmp, longs);
         expand8(longs);
         break;
       case 7:
-        decode7(in, tmp, longs);
+        decode7(pdu, tmp, longs);
         expand8(longs);
         break;
       case 8:
-        decode8(in, tmp, longs);
+        decode8(pdu, tmp, longs);
         expand8(longs);
         break;
       case 9:
-        decode9(in, tmp, longs);
+        decode9(pdu, tmp, longs);
         expand16(longs);
         break;
       case 10:
-        decode10(in, tmp, longs);
+        decode10(pdu, tmp, longs);
         expand16(longs);
         break;
       case 11:
-        decode11(in, tmp, longs);
+        decode11(pdu, tmp, longs);
         expand16(longs);
         break;
       case 12:
-        decode12(in, tmp, longs);
+        decode12(pdu, tmp, longs);
         expand16(longs);
         break;
       case 13:
-        decode13(in, tmp, longs);
+        decode13(pdu, tmp, longs);
         expand16(longs);
         break;
       case 14:
-        decode14(in, tmp, longs);
+        decode14(pdu, tmp, longs);
         expand16(longs);
         break;
       case 15:
-        decode15(in, tmp, longs);
+        decode15(pdu, tmp, longs);
         expand16(longs);
         break;
       case 16:
-        decode16(in, tmp, longs);
+        decode16(pdu, tmp, longs);
         expand16(longs);
         break;
       case 17:
-        decode17(in, tmp, longs);
+        decode17(pdu, tmp, longs);
         expand32(longs);
         break;
       case 18:
-        decode18(in, tmp, longs);
+        decode18(pdu, tmp, longs);
         expand32(longs);
         break;
       case 19:
-        decode19(in, tmp, longs);
+        decode19(pdu, tmp, longs);
         expand32(longs);
         break;
       case 20:
-        decode20(in, tmp, longs);
+        decode20(pdu, tmp, longs);
         expand32(longs);
         break;
       case 21:
-        decode21(in, tmp, longs);
+        decode21(pdu, tmp, longs);
         expand32(longs);
         break;
       case 22:
-        decode22(in, tmp, longs);
+        decode22(pdu, tmp, longs);
         expand32(longs);
         break;
       case 23:
-        decode23(in, tmp, longs);
+        decode23(pdu, tmp, longs);
         expand32(longs);
         break;
       case 24:
-        decode24(in, tmp, longs);
+        decode24(pdu, tmp, longs);
         expand32(longs);
         break;
       default:
-        decodeSlow(bitsPerValue, in, tmp, longs);
+        decodeSlow(bitsPerValue, pdu, tmp, longs);
         expand32(longs);
         break;
     }
   }
 
   /** Delta-decode 128 integers into {@code longs}. */
-  void decodeAndPrefixSum(int bitsPerValue, DataInput in, long base, long[] longs)
+  public void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs)
       throws IOException {
     switch (bitsPerValue) {
       case 1:
-        decode1(in, tmp, longs);
+        decode1(pdu, tmp, longs);
         prefixSum8(longs, base);
         break;
       case 2:
-        decode2(in, tmp, longs);
+        decode2(pdu, tmp, longs);
         prefixSum8(longs, base);
         break;
       case 3:
-        decode3(in, tmp, longs);
+        decode3(pdu, tmp, longs);
         prefixSum8(longs, base);
         break;
       case 4:
-        decode4(in, tmp, longs);
+        decode4(pdu, tmp, longs);
         prefixSum8(longs, base);
         break;
       case 5:
-        decode5(in, tmp, longs);
+        decode5(pdu, tmp, longs);
         prefixSum8(longs, base);
         break;
       case 6:
-        decode6(in, tmp, longs);
+        decode6(pdu, tmp, longs);
         prefixSum8(longs, base);
         break;
       case 7:
-        decode7(in, tmp, longs);
+        decode7(pdu, tmp, longs);
         prefixSum8(longs, base);
         break;
       case 8:
-        decode8(in, tmp, longs);
+        decode8(pdu, tmp, longs);
         prefixSum8(longs, base);
         break;
       case 9:
-        decode9(in, tmp, longs);
+        decode9(pdu, tmp, longs);
         prefixSum16(longs, base);
         break;
       case 10:
-        decode10(in, tmp, longs);
+        decode10(pdu, tmp, longs);
         prefixSum16(longs, base);
         break;
       case 11:
-        decode11(in, tmp, longs);
+        decode11(pdu, tmp, longs);
         prefixSum16(longs, base);
         break;
       case 12:
-        decode12(in, tmp, longs);
+        decode12(pdu, tmp, longs);
         prefixSum16(longs, base);
         break;
       case 13:
-        decode13(in, tmp, longs);
+        decode13(pdu, tmp, longs);
         prefixSum16(longs, base);
         break;
       case 14:
-        decode14(in, tmp, longs);
+        decode14(pdu, tmp, longs);
         prefixSum16(longs, base);
         break;
       case 15:
-        decode15(in, tmp, longs);
+        decode15(pdu, tmp, longs);
         prefixSum16(longs, base);
         break;
       case 16:
-        decode16(in, tmp, longs);
+        decode16(pdu, tmp, longs);
         prefixSum16(longs, base);
         break;
       case 17:
-        decode17(in, tmp, longs);
+        decode17(pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
       case 18:
-        decode18(in, tmp, longs);
+        decode18(pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
       case 19:
-        decode19(in, tmp, longs);
+        decode19(pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
       case 20:
-        decode20(in, tmp, longs);
+        decode20(pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
       case 21:
-        decode21(in, tmp, longs);
+        decode21(pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
       case 22:
-        decode22(in, tmp, longs);
+        decode22(pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
       case 23:
-        decode23(in, tmp, longs);
+        decode23(pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
       case 24:
-        decode24(in, tmp, longs);
+        decode24(pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
       default:
-        decodeSlow(bitsPerValue, in, tmp, longs);
+        decodeSlow(bitsPerValue, pdu, tmp, longs);
         prefixSum32(longs, base);
         break;
     }
   }
 
-  private static void decode1(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 2);
-    shiftLongs(tmp, 2, longs, 0, 7, MASK8_1);
+  private static void decode1(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(2, longs, 7, MASK8_1, tmp, MASK8_7);
     shiftLongs(tmp, 2, longs, 2, 6, MASK8_1);
     shiftLongs(tmp, 2, longs, 4, 5, MASK8_1);
     shiftLongs(tmp, 2, longs, 6, 4, MASK8_1);
@@ -630,17 +633,17 @@ final class ForUtil {
     shiftLongs(tmp, 2, longs, 14, 0, MASK8_1);
   }
 
-  private static void decode2(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 4);
-    shiftLongs(tmp, 4, longs, 0, 6, MASK8_2);
+  private static void decode2(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(4, longs, 6, MASK8_2, tmp, MASK8_6);
     shiftLongs(tmp, 4, longs, 4, 4, MASK8_2);
     shiftLongs(tmp, 4, longs, 8, 2, MASK8_2);
     shiftLongs(tmp, 4, longs, 12, 0, MASK8_2);
   }
 
-  private static void decode3(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 6);
-    shiftLongs(tmp, 6, longs, 0, 5, MASK8_3);
+  private static void decode3(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(6, longs, 5, MASK8_3, tmp, MASK8_5);
     shiftLongs(tmp, 6, longs, 6, 2, MASK8_3);
     for (int iter = 0, tmpIdx = 0, longsIdx = 12; iter < 2; ++iter, tmpIdx += 3, longsIdx += 2) {
       long l0 = (tmp[tmpIdx + 0] & MASK8_2) << 1;
@@ -652,15 +655,15 @@ final class ForUtil {
     }
   }
 
-  private static void decode4(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 8);
-    shiftLongs(tmp, 8, longs, 0, 4, MASK8_4);
+  private static void decode4(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(8, longs, 4, MASK8_4, tmp, MASK8_4);
     shiftLongs(tmp, 8, longs, 8, 0, MASK8_4);
   }
 
-  private static void decode5(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 10);
-    shiftLongs(tmp, 10, longs, 0, 3, MASK8_5);
+  private static void decode5(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(10, longs, 3, MASK8_5, tmp, MASK8_3);
     for (int iter = 0, tmpIdx = 0, longsIdx = 10; iter < 2; ++iter, tmpIdx += 5, longsIdx += 3) {
       long l0 = (tmp[tmpIdx + 0] & MASK8_3) << 2;
       l0 |= (tmp[tmpIdx + 1] >>> 1) & MASK8_2;
@@ -675,10 +678,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode6(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 12);
-    shiftLongs(tmp, 12, longs, 0, 2, MASK8_6);
-    shiftLongs(tmp, 12, tmp, 0, 0, MASK8_2);
+  private static void decode6(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(12, longs, 2, MASK8_6, tmp, MASK8_2);
     for (int iter = 0, tmpIdx = 0, longsIdx = 12; iter < 4; ++iter, tmpIdx += 3, longsIdx += 1) {
       long l0 = tmp[tmpIdx + 0] << 4;
       l0 |= tmp[tmpIdx + 1] << 2;
@@ -687,10 +689,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode7(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 14);
-    shiftLongs(tmp, 14, longs, 0, 1, MASK8_7);
-    shiftLongs(tmp, 14, tmp, 0, 0, MASK8_1);
+  private static void decode7(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(14, longs, 1, MASK8_7, tmp, MASK8_1);
     for (int iter = 0, tmpIdx = 0, longsIdx = 14; iter < 2; ++iter, tmpIdx += 7, longsIdx += 1) {
       long l0 = tmp[tmpIdx + 0] << 6;
       l0 |= tmp[tmpIdx + 1] << 5;
@@ -703,13 +704,14 @@ final class ForUtil {
     }
   }
 
-  private static void decode8(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(longs, 0, 16);
+  private static void decode8(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(16, longs, 0, MASK8_8, tmp, MASK8_0);
   }
 
-  private static void decode9(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 18);
-    shiftLongs(tmp, 18, longs, 0, 7, MASK16_9);
+  private static void decode9(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(18, longs, 7, MASK16_9, tmp, MASK16_7);
     for (int iter = 0, tmpIdx = 0, longsIdx = 18; iter < 2; ++iter, tmpIdx += 9, longsIdx += 7) {
       long l0 = (tmp[tmpIdx + 0] & MASK16_7) << 2;
       l0 |= (tmp[tmpIdx + 1] >>> 5) & MASK16_2;
@@ -736,9 +738,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode10(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 20);
-    shiftLongs(tmp, 20, longs, 0, 6, MASK16_10);
+  private static void decode10(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(20, longs, 6, MASK16_10, tmp, MASK16_6);
     for (int iter = 0, tmpIdx = 0, longsIdx = 20; iter < 4; ++iter, tmpIdx += 5, longsIdx += 3) {
       long l0 = (tmp[tmpIdx + 0] & MASK16_6) << 4;
       l0 |= (tmp[tmpIdx + 1] >>> 2) & MASK16_4;
@@ -753,9 +755,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode11(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 22);
-    shiftLongs(tmp, 22, longs, 0, 5, MASK16_11);
+  private static void decode11(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(22, longs, 5, MASK16_11, tmp, MASK16_5);
     for (int iter = 0, tmpIdx = 0, longsIdx = 22; iter < 2; ++iter, tmpIdx += 11, longsIdx += 5) {
       long l0 = (tmp[tmpIdx + 0] & MASK16_5) << 6;
       l0 |= (tmp[tmpIdx + 1] & MASK16_5) << 1;
@@ -780,10 +782,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode12(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 24);
-    shiftLongs(tmp, 24, longs, 0, 4, MASK16_12);
-    shiftLongs(tmp, 24, tmp, 0, 0, MASK16_4);
+  private static void decode12(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(24, longs, 4, MASK16_12, tmp, MASK16_4);
     for (int iter = 0, tmpIdx = 0, longsIdx = 24; iter < 8; ++iter, tmpIdx += 3, longsIdx += 1) {
       long l0 = tmp[tmpIdx + 0] << 8;
       l0 |= tmp[tmpIdx + 1] << 4;
@@ -792,9 +793,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode13(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 26);
-    shiftLongs(tmp, 26, longs, 0, 3, MASK16_13);
+  private static void decode13(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(26, longs, 3, MASK16_13, tmp, MASK16_3);
     for (int iter = 0, tmpIdx = 0, longsIdx = 26; iter < 2; ++iter, tmpIdx += 13, longsIdx += 3) {
       long l0 = (tmp[tmpIdx + 0] & MASK16_3) << 10;
       l0 |= (tmp[tmpIdx + 1] & MASK16_3) << 7;
@@ -817,10 +818,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode14(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 28);
-    shiftLongs(tmp, 28, longs, 0, 2, MASK16_14);
-    shiftLongs(tmp, 28, tmp, 0, 0, MASK16_2);
+  private static void decode14(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(28, longs, 2, MASK16_14, tmp, MASK16_2);
     for (int iter = 0, tmpIdx = 0, longsIdx = 28; iter < 4; ++iter, tmpIdx += 7, longsIdx += 1) {
       long l0 = tmp[tmpIdx + 0] << 12;
       l0 |= tmp[tmpIdx + 1] << 10;
@@ -833,10 +833,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode15(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 30);
-    shiftLongs(tmp, 30, longs, 0, 1, MASK16_15);
-    shiftLongs(tmp, 30, tmp, 0, 0, MASK16_1);
+  private static void decode15(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(30, longs, 1, MASK16_15, tmp, MASK16_1);
     for (int iter = 0, tmpIdx = 0, longsIdx = 30; iter < 2; ++iter, tmpIdx += 15, longsIdx += 1) {
       long l0 = tmp[tmpIdx + 0] << 14;
       l0 |= tmp[tmpIdx + 1] << 13;
@@ -857,13 +856,14 @@ final class ForUtil {
     }
   }
 
-  private static void decode16(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(longs, 0, 32);
+  private static void decode16(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(32, longs, 0, MASK16_16, tmp, MASK16_0);
   }
 
-  private static void decode17(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 34);
-    shiftLongs(tmp, 34, longs, 0, 15, MASK32_17);
+  private static void decode17(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(34, longs, 15, MASK32_17, tmp, MASK32_15);
     for (int iter = 0, tmpIdx = 0, longsIdx = 34; iter < 2; ++iter, tmpIdx += 17, longsIdx += 15) {
       long l0 = (tmp[tmpIdx + 0] & MASK32_15) << 2;
       l0 |= (tmp[tmpIdx + 1] >>> 13) & MASK32_2;
@@ -914,9 +914,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode18(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 36);
-    shiftLongs(tmp, 36, longs, 0, 14, MASK32_18);
+  private static void decode18(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(36, longs, 14, MASK32_18, tmp, MASK32_14);
     for (int iter = 0, tmpIdx = 0, longsIdx = 36; iter < 4; ++iter, tmpIdx += 9, longsIdx += 7) {
       long l0 = (tmp[tmpIdx + 0] & MASK32_14) << 4;
       l0 |= (tmp[tmpIdx + 1] >>> 10) & MASK32_4;
@@ -943,9 +943,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode19(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 38);
-    shiftLongs(tmp, 38, longs, 0, 13, MASK32_19);
+  private static void decode19(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(38, longs, 13, MASK32_19, tmp, MASK32_13);
     for (int iter = 0, tmpIdx = 0, longsIdx = 38; iter < 2; ++iter, tmpIdx += 19, longsIdx += 13) {
       long l0 = (tmp[tmpIdx + 0] & MASK32_13) << 6;
       l0 |= (tmp[tmpIdx + 1] >>> 7) & MASK32_6;
@@ -994,9 +994,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode20(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 40);
-    shiftLongs(tmp, 40, longs, 0, 12, MASK32_20);
+  private static void decode20(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(40, longs, 12, MASK32_20, tmp, MASK32_12);
     for (int iter = 0, tmpIdx = 0, longsIdx = 40; iter < 8; ++iter, tmpIdx += 5, longsIdx += 3) {
       long l0 = (tmp[tmpIdx + 0] & MASK32_12) << 8;
       l0 |= (tmp[tmpIdx + 1] >>> 4) & MASK32_8;
@@ -1011,9 +1011,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode21(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 42);
-    shiftLongs(tmp, 42, longs, 0, 11, MASK32_21);
+  private static void decode21(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(42, longs, 11, MASK32_21, tmp, MASK32_11);
     for (int iter = 0, tmpIdx = 0, longsIdx = 42; iter < 2; ++iter, tmpIdx += 21, longsIdx += 11) {
       long l0 = (tmp[tmpIdx + 0] & MASK32_11) << 10;
       l0 |= (tmp[tmpIdx + 1] >>> 1) & MASK32_10;
@@ -1060,9 +1060,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode22(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 44);
-    shiftLongs(tmp, 44, longs, 0, 10, MASK32_22);
+  private static void decode22(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(44, longs, 10, MASK32_22, tmp, MASK32_10);
     for (int iter = 0, tmpIdx = 0, longsIdx = 44; iter < 4; ++iter, tmpIdx += 11, longsIdx += 5) {
       long l0 = (tmp[tmpIdx + 0] & MASK32_10) << 12;
       l0 |= (tmp[tmpIdx + 1] & MASK32_10) << 2;
@@ -1087,9 +1087,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode23(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 46);
-    shiftLongs(tmp, 46, longs, 0, 9, MASK32_23);
+  private static void decode23(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(46, longs, 9, MASK32_23, tmp, MASK32_9);
     for (int iter = 0, tmpIdx = 0, longsIdx = 46; iter < 2; ++iter, tmpIdx += 23, longsIdx += 9) {
       long l0 = (tmp[tmpIdx + 0] & MASK32_9) << 14;
       l0 |= (tmp[tmpIdx + 1] & MASK32_9) << 5;
@@ -1134,10 +1134,9 @@ final class ForUtil {
     }
   }
 
-  private static void decode24(DataInput in, long[] tmp, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 48);
-    shiftLongs(tmp, 48, longs, 0, 8, MASK32_24);
-    shiftLongs(tmp, 48, tmp, 0, 0, MASK32_8);
+  private static void decode24(PostingDecodingUtil pdu, long[] tmp, long[] longs)
+      throws IOException {
+    pdu.splitLongs(48, longs, 8, MASK32_24, tmp, MASK32_8);
     for (int iter = 0, tmpIdx = 0, longsIdx = 48; iter < 16; ++iter, tmpIdx += 3, longsIdx += 1) {
       long l0 = tmp[tmpIdx + 0] << 16;
       l0 |= tmp[tmpIdx + 1] << 8;

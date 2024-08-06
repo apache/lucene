@@ -43,7 +43,7 @@ public class ForDeltaUtil {
 
   private final ForUtil forUtil;
 
-  ForDeltaUtil(ForUtil forUtil) {
+  public ForDeltaUtil(ForUtil forUtil) {
     this.forUtil = forUtil;
   }
 
@@ -67,12 +67,13 @@ public class ForDeltaUtil {
   }
 
   /** Decode deltas, compute the prefix sum and add {@code base} to all decoded longs. */
-  void decodeAndPrefixSum(DataInput in, long base, long[] longs) throws IOException {
+  public void decodeAndPrefixSum(DataInput in, PostingDecodingUtil pdu, long base, long[] longs)
+      throws IOException {
     final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
     if (bitsPerValue == 0) {
       prefixSumOfOnes(longs, base);
     } else {
-      forUtil.decodeAndPrefixSum(bitsPerValue, in, base, longs);
+      forUtil.decodeAndPrefixSum(bitsPerValue, pdu, base, longs);
     }
   }
 

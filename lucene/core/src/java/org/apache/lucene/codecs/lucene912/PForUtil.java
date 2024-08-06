@@ -104,14 +104,14 @@ final class PForUtil {
   }
 
   /** Decode 128 integers into {@code ints}. */
-  void decode(DataInput in, long[] longs) throws IOException {
+  void decode(DataInput in, PostingDecodingUtil pdu, long[] longs) throws IOException {
     final int token = Byte.toUnsignedInt(in.readByte());
     final int bitsPerValue = token & 0x1f;
     final int numExceptions = token >>> 5;
     if (bitsPerValue == 0) {
       Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, in.readVLong());
     } else {
-      forUtil.decode(bitsPerValue, in, longs);
+      forUtil.decode(bitsPerValue, pdu, longs);
     }
     for (int i = 0; i < numExceptions; ++i) {
       longs[Byte.toUnsignedInt(in.readByte())] |=

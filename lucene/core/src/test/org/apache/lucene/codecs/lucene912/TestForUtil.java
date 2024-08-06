@@ -69,12 +69,13 @@ public class TestForUtil extends LuceneTestCase {
     {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
+      PostingDecodingUtil util = PostingDecodingUtil.wrap(in);
       final ForUtil forUtil = new ForUtil();
       for (int i = 0; i < iterations; ++i) {
         final int bitsPerValue = in.readByte();
         final long currentFilePointer = in.getFilePointer();
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
-        forUtil.decode(bitsPerValue, in, restored);
+        forUtil.decode(bitsPerValue, util, restored);
         int[] ints = new int[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           ints[j] = Math.toIntExact(restored[j]);
