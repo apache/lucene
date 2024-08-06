@@ -101,14 +101,16 @@ public class DocIdEncodingBenchmark {
             "docIdJmhData_",
             docIdEncoder.getClass().getSimpleName(),
             String.valueOf(System.nanoTime()));
-    for (int[] docIdSequence : docIdSequences) {
-      try (Directory dir = new NIOFSDirectory(tmpDir)) {
-        try (IndexOutput out = dir.createOutput(dataFile, IOContext.DEFAULT)) {
+    try (Directory dir = new NIOFSDirectory(tmpDir)) {
+      try (IndexOutput out = dir.createOutput(dataFile, IOContext.DEFAULT)) {
+        for (int[] docIdSequence : docIdSequences) {
           for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
             docIdEncoder.encode(out, 0, docIdSequence.length, docIdSequence);
           }
         }
-        try (IndexInput in = dir.openInput(dataFile, IOContext.DEFAULT)) {
+      }
+      try (IndexInput in = dir.openInput(dataFile, IOContext.DEFAULT)) {
+        for (int[] docIdSequence : docIdSequences) {
           for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
             docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
           }
