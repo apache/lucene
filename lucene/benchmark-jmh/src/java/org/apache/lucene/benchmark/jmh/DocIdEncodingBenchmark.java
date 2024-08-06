@@ -17,6 +17,7 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -52,17 +53,14 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(value = 1)
 public class DocIdEncodingBenchmark {
 
-  /**
-   * Taken from multiple leaf blocks of BKD Tree in NYC Taxi dataset which fit under the condition
-   * required for BPV_21 as the condition <i>max <= 0x001FFFFF</i> is met with this array.
-   */
   private static final List<int[]> docIdSequences = new ArrayList<>();
 
   static {
     try (Scanner fileReader =
         new Scanner(
             Objects.requireNonNull(
-                DocIdEncodingBenchmark.class.getResourceAsStream("/docIds_bpv21.txt")))) {
+                DocIdEncodingBenchmark.class.getResourceAsStream("/docIds_bpv21.txt")),
+            Charset.defaultCharset())) {
       while (fileReader.hasNextLine()) {
         String sequence = fileReader.nextLine().trim();
         if (!sequence.startsWith("#") && !sequence.isEmpty()) {
