@@ -96,12 +96,14 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     final Weight seedWeight;
     if (seed != null) {
-      BooleanQuery booleanSeedQuery =
+      BooleanQuery.Builder booleanSeedQueryBuilder =
           new BooleanQuery.Builder()
               .add(seed, BooleanClause.Occur.MUST)
-              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
-              .build();
-      Query seedRewritten = indexSearcher.rewrite(booleanSeedQuery);
+              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER);
+      if (filter != null) {
+        booleanSeedQueryBuilder.add(filter, BooleanClause.Occur.FILTER);
+      }
+      Query seedRewritten = indexSearcher.rewrite(booleanSeedQueryBuilder.build());
       seedWeight = indexSearcher.createWeight(seedRewritten, ScoreMode.TOP_SCORES, 1f);
     } else {
       seedWeight = null;
