@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -72,4 +73,54 @@ public interface FlatVectorsScorer {
       RandomAccessVectorValues vectorValues,
       byte[] target)
       throws IOException;
+
+  /**
+   * Returns a {@link RandomVectorScorerSupplier} that can be used to score multi-vector values
+   *
+   * @param similarityFunction the similarity function to use
+   * @param values the multi-vector values to score
+   * @return a {@link RandomVectorScorerSupplier} that can be used to score multi-vectors
+   * @throws IOException if an I/O error occurs
+   */
+  default RandomVectorScorerSupplier getRandomMultiVectorScorerSupplier(
+      MultiVectorSimilarityFunction similarityFunction, RandomAccessVectorValues values)
+      throws IOException {
+    throw new UnsupportedOperationException("Multi-Vector scoring not supported");
+  }
+
+  /**
+   * Returns a {@link RandomVectorScorer} for the given set of multi-vectors and target
+   * multi-vector.
+   *
+   * @param similarityFunction the similarity function to use
+   * @param values the multi-vector values to score
+   * @param target the target multi-vector with vector values packed in a single array
+   * @return a {@link RandomVectorScorer} for the given field and target multi-vector.
+   * @throws IOException if an I/O error occurs when reading from the index.
+   */
+  default RandomVectorScorer getRandomMultiVectorScorer(
+      MultiVectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues values,
+      float[] target)
+      throws IOException {
+    throw new UnsupportedOperationException("Multi-Vector scoring not supported");
+  }
+
+  /**
+   * Returns a {@link RandomVectorScorer} for the given set of multi-vectors and target
+   * multi-vector.
+   *
+   * @param similarityFunction the similarity function to use
+   * @param values the multi-vector values to score
+   * @param target the target multi-vector with vector values packed in a single array
+   * @return a {@link RandomVectorScorer} for the given field and target multi-vector.
+   * @throws IOException if an I/O error occurs when reading from the index.
+   */
+  default RandomVectorScorer getRandomMultiVectorScorer(
+      MultiVectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues values,
+      byte[] target)
+      throws IOException {
+    throw new UnsupportedOperationException("Multi-Vector scoring not supported");
+  }
 }

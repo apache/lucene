@@ -30,6 +30,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedDocValues;
@@ -105,6 +106,7 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
+            MultiVectorSimilarityFunction.Aggregation.NONE,
             false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});

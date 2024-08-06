@@ -18,8 +18,10 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.document.KnnFloatMultiVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -47,7 +49,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final float[] target;
+  protected final float[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -75,6 +77,35 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   public KnnFloatVectorQuery(String field, float[] target, int k, Query filter) {
     super(field, k, filter);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+  }
+
+  /**
+   * Convenience function to create a {@link KnnFloatVectorQuery} for multi-vector targets
+   *
+   * @param field a field that has been indexed as a {@link KnnFloatMultiVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find
+   * @param filter a filter applied before the vector search
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   * @return {@link KnnFloatVectorQuery}
+   */
+  public static KnnFloatVectorQuery create(
+      String field, List<float[]> target, int k, Query filter) {
+    if (target == null || target.isEmpty()) {
+      throw new IllegalArgumentException("empty target");
+    }
+    int targetDim = target.get(0).length;
+    float[] packedTarget = new float[targetDim * target.size()];
+    int dPtr = 0;
+    for (float[] v : target) {
+      if (v.length != targetDim) {
+        throw new IllegalArgumentException(
+            "all vectors in the multi-vector should have the same dimension");
+      }
+      System.arraycopy(v, 0, packedTarget, dPtr, targetDim);
+      dPtr += targetDim;
+    }
+    return new KnnFloatVectorQuery(field, packedTarget, k, filter);
   }
 
   @Override

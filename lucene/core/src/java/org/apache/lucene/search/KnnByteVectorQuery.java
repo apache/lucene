@@ -18,9 +18,11 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.KnnByteMultiVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
@@ -46,13 +48,13 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final byte[] target;
+  protected final byte[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
    *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @throws IllegalArgumentException if <code>k</code> is less than 1
@@ -65,7 +67,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
    *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @param filter a filter applied before the vector search
@@ -74,6 +76,34 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   public KnnByteVectorQuery(String field, byte[] target, int k, Query filter) {
     super(field, k, filter);
     this.target = Objects.requireNonNull(target, "target");
+  }
+
+  /**
+   * Convenience function to create a {@link KnnByteVectorQuery} for multi-vector targets
+   *
+   * @param field a field that has been indexed as a {@link KnnByteMultiVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find
+   * @param filter a filter applied before the vector search
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   * @return {@link KnnByteVectorQuery}
+   */
+  public static KnnByteVectorQuery create(String field, List<byte[]> target, int k, Query filter) {
+    if (target == null || target.isEmpty()) {
+      throw new IllegalArgumentException("empty target");
+    }
+    int targetDim = target.get(0).length;
+    byte[] packedTarget = new byte[targetDim * target.size()];
+    int dPtr = 0;
+    for (byte[] v : target) {
+      if (v.length != targetDim) {
+        throw new IllegalArgumentException(
+            "all vectors in the multi-vector should have the same dimension");
+      }
+      System.arraycopy(v, 0, packedTarget, dPtr, targetDim);
+      dPtr += targetDim;
+    }
+    return new KnnByteVectorQuery(field, packedTarget, k, filter);
   }
 
   @Override

@@ -36,7 +36,37 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FieldInvertState;
+import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.LeafMetaData;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.OrdTermState;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermState;
+import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
@@ -737,6 +767,7 @@ public class MemoryIndex {
         fieldType.vectorDimension(),
         fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
+        MultiVectorSimilarityFunction.Aggregation.NONE,
         false,
         false);
   }
@@ -792,6 +823,7 @@ public class MemoryIndex {
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
+              info.fieldInfo.getMultiVectorAggregate(),
               info.fieldInfo.isSoftDeletesField(),
               info.fieldInfo.isParentField());
     } else if (existingDocValuesType != docValuesType) {

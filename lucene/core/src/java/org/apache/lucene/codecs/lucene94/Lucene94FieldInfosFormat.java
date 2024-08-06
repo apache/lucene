@@ -29,6 +29,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -226,6 +227,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     vectorDimension,
                     vectorEncoding,
                     vectorDistFunc,
+                    MultiVectorSimilarityFunction.Aggregation.NONE,
                     isSoftDeletesField,
                     isParentField);
             infos[i].checkConsistency();

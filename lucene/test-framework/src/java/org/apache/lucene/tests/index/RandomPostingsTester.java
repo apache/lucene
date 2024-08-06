@@ -53,6 +53,7 @@ import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
@@ -166,6 +167,7 @@ public class RandomPostingsTester {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              MultiVectorSimilarityFunction.Aggregation.NONE,
               false,
               false);
       fieldUpto++;
@@ -741,6 +743,7 @@ public class RandomPostingsTester {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              MultiVectorSimilarityFunction.Aggregation.NONE,
               false,
               false);
     }

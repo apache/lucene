@@ -46,6 +46,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MultiVectorSimilarityFunction;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -1298,6 +1299,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.DOT_PRODUCT,
+                MultiVectorSimilarityFunction.Aggregation.NONE,
                 fi.isSoftDeletesField(),
                 fi.isParentField());
         newInfos[i] = noIndexFI;

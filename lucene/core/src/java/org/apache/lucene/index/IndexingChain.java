@@ -41,7 +41,9 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
+import org.apache.lucene.document.KnnByteMultiVectorField;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatMultiVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -54,9 +56,11 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.ByteBlockPool;
+import org.apache.lucene.util.ByteMultiVectorValue;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.FloatMultiVectorValue;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.IntBlockPool;
@@ -689,6 +693,7 @@ final class IndexingChain implements Accountable {
                 s.vectorDimension,
                 s.vectorEncoding,
                 s.vectorSimilarityFunction,
+                s.multiVectorAggregate,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName()),
                 pf.fieldName.equals(fieldInfos.getParentFieldName())));
     pf.setFieldInfo(fi);
@@ -775,7 +780,10 @@ final class IndexingChain implements Accountable {
     if (fieldType.pointDimensionCount() != 0) {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
-    if (fieldType.vectorDimension() != 0) {
+
+    if (fieldType.isMultiVector()) {
+      indexMultiVectorValue(docID, pf, fieldType.vectorEncoding(), field);
+    } else if (fieldType.vectorDimension() != 0) {
       indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     }
     return indexedField;
@@ -849,7 +857,8 @@ final class IndexingChain implements Accountable {
       schema.setVectors(
           fieldType.vectorEncoding(),
           fieldType.vectorSimilarityFunction(),
-          fieldType.vectorDimension());
+          fieldType.vectorDimension(),
+          fieldType.multiVectorAggregate());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1038,6 +1047,17 @@ final class IndexingChain implements Accountable {
           .addValue(docID, ((KnnByteVectorField) field).vectorValue());
       case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
           .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void indexMultiVectorValue(
+      int docID, PerField pf, VectorEncoding encoding, IndexableField field) throws IOException {
+    switch (encoding) {
+      case BYTE -> ((KnnFieldVectorsWriter<ByteMultiVectorValue>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnByteMultiVectorField) field).value());
+      case FLOAT32 -> ((KnnFieldVectorsWriter<FloatMultiVectorValue>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnFloatMultiVectorField) field).value());
     }
   }
 
@@ -1445,6 +1465,8 @@ final class IndexingChain implements Accountable {
     private int vectorDimension = 0;
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    private MultiVectorSimilarityFunction.Aggregation multiVectorAggregate =
+        MultiVectorSimilarityFunction.Aggregation.NONE;
 
     private static String errMsg =
         "Inconsistency of field data structures across documents for field ";
@@ -1527,15 +1549,20 @@ final class IndexingChain implements Accountable {
     }
 
     void setVectors(
-        VectorEncoding encoding, VectorSimilarityFunction similarityFunction, int dimension) {
+        VectorEncoding encoding,
+        VectorSimilarityFunction similarityFunction,
+        int dimension,
+        MultiVectorSimilarityFunction.Aggregation multiVectorAggregate) {
       if (vectorDimension == 0) {
         this.vectorEncoding = encoding;
         this.vectorSimilarityFunction = similarityFunction;
         this.vectorDimension = dimension;
+        this.multiVectorAggregate = multiVectorAggregate;
       } else {
         assertSame("vector encoding", vectorEncoding, encoding);
         assertSame("vector similarity function", vectorSimilarityFunction, similarityFunction);
         assertSame("vector dimension", vectorDimension, dimension);
+        assertSame("multiVectorAggregate", this.multiVectorAggregate, multiVectorAggregate);
       }
     }
 
@@ -1563,6 +1590,8 @@ final class IndexingChain implements Accountable {
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
+      assertSame(
+          "multi-vector aggregation", fi.getMultiVectorAggregate(), this.multiVectorAggregate);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);

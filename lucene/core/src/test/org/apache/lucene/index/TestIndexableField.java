@@ -131,6 +131,16 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
+          public boolean isMultiVector() {
+            return false;
+          }
+
+          @Override
+          public MultiVectorSimilarityFunction.Aggregation multiVectorAggregate() {
+            return MultiVectorSimilarityFunction.Aggregation.NONE;
+          }
+
+          @Override
           public Map<String, String> getAttributes() {
             return null;
           }

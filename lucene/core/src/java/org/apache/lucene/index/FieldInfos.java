@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.index.FieldInfo.verifySameDocValuesSkipIndex;
 import static org.apache.lucene.index.FieldInfo.verifySameDocValuesType;
 import static org.apache.lucene.index.FieldInfo.verifySameIndexOptions;
+import static org.apache.lucene.index.FieldInfo.verifySameMultiVectorOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameOmitNorms;
 import static org.apache.lucene.index.FieldInfo.verifySamePointsOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
@@ -57,6 +58,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final boolean hasDocValues;
   private final boolean hasPointValues;
   private final boolean hasVectorValues;
+  private final boolean hasMultiVectorValues;
   private final String softDeletesField;
 
   private final String parentField;
@@ -83,6 +85,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     boolean hasDocValues = false;
     boolean hasPointValues = false;
     boolean hasVectorValues = false;
+    boolean hasMultiVectorValues = false;
     String softDeletesField = null;
     String parentField = null;
 
@@ -123,6 +126,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       hasPayloads |= info.hasPayloads();
       hasPointValues |= (info.getPointDimensionCount() != 0);
       hasVectorValues |= (info.getVectorDimension() != 0);
+      hasMultiVectorValues |= info.hasMultiVectorValues();
       if (info.isSoftDeletesField()) {
         if (softDeletesField != null && softDeletesField.equals(info.name) == false) {
           throw new IllegalArgumentException(
@@ -149,6 +153,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.hasDocValues = hasDocValues;
     this.hasPointValues = hasPointValues;
     this.hasVectorValues = hasVectorValues;
+    this.hasMultiVectorValues = hasMultiVectorValues;
     this.softDeletesField = softDeletesField;
     this.parentField = parentField;
 
@@ -300,6 +305,11 @@ public class FieldInfos implements Iterable<FieldInfo> {
     return hasVectorValues;
   }
 
+  /** Returns true if any fields have multi-vector values */
+  public boolean hasMultiVectorValues() {
+    return hasMultiVectorValues;
+  }
+
   /** Returns the soft-deletes field name if exists; otherwise returns null */
   public String getSoftDeletesField() {
     return softDeletesField;
@@ -367,7 +377,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
       DocValuesType docValuesType,
       boolean docValuesSkipIndex,
       FieldDimensions fieldDimensions,
-      FieldVectorProperties fieldVectorProperties) {}
+      FieldVectorProperties fieldVectorProperties,
+      FieldMultiVectorProperties fieldMultiVectorProperties) {}
+
+  private record FieldMultiVectorProperties(MultiVectorSimilarityFunction similarityFunction) {}
 
   static final class FieldNumbers {
 
@@ -452,7 +465,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 new FieldVectorProperties(
                     fi.getVectorDimension(),
                     fi.getVectorEncoding(),
-                    fi.getVectorSimilarityFunction()));
+                    fi.getVectorSimilarityFunction()),
+                new FieldMultiVectorProperties(fi.getMultiVectorSimilarityFunction()));
         this.fieldProperties.put(fieldName, fieldProperties);
       }
       return fieldProperties.number;
@@ -547,6 +561,16 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fi.getVectorDimension(),
           fi.getVectorEncoding(),
           fi.getVectorSimilarityFunction());
+
+      FieldMultiVectorProperties multiVectorProps = fieldProperties.fieldMultiVectorProperties;
+      verifySameMultiVectorOptions(
+          fieldName,
+          props.numDimensions,
+          props.vectorEncoding,
+          multiVectorProps.similarityFunction,
+          fi.getVectorDimension(),
+          fi.getVectorEncoding(),
+          fi.getMultiVectorSimilarityFunction());
     }
 
     /**
@@ -591,6 +615,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   VectorEncoding.FLOAT32,
                   VectorSimilarityFunction.EUCLIDEAN,
+                  MultiVectorSimilarityFunction.Aggregation.NONE,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)),
                   (parentFieldName != null && parentFieldName.equals(fieldName)));
           addOrGet(fi);
@@ -685,6 +710,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           VectorEncoding.FLOAT32,
           VectorSimilarityFunction.EUCLIDEAN,
+          MultiVectorSimilarityFunction.Aggregation.NONE,
           isSoftDeletesField,
           isParentField);
     }
@@ -807,6 +833,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getVectorDimension(),
               fi.getVectorEncoding(),
               fi.getVectorSimilarityFunction(),
+              fi.getMultiVectorAggregate(),
               fi.isSoftDeletesField(),
               fi.isParentField());
       byName.put(fiNew.getName(), fiNew);

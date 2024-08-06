@@ -60,10 +60,14 @@ public final class FieldInfo {
   private int pointIndexDimensionCount;
   private int pointNumBytes;
 
-  // if it is a positive value, it means this field indexes vectors
+  // if it is a positive value it means this field indexes vectors
   private final int vectorDimension;
   private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
+
+  // if not NONE, field is a multi-vector
+  private final MultiVectorSimilarityFunction.Aggregation multiVectorAggregate;
+  private final MultiVectorSimilarityFunction multiVectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -92,6 +96,7 @@ public final class FieldInfo {
       int vectorDimension,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
+      MultiVectorSimilarityFunction.Aggregation multiVectorAggregate,
       boolean softDeletesField,
       boolean isParentField) {
     this.name = Objects.requireNonNull(name);
@@ -120,6 +125,9 @@ public final class FieldInfo {
     this.vectorDimension = vectorDimension;
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
+    this.multiVectorAggregate = multiVectorAggregate;
+    this.multiVectorSimilarityFunction =
+        new MultiVectorSimilarityFunction(this.vectorSimilarityFunction, this.multiVectorAggregate);
     this.softDeletesField = softDeletesField;
     this.isParentField = isParentField;
     this.checkConsistency();
@@ -225,6 +233,11 @@ public final class FieldInfo {
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
 
+    if (multiVectorSimilarityFunction == null) {
+      throw new IllegalArgumentException(
+          "Multi-Vector similarity function must not be null (field: '" + name + "')");
+    }
+
     if (softDeletesField && isParentField) {
       throw new IllegalArgumentException(
           "field can't be used as soft-deletes field and parent document field (field: '"
@@ -264,6 +277,14 @@ public final class FieldInfo {
         o.vectorDimension,
         o.vectorEncoding,
         o.vectorSimilarityFunction);
+    verifySameMultiVectorOptions(
+        fieldName,
+        this.vectorDimension,
+        this.vectorEncoding,
+        this.multiVectorSimilarityFunction,
+        o.vectorDimension,
+        o.vectorEncoding,
+        o.getMultiVectorSimilarityFunction());
   }
 
   /**
@@ -422,6 +443,32 @@ public final class FieldInfo {
   }
 
   /**
+   * Verify that the provided multi-vector indexing options are the same
+   *
+   * @throws IllegalArgumentException if they are not the same
+   */
+  static void verifySameMultiVectorOptions(
+      String fieldName,
+      int vd1,
+      VectorEncoding ve1,
+      MultiVectorSimilarityFunction tsf1,
+      int vd2,
+      VectorEncoding ve2,
+      MultiVectorSimilarityFunction tsf2) {
+    verifySameVectorOptions(
+        fieldName, vd1, ve1, tsf1.similarityFunction, vd2, ve2, tsf2.similarityFunction);
+    if (tsf1.aggregation != tsf2.aggregation) {
+      throw new IllegalArgumentException(
+          "cannot change field \""
+              + fieldName
+              + "\" from multi-vector aggregation="
+              + tsf1.aggregation
+              + " to inconsistent multi-vector aggregation="
+              + tsf2.aggregation);
+    }
+  }
+
+  /**
    * Record that this field is indexed with points, with the specified number of dimensions and
    * bytes per dimension.
    */
@@ -536,6 +583,16 @@ public final class FieldInfo {
     return vectorSimilarityFunction;
   }
 
+  /** Returns {@link MultiVectorSimilarityFunction.Aggregation} for the field */
+  public MultiVectorSimilarityFunction.Aggregation getMultiVectorAggregate() {
+    return multiVectorAggregate;
+  }
+
+  /** Returns {@link MultiVectorSimilarityFunction} for the field */
+  public MultiVectorSimilarityFunction getMultiVectorSimilarityFunction() {
+    return multiVectorSimilarityFunction;
+  }
+
   /** Record that this field is indexed with docvalues, with the specified type */
   public void setDocValuesType(DocValuesType type) {
     if (type == null) {
@@ -648,6 +705,11 @@ public final class FieldInfo {
   /** Returns whether any (numeric) vector values exist for this field */
   public boolean hasVectorValues() {
     return vectorDimension > 0;
+  }
+
+  /** Returns whether any (numeric) multi-vector values exist for this field */
+  public boolean hasMultiVectorValues() {
+    return (multiVectorAggregate != MultiVectorSimilarityFunction.Aggregation.NONE);
   }
 
   /** Get a codec attribute value, or null if it does not exist */
