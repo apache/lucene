@@ -1,10 +1,10 @@
 package org.apache.lucene.benchmark.jmh;
 
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.NIOFSDirectory;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -64,7 +64,7 @@ public class DocIdEncodingBenchmark {
 
     @Benchmark
     public void performEncodeDecode(Blackhole blackhole) throws IOException {
-        try (Directory dir = FSDirectory.open(TMP_DIR)) {
+        try (Directory dir = new NIOFSDirectory(TMP_DIR)) {
             String innerDirName = String.join("_", "docIdJmhData_", docIdEncoder.getClass().getSimpleName(), String.valueOf(System.nanoTime()));
             try (IndexOutput out = dir.createOutput(innerDirName, IOContext.DEFAULT)) {
                 for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
