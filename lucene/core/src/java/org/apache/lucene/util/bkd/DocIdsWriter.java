@@ -113,9 +113,10 @@ final class DocIdsWriter {
         out.writeByte(BPV_21);
         int i = 0;
         for (; i < count - 2; i += 3) {
-          long packedLong = ((docIds[i] & 0x001FFFFFL) << 42) |
-                  ((docIds[i + 1] & 0x001FFFFFL) << 21) |
-                  (docIds[i + 2] & 0x001FFFFFL);
+          long packedLong =
+              ((docIds[i] & 0x001FFFFFL) << 42)
+                  | ((docIds[i + 1] & 0x001FFFFFL) << 21)
+                  | (docIds[i + 2] & 0x001FFFFFL);
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
