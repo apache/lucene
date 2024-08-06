@@ -38,6 +38,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
@@ -640,18 +641,29 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     lastState = state;
   }
 
+  private void addPadding(IndexOutput out) throws IOException {
+    // Add some padding to be able to read up to 64 more longs than requested at read time without
+    // going out of bounds.
+    for (int i = 0; i < PostingDecodingUtil.PADDING_LONGS; ++i) {
+      out.writeLong(0L);
+    }
+  }
+
   @Override
   public void close() throws IOException {
     // TODO: add a finish() at least to PushBase? DV too...?
     boolean success = false;
     try {
       if (docOut != null) {
+        addPadding(docOut);
         CodecUtil.writeFooter(docOut);
       }
       if (posOut != null) {
+        addPadding(posOut);
         CodecUtil.writeFooter(posOut);
       }
       if (payOut != null) {
+        addPadding(payOut);
         CodecUtil.writeFooter(payOut);
       }
       if (metaOut != null) {

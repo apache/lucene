@@ -21,12 +21,15 @@ import java.io.IOException;
 /** Utility class to decode postings. */
 public abstract class PostingDecodingUtil {
 
+  /** Number of padding longs to avoid reading out of bounds. */
+  public static final int PADDING_LONGS = 64;
+
   /**
    * Read {@code count} longs. This number must not exceed 64. Apply shift {@code bShift} and mask
    * {@code bMask} and store the result in {@code b} starting at offset 0. Apply mask {@code cMask}
-   * and store the result in {@code c} starting at offset 0. As a side-effect, this method may
-   * override entries in {@code b} and {@code c} at indexes between {@code count+1} included and
-   * {@code 64} excluded.
+   * and store the result in {@code c} starting at offset 0. As a side-effect, this method may read
+   * up to {@code 64} longs under the hood and override entries in {@code b} and {@code c} at
+   * indexes between {@code count+1} included and {@code 64} excluded.
    */
   public abstract void splitLongs(int count, long[] b, int bShift, long bMask, long[] c, long cMask)
       throws IOException;
