@@ -360,6 +360,8 @@ Bug Fixes
 * GITHUB#13615: Correct scalar quantization when used in conjunction with COSINE similarity. Vectors are normalized
   before quantization to ensure the cosine similarity is correctly calculated. (Ben Trent)
 
+* GITHUB#13627: Fix race condition on flush for DWPT seqNo generation. (Ben Trent, Ao Li)
+
 Other
 --------------------
 (No changes)
