@@ -39,11 +39,6 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
         }
       }
       try (IndexInput in = dir.openInput("tests.bin", IOContext.DEFAULT)) {
-        PostingDecodingUtil defaultUtil = new DefaultPostingDecodingUtil(in);
-        PostingDecodingUtil optimizedUtil =
-            VectorizationProvider.lookup(true).getPostingDecodingUtil(in);
-        assertNotSame(defaultUtil.getClass(), optimizedUtil.getClass());
-
         long[] expectedB = new long[ForUtil.BLOCK_SIZE];
         long[] expectedC = new long[ForUtil.BLOCK_SIZE];
         long[] actualB = new long[ForUtil.BLOCK_SIZE];
@@ -60,14 +55,26 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           int bShift = TestUtil.nextInt(random(), 1, 31);
           long bMask = random().nextLong();
           long cMask = random().nextLong();
-
           long startFP = random().nextInt(4);
-          in.seek(startFP);
+
+          // Work on a slice that has just the right number of padding bytes to make the test fail
+          // with an index-out-of-bounds in case the implementation reads more than the allowed
+          // number of padding bytes.
+          IndexInput slice =
+              in.slice(
+                  "test", 0, startFP + (count + PostingDecodingUtil.PADDING_LONGS) * Long.BYTES);
+
+          PostingDecodingUtil defaultUtil = new DefaultPostingDecodingUtil(slice);
+          PostingDecodingUtil optimizedUtil =
+              VectorizationProvider.lookup(true).getPostingDecodingUtil(slice);
+          assertNotSame(defaultUtil.getClass(), optimizedUtil.getClass());
+
+          slice.seek(startFP);
           defaultUtil.splitLongs(count, expectedB, bShift, bMask, expectedC, cMask);
-          long expectedEndFP = in.getFilePointer();
-          in.seek(startFP);
+          long expectedEndFP = slice.getFilePointer();
+          slice.seek(startFP);
           optimizedUtil.splitLongs(count, actualB, bShift, bMask, actualC, cMask);
-          assertEquals(expectedEndFP, in.getFilePointer());
+          assertEquals(expectedEndFP, slice.getFilePointer());
           assertArrayEquals(
               ArrayUtil.copyOfSubArray(expectedB, 0, count),
               ArrayUtil.copyOfSubArray(actualB, 0, count));
