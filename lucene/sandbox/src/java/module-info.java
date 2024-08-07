@@ -30,7 +30,7 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.facet;
   exports org.apache.lucene.sandbox.facet.recorders;
   exports org.apache.lucene.sandbox.facet.cutters.ranges;
-  exports org.apache.lucene.sandbox.facet.ordinals;
+  exports org.apache.lucene.sandbox.facet.iterators;
   exports org.apache.lucene.sandbox.facet.cutters;
   exports org.apache.lucene.sandbox.facet.labels;
 

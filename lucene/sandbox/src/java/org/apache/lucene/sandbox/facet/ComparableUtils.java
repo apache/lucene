@@ -22,8 +22,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.sandbox.facet.cutters.LongValueFacetCutter;
-import org.apache.lucene.sandbox.facet.ordinals.ComparableSupplier;
-import org.apache.lucene.sandbox.facet.ordinals.OrdinalGetter;
+import org.apache.lucene.sandbox.facet.iterators.ComparableSupplier;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalGetter;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -233,7 +233,7 @@ public final class ComparableUtils {
    * Sort array of ordinals.
    *
    * <p>To get top-n ordinals use {@link
-   * org.apache.lucene.sandbox.facet.ordinals.TopnOrdinalIterator} instead.
+   * org.apache.lucene.sandbox.facet.iterators.TopnOrdinalIterator} instead.
    *
    * @param ordinals array of ordinals to sort
    * @param comparableSupplier defines sort order

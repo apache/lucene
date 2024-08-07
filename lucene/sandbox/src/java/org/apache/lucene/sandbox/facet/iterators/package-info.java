@@ -15,4 +15,4 @@
  * limitations under the License.
  */
 /** Sandbox faceting: facet ordinals. */
-package org.apache.lucene.sandbox.facet.ordinals;
+package org.apache.lucene.sandbox.facet.iterators;

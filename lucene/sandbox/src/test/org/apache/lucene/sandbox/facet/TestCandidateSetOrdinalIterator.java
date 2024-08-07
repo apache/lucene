@@ -19,9 +19,9 @@ package org.apache.lucene.sandbox.facet;
 
 import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.sandbox.facet.iterators.CandidateSetOrdinalIterator;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.labels.LabelToOrd;
-import org.apache.lucene.sandbox.facet.ordinals.CandidateSetOrdinalIterator;
-import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.FacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LeafFacetRecorder;

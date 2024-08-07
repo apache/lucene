@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet.ordinals;
+package org.apache.lucene.sandbox.facet.iterators;
 
 /** Interface to return an ordinal. */
 public interface OrdinalGetter {

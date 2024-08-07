@@ -28,7 +28,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.sandbox.facet.FacetRollup;
-import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
 /** {@link FacetCutter} for facets that use taxonomy side-car index. */
 public final class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {

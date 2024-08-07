@@ -19,7 +19,7 @@ package org.apache.lucene.sandbox.facet.recorders;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.FacetRollup;
-import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
 /** {@link FacetRecorder} that contains multiple FacetRecorders. */
 public final class MultiFacetsRecorder implements FacetRecorder {

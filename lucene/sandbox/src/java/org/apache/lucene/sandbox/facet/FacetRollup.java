@@ -17,7 +17,7 @@
 package org.apache.lucene.sandbox.facet;
 
 import java.io.IOException;
-import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.recorders.FacetRecorder;
 
 /**

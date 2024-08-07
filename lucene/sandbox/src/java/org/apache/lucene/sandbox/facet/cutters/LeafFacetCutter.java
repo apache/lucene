@@ -17,7 +17,7 @@
 package org.apache.lucene.sandbox.facet.cutters;
 
 import java.io.IOException;
-import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
 /**
  * Interface to be implemented to cut documents into facets for an index segment (leaf).

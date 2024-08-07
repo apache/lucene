@@ -20,7 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.FacetRollup;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
-import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
 /**
  * Record data for each facet of each doc.

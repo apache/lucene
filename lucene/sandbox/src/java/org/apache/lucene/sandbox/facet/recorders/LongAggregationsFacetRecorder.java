@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.sandbox.facet.recorders;
 
-import static org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator.NO_MORE_ORDS;
+import static org.apache.lucene.sandbox.facet.iterators.OrdinalIterator.NO_MORE_ORDS;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.sandbox.facet.FacetRollup;
-import org.apache.lucene.sandbox.facet.ordinals.OrdinalIterator;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
