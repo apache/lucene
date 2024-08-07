@@ -25,7 +25,7 @@ import org.apache.lucene.util.MathUtil;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
-  static final int INNER_WINDOW_SIZE = 1 << 11;
+  static final int INNER_WINDOW_SIZE = 1 << 12;
 
   private final int maxDoc;
   // All scorers, sorted by increasing max score.
@@ -270,11 +270,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       final int upTo = scorer.scorer.advanceShallow(Math.max(scorer.doc, windowMin));
       windowMax = (int) Math.min(windowMax, upTo + 1L); // upTo is inclusive
     }
-
-    // Score at least an entire inner window of docs
-    windowMax =
-        Math.max(
-            windowMax, (int) Math.min(Integer.MAX_VALUE, (long) windowMin + INNER_WINDOW_SIZE));
 
     return windowMax;
   }

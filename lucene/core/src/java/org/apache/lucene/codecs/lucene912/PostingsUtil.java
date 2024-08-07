@@ -14,11 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.IndexOutput;
 
 /** Utility class to encode/decode postings block. */
 final class PostingsUtil {
@@ -53,7 +53,7 @@ final class PostingsUtil {
 
   /** Write freq buffer with variable-length encoding and doc buffer with group-varint encoding. */
   static void writeVIntBlock(
-      IndexOutput docOut, long[] docBuffer, long[] freqBuffer, int num, boolean writeFreqs)
+      DataOutput docOut, long[] docBuffer, long[] freqBuffer, int num, boolean writeFreqs)
       throws IOException {
     if (writeFreqs) {
       for (int i = 0; i < num; i++) {

@@ -367,7 +367,7 @@ public class TestSegmentInfos extends LuceneTestCase {
     boolean corrupt = false;
     for (String file : dir.listAll()) {
       if (file.startsWith(IndexFileNames.SEGMENTS)) {
-        try (IndexInput in = dir.openInput(file, IOContext.DEFAULT);
+        try (IndexInput in = dir.openInput(file, IOContext.READONCE);
             IndexOutput out = corruptDir.createOutput(file, IOContext.DEFAULT)) {
           final long corruptIndex = TestUtil.nextLong(random(), 0, in.length() - 1);
           out.copyBytes(in, corruptIndex);
@@ -375,7 +375,7 @@ public class TestSegmentInfos extends LuceneTestCase {
           out.writeByte((byte) b);
           out.copyBytes(in, in.length() - in.getFilePointer());
         }
-        try (IndexInput in = corruptDir.openInput(file, IOContext.DEFAULT)) {
+        try (IndexInput in = corruptDir.openInput(file, IOContext.READONCE)) {
           CodecUtil.checksumEntireFile(in);
           if (VERBOSE) {
             System.out.println("TEST: Altering the file did not update the checksum, aborting...");
