@@ -22,9 +22,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
@@ -36,19 +34,22 @@ import org.apache.lucene.util.FixedBitSet;
 /** Utilities for use in tests involving HNSW graphs */
 public class HnswUtil {
 
-  /*
-    New plan: for each level, check rooted components from previous level nodes, which are entry
-    points with the goal that each node should be reachable from *some* entry point.  For each entry
-    point, compute a spanning tree, recording the nodes in a single shared bitset.  Also record a bitset marking
-    nodes that are not full.  When reconnecting, limit the search to include non-full nodes only.
-   */
+  // utility class; only has static methods
+  private HnswUtil() {}
 
-  /**
-   * Returns true if every node on every level is reachable from node 0.
-   */
-  public static boolean isRooted(HnswGraph knnValues) throws IOException {
+  /*
+   For each level, check rooted components from previous level nodes, which are entry
+   points with the goal that each node should be reachable from *some* entry point.  For each entry
+   point, compute a spanning tree, recording the nodes in a single shared bitset.
+
+   Also record a bitset marking nodes that are not full to be used when reconnecting in order to
+   limit the search to include non-full nodes only.
+  */
+
+  /** Returns true if every node on every level is reachable from node 0. */
+  static boolean isRooted(HnswGraph knnValues) throws IOException {
     for (int level = 0; level < knnValues.numLevels(); level++) {
-      if (components(knnValues, level).size() > 1) {
+      if (components(knnValues, level, null, 0).size() > 1) {
         return false;
       }
     }
@@ -59,7 +60,7 @@ public class HnswUtil {
    * Returns the sizes of the distinct graph components on level 0. If the graph is fully-rooted the
    * list will have one entry. If it is empty, the returned list will be empty.
    */
-  public static List<Integer> componentSizes(HnswGraph hnsw) throws IOException {
+  static List<Integer> componentSizes(HnswGraph hnsw) throws IOException {
     return componentSizes(hnsw, 0);
   }
 
@@ -70,37 +71,46 @@ public class HnswUtil {
    * entry point, the returned list will have a single entry. If the graph is empty, the returned
    * list will be empty.
    */
-  public static List<Integer> componentSizes(HnswGraph hnsw, int level) throws IOException {
-    return components(hnsw, level).stream().map(Component::size).toList();
+  static List<Integer> componentSizes(HnswGraph hnsw, int level) throws IOException {
+    return components(hnsw, level, null, 0).stream().map(Component::size).toList();
   }
 
-  // Finds orphaned components on the graph level. 
-  static List<Component> components(HnswGraph hnsw, int level) throws IOException {
+  // Finds orphaned components on the graph level.
+  static List<Component> components(
+      HnswGraph hnsw, int level, FixedBitSet notFullyConnected, int maxConn) throws IOException {
     List<Component> components = new ArrayList<>();
     FixedBitSet connectedNodes = new FixedBitSet(hnsw.size());
     assert hnsw.size() == hnsw.getNodesOnLevel(0).size();
     int total = 0;
     if (level >= hnsw.numLevels()) {
-      throw new IllegalArgumentException("Level " + level + " too large for graph with " + hnsw.numLevels() + " levels");
+      throw new IllegalArgumentException(
+          "Level " + level + " too large for graph with " + hnsw.numLevels() + " levels");
     }
     HnswGraph.NodesIterator entryPoints;
     // System.out.println("components level=" + level);
     if (level == hnsw.numLevels() - 1) {
-      // shouldn't usually happen? Only if graph has multiple nodes on top level
-      entryPoints = new HnswGraph.ArrayNodesIterator(new int[] {0}, 1);
+      entryPoints = new HnswGraph.ArrayNodesIterator(new int[] {hnsw.entryNode()}, 1);
     } else {
       entryPoints = hnsw.getNodesOnLevel(level + 1);
     }
     while (entryPoints.hasNext()) {
       int entryPoint = entryPoints.nextInt();
-      Component component = markRooted(hnsw, level, connectedNodes, entryPoint);
+      Component component =
+          markRooted(hnsw, level, connectedNodes, notFullyConnected, maxConn, entryPoint);
       total += component.size();
     }
-    components.add(new Component(0, total));
+    int entryPoint;
+    if (notFullyConnected != null) {
+      entryPoint = notFullyConnected.nextSetBit(0);
+    } else {
+      entryPoint = connectedNodes.nextSetBit(0);
+    }
+    components.add(new Component(entryPoint, total));
     if (level == 0) {
       int nextClear = nextClearBit(connectedNodes, 0);
       while (nextClear != NO_MORE_DOCS) {
-        Component component = markRooted(hnsw, level, connectedNodes, nextClear);
+        Component component =
+            markRooted(hnsw, level, connectedNodes, notFullyConnected, maxConn, nextClear);
         assert component.size() > 0;
         components.add(component);
         total += component.size();
@@ -113,7 +123,8 @@ public class HnswUtil {
         if (connectedNodes.get(nextClear)) {
           continue;
         }
-        Component component = markRooted(hnsw, level, connectedNodes, nextClear);
+        Component component =
+            markRooted(hnsw, level, connectedNodes, notFullyConnected, maxConn, nextClear);
         assert component.size() > 0;
         components.add(component);
         total += component.size();
@@ -137,10 +148,18 @@ public class HnswUtil {
    * @param level the level of the graph to check
    * @param connectedNodes a bitset the size of the entire graph with 1's indicating nodes that have
    *     been marked as connected. This method updates the bitset.
+   * @param notFullyConnected a bitset the size of the entire graph. On output, we mark nodes
+   *     visited having fewer than maxConn connections. May be null.
+   * @param maxConn the maximum number of connections for any node (aka M).
    * @param entryPoint a node id to start at
    */
   private static Component markRooted(
-      HnswGraph hnswGraph, int level, FixedBitSet connectedNodes, int entryPoint)
+      HnswGraph hnswGraph,
+      int level,
+      FixedBitSet connectedNodes,
+      FixedBitSet notFullyConnected,
+      int maxConn,
+      int entryPoint)
       throws IOException {
     // Start at entry point and search all nodes on this level
     // System.out.println("markRooted level=" + level + " entryPoint=" + entryPoint);
@@ -156,8 +175,13 @@ public class HnswUtil {
       connectedNodes.set(node);
       hnswGraph.seek(level, node);
       int friendOrd;
+      int friendCount = 0;
       while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+        ++friendCount;
         stack.push(friendOrd);
+      }
+      if (friendCount < maxConn && notFullyConnected != null) {
+        notFullyConnected.set(node);
       }
     }
     return new Component(entryPoint, count);

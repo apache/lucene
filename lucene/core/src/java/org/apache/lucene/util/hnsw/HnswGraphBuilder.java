@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Comparator;
@@ -425,13 +426,23 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   private boolean connectComponents(int level) throws IOException {
-    List<Component> components = HnswUtil.components(hnsw, level);
+    FixedBitSet notFullyConnected = new FixedBitSet(hnsw.size());
+    int maxConn = M;
+    if (level == 0) {
+      maxConn *= 2;
+    }
+    List<Component> components = HnswUtil.components(hnsw, level, notFullyConnected, maxConn);
     boolean result = true;
     if (components.size() > 1) {
       // connect other components to the largest one
       Component c0 = components.stream().max(Comparator.comparingInt(Component::size)).get();
-      // try even harder to find connections by using twice the beam width
-      GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(beamCandidates.k * 2);
+      if (c0.start() == NO_MORE_DOCS) {
+        // the component is already fully connected - no room for new connections
+        return false;
+      }
+      // try for more connections? We only do one since otherwise they may become full
+      // while linking
+      GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(1);
       int[] eps = new int[1];
       for (Component c : components) {
         if (c != c0) {
@@ -439,23 +450,19 @@ public class HnswGraphBuilder implements HnswBuilder {
           eps[0] = c0.start();
           RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
           // find the closest node in the largest component to the lowest-numbered node in this
-          // component
-          graphSearcher.searchLevel(beam, scorer, 0, eps, hnsw, null);
+          // component that has room to make a connection
+          graphSearcher.searchLevel(beam, scorer, 0, eps, hnsw, notFullyConnected);
           boolean linked = false;
           while (beam.size() > 0) {
             float score = beam.minimumScore();
             int c0node = beam.popNode();
-            // link the nodes, best effort only as they may be full
-            if (tryLink(c0node, c.start(), score)) {
-              linked = true;
-              break;
-            }
+            assert notFullyConnected.get(c0node);
+            // link the nodes
+            link(level, c0node, c.start(), score, notFullyConnected);
+            linked = true;
           }
           if (!linked) {
             result = false;
-            // TODO: maybe try some more aggressive measures to ensure linkage
-            // eg we can try pruning to make room, but if we do that we don't want to
-            // create more islands. Or we can consider making the NeighborArray bigger, maybe.
           }
         }
       }
@@ -463,19 +470,27 @@ public class HnswGraphBuilder implements HnswBuilder {
     return result;
   }
 
-  // Try to link two nodes bidirectionally, return false (and do not link either way) if
-  // either node has the max number of connections already.
-  private boolean tryLink(int n0, int n1, float score) {
-    NeighborArray nbr0 = hnsw.getNeighbors(0, n0);
-    NeighborArray nbr1 = hnsw.getNeighbors(0, n1);
+  // Try to link two nodes bidirectionally; the forward connection will always be made.
+  // Update notFullyConnected.
+  private void link(int level, int n0, int n1, float score, FixedBitSet notFullyConnected) {
+    NeighborArray nbr0 = hnsw.getNeighbors(level, n0);
+    NeighborArray nbr1 = hnsw.getNeighbors(level, n1);
     // must subtract 1 here since the nodes array is one larger than the configured
     // max neighbors (M / 2M).
-    if (nbr0.size() >= nbr0.nodes().length - 1 || nbr1.size() >= nbr1.nodes().length - 1) {
-      return false;
-    }
+    // We should have taken care of this check by searching for not-full nodes
+    int maxConn = nbr0.nodes().length - 1;
+    assert notFullyConnected.get(n0);
+    assert nbr0.size() < maxConn : "node " + n0 + " is full, has " + nbr0.size() + " friends";
     nbr0.addOutOfOrder(n1, score);
-    nbr1.addOutOfOrder(n0, score);
-    return true;
+    if (nbr0.size() == maxConn) {
+      notFullyConnected.clear(n0);
+    }
+    if (nbr1.size() < maxConn) {
+      nbr1.addOutOfOrder(n0, score);
+      if (nbr1.size() == maxConn) {
+        notFullyConnected.clear(n1);
+      }
+    }
   }
 
   /**

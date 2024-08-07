@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -85,7 +84,7 @@ public class TestHnswUtil extends LuceneTestCase {
       {{}, null, null, null}
     };
     HnswGraph graph = new MockGraph(nodes);
-    //System.out.println(graph.toString());
+    // System.out.println(graph.toString());
     assertTrue(HnswUtil.isRooted(graph));
     assertEquals(List.of(4), HnswUtil.componentSizes(graph));
   }
@@ -111,8 +110,8 @@ public class TestHnswUtil extends LuceneTestCase {
         nodes[level] = new int[numNodes][];
         for (int node = 0; node < numNodes; node++) {
           if (level > 0) {
-            if ((level == numLevels - 1 && node > 0) ||
-                (level < numLevels - 1 && nodes[level + 1][node] == null)) {
+            if ((level == numLevels - 1 && node > 0)
+                || (level < numLevels - 1 && nodes[level + 1][node] == null)) {
               if (random().nextFloat() > Math.pow(Math.E, -level)) {
                 // skip some nodes, more on higher levels while ensuring every node present on a
                 // given level is present on all lower levels. Also ensure node 0 is always present.
@@ -227,9 +226,13 @@ public class TestHnswUtil extends LuceneTestCase {
     public void seek(int level, int target) {
       assert level >= 0 && level < nodes.length;
       assert target >= 0 && target < nodes[level].length
-          : "target out of range: " + target + " for level " + level + "; should be less than " + nodes[level].length;
-      assert nodes[level][target] != null
-          : "target " + target + " not on level " + level;
+          : "target out of range: "
+              + target
+              + " for level "
+              + level
+              + "; should be less than "
+              + nodes[level].length;
+      assert nodes[level][target] != null : "target " + target + " not on level " + level;
       currentLevel = level;
       currentNode = target;
       currentNeighbor = 0;
@@ -258,9 +261,10 @@ public class TestHnswUtil extends LuceneTestCase {
         for (int node = 0; node < nodes[level].length; node++) {
           if (nodes[level][node] != null) {
             buf.append("  ")
-              .append(node).append(':')
-              .append(Arrays.toString(nodes[level][node]))
-              .append("\n");
+                .append(node)
+                .append(':')
+                .append(Arrays.toString(nodes[level][node]))
+                .append("\n");
           }
         }
       }
@@ -291,7 +295,7 @@ public class TestHnswUtil extends LuceneTestCase {
         public int nextInt() {
           while (curCount < finalCount) {
             if (nodes[level][++cur] != null) {
-              curCount ++;
+              curCount++;
               return cur;
             }
           }
