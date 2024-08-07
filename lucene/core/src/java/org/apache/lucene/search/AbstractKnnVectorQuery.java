@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.search.AnnQueryUtils.createBitSet;
 import static org.apache.lucene.search.AnnQueryUtils.createFilterWeight;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.ArrayList;
