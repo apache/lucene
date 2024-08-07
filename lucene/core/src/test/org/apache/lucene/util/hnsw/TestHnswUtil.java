@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
@@ -40,8 +41,7 @@ public class TestHnswUtil extends LuceneTestCase {
     };
     HnswGraph graph = new MockGraph(nodes);
     assertTrue(HnswUtil.isRooted(graph));
-    assertFalse(HnswUtil.isStronglyConnected(graph));
-    assertEquals(List.of(3, 1, 1, 1, 1), HnswUtil.componentSizes(graph));
+    assertEquals(List.of(7), HnswUtil.componentSizes(graph));
   }
 
   public void testBackLinking() throws Exception {
@@ -57,9 +57,8 @@ public class TestHnswUtil extends LuceneTestCase {
     };
     HnswGraph graph = new MockGraph(nodes);
     assertFalse(HnswUtil.isRooted(graph));
-    assertFalse(HnswUtil.isStronglyConnected(graph));
-    // [ {0, 2}, {1, 3, 4}, {5}, {6}
-    assertEquals(List.of(2, 3, 1, 1), HnswUtil.componentSizes(graph));
+    // [ {0, 1, 2, 3, 4}, {5}, {6}
+    assertEquals(List.of(5, 1, 1), HnswUtil.componentSizes(graph));
   }
 
   public void testChain() throws Exception {
@@ -67,7 +66,6 @@ public class TestHnswUtil extends LuceneTestCase {
     int[][][] nodes = {{{1}, {2}, {3}, {0}}};
     HnswGraph graph = new MockGraph(nodes);
     assertTrue(HnswUtil.isRooted(graph));
-    assertTrue(HnswUtil.isStronglyConnected(graph));
     assertEquals(List.of(4), HnswUtil.componentSizes(graph));
   }
 
@@ -76,7 +74,6 @@ public class TestHnswUtil extends LuceneTestCase {
     int[][][] nodes = {{{2}, {3}, {0}, {1}}};
     HnswGraph graph = new MockGraph(nodes);
     assertFalse(HnswUtil.isRooted(graph));
-    assertFalse(HnswUtil.isStronglyConnected(graph));
     assertEquals(List.of(2, 2), HnswUtil.componentSizes(graph));
   }
 
@@ -84,88 +81,124 @@ public class TestHnswUtil extends LuceneTestCase {
     // test a graph that has three levels
     int[][][] nodes = {
       {{1, 2}, {3}, {0}, {0}},
-      {{2}, {0}},
-      {{}}
+      {{2}, null, {0}, null},
+      {{}, null, null, null}
     };
     HnswGraph graph = new MockGraph(nodes);
+    //System.out.println(graph.toString());
     assertTrue(HnswUtil.isRooted(graph));
-    assertTrue(HnswUtil.isStronglyConnected(graph));
     assertEquals(List.of(4), HnswUtil.componentSizes(graph));
+  }
+
+  public void testLevelsNotRooted() throws Exception {
+    // test a graph that has two levels with an orphaned node
+    int[][][] nodes = {
+      {{1}, {0}, {0}},
+      {{}, null, null}
+    };
+    HnswGraph graph = new MockGraph(nodes);
+    assertFalse(HnswUtil.isRooted(graph));
+    assertEquals(List.of(2, 1), HnswUtil.componentSizes(graph));
   }
 
   public void testRandom() throws Exception {
     for (int i = 0; i < atLeast(10); i++) {
-      // test the strongly-connected test on a random directed graph comparing against a brute force
-      // algorithm
-      int numNodes = random().nextInt(1, 10);
-      int[][][] nodes = new int[1][numNodes][];
-      for (int node = 0; node < numNodes; node++) {
-        int numNbrs = random().nextInt((numNodes + 3) / 4);
-        nodes[0][node] = new int[numNbrs];
-        for (int nbr = 0; nbr < numNbrs; nbr++) {
-          int randomNbr = random().nextInt(numNodes);
-          // allow self-linking; this doesn't arise in HNSW but it's valid more generally
-          nodes[0][node][nbr] = randomNbr;
+      // test on a random directed graph comparing against a brute force algorithm
+      int numNodes = random().nextInt(1, 100);
+      int numLevels = (int) Math.ceil(Math.log(numNodes));
+      int[][][] nodes = new int[numLevels][][];
+      for (int level = numLevels - 1; level >= 0; level--) {
+        nodes[level] = new int[numNodes][];
+        for (int node = 0; node < numNodes; node++) {
+          if (level > 0) {
+            if ((level == numLevels - 1 && node > 0) ||
+                (level < numLevels - 1 && nodes[level + 1][node] == null)) {
+              if (random().nextFloat() > Math.pow(Math.E, -level)) {
+                // skip some nodes, more on higher levels while ensuring every node present on a
+                // given level is present on all lower levels. Also ensure node 0 is always present.
+                continue;
+              }
+            }
+          }
+          int numNbrs = random().nextInt((numNodes + 7) / 8);
+          if (level == 0) {
+            numNbrs *= 2;
+          }
+          nodes[level][node] = new int[numNbrs];
+          for (int nbr = 0; nbr < numNbrs; nbr++) {
+            while (true) {
+              int randomNbr = random().nextInt(numNodes);
+              if (nodes[level][randomNbr] != null) {
+                // allow self-linking; this doesn't arise in HNSW but it's valid more generally
+                nodes[level][node][nbr] = randomNbr;
+                break;
+              }
+              // nbr not on this level, try again
+            }
+          }
         }
       }
-      assertEquals(
-          isStronglyConnected(nodes[0]), HnswUtil.isStronglyConnected(new MockGraph(nodes)));
+      MockGraph graph = new MockGraph(nodes);
+      /*
+      System.out.println("iter " + i);
+      System.out.print(graph.toString());
+      */
+      assertEquals(isRooted(nodes), HnswUtil.isRooted(graph));
     }
   }
 
-  public void testRandomUndirected() throws Exception {
-    // test the strongly-connected test on a random undirected graph comparing against a brute force
-    // algorithm
-    int numNodes = random().nextInt(100);
-    List<List<Integer>> nodesList = new ArrayList<>();
-    for (int node = 0; node < numNodes; node++) {
-      nodesList.add(new ArrayList<>());
-    }
-    for (int node = 0; node < numNodes; node++) {
-      int numNbrs = random().nextInt(numNodes / 10);
-      for (int nbr = 0; nbr < numNbrs; nbr++) {
-        int randomNbr = random().nextInt(numNodes);
-        // we may get duplicate nbrs; it's OK
-        nodesList.get(node).add(randomNbr);
-        nodesList.get(randomNbr).add(node);
+  private boolean isRooted(int[][][] nodes) {
+    for (int level = nodes.length - 1; level >= 0; level--) {
+      if (isRooted(nodes, level) == false) {
+        return false;
       }
     }
-    int[][][] nodesArray = new int[1][numNodes][];
-    for (int node = 0; node < numNodes; node++) {
-      List<Integer> nbrs = nodesList.get(node);
-      nodesArray[0][node] = new int[nbrs.size()];
-      for (int i = 0; i < nbrs.size(); i++) {
-        nodesArray[0][node][i] = nbrs.get(i);
-      }
-    }
-    assertEquals(
-        isStronglyConnected(nodesArray[0]),
-        HnswUtil.isStronglyConnected(new MockGraph(nodesArray)));
+    return true;
   }
 
-  private boolean isStronglyConnected(int[][] nodes) {
-    // check that the graph is rooted in every node
-    for (int entryPoint = 0; entryPoint < nodes.length; entryPoint++) {
-      FixedBitSet connected = new FixedBitSet(nodes.length);
+  private boolean isRooted(int[][][] nodes, int level) {
+    // check that the graph is rooted in the union of the entry nodes' trees
+    // System.out.println("isRooted level=" + level);
+    int entryPointLevel;
+    if (level == nodes.length - 1) {
+      entryPointLevel = level;
+    } else {
+      entryPointLevel = level + 1;
+    }
+    FixedBitSet connected = new FixedBitSet(nodes[level].length);
+    int count = 0;
+    for (int entryPoint = 0; entryPoint < nodes[entryPointLevel].length; entryPoint++) {
+      if (nodes[entryPointLevel][entryPoint] == null) {
+        // use nodes present on next higher level (or this level if top level) as entry points
+        continue;
+      }
+      // System.out.println("  isRooted level=" + level + " entryPoint=" + entryPoint);
       ArrayDeque<Integer> stack = new ArrayDeque<>();
       stack.push(entryPoint);
-      int count = 0;
       while (!stack.isEmpty()) {
         int node = stack.pop();
         if (connected.get(node)) {
           continue;
         }
+        // System.out.println("    connected node=" + node);
         connected.set(node);
         count++;
-        for (int nbr : nodes[node]) {
+        for (int nbr : nodes[level][node]) {
           stack.push(nbr);
         }
       }
-      if (count != nodes.length) {
-        return false;
+    }
+    return count == levelSize(nodes[level]);
+  }
+
+  static int levelSize(int[][] nodes) {
+    int count = 0;
+    for (int[] node : nodes) {
+      if (node != null) {
+        ++count;
       }
     }
-    return true;
+    return count;
   }
 
   /** Empty graph value */
@@ -193,10 +226,12 @@ public class TestHnswUtil extends LuceneTestCase {
     @Override
     public void seek(int level, int target) {
       assert level >= 0 && level < nodes.length;
+      assert target >= 0 && target < nodes[level].length
+          : "target out of range: " + target + " for level " + level + "; should be less than " + nodes[level].length;
+      assert nodes[level][target] != null
+          : "target " + target + " not on level " + level;
       currentLevel = level;
-      currentNode = target * nodes[level].length / nodes[0].length;
-      assert currentNode >= 0 && currentNode < nodes[level].length
-          : "target out of range: " + target;
+      currentNode = target;
       currentNeighbor = 0;
     }
 
@@ -216,23 +251,51 @@ public class TestHnswUtil extends LuceneTestCase {
     }
 
     @Override
+    public String toString() {
+      StringBuilder buf = new StringBuilder();
+      for (int level = nodes.length - 1; level >= 0; level--) {
+        buf.append("\nLEVEL ").append(level).append("\n");
+        for (int node = 0; node < nodes[level].length; node++) {
+          if (nodes[level][node] != null) {
+            buf.append("  ")
+              .append(node).append(':')
+              .append(Arrays.toString(nodes[level][node]))
+              .append("\n");
+          }
+        }
+      }
+      return buf.toString();
+    }
+
+    @Override
     public NodesIterator getNodesOnLevel(int level) {
-      int mul = nodes[0].length / nodes[level].length;
-      assert mul > 0;
-      return new NodesIterator(nodes[level].length) {
-        int cur = 0;
+
+      int count = 0;
+      for (int i = 0; i < nodes[level].length; i++) {
+        if (nodes[level][i] != null) {
+          count++;
+        }
+      }
+      final int finalCount = count;
+
+      return new NodesIterator(finalCount) {
+        int cur = -1;
+        int curCount = 0;
 
         @Override
         public boolean hasNext() {
-          return cur < nodes[level].length;
+          return curCount < finalCount;
         }
 
         @Override
         public int nextInt() {
-          // level 0 has nodes 0 .. len[0]
-          // level 1 has nodes 0 .. len[1] * len[0] / len[1]
-          // ...
-          return cur++ * mul;
+          while (curCount < finalCount) {
+            if (nodes[level][++cur] != null) {
+              curCount ++;
+              return cur;
+            }
+          }
+          throw new IllegalStateException("exhausted");
         }
 
         @Override
@@ -242,5 +305,4 @@ public class TestHnswUtil extends LuceneTestCase {
       };
     }
   }
-  ;
 }
