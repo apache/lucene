@@ -110,6 +110,8 @@ API Changes
 
 * GITHUB#13499: Remove deprecated TopScoreDocCollector + TopFieldCollector methods (#create, #createSharedManager) (Jakub Slowinski)
 
+* GITHUB#13632: CandidateMatcher public matching functions (Bryan Jacobowitz)
+
 
 New Features
 ---------------------
