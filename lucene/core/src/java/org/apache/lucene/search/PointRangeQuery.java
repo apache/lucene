@@ -129,7 +129,7 @@ public abstract class PointRangeQuery extends Query {
 
       private boolean matches(byte[] packedValue) {
         int offset = 0;
-        for (int dim = 0; dim < numDims; dim++, offset+=bytesPerDim) {
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
           if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
             // Doc's value is too low, in this dimension
             return false;
@@ -147,7 +147,7 @@ public abstract class PointRangeQuery extends Query {
         boolean crosses = false;
         int offset = 0;
 
-        for (int dim = 0; dim < numDims; dim++, offset+=bytesPerDim) {
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
 
           if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
               || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
