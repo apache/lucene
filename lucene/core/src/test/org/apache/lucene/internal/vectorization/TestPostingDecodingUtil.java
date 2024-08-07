@@ -75,11 +75,15 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
               ArrayUtil.copyOfSubArray(expectedC, 0, count),
               ArrayUtil.copyOfSubArray(actualC, 0, count));
           assertArrayEquals(
-              ArrayUtil.copyOfSubArray(expectedB, 64, expectedB.length),
-              ArrayUtil.copyOfSubArray(actualB, 64, actualB.length));
+              ArrayUtil.copyOfSubArray(
+                  expectedB, count + PostingDecodingUtil.PADDING_LONGS, expectedB.length),
+              ArrayUtil.copyOfSubArray(
+                  actualB, count + PostingDecodingUtil.PADDING_LONGS, actualB.length));
           assertArrayEquals(
-              ArrayUtil.copyOfSubArray(expectedC, 64, expectedC.length),
-              ArrayUtil.copyOfSubArray(actualC, 64, actualC.length));
+              ArrayUtil.copyOfSubArray(
+                  expectedC, count + PostingDecodingUtil.PADDING_LONGS, expectedC.length),
+              ArrayUtil.copyOfSubArray(
+                  actualC, count + PostingDecodingUtil.PADDING_LONGS, actualC.length));
         }
       }
     }

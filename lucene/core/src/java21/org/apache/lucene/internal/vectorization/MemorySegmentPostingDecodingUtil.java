@@ -30,11 +30,12 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
 
   static Optional<PostingDecodingUtil> wrap(IndexInput in, MemorySegment memorySegment) {
     if (PanamaVectorizationProvider.HAS_FAST_INTEGER_VECTORS == false) {
+      // No point in using the Vector API if it doesn't actually make things faster.
       return Optional.empty();
     }
-    if (64 % LONG_SPECIES.length() != 0) {
-      // Required to meet PostingDecodingUtil's contract that we do not write entries past index 64
-      // for any `count` in 0..64.
+    if (LONG_SPECIES.length() > PostingDecodingUtil.PADDING_LONGS + 1) {
+      // Required to meet PostingDecodingUtil's contract that we do not read/write more than 7 extra
+      // longs.
       return Optional.empty();
     }
     return Optional.of(new MemorySegmentPostingDecodingUtil(in, memorySegment));
@@ -72,6 +73,7 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
           .intoArray(b, i);
       vector.lanewise(VectorOperators.AND, cMask).intoArray(c, i);
     }
+
     in.seek(endOffset);
   }
 }
