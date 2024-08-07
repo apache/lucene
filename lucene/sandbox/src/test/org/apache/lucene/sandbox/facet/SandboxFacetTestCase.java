@@ -185,10 +185,9 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
   int[] getCountsForRecordedCandidates(
       CountFacetRecorder countFacetRecorder, TaxonomyReader taxoReader, FacetLabel[] candidates)
       throws IOException {
-    TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
-    // OrdinalIterator candidateOrds = OrdinalIterator.fromArray());
     int[] resultOrds =
-        new CandidateSetOrdinalIterator(countFacetRecorder, ordLabels.getOrds(candidates))
+        new CandidateSetOrdinalIterator(
+                countFacetRecorder, candidates, new TaxonomyOrdLabelBiMap(taxoReader))
             .toArray();
     int[] counts = new int[resultOrds.length];
     for (int i = 0; i < resultOrds.length; i++) {

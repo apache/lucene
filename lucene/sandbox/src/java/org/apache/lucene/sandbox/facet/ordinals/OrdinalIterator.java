@@ -59,4 +59,7 @@ public interface OrdinalIterator {
       }
     };
   }
+
+  /** Return empty ordinal iterator */
+  OrdinalIterator EMPTY = () -> NO_MORE_ORDS;
 }

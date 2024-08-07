@@ -465,9 +465,9 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
       TaxonomyReader taxoReader,
       FacetLabel[] candidates)
       throws IOException {
-    TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     int[] resultOrds =
-        new CandidateSetOrdinalIterator(aggregationsRecorder, ordLabels.getOrds(candidates))
+        new CandidateSetOrdinalIterator(
+                aggregationsRecorder, candidates, new TaxonomyOrdLabelBiMap(taxoReader))
             .toArray();
     long[] result = new long[resultOrds.length];
     for (int i = 0; i < resultOrds.length; i++) {
