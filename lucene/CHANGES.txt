@@ -40,6 +40,11 @@ Improvements
 
 * GITHUB#13625: Remove BitSet#nextSetBit code duplication. (Greg Miller)
 
+* GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
+  
+* GITHUB#13633: Add ability to read/write knn vector values to a MemoryIndex. (Ben Trent)
+
 Optimizations
 ---------------------
 
