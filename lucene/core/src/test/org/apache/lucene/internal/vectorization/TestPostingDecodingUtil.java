@@ -38,6 +38,7 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           out.writeLong(random().nextInt());
         }
       }
+      VectorizationProvider vectorizationProvider = VectorizationProvider.lookup(true);
       try (IndexInput in = dir.openInput("tests.bin", IOContext.DEFAULT)) {
         long[] expectedB = new long[ForUtil.BLOCK_SIZE];
         long[] expectedC = new long[ForUtil.BLOCK_SIZE];
@@ -65,8 +66,7 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
                   "test", 0, startFP + (count + PostingDecodingUtil.PADDING_LONGS) * Long.BYTES);
 
           PostingDecodingUtil defaultUtil = new DefaultPostingDecodingUtil(slice);
-          PostingDecodingUtil optimizedUtil =
-              VectorizationProvider.lookup(true).getPostingDecodingUtil(slice);
+          PostingDecodingUtil optimizedUtil = vectorizationProvider.getPostingDecodingUtil(slice);
           assertNotSame(defaultUtil.getClass(), optimizedUtil.getClass());
 
           slice.seek(startFP);
