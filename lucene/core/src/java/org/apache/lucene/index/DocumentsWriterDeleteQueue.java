@@ -636,7 +636,7 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   /** Returns <code>true</code> if it was advanced. */
-  boolean isAdvanced() {
+  synchronized boolean isAdvanced() {
     return advanced;
   }
 }
