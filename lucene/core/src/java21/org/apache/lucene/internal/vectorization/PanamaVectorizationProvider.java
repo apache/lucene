@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorShape;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
@@ -33,7 +34,26 @@ import org.apache.lucene.util.SuppressForbidden;
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
 
+  /** Preferred with in bits for vectors. */
+  static final int PREFERRED_VECTOR_BITSIZE;
+
+  /** Whether integer vectors can be trusted to actually be fast. */
+  static final boolean HAS_FAST_INTEGER_VECTORS;
+
   private final VectorUtilSupport vectorUtilSupport;
+
+  static {
+    // default to platform supported bitsize
+    int vectorBitSize = VectorShape.preferredShape().vectorBitSize();
+    // but allow easy overriding for testing
+    PREFERRED_VECTOR_BITSIZE = VectorizationProvider.TESTS_VECTOR_SIZE.orElse(vectorBitSize);
+
+    // hotspot misses some SSE intrinsics, workaround it
+    // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
+    boolean isAMD64withoutAVX2 =
+        Constants.OS_ARCH.equals("amd64") && PREFERRED_VECTOR_BITSIZE < 256;
+    HAS_FAST_INTEGER_VECTORS = TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
+  }
 
   // Extracted to a method to be able to apply the SuppressForbidden annotation
   @SuppressWarnings("removal")
@@ -70,9 +90,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
             PanamaVectorUtilSupport.VECTOR_BITSIZE,
             Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
-            PanamaVectorUtilSupport.HAS_FAST_INTEGER_VECTORS
-                ? ""
-                : "; floating-point vectors only"));
+            HAS_FAST_INTEGER_VECTORS ? "" : "; floating-point vectors only"));
   }
 
   @Override

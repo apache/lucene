@@ -57,14 +57,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Short> SHORT_SPECIES;
 
   static final int VECTOR_BITSIZE;
-  static final boolean HAS_FAST_INTEGER_VECTORS;
 
   static {
-    // default to platform supported bitsize
-    int vectorBitSize = VectorShape.preferredShape().vectorBitSize();
-    // but allow easy overriding for testing
-    vectorBitSize = VectorizationProvider.TESTS_VECTOR_SIZE.orElse(vectorBitSize);
-    INT_SPECIES = VectorSpecies.of(int.class, VectorShape.forBitSize(vectorBitSize));
+    INT_SPECIES =
+        VectorSpecies.of(
+            int.class,
+            VectorShape.forBitSize(PanamaVectorizationProvider.PREFERRED_VECTOR_BITSIZE));
     VECTOR_BITSIZE = INT_SPECIES.vectorBitSize();
     FLOAT_SPECIES = INT_SPECIES.withLanes(float.class);
     // compute BYTE/SHORT sizes relative to preferred integer vector size
@@ -76,11 +74,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       BYTE_SPECIES = null;
       SHORT_SPECIES = null;
     }
-    // hotspot misses some SSE intrinsics, workaround it
-    // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
-    boolean isAMD64withoutAVX2 = Constants.OS_ARCH.equals("amd64") && VECTOR_BITSIZE < 256;
-    HAS_FAST_INTEGER_VECTORS =
-        VectorizationProvider.TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
@@ -320,7 +313,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorizationProvider.HAS_FAST_INTEGER_VECTORS) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound(a.byteSize());
@@ -414,7 +407,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         } else if (VECTOR_BITSIZE == 256) {
           i += ByteVector.SPECIES_128.loopBound(packed.length);
           res += dotProductBody256Int4Packed(unpacked, packed, i);
-        } else if (HAS_FAST_INTEGER_VECTORS) {
+        } else if (PanamaVectorizationProvider.HAS_FAST_INTEGER_VECTORS) {
           i += ByteVector.SPECIES_64.loopBound(packed.length);
           res += dotProductBody128Int4Packed(unpacked, packed, i);
         }
@@ -430,7 +423,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     } else {
       if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
         return dotProduct(a, b);
-      } else if (a.length >= 32 && HAS_FAST_INTEGER_VECTORS) {
+      } else if (a.length >= 32 && PanamaVectorizationProvider.HAS_FAST_INTEGER_VECTORS) {
         i += ByteVector.SPECIES_128.loopBound(a.length);
         res += int4DotProductBody128(a, b, i);
       }
@@ -588,7 +581,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorizationProvider.HAS_FAST_INTEGER_VECTORS) {
       final float[] ret;
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound((int) a.byteSize());
@@ -711,7 +704,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorizationProvider.HAS_FAST_INTEGER_VECTORS) {
       if (VECTOR_BITSIZE >= 256) {
         i += BYTE_SPECIES.loopBound((int) a.byteSize());
         res += squareDistanceBody256(a, b, i);

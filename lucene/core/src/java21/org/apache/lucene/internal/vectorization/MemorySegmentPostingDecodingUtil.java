@@ -22,12 +22,16 @@ import java.nio.ByteOrder;
 import java.util.Optional;
 import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.store.IndexInput;
 
 final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
 
   static Optional<PostingDecodingUtil> wrap(IndexInput in, MemorySegment memorySegment) {
+    if (PanamaVectorizationProvider.HAS_FAST_INTEGER_VECTORS == false) {
+      return Optional.empty();
+    }
     if (64 % LONG_SPECIES.length() != 0) {
       // Required to meet PostingDecodingUtil's contract that we do not write entries past index 64
       // for any `count` in 0..64.
@@ -36,7 +40,9 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
     return Optional.of(new MemorySegmentPostingDecodingUtil(in, memorySegment));
   }
 
-  private static final VectorSpecies<Long> LONG_SPECIES = VectorSpecies.ofPreferred(long.class);
+  private static final VectorSpecies<Long> LONG_SPECIES =
+      VectorSpecies.of(
+          long.class, VectorShape.forBitSize(PanamaVectorizationProvider.PREFERRED_VECTOR_BITSIZE));
 
   private final IndexInput in;
   private final MemorySegment memorySegment;
