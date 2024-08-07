@@ -46,8 +46,8 @@ public class HighlightsMatch extends QueryMatch {
           new CandidateMatcher<HighlightsMatch>(searcher) {
 
             @Override
-            protected void matchQuery(
-                String queryId, Query matchQuery, Map<String, String> metadata) throws IOException {
+            public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
+                throws IOException {
               Weight w =
                   searcher.createWeight(
                       searcher.rewrite(matchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);

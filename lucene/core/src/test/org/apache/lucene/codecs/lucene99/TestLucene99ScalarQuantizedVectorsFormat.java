@@ -114,19 +114,12 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
       vectors.add(randomVector(dim));
     }
     ScalarQuantizer scalarQuantizer =
-        confidenceInterval != null && confidenceInterval == 0f
-            ? ScalarQuantizer.fromVectorsAutoInterval(
-                new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-                similarityFunction,
-                numVectors,
-                (byte) bits)
-            : ScalarQuantizer.fromVectors(
-                new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-                confidenceInterval == null
-                    ? Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval(dim)
-                    : confidenceInterval,
-                numVectors,
-                (byte) bits);
+        Lucene99ScalarQuantizedVectorsWriter.buildScalarQuantizer(
+            new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors),
+            numVectors,
+            similarityFunction,
+            confidenceInterval,
+            (byte) bits);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {

@@ -337,36 +337,26 @@ public class SparseFixedBitSet extends BitSet {
 
   @Override
   public int nextSetBit(int i) {
-    assert i < length;
-    final int i4096 = i >>> 12;
-    final long index = indices[i4096];
-    final long[] bitArray = this.bits[i4096];
-    int i64 = i >>> 6;
-    int o = Long.bitCount(index & ((1L << i64) - 1));
-    if ((index & (1L << i64)) != 0) {
-      // There is at least one bit that is set in the current long, check if
-      // one of them is after i
-      final long bits = bitArray[o] >>> i; // shifts are mod 64
-      if (bits != 0) {
-        return i + Long.numberOfTrailingZeros(bits);
-      }
-      o += 1;
-    }
-    final long indexBits = index >>> i64 >>> 1;
-    if (indexBits == 0) {
-      // no more bits are set in the current block of 4096 bits, go to the next one
-      return firstDoc(i4096 + 1, indices.length);
-    }
-    // there are still set bits
-    i64 += 1 + Long.numberOfTrailingZeros(indexBits);
-    final long bits = bitArray[o];
-    return (i64 << 6) | Long.numberOfTrailingZeros(bits);
+    // Override with a version that skips the bound check on the result since we know it will not
+    // go OOB:
+    return nextSetBitInRange(i, length);
   }
 
   @Override
   public int nextSetBit(int start, int upperBound) {
+    int res = nextSetBitInRange(start, upperBound);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the next set bit in the specified range, but treats `upperBound` as a best-effort hint
+   * rather than a hard requirement. Note that this may return a result that is >= upperBound in
+   * some cases, so callers must add their own check if `upperBound` is a hard requirement.
+   */
+  private int nextSetBitInRange(int start, int upperBound) {
     assert start < length;
-    assert upperBound > start;
+    assert upperBound > start && upperBound <= length
+        : "upperBound=" + upperBound + ", start=" + start + ", length=" + length;
     final int i4096 = start >>> 12;
     final long index = indices[i4096];
     final long[] bitArray = this.bits[i4096];
@@ -378,22 +368,20 @@ public class SparseFixedBitSet extends BitSet {
       // one of them is after i
       final long bits = bitArray[o] >>> start; // shifts are mod 64
       if (bits != 0) {
-        int res = start + Long.numberOfTrailingZeros(bits);
-        return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+        return start + Long.numberOfTrailingZeros(bits);
       }
       o += 1;
     }
     final long indexBits = index >>> i64 >>> 1;
     if (indexBits == 0) {
       // no more bits are set in the current block of 4096 bits, go to the next one
-      int res = firstDoc(i4096 + 1, blockCount(upperBound));
-      return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+      int i4096upper = upperBound == length ? indices.length : blockCount(upperBound);
+      return firstDoc(i4096 + 1, i4096upper);
     }
     // there are still set bits
     i64 += 1 + Long.numberOfTrailingZeros(indexBits);
     final long bits = bitArray[o];
-    int res = (i64 << 6) | Long.numberOfTrailingZeros(bits);
-    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+    return (i64 << 6) | Long.numberOfTrailingZeros(bits);
   }
 
   /** Return the last document that occurs on or before the provided block index. */
