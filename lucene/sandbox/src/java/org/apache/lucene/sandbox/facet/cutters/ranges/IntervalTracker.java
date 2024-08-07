@@ -31,9 +31,6 @@ interface IntervalTracker extends OrdinalIterator {
   /** track information for the seen input interval * */
   void set(int i);
 
-  /** return number of intervals seen * */
-  int size();
-
   /** clear recorded information on this tracker. * */
   void clear();
 
@@ -45,14 +42,13 @@ interface IntervalTracker extends OrdinalIterator {
 
   /**
    * Interval Tracker that tracks data for one interval only. The interval is recorded only once iff
-   * data belonging to the interval is encountered. TODO: deprecate if not needed (if we have
-   * dedicated classes to handle single value sources). *
+   * data belonging to the interval is encountered.
+   *
+   * <p>TODO: deprecate if not needed, we have dedicated classes to handle single value sources.
    */
   class SingleIntervalTracker implements IntervalTracker {
 
-    int tracker;
-
-    int intervalsWithHit = 0;
+    private int tracker;
 
     SingleIntervalTracker() {
       tracker = NO_MORE_ORDS;
@@ -64,14 +60,8 @@ interface IntervalTracker extends OrdinalIterator {
     }
 
     @Override
-    public int size() {
-      return 1;
-    }
-
-    @Override
     public void clear() {
-      tracker = -1;
-      intervalsWithHit = 0;
+      tracker = NO_MORE_ORDS;
     }
 
     @Override
@@ -80,18 +70,12 @@ interface IntervalTracker extends OrdinalIterator {
     }
 
     @Override
-    public void freeze() {
-      if (tracker != -1) {
-        intervalsWithHit = 1;
-      }
-    }
+    public void freeze() {}
 
     @Override
     public int nextOrd() throws IOException {
       int trackerValue = tracker;
-      if (trackerValue != NO_MORE_ORDS) {
-        tracker = NO_MORE_ORDS;
-      }
+      tracker = NO_MORE_ORDS;
       return trackerValue;
     }
   }
@@ -102,27 +86,19 @@ interface IntervalTracker extends OrdinalIterator {
    */
   class MultiIntervalTracker implements IntervalTracker {
 
-    FixedBitSet tracker;
-    int trackerState;
-    int bitFrom;
+    private FixedBitSet tracker;
+    private int trackerState;
+    private int bitFrom;
 
-    int intervalsWithHit;
+    private int intervalsWithHit;
 
     MultiIntervalTracker(int size) {
       tracker = new FixedBitSet(size);
-      trackerState = 0;
-      bitFrom = 0;
-      intervalsWithHit = 0;
     }
 
     @Override
     public void set(int i) {
       tracker.set(i);
-    }
-
-    @Override
-    public int size() {
-      return tracker.length();
     }
 
     @Override
