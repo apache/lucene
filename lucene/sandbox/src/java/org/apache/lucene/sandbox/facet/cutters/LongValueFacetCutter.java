@@ -159,8 +159,12 @@ public final class LongValueFacetCutter implements FacetCutter, OrdToLabel {
      */
     public int computeIfAbsent(long key, IntSupplier valueSupplier) {
       r.lock();
-      int value = super.getOrDefault(key, -1);
-      r.unlock();
+      int value;
+      try {
+        value = super.getOrDefault(key, -1);
+      } finally {
+        r.unlock();
+      }
       if (value == -1) {
         w.lock();
         try {

@@ -36,8 +36,9 @@ import org.apache.lucene.search.LongValuesSource;
 public abstract class LongRangeFacetCutter implements FacetCutter {
 
   final MultiLongValuesSource valuesSource;
-  final LongValuesSource
-      singleValues; // TODO: refactor - weird that we have both multi and single here.
+
+  // TODO: refactor - weird that we have both multi and single here.
+  final LongValuesSource singleValues;
   final LongRangeAndPos[] sortedRanges;
 
   final int requestedRangeCount;

@@ -526,7 +526,6 @@ public class IntLongHashMap
       return array;
     }
   }
-  ;
 
   /** An iterator over the set of assigned keys. */
   private final class KeysIterator extends AbstractIterator<IntCursor> {

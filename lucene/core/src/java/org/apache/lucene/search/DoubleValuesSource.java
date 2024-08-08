@@ -126,7 +126,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     private final DoubleValuesSource inner;
 
     private SortableLongDoubleValuesSource(DoubleValuesSource inner) {
-      this.inner = inner;
+      this.inner = Objects.requireNonNull(inner);
     }
 
     @Override
@@ -153,7 +153,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public int hashCode() {
-      return Objects.hash(inner);
+      return inner.hashCode();
     }
 
     @Override
