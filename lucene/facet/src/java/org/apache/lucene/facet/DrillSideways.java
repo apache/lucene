@@ -308,7 +308,7 @@ public class DrillSideways {
     private final CollectorOwner<?, ?> collectorOwner;
 
     private CallableCollector(
-        int pos, IndexSearcher searcher, Query query, CollectorOwner<?, ?> collectorOwner) {
+        IndexSearcher searcher, Query query, CollectorOwner<?, ?> collectorOwner) {
       this.searcher = searcher;
       this.query = query;
       this.collectorOwner = collectorOwner;
@@ -318,12 +318,10 @@ public class DrillSideways {
     public Void call() throws Exception {
       // TODO: the difference is that we used to also call reduce in parallel, but not anymore.
       //  We can think about implementing reduce(executor) which allows parallelism? If doing it
-      //  sequentially becomes a problem.
+      //  sequentially becomes a problem. Note that in this case we need to make sure that
+      // CollectorOwner#getResult is threadsafe.
       searcher.search(query, collectorOwner);
-      // TODO: we don't use the results - should we return null? In this case, we can
-      // simplify/remove CallableResult class
       return null;
-      // return new CallableResult(pos, collectorOwner);
     }
   }
 
@@ -514,13 +512,12 @@ public class DrillSideways {
     final Map<String, Integer> drillDownDims = query.getDims();
     final List<CallableCollector> callableCollectors = new ArrayList<>(drillDownDims.size() + 1);
 
-    callableCollectors.add(new CallableCollector(-1, searcher, query, drillDownCollectorOwner));
+    callableCollectors.add(new CallableCollector(searcher, query, drillDownCollectorOwner));
     int i = 0;
     final Query[] filters = query.getDrillDownQueries();
     for (String dim : drillDownDims.keySet()) {
       callableCollectors.add(
           new CallableCollector(
-              i,
               searcher,
               getDrillDownQuery(query, filters, dim),
               drillSidewaysCollectorOwners.get(i)));

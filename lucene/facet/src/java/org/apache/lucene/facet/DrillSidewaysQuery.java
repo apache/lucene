@@ -125,12 +125,11 @@ class DrillSidewaysQuery extends Query {
         int drillDownCount = drillDowns.length;
 
         Collector drillDownCollector;
-        LeafCollector drillDownLeafCollector;
+        final LeafCollector drillDownLeafCollector;
         if (drillDownCollectorOwner != null) {
           drillDownCollector = drillDownCollectorOwner.newCollector();
           drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
         } else {
-          drillDownCollector = null;
           drillDownLeafCollector = null;
         }
 
