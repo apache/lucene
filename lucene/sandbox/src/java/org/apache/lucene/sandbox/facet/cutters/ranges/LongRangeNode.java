@@ -16,8 +16,7 @@
  */
 package org.apache.lucene.sandbox.facet.cutters.ranges;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * Holds one node of the segment tree.
@@ -32,21 +31,16 @@ final class LongRangeNode {
   final long start;
   final long end;
 
-  // If we are a leaf, the index into elementary ranges that we point to:
-  final int elementaryIntervalIndex;
-
   // Which range indices to output when a query goes
   // through this node:
-  List<Integer> outputs;
+  IntArrayList outputs;
 
   /** add doc * */
-  public LongRangeNode(
-      long start, long end, LongRangeNode left, LongRangeNode right, int elementaryIntervalIndex) {
+  LongRangeNode(long start, long end, LongRangeNode left, LongRangeNode right) {
     this.start = start;
     this.end = end;
     this.left = left;
     this.right = right;
-    this.elementaryIntervalIndex = elementaryIntervalIndex;
   }
 
   @Override
@@ -66,7 +60,7 @@ final class LongRangeNode {
       // Our range is fully included in the incoming
       // range; add to our output list:
       if (outputs == null) {
-        outputs = new ArrayList<>();
+        outputs = new IntArrayList();
       }
       outputs.add(range.pos());
     } else if (left != null) {
@@ -96,30 +90,5 @@ final class LongRangeNode {
       left.toString(sb, depth + 1);
       right.toString(sb, depth + 1);
     }
-  }
-
-  /** returns the range start value */
-  public long start() {
-    return start;
-  }
-
-  /** returns the range end value */
-  public long end() {
-    return end;
-  }
-
-  /** returns left node of segment tree node */
-  public LongRangeNode left() {
-    return left;
-  }
-
-  /** returns right node of segment tree node */
-  public LongRangeNode right() {
-    return right;
-  }
-
-  /** returns range indices to output when a query goes through this node */
-  public List<Integer> outputs() {
-    return outputs;
   }
 }

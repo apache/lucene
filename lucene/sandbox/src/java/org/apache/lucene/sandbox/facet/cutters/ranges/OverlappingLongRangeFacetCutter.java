@@ -26,6 +26,7 @@ import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -131,12 +132,12 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     if (start == end - 1) {
       // leaf
       InclusiveRange range = elementaryIntervals.get(start);
-      return new LongRangeNode(range.start(), range.end(), null, null, start);
+      return new LongRangeNode(range.start(), range.end(), null, null);
     } else {
       int mid = (start + end) >>> 1;
       LongRangeNode left = split(start, mid, elementaryIntervals);
       LongRangeNode right = split(mid, end, elementaryIntervals);
-      return new LongRangeNode(left.start(), right.end(), left, right, -1);
+      return new LongRangeNode(left.start, right.end, left, right);
     }
   }
 
@@ -195,8 +196,8 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
         elementaryIntervalUpto++;
       }
       if (containedHit && node.outputs != null) {
-        for (int rangeIndex : node.outputs) {
-          requestedIntervalTracker.set(rangeIndex);
+        for (IntCursor rangeIndex : node.outputs) {
+          requestedIntervalTracker.set(rangeIndex.value);
         }
       }
 
@@ -252,8 +253,8 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
         elementaryIntervalUpto++;
       }
       if (containedHit && node.outputs != null) {
-        for (int rangeIndex : node.outputs) {
-          requestedIntervalTracker.set(rangeIndex);
+        for (IntCursor rangeIndex : node.outputs) {
+          requestedIntervalTracker.set(rangeIndex.value);
         }
       }
 
