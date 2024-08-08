@@ -342,6 +342,13 @@ public final class ForUtil {
     }
   }
 
+  /** Likewise, but for a simple mask. */
+  private static void maskLongs(long[] a, int count, long mask) {
+    for (int i = 0; i < count; ++i) {
+      a[i] &= mask;
+    }
+  }
+
   private static final long[] MASKS8 = new long[8];
   private static final long[] MASKS16 = new long[16];
   private static final long[] MASKS32 = new long[32];
@@ -642,12 +649,13 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(6, longs, 5, MASK8_3, tmp, MASK8_5);
     shiftLongs(tmp, 6, longs, 6, 2, MASK8_3);
+    maskLongs(tmp, 6, MASK8_2);
     for (int iter = 0, tmpIdx = 0, longsIdx = 12; iter < 2; ++iter, tmpIdx += 3, longsIdx += 2) {
-      long l0 = (tmp[tmpIdx + 0] & MASK8_2) << 1;
+      long l0 = tmp[tmpIdx + 0] << 1;
       l0 |= (tmp[tmpIdx + 1] >>> 1) & MASK8_1;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK8_1) << 2;
-      l1 |= (tmp[tmpIdx + 2] & MASK8_2) << 0;
+      l1 |= tmp[tmpIdx + 2] << 0;
       longs[longsIdx + 1] = l1;
     }
   }
@@ -662,15 +670,15 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(10, longs, 3, MASK8_5, tmp, MASK8_3);
     for (int iter = 0, tmpIdx = 0, longsIdx = 10; iter < 2; ++iter, tmpIdx += 5, longsIdx += 3) {
-      long l0 = (tmp[tmpIdx + 0] & MASK8_3) << 2;
+      long l0 = tmp[tmpIdx + 0] << 2;
       l0 |= (tmp[tmpIdx + 1] >>> 1) & MASK8_2;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK8_1) << 4;
-      l1 |= (tmp[tmpIdx + 2] & MASK8_3) << 1;
+      l1 |= tmp[tmpIdx + 2] << 1;
       l1 |= (tmp[tmpIdx + 3] >>> 2) & MASK8_1;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 3] & MASK8_2) << 3;
-      l2 |= (tmp[tmpIdx + 4] & MASK8_3) << 0;
+      l2 |= tmp[tmpIdx + 4] << 0;
       longs[longsIdx + 2] = l2;
     }
   }
@@ -710,7 +718,7 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(18, longs, 7, MASK16_9, tmp, MASK16_7);
     for (int iter = 0, tmpIdx = 0, longsIdx = 18; iter < 2; ++iter, tmpIdx += 9, longsIdx += 7) {
-      long l0 = (tmp[tmpIdx + 0] & MASK16_7) << 2;
+      long l0 = tmp[tmpIdx + 0] << 2;
       l0 |= (tmp[tmpIdx + 1] >>> 5) & MASK16_2;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK16_5) << 4;
@@ -720,7 +728,7 @@ public final class ForUtil {
       l2 |= (tmp[tmpIdx + 3] >>> 1) & MASK16_6;
       longs[longsIdx + 2] = l2;
       long l3 = (tmp[tmpIdx + 3] & MASK16_1) << 8;
-      l3 |= (tmp[tmpIdx + 4] & MASK16_7) << 1;
+      l3 |= tmp[tmpIdx + 4] << 1;
       l3 |= (tmp[tmpIdx + 5] >>> 6) & MASK16_1;
       longs[longsIdx + 3] = l3;
       long l4 = (tmp[tmpIdx + 5] & MASK16_6) << 3;
@@ -730,7 +738,7 @@ public final class ForUtil {
       l5 |= (tmp[tmpIdx + 7] >>> 2) & MASK16_5;
       longs[longsIdx + 5] = l5;
       long l6 = (tmp[tmpIdx + 7] & MASK16_2) << 7;
-      l6 |= (tmp[tmpIdx + 8] & MASK16_7) << 0;
+      l6 |= tmp[tmpIdx + 8] << 0;
       longs[longsIdx + 6] = l6;
     }
   }
@@ -739,15 +747,15 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(20, longs, 6, MASK16_10, tmp, MASK16_6);
     for (int iter = 0, tmpIdx = 0, longsIdx = 20; iter < 4; ++iter, tmpIdx += 5, longsIdx += 3) {
-      long l0 = (tmp[tmpIdx + 0] & MASK16_6) << 4;
+      long l0 = tmp[tmpIdx + 0] << 4;
       l0 |= (tmp[tmpIdx + 1] >>> 2) & MASK16_4;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK16_2) << 8;
-      l1 |= (tmp[tmpIdx + 2] & MASK16_6) << 2;
+      l1 |= tmp[tmpIdx + 2] << 2;
       l1 |= (tmp[tmpIdx + 3] >>> 4) & MASK16_2;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 3] & MASK16_4) << 6;
-      l2 |= (tmp[tmpIdx + 4] & MASK16_6) << 0;
+      l2 |= tmp[tmpIdx + 4] << 0;
       longs[longsIdx + 2] = l2;
     }
   }
@@ -756,25 +764,25 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(22, longs, 5, MASK16_11, tmp, MASK16_5);
     for (int iter = 0, tmpIdx = 0, longsIdx = 22; iter < 2; ++iter, tmpIdx += 11, longsIdx += 5) {
-      long l0 = (tmp[tmpIdx + 0] & MASK16_5) << 6;
-      l0 |= (tmp[tmpIdx + 1] & MASK16_5) << 1;
+      long l0 = tmp[tmpIdx + 0] << 6;
+      l0 |= tmp[tmpIdx + 1] << 1;
       l0 |= (tmp[tmpIdx + 2] >>> 4) & MASK16_1;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 2] & MASK16_4) << 7;
-      l1 |= (tmp[tmpIdx + 3] & MASK16_5) << 2;
+      l1 |= tmp[tmpIdx + 3] << 2;
       l1 |= (tmp[tmpIdx + 4] >>> 3) & MASK16_2;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 4] & MASK16_3) << 8;
-      l2 |= (tmp[tmpIdx + 5] & MASK16_5) << 3;
+      l2 |= tmp[tmpIdx + 5] << 3;
       l2 |= (tmp[tmpIdx + 6] >>> 2) & MASK16_3;
       longs[longsIdx + 2] = l2;
       long l3 = (tmp[tmpIdx + 6] & MASK16_2) << 9;
-      l3 |= (tmp[tmpIdx + 7] & MASK16_5) << 4;
+      l3 |= tmp[tmpIdx + 7] << 4;
       l3 |= (tmp[tmpIdx + 8] >>> 1) & MASK16_4;
       longs[longsIdx + 3] = l3;
       long l4 = (tmp[tmpIdx + 8] & MASK16_1) << 10;
-      l4 |= (tmp[tmpIdx + 9] & MASK16_5) << 5;
-      l4 |= (tmp[tmpIdx + 10] & MASK16_5) << 0;
+      l4 |= tmp[tmpIdx + 9] << 5;
+      l4 |= tmp[tmpIdx + 10] << 0;
       longs[longsIdx + 4] = l4;
     }
   }
@@ -794,23 +802,23 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(26, longs, 3, MASK16_13, tmp, MASK16_3);
     for (int iter = 0, tmpIdx = 0, longsIdx = 26; iter < 2; ++iter, tmpIdx += 13, longsIdx += 3) {
-      long l0 = (tmp[tmpIdx + 0] & MASK16_3) << 10;
-      l0 |= (tmp[tmpIdx + 1] & MASK16_3) << 7;
-      l0 |= (tmp[tmpIdx + 2] & MASK16_3) << 4;
-      l0 |= (tmp[tmpIdx + 3] & MASK16_3) << 1;
+      long l0 = tmp[tmpIdx + 0] << 10;
+      l0 |= tmp[tmpIdx + 1] << 7;
+      l0 |= tmp[tmpIdx + 2] << 4;
+      l0 |= tmp[tmpIdx + 3] << 1;
       l0 |= (tmp[tmpIdx + 4] >>> 2) & MASK16_1;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 4] & MASK16_2) << 11;
-      l1 |= (tmp[tmpIdx + 5] & MASK16_3) << 8;
-      l1 |= (tmp[tmpIdx + 6] & MASK16_3) << 5;
-      l1 |= (tmp[tmpIdx + 7] & MASK16_3) << 2;
+      l1 |= tmp[tmpIdx + 5] << 8;
+      l1 |= tmp[tmpIdx + 6] << 5;
+      l1 |= tmp[tmpIdx + 7] << 2;
       l1 |= (tmp[tmpIdx + 8] >>> 1) & MASK16_2;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 8] & MASK16_1) << 12;
-      l2 |= (tmp[tmpIdx + 9] & MASK16_3) << 9;
-      l2 |= (tmp[tmpIdx + 10] & MASK16_3) << 6;
-      l2 |= (tmp[tmpIdx + 11] & MASK16_3) << 3;
-      l2 |= (tmp[tmpIdx + 12] & MASK16_3) << 0;
+      l2 |= tmp[tmpIdx + 9] << 9;
+      l2 |= tmp[tmpIdx + 10] << 6;
+      l2 |= tmp[tmpIdx + 11] << 3;
+      l2 |= tmp[tmpIdx + 12] << 0;
       longs[longsIdx + 2] = l2;
     }
   }
@@ -862,7 +870,7 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(34, longs, 15, MASK32_17, tmp, MASK32_15);
     for (int iter = 0, tmpIdx = 0, longsIdx = 34; iter < 2; ++iter, tmpIdx += 17, longsIdx += 15) {
-      long l0 = (tmp[tmpIdx + 0] & MASK32_15) << 2;
+      long l0 = tmp[tmpIdx + 0] << 2;
       l0 |= (tmp[tmpIdx + 1] >>> 13) & MASK32_2;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK32_13) << 4;
@@ -884,7 +892,7 @@ public final class ForUtil {
       l6 |= (tmp[tmpIdx + 7] >>> 1) & MASK32_14;
       longs[longsIdx + 6] = l6;
       long l7 = (tmp[tmpIdx + 7] & MASK32_1) << 16;
-      l7 |= (tmp[tmpIdx + 8] & MASK32_15) << 1;
+      l7 |= tmp[tmpIdx + 8] << 1;
       l7 |= (tmp[tmpIdx + 9] >>> 14) & MASK32_1;
       longs[longsIdx + 7] = l7;
       long l8 = (tmp[tmpIdx + 9] & MASK32_14) << 3;
@@ -906,7 +914,7 @@ public final class ForUtil {
       l13 |= (tmp[tmpIdx + 15] >>> 2) & MASK32_13;
       longs[longsIdx + 13] = l13;
       long l14 = (tmp[tmpIdx + 15] & MASK32_2) << 15;
-      l14 |= (tmp[tmpIdx + 16] & MASK32_15) << 0;
+      l14 |= tmp[tmpIdx + 16] << 0;
       longs[longsIdx + 14] = l14;
     }
   }
@@ -915,7 +923,7 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(36, longs, 14, MASK32_18, tmp, MASK32_14);
     for (int iter = 0, tmpIdx = 0, longsIdx = 36; iter < 4; ++iter, tmpIdx += 9, longsIdx += 7) {
-      long l0 = (tmp[tmpIdx + 0] & MASK32_14) << 4;
+      long l0 = tmp[tmpIdx + 0] << 4;
       l0 |= (tmp[tmpIdx + 1] >>> 10) & MASK32_4;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK32_10) << 8;
@@ -925,7 +933,7 @@ public final class ForUtil {
       l2 |= (tmp[tmpIdx + 3] >>> 2) & MASK32_12;
       longs[longsIdx + 2] = l2;
       long l3 = (tmp[tmpIdx + 3] & MASK32_2) << 16;
-      l3 |= (tmp[tmpIdx + 4] & MASK32_14) << 2;
+      l3 |= tmp[tmpIdx + 4] << 2;
       l3 |= (tmp[tmpIdx + 5] >>> 12) & MASK32_2;
       longs[longsIdx + 3] = l3;
       long l4 = (tmp[tmpIdx + 5] & MASK32_12) << 6;
@@ -935,7 +943,7 @@ public final class ForUtil {
       l5 |= (tmp[tmpIdx + 7] >>> 4) & MASK32_10;
       longs[longsIdx + 5] = l5;
       long l6 = (tmp[tmpIdx + 7] & MASK32_4) << 14;
-      l6 |= (tmp[tmpIdx + 8] & MASK32_14) << 0;
+      l6 |= tmp[tmpIdx + 8] << 0;
       longs[longsIdx + 6] = l6;
     }
   }
@@ -944,49 +952,49 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(38, longs, 13, MASK32_19, tmp, MASK32_13);
     for (int iter = 0, tmpIdx = 0, longsIdx = 38; iter < 2; ++iter, tmpIdx += 19, longsIdx += 13) {
-      long l0 = (tmp[tmpIdx + 0] & MASK32_13) << 6;
+      long l0 = tmp[tmpIdx + 0] << 6;
       l0 |= (tmp[tmpIdx + 1] >>> 7) & MASK32_6;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK32_7) << 12;
       l1 |= (tmp[tmpIdx + 2] >>> 1) & MASK32_12;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 2] & MASK32_1) << 18;
-      l2 |= (tmp[tmpIdx + 3] & MASK32_13) << 5;
+      l2 |= tmp[tmpIdx + 3] << 5;
       l2 |= (tmp[tmpIdx + 4] >>> 8) & MASK32_5;
       longs[longsIdx + 2] = l2;
       long l3 = (tmp[tmpIdx + 4] & MASK32_8) << 11;
       l3 |= (tmp[tmpIdx + 5] >>> 2) & MASK32_11;
       longs[longsIdx + 3] = l3;
       long l4 = (tmp[tmpIdx + 5] & MASK32_2) << 17;
-      l4 |= (tmp[tmpIdx + 6] & MASK32_13) << 4;
+      l4 |= tmp[tmpIdx + 6] << 4;
       l4 |= (tmp[tmpIdx + 7] >>> 9) & MASK32_4;
       longs[longsIdx + 4] = l4;
       long l5 = (tmp[tmpIdx + 7] & MASK32_9) << 10;
       l5 |= (tmp[tmpIdx + 8] >>> 3) & MASK32_10;
       longs[longsIdx + 5] = l5;
       long l6 = (tmp[tmpIdx + 8] & MASK32_3) << 16;
-      l6 |= (tmp[tmpIdx + 9] & MASK32_13) << 3;
+      l6 |= tmp[tmpIdx + 9] << 3;
       l6 |= (tmp[tmpIdx + 10] >>> 10) & MASK32_3;
       longs[longsIdx + 6] = l6;
       long l7 = (tmp[tmpIdx + 10] & MASK32_10) << 9;
       l7 |= (tmp[tmpIdx + 11] >>> 4) & MASK32_9;
       longs[longsIdx + 7] = l7;
       long l8 = (tmp[tmpIdx + 11] & MASK32_4) << 15;
-      l8 |= (tmp[tmpIdx + 12] & MASK32_13) << 2;
+      l8 |= tmp[tmpIdx + 12] << 2;
       l8 |= (tmp[tmpIdx + 13] >>> 11) & MASK32_2;
       longs[longsIdx + 8] = l8;
       long l9 = (tmp[tmpIdx + 13] & MASK32_11) << 8;
       l9 |= (tmp[tmpIdx + 14] >>> 5) & MASK32_8;
       longs[longsIdx + 9] = l9;
       long l10 = (tmp[tmpIdx + 14] & MASK32_5) << 14;
-      l10 |= (tmp[tmpIdx + 15] & MASK32_13) << 1;
+      l10 |= tmp[tmpIdx + 15] << 1;
       l10 |= (tmp[tmpIdx + 16] >>> 12) & MASK32_1;
       longs[longsIdx + 10] = l10;
       long l11 = (tmp[tmpIdx + 16] & MASK32_12) << 7;
       l11 |= (tmp[tmpIdx + 17] >>> 6) & MASK32_7;
       longs[longsIdx + 11] = l11;
       long l12 = (tmp[tmpIdx + 17] & MASK32_6) << 13;
-      l12 |= (tmp[tmpIdx + 18] & MASK32_13) << 0;
+      l12 |= tmp[tmpIdx + 18] << 0;
       longs[longsIdx + 12] = l12;
     }
   }
@@ -995,15 +1003,15 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(40, longs, 12, MASK32_20, tmp, MASK32_12);
     for (int iter = 0, tmpIdx = 0, longsIdx = 40; iter < 8; ++iter, tmpIdx += 5, longsIdx += 3) {
-      long l0 = (tmp[tmpIdx + 0] & MASK32_12) << 8;
+      long l0 = tmp[tmpIdx + 0] << 8;
       l0 |= (tmp[tmpIdx + 1] >>> 4) & MASK32_8;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK32_4) << 16;
-      l1 |= (tmp[tmpIdx + 2] & MASK32_12) << 4;
+      l1 |= tmp[tmpIdx + 2] << 4;
       l1 |= (tmp[tmpIdx + 3] >>> 8) & MASK32_4;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 3] & MASK32_8) << 12;
-      l2 |= (tmp[tmpIdx + 4] & MASK32_12) << 0;
+      l2 |= tmp[tmpIdx + 4] << 0;
       longs[longsIdx + 2] = l2;
     }
   }
@@ -1012,47 +1020,47 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(42, longs, 11, MASK32_21, tmp, MASK32_11);
     for (int iter = 0, tmpIdx = 0, longsIdx = 42; iter < 2; ++iter, tmpIdx += 21, longsIdx += 11) {
-      long l0 = (tmp[tmpIdx + 0] & MASK32_11) << 10;
+      long l0 = tmp[tmpIdx + 0] << 10;
       l0 |= (tmp[tmpIdx + 1] >>> 1) & MASK32_10;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 1] & MASK32_1) << 20;
-      l1 |= (tmp[tmpIdx + 2] & MASK32_11) << 9;
+      l1 |= tmp[tmpIdx + 2] << 9;
       l1 |= (tmp[tmpIdx + 3] >>> 2) & MASK32_9;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 3] & MASK32_2) << 19;
-      l2 |= (tmp[tmpIdx + 4] & MASK32_11) << 8;
+      l2 |= tmp[tmpIdx + 4] << 8;
       l2 |= (tmp[tmpIdx + 5] >>> 3) & MASK32_8;
       longs[longsIdx + 2] = l2;
       long l3 = (tmp[tmpIdx + 5] & MASK32_3) << 18;
-      l3 |= (tmp[tmpIdx + 6] & MASK32_11) << 7;
+      l3 |= tmp[tmpIdx + 6] << 7;
       l3 |= (tmp[tmpIdx + 7] >>> 4) & MASK32_7;
       longs[longsIdx + 3] = l3;
       long l4 = (tmp[tmpIdx + 7] & MASK32_4) << 17;
-      l4 |= (tmp[tmpIdx + 8] & MASK32_11) << 6;
+      l4 |= tmp[tmpIdx + 8] << 6;
       l4 |= (tmp[tmpIdx + 9] >>> 5) & MASK32_6;
       longs[longsIdx + 4] = l4;
       long l5 = (tmp[tmpIdx + 9] & MASK32_5) << 16;
-      l5 |= (tmp[tmpIdx + 10] & MASK32_11) << 5;
+      l5 |= tmp[tmpIdx + 10] << 5;
       l5 |= (tmp[tmpIdx + 11] >>> 6) & MASK32_5;
       longs[longsIdx + 5] = l5;
       long l6 = (tmp[tmpIdx + 11] & MASK32_6) << 15;
-      l6 |= (tmp[tmpIdx + 12] & MASK32_11) << 4;
+      l6 |= tmp[tmpIdx + 12] << 4;
       l6 |= (tmp[tmpIdx + 13] >>> 7) & MASK32_4;
       longs[longsIdx + 6] = l6;
       long l7 = (tmp[tmpIdx + 13] & MASK32_7) << 14;
-      l7 |= (tmp[tmpIdx + 14] & MASK32_11) << 3;
+      l7 |= tmp[tmpIdx + 14] << 3;
       l7 |= (tmp[tmpIdx + 15] >>> 8) & MASK32_3;
       longs[longsIdx + 7] = l7;
       long l8 = (tmp[tmpIdx + 15] & MASK32_8) << 13;
-      l8 |= (tmp[tmpIdx + 16] & MASK32_11) << 2;
+      l8 |= tmp[tmpIdx + 16] << 2;
       l8 |= (tmp[tmpIdx + 17] >>> 9) & MASK32_2;
       longs[longsIdx + 8] = l8;
       long l9 = (tmp[tmpIdx + 17] & MASK32_9) << 12;
-      l9 |= (tmp[tmpIdx + 18] & MASK32_11) << 1;
+      l9 |= tmp[tmpIdx + 18] << 1;
       l9 |= (tmp[tmpIdx + 19] >>> 10) & MASK32_1;
       longs[longsIdx + 9] = l9;
       long l10 = (tmp[tmpIdx + 19] & MASK32_10) << 11;
-      l10 |= (tmp[tmpIdx + 20] & MASK32_11) << 0;
+      l10 |= tmp[tmpIdx + 20] << 0;
       longs[longsIdx + 10] = l10;
     }
   }
@@ -1061,25 +1069,25 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(44, longs, 10, MASK32_22, tmp, MASK32_10);
     for (int iter = 0, tmpIdx = 0, longsIdx = 44; iter < 4; ++iter, tmpIdx += 11, longsIdx += 5) {
-      long l0 = (tmp[tmpIdx + 0] & MASK32_10) << 12;
-      l0 |= (tmp[tmpIdx + 1] & MASK32_10) << 2;
+      long l0 = tmp[tmpIdx + 0] << 12;
+      l0 |= tmp[tmpIdx + 1] << 2;
       l0 |= (tmp[tmpIdx + 2] >>> 8) & MASK32_2;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 2] & MASK32_8) << 14;
-      l1 |= (tmp[tmpIdx + 3] & MASK32_10) << 4;
+      l1 |= tmp[tmpIdx + 3] << 4;
       l1 |= (tmp[tmpIdx + 4] >>> 6) & MASK32_4;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 4] & MASK32_6) << 16;
-      l2 |= (tmp[tmpIdx + 5] & MASK32_10) << 6;
+      l2 |= tmp[tmpIdx + 5] << 6;
       l2 |= (tmp[tmpIdx + 6] >>> 4) & MASK32_6;
       longs[longsIdx + 2] = l2;
       long l3 = (tmp[tmpIdx + 6] & MASK32_4) << 18;
-      l3 |= (tmp[tmpIdx + 7] & MASK32_10) << 8;
+      l3 |= tmp[tmpIdx + 7] << 8;
       l3 |= (tmp[tmpIdx + 8] >>> 2) & MASK32_8;
       longs[longsIdx + 3] = l3;
       long l4 = (tmp[tmpIdx + 8] & MASK32_2) << 20;
-      l4 |= (tmp[tmpIdx + 9] & MASK32_10) << 10;
-      l4 |= (tmp[tmpIdx + 10] & MASK32_10) << 0;
+      l4 |= tmp[tmpIdx + 9] << 10;
+      l4 |= tmp[tmpIdx + 10] << 0;
       longs[longsIdx + 4] = l4;
     }
   }
@@ -1088,45 +1096,45 @@ public final class ForUtil {
       throws IOException {
     pdu.splitLongs(46, longs, 9, MASK32_23, tmp, MASK32_9);
     for (int iter = 0, tmpIdx = 0, longsIdx = 46; iter < 2; ++iter, tmpIdx += 23, longsIdx += 9) {
-      long l0 = (tmp[tmpIdx + 0] & MASK32_9) << 14;
-      l0 |= (tmp[tmpIdx + 1] & MASK32_9) << 5;
+      long l0 = tmp[tmpIdx + 0] << 14;
+      l0 |= tmp[tmpIdx + 1] << 5;
       l0 |= (tmp[tmpIdx + 2] >>> 4) & MASK32_5;
       longs[longsIdx + 0] = l0;
       long l1 = (tmp[tmpIdx + 2] & MASK32_4) << 19;
-      l1 |= (tmp[tmpIdx + 3] & MASK32_9) << 10;
-      l1 |= (tmp[tmpIdx + 4] & MASK32_9) << 1;
+      l1 |= tmp[tmpIdx + 3] << 10;
+      l1 |= tmp[tmpIdx + 4] << 1;
       l1 |= (tmp[tmpIdx + 5] >>> 8) & MASK32_1;
       longs[longsIdx + 1] = l1;
       long l2 = (tmp[tmpIdx + 5] & MASK32_8) << 15;
-      l2 |= (tmp[tmpIdx + 6] & MASK32_9) << 6;
+      l2 |= tmp[tmpIdx + 6] << 6;
       l2 |= (tmp[tmpIdx + 7] >>> 3) & MASK32_6;
       longs[longsIdx + 2] = l2;
       long l3 = (tmp[tmpIdx + 7] & MASK32_3) << 20;
-      l3 |= (tmp[tmpIdx + 8] & MASK32_9) << 11;
-      l3 |= (tmp[tmpIdx + 9] & MASK32_9) << 2;
+      l3 |= tmp[tmpIdx + 8] << 11;
+      l3 |= tmp[tmpIdx + 9] << 2;
       l3 |= (tmp[tmpIdx + 10] >>> 7) & MASK32_2;
       longs[longsIdx + 3] = l3;
       long l4 = (tmp[tmpIdx + 10] & MASK32_7) << 16;
-      l4 |= (tmp[tmpIdx + 11] & MASK32_9) << 7;
+      l4 |= tmp[tmpIdx + 11] << 7;
       l4 |= (tmp[tmpIdx + 12] >>> 2) & MASK32_7;
       longs[longsIdx + 4] = l4;
       long l5 = (tmp[tmpIdx + 12] & MASK32_2) << 21;
-      l5 |= (tmp[tmpIdx + 13] & MASK32_9) << 12;
-      l5 |= (tmp[tmpIdx + 14] & MASK32_9) << 3;
+      l5 |= tmp[tmpIdx + 13] << 12;
+      l5 |= tmp[tmpIdx + 14] << 3;
       l5 |= (tmp[tmpIdx + 15] >>> 6) & MASK32_3;
       longs[longsIdx + 5] = l5;
       long l6 = (tmp[tmpIdx + 15] & MASK32_6) << 17;
-      l6 |= (tmp[tmpIdx + 16] & MASK32_9) << 8;
+      l6 |= tmp[tmpIdx + 16] << 8;
       l6 |= (tmp[tmpIdx + 17] >>> 1) & MASK32_8;
       longs[longsIdx + 6] = l6;
       long l7 = (tmp[tmpIdx + 17] & MASK32_1) << 22;
-      l7 |= (tmp[tmpIdx + 18] & MASK32_9) << 13;
-      l7 |= (tmp[tmpIdx + 19] & MASK32_9) << 4;
+      l7 |= tmp[tmpIdx + 18] << 13;
+      l7 |= tmp[tmpIdx + 19] << 4;
       l7 |= (tmp[tmpIdx + 20] >>> 5) & MASK32_4;
       longs[longsIdx + 7] = l7;
       long l8 = (tmp[tmpIdx + 20] & MASK32_5) << 18;
-      l8 |= (tmp[tmpIdx + 21] & MASK32_9) << 9;
-      l8 |= (tmp[tmpIdx + 22] & MASK32_9) << 0;
+      l8 |= tmp[tmpIdx + 21] << 9;
+      l8 |= tmp[tmpIdx + 22] << 0;
       longs[longsIdx + 8] = l8;
     }
   }
