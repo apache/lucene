@@ -119,13 +119,12 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
-  /** Convert to a SortableMultiLongValuesSource. * */
-  public final SortableMultiLongValuesSource toSortableMultiLongValuesSource() {
+  /** Convert to a {@link MultiLongValuesSource} using {@link NumericUtils#doubleToSortableLong} */
+  public final MultiLongValuesSource toSortableMultiLongValuesSource() {
     return new SortableMultiLongValuesSource(this);
   }
 
-  /** Convert inner double values to sortable long using NumericUtils.doubleToSortableLong */
-  public static class SortableMultiLongValuesSource extends MultiLongValuesSource {
+  private static class SortableMultiLongValuesSource extends MultiLongValuesSource {
 
     MultiDoubleValuesSource inner;
 

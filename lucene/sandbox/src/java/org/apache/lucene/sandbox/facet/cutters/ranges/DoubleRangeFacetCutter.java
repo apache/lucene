@@ -18,6 +18,7 @@ package org.apache.lucene.sandbox.facet.cutters.ranges;
 
 import java.io.IOException;
 import org.apache.lucene.facet.MultiDoubleValuesSource;
+import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.DoubleRangeFacetCounts;
 import org.apache.lucene.facet.range.LongRange;
@@ -46,7 +47,7 @@ public final class DoubleRangeFacetCutter implements FacetCutter {
     DoubleValuesSource singleDoubleValuesSource =
         MultiDoubleValuesSource.unwrapSingleton(multiDoubleValuesSource);
     LongValuesSource singleLongValuesSource;
-    MultiDoubleValuesSource.SortableMultiLongValuesSource multiLongValuesSource;
+    MultiLongValuesSource multiLongValuesSource;
     if (singleDoubleValuesSource != null) {
       singleLongValuesSource = singleDoubleValuesSource.toSortableLongDoubleValuesSource();
       multiLongValuesSource = null;
