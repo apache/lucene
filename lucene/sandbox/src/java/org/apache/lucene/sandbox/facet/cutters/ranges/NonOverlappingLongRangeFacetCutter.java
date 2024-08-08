@@ -66,12 +66,10 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);
-      return new NonOverlappingLongRangeSingleValueLeafFacetCutter(
-          values, boundaries, pos, requestedRangeCount);
+      return new NonOverlappingLongRangeSingleValueLeafFacetCutter(values, boundaries, pos);
     } else {
       MultiLongValues values = valuesSource.getValues(context);
-      return new NonOverlappingLongRangeMultiValueLeafFacetCutter(
-          values, boundaries, pos, requestedRangeCount);
+      return new NonOverlappingLongRangeMultiValueLeafFacetCutter(values, boundaries, pos);
     }
   }
 
@@ -84,8 +82,8 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
       extends LongRangeMultivaluedLeafFacetCutter {
 
     NonOverlappingLongRangeMultiValueLeafFacetCutter(
-        MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
-      super(longValues, boundaries, pos, requestedRangeCount);
+        MultiLongValues longValues, long[] boundaries, int[] pos) {
+      super(longValues, boundaries, pos);
     }
 
     @Override
@@ -106,8 +104,8 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   static class NonOverlappingLongRangeSingleValueLeafFacetCutter
       extends LongRangeSingleValuedLeafFacetCutter {
     NonOverlappingLongRangeSingleValueLeafFacetCutter(
-        LongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
-      super(longValues, boundaries, pos, requestedRangeCount);
+        LongValues longValues, long[] boundaries, int[] pos) {
+      super(longValues, boundaries, pos);
     }
 
     @Override

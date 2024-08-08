@@ -140,23 +140,16 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     final MultiLongValues multiLongValues;
     final long[] boundaries;
     final int[] pos;
-
-    final int requestedRangeCount;
-
-    // int currentDoc = -1;
-
     final IntervalTracker elementaryIntervalTracker;
 
     // TODO: we need it only for overlapping ranges, should not handle it in advanceExact for
     // exclusive ranges.
     IntervalTracker requestedIntervalTracker;
 
-    LongRangeMultivaluedLeafFacetCutter(
-        MultiLongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
+    LongRangeMultivaluedLeafFacetCutter(MultiLongValues longValues, long[] boundaries, int[] pos) {
       this.multiLongValues = longValues;
       this.boundaries = boundaries;
       this.pos = pos;
-      this.requestedRangeCount = requestedRangeCount;
       elementaryIntervalTracker = new IntervalTracker.MultiIntervalTracker(boundaries.length);
     }
 
@@ -244,19 +237,14 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     final LongValues longValues;
     final long[] boundaries;
     final int[] pos;
-
-    final int requestedRangeCount;
-
     int elementaryIntervalOrd;
 
     IntervalTracker requestedIntervalTracker;
 
-    LongRangeSingleValuedLeafFacetCutter(
-        LongValues longValues, long[] boundaries, int[] pos, int requestedRangeCount) {
+    LongRangeSingleValuedLeafFacetCutter(LongValues longValues, long[] boundaries, int[] pos) {
       this.longValues = longValues;
       this.boundaries = boundaries;
       this.pos = pos;
-      this.requestedRangeCount = requestedRangeCount;
     }
 
     @Override

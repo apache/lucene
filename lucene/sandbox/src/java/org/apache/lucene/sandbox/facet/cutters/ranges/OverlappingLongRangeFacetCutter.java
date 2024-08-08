@@ -171,7 +171,7 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
         int[] pos,
         int requestedRangeCount,
         LongRangeNode elementaryIntervalRoot) {
-      super(longValues, boundaries, pos, requestedRangeCount);
+      super(longValues, boundaries, pos);
       requestedIntervalTracker = new IntervalTracker.MultiIntervalTracker(requestedRangeCount);
       this.elementaryIntervalRoot = elementaryIntervalRoot;
     }
@@ -225,7 +225,7 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
         int[] pos,
         int requestedRangeCount,
         LongRangeNode elementaryIntervalRoot) {
-      super(longValues, boundaries, pos, requestedRangeCount);
+      super(longValues, boundaries, pos);
       requestedIntervalTracker = new IntervalTracker.MultiIntervalTracker(requestedRangeCount);
       this.elementaryIntervalRoot = elementaryIntervalRoot;
     }
