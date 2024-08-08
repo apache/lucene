@@ -423,6 +423,9 @@ public class DrillSideways {
    * <p>Note: use {@link Collections#unmodifiableList(List)} to wrap {@code
    * drillSidewaysCollectorOwners} to convince compiler that it is safe to use List here.
    *
+   * <p>Use {@link MultiCollectorManager} wrapped by {@link CollectorOwner} to collect both hits and
+   * facets for the entire query and/or for drill-sideways dimensions.
+   *
    * <p>TODO: Class CollectorOwner was created so that we can ignore CollectorManager type C,
    * because we want each dimensions to be able to use their own types. Alternatively, we can use
    * typesafe heterogeneous container and provide CollectorManager type for each dimension to this
