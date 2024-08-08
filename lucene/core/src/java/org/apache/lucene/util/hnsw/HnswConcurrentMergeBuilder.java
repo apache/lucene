@@ -42,6 +42,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   private final ConcurrentMergeWorker[] workers;
   private final HnswLock hnswLock;
   private InfoStream infoStream = InfoStream.getDefault();
+  private boolean frozen;
 
   public HnswConcurrentMergeBuilder(
       TaskExecutor taskExecutor,
@@ -87,7 +88,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
-    return workers[0].getGraph();
+    finish();
+    frozen = true;
+    return workers[0].getCompletedGraph();
   }
 
   @Override
@@ -101,6 +104,20 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     for (HnswBuilder worker : workers) {
       worker.setInfoStream(infoStream);
     }
+  }
+
+  @Override
+  public OnHeapHnswGraph getCompletedGraph() throws IOException {
+    if (frozen == false) {
+      // should already have been called in build(), but just in case
+      finish();
+      frozen = true;
+    }
+    return getGraph();
+  }
+
+  private void finish() throws IOException {
+    workers[0].finish();
   }
 
   @Override
