@@ -18,12 +18,12 @@ package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandles;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
-import jdk.incubator.vector.VectorShape;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
@@ -36,26 +36,6 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   // NOTE: Avoid static fields or initializers which rely on the vector API, as these initializers
   // would get called before we have a chance to perform sanity checks around the vector API in the
   // constructor of this class. Put them in PanamaVectorConstants instead.
-
-  /** Preferred with in bits for vectors. */
-  static final int PREFERRED_VECTOR_BITSIZE;
-
-  /** Whether integer vectors can be trusted to actually be fast. */
-  static final boolean HAS_FAST_INTEGER_VECTORS;
-
-  static {
-    // default to platform supported bitsize
-    int vectorBitSize = VectorShape.preferredShape().vectorBitSize();
-    // but allow easy overriding for testing
-    PREFERRED_VECTOR_BITSIZE = VectorizationProvider.TESTS_VECTOR_SIZE.orElse(vectorBitSize);
-
-    // hotspot misses some SSE intrinsics, workaround it
-    // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
-    boolean isAMD64withoutAVX2 =
-        Constants.OS_ARCH.equals("amd64") && PREFERRED_VECTOR_BITSIZE < 256;
-    HAS_FAST_INTEGER_VECTORS =
-        VectorizationProvider.TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
-  }
 
   // Extracted to a method to be able to apply the SuppressForbidden annotation
   @SuppressWarnings("removal")
@@ -70,11 +50,17 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     // hack to work around for JDK-8309727:
     try {
       doPrivileged(
-          () ->
-              FloatVector.fromArray(
-                  FloatVector.SPECIES_PREFERRED,
-                  new float[FloatVector.SPECIES_PREFERRED.length()],
-                  0));
+          () -> {
+            try {
+              MethodHandles.lookup().ensureInitialized(PanamaVectorConstants.class);
+            } catch (IllegalAccessException e) {
+              throw new AssertionError();
+            }
+            return FloatVector.fromArray(
+                FloatVector.SPECIES_PREFERRED,
+                new float[FloatVector.SPECIES_PREFERRED.length()],
+                0);
+          });
     } catch (SecurityException se) {
       throw new UnsupportedOperationException(
           "We hit initialization failure described in JDK-8309727: " + se);
@@ -94,7 +80,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
             PanamaVectorUtilSupport.VECTOR_BITSIZE,
             Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
-            HAS_FAST_INTEGER_VECTORS ? "" : "; floating-point vectors only"));
+            PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS ? "" : "; floating-point vectors only"));
   }
 
   @Override
@@ -109,7 +95,8 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
-    if (HAS_FAST_INTEGER_VECTORS && input instanceof MemorySegmentAccessInput msai) {
+    if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS
+        && input instanceof MemorySegmentAccessInput msai) {
       MemorySegment ms = msai.segmentSliceOrNull(0, input.length());
       if (ms != null) {
         return new MemorySegmentPostingDecodingUtil(input, ms);
