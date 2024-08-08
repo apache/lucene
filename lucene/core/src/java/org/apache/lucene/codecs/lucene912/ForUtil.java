@@ -342,25 +342,24 @@ public final class ForUtil {
     }
   }
 
-  private static final long[] MASKS8 = new long[9];
-  private static final long[] MASKS16 = new long[17];
-  private static final long[] MASKS32 = new long[33];
+  private static final long[] MASKS8 = new long[8];
+  private static final long[] MASKS16 = new long[16];
+  private static final long[] MASKS32 = new long[32];
 
   static {
-    for (int i = 0; i <= 8; ++i) {
+    for (int i = 0; i < 8; ++i) {
       MASKS8[i] = mask8(i);
     }
-    for (int i = 0; i <= 16; ++i) {
+    for (int i = 0; i < 16; ++i) {
       MASKS16[i] = mask16(i);
     }
-    for (int i = 0; i <= 32; ++i) {
+    for (int i = 0; i < 32; ++i) {
       MASKS32[i] = mask32(i);
     }
   }
 
   // mark values in array as final longs to avoid the cost of reading array, arrays should only be
   // used when the idx is a variable
-  private static final long MASK8_0 = MASKS8[0];
   private static final long MASK8_1 = MASKS8[1];
   private static final long MASK8_2 = MASKS8[2];
   private static final long MASK8_3 = MASKS8[3];
@@ -368,8 +367,6 @@ public final class ForUtil {
   private static final long MASK8_5 = MASKS8[5];
   private static final long MASK8_6 = MASKS8[6];
   private static final long MASK8_7 = MASKS8[7];
-  private static final long MASK8_8 = MASKS8[8];
-  private static final long MASK16_0 = MASKS16[0];
   private static final long MASK16_1 = MASKS16[1];
   private static final long MASK16_2 = MASKS16[2];
   private static final long MASK16_3 = MASKS16[3];
@@ -384,7 +381,6 @@ public final class ForUtil {
   private static final long MASK16_13 = MASKS16[13];
   private static final long MASK16_14 = MASKS16[14];
   private static final long MASK16_15 = MASKS16[15];
-  private static final long MASK16_16 = MASKS16[16];
   private static final long MASK32_1 = MASKS32[1];
   private static final long MASK32_2 = MASKS32[2];
   private static final long MASK32_3 = MASKS32[3];
@@ -407,7 +403,6 @@ public final class ForUtil {
   private static final long MASK32_21 = MASKS32[21];
   private static final long MASK32_22 = MASKS32[22];
   private static final long MASK32_23 = MASKS32[23];
-  private static final long MASK32_24 = MASKS32[24];
 
   /** Decode 128 integers into {@code longs}. */
   void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
@@ -707,7 +702,7 @@ public final class ForUtil {
 
   private static void decode8(PostingDecodingUtil pdu, long[] tmp, long[] longs)
       throws IOException {
-    pdu.splitLongs(16, longs, 0, MASK8_8, tmp, MASK8_0);
+    pdu.readLongs(16, longs);
   }
 
   private static void decode9(PostingDecodingUtil pdu, long[] tmp, long[] longs)
@@ -859,7 +854,7 @@ public final class ForUtil {
 
   private static void decode16(PostingDecodingUtil pdu, long[] tmp, long[] longs)
       throws IOException {
-    pdu.splitLongs(32, longs, 0, MASK16_16, tmp, MASK16_0);
+    pdu.readLongs(32, longs);
   }
 
   private static void decode17(PostingDecodingUtil pdu, long[] tmp, long[] longs)

@@ -430,20 +430,23 @@ def writeDecode(bpv, f):
   elif bpv <= 16:
     next_primitive = 16
   f.write('  private static void decode%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %bpv)
-  num_values_per_long = 64 / next_primitive
-  f.write('    pdu.splitLongs(%d, longs, %d, MASK%d_%d, tmp, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, next_primitive, bpv, next_primitive, next_primitive - bpv))
+  if bpv == next_primitive:
+    f.write('    pdu.readLongs(%d, longs);\n' %(bpv*2))
+  else:
+    num_values_per_long = 64 / next_primitive
+    f.write('    pdu.splitLongs(%d, longs, %d, MASK%d_%d, tmp, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, next_primitive, bpv, next_primitive, next_primitive - bpv))
 
-  shift = next_primitive - 2 * bpv
-  o = 2 * bpv
-  while shift >= 0:
-    f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*2, o, shift, next_primitive, bpv))
-    o += bpv*2
-    shift -= bpv
-  if shift + bpv > 0:
-    if bpv % (next_primitive % bpv) == 0:
-      writeRemainderWithSIMDOptimize(bpv, next_primitive, shift + bpv, o, 128/num_values_per_long - o, f)
-    else:
-      writeRemainder(bpv, next_primitive, shift + bpv, o, 128/num_values_per_long - o, f)
+    shift = next_primitive - 2 * bpv
+    o = 2 * bpv
+    while shift >= 0:
+      f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*2, o, shift, next_primitive, bpv))
+      o += bpv*2
+      shift -= bpv
+    if shift + bpv > 0:
+      if bpv % (next_primitive % bpv) == 0:
+        writeRemainderWithSIMDOptimize(bpv, next_primitive, shift + bpv, o, 128/num_values_per_long - o, f)
+      else:
+        writeRemainder(bpv, next_primitive, shift + bpv, o, 128/num_values_per_long - o, f)
   f.write('  }\n')
 
 
@@ -451,11 +454,11 @@ if __name__ == '__main__':
   f = open(OUTPUT_FILE, 'w')
   f.write(HEADER)
   for primitive_size in PRIMITIVE_SIZE:
-    f.write('  private static final long[] MASKS%d = new long[%d];\n' %(primitive_size, primitive_size + 1))
+    f.write('  private static final long[] MASKS%d = new long[%d];\n' %(primitive_size, primitive_size))
   f.write('\n')
   f.write('  static {\n')
   for primitive_size in PRIMITIVE_SIZE:
-    f.write('    for (int i = 0; i <= %d; ++i) {\n' %primitive_size)
+    f.write('    for (int i = 0; i < %d; ++i) {\n' %primitive_size)
     f.write('      MASKS%d[i] = mask%d(i);\n' %(primitive_size, primitive_size))
     f.write('    }\n')
   f.write('  }')
@@ -464,8 +467,8 @@ if __name__ == '__main__':
   // used when the idx is a variable
 """)
   for primitive_size in PRIMITIVE_SIZE:
-    for bpv in range(0, min(MAX_SPECIALIZED_BITS_PER_VALUE, primitive_size) + 1):
-      if (bpv * 2 != primitive_size or primitive_size == 8) and (primitive_size != 32 or bpv != 0):
+    for bpv in range(1, min(MAX_SPECIALIZED_BITS_PER_VALUE, primitive_size)):
+      if bpv * 2 != primitive_size or primitive_size == 8:
         f.write('  private static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive_size, bpv, primitive_size, bpv))
 
   f.write("""

@@ -38,6 +38,31 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
   }
 
   @Override
+  public void readLongs(int count, long[] b) throws IOException {
+    if (count < LONG_SPECIES.length()) {
+      in.readLongs(b, 0, count);
+    } else {
+      long offset = in.getFilePointer();
+      long endOffset = offset + count * Long.BYTES;
+      int loopBound = LONG_SPECIES.loopBound(count - 1);
+      for (int i = 0;
+          i < loopBound;
+          i += LONG_SPECIES.length(), offset += LONG_SPECIES.length() * Long.BYTES) {
+        LongVector.fromMemorySegment(LONG_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN)
+            .intoArray(b, i);
+      }
+
+      // Handle the tail by reading a vector that is aligned with with `count` on the right side.
+      int i = count - LONG_SPECIES.length();
+      offset = endOffset - LONG_SPECIES.length() * Long.BYTES;
+      LongVector.fromMemorySegment(LONG_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN)
+          .intoArray(b, i);
+
+      in.seek(endOffset);
+    }
+  }
+
+  @Override
   public void splitLongs(int count, long[] b, int bShift, long bMask, long[] c, long cMask)
       throws IOException {
     if (count < LONG_SPECIES.length()) {

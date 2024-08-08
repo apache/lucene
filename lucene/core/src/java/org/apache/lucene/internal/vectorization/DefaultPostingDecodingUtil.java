@@ -28,6 +28,12 @@ final class DefaultPostingDecodingUtil extends PostingDecodingUtil {
   }
 
   @Override
+  public void readLongs(int count, long[] b) throws IOException {
+    assert count <= 64;
+    in.readLongs(b, 0, count);
+  }
+
+  @Override
   public void splitLongs(int count, long[] b, int bShift, long bMask, long[] c, long cMask)
       throws IOException {
     assert count <= 64;
