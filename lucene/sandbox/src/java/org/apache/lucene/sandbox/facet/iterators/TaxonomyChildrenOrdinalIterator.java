@@ -21,7 +21,7 @@ import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.sandbox.facet.labels.LabelToOrd;
 
 /**
- * Facets results selector to get top children for selected parent.
+ * Facets results selector to get children for selected parent. Source ordinals order is preserved.
  *
  * @lucene.experimental
  */
