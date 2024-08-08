@@ -236,19 +236,19 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
       //  e.g. in reduce method. Maybe we can extend FacetRollup interface to handle this
       //  case too?
       elementaryIntervalUpto = 0;
-      rollupMultiValued(elementaryIntervalRoot);
+      rollupSingleValued(elementaryIntervalRoot);
     }
 
     // Note: combined rollUpSingleValued and rollUpMultiValued from OverlappingLongRangeCounter into
     // 1 rollUp method
-    private boolean rollupMultiValued(LongRangeNode node) {
+    private boolean rollupSingleValued(LongRangeNode node) {
       boolean containedHit;
       if (node.left != null) {
-        containedHit = rollupMultiValued(node.left);
-        containedHit |= rollupMultiValued(node.right);
+        containedHit = rollupSingleValued(node.left);
+        containedHit |= rollupSingleValued(node.right);
       } else {
         // Leaf:
-        containedHit = elementaryIntervalTracker.get(elementaryIntervalUpto);
+        containedHit = elementaryIntervalUpto == elementaryIntervalOrd;
         elementaryIntervalUpto++;
       }
       if (containedHit && node.outputs != null) {

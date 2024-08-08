@@ -41,46 +41,6 @@ interface IntervalTracker extends OrdinalIterator {
   void freeze();
 
   /**
-   * Interval Tracker that tracks data for one interval only. The interval is recorded only once iff
-   * data belonging to the interval is encountered.
-   *
-   * <p>TODO: deprecate if not needed, we have dedicated classes to handle single value sources.
-   */
-  class SingleIntervalTracker implements IntervalTracker {
-
-    private int tracker;
-
-    SingleIntervalTracker() {
-      tracker = NO_MORE_ORDS;
-    }
-
-    @Override
-    public void set(int i) {
-      tracker = i;
-    }
-
-    @Override
-    public void clear() {
-      tracker = NO_MORE_ORDS;
-    }
-
-    @Override
-    public boolean get(int index) {
-      return index == tracker;
-    }
-
-    @Override
-    public void freeze() {}
-
-    @Override
-    public int nextOrd() throws IOException {
-      int trackerValue = tracker;
-      tracker = NO_MORE_ORDS;
-      return trackerValue;
-    }
-  }
-
-  /**
    * Interval Tracker that tracks data for multiple intervals. The interval is recorded only once
    * iff data belonging to the interval is encountered *
    */

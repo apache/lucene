@@ -112,17 +112,12 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
     @Override
     public int nextOrd() throws IOException {
-      while (true) {
-        int ordinal = elementaryIntervalTracker.nextOrd();
-        if (ordinal == NO_MORE_ORDS) {
-          return NO_MORE_ORDS;
-        }
-        int result = pos[ordinal];
-        if (result != SKIP_INTERVAL_POSITION) {
-          // TODO: as soon as we return single interval here we can set nextOrd to NO_MORE_ORDS
-          return result;
-        }
+      if (elementaryIntervalOrd == NO_MORE_ORDS) {
+        return NO_MORE_ORDS;
       }
+      int result = pos[elementaryIntervalOrd];
+      elementaryIntervalOrd = NO_MORE_ORDS;
+      return result != SKIP_INTERVAL_POSITION ? result : NO_MORE_ORDS;
     }
   }
 }

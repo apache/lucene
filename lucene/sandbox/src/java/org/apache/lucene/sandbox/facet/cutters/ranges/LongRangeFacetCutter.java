@@ -246,7 +246,8 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     final int[] pos;
 
     final int requestedRangeCount;
-    final IntervalTracker elementaryIntervalTracker;
+
+    int elementaryIntervalOrd;
 
     IntervalTracker requestedIntervalTracker;
 
@@ -256,7 +257,6 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
       this.boundaries = boundaries;
       this.pos = pos;
       this.requestedRangeCount = requestedRangeCount;
-      elementaryIntervalTracker = new IntervalTracker.SingleIntervalTracker();
     }
 
     @Override
@@ -264,21 +264,11 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
       if (longValues.advanceExact(doc) == false) {
         return false;
       }
-
-      elementaryIntervalTracker.clear();
-
       if (requestedIntervalTracker != null) {
         requestedIntervalTracker.clear();
       }
-
-      int lastIntervalSeen = -1;
-
-      lastIntervalSeen = processValue(longValues.longValue(), lastIntervalSeen);
-      elementaryIntervalTracker.set(lastIntervalSeen);
-
+      elementaryIntervalOrd = processValue(longValues.longValue());
       maybeRollUp(requestedIntervalTracker);
-
-      elementaryIntervalTracker.freeze();
       if (requestedIntervalTracker != null) {
         requestedIntervalTracker.freeze();
       }
@@ -288,26 +278,9 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
     // Returns the value of the interval v belongs or lastIntervalSeen
     // if no processing is done, it returns the lastIntervalSeen
-    // TODO: dedup with multi valued?
-    private int processValue(long v, int lastIntervalSeen) {
+    private int processValue(long v) {
       int lo = 0, hi = boundaries.length - 1;
 
-      if (lastIntervalSeen != -1) {
-        // this is the multivalued doc case, we need to set lo correctly
-        if (v <= boundaries[lastIntervalSeen]) {
-          // we've already counted something for this interval and doc
-          // we don't need to process v
-          return lastIntervalSeen;
-        }
-
-        lo = lastIntervalSeen + 1;
-        if (lo == boundaries.length) {
-          // we've already counted the last elementary interval. If so, there's nothing
-          // else to count for this doc
-          // TODO: does it make sense to return something else?
-          return lastIntervalSeen;
-        }
-      }
       int lowerBound = lo;
 
       while (true) {
