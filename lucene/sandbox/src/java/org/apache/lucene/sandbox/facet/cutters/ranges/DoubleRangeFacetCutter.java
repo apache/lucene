@@ -18,8 +18,8 @@ package org.apache.lucene.sandbox.facet.cutters.ranges;
 
 import java.io.IOException;
 import org.apache.lucene.facet.MultiDoubleValuesSource;
-import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.DoubleRange;
+import org.apache.lucene.facet.range.DoubleRangeFacetCounts;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
@@ -31,35 +31,30 @@ import org.apache.lucene.util.NumericUtils;
 /**
  * {@link FacetCutter} for ranges of double values.
  *
- * <p>Based on {@link org.apache.lucene.facet.range.DoubleRangeFacetCounts}, this class translates
- * double ranges to long ranges using {@link NumericUtils#doubleToSortableLong} and delegates
- * faceting work to a {@link LongRangeFacetCutter}.
+ * <p>Based on {@link DoubleRangeFacetCounts}, this class translates double ranges to long ranges
+ * using {@link NumericUtils#doubleToSortableLong} and delegates faceting work to a {@link
+ * LongRangeFacetCutter}.
  */
-public class DoubleRangeFacetCutter implements FacetCutter {
+public final class DoubleRangeFacetCutter implements FacetCutter {
 
-  LongRangeFacetCutter longRangeFacetCutter;
-
-  MultiDoubleValuesSource multiDoubleValuesSource;
-  DoubleValuesSource singleDoubleValuesSource;
-  DoubleRange[] doubleRanges;
-
-  MultiLongValuesSource multiLongValuesSource;
-  LongValuesSource singleLongValuesSource;
-
-  LongRange[] longRanges;
+  private final LongRangeFacetCutter longRangeFacetCutter;
 
   /** Constructor. */
-  public DoubleRangeFacetCutter(MultiDoubleValuesSource valuesSource, DoubleRange[] doubleRanges) {
+  public DoubleRangeFacetCutter(
+      MultiDoubleValuesSource multiDoubleValuesSource, DoubleRange[] doubleRanges) {
     super();
-    this.multiDoubleValuesSource = valuesSource;
-    this.singleDoubleValuesSource = MultiDoubleValuesSource.unwrapSingleton(valuesSource);
-    this.doubleRanges = doubleRanges;
+    DoubleValuesSource singleDoubleValuesSource =
+        MultiDoubleValuesSource.unwrapSingleton(multiDoubleValuesSource);
+    LongValuesSource singleLongValuesSource;
+    MultiDoubleValuesSource.SortableMultiLongValuesSource multiLongValuesSource;
     if (singleDoubleValuesSource != null) { // TODO: ugly!
-      this.singleLongValuesSource = singleDoubleValuesSource.toSortableLongDoubleValuesSource();
+      singleLongValuesSource = singleDoubleValuesSource.toSortableLongDoubleValuesSource();
+      multiLongValuesSource = null;
     } else {
-      this.multiLongValuesSource = multiDoubleValuesSource.toSortableMultiLongValuesSource();
+      singleLongValuesSource = null;
+      multiLongValuesSource = multiDoubleValuesSource.toSortableMultiLongValuesSource();
     }
-    this.longRanges = mapDoubleRangesToSortableLong(doubleRanges);
+    LongRange[] longRanges = mapDoubleRangesToSortableLong(doubleRanges);
     this.longRangeFacetCutter =
         LongRangeFacetCutter.createSingleOrMultiValued(
             multiLongValuesSource, singleLongValuesSource, longRanges);
