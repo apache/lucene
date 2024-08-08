@@ -50,6 +50,9 @@ public interface FacetRecorder {
    * Reduce leaf recorder results into this recorder. If facetRollup is not null, it also rolls up
    * values.
    *
+   * <p>After this method is called, it's illegal to add values to recorder, i.e. calling {@link
+   * #getLeafRecorder} or {@link LeafFacetRecorder#record} on its leaf recorders.
+   *
    * @throws UnsupportedOperationException if facetRollup is not null but this type of record can't
    *     be rolled up.
    */
