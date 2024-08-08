@@ -53,7 +53,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
   private static final VectorSpecies<Integer> INT_SPECIES =
-      PanamaVectorizationProvider.PRERERRED_INT_SPECIES;
+      PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
 

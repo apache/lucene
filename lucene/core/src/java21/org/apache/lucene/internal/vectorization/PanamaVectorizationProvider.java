@@ -24,7 +24,6 @@ import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorShape;
-import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
@@ -34,36 +33,28 @@ import org.apache.lucene.util.SuppressForbidden;
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
 
+  // NOTE: Avoid static fields or initializers which rely on the vector API, as these initializers
+  // would get called before we have a chance to perform sanity checks around the vector API in the
+  // constructor of this class. Put them in PanamaVectorConstants instead.
+
   /** Preferred with in bits for vectors. */
   static final int PREFERRED_VECTOR_BITSIZE;
 
-  static final VectorSpecies<Long> PRERERRED_LONG_SPECIES;
-  static final VectorSpecies<Integer> PRERERRED_INT_SPECIES;
-
   /** Whether integer vectors can be trusted to actually be fast. */
   static final boolean HAS_FAST_INTEGER_VECTORS;
-
-  private final VectorUtilSupport vectorUtilSupport;
 
   static {
     // default to platform supported bitsize
     int vectorBitSize = VectorShape.preferredShape().vectorBitSize();
     // but allow easy overriding for testing
     PREFERRED_VECTOR_BITSIZE = VectorizationProvider.TESTS_VECTOR_SIZE.orElse(vectorBitSize);
-    PRERERRED_LONG_SPECIES =
-        VectorSpecies.of(
-            long.class,
-            VectorShape.forBitSize(PanamaVectorizationProvider.PREFERRED_VECTOR_BITSIZE));
-    PRERERRED_INT_SPECIES =
-        VectorSpecies.of(
-            int.class,
-            VectorShape.forBitSize(PanamaVectorizationProvider.PREFERRED_VECTOR_BITSIZE));
 
     // hotspot misses some SSE intrinsics, workaround it
     // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
     boolean isAMD64withoutAVX2 =
         Constants.OS_ARCH.equals("amd64") && PREFERRED_VECTOR_BITSIZE < 256;
-    HAS_FAST_INTEGER_VECTORS = TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
+    HAS_FAST_INTEGER_VECTORS =
+        VectorizationProvider.TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
   }
 
   // Extracted to a method to be able to apply the SuppressForbidden annotation
@@ -72,6 +63,8 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   private static <T> T doPrivileged(PrivilegedAction<T> action) {
     return AccessController.doPrivileged(action);
   }
+
+  private final VectorUtilSupport vectorUtilSupport;
 
   PanamaVectorizationProvider() {
     // hack to work around for JDK-8309727:
