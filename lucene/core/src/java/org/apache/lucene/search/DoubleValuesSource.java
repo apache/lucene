@@ -116,6 +116,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
+  /** Convert to {@link LongValuesSource} by calling {@link NumericUtils#doubleToSortableLong} */
   public final LongValuesSource toSortableLongDoubleValuesSource() {
     return new SortableLongDoubleValuesSource(this);
   }
