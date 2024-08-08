@@ -316,11 +316,10 @@ public class DrillSideways {
 
     @Override
     public Void call() throws Exception {
-      // TODO: the difference is that we used to also call reduce in parallel, but not anymore.
-      //  We can think about implementing reduce(executor) which allows parallelism? If doing it
-      //  sequentially becomes a problem. Note that in this case we need to make sure that
-      // CollectorOwner#getResult is threadsafe.
       searcher.search(query, collectorOwner);
+      // Call getResult to trigger reduce, we don't need to return results because users can access
+      // them directly from collectorOwner
+      collectorOwner.getResult();
       return null;
     }
   }
@@ -452,18 +451,6 @@ public class DrillSideways {
     } else {
       searchSequentially(query, drillDownCollectorOwner, drillSidewaysCollectorOwners);
     }
-
-    // This method doesn't return results as each dimension might have its own result type.
-    // But we call getResult to trigger results reducing, so that users don't have to worry about
-    // it.
-    // TODO: do we want to run reduce in parallel if executor is provided? To do that we must make
-    // sure that CollectorOwner#getResult is threadsafe.
-    drillDownCollectorOwner.getResult();
-    if (drillSidewaysCollectorOwners != null) {
-      for (CollectorOwner<?, ?> sidewaysOwner : drillSidewaysCollectorOwners) {
-        sidewaysOwner.getResult();
-      }
-    }
   }
 
   private void searchSequentially(
@@ -478,6 +465,7 @@ public class DrillSideways {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
       searcher.search(query, drillDownCollectorOwner);
+      drillDownCollectorOwner.getResult();
       return;
     }
 
@@ -502,6 +490,15 @@ public class DrillSideways {
             scoreSubDocsAtOnce());
 
     searcher.search(dsq, drillDownCollectorOwner);
+    // This method doesn't return results as each dimension might have its own result type.
+    // But we call getResult to trigger results reducing, so that users don't have to worry about
+    // it.
+    drillDownCollectorOwner.getResult();
+    if (drillSidewaysCollectorOwners != null) {
+      for (CollectorOwner<?, ?> sidewaysOwner : drillSidewaysCollectorOwners) {
+        sidewaysOwner.getResult();
+      }
+    }
   }
 
   private void searchConcurrently(
