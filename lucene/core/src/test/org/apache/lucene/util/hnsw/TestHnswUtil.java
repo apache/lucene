@@ -138,10 +138,12 @@ public class TestHnswUtil extends LuceneTestCase {
         }
       }
       MockGraph graph = new MockGraph(nodes);
-      /*
-      System.out.println("iter " + i);
-      System.out.print(graph.toString());
-      */
+      /**/
+      if (i == 2) {
+        System.out.println("iter " + i);
+        System.out.print(graph.toString());
+      }
+      /**/
       assertEquals(isRooted(nodes), HnswUtil.isRooted(graph));
     }
   }
@@ -158,16 +160,17 @@ public class TestHnswUtil extends LuceneTestCase {
   private boolean isRooted(int[][][] nodes, int level) {
     // check that the graph is rooted in the union of the entry nodes' trees
     // System.out.println("isRooted level=" + level);
-    int entryPointLevel;
+    int[][] entryPoints;
     if (level == nodes.length - 1) {
-      entryPointLevel = level;
+      // entry into the top level is from a single entry point, fixed at 0
+      entryPoints = new int[][] {nodes[level][0]};
     } else {
-      entryPointLevel = level + 1;
+      entryPoints = nodes[level + 1];
     }
     FixedBitSet connected = new FixedBitSet(nodes[level].length);
     int count = 0;
-    for (int entryPoint = 0; entryPoint < nodes[entryPointLevel].length; entryPoint++) {
-      if (nodes[entryPointLevel][entryPoint] == null) {
+    for (int entryPoint = 0; entryPoint < entryPoints.length; entryPoint++) {
+      if (entryPoints[entryPoint] == null) {
         // use nodes present on next higher level (or this level if top level) as entry points
         continue;
       }
