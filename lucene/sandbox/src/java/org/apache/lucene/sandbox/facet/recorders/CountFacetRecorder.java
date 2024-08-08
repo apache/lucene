@@ -75,7 +75,7 @@ public final class CountFacetRecorder implements FacetRecorder {
     // leaf/slice recorders themselves, not the hashmaps?
     IntIntHashMap leafValues = new IntIntHashMap();
     perLeafValues.add(leafValues);
-    return new CountLeafRecorder(leafValues);
+    return new CountLeafFacetRecorder(leafValues);
   }
 
   @Override
@@ -154,11 +154,11 @@ public final class CountFacetRecorder implements FacetRecorder {
     return accum;
   }
 
-  private static class CountLeafRecorder implements LeafFacetRecorder {
+  private static class CountLeafFacetRecorder implements LeafFacetRecorder {
 
     private final IntIntHashMap values;
 
-    public CountLeafRecorder(IntIntHashMap values) {
+    public CountLeafFacetRecorder(IntIntHashMap values) {
       this.values = values;
     }
 
