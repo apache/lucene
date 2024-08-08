@@ -137,8 +137,8 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   }
 
   abstract static class LongRangeMultivaluedLeafFacetCutter implements LeafFacetCutter {
-    final MultiLongValues multiLongValues;
-    final long[] boundaries;
+    private final MultiLongValues multiLongValues;
+    private final long[] boundaries;
     final int[] pos;
     final IntervalTracker elementaryIntervalTracker;
 
@@ -171,9 +171,8 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
       for (int i = 0; i < numValues; i++) {
         lastIntervalSeen = processValue(multiLongValues.nextValue(), lastIntervalSeen);
-        if (lastIntervalSeen >= 0 && lastIntervalSeen < boundaries.length) {
-          elementaryIntervalTracker.set(lastIntervalSeen);
-        }
+        assert lastIntervalSeen >= 0 && lastIntervalSeen < boundaries.length;
+        elementaryIntervalTracker.set(lastIntervalSeen);
         if (lastIntervalSeen == boundaries.length - 1) {
           // we've already reached the end of all possible intervals for this doc
           break;
@@ -194,7 +193,6 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     // if no processing is done, it returns the lastIntervalSeen
     private int processValue(long v, int lastIntervalSeen) {
       int lo = 0, hi = boundaries.length - 1;
-      ;
 
       if (lastIntervalSeen != -1) {
         // this is the multivalued doc case, we need to set lo correctly
