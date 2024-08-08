@@ -44,6 +44,10 @@ public final class TaxonomyChildrenOrdinalIterator implements OrdinalIterator {
 
   @Override
   public int nextOrd() throws IOException {
+    // TODO: in some cases it might be faster to traverse children of selected parent
+    // (children/siblings IntArrays) and check if source ords contain them. We can think of some
+    // heuristics to decide which approach to use on case by case basis? There is similar comment in
+    // TaxonomyFacets#getTopChildrenForPath
     for (int ord = sourceOrds.nextOrd(); ord != NO_MORE_ORDS; ord = sourceOrds.nextOrd()) {
       if (parents.get(ord) == parentOrd) {
         return ord;
