@@ -35,6 +35,8 @@ import org.apache.lucene.util.NumericUtils;
  * <p>Based on {@link DoubleRangeFacetCounts}, this class translates double ranges to long ranges
  * using {@link NumericUtils#doubleToSortableLong} and delegates faceting work to a {@link
  * LongRangeFacetCutter}.
+ *
+ * @lucene.experimental
  */
 public final class DoubleRangeFacetCutter implements FacetCutter {
 

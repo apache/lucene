@@ -36,6 +36,8 @@ import org.apache.lucene.search.LongValuesSource;
  *
  * <p>TODO: [premature optimization idea] if instead of one array we keep aggregations in two
  * LongVector (one for MAX aggregation and one for SUM) we can benefit from SIMD?
+ *
+ * @lucene.experimental
  */
 public final class LongAggregationsFacetRecorder implements FacetRecorder {
 

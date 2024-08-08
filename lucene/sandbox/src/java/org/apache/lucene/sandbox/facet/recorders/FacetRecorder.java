@@ -33,6 +33,8 @@ import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
  * Given that it also makes lazy leaf recorder init in {@link
  * org.apache.lucene.sandbox.facet.FacetFieldCollector} trickier, it was decided to rollback the
  * initial attempt and try again later, in the next iteration.
+ *
+ * @lucene.experimental
  */
 public interface FacetRecorder {
   /** Get leaf recorder. */

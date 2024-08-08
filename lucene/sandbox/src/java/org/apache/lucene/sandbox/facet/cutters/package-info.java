@@ -17,5 +17,7 @@
 /**
  * Sandbox faceting: facet cutters, see {@link org.apache.lucene.sandbox.facet.cutters.FacetCutter}
  * for details.
+ *
+ * @lucene.experimental
  */
 package org.apache.lucene.sandbox.facet.cutters;

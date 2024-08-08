@@ -17,5 +17,7 @@
 /**
  * Sandbox faceting: facet labels, see {@link org.apache.lucene.sandbox.facet.labels.OrdToLabel} for
  * details.
+ *
+ * @lucene.experimental
  */
 package org.apache.lucene.sandbox.facet.labels;

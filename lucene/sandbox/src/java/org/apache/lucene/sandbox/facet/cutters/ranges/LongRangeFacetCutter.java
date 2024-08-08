@@ -28,7 +28,11 @@ import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
-/** {@link FacetCutter} for ranges of long values. It's based on LongRangeCounter class. */
+/**
+ * {@link FacetCutter} for ranges of long values. It's based on LongRangeCounter class.
+ *
+ * @lucene.experimental
+ */
 public abstract class LongRangeFacetCutter implements FacetCutter {
 
   final MultiLongValuesSource valuesSource;

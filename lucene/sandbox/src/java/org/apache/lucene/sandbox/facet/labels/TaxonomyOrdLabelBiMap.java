@@ -20,7 +20,11 @@ import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 
-/** Map taxonomy labels to ordinals. */
+/**
+ * Map taxonomy labels to ordinals.
+ *
+ * @lucene.experimental
+ */
 public final class TaxonomyOrdLabelBiMap implements OrdToLabel, LabelToOrd {
 
   private final TaxonomyReader taxoReader;

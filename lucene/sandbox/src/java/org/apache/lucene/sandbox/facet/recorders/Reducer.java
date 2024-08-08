@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.sandbox.facet.recorders;
 
-/** Reducer for numeric values. */
+/**
+ * Reducer for numeric values.
+ *
+ * @lucene.experimental
+ */
 public interface Reducer {
 
   /** Int values reducer. */

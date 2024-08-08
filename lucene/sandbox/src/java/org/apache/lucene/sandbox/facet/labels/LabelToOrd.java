@@ -26,6 +26,8 @@ import org.apache.lucene.facet.taxonomy.FacetLabel;
  *
  * <p>TODO: there is some overlap with {@link
  * org.apache.lucene.facet.taxonomy.writercache.LabelToOrdinal}, can we reuse something?
+ *
+ * @lucene.experimental
  */
 public interface LabelToOrd {
 

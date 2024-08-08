@@ -24,5 +24,7 @@
  * compute aggregations and record per ordinal data aggregated across an index.
  *
  * <p>See SandboxFacetsExample for examples.
+ *
+ * @lucene.experimental
  */
 package org.apache.lucene.sandbox.facet;

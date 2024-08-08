@@ -14,5 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/** Sandbox faceting: facet ordinals. */
+/**
+ * Sandbox faceting: facet ordinals.
+ *
+ * @lucene.experimental
+ */
 package org.apache.lucene.sandbox.facet.iterators;

@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.sandbox.facet.iterators;
 
-/** Interface to return an ordinal. */
+/**
+ * Interface to return an ordinal.
+ *
+ * @lucene.experimental
+ */
 public interface OrdinalGetter {
 
   /** get ordinal. */

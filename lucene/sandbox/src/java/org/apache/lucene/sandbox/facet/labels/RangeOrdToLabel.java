@@ -20,7 +20,11 @@ import java.util.List;
 import org.apache.lucene.facet.range.Range;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 
-/** {@link OrdToLabel} for ranges. */
+/**
+ * {@link OrdToLabel} for ranges.
+ *
+ * @lucene.experimental
+ */
 public class RangeOrdToLabel implements OrdToLabel {
 
   private final Range[] ranges;

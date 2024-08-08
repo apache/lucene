@@ -17,5 +17,7 @@
 /**
  * Sandbox faceting: classes that can record per ordinal data E.g. aggregations per facet ordinals
  * can be recorded.
+ *
+ * @lucene.experimental
  */
 package org.apache.lucene.sandbox.facet.recorders;

@@ -25,6 +25,8 @@ import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
  * <p>When {@link #advanceExact(int)} returns true, {@link #nextOrd()} yields all facet ordinals for
  * the current document. It is illegal to call {@link #nextOrd()} if {@link #advanceExact(int)}
  * returns false.
+ *
+ * @lucene.experimental
  */
 public interface LeafFacetCutter extends OrdinalIterator {
   /** advance to the next doc */

@@ -18,7 +18,11 @@ package org.apache.lucene.sandbox.facet.recorders;
 
 import java.io.IOException;
 
-/** Record data for each facet of each doc of a leaf (segment). */
+/**
+ * Record data for each facet of each doc of a leaf (segment).
+ *
+ * @lucene.experimental
+ */
 public interface LeafFacetRecorder {
 
   /**

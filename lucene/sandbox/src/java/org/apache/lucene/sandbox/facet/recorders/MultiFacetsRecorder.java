@@ -21,7 +21,11 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.FacetRollup;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
-/** {@link FacetRecorder} that contains multiple FacetRecorders. */
+/**
+ * {@link FacetRecorder} that contains multiple FacetRecorders.
+ *
+ * @lucene.experimental
+ */
 public final class MultiFacetsRecorder implements FacetRecorder {
 
   private final FacetRecorder[] delegates;

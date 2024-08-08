@@ -14,5 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/** Sandbox faceting: Range Faceting */
+/**
+ * Sandbox faceting: Range Faceting
+ *
+ * @lucene.experimental
+ */
 package org.apache.lucene.sandbox.facet.cutters.ranges;

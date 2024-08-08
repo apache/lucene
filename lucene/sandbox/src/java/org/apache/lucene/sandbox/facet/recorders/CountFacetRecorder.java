@@ -50,6 +50,8 @@ import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
  * we acquire locks for - we used to lock addTo method itself, but it could be faster if we only
  * synchronized after computing the key's hash; or we can lock the entire map only if we need to
  * insert key, and lock single key otherwise?
+ *
+ * @lucene.experimental
  */
 public final class CountFacetRecorder implements FacetRecorder {
   private IntIntHashMap values;

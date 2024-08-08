@@ -32,6 +32,8 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  * Collection of static methods to provide most common comparables for sandbox faceting. You can
  * also use it as an example for creating your own {@link ComparableSupplier} to enable custom
  * facets top-n and sorting.
+ *
+ * @lucene.experimental
  */
 public final class ComparableUtils {
   private ComparableUtils() {}

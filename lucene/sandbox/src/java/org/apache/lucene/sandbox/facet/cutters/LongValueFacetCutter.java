@@ -35,6 +35,8 @@ import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
  * <p>TODO: This class is quite inefficient. Will optimise later.
  *
  * <p>TODO: add support for other value sources e.g: LongValues
+ *
+ * @lucene.experimental
  */
 public final class LongValueFacetCutter implements FacetCutter, OrdToLabel {
   private final String field;

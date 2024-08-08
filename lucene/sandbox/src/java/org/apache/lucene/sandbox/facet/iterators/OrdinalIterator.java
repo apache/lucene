@@ -19,7 +19,11 @@ package org.apache.lucene.sandbox.facet.iterators;
 import java.io.IOException;
 import org.apache.lucene.internal.hppc.IntArrayList;
 
-/** Iterate over ordinals. */
+/**
+ * Iterate over ordinals.
+ *
+ * @lucene.experimental
+ */
 public interface OrdinalIterator {
 
   /** This const is returned by nextOrd when there are no more ordinals. */

@@ -30,7 +30,11 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.sandbox.facet.FacetRollup;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
-/** {@link FacetCutter} for facets that use taxonomy side-car index. */
+/**
+ * {@link FacetCutter} for facets that use taxonomy side-car index.
+ *
+ * @lucene.experimental
+ */
 public final class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
 
   private final FacetsConfig facetsConfig;

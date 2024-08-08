@@ -20,7 +20,11 @@ import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.sandbox.facet.labels.LabelToOrd;
 
-/** Facets results selector to get top children for selected parent. */
+/**
+ * Facets results selector to get top children for selected parent.
+ *
+ * @lucene.experimental
+ */
 public final class TaxonomyChildrenOrdinalIterator implements OrdinalIterator {
 
   // TODO: do we want to have something like ChainOrdinalIterators to chain multiple iterators?

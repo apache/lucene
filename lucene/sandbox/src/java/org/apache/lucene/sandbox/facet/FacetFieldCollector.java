@@ -27,6 +27,8 @@ import org.apache.lucene.search.ScoreMode;
 /**
  * {@link Collector} that brings together {@link FacetCutter} and {@link FacetRecorder} to compute
  * facets during collection phase.
+ *
+ * @lucene.experimental
  */
 public final class FacetFieldCollector implements Collector {
   private final FacetCutter facetCutter;

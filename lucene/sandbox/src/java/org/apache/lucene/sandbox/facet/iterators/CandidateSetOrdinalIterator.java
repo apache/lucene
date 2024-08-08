@@ -24,6 +24,8 @@ import org.apache.lucene.sandbox.facet.recorders.FacetRecorder;
 /**
  * {@link OrdinalIterator} that filters out ordinals from delegate if they are not in the candidate
  * set. Can be handy to get results only for specific facets.
+ *
+ * @lucene.experimental
  */
 public final class CandidateSetOrdinalIterator implements OrdinalIterator {
 

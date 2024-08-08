@@ -21,6 +21,7 @@ package org.apache.lucene.sandbox.facet.iterators;
  * ordinals.
  *
  * @param <T> something ordinals can be compared by.
+ * @lucene.experimental
  */
 public interface ComparableSupplier<T extends Comparable<T>> {
 
