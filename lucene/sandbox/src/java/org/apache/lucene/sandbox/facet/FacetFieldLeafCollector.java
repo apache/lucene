@@ -73,6 +73,4 @@ final class FacetFieldLeafCollector implements LeafCollector {
     //  2. TK
     return LeafCollector.super.competitiveIterator();
   }
-
-  // TODO do need to override any other methods?
 }
