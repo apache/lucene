@@ -18,8 +18,11 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
@@ -28,6 +31,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.hnsw.HnswUtil.Component;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
@@ -137,7 +141,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       HnswGraphSearcher graphSearcher)
       throws IOException {
     if (M <= 0) {
-      throw new IllegalArgumentException("maxConn must be positive");
+      throw new IllegalArgumentException("M (max connections) must be positive");
     }
     if (beamWidth <= 0) {
       throw new IllegalArgumentException("beamWidth must be positive");
@@ -173,8 +177,11 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph getCompletedGraph() {
-    frozen = true;
+  public OnHeapHnswGraph getCompletedGraph() throws IOException {
+    if (!frozen) {
+      finish();
+      frozen = true;
+    }
     return getGraph();
   }
 
@@ -403,6 +410,93 @@ public class HnswGraphBuilder implements HnswBuilder {
       randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
     } while (randDouble == 0.0);
     return ((int) (-log(randDouble) * ml));
+  }
+
+  void finish() throws IOException {
+    connectComponents();
+  }
+
+  private void connectComponents() throws IOException {
+    long start = System.nanoTime();
+    for (int level = 0; level < hnsw.numLevels(); level++) {
+      if (connectComponents(level) == false) {
+        if (infoStream.isEnabled(HNSW_COMPONENT)) {
+          infoStream.message(HNSW_COMPONENT, "connectComponents failed on level " + level);
+        }
+      }
+    }
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT, "connectComponents " + (System.nanoTime() - start) / 1_000_000 + " ms");
+    }
+  }
+
+  private boolean connectComponents(int level) throws IOException {
+    FixedBitSet notFullyConnected = new FixedBitSet(hnsw.size());
+    int maxConn = M;
+    if (level == 0) {
+      maxConn *= 2;
+    }
+    List<Component> components = HnswUtil.components(hnsw, level, notFullyConnected, maxConn);
+    boolean result = true;
+    if (components.size() > 1) {
+      // connect other components to the largest one
+      Component c0 = components.stream().max(Comparator.comparingInt(Component::size)).get();
+      if (c0.start() == NO_MORE_DOCS) {
+        // the component is already fully connected - no room for new connections
+        return false;
+      }
+      // try for more connections? We only do one since otherwise they may become full
+      // while linking
+      GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(1);
+      int[] eps = new int[1];
+      for (Component c : components) {
+        if (c != c0) {
+          beam.clear();
+          eps[0] = c0.start();
+          RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
+          // find the closest node in the largest component to the lowest-numbered node in this
+          // component that has room to make a connection
+          graphSearcher.searchLevel(beam, scorer, 0, eps, hnsw, notFullyConnected);
+          boolean linked = false;
+          while (beam.size() > 0) {
+            float score = beam.minimumScore();
+            int c0node = beam.popNode();
+            assert notFullyConnected.get(c0node);
+            // link the nodes
+            link(level, c0node, c.start(), score, notFullyConnected);
+            linked = true;
+          }
+          if (!linked) {
+            result = false;
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  // Try to link two nodes bidirectionally; the forward connection will always be made.
+  // Update notFullyConnected.
+  private void link(int level, int n0, int n1, float score, FixedBitSet notFullyConnected) {
+    NeighborArray nbr0 = hnsw.getNeighbors(level, n0);
+    NeighborArray nbr1 = hnsw.getNeighbors(level, n1);
+    // must subtract 1 here since the nodes array is one larger than the configured
+    // max neighbors (M / 2M).
+    // We should have taken care of this check by searching for not-full nodes
+    int maxConn = nbr0.nodes().length - 1;
+    assert notFullyConnected.get(n0);
+    assert nbr0.size() < maxConn : "node " + n0 + " is full, has " + nbr0.size() + " friends";
+    nbr0.addOutOfOrder(n1, score);
+    if (nbr0.size() == maxConn) {
+      notFullyConnected.clear(n0);
+    }
+    if (nbr1.size() < maxConn) {
+      nbr1.addOutOfOrder(n0, score);
+      if (nbr1.size() == maxConn) {
+        notFullyConnected.clear(n1);
+      }
+    }
   }
 
   /**
