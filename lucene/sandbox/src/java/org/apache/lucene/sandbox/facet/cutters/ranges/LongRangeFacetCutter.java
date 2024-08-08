@@ -278,9 +278,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
       maybeRollUp(requestedIntervalTracker);
 
-      // if (elementaryIntervalTracker != null) {
       elementaryIntervalTracker.freeze();
-      // }
       if (requestedIntervalTracker != null) {
         requestedIntervalTracker.freeze();
       }
@@ -293,7 +291,6 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     // TODO: dedup with multi valued?
     private int processValue(long v, int lastIntervalSeen) {
       int lo = 0, hi = boundaries.length - 1;
-      ;
 
       if (lastIntervalSeen != -1) {
         // this is the multivalued doc case, we need to set lo correctly
