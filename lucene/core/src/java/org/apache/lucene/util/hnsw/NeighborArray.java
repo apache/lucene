@@ -30,6 +30,7 @@ import org.apache.lucene.util.ArrayUtil;
  * @lucene.internal
  */
 public class NeighborArray {
+
   private final boolean scoresDescOrder;
   private int size;
   private final float[] scores;
@@ -42,6 +43,13 @@ public class NeighborArray {
     this.scoresDescOrder = descOrder;
   }
 
+  public boolean isScoresDescOrder() {
+    return scoresDescOrder;
+  }
+
+  public int getMaxSize() {
+    return nodes.length;
+  }
   /**
    * Add a new node to the NeighborArray. The new node must be worse than all previously stored
    * nodes. This cannot be called after {@link #addOutOfOrder(int, float)}
@@ -77,6 +85,7 @@ public class NeighborArray {
     size++;
   }
 
+
   /**
    * In addition to {@link #addOutOfOrder(int, float)}, this function will also remove the
    * least-diverse node if the node array is full after insertion
@@ -85,17 +94,21 @@ public class NeighborArray {
    * multiple threads while other add method is only supposed to be called by one thread.
    *
    * @param nodeId node Id of the owner of this NeighbourArray
+   * @return node Id of removed node or -1 if no node was removed.
    */
-  public void addAndEnsureDiversity(
+  public int addAndEnsureDiversity(
       int newNode, float newScore, int nodeId, RandomVectorScorerSupplier scorerSupplier)
       throws IOException {
     addOutOfOrder(newNode, newScore);
     if (size < nodes.length) {
-      return;
+      return -1;
     }
     // we're oversize, need to do diversity check and pop out the least diverse neighbour
-    removeIndex(findWorstNonDiverse(nodeId, scorerSupplier));
+    int indexToRemove = findWorstNonDiverse(nodeId, scorerSupplier);
+    int nodeRemoved = nodes[indexToRemove];
+    removeIndex(indexToRemove);
     assert size == nodes.length - 1;
+    return nodeRemoved;
   }
 
   /**
@@ -287,4 +300,24 @@ public class NeighborArray {
     }
     return false;
   }
+
+  public void removeNode(int nodeId) {
+//    System.out.println("size = " + this.size() + " node.length = " + node.length);
+    int indexToRemove = -1;
+    for (int i = 0; i < this.size(); i++) {
+      if (nodes[i] == nodeId) {
+        indexToRemove = i;
+        break;
+      }
+    }
+
+//    assert indexToRemove != -1;
+    if (indexToRemove == -1) {
+//      System.out.println("ERRORR1 : did not find nodeId = " + nodeId );
+      throw new IllegalStateException("Did not find the nodeId : " + nodeId);
+    } else {
+      removeIndex(indexToRemove);
+    }
+  }
+
 }
