@@ -156,13 +156,13 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
   /**
    * TODO: dedup OverlappingMultivaluedRangeLeafFacetCutter and
-   * OverlappingSingleValuedRangeLeafFacetCutter code - they are similar but they extend different
+   * OverlappingSingleValuedRangeLeafFacetCutter code - they are identical but they extend different
    * base classes.
    */
   static class OverlappingMultivaluedRangeLeafFacetCutter
       extends LongRangeMultivaluedLeafFacetCutter {
 
-    LongRangeNode elementaryIntervalRoot;
+    private final LongRangeNode elementaryIntervalRoot;
 
     private int elementaryIntervalUpto;
 
@@ -183,8 +183,6 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
       rollupMultiValued(elementaryIntervalRoot);
     }
 
-    // Note: combined rollUpSingleValued and rollUpMultiValued from OverlappingLongRangeCounter into
-    // 1 rollUp method
     private boolean rollupMultiValued(LongRangeNode node) {
       boolean containedHit;
       if (node.left != null) {
@@ -216,7 +214,7 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   static class OverlappingSingleValuedRangeLeafFacetCutter
       extends LongRangeSingleValuedLeafFacetCutter {
 
-    LongRangeNode elementaryIntervalRoot;
+    private final LongRangeNode elementaryIntervalRoot;
 
     private int elementaryIntervalUpto;
 
