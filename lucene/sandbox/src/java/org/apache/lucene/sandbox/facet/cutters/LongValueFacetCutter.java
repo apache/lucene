@@ -144,11 +144,19 @@ public final class LongValueFacetCutter implements FacetCutter, OrdToLabel {
     return facetLabels;
   }
 
+  /** {@link LongIntHashMap} with threadsafe computeIfAbsent method */
   private static class LongIntHashMapSyncCompute extends LongIntHashMap {
     private final ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
     private final Lock r = rwl.readLock();
     private final Lock w = rwl.writeLock();
 
+    /**
+     * If key exists in the map return its value, otherwise insert value from the value supplier and
+     * return it.
+     *
+     * <p>The method is threadsafe, and it allows concurrent reading from the map, but it locks the
+     * map to insert a new value as it might require rehashing.
+     */
     public int computeIfAbsent(long key, IntSupplier valueSupplier) {
       r.lock();
       int value = super.getOrDefault(key, -1);
