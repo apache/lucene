@@ -21,10 +21,10 @@ import java.lang.foreign.MemorySegment;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorShape;
+import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
@@ -37,6 +37,9 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   /** Preferred with in bits for vectors. */
   static final int PREFERRED_VECTOR_BITSIZE;
 
+  static final VectorSpecies<Long> PRERERRED_LONG_SPECIES;
+  static final VectorSpecies<Integer> PRERERRED_INT_SPECIES;
+
   /** Whether integer vectors can be trusted to actually be fast. */
   static final boolean HAS_FAST_INTEGER_VECTORS;
 
@@ -47,6 +50,14 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     int vectorBitSize = VectorShape.preferredShape().vectorBitSize();
     // but allow easy overriding for testing
     PREFERRED_VECTOR_BITSIZE = VectorizationProvider.TESTS_VECTOR_SIZE.orElse(vectorBitSize);
+    PRERERRED_LONG_SPECIES =
+        VectorSpecies.of(
+            long.class,
+            VectorShape.forBitSize(PanamaVectorizationProvider.PREFERRED_VECTOR_BITSIZE));
+    PRERERRED_INT_SPECIES =
+        VectorSpecies.of(
+            int.class,
+            VectorShape.forBitSize(PanamaVectorizationProvider.PREFERRED_VECTOR_BITSIZE));
 
     // hotspot misses some SSE intrinsics, workaround it
     // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
@@ -104,14 +115,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public PostingDecodingUtil getPostingDecodingUtil(IndexInput input) throws IOException {
-    if (input instanceof MemorySegmentAccessInput msai) {
+  public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
+    if (HAS_FAST_INTEGER_VECTORS && input instanceof MemorySegmentAccessInput msai) {
       MemorySegment ms = msai.segmentSliceOrNull(0, input.length());
       if (ms != null) {
-        Optional<PostingDecodingUtil> optional = MemorySegmentPostingDecodingUtil.wrap(input, ms);
-        if (optional.isPresent()) {
-          return optional.get();
-        }
+        return new MemorySegmentPostingDecodingUtil(input, ms);
       }
     }
     return new DefaultPostingDecodingUtil(input);

@@ -37,7 +37,7 @@ public final class PostingIndexInput {
   public PostingIndexInput(IndexInput in, ForUtil forUtil) throws IOException {
     this.in = in;
     this.forUtil = forUtil;
-    this.postingDecodingUtil = VECTORIZATION_PROVIDER.getPostingDecodingUtil(in);
+    this.postingDecodingUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
   }
 
   /** Decode 128 integers stored on {@code bitsPerValues} bits per value into {@code longs}. */

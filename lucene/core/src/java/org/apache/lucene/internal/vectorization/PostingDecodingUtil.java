@@ -21,9 +21,6 @@ import java.io.IOException;
 /** Utility class to decode postings. */
 public abstract class PostingDecodingUtil {
 
-  /** Number of padding longs to avoid reading out of bounds. */
-  public static final int PADDING_LONGS = 7;
-
   /**
    * Read {@code count} longs. This number must not exceed 64. Apply shift {@code bShift} and mask
    * {@code bMask} and store the result in {@code b} starting at offset 0. Apply mask {@code cMask}

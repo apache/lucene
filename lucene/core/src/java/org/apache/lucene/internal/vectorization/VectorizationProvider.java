@@ -97,8 +97,8 @@ public abstract class VectorizationProvider {
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
 
-  /** Get a {@link PostingDecodingUtil} for the given {@link IndexInput}. */
-  public abstract PostingDecodingUtil getPostingDecodingUtil(IndexInput input) throws IOException;
+  /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
+  public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
   // *** Lookup mechanism: ***
 

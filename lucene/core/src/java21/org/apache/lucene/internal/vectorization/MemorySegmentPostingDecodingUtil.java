@@ -19,36 +19,20 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteOrder;
-import java.util.Optional;
 import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.VectorOperators;
-import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.store.IndexInput;
 
 final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
 
-  static Optional<PostingDecodingUtil> wrap(IndexInput in, MemorySegment memorySegment) {
-    if (PanamaVectorizationProvider.HAS_FAST_INTEGER_VECTORS == false) {
-      // No point in using the Vector API if it doesn't actually make things faster.
-      return Optional.empty();
-    }
-    if (LONG_SPECIES.length() > PostingDecodingUtil.PADDING_LONGS + 1) {
-      // Required to meet PostingDecodingUtil's contract that we do not read/write more than 7 extra
-      // longs.
-      return Optional.empty();
-    }
-    return Optional.of(new MemorySegmentPostingDecodingUtil(in, memorySegment));
-  }
-
   private static final VectorSpecies<Long> LONG_SPECIES =
-      VectorSpecies.of(
-          long.class, VectorShape.forBitSize(PanamaVectorizationProvider.PREFERRED_VECTOR_BITSIZE));
+      PanamaVectorizationProvider.PRERERRED_LONG_SPECIES;
 
   private final IndexInput in;
   private final MemorySegment memorySegment;
 
-  private MemorySegmentPostingDecodingUtil(IndexInput in, MemorySegment memorySegment) {
+  MemorySegmentPostingDecodingUtil(IndexInput in, MemorySegment memorySegment) {
     this.in = in;
     this.memorySegment = memorySegment;
   }
@@ -56,14 +40,35 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
   @Override
   public void splitLongs(int count, long[] b, int bShift, long bMask, long[] c, long cMask)
       throws IOException {
-    long offset = in.getFilePointer();
-    long endOffset = offset + count * Long.BYTES;
-    int i;
-    // Note: this loop may apply to more than `count` entries due to the width of the preferred
-    // species. But doing this is faster than handling the remainder with scalar code.
-    for (i = 0;
-        i < count;
-        i += LONG_SPECIES.length(), offset += LONG_SPECIES.length() * Long.BYTES) {
+    if (count < LONG_SPECIES.length()) {
+      // Not enough data to vectorize without going out-of-bounds. In practice, this branch is never
+      // used if the bit width is 256, and is used for 2 and 3 bits per value if the bit width is
+      // 512.
+      in.readLongs(c, 0, count);
+      for (int i = 0; i < count; ++i) {
+        b[i] = (c[i] >>> bShift) & bMask;
+        c[i] &= cMask;
+      }
+    } else {
+      long offset = in.getFilePointer();
+      long endOffset = offset + count * Long.BYTES;
+      int loopBound = LONG_SPECIES.loopBound(count - 1);
+      for (int i = 0;
+          i < loopBound;
+          i += LONG_SPECIES.length(), offset += LONG_SPECIES.length() * Long.BYTES) {
+        LongVector vector =
+            LongVector.fromMemorySegment(
+                LONG_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN);
+        vector
+            .lanewise(VectorOperators.LSHR, bShift)
+            .lanewise(VectorOperators.AND, bMask)
+            .intoArray(b, i);
+        vector.lanewise(VectorOperators.AND, cMask).intoArray(c, i);
+      }
+
+      // Handle the tail by reading a vector that is aligned with with `count` on the right side.
+      int i = count - LONG_SPECIES.length();
+      offset = endOffset - LONG_SPECIES.length() * Long.BYTES;
       LongVector vector =
           LongVector.fromMemorySegment(
               LONG_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN);
@@ -72,8 +77,8 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
           .lanewise(VectorOperators.AND, bMask)
           .intoArray(b, i);
       vector.lanewise(VectorOperators.AND, cMask).intoArray(c, i);
-    }
 
-    in.seek(endOffset);
+      in.seek(endOffset);
+    }
   }
 }

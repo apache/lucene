@@ -24,7 +24,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.ArrayUtil;
 
 public class TestPostingDecodingUtil extends LuceneTestCase {
 
@@ -58,15 +57,13 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           long cMask = random().nextLong();
           long startFP = random().nextInt(4);
 
-          // Work on a slice that has just the right number of padding bytes to make the test fail
-          // with an index-out-of-bounds in case the implementation reads more than the allowed
-          // number of padding bytes.
-          IndexInput slice =
-              in.slice(
-                  "test", 0, startFP + (count + PostingDecodingUtil.PADDING_LONGS) * Long.BYTES);
+          // Work on a slice that has just the right number of bytes to make the test fail with an
+          // index-out-of-bounds in case the implementation reads more than the allowed number of
+          // padding bytes.
+          IndexInput slice = in.slice("test", 0, startFP + count * Long.BYTES);
 
           PostingDecodingUtil defaultUtil = new DefaultPostingDecodingUtil(slice);
-          PostingDecodingUtil optimizedUtil = vectorizationProvider.getPostingDecodingUtil(slice);
+          PostingDecodingUtil optimizedUtil = vectorizationProvider.newPostingDecodingUtil(slice);
           assertNotSame(defaultUtil.getClass(), optimizedUtil.getClass());
 
           slice.seek(startFP);
@@ -75,22 +72,8 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           slice.seek(startFP);
           optimizedUtil.splitLongs(count, actualB, bShift, bMask, actualC, cMask);
           assertEquals(expectedEndFP, slice.getFilePointer());
-          assertArrayEquals(
-              ArrayUtil.copyOfSubArray(expectedB, 0, count),
-              ArrayUtil.copyOfSubArray(actualB, 0, count));
-          assertArrayEquals(
-              ArrayUtil.copyOfSubArray(expectedC, 0, count),
-              ArrayUtil.copyOfSubArray(actualC, 0, count));
-          assertArrayEquals(
-              ArrayUtil.copyOfSubArray(
-                  expectedB, count + PostingDecodingUtil.PADDING_LONGS, expectedB.length),
-              ArrayUtil.copyOfSubArray(
-                  actualB, count + PostingDecodingUtil.PADDING_LONGS, actualB.length));
-          assertArrayEquals(
-              ArrayUtil.copyOfSubArray(
-                  expectedC, count + PostingDecodingUtil.PADDING_LONGS, expectedC.length),
-              ArrayUtil.copyOfSubArray(
-                  actualC, count + PostingDecodingUtil.PADDING_LONGS, actualC.length));
+          assertArrayEquals(expectedB, actualB);
+          assertArrayEquals(expectedC, actualC);
         }
       }
     }

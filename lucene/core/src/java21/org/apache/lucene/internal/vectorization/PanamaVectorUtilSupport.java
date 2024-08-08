@@ -52,17 +52,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
-  private static final VectorSpecies<Integer> INT_SPECIES;
+  private static final VectorSpecies<Integer> INT_SPECIES =
+      PanamaVectorizationProvider.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
 
   static final int VECTOR_BITSIZE;
 
   static {
-    INT_SPECIES =
-        VectorSpecies.of(
-            int.class,
-            VectorShape.forBitSize(PanamaVectorizationProvider.PREFERRED_VECTOR_BITSIZE));
     VECTOR_BITSIZE = INT_SPECIES.vectorBitSize();
     FLOAT_SPECIES = INT_SPECIES.withLanes(float.class);
     // compute BYTE/SHORT sizes relative to preferred integer vector size
