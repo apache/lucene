@@ -467,7 +467,7 @@ if __name__ == '__main__':
   // used when the idx is a variable
 """)
   for primitive_size in PRIMITIVE_SIZE:
-    for bpv in range(1, min(MAX_SPECIALIZED_BITS_PER_VALUE, primitive_size)):
+    for bpv in range(1, min(MAX_SPECIALIZED_BITS_PER_VALUE + 1, primitive_size)):
       if bpv * 2 != primitive_size or primitive_size == 8:
         f.write('  private static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive_size, bpv, primitive_size, bpv))
 

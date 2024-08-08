@@ -403,6 +403,7 @@ public final class ForUtil {
   private static final long MASK32_21 = MASKS32[21];
   private static final long MASK32_22 = MASKS32[22];
   private static final long MASK32_23 = MASKS32[23];
+  private static final long MASK32_24 = MASKS32[24];
 
   /** Decode 128 integers into {@code longs}. */
   void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
