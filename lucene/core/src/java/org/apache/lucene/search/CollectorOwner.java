@@ -63,7 +63,11 @@ public final class CollectorOwner<C extends Collector, T> {
     return collectors.get(i);
   }
 
-  /** Returns result of {@link CollectorManager#reduce(Collection)}. The result is cached. */
+  /**
+   * Returns result of {@link CollectorManager#reduce(Collection)}. The result is cached.
+   *
+   * <p>This method is NOT threadsafe.
+   */
   public T getResult() throws IOException {
     if (reduced == false) {
       result = manager.reduce(collectors);
