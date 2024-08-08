@@ -456,7 +456,8 @@ public class DrillSideways {
     // This method doesn't return results as each dimension might have its own result type.
     // But we call getResult to trigger results reducing, so that users don't have to worry about
     // it.
-    // TODO: do we want to run reduce in parallel if executor is provided?
+    // TODO: do we want to run reduce in parallel if executor is provided? To do that we must make
+    // sure that CollectorOwner#getResult is threadsafe.
     drillDownCollectorOwner.getResult();
     if (drillSidewaysCollectorOwners != null) {
       for (CollectorOwner<?, ?> sidewaysOwner : drillSidewaysCollectorOwners) {
