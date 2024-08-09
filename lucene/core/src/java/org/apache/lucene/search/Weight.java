@@ -336,21 +336,40 @@ public abstract class Weight implements SegmentCacheable {
         Bits acceptDocs)
         throws IOException {
       if (twoPhase == null) {
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if (acceptDocs == null || acceptDocs.get(doc)) {
+        // TODO: Find similar code if this makes sense.
+        if (acceptDocs == null) {
+          for (int doc = iterator.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = iterator.nextDoc()) {
             collector.collect(doc);
+          }
+        } else {
+          for (int doc = iterator.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = iterator.nextDoc()) {
+            if (acceptDocs.get(doc)) {
+              collector.collect(doc);
+            }
           }
         }
       } else {
         // The scorer has an approximation, so run the approximation first, then check acceptDocs,
         // then confirm
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
-            collector.collect(doc);
+        if (acceptDocs == null) {
+          for (int doc = iterator.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = iterator.nextDoc()) {
+            if (twoPhase.matches()) {
+              collector.collect(doc);
+            }
+          }
+        } else {
+          for (int doc = iterator.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = iterator.nextDoc()) {
+            if (acceptDocs.get(doc) && twoPhase.matches()) {
+              collector.collect(doc);
+            }
           }
         }
       }
