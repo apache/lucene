@@ -81,6 +81,11 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     }
 
     @Override
+    public void prepareToScore(int node) throws IOException {
+      vectorValues.prefetchOrdinal(node);
+    }
+
+    @Override
     public int maxOrd() {
       return vectorValues.size();
     }

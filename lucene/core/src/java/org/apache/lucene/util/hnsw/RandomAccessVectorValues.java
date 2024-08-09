@@ -50,6 +50,16 @@ public interface RandomAccessVectorValues {
     return null;
   }
 
+  /**
+   * Prefetches the vector value at the given ordinal.
+   *
+   * @param ordinal the ordinal to prefetch
+   * @throws IOException if an I/O error occurs
+   */
+  default void prefetchOrdinal(int ordinal) throws IOException {
+    // no-op
+  }
+
   /** Returns the byte length of the vector values. */
   int getVectorByteLength();
 
