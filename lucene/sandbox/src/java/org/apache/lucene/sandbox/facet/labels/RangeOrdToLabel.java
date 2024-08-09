@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.sandbox.facet.labels;
 
-import java.util.List;
 import org.apache.lucene.facet.range.Range;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 
@@ -29,14 +28,9 @@ public class RangeOrdToLabel implements OrdToLabel {
 
   private final Range[] ranges;
 
-  /** Constructor that takes array of Range objects as input * */
+  /** Constructor that takes array of Range objects as input */
   public RangeOrdToLabel(Range[] inputRanges) {
     ranges = inputRanges;
-  }
-
-  /** Constructor that takes List of Range objects as input * */
-  public RangeOrdToLabel(List<? extends Range> inputRanges) {
-    ranges = inputRanges.toArray(new Range[0]);
   }
 
   @Override

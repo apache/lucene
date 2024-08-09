@@ -55,6 +55,10 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     }
   }
 
+  /**
+   * TODO: it's identical to private OverlappingLongRangeCounter#buildElementaryIntervals, let's
+   * dedup.
+   */
   @Override
   List<InclusiveRange> buildElementaryIntervals() {
     // Maps all range inclusive endpoints to int flags; 1

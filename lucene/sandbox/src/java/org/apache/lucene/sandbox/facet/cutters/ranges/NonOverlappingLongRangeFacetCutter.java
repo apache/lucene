@@ -36,6 +36,10 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     super(longValuesSource, singleLongValuesSource, longRanges);
   }
 
+  /**
+   * TODO: it's identical to private ExclusiveLongRangeCounter#buildElementaryIntervals, let's
+   * dedup.
+   */
   @Override
   List<InclusiveRange> buildElementaryIntervals() {
     List<InclusiveRange> elementaryIntervals = new ArrayList<>();
