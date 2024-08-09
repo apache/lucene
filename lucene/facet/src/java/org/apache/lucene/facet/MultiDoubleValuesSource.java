@@ -129,7 +129,7 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
     MultiDoubleValuesSource inner;
 
     SortableMultiLongValuesSource(MultiDoubleValuesSource inner) {
-      this.inner = inner;
+      this.inner = Objects.requireNonNull(inner);
     }
 
     @Override
@@ -161,7 +161,7 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
 
     @Override
     public int hashCode() {
-      return Objects.hash(inner);
+      return inner.hashCode();
     }
 
     @Override
