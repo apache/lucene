@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.index.IndexDeletionPolicy;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentInfos;
@@ -86,7 +87,11 @@ public abstract class ReplicaNode extends Node {
   protected long lastPrimaryGen;
 
   public ReplicaNode(
-      int id, Directory dir, SearcherFactory searcherFactory, PrintStream printStream)
+      int id,
+      Directory dir,
+      IndexDeletionPolicy policy,
+      SearcherFactory searcherFactory,
+      PrintStream printStream)
       throws IOException {
     super(id, dir, searcherFactory, printStream);
 
@@ -105,7 +110,7 @@ public abstract class ReplicaNode extends Node {
       writeFileLock = dir.obtainLock(IndexWriter.WRITE_LOCK_NAME);
 
       state = "init";
-      deleter = new ReplicaFileDeleter(this, dir);
+      deleter = new ReplicaFileDeleter(this, dir, policy);
       success = true;
     } catch (Throwable t) {
       message("exc on init:");
@@ -371,6 +376,7 @@ public abstract class ReplicaNode extends Node {
       dir.sync(indexFiles);
 
       Map<String, String> commitData = new HashMap<>();
+      fillCommitData(commitData);
       commitData.put(PRIMARY_GEN_KEY, Long.toString(lastPrimaryGen));
       commitData.put(VERSION_KEY, Long.toString(getCurrentSearchingVersion()));
       infos.setUserData(commitData, false);
@@ -394,6 +400,8 @@ public abstract class ReplicaNode extends Node {
               + commitData);
       deleter.incRef(Collections.singletonList(segmentsFileName));
       message("top: commit decRef lastCommitFiles=" + lastCommitFiles);
+      
+      deleter.checkpoint(infos);
       deleter.decRef(lastCommitFiles);
       lastCommitFiles.clear();
       lastCommitFiles.addAll(indexFiles);
@@ -401,6 +409,8 @@ public abstract class ReplicaNode extends Node {
       message("top: commit version=" + infos.getVersion() + " files now " + lastCommitFiles);
     }
   }
+
+  protected void fillCommitData(Map<String, String> commitData) {}
 
   protected void finishNRTCopy(CopyJob job, long startNS) throws IOException {
     CopyState copyState = job.getCopyState();
