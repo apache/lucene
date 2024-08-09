@@ -59,9 +59,9 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
           "We hit initialization failure described in JDK-8309727: " + se);
     }
 
-    if (PanamaVectorUtilSupport.VECTOR_BITSIZE < 128) {
+    if (PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE < 128) {
       throw new UnsupportedOperationException(
-          "Vector bit size is less than 128: " + PanamaVectorUtilSupport.VECTOR_BITSIZE);
+          "Vector bit size is less than 128: " + PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE);
     }
 
     this.vectorUtilSupport = new PanamaVectorUtilSupport();
@@ -71,7 +71,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
         String.format(
             Locale.ENGLISH,
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
-            PanamaVectorUtilSupport.VECTOR_BITSIZE,
+            PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE,
             Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
             PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS ? "" : "; floating-point vectors only"));
   }

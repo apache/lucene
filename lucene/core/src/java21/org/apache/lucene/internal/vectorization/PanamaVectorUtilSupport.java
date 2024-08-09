@@ -60,7 +60,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   static final int VECTOR_BITSIZE;
 
   static {
-    VECTOR_BITSIZE = INT_SPECIES.vectorBitSize();
+    VECTOR_BITSIZE = PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
     FLOAT_SPECIES = INT_SPECIES.withLanes(float.class);
     // compute BYTE/SHORT sizes relative to preferred integer vector size
     if (VECTOR_BITSIZE >= 256) {
