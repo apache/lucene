@@ -161,9 +161,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {
-      // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
-      return null;
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
     if (dimension != fieldEntry.dimension) {
       throw new IllegalStateException(

@@ -215,6 +215,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null) {
+      throw new IllegalArgumentException("Field=\"" + field + "\" is not found");
+    }
     return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
   }
 

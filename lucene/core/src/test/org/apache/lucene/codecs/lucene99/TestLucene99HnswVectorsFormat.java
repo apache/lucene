@@ -24,6 +24,7 @@ import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
@@ -60,5 +61,17 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     expectThrows(
         IllegalArgumentException.class,
         () -> new Lucene99HnswVectorsFormat(20, 100, 1, new SameThreadExecutorService()));
+  }
+
+  @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 500)
+  public static class Lucene99VectorCodec extends FilterCodec {
+    public Lucene99VectorCodec() {
+      super("Lucene99VectorCodec", new Lucene912Codec());
+    }
+
+    @Override
+    public KnnVectorsFormat knnVectorsFormat() {
+      return new Lucene99HnswVectorsFormat(16, 250);
+    }
   }
 }
