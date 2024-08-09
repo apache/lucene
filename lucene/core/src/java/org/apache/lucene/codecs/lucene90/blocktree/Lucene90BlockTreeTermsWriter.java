@@ -598,8 +598,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
   private final ByteBuffersDataOutput scratchBytes = ByteBuffersDataOutput.newResettableInstance();
   private final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();
 
-  static final BytesRef EMPTY_BYTES_REF = new BytesRef();
-
   private static class StatsWriter {
 
     private final DataOutput out;

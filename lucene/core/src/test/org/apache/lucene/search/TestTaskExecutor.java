@@ -21,10 +21,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -111,7 +108,20 @@ public class TestTaskExecutor extends LuceneTestCase {
     assertEquals("exc", runtimeException.getCause().getMessage());
   }
 
-  public void testInvokeAllFromTaskDoesNotDeadlockSameSearcher() throws IOException {
+  public void testInvokeAllFromTaskDoesNotDeadlockSameSearcher() throws Exception {
+    doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(executorService);
+    doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(Runnable::run);
+    executorService
+        .submit(
+            () -> {
+              doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(executorService);
+              return null;
+            })
+        .get();
+  }
+
+  private static void doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(Executor executor)
+      throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       for (int i = 0; i < 500; i++) {
@@ -119,7 +129,7 @@ public class TestTaskExecutor extends LuceneTestCase {
       }
       try (DirectoryReader reader = iw.getReader()) {
         IndexSearcher searcher =
-            new IndexSearcher(reader, executorService) {
+            new IndexSearcher(reader, executor) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
                 return slices(leaves, 1, 1);
@@ -172,7 +182,20 @@ public class TestTaskExecutor extends LuceneTestCase {
     }
   }
 
-  public void testInvokeAllFromTaskDoesNotDeadlockMultipleSearchers() throws IOException {
+  public void testInvokeAllFromTaskDoesNotDeadlockMultipleSearchers() throws Exception {
+    doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(executorService);
+    doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(Runnable::run);
+    executorService
+        .submit(
+            () -> {
+              doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(executorService);
+              return null;
+            })
+        .get();
+  }
+
+  private static void doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(Executor executor)
+      throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       for (int i = 0; i < 500; i++) {
@@ -180,7 +203,7 @@ public class TestTaskExecutor extends LuceneTestCase {
       }
       try (DirectoryReader reader = iw.getReader()) {
         IndexSearcher searcher =
-            new IndexSearcher(reader, executorService) {
+            new IndexSearcher(reader, executor) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
                 return slices(leaves, 1, 1);
@@ -202,7 +225,7 @@ public class TestTaskExecutor extends LuceneTestCase {
                         // searcher has its own
                         // TaskExecutor, the safeguard is shared among all the searchers that get
                         // the same executor
-                        IndexSearcher indexSearcher = new IndexSearcher(reader, executorService);
+                        IndexSearcher indexSearcher = new IndexSearcher(reader, executor);
                         indexSearcher
                             .getTaskExecutor()
                             .invokeAll(Collections.singletonList(() -> null));
@@ -234,11 +257,8 @@ public class TestTaskExecutor extends LuceneTestCase {
     TaskExecutor taskExecutor =
         new TaskExecutor(
             command -> {
-              executorService.execute(
-                  () -> {
-                    tasksStarted.incrementAndGet();
-                    command.run();
-                  });
+              tasksStarted.incrementAndGet();
+              command.run();
             });
     AtomicInteger tasksExecuted = new AtomicInteger(0);
     List<Callable<Void>> callables = new ArrayList<>();
@@ -251,14 +271,14 @@ public class TestTaskExecutor extends LuceneTestCase {
     for (int i = 0; i < tasksWithNormalExit; i++) {
       callables.add(
           () -> {
-            tasksExecuted.incrementAndGet();
-            return null;
+            throw new AssertionError(
+                "must not be called since the first task failing cancels all subsequent tasks");
           });
     }
     expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
     assertEquals(1, tasksExecuted.get());
     // the callables are technically all run, but the cancelled ones will be no-op
-    assertEquals(100, tasksStarted.get());
+    assertEquals(tasksWithNormalExit, tasksStarted.get());
   }
 
   /**
@@ -308,7 +328,7 @@ public class TestTaskExecutor extends LuceneTestCase {
   }
 
   public void testCancelTasksOnException() {
-    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    TaskExecutor taskExecutor = new TaskExecutor(Runnable::run);
     final int numTasks = random().nextInt(10, 50);
     final int throwingTask = random().nextInt(numTasks);
     boolean error = random().nextBoolean();
@@ -342,5 +362,25 @@ public class TestTaskExecutor extends LuceneTestCase {
     }
     assertEquals(0, throwable.getSuppressed().length);
     assertEquals(throwingTask, executedTasks.get());
+  }
+
+  public void testTaskRejectionDoesNotFailExecution() throws Exception {
+    try (ThreadPoolExecutor threadPoolExecutor =
+        new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(1))) {
+      final int taskCount = 1000; // enough tasks to cause queuing and rejections on the executor
+      final ArrayList<Callable<Void>> callables = new ArrayList<>(taskCount);
+      final AtomicInteger executedTasks = new AtomicInteger(0);
+      for (int i = 0; i < taskCount; i++) {
+        callables.add(
+            () -> {
+              executedTasks.incrementAndGet();
+              return null;
+            });
+      }
+      final TaskExecutor taskExecutor = new TaskExecutor(threadPoolExecutor);
+      var res = taskExecutor.invokeAll(callables);
+      assertEquals(taskCount, res.size());
+      assertEquals(taskCount, executedTasks.get());
+    }
   }
 }

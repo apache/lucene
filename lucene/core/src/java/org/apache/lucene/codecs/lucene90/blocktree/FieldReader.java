@@ -78,7 +78,6 @@ public final class FieldReader extends Terms {
     this.sumTotalTermFreq = sumTotalTermFreq;
     this.sumDocFreq = sumDocFreq;
     this.docCount = docCount;
-    this.rootCode = rootCode;
     this.minTerm = minTerm;
     this.maxTerm = maxTerm;
     // if (DEBUG) {
@@ -89,13 +88,8 @@ public final class FieldReader extends Terms {
         readVLongOutput(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     // Initialize FST always off-heap.
-    final IndexInput clone = indexIn.clone();
-    clone.seek(indexStartFP);
-    index =
-        new FST<>(
-            FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton()),
-            clone,
-            new OffHeapFSTStore());
+    var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
+    index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
     /*
      if (false) {
      final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
@@ -105,6 +99,14 @@ public final class FieldReader extends Terms {
      w.close();
      }
     */
+    BytesRef emptyOutput = metadata.getEmptyOutput();
+    if (rootCode.equals(emptyOutput) == false) {
+      // TODO: this branch is never taken
+      assert false;
+      this.rootCode = rootCode;
+    } else {
+      this.rootCode = emptyOutput;
+    }
   }
 
   long readVLongOutput(DataInput in) throws IOException {

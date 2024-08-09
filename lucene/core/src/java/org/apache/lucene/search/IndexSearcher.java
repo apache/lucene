@@ -674,7 +674,8 @@ public class IndexSearcher {
   /**
    * Lower-level search API.
    *
-   * <p>{@link LeafCollector#collect(int)} is called for every document. <br>
+   * <p>{@link #searchLeaf(LeafReaderContext, Weight, Collector)} is called for every leaf
+   * partition. <br>
    *
    * <p>NOTE: this method executes the searches on all given leaves exclusively. To search across
    * all the searchers leaves use {@link #leafContexts}.
@@ -694,40 +695,56 @@ public class IndexSearcher {
     // threaded...? the Collector could be sync'd?
     // always use single thread:
     for (LeafReaderContext ctx : leaves) { // search each subreader
-      final LeafCollector leafCollector;
+      searchLeaf(ctx, weight, collector);
+    }
+  }
+
+  /**
+   * Lower-level search API
+   *
+   * <p>{@link LeafCollector#collect(int)} is called for every document. <br>
+   *
+   * @param ctx the leaf to execute the search against
+   * @param weight to match document
+   * @param collector to receive hits
+   * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
+   *     clauses.
+   */
+  protected void searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)
+      throws IOException {
+    final LeafCollector leafCollector;
+    try {
+      leafCollector = collector.getLeafCollector(ctx);
+    } catch (
+        @SuppressWarnings("unused")
+        CollectionTerminatedException e) {
+      // there is no doc of interest in this reader context
+      // continue with the following leaf
+      return;
+    }
+    ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+    if (scorerSupplier != null) {
+      scorerSupplier.setTopLevelScoringClause();
+      BulkScorer scorer = scorerSupplier.bulkScorer();
+      if (queryTimeout != null) {
+        scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
+      }
       try {
-        leafCollector = collector.getLeafCollector(ctx);
+        scorer.score(leafCollector, ctx.reader().getLiveDocs());
       } catch (
           @SuppressWarnings("unused")
           CollectionTerminatedException e) {
-        // there is no doc of interest in this reader context
+        // collection was terminated prematurely
         // continue with the following leaf
-        continue;
+      } catch (
+          @SuppressWarnings("unused")
+          TimeLimitingBulkScorer.TimeExceededException e) {
+        partialResult = true;
       }
-      ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
-      if (scorerSupplier != null) {
-        scorerSupplier.setTopLevelScoringClause();
-        BulkScorer scorer = scorerSupplier.bulkScorer();
-        if (queryTimeout != null) {
-          scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
-        }
-        try {
-          scorer.score(leafCollector, ctx.reader().getLiveDocs());
-        } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
-          // collection was terminated prematurely
-          // continue with the following leaf
-        } catch (
-            @SuppressWarnings("unused")
-            TimeLimitingBulkScorer.TimeExceededException e) {
-          partialResult = true;
-        }
-      }
-      // Note: this is called if collection ran successfully, including the above special cases of
-      // CollectionTerminatedException and TimeExceededException, but no other exception.
-      leafCollector.finish();
     }
+    // Note: this is called if collection ran successfully, including the above special cases of
+    // CollectionTerminatedException and TimeExceededException, but no other exception.
+    leafCollector.finish();
   }
 
   /**

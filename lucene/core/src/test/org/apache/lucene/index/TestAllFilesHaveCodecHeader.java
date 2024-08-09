@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -84,7 +85,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
   private void checkHeader(
       Directory dir, String file, Map<String, String> namesToExtensions, byte[] id)
       throws IOException {
-    try (IndexInput in = dir.openInput(file, newIOContext(random()))) {
+    try (IndexInput in = dir.openInput(file, IOContext.READONCE)) {
       int val = CodecUtil.readBEInt(in);
       assertEquals(
           file + " has no codec header, instead found: " + val, CodecUtil.CODEC_MAGIC, val);

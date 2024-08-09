@@ -417,16 +417,7 @@ public final class FST<T> implements Accountable {
    * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
    */
   public FST(FSTMetadata<T> metadata, DataInput in) throws IOException {
-    this(metadata, in, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
-  }
-
-  /**
-   * Load a previously saved FST with a metdata object and a FSTStore. If using {@link
-   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
-   * to hold the FST bytes.
-   */
-  public FST(FSTMetadata<T> metadata, DataInput in, FSTStore fstStore) throws IOException {
-    this(metadata, fstStore.init(in, metadata.numBytes));
+    this(metadata, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS, in, metadata.numBytes));
   }
 
   /** Create the FST with a metadata object and a FSTReader. */
@@ -537,54 +528,8 @@ public final class FST<T> implements Accountable {
    * @param out the DataOutput to write the FST bytes to
    */
   public void save(DataOutput metaOut, DataOutput out) throws IOException {
-    saveMetadata(metaOut);
+    metadata.save(metaOut);
     fstReader.writeTo(out);
-  }
-
-  /**
-   * Save the metadata to a DataOutput
-   *
-   * @param metaOut the DataOutput to write the metadata to
-   */
-  public void saveMetadata(DataOutput metaOut) throws IOException {
-    CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
-    // TODO: really we should encode this as an arc, arriving
-    // to the root node, instead of special casing here:
-    if (metadata.emptyOutput != null) {
-      // Accepts empty string
-      metaOut.writeByte((byte) 1);
-
-      // Serialize empty-string output:
-      ByteBuffersDataOutput ros = new ByteBuffersDataOutput();
-      outputs.writeFinalOutput(metadata.emptyOutput, ros);
-      byte[] emptyOutputBytes = ros.toArrayCopy();
-      int emptyLen = emptyOutputBytes.length;
-
-      // reverse
-      final int stopAt = emptyLen / 2;
-      int upto = 0;
-      while (upto < stopAt) {
-        final byte b = emptyOutputBytes[upto];
-        emptyOutputBytes[upto] = emptyOutputBytes[emptyLen - upto - 1];
-        emptyOutputBytes[emptyLen - upto - 1] = b;
-        upto++;
-      }
-      metaOut.writeVInt(emptyLen);
-      metaOut.writeBytes(emptyOutputBytes, 0, emptyLen);
-    } else {
-      metaOut.writeByte((byte) 0);
-    }
-    final byte t;
-    if (metadata.inputType == INPUT_TYPE.BYTE1) {
-      t = 0;
-    } else if (metadata.inputType == INPUT_TYPE.BYTE2) {
-      t = 1;
-    } else {
-      t = 2;
-    }
-    metaOut.writeByte(t);
-    metaOut.writeVLong(metadata.startNode);
-    metaOut.writeVLong(numBytes());
   }
 
   /** Writes an automaton to a file. */
@@ -1257,6 +1202,60 @@ public final class FST<T> implements Accountable {
      */
     public int getVersion() {
       return version;
+    }
+
+    public T getEmptyOutput() {
+      return emptyOutput;
+    }
+
+    public long getNumBytes() {
+      return numBytes;
+    }
+
+    /**
+     * Save the metadata to a DataOutput
+     *
+     * @param metaOut the DataOutput to write the metadata to
+     */
+    public void save(DataOutput metaOut) throws IOException {
+      CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
+      // TODO: really we should encode this as an arc, arriving
+      // to the root node, instead of special casing here:
+      if (emptyOutput != null) {
+        // Accepts empty string
+        metaOut.writeByte((byte) 1);
+
+        // Serialize empty-string output:
+        ByteBuffersDataOutput ros = new ByteBuffersDataOutput();
+        outputs.writeFinalOutput(emptyOutput, ros);
+        byte[] emptyOutputBytes = ros.toArrayCopy();
+        int emptyLen = emptyOutputBytes.length;
+
+        // reverse
+        final int stopAt = emptyLen / 2;
+        int upto = 0;
+        while (upto < stopAt) {
+          final byte b = emptyOutputBytes[upto];
+          emptyOutputBytes[upto] = emptyOutputBytes[emptyLen - upto - 1];
+          emptyOutputBytes[emptyLen - upto - 1] = b;
+          upto++;
+        }
+        metaOut.writeVInt(emptyLen);
+        metaOut.writeBytes(emptyOutputBytes, 0, emptyLen);
+      } else {
+        metaOut.writeByte((byte) 0);
+      }
+      final byte t;
+      if (inputType == INPUT_TYPE.BYTE1) {
+        t = 0;
+      } else if (inputType == INPUT_TYPE.BYTE2) {
+        t = 1;
+      } else {
+        t = 2;
+      }
+      metaOut.writeByte(t);
+      metaOut.writeVLong(startNode);
+      metaOut.writeVLong(numBytes);
     }
   }
 }

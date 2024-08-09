@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -55,6 +56,52 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
 
   public TestUnifiedHighlighterTermVec() {
     super(randomFieldType(random()));
+  }
+
+  public void testTermVecButNoPositions1() throws Exception {
+    testTermVecButNoPositions("x", "y", "y x", "<b>y</b> <b>x</b>");
+  }
+
+  public void testTermVecButNoPositions2() throws Exception {
+    testTermVecButNoPositions("y", "x", "y x", "<b>y</b> <b>x</b>");
+  }
+
+  public void testTermVecButNoPositions3() throws Exception {
+    testTermVecButNoPositions("zzz", "yyy", "zzz yyy", "<b>zzz</b> <b>yyy</b>");
+  }
+
+  public void testTermVecButNoPositions4() throws Exception {
+    testTermVecButNoPositions("zzz", "yyy", "yyy zzz", "<b>yyy</b> <b>zzz</b>");
+  }
+
+  public void testTermVecButNoPositions(String aaa, String bbb, String indexed, String expected)
+      throws Exception {
+    final FieldType tvNoPosType = new FieldType(TextField.TYPE_STORED);
+    tvNoPosType.setStoreTermVectors(true);
+    tvNoPosType.setStoreTermVectorOffsets(true);
+    tvNoPosType.freeze();
+
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+
+    Field body = new Field("body", indexed, tvNoPosType);
+    Document document = new Document();
+    document.add(body);
+    iw.addDocument(document);
+    try (IndexReader ir = iw.getReader()) {
+      iw.close();
+      IndexSearcher searcher = newSearcher(ir);
+      BooleanQuery query =
+          new BooleanQuery.Builder()
+              .add(new TermQuery(new Term("body", aaa)), BooleanClause.Occur.MUST)
+              .add(new TermQuery(new Term("body", bbb)), BooleanClause.Occur.MUST)
+              .build();
+      TopDocs topDocs = searcher.search(query, 10);
+      assertEquals(1, topDocs.totalHits.value);
+      UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
+      String[] snippets = highlighter.highlight("body", query, topDocs, 2);
+      assertEquals(1, snippets.length);
+      assertTrue(snippets[0], snippets[0].contains(expected));
+    }
   }
 
   public void testFetchTermVecsOncePerDoc() throws IOException {

@@ -718,6 +718,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     return flushPending.get() == Boolean.TRUE;
   }
 
+  boolean isQueueAdvanced() {
+    return deleteQueue.isAdvanced();
+  }
+
   /** Sets this DWPT as flush pending. This can only be set once. */
   void setFlushPending() {
     flushPending.set(Boolean.TRUE);
