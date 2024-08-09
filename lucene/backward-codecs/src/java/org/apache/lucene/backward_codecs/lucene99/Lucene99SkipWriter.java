@@ -46,8 +46,8 @@ import org.apache.lucene.store.IndexOutput;
  * uptos(position, payload). 4. start offset.
  */
 public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
-  private int[] lastSkipDoc;
-  private long[] lastSkipDocPointer;
+  private final int[] lastSkipDoc;
+  private final long[] lastSkipDocPointer;
   private long[] lastSkipPosPointer;
   private long[] lastSkipPayPointer;
 
@@ -61,7 +61,7 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
   private long curPayPointer;
   private int curPosBufferUpto;
   private int curPayloadByteUpto;
-  private CompetitiveImpactAccumulator[] curCompetitiveFreqNorms;
+  private final CompetitiveImpactAccumulator[] curCompetitiveFreqNorms;
   private boolean fieldHasPositions;
   private boolean fieldHasOffsets;
   private boolean fieldHasPayloads;
