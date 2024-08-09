@@ -114,6 +114,11 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     }
   }
 
+  /**
+   * Generates non-overlapping intervals that cover requested ranges and gaps in-between. Each
+   * elementary range refers to a gap, single requested range, or multiple requested ranges when
+   * they overlap.
+   */
   abstract List<InclusiveRange> buildElementaryIntervals();
 
   private static boolean areOverlappingRanges(LongRange[] ranges) {
