@@ -258,7 +258,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13201: Better cost estimation on MultiTermQuery over few terms. (Michael Froh)
 
 Optimizations
 ---------------------
