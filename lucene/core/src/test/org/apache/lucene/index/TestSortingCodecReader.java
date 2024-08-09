@@ -52,7 +52,9 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 public class TestSortingCodecReader extends LuceneTestCase {
 
@@ -151,6 +153,9 @@ public class TestSortingCodecReader extends LuceneTestCase {
         docIds.add(i);
       }
       Collections.shuffle(docIds, random());
+      // If true, index a vector for every doc
+      boolean denseVectors = random().nextBoolean();
+      FixedBitSet docsWithVectors = new FixedBitSet(numDocs);
       try (RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
         for (int i = 0; i < numDocs; i++) {
           int docId = docIds.get(i);
@@ -168,7 +173,9 @@ public class TestSortingCodecReader extends LuceneTestCase {
           doc.add(new BinaryDocValuesField("binary_dv", new BytesRef(Integer.toString(docId))));
           doc.add(
               new SortedSetDocValuesField("sorted_set_dv", new BytesRef(Integer.toString(docId))));
-          doc.add(new KnnFloatVectorField("vector", new float[] {(float) docId}));
+          if (denseVectors || docId % 2 == 0) {
+            doc.add(new KnnFloatVectorField("vector", new float[] {(float) docId}));
+          }
           doc.add(new NumericDocValuesField("foo", random().nextInt(20)));
 
           FieldType ft = new FieldType(StringField.TYPE_NOT_STORED);
@@ -239,9 +246,11 @@ public class TestSortingCodecReader extends LuceneTestCase {
             SortedSetDocValues sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
             SortedDocValues binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
             FloatVectorValues vectorValues = leaf.getFloatVectorValues("vector");
+            HnswGraph graph = ((CodecReader) leaf).getVectorReader().getGraph("vector");
             NumericDocValues ids = leaf.getNumericDocValues("id");
             long prevValue = -1;
             boolean usingAltIds = false;
+            int nextVectorOrd = 0;
             for (int i = 0; i < actualNumDocs; i++) {
               int idNext = ids.nextDoc();
               if (idNext == DocIdSetIterator.NO_MORE_DOCS) {
@@ -262,7 +271,12 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertTrue(sorted_numeric_dv.advanceExact(idNext));
               assertTrue(sorted_set_dv.advanceExact(idNext));
               assertTrue(binary_sorted_dv.advanceExact(idNext));
-              assertEquals(idNext, vectorValues.advance(idNext));
+              if (docsWithVectors.get(idNext)) {
+                assertEquals(nextVectorOrd, vectorValues.advance(nextVectorOrd));
+                graph.seek(0, nextVectorOrd);
+                assertNotEquals(DocIdSetIterator.NO_MORE_DOCS, graph.nextNeighbor());
+                nextVectorOrd++;
+              }
               assertEquals(new BytesRef(ids.longValue() + ""), binary_dv.binaryValue());
               assertEquals(
                   new BytesRef(ids.longValue() + ""),
@@ -274,9 +288,11 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertEquals(1, sorted_numeric_dv.docValueCount());
               assertEquals(ids.longValue(), sorted_numeric_dv.nextValue());
 
-              float[] vectorValue = vectorValues.vectorValue();
-              assertEquals(1, vectorValue.length);
-              assertEquals((float) ids.longValue(), vectorValue[0], 0.001f);
+              if (docsWithVectors.get(idNext)) {
+                float[] vectorValue = vectorValues.vectorValue();
+                assertEquals(1, vectorValue.length);
+                assertEquals((float) ids.longValue(), vectorValue[0], 0.001f);
+              }
 
               Fields termVectors = leaf.termVectors().get(idNext);
               assertTrue(

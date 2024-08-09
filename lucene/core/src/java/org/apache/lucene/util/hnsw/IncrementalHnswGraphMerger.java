@@ -20,8 +20,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -69,27 +67,24 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   @Override
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
-    KnnVectorsReader currKnnVectorsReader = reader;
-    if (reader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
-      currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
-    }
-
-    if (!(currKnnVectorsReader instanceof HnswGraphProvider) || !noDeletes(liveDocs)) {
+    if (!noDeletes(liveDocs) || reader == null) {
       return this;
     }
-
+    HnswGraph graph = reader.getGraph(fieldInfo.name);
+    if (graph == null || graph.size() == 0) {
+      return this;
+    }
     int candidateVectorCount = 0;
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> {
-        ByteVectorValues byteVectorValues =
-            currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
+        ByteVectorValues byteVectorValues = reader.getByteVectorValues(fieldInfo.name);
         if (byteVectorValues == null) {
           return this;
         }
         candidateVectorCount = byteVectorValues.size();
       }
       case FLOAT32 -> {
-        FloatVectorValues vectorValues = currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
+        FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldInfo.name);
         if (vectorValues == null) {
           return this;
         }
@@ -97,7 +92,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       }
     }
     if (candidateVectorCount > initGraphSize) {
-      initReader = currKnnVectorsReader;
+      initReader = reader;
       initDocMap = docMap;
       initGraphSize = candidateVectorCount;
     }
@@ -120,7 +115,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
           scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, maxOrd);
     }
 
-    HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
+    HnswGraph initializerGraph = initReader.getGraph(fieldInfo.name);
 
     BitSet initializedNodes = new FixedBitSet(maxOrd);
     int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorIterator, initializedNodes);

@@ -23,7 +23,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterLeafReader;
@@ -224,9 +223,8 @@ public class HnswUtil {
     for (LeafReaderContext ctx : reader.leaves()) {
       CodecReader codecReader = (CodecReader) FilterLeafReader.unwrap(ctx.reader());
       HnswGraph graph =
-          ((HnswGraphProvider)
-                  ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
-                      .getFieldReader(vectorField))
+          ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
+              .getFieldReader(vectorField)
               .getGraph(vectorField);
       if (isRooted(graph) == false) {
         return false;

@@ -27,6 +27,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable {
@@ -75,7 +76,7 @@ public abstract class KnnVectorsReader implements Closeable {
    * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
    *
    * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
+   * FieldInfo}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query
@@ -103,7 +104,7 @@ public abstract class KnnVectorsReader implements Closeable {
    * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
    *
    * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
+   * FieldInfo}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query
@@ -113,6 +114,16 @@ public abstract class KnnVectorsReader implements Closeable {
    */
   public abstract void search(
       String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+
+  /**
+   * Returns an HnswGraph for this field or null if the field has no vectors or is not indexed with
+   * HNSW.
+   *
+   * @param field the field whose graph is returned
+   */
+  public HnswGraph getGraph(String field) throws IOException {
+    return null;
+  }
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

@@ -27,7 +27,6 @@ import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
-import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -63,7 +62,7 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  * @lucene.experimental
  */
 public final class Lucene99HnswVectorsReader extends KnnVectorsReader
-    implements QuantizedVectorsReader, HnswGraphProvider {
+    implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);

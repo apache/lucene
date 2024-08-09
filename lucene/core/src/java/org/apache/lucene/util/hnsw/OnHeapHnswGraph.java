@@ -92,7 +92,14 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   public NeighborArray getNeighbors(int level, int node) {
     assert node < graph.length;
     assert level < graph[node].length
-        : "level=" + level + ", node has only " + graph[node].length + " levels";
+        : "level="
+            + level
+            + ", node "
+            + node
+            + " has only "
+            + graph[node].length
+            + " levels for graph "
+            + this;
     assert graph[node][level] != null : "node=" + node + ", level=" + level;
     return graph[node][level];
   }

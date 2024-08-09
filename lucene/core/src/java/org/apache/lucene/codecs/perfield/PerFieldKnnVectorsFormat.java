@@ -36,6 +36,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Enables per field numeric vector support.
@@ -279,6 +280,16 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
       fields.get(field).search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public HnswGraph getGraph(String field) throws IOException {
+      KnnVectorsReader knnVectorsReader = fields.get(field);
+      if (knnVectorsReader == null) {
+        return null;
+      } else {
+        return knnVectorsReader.getGraph(field);
+      }
     }
 
     @Override
