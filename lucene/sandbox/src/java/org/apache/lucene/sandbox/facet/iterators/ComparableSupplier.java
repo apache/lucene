@@ -17,7 +17,7 @@
 package org.apache.lucene.sandbox.facet.iterators;
 
 /**
- * Generates {@link Comparable} for provided ordinal. For example it can be used to find topN facet
+ * Generates {@link Comparable} for provided ordinal. For example, it can be used to find topN facet
  * ordinals.
  *
  * @param <T> something ordinals can be compared by.
@@ -29,9 +29,15 @@ public interface ComparableSupplier<T extends Comparable<T>> {
    * For given ordinal, get something it can be compared by.
    *
    * @param ord ordinal.
-   * @param reuse object that can be reused for building result. If null, new object should be
-   *     created.
+   * @param reuse object to reuse for building result. Must not be null.
+   */
+  void reuseComparable(int ord, T reuse);
+
+  /**
+   * For given ordinal, create something it can be compared by.
+   *
+   * @param ord ordinal.
    * @return Comparable.
    */
-  T getComparable(int ord, T reuse);
+  T createComparable(int ord);
 }

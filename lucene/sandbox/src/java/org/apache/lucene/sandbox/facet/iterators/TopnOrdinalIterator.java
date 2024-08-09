@@ -25,8 +25,7 @@ import org.apache.lucene.util.PriorityQueue;
  *
  * @lucene.experimental
  */
-public final class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
-    implements OrdinalIterator {
+public final class TopnOrdinalIterator<T extends Comparable<T>> implements OrdinalIterator {
 
   private final ComparableSupplier<T> comparableSupplier;
   private final OrdinalIterator sourceOrds;
@@ -52,15 +51,20 @@ public final class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
     //  e.g. TopOrdAndIntQueue q = new TopComparableQueue(Math.min(taxoReader.getSize(), topN));
     // TODO: create queue lazily - skip if first nextOrd is NO_MORE_ORDS ?
     TopComparableQueue<T> queue = new TopComparableQueue<>(topN);
-    T reuse = null;
+    OrdComparablePair<T> reuse = null;
     for (int ord = sourceOrds.nextOrd(); ord != NO_MORE_ORDS; ord = sourceOrds.nextOrd()) {
-      reuse = comparableSupplier.getComparable(ord, reuse);
+      if (reuse == null) {
+        reuse = new OrdComparablePair<>(ord, comparableSupplier.createComparable(ord));
+      } else {
+        reuse.ordinal = ord;
+        comparableSupplier.reuseComparable(ord, reuse.comparable);
+      }
       reuse = queue.insertWithOverflow(reuse);
     }
     // Now we need to read from the queue as well as the queue gives the least element, not the top.
     result = new int[queue.size()];
     for (int i = result.length - 1; i >= 0; i--) {
-      result[i] = queue.pop().getOrd();
+      result[i] = queue.pop().ordinal;
     }
     currentIndex = 0;
   }
@@ -78,7 +82,8 @@ public final class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
   }
 
   /** Keeps top N results ordered by Comparable. */
-  private static class TopComparableQueue<T extends Comparable<T>> extends PriorityQueue<T> {
+  private static class TopComparableQueue<T extends Comparable<T>>
+      extends PriorityQueue<OrdComparablePair<T>> {
 
     /** Sole constructor. */
     public TopComparableQueue(int topN) {
@@ -86,8 +91,23 @@ public final class TopnOrdinalIterator<T extends Comparable<T> & OrdinalGetter>
     }
 
     @Override
-    protected boolean lessThan(T a, T b) {
-      return a.compareTo(b) < 0;
+    protected boolean lessThan(OrdComparablePair<T> a, OrdComparablePair<T> b) {
+      return a.lessThan(b);
+    }
+  }
+
+  /** Pair of ordinal and comparable to use in TopComparableQueue */
+  private static class OrdComparablePair<T extends Comparable<T>> {
+    int ordinal;
+    T comparable;
+
+    private OrdComparablePair(int ordinal, T comparable) {
+      this.ordinal = ordinal;
+      this.comparable = comparable;
+    }
+
+    boolean lessThan(OrdComparablePair<T> other) {
+      return comparable.compareTo(other.comparable) < 0;
     }
   }
 }
