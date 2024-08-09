@@ -23,6 +23,11 @@ package org.apache.lucene.util;
  */
 public abstract class LongValues {
 
+  public static class Twin {
+    public long first;
+    public long second;
+  }
+
   /** An instance that returns the provided value. */
   public static final LongValues IDENTITY =
       new LongValues() {
@@ -44,4 +49,13 @@ public abstract class LongValues {
 
   /** Get value at <code>index</code>. */
   public abstract long get(long index);
+
+  public void get(long index, Twin twin) {
+    twin.first = get(index);
+    twin.second = get(index + 1);
+  }
+
+  protected boolean twinImplementIsRight(long index, Twin twin) {
+    return twin.first == get(index) && twin.second == get(index + 1);
+  }
 }

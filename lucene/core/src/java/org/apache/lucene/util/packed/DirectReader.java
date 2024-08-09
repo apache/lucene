@@ -125,6 +125,29 @@ public class DirectReader {
         return buffer[(int) (index & MERGE_BUFFER_MASK)];
       }
 
+      @Override
+      public void get(long index, Twin twin) {
+        assert index < numValues;
+        final long blockIndex = index >>> MERGE_BUFFER_SHIFT;
+        if (this.blockIndex != blockIndex) {
+          try {
+            fillBuffer(blockIndex << MERGE_BUFFER_SHIFT);
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+          this.blockIndex = blockIndex;
+        }
+        int blockPos = (int) (index & MERGE_BUFFER_MASK);
+        if (blockPos == MERGE_BUFFER_MASK) {
+          twin.first = buffer[blockPos];
+          twin.second = get(index + 1);
+        } else {
+          twin.first = buffer[blockPos];
+          twin.second = buffer[blockPos + 1];
+        }
+        assert twinImplementIsRight(index, twin);
+      }
+
       private void fillBuffer(long index) throws IOException {
         // NOTE: we're not allowed to read more than 3 bytes past the last value
         if (index >= numValues - MERGE_BUFFER_SIZE) {
@@ -204,6 +227,21 @@ public class DirectReader {
         throw new RuntimeException(e);
       }
     }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        int shift = (int) (index & 7);
+        int i = in.readShort(offset + (index >>> 3)) >>> shift;
+        twin.first = i & 0x1;
+        twin.second = (i >>> 1) & 0x1;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
+    }
   }
 
   static final class DirectPackedReader2 extends LongValues {
@@ -223,6 +261,21 @@ public class DirectReader {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
+    }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        int shift = ((int) (index & 3)) << 1;
+        int i = in.readShort(offset + (index >>> 2)) >>> shift;
+        twin.first = i & 0x3;
+        twin.second = (i >>> 2) & 0x3;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
     }
   }
 
@@ -244,6 +297,21 @@ public class DirectReader {
         throw new RuntimeException(e);
       }
     }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        int shift = (int) (index & 1) << 2;
+        int l = in.readShort(offset + (index >>> 1)) >>> shift;
+        twin.first = l & 0xF;
+        twin.second = (l >>> 4) & 0xF;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
+    }
   }
 
   static final class DirectPackedReader8 extends LongValues {
@@ -262,6 +330,20 @@ public class DirectReader {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
+    }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        short s = in.readShort(offset + index);
+        twin.first = s & 0xFF;
+        twin.second = (s >>> 8) & 0xFF;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
     }
   }
 
@@ -284,6 +366,22 @@ public class DirectReader {
         throw new RuntimeException(e);
       }
     }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        long offset = (index * 12) >>> 3;
+        int shift = (int) (index & 1) << 2;
+        int i = in.readInt(this.offset + offset) >>> shift;
+        twin.first = i & 0xFFF;
+        twin.second = (i >>> 12) & 0xFFF;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
+    }
   }
 
   static final class DirectPackedReader16 extends LongValues {
@@ -302,6 +400,20 @@ public class DirectReader {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
+    }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        int i = in.readInt(offset + (index << 1));
+        twin.first = i & 0xFFFF;
+        twin.second = (i >>> 16) & 0xFFFF;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
     }
   }
 
@@ -324,6 +436,22 @@ public class DirectReader {
         throw new RuntimeException(e);
       }
     }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        long offset = (index * 20) >>> 3;
+        int shift = (int) (index & 1) << 2;
+        long l = in.readLong(this.offset + offset) >>> shift;
+        twin.first = l & 0xFFFFF;
+        twin.second = (l >>> 20) & 0xFFFFF;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
+    }
   }
 
   static final class DirectPackedReader24 extends LongValues {
@@ -342,6 +470,20 @@ public class DirectReader {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
+    }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        long l = in.readLong(this.offset + index * 3);
+        twin.first = l & 0xFFFFFF;
+        twin.second = (l >>> 24) & 0xFFFFFF;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
     }
   }
 
@@ -364,6 +506,22 @@ public class DirectReader {
         throw new RuntimeException(e);
       }
     }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        long offset = (index * 28) >>> 3;
+        int shift = (int) (index & 1) << 2;
+        long l = in.readLong(this.offset + offset) >>> shift;
+        twin.first = l & 0xFFFFFFF;
+        twin.second = (l >>> 28) & 0xFFFFFFF;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
+    }
   }
 
   static final class DirectPackedReader32 extends LongValues {
@@ -382,6 +540,20 @@ public class DirectReader {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
+    }
+
+    @Override
+    public void get(long index, Twin twin) {
+      try {
+        long l = in.readLong(this.offset + (index << 2));
+        twin.first = l & 0xFFFFFFFFL;
+        twin.second = (l >>> 32) & 0xFFFFFFFFL;
+      } catch (
+          @SuppressWarnings("unused")
+          Exception e) {
+        super.get(index, twin);
+      }
+      assert twinImplementIsRight(index, twin);
     }
   }
 
