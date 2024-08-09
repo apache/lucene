@@ -151,7 +151,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
         new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
 
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, multiFacetsRecorder);
     searcher.search(query, collectorManager);
 
     int[] ordsFromCounts = countRecorder.recordedOrds().toArray();
@@ -275,7 +275,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
         new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
 
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, multiFacetsRecorder);
     searcher.search(query, collectorManager);
 
     // Retrieve & verify results:
@@ -373,7 +373,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
         new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
 
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, multiFacetsRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, multiFacetsRecorder);
     searcher.search(query, collectorManager);
 
     // Retrieve & verify results:

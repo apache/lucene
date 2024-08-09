@@ -27,7 +27,6 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.sandbox.facet.FacetRollup;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
 /**
@@ -35,11 +34,12 @@ import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
  *
  * @lucene.experimental
  */
-public final class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
+public final class TaxonomyFacetsCutter implements FacetCutter {
 
   private final FacetsConfig facetsConfig;
   private final TaxonomyReader taxoReader;
   private final String indexFieldName;
+  private final boolean disableRollup;
 
   private ParallelTaxonomyArrays.IntArray children;
   private ParallelTaxonomyArrays.IntArray siblings;
@@ -47,9 +47,26 @@ public final class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
   /** Create {@link FacetCutter} for taxonomy facets. */
   public TaxonomyFacetsCutter(
       String indexFieldName, FacetsConfig facetsConfig, TaxonomyReader taxoReader) {
+    this(indexFieldName, facetsConfig, taxoReader, false);
+  }
+
+  /**
+   * Expert: Create {@link FacetCutter} for taxonomy facets.
+   *
+   * @param disableRollup if set to true, rollup is disabled. In most cases users should not use it.
+   *     Setting it to true silently leads to incorrect results for dimensions that require rollup.
+   *     At the same time, if you are sure that there are no dimensions that require rollup, setting
+   *     it to true might improve performance.
+   */
+  public TaxonomyFacetsCutter(
+      String indexFieldName,
+      FacetsConfig facetsConfig,
+      TaxonomyReader taxoReader,
+      boolean disableRollup) {
     this.facetsConfig = facetsConfig;
     this.indexFieldName = indexFieldName;
     this.taxoReader = taxoReader;
+    this.disableRollup = disableRollup;
   }
 
   /**
@@ -92,7 +109,11 @@ public final class TaxonomyFacetsCutter implements FacetCutter, FacetRollup {
   }
 
   @Override
-  public OrdinalIterator getDimOrdsToRollup() throws IOException {
+  public OrdinalIterator getOrdinalsToRollup() throws IOException {
+    if (disableRollup) {
+      return null;
+    }
+
     // Rollup any necessary dims:
     Iterator<Map.Entry<String, FacetsConfig.DimConfig>> dimensions =
         facetsConfig.getDimConfigs().entrySet().iterator();

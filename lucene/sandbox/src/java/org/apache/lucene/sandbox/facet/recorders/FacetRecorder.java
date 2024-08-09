@@ -18,7 +18,7 @@ package org.apache.lucene.sandbox.facet.recorders;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.sandbox.facet.FacetRollup;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
@@ -47,16 +47,16 @@ public interface FacetRecorder {
   boolean isEmpty();
 
   /**
-   * Reduce leaf recorder results into this recorder. If facetRollup is not null, it also rolls up
-   * values.
+   * Reduce leaf recorder results into this recorder. If {@link FacetCutter#getOrdinalsToRollup()}
+   * result is not null, it also rolls up values.
    *
    * <p>After this method is called, it's illegal to add values to recorder, i.e. calling {@link
    * #getLeafRecorder} or {@link LeafFacetRecorder#record} on its leaf recorders.
    *
-   * @throws UnsupportedOperationException if facetRollup is not null but this type of record can't
-   *     be rolled up.
+   * @throws UnsupportedOperationException if {@link FacetCutter#getOrdinalsToRollup()} returns not
+   *     null but this recorder doesn't support rollup.
    */
-  void reduce(FacetRollup facetRollup) throws IOException;
+  void reduce(FacetCutter facetCutter) throws IOException;
 
   /** Check if any data was recorded for provided facet ordinal. */
   boolean contains(int ordinal);

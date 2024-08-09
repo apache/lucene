@@ -19,6 +19,9 @@ package org.apache.lucene.sandbox.facet;
 
 import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
+import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.sandbox.facet.iterators.CandidateSetOrdinalIterator;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.labels.LabelToOrd;
@@ -30,7 +33,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 /** Tests for {@link CandidateSetOrdinalIterator}. */
 public class TestCandidateSetOrdinalIterator extends LuceneTestCase {
 
-  // LabelToOrd that parses label's string to get int ordinal
+  /** LabelToOrd that parses label's string to get int ordinal */
   private LabelToOrd mockLabelToOrd =
       new LabelToOrd() {
         @Override
@@ -48,12 +51,20 @@ public class TestCandidateSetOrdinalIterator extends LuceneTestCase {
         }
       };
 
+  private FacetCutter mockFacetCutter =
+      new FacetCutter() {
+        @Override
+        public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
+          return null;
+        }
+      };
+
   public void testBasic() throws IOException {
     FacetRecorder recorder = new CountFacetRecorder();
     LeafFacetRecorder leafRecorder = recorder.getLeafRecorder(null);
     leafRecorder.record(0, 0);
     leafRecorder.record(0, 3);
-    recorder.reduce(null);
+    recorder.reduce(mockFacetCutter);
 
     FacetLabel[] candidates =
         new FacetLabel[] {
@@ -71,7 +82,7 @@ public class TestCandidateSetOrdinalIterator extends LuceneTestCase {
 
   public void testEmptyRecorder() throws IOException {
     FacetRecorder recorder = new CountFacetRecorder();
-    recorder.reduce(null);
+    recorder.reduce(mockFacetCutter);
 
     FacetLabel[] candidates =
         new FacetLabel[] {

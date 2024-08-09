@@ -98,7 +98,7 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
     final CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, countRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, countRecorder);
     searcher.search(query, collectorManager);
 
     expectThrows(
@@ -142,8 +142,7 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
     DrillDownQuery q2 = new DrillDownQuery(config);
     q2.add("Publish Date", "2010");
     final CountFacetRecorder countRecorder2 = new CountFacetRecorder();
-    collectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, countRecorder2);
+    collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, countRecorder2);
     searcher.search(q2, collectorManager);
 
     assertEquals(
@@ -169,6 +168,42 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
         () -> {
           getTopChildrenByCount(countRecorder2, taxoReader, 10, "Non exitent dim");
         });
+
+    writer.close();
+    IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
+  }
+
+  public void testTaxonomyCutterExpertModeDisableRollup() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Publish Date", true);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new FacetField("Publish Date", "2010", "10", "15"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    IndexSearcher searcher = newSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+    Query query = new MatchAllDocsQuery();
+
+    TaxonomyFacetsCutter defaultTaxoCutter =
+        new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader, true);
+    final CountFacetRecorder countRecorder = new CountFacetRecorder();
+    FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, countRecorder);
+    searcher.search(query, collectorManager);
+
+    assertEquals(
+        "Only leaf value should have been counted when rollup is disabled",
+        1,
+        countRecorder.recordedOrds().toArray().length);
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);

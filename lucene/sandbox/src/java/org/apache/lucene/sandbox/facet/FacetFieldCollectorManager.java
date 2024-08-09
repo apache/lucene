@@ -33,13 +33,10 @@ public final class FacetFieldCollectorManager<V extends FacetRecorder>
 
   private final FacetCutter facetCutter;
   private final V facetRecorder;
-  private final FacetRollup facetRollup;
 
   /** Create collector for a cutter + recorder pair */
-  public FacetFieldCollectorManager(
-      FacetCutter facetCutter, FacetRollup facetRollup, V facetRecorder) {
+  public FacetFieldCollectorManager(FacetCutter facetCutter, V facetRecorder) {
     this.facetCutter = facetCutter;
-    this.facetRollup = facetRollup;
     this.facetRecorder = facetRecorder;
   }
 
@@ -50,7 +47,7 @@ public final class FacetFieldCollectorManager<V extends FacetRecorder>
 
   @Override
   public V reduce(Collection<FacetFieldCollector> collectors) throws IOException {
-    facetRecorder.reduce(facetRollup);
+    facetRecorder.reduce(facetCutter);
     return this.facetRecorder;
   }
 }

@@ -26,7 +26,7 @@ import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
-import org.apache.lucene.sandbox.facet.FacetRollup;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -87,7 +87,7 @@ public final class LongAggregationsFacetRecorder implements FacetRecorder {
   }
 
   @Override
-  public void reduce(FacetRollup facetRollup) throws IOException {
+  public void reduce(FacetCutter facetCutter) throws IOException {
     boolean firstElement = true;
     for (IntObjectHashMap<long[]> leafValue : leafValues) {
       if (firstElement) {
@@ -110,10 +110,11 @@ public final class LongAggregationsFacetRecorder implements FacetRecorder {
       // TODO: do we need empty map by default?
       values = new IntObjectHashMap<>();
     }
-    if (facetRollup != null) {
-      OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
+
+    OrdinalIterator dimOrds = facetCutter.getOrdinalsToRollup();
+    if (dimOrds != null) {
       for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
-        rollup(values.get(dimOrd), dimOrd, facetRollup);
+        rollup(values.get(dimOrd), dimOrd, facetCutter);
       }
     }
   }
@@ -128,12 +129,12 @@ public final class LongAggregationsFacetRecorder implements FacetRecorder {
    * case, if recursive rollup for every child returns null, this method returns null. Otherwise,
    * accum is initialized.
    */
-  private long[] rollup(long[] accum, int ord, FacetRollup facetRollup) throws IOException {
-    OrdinalIterator childOrds = facetRollup.getChildrenOrds(ord);
+  private long[] rollup(long[] accum, int ord, FacetCutter facetCutter) throws IOException {
+    OrdinalIterator childOrds = facetCutter.getChildrenOrds(ord);
     for (int nextChild = childOrds.nextOrd();
         nextChild != NO_MORE_ORDS;
         nextChild = childOrds.nextOrd()) {
-      long[] current = rollup(values.get(nextChild), nextChild, facetRollup);
+      long[] current = rollup(values.get(nextChild), nextChild, facetCutter);
       if (current != null) {
         if (accum == null) {
           accum = new long[longValuesSources.length];

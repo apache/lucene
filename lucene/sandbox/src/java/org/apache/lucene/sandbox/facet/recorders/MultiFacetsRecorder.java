@@ -18,7 +18,7 @@ package org.apache.lucene.sandbox.facet.recorders;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.sandbox.facet.FacetRollup;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
 /**
@@ -57,9 +57,9 @@ public final class MultiFacetsRecorder implements FacetRecorder {
   }
 
   @Override
-  public void reduce(FacetRollup facetRollup) throws IOException {
+  public void reduce(FacetCutter facetCutter) throws IOException {
     for (FacetRecorder recorder : delegates) {
-      recorder.reduce(facetRollup);
+      recorder.reduce(facetCutter);
     }
   }
 

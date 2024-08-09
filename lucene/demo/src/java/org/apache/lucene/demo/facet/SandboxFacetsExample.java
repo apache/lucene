@@ -146,7 +146,7 @@ public class SandboxFacetsExample {
     CountFacetRecorder defaultRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultRecorder);
 
     //// (2.1) if we need to collect data using multiple different collectors, e.g. taxonomy and
     ////       ranges, or even two taxonomy facets that use different Category List Field, we can
@@ -231,7 +231,7 @@ public class SandboxFacetsExample {
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(longRangeFacetCutter, null, countRecorder);
+        new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
     searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdToLabel ordToLabels = new RangeOrdToLabel(inputRanges);
 
@@ -275,7 +275,7 @@ public class SandboxFacetsExample {
     CountFacetRecorder countRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(longRangeFacetCutter, null, countRecorder);
+        new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
     searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdToLabel ordToLabels = new RangeOrdToLabel(inputRanges);
 
@@ -337,7 +337,7 @@ public class SandboxFacetsExample {
         new MultiFacetsRecorder(countRecorder, longAggregationsFacetRecorder);
 
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(longRangeFacetCutter, null, multiFacetsRecorder);
+        new FacetFieldCollectorManager<>(longRangeFacetCutter, multiFacetsRecorder);
     searcher.search(new MatchAllDocsQuery(), collectorManager);
     RangeOrdToLabel ordToLabels = new RangeOrdToLabel(inputRanges);
 
@@ -404,7 +404,7 @@ public class SandboxFacetsExample {
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
     CountFacetRecorder defaultRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> taxoFacetsCollectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultRecorder);
     // Hits collector
     TopScoreDocCollectorManager hitsCollectorManager =
         new TopScoreDocCollectorManager(2, Integer.MAX_VALUE);
@@ -484,7 +484,7 @@ public class SandboxFacetsExample {
     CountFacetRecorder defaultRecorder = new CountFacetRecorder();
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, defaultRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultRecorder);
 
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("Publish Date", "2010");
@@ -551,7 +551,7 @@ public class SandboxFacetsExample {
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
     CountFacetRecorder drillDownRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> drillDownCollectorManager =
-        new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultTaxoCutter, drillDownRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, drillDownRecorder);
 
     DrillDownQuery q = new DrillDownQuery(config);
 
@@ -562,8 +562,7 @@ public class SandboxFacetsExample {
     // leaf for each
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
     FacetFieldCollectorManager<CountFacetRecorder> publishDayDimensionCollectorManager =
-        new FacetFieldCollectorManager<>(
-            defaultTaxoCutter, defaultTaxoCutter, publishDayDimensionRecorder);
+        new FacetFieldCollectorManager<>(defaultTaxoCutter, publishDayDimensionRecorder);
     List<CollectorOwner<FacetFieldCollector, CountFacetRecorder>> drillSidewaysOwners =
         List.of(new CollectorOwner<>(publishDayDimensionCollectorManager));
 

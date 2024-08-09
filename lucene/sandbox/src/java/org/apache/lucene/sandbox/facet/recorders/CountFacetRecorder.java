@@ -26,7 +26,7 @@ import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
-import org.apache.lucene.sandbox.facet.FacetRollup;
+import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
@@ -103,7 +103,7 @@ public final class CountFacetRecorder implements FacetRecorder {
   }
 
   @Override
-  public void reduce(FacetRollup facetRollup) throws IOException {
+  public void reduce(FacetCutter facetCutter) throws IOException {
     boolean firstElement = true;
     for (IntIntHashMap leafRecords : perLeafValues) {
       if (firstElement) {
@@ -120,14 +120,13 @@ public final class CountFacetRecorder implements FacetRecorder {
       values = new IntIntHashMap();
     }
 
-    if (facetRollup == null) {
-      return;
-    }
-    OrdinalIterator dimOrds = facetRollup.getDimOrdsToRollup();
-    for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
-      int rolledUp = rollup(dimOrd, facetRollup);
-      if (rolledUp > 0) {
-        values.addTo(dimOrd, rolledUp);
+    OrdinalIterator dimOrds = facetCutter.getOrdinalsToRollup();
+    if (dimOrds != null) {
+      for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
+        int rolledUp = rollup(dimOrd, facetCutter);
+        if (rolledUp > 0) {
+          values.addTo(dimOrd, rolledUp);
+        }
       }
     }
   }
@@ -137,13 +136,13 @@ public final class CountFacetRecorder implements FacetRecorder {
     return values.containsKey(ordinal);
   }
 
-  private int rollup(int ord, FacetRollup facetRollup) throws IOException {
-    OrdinalIterator childOrds = facetRollup.getChildrenOrds(ord);
+  private int rollup(int ord, FacetCutter facetCutter) throws IOException {
+    OrdinalIterator childOrds = facetCutter.getChildrenOrds(ord);
     int accum = 0;
     for (int nextChild = childOrds.nextOrd();
         nextChild != NO_MORE_ORDS;
         nextChild = childOrds.nextOrd()) {
-      int rolledUp = rollup(nextChild, facetRollup);
+      int rolledUp = rollup(nextChild, facetCutter);
       // Don't rollup zeros to not add ordinals that we don't actually have counts for to the map
       if (rolledUp > 0) {
         accum += values.addTo(nextChild, rolledUp);

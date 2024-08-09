@@ -68,7 +68,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     LongValueFacetCutter longValuesFacetCutter = new LongValueFacetCutter("field");
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(longValuesFacetCutter, null, countRecorder);
+        new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
 
     FacetResult result = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);
@@ -116,7 +116,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     LongValueFacetCutter longValuesFacetCutter = new LongValueFacetCutter("field");
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(longValuesFacetCutter, null, countRecorder);
+        new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
 
     FacetResult result = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);
@@ -219,7 +219,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       LongValueFacetCutter longValuesFacetCutter = new LongValueFacetCutter("field");
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-          new FacetFieldCollectorManager<>(longValuesFacetCutter, null, countRecorder);
+          new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
       s.search(new MatchAllDocsQuery(), collectorManager);
       /* TODO: uncomment and adjust when LongValueFacetCutter supports value sources
       if (random().nextBoolean()) {
@@ -317,8 +317,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
 
       longValuesFacetCutter = new LongValueFacetCutter("field");
       countRecorder = new CountFacetRecorder();
-      collectorManager =
-          new FacetFieldCollectorManager<>(longValuesFacetCutter, null, countRecorder);
+      collectorManager = new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
       s.search(IntPoint.newRangeQuery("id", minId, maxId), collectorManager);
       // TODO: uncomment and change longValuesFacetCutter when LongValueFacetCutter supports value
       // sources
@@ -496,7 +495,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       LongValueFacetCutter longValuesFacetCutter = new LongValueFacetCutter("field");
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-          new FacetFieldCollectorManager<>(longValuesFacetCutter, null, countRecorder);
+          new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
       s.search(new MatchAllDocsQuery(), collectorManager);
       if (VERBOSE) {
         System.out.println("  use doc values");
@@ -581,8 +580,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
 
       longValuesFacetCutter = new LongValueFacetCutter("field");
       countRecorder = new CountFacetRecorder();
-      collectorManager =
-          new FacetFieldCollectorManager<>(longValuesFacetCutter, null, countRecorder);
+      collectorManager = new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
       s.search(IntPoint.newRangeQuery("id", minId, maxId), collectorManager);
       // TODO: uncomment and adjust when LongValueFacetCutter supports value sources
       /*if (random().nextBoolean()) {
@@ -727,7 +725,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     LongValueFacetCutter longValuesFacetCutter = new LongValueFacetCutter("field");
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
-        new FacetFieldCollectorManager<>(longValuesFacetCutter, null, countRecorder);
+        new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
     s.search(new MatchAllDocsQuery(), collectorManager);
 
     FacetResult fr = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);

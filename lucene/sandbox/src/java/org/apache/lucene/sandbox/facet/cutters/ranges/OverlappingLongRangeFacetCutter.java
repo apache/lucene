@@ -235,9 +235,8 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
     @Override
     void maybeRollUp(IntervalTracker rollUpInto) {
-      // TODO: for single valued we can do rollup after we collect for all documents,
-      //  e.g. in reduce method. Maybe we can extend FacetRollup interface to handle this
-      //  case too?
+      // TODO: for single valued we can rollup after collecting all documents, e.g. in reduce
+      // method. Maybe we can use FacetCutter rollup methods to handle this case too?
       elementaryIntervalUpto = 0;
       rollupSingleValued(elementaryIntervalRoot);
     }
