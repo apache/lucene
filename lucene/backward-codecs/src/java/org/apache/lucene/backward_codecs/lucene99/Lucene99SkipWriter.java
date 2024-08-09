@@ -48,8 +48,8 @@ import org.apache.lucene.store.IndexOutput;
 public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
   private final int[] lastSkipDoc;
   private final long[] lastSkipDocPointer;
-  private long[] lastSkipPosPointer;
-  private long[] lastSkipPayPointer;
+  private final long[] lastSkipPosPointer;
+  private final long[] lastSkipPayPointer;
 
   private final IndexOutput docOut;
   private final IndexOutput posOut;
@@ -85,7 +85,12 @@ public final class Lucene99SkipWriter extends MultiLevelSkipListWriter {
       lastSkipPosPointer = new long[maxSkipLevels];
       if (payOut != null) {
         lastSkipPayPointer = new long[maxSkipLevels];
+      } else {
+        lastSkipPayPointer = null;
       }
+    } else {
+      lastSkipPosPointer = null;
+      lastSkipPayPointer = null;
     }
     curCompetitiveFreqNorms = new CompetitiveImpactAccumulator[maxSkipLevels];
     for (int i = 0; i < maxSkipLevels; ++i) {
