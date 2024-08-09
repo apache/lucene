@@ -21,6 +21,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -393,6 +394,44 @@ public class TestWildcard extends LuceneTestCase {
         assertEquals(i, hits[0].doc);
       }
     }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testCostEstimate() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    for (int i = 0; i < 1000; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("body", "foo bar", Field.Store.NO));
+      writer.addDocument(doc);
+      doc = new Document();
+      doc.add(newStringField("body", "foo wuzzle", Field.Store.NO));
+      writer.addDocument(doc);
+      doc = new Document();
+      doc.add(newStringField("body", "bar " + i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+    writer.forceMerge(1);
+    writer.close();
+
+    IndexReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = newSearcher(reader);
+    LeafReaderContext lrc = reader.leaves().get(0);
+
+    WildcardQuery query = new WildcardQuery(new Term("body", "foo*"));
+    Query rewritten = searcher.rewrite(query);
+    Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+    ScorerSupplier supplier = weight.scorerSupplier(lrc);
+    assertEquals(2000, supplier.cost()); // Sum the terms doc freqs
+
+    query = new WildcardQuery(new Term("body", "bar*"));
+    rewritten = searcher.rewrite(query);
+    weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+    supplier = weight.scorerSupplier(lrc);
+    assertEquals(3000, supplier.cost()); // Too many terms, assume worst-case all terms match
 
     reader.close();
     dir.close();
