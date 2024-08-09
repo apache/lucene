@@ -110,6 +110,8 @@ API Changes
 
 * GITHUB#13499: Remove deprecated TopScoreDocCollector + TopFieldCollector methods (#create, #createSharedManager) (Jakub Slowinski)
 
+* GITHUB#13632: CandidateMatcher public matching functions (Bryan Jacobowitz)
+
 
 New Features
 ---------------------
@@ -136,6 +138,8 @@ New Features
 
 * GITHUB#13597: Align doc value skipper interval boundaries when an interval contains a constant
   value. (Ignacio Vera)
+
+* GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
 
 Improvements
 ---------------------
@@ -286,6 +290,13 @@ Improvements
 
 * GITHUB#13625: Remove BitSet#nextSetBit code duplication. (Greg Miller)
 
+* GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
+  
+* GITHUB#13633: Add ability to read/write knn vector values to a MemoryIndex. (Ben Trent)
+
+* GITHUB#12627: patch HNSW graphs to improve reachability of all nodes from entry points
+
 Optimizations
 ---------------------
 
@@ -347,6 +358,11 @@ Bug Fixes
 
 * GITHUB#13553: Correct RamUsageEstimate for scalar quantized knn vector formats so that raw vectors are correctly
   accounted for. (Ben Trent)
+
+* GITHUB#13615: Correct scalar quantization when used in conjunction with COSINE similarity. Vectors are normalized
+  before quantization to ensure the cosine similarity is correctly calculated. (Ben Trent)
+
+* GITHUB#13627: Fix race condition on flush for DWPT seqNo generation. (Ben Trent, Ao Li)
 
 Other
 --------------------
