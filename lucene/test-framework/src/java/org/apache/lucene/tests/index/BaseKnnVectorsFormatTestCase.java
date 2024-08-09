@@ -236,6 +236,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  @SuppressWarnings("unused")
   public void testMergingWithDifferentKnnFields() throws Exception {
     try (var dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig();
@@ -279,6 +280,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  @SuppressWarnings("unused")
   public void testMergingWithDifferentByteKnnFields() throws Exception {
     try (var dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig();
