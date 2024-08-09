@@ -116,11 +116,10 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
     BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setForkJoinPool(pool);
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, pool);
     String[] ids = new String[codecReader.maxDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {
@@ -180,11 +179,10 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
     BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setForkJoinPool(pool);
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, pool);
     StoredFields storedFields = reordered.storedFields();
 
     assertEquals("2", storedFields.document(0).get("id"));
@@ -307,7 +305,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, null);
     String[] ids = new String[codecReader.maxDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {

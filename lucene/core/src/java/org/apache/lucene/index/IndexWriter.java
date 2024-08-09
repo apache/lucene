@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -3434,9 +3435,11 @@ public class IndexWriter
                 .map(FieldInfos::getParentField)
                 .anyMatch(Objects::isNull);
 
+    final Executor intraMergeExecutor = mergeScheduler.getIntraMergeExecutor(merge);
+
     if (hasIndexSort == false && hasBlocksButNoParentField == false && readers.isEmpty() == false) {
       CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
-      DocMap docMap = merge.reorder(mergedReader, directory);
+      DocMap docMap = merge.reorder(mergedReader, directory, intraMergeExecutor);
       if (docMap != null) {
         readers = Collections.singletonList(SortingCodecReader.wrap(mergedReader, docMap, null));
       }
@@ -3450,7 +3453,7 @@ public class IndexWriter
             trackingDir,
             globalFieldNumberMap,
             context,
-            mergeScheduler.getIntraMergeExecutor(merge));
+            intraMergeExecutor);
 
     if (!merger.shouldMerge()) {
       return;
@@ -3928,9 +3931,9 @@ public class IndexWriter
                       }
 
                       @Override
-                      public Sorter.DocMap reorder(CodecReader reader, Directory dir)
-                          throws IOException {
-                        return toWrap.reorder(reader, dir); // must delegate
+                      public Sorter.DocMap reorder(
+                          CodecReader reader, Directory dir, Executor executor) throws IOException {
+                        return toWrap.reorder(reader, dir, executor); // must delegate
                       }
 
                       @Override
@@ -5205,6 +5208,8 @@ public class IndexWriter
         mergeReaders.add(wrappedReader);
       }
 
+      final Executor intraMergeExecutor = mergeScheduler.getIntraMergeExecutor(merge);
+
       MergeState.DocMap[] reorderDocMaps = null;
       // Don't reorder if an explicit sort is configured.
       final boolean hasIndexSort = config.getIndexSort() != null;
@@ -5219,7 +5224,7 @@ public class IndexWriter
       if (hasIndexSort == false && hasBlocksButNoParentField == false) {
         // Create a merged view of the input segments. This effectively does the merge.
         CodecReader mergedView = SlowCompositeCodecReaderWrapper.wrap(mergeReaders);
-        Sorter.DocMap docMap = merge.reorder(mergedView, directory);
+        Sorter.DocMap docMap = merge.reorder(mergedView, directory, intraMergeExecutor);
         if (docMap != null) {
           reorderDocMaps = new MergeState.DocMap[mergeReaders.size()];
           int docBase = 0;
@@ -5249,7 +5254,7 @@ public class IndexWriter
               dirWrapper,
               globalFieldNumberMap,
               context,
-              mergeScheduler.getIntraMergeExecutor(merge));
+              intraMergeExecutor);
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
 

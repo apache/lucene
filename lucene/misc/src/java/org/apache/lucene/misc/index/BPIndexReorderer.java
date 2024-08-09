@@ -21,9 +21,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValues;
@@ -54,6 +57,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -123,7 +127,6 @@ public final class BPIndexReorderer {
   private float maxDocFreq;
   private int minPartitionSize;
   private int maxIters;
-  private ForkJoinPool forkJoinPool;
   private double ramBudgetMB;
   private Set<String> fields;
 
@@ -133,7 +136,6 @@ public final class BPIndexReorderer {
     setMaxDocFreq(1f);
     setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
     setMaxIters(DEFAULT_MAX_ITERS);
-    setForkJoinPool(null);
     // 10% of the available heap size by default
     setRAMBudgetMB(Runtime.getRuntime().totalMemory() / 1024d / 1024d / 10d);
     setFields(null);
@@ -182,20 +184,6 @@ public final class BPIndexReorderer {
   }
 
   /**
-   * Set the {@link ForkJoinPool} to run graph partitioning concurrently.
-   *
-   * <p>NOTE: A value of {@code null} can be used to run in the current thread, which is the
-   * default.
-   */
-  public void setForkJoinPool(ForkJoinPool forkJoinPool) {
-    this.forkJoinPool = forkJoinPool;
-  }
-
-  private int getParallelism() {
-    return forkJoinPool == null ? 1 : forkJoinPool.getParallelism();
-  }
-
-  /**
    * Set the amount of RAM that graph partitioning is allowed to use. More RAM allows running
    * faster. If not enough RAM is provided, a {@link NotEnoughRAMException} will be thrown. This is
    * 10% of the total heap size by default.
@@ -225,21 +213,18 @@ public final class BPIndexReorderer {
     }
   }
 
-  private abstract class BaseRecursiveAction extends RecursiveAction {
+  private abstract class BaseRecursiveAction implements Runnable {
 
+    protected final Executor executor;
     protected final int depth;
 
-    BaseRecursiveAction(int depth) {
+    BaseRecursiveAction(Executor executor, int depth) {
+      this.executor = executor;
       this.depth = depth;
     }
 
     protected final boolean shouldFork(int problemSize, int totalProblemSize) {
-      if (forkJoinPool == null) {
-        return false;
-      }
-      if (getSurplusQueuedTaskCount() > 3) {
-        // Fork tasks if this worker doesn't have more queued work than other workers
-        // See javadocs of #getSurplusQueuedTaskCount for more details
+      if (executor == null) {
         return false;
       }
       if (problemSize == totalProblemSize) {
@@ -248,6 +233,34 @@ public final class BPIndexReorderer {
         return true;
       }
       return problemSize > FORK_THRESHOLD;
+    }
+
+    private Future<Void> execute() {
+      FutureTask<Void> task = new FutureTask<>(this, null);
+      if (executor == null) {
+        task.run();
+      } else {
+        executor.execute(task);
+      }
+      return task;
+    }
+
+    protected static void invokeAll(BaseRecursiveAction... actions) {
+      List<Future<Void>> futures =
+          Arrays.stream(actions).map(BaseRecursiveAction::execute).toList();
+      for (Future<Void> future : futures) {
+        try {
+          future.get();
+        } catch (InterruptedException e) {
+          throw new ThreadInterruptedException(e);
+        } catch (ExecutionException e) {
+          try {
+            throw IOUtils.rethrowAlways(e.getCause());
+          } catch (IOException e2) {
+            throw new UncheckedIOException(e2);
+          }
+        }
+      }
     }
   }
 
@@ -263,8 +276,9 @@ public final class BPIndexReorderer {
         float[] biases,
         CloseableThreadLocal<PerThreadState> threadLocal,
         BitSet parents,
+        Executor executor,
         int depth) {
-      super(depth);
+      super(executor, depth);
       this.docIDs = docIDs;
       this.biases = biases;
       this.threadLocal = threadLocal;
@@ -292,7 +306,7 @@ public final class BPIndexReorderer {
     }
 
     @Override
-    protected void compute() {
+    public void run() {
       if (depth > 0) {
         Arrays.sort(docIDs.ints, docIDs.offset, docIDs.offset + docIDs.length);
       } else {
@@ -362,15 +376,15 @@ public final class BPIndexReorderer {
       // It is fine for all tasks to share the same docs / biases array since they all work on
       // different slices of the array at a given point in time.
       IndexReorderingTask leftTask =
-          new IndexReorderingTask(left, biases, threadLocal, parents, depth + 1);
+          new IndexReorderingTask(left, biases, threadLocal, parents, executor, depth + 1);
       IndexReorderingTask rightTask =
-          new IndexReorderingTask(right, biases, threadLocal, parents, depth + 1);
+          new IndexReorderingTask(right, biases, threadLocal, parents, executor, depth + 1);
 
       if (shouldFork(docIDs.length, docIDs.ints.length)) {
         invokeAll(leftTask, rightTask);
       } else {
-        leftTask.compute();
-        rightTask.compute();
+        leftTask.run();
+        rightTask.run();
       }
     }
 
@@ -422,8 +436,9 @@ public final class BPIndexReorderer {
               leftDocFreqs,
               rightDocFreqs,
               threadLocal,
+              executor,
               depth)
-          .compute();
+          .run();
 
       if (parents != null) {
         for (int i = docIDs.offset, end = docIDs.offset + docIDs.length; i < end; ) {
@@ -592,8 +607,9 @@ public final class BPIndexReorderer {
         int[] fromDocFreqs,
         int[] toDocFreqs,
         CloseableThreadLocal<PerThreadState> threadLocal,
+        Executor executor,
         int depth) {
-      super(depth);
+      super(executor, depth);
       this.docs = docs;
       this.biases = biases;
       this.from = from;
@@ -604,15 +620,15 @@ public final class BPIndexReorderer {
     }
 
     @Override
-    protected void compute() {
+    public void run() {
       final int problemSize = to - from;
       if (problemSize > 1 && shouldFork(problemSize, docs.length)) {
         final int mid = (from + to) >>> 1;
         invokeAll(
             new ComputeBiasTask(
-                docs, biases, from, mid, fromDocFreqs, toDocFreqs, threadLocal, depth),
+                docs, biases, from, mid, fromDocFreqs, toDocFreqs, threadLocal, executor, depth),
             new ComputeBiasTask(
-                docs, biases, mid, to, fromDocFreqs, toDocFreqs, threadLocal, depth));
+                docs, biases, mid, to, fromDocFreqs, toDocFreqs, threadLocal, executor, depth));
       } else {
         ForwardIndex forwardIndex = threadLocal.get().forwardIndex;
         try {
@@ -707,12 +723,16 @@ public final class BPIndexReorderer {
   }
 
   private int writePostings(
-      CodecReader reader, Set<String> fields, Directory tempDir, DataOutput postingsOut)
+      CodecReader reader,
+      Set<String> fields,
+      Directory tempDir,
+      DataOutput postingsOut,
+      int parallelism)
       throws IOException {
     final int maxNumTerms =
         (int)
             ((ramBudgetMB * 1024 * 1024 - docRAMRequirements(reader.maxDoc()))
-                / getParallelism()
+                / parallelism
                 / termRAMRequirementsPerThreadPerTerm());
     final int maxDocFreq = (int) ((double) this.maxDocFreq * reader.maxDoc());
 
@@ -825,9 +845,10 @@ public final class BPIndexReorderer {
   /**
    * Expert: Compute the {@link DocMap} that holds the new doc ID numbering. This is exposed to
    * enable integration into {@link BPReorderingMergePolicy}, {@link #reorder(CodecReader,
-   * Directory)} should be preferred in general.
+   * Directory, Executor)} should be preferred in general.
    */
-  public Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir) throws IOException {
+  public Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir, Executor executor)
+      throws IOException {
     if (docRAMRequirements(reader.maxDoc()) >= ramBudgetMB * 1024 * 1024) {
       throw new NotEnoughRAMException(
           "At least "
@@ -847,7 +868,7 @@ public final class BPIndexReorderer {
       }
     }
 
-    int[] newToOld = computePermutation(reader, fields, tempDir);
+    int[] newToOld = computePermutation(reader, fields, tempDir, executor);
     int[] oldToNew = new int[newToOld.length];
     for (int i = 0; i < newToOld.length; ++i) {
       oldToNew[newToOld[i]] = i;
@@ -877,19 +898,33 @@ public final class BPIndexReorderer {
    * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
    * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
    *
+   * <p>The provided {@link Executor} can be used to perform reordering concurrently. A value of
+   * {@code null} indicates that reordering should be performed in the current thread.
+   *
+   * <p><b>NOTE</b>: The provided {@link Executor} must not reject tasks.
+   *
    * @throws NotEnoughRAMException if not enough RAM is provided
    */
-  public CodecReader reorder(CodecReader reader, Directory tempDir) throws IOException {
-    Sorter.DocMap docMap = computeDocMap(reader, tempDir);
+  public CodecReader reorder(CodecReader reader, Directory tempDir, Executor executor)
+      throws IOException {
+    Sorter.DocMap docMap = computeDocMap(reader, tempDir, executor);
     return SortingCodecReader.wrap(reader, docMap, null);
   }
 
   /**
    * Compute a permutation of the doc ID space that reduces log gaps between consecutive postings.
    */
-  private int[] computePermutation(CodecReader reader, Set<String> fields, Directory dir)
-      throws IOException {
+  private int[] computePermutation(
+      CodecReader reader, Set<String> fields, Directory dir, Executor executor) throws IOException {
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
+
+    final int parallelism;
+    if (executor == null) {
+      parallelism = 1;
+    } else {
+      // Assume as many threads as processors
+      parallelism = Runtime.getRuntime().availableProcessors();
+    }
 
     final int maxDoc = reader.maxDoc();
     ForwardIndex forwardIndex = null;
@@ -897,7 +932,7 @@ public final class BPIndexReorderer {
     boolean success = false;
     try {
       postingsOutput = trackingDir.createTempOutput("postings", "", IOContext.DEFAULT);
-      int numTerms = writePostings(reader, fields, trackingDir, postingsOutput);
+      int numTerms = writePostings(reader, fields, trackingDir, postingsOutput, parallelism);
       CodecUtil.writeFooter(postingsOutput);
       postingsOutput.close();
       final ForwardIndex finalForwardIndex =
@@ -924,14 +959,7 @@ public final class BPIndexReorderer {
             }
           }) {
         IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
-        IndexReorderingTask task =
-            new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, 0);
-        if (forkJoinPool != null) {
-          forkJoinPool.execute(task);
-          task.join();
-        } else {
-          task.compute();
-        }
+        new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, executor, 0).run();
       }
 
       success = true;
