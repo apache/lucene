@@ -18,7 +18,6 @@ package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
-import java.lang.invoke.MethodHandles;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
@@ -50,17 +49,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     // hack to work around for JDK-8309727:
     try {
       doPrivileged(
-          () -> {
-            try {
-              MethodHandles.lookup().ensureInitialized(PanamaVectorConstants.class);
-            } catch (IllegalAccessException e) {
-              throw new AssertionError();
-            }
-            return FloatVector.fromArray(
-                FloatVector.SPECIES_PREFERRED,
-                new float[FloatVector.SPECIES_PREFERRED.length()],
-                0);
-          });
+          () ->
+              FloatVector.fromArray(
+                  FloatVector.SPECIES_PREFERRED,
+                  new float[FloatVector.SPECIES_PREFERRED.length()],
+                  0));
     } catch (SecurityException se) {
       throw new UnsupportedOperationException(
           "We hit initialization failure described in JDK-8309727: " + se);
