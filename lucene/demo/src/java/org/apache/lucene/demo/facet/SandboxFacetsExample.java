@@ -384,7 +384,6 @@ public class SandboxFacetsExample {
               labels[i].lastComponent(),
               longAggregationsFacetRecorder.getRecordedValue(resultOrdinals[i], 0)));
     }
-    // TODO: is the tie-break by ord correct? Right now, it gives the higher ord as output
     results.add(
         new FacetResult(
             "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
