@@ -147,6 +147,7 @@ public final class LongAggregationsFacetRecorder implements FacetRecorder {
     return accum;
   }
 
+  /** Return aggregated value for facet ordinal and aggregation ID, or zero as default. */
   public long getRecordedValue(int ord, int valuesId) {
     if (valuesId < 0 || valuesId >= longValuesSources.length) {
       throw new IllegalArgumentException("Invalid request for ordinal values");
@@ -155,7 +156,18 @@ public final class LongAggregationsFacetRecorder implements FacetRecorder {
     if (valuesForOrd != null) {
       return valuesForOrd[valuesId];
     }
-    return -1; // TODO: missing value, what do we want to return? Zero might be a better option.
+    // There are a few options what we can return here e.g. throw an exception, return hardcoded or
+    // provided default value. It might be better API to do that instead of returning zero, but
+    // there are two reasons why I think returning zero is the right compromise:
+    // 1) recorder result is a map-like structure, and maps in java usually return default value
+    // e.g. null or 0 rather than throw an exception when a key is missing.
+    // 2) Handling correctly all missing value cases might be expensive, e.g. what if only one
+    // aggregation for selected facet ordinal is missing, i.e. no docs that belong to this facet
+    // ordinal have a value to aggregate? To handle that we would have to maintain missing values
+    // during collection instead of using default array value - zero. I believe it is excessive and
+    // most users are not going to use it anyway. Worst case scenario, we can add another public get
+    // method that handles missing values later.
+    return 0;
   }
 
   private static class LongAggregationsLeafFacetRecorder implements LeafFacetRecorder {
