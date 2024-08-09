@@ -42,6 +42,7 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
   protected final int minSubwordSize;
   protected final int maxSubwordSize;
   protected final boolean onlyLongestMatch;
+  protected final int subtokenPositionIncrement;
 
   protected final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   protected final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -58,7 +59,8 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
         DEFAULT_MIN_WORD_SIZE,
         DEFAULT_MIN_SUBWORD_SIZE,
         DEFAULT_MAX_SUBWORD_SIZE,
-        onlyLongestMatch);
+        onlyLongestMatch,
+        0);
   }
 
   protected CompoundWordTokenFilterBase(TokenStream input, CharArraySet dictionary) {
@@ -68,7 +70,20 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
         DEFAULT_MIN_WORD_SIZE,
         DEFAULT_MIN_SUBWORD_SIZE,
         DEFAULT_MAX_SUBWORD_SIZE,
-        false);
+        false,
+        0);
+  }
+
+  protected CompoundWordTokenFilterBase(
+      TokenStream input, CharArraySet dictionary, int subtokenPositionIncrement) {
+    this(
+        input,
+        dictionary,
+        DEFAULT_MIN_WORD_SIZE,
+        DEFAULT_MIN_SUBWORD_SIZE,
+        DEFAULT_MAX_SUBWORD_SIZE,
+        false,
+        subtokenPositionIncrement);
   }
 
   protected CompoundWordTokenFilterBase(
@@ -77,7 +92,8 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
       int minWordSize,
       int minSubwordSize,
       int maxSubwordSize,
-      boolean onlyLongestMatch) {
+      boolean onlyLongestMatch,
+      int subtokenPositionIncrement) {
     super(input);
     this.tokens = new LinkedList<>();
     if (minWordSize < 0) {
@@ -91,6 +107,10 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
     if (maxSubwordSize < 0) {
       throw new IllegalArgumentException("maxSubwordSize cannot be negative");
     }
+    if (subtokenPositionIncrement != 0 && subtokenPositionIncrement != 1) {
+      throw new IllegalArgumentException("subtokenPositionIncrement must either be 0 or 1");
+    }
+    this.subtokenPositionIncrement = subtokenPositionIncrement;
     this.maxSubwordSize = maxSubwordSize;
     this.onlyLongestMatch = onlyLongestMatch;
     this.dictionary = dictionary;
@@ -99,30 +119,39 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
   @Override
   public final boolean incrementToken() throws IOException {
     if (!tokens.isEmpty()) {
+      return processSubtokens();
+    }
+    current = null; // For safety
+    if (!input.incrementToken()) {
+      return false;
+    }
+    if (termAtt.length() >= minWordSize) {
+      decompose();
+      if (!tokens.isEmpty()) {
+        current = captureState();
+        if (subtokenPositionIncrement == 1) {
+          // provided that we have sub-tokens with increment one,
+          // we don't want to write the original token into the output
+          return processSubtokens();
+        }
+      } else if (subtokenPositionIncrement == 1) {
+        current = captureState();
+      }
+    }
+    return true; // Return original token
+  }
+
+  private boolean processSubtokens() {
+    if (!tokens.isEmpty()) {
       assert current != null;
       CompoundToken token = tokens.removeFirst();
       restoreState(current); // keep all other attributes untouched
       termAtt.setEmpty().append(token.txt);
       offsetAtt.setOffset(token.startOffset, token.endOffset);
-      posIncAtt.setPositionIncrement(0);
+      posIncAtt.setPositionIncrement(this.subtokenPositionIncrement);
       return true;
     }
-
-    current = null; // not really needed, but for safety
-    if (input.incrementToken()) {
-      // Only words longer than minWordSize get processed
-      if (termAtt.length() >= this.minWordSize) {
-        decompose();
-        // only capture the state if we really need it for producing new tokens
-        if (!tokens.isEmpty()) {
-          current = captureState();
-        }
-      }
-      // return original token:
-      return true;
-    } else {
-      return false;
-    }
+    return false;
   }
 
   /**
