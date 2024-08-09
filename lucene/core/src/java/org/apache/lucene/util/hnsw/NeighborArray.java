@@ -262,12 +262,12 @@ public class NeighborArray {
       int uncheckedCursor,
       RandomVectorScorerSupplier scorerSupplier)
       throws IOException {
+    final int candidateNode = nodes[candidateIndex];
     float minAcceptedSimilarity = scores[candidateIndex];
-    RandomVectorScorer scorer = scorerSupplier.scorer(nodes[candidateIndex]);
     if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
       // the candidate itself is unchecked
       for (int i = candidateIndex - 1; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(nodes[i]);
+        float neighborSimilarity = scorerSupplier.score(candidateNode, nodes[i]);
         // candidate node is too similar to node i given its score relative to the base node
         if (neighborSimilarity >= minAcceptedSimilarity) {
           return true;
@@ -278,7 +278,7 @@ public class NeighborArray {
       // inserted) unchecked nodes
       assert candidateIndex > uncheckedIndexes[uncheckedCursor];
       for (int i = uncheckedCursor; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(nodes[uncheckedIndexes[i]]);
+        float neighborSimilarity = scorerSupplier.score(candidateNode, nodes[uncheckedIndexes[i]]);
         // candidate node is too similar to node i given its score relative to the base node
         if (neighborSimilarity >= minAcceptedSimilarity) {
           return true;

@@ -20,7 +20,11 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import org.apache.lucene.util.Bits;
 
-/** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
+/**
+ * A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query.
+ *
+ * @lucene.experimental
+ */
 public interface RandomVectorScorer {
   /**
    * Returns the score between the query and the provided node.
@@ -31,6 +35,9 @@ public interface RandomVectorScorer {
   float score(int node) throws IOException;
 
   /**
+   * Returns the maximum possible ordinal for this scorer. This scorer can score vectors with
+   * ordinals between 0 and maxOrd (exclusive).
+   *
    * @return the maximum possible ordinal for this scorer
    */
   int maxOrd();
