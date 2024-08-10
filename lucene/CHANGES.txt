@@ -295,6 +295,10 @@ Improvements
   
 * GITHUB#13633: Add ability to read/write knn vector values to a MemoryIndex. (Ben Trent)
 
+* GITHUB#12627: patch HNSW graphs to improve reachability of all nodes from entry points
+
+* GITHUB#13201: Better cost estimation on MultiTermQuery over few terms. (Michael Froh)
+
 Optimizations
 ---------------------
 
