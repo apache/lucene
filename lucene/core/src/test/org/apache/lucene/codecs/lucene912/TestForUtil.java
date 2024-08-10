@@ -75,9 +75,6 @@ public class TestForUtil extends LuceneTestCase {
         final int bitsPerValue = in.readByte();
         final long currentFilePointer = in.getFilePointer();
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
-        if (bitsPerValue == 13) {
-          System.out.println("NOW");
-        }
         postingIn.decode(bitsPerValue, restored);
         int[] ints = new int[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
