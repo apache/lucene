@@ -242,8 +242,8 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   }
 
   abstract static class LongRangeSingleValuedLeafFacetCutter implements LeafFacetCutter {
-    final LongValues longValues;
-    final long[] boundaries;
+    private final LongValues longValues;
+    private final long[] boundaries;
     final int[] pos;
     int elementaryIntervalOrd;
 
