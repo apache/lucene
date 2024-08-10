@@ -371,9 +371,9 @@ public final class ForUtil {
   /**
    * Likewise, but for a simple mask.
    */
-  private static void maskLongs(long[] a, int count, long mask) {
+  private static void maskLongs(long[] a, int count, long[] b, int bi, long mask) {
     for (int i = 0; i < count; ++i) {
-      a[i] &= mask;
+      b[bi + i] = a[i] & mask;
     }
   }
 
@@ -428,14 +428,17 @@ def writeDecode(bpv, f):
     shift = next_primitive - 2 * bpv
     o = 2 * bpv
     while shift >= 0:
-      f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*2, o, shift, next_primitive, bpv))
+      if shift == 0:
+        f.write('    maskLongs(tmp, %d, longs, %d, MASK%d_%d);\n' %(bpv*2, o, next_primitive, bpv))
+      else:
+        f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*2, o, shift, next_primitive, bpv))
       o += bpv*2
       shift -= bpv
     remaining_bits = shift + bpv
     if remaining_bits > 0:
       if remaining_bits != next_primitive - bpv:
         # values in tmp still have more bits per value than remaining_bits, clear the higher bits now
-        f.write('    maskLongs(tmp, %d, MASK%d_%d);\n' %(bpv*2, next_primitive, remaining_bits))
+        f.write('    maskLongs(tmp, %d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive, remaining_bits))
       writeRemainder(bpv, next_primitive, remaining_bits, o, 128/num_values_per_long - o, f)
   f.write('  }\n')
 

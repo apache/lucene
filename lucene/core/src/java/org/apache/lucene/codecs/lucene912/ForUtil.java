@@ -343,9 +343,9 @@ public final class ForUtil {
   }
 
   /** Likewise, but for a simple mask. */
-  private static void maskLongs(long[] a, int count, long mask) {
+  private static void maskLongs(long[] a, int count, long[] b, int bi, long mask) {
     for (int i = 0; i < count; ++i) {
-      a[i] &= mask;
+      b[bi + i] = a[i] & mask;
     }
   }
 
@@ -634,7 +634,7 @@ public final class ForUtil {
     shiftLongs(tmp, 2, longs, 8, 3, MASK8_1);
     shiftLongs(tmp, 2, longs, 10, 2, MASK8_1);
     shiftLongs(tmp, 2, longs, 12, 1, MASK8_1);
-    shiftLongs(tmp, 2, longs, 14, 0, MASK8_1);
+    maskLongs(tmp, 2, longs, 14, MASK8_1);
   }
 
   private static void decode2(PostingDecodingUtil pdu, long[] tmp, long[] longs)
@@ -642,14 +642,14 @@ public final class ForUtil {
     pdu.splitLongs(4, longs, 6, MASK8_2, tmp, 0, MASK8_6);
     shiftLongs(tmp, 4, longs, 4, 4, MASK8_2);
     shiftLongs(tmp, 4, longs, 8, 2, MASK8_2);
-    shiftLongs(tmp, 4, longs, 12, 0, MASK8_2);
+    maskLongs(tmp, 4, longs, 12, MASK8_2);
   }
 
   private static void decode3(PostingDecodingUtil pdu, long[] tmp, long[] longs)
       throws IOException {
     pdu.splitLongs(6, longs, 5, MASK8_3, tmp, 0, MASK8_5);
     shiftLongs(tmp, 6, longs, 6, 2, MASK8_3);
-    maskLongs(tmp, 6, MASK8_2);
+    maskLongs(tmp, 6, tmp, 0, MASK8_2);
     for (int iter = 0, tmpIdx = 0, longsIdx = 12; iter < 2; ++iter, tmpIdx += 3, longsIdx += 2) {
       long l0 = tmp[tmpIdx + 0] << 1;
       l0 |= (tmp[tmpIdx + 1] >>> 1) & MASK8_1;
