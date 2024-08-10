@@ -27,9 +27,9 @@ public abstract class PostingDecodingUtil {
   /**
    * Read {@code count} longs. This number must not exceed 64. Apply shift {@code bShift} and mask
    * {@code bMask} and store the result in {@code b} starting at offset 0. Apply mask {@code cMask}
-   * and store the result in {@code c} starting at offset 0. As a side-effect, this method may
-   * internally read up to 7 extra longs and write up to 7 extra longs in {@code b} and {@code c}.
+   * and store the result in {@code c} starting at offset {@code cIndex}.
    */
-  public abstract void splitLongs(int count, long[] b, int bShift, long bMask, long[] c, long cMask)
+  public abstract void splitLongs(
+      int count, long[] b, int bShift, long bMask, long[] c, int cIndex, long cMask)
       throws IOException;
 }

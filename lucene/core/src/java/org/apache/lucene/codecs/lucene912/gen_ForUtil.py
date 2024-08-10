@@ -330,7 +330,7 @@ public final class ForUtil {
       throws IOException {
     final int numLongs = bitsPerValue << 1;
     final long mask = MASKS32[bitsPerValue];
-    pdu.splitLongs(numLongs, longs, 32 - bitsPerValue, mask, tmp, -1L);
+    pdu.splitLongs(numLongs, longs, 32 - bitsPerValue, mask, tmp, 0, -1L);
     int longsIdx = numLongs;
     int shift = 32 - 2 * bitsPerValue;
     for (; shift >= 0; shift -= bitsPerValue) {
@@ -419,9 +419,11 @@ def writeDecode(bpv, f):
   f.write('  private static void decode%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %bpv)
   if bpv == next_primitive:
     f.write('    pdu.readLongs(%d, longs);\n' %(bpv*2))
+  elif bpv * 2 == next_primitive:
+    f.write('    pdu.splitLongs(%d, longs, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, next_primitive, bpv, bpv*2, next_primitive, next_primitive - bpv))
   else:
     num_values_per_long = 64 / next_primitive
-    f.write('    pdu.splitLongs(%d, longs, %d, MASK%d_%d, tmp, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, next_primitive, bpv, next_primitive, next_primitive - bpv))
+    f.write('    pdu.splitLongs(%d, longs, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, next_primitive, bpv, next_primitive, next_primitive - bpv))
 
     shift = next_primitive - 2 * bpv
     o = 2 * bpv

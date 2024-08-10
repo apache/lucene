@@ -34,14 +34,15 @@ final class DefaultPostingDecodingUtil extends PostingDecodingUtil {
   }
 
   @Override
-  public void splitLongs(int count, long[] b, int bShift, long bMask, long[] c, long cMask)
+  public void splitLongs(
+      int count, long[] b, int bShift, long bMask, long[] c, int cIndex, long cMask)
       throws IOException {
     assert count <= 64;
-    in.readLongs(c, 0, count);
+    in.readLongs(c, cIndex, count);
     // The below loop is auto-vectorized
     for (int i = 0; i < count; ++i) {
-      b[i] = (c[i] >>> bShift) & bMask;
-      c[i] &= cMask;
+      b[i] = (c[cIndex + i] >>> bShift) & bMask;
+      c[cIndex + i] &= cMask;
     }
   }
 }

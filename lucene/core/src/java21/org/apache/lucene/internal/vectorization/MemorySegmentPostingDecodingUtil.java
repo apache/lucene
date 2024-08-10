@@ -63,16 +63,17 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
   }
 
   @Override
-  public void splitLongs(int count, long[] b, int bShift, long bMask, long[] c, long cMask)
+  public void splitLongs(
+      int count, long[] b, int bShift, long bMask, long[] c, int cIndex, long cMask)
       throws IOException {
     if (count < LONG_SPECIES.length()) {
       // Not enough data to vectorize without going out-of-bounds. In practice, this branch is never
       // used if the bit width is 256, and is used for 2 and 3 bits per value if the bit width is
       // 512.
-      in.readLongs(c, 0, count);
+      in.readLongs(c, cIndex, count);
       for (int i = 0; i < count; ++i) {
-        b[i] = (c[i] >>> bShift) & bMask;
-        c[i] &= cMask;
+        b[i] = (c[cIndex + i] >>> bShift) & bMask;
+        c[cIndex + i] &= cMask;
       }
     } else {
       long offset = in.getFilePointer();
@@ -88,7 +89,7 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
             .lanewise(VectorOperators.LSHR, bShift)
             .lanewise(VectorOperators.AND, bMask)
             .intoArray(b, i);
-        vector.lanewise(VectorOperators.AND, cMask).intoArray(c, i);
+        vector.lanewise(VectorOperators.AND, cMask).intoArray(c, cIndex + i);
       }
 
       // Handle the tail by reading a vector that is aligned with with `count` on the right side.
@@ -101,7 +102,7 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
           .lanewise(VectorOperators.LSHR, bShift)
           .lanewise(VectorOperators.AND, bMask)
           .intoArray(b, i);
-      vector.lanewise(VectorOperators.AND, cMask).intoArray(c, i);
+      vector.lanewise(VectorOperators.AND, cMask).intoArray(c, cIndex + i);
 
       in.seek(endOffset);
     }
