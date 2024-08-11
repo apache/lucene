@@ -42,7 +42,7 @@ public final class PostingIndexInput {
 
   /** Decode 128 integers stored on {@code bitsPerValues} bits per value into {@code longs}. */
   public void decode(int bitsPerValue, long[] longs) throws IOException {
-    forUtil.decode(bitsPerValue, postingDecodingUtil, longs);
+    forUtil.decode(bitsPerValue, in, postingDecodingUtil, longs);
   }
 
   /**
@@ -50,6 +50,6 @@ public final class PostingIndexInput {
    * and store results into {@code longs}.
    */
   public void decodeAndPrefixSum(int bitsPerValue, long base, long[] longs) throws IOException {
-    forUtil.decodeAndPrefixSum(bitsPerValue, postingDecodingUtil, base, longs);
+    forUtil.decodeAndPrefixSum(bitsPerValue, in, postingDecodingUtil, base, longs);
   }
 }

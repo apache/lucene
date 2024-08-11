@@ -21,9 +21,6 @@ import java.io.IOException;
 /** Utility class to decode postings. */
 public abstract class PostingDecodingUtil {
 
-  /** Read {@code count} longs into {@code b}. This number must not exceed 64. */
-  public abstract void readLongs(int count, long[] b) throws IOException;
-
   /**
    * Read {@code count} longs. This number must not exceed 64. Apply shift {@code bShift} and mask
    * {@code bMask} and store the result in {@code b} starting at offset 0. Apply mask {@code cMask}

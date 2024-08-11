@@ -27,49 +27,6 @@ import org.apache.lucene.tests.util.TestUtil;
 
 public class TestPostingDecodingUtil extends LuceneTestCase {
 
-  public void testDuelReadLongs() throws Exception {
-    final int iterations = atLeast(100);
-
-    try (Directory dir = new MMapDirectory(createTempDir())) {
-      try (IndexOutput out = dir.createOutput("tests.bin", IOContext.DEFAULT)) {
-        out.writeInt(random().nextInt());
-        for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
-          out.writeLong(random().nextInt());
-        }
-      }
-      VectorizationProvider vectorizationProvider = VectorizationProvider.lookup(true);
-      try (IndexInput in = dir.openInput("tests.bin", IOContext.DEFAULT)) {
-        long[] expectedB = new long[ForUtil.BLOCK_SIZE];
-        long[] actualB = new long[ForUtil.BLOCK_SIZE];
-        for (int iter = 0; iter < iterations; ++iter) {
-          // Initialize arrays with random content.
-          for (int i = 0; i < expectedB.length; ++i) {
-            expectedB[i] = random().nextLong();
-            actualB[i] = expectedB[i];
-          }
-          int count = TestUtil.nextInt(random(), 1, 64);
-          long startFP = random().nextInt(4);
-
-          // Work on a slice that has just the right number of bytes to make the test fail with an
-          // index-out-of-bounds in case the implementation reads more than the allowed number of
-          // padding bytes.
-          IndexInput slice = in.slice("test", 0, startFP + count * Long.BYTES);
-
-          PostingDecodingUtil defaultUtil = new DefaultPostingDecodingUtil(slice);
-          PostingDecodingUtil optimizedUtil = vectorizationProvider.newPostingDecodingUtil(slice);
-
-          slice.seek(startFP);
-          defaultUtil.readLongs(count, expectedB);
-          long expectedEndFP = slice.getFilePointer();
-          slice.seek(startFP);
-          optimizedUtil.readLongs(count, actualB);
-          assertEquals(expectedEndFP, slice.getFilePointer());
-          assertArrayEquals(expectedB, actualB);
-        }
-      }
-    }
-  }
-
   public void testDuelSplitLongs() throws Exception {
     final int iterations = atLeast(100);
 

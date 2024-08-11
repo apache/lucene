@@ -45,6 +45,7 @@ package org.apache.lucene.codecs.lucene912;
 import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexInput;
 
 /**
  * Inspired from https://fulmicoton.com/posts/bitpacking/
@@ -326,7 +327,7 @@ public final class ForUtil {
     return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
-  private static void decodeSlow(int bitsPerValue, PostingDecodingUtil pdu, long[] tmp, long[] longs)
+  private static void decodeSlow(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs)
       throws IOException {
     final int numLongs = bitsPerValue << 1;
     final long mask = MASKS32[bitsPerValue];
@@ -416,9 +417,9 @@ def writeDecode(bpv, f):
     next_primitive = 8
   elif bpv <= 16:
     next_primitive = 16
-  f.write('  private static void decode%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %bpv)
+  f.write('  private static void decode%d(IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %bpv)
   if bpv == next_primitive:
-    f.write('    pdu.readLongs(%d, longs);\n' %(bpv*2))
+    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
   elif bpv * 2 == next_primitive:
     f.write('    pdu.splitLongs(%d, longs, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, next_primitive, bpv, bpv*2, next_primitive, next_primitive - bpv))
   else:
@@ -466,7 +467,7 @@ if __name__ == '__main__':
 
   f.write("""
   /** Decode 128 integers into {@code longs}. */
-  void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
+  void decode(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -476,11 +477,11 @@ if __name__ == '__main__':
     elif bpv <= 16:
       next_primitive = 16
     f.write('      case %d:\n' %bpv)
-    f.write('        decode%d(pdu, tmp, longs);\n' %bpv)
+    f.write('        decode%d(in, pdu, tmp, longs);\n' %bpv)
     f.write('        expand%d(longs);\n' %next_primitive)
     f.write('        break;\n')
   f.write('      default:\n')
-  f.write('        decodeSlow(bitsPerValue, pdu, tmp, longs);\n')
+  f.write('        decodeSlow(bitsPerValue, in, pdu, tmp, longs);\n')
   f.write('        expand32(longs);\n')
   f.write('        break;\n')
   f.write('    }\n')
@@ -490,7 +491,7 @@ if __name__ == '__main__':
   /**
    * Delta-decode 128 integers into {@code longs}.
    */
-  void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
+  void decodeAndPrefixSum(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -500,11 +501,11 @@ if __name__ == '__main__':
     elif bpv <= 16:
       next_primitive = 16
     f.write('    case %d:\n' %bpv)
-    f.write('      decode%d(pdu, tmp, longs);\n' %bpv)
+    f.write('      decode%d(in, pdu, tmp, longs);\n' %bpv)
     f.write('      prefixSum%d(longs, base);\n' %next_primitive)
     f.write('      break;\n')
   f.write('    default:\n')
-  f.write('      decodeSlow(bitsPerValue, pdu, tmp, longs);\n')
+  f.write('      decodeSlow(bitsPerValue, in, pdu, tmp, longs);\n')
   f.write('      prefixSum32(longs, base);\n')
   f.write('      break;\n')
   f.write('    }\n')
