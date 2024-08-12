@@ -25,6 +25,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 
 public class TestScalarQuantizer extends LuceneTestCase {
 
@@ -33,8 +34,16 @@ public class TestScalarQuantizer extends LuceneTestCase {
       int dims = random().nextInt(9) + 1;
       int numVecs = random().nextInt(9) + 10;
       float[][] floats = randomFloats(numVecs, dims);
+      if (function == VectorSimilarityFunction.COSINE) {
+        for (float[] v : floats) {
+          VectorUtil.l2normalize(v);
+        }
+      }
       for (byte bits : new byte[] {4, 7}) {
         FloatVectorValues floatVectorValues = fromFloats(floats);
+        if (function == VectorSimilarityFunction.COSINE) {
+          function = VectorSimilarityFunction.DOT_PRODUCT;
+        }
         ScalarQuantizer scalarQuantizer =
             random().nextBoolean()
                 ? ScalarQuantizer.fromVectors(floatVectorValues, 0.9f, numVecs, bits)
@@ -63,11 +72,15 @@ public class TestScalarQuantizer extends LuceneTestCase {
         expectThrows(
             IllegalStateException.class,
             () -> ScalarQuantizer.fromVectors(floatVectorValues, 0.9f, numVecs, bits));
+        VectorSimilarityFunction actualFunction =
+            function == VectorSimilarityFunction.COSINE
+                ? VectorSimilarityFunction.DOT_PRODUCT
+                : function;
         expectThrows(
             IllegalStateException.class,
             () ->
                 ScalarQuantizer.fromVectorsAutoInterval(
-                    floatVectorValues, function, numVecs, bits));
+                    floatVectorValues, actualFunction, numVecs, bits));
       }
     }
   }
@@ -185,6 +198,9 @@ public class TestScalarQuantizer extends LuceneTestCase {
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
 
     float[][] floats = randomFloats(numVecs, dims);
+    for (float[] v : floats) {
+      VectorUtil.l2normalize(v);
+    }
     FloatVectorValues floatVectorValues = fromFloats(floats);
     ScalarQuantizer scalarQuantizer =
         ScalarQuantizer.fromVectorsAutoInterval(

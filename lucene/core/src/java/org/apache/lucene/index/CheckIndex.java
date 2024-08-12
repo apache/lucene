@@ -79,6 +79,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -3301,17 +3302,17 @@ public final class CheckIndex implements Closeable {
       if (skipper.maxDocID(0) == NO_MORE_DOCS) {
         break;
       }
+      if (skipper.minDocID(0) < doc) {
+        throw new CheckIndexException(
+            "skipper dv iterator for field: "
+                + fieldName
+                + " reports wrong minDocID, got "
+                + skipper.minDocID(0)
+                + " < "
+                + doc);
+      }
       int levels = skipper.numLevels();
       for (int level = 0; level < levels; level++) {
-        if (skipper.minDocID(level) < doc) {
-          throw new CheckIndexException(
-              "skipper dv iterator for field: "
-                  + fieldName
-                  + " reports wrong minDocID, got "
-                  + skipper.minDocID(level)
-                  + " < "
-                  + doc);
-        }
         if (skipper.minDocID(level) > skipper.maxDocID(level)) {
           throw new CheckIndexException(
               "skipper dv iterator for field: "
@@ -3869,6 +3870,7 @@ public final class CheckIndex implements Closeable {
                 TermsEnum postingsTermsEnum = postingsTerms.iterator();
 
                 final boolean hasProx = terms.hasOffsets() || terms.hasPositions();
+                int seekExactCounter = 0;
                 BytesRef term;
                 while ((term = termsEnum.next()) != null) {
 
@@ -3876,7 +3878,14 @@ public final class CheckIndex implements Closeable {
                   postings = termsEnum.postings(postings, PostingsEnum.ALL);
                   assert postings != null;
 
-                  if (postingsTermsEnum.seekExact(term) == false) {
+                  boolean termExists;
+                  if ((seekExactCounter++ & 0x01) == 0) {
+                    termExists = postingsTermsEnum.seekExact(term);
+                  } else {
+                    IOBooleanSupplier termExistsSupplier = postingsTermsEnum.prepareSeekExact(term);
+                    termExists = termExistsSupplier != null && termExistsSupplier.get();
+                  }
+                  if (termExists == false) {
                     throw new CheckIndexException(
                         "vector term="
                             + term

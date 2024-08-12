@@ -28,7 +28,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * @lucene.experimental
  */
-public final class OnHeapFSTStore implements FSTStore {
+public final class OnHeapFSTStore implements FSTReader {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(OnHeapFSTStore.class);
@@ -40,31 +40,24 @@ public final class OnHeapFSTStore implements FSTStore {
   private ReadWriteDataOutput dataOutput;
 
   /** Used at read time when the FST fits into a single byte[]. */
-  private byte[] bytesArray;
+  private final byte[] bytesArray;
 
-  private final int maxBlockBits;
-
-  public OnHeapFSTStore(int maxBlockBits) {
+  public OnHeapFSTStore(int maxBlockBits, DataInput in, long numBytes) throws IOException {
     if (maxBlockBits < 1 || maxBlockBits > 30) {
       throw new IllegalArgumentException("maxBlockBits should be 1 .. 30; got " + maxBlockBits);
     }
 
-    this.maxBlockBits = maxBlockBits;
-  }
-
-  @Override
-  public FSTStore init(DataInput in, long numBytes) throws IOException {
-    if (numBytes > 1 << this.maxBlockBits) {
+    if (numBytes > 1 << maxBlockBits) {
       // FST is big: we need multiple pages
       dataOutput = (ReadWriteDataOutput) getOnHeapReaderWriter(maxBlockBits);
       dataOutput.copyBytes(in, numBytes);
       dataOutput.freeze();
+      bytesArray = null;
     } else {
       // FST fits into a single block: use ByteArrayBytesStoreReader for less overhead
       bytesArray = new byte[(int) numBytes];
       in.readBytes(bytesArray, 0, bytesArray.length);
     }
-    return this;
   }
 
   @Override

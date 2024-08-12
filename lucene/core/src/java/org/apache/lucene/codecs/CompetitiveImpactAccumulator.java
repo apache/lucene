@@ -18,8 +18,6 @@ package org.apache.lucene.codecs;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -106,7 +104,7 @@ public final class CompetitiveImpactAccumulator {
   }
 
   /** Get the set of competitive freq and norm pairs, ordered by increasing freq and norm. */
-  public Collection<Impact> getCompetitiveFreqNormPairs() {
+  public List<Impact> getCompetitiveFreqNormPairs() {
     List<Impact> impacts = new ArrayList<>();
     int maxFreqForLowerNorms = 0;
     for (int i = 0; i < maxFreqs.length; ++i) {
@@ -126,7 +124,7 @@ public final class CompetitiveImpactAccumulator {
     for (Impact impact : impacts) {
       add(impact, freqNormPairs);
     }
-    return Collections.unmodifiableSet(freqNormPairs);
+    return List.copyOf(freqNormPairs);
   }
 
   private void add(Impact newEntry, TreeSet<Impact> freqNormPairs) {

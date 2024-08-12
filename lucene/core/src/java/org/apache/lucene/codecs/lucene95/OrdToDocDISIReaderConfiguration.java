@@ -40,7 +40,7 @@ public class OrdToDocDISIReaderConfiguration {
    * <p>Within outputMeta the format is as follows:
    *
    * <ul>
-   *   <li><b>[int8]</b> if equals to -2, empty - no vectory values. If equals to -1, dense – all
+   *   <li><b>[int8]</b> if equals to -2, empty - no vector values. If equals to -1, dense – all
    *       documents have values for a field. If equals to 0, sparse – some documents missing
    *       values.
    *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput,

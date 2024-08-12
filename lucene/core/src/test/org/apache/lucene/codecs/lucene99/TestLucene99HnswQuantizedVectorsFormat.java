@@ -29,11 +29,13 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -79,7 +81,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
 
   @Override
   protected Codec getCodec() {
-    return new Lucene99Codec() {
+    return new Lucene912Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return format;
@@ -95,7 +97,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 dir,
                 newIndexWriterConfig()
                     .setCodec(
-                        new Lucene99Codec() {
+                        new Lucene912Codec() {
                           @Override
                           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                             return new Lucene99HnswScalarQuantizedVectorsFormat(
@@ -126,7 +128,6 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
-    boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
     int dim = random().nextInt(64) + 1;
     if (dim % 2 == 1) {
       dim++;
@@ -135,25 +136,16 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     for (int i = 0; i < numVectors; i++) {
       vectors.add(randomVector(dim));
     }
+    FloatVectorValues toQuantize =
+        new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors);
     ScalarQuantizer scalarQuantizer =
-        confidenceInterval != null && confidenceInterval == 0f
-            ? ScalarQuantizer.fromVectorsAutoInterval(
-                new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-                similarityFunction,
-                numVectors,
-                (byte) bits)
-            : ScalarQuantizer.fromVectors(
-                new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors, normalize),
-                confidenceInterval == null
-                    ? Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval(dim)
-                    : confidenceInterval,
-                numVectors,
-                (byte) bits);
+        Lucene99ScalarQuantizedVectorsWriter.buildScalarQuantizer(
+            toQuantize, numVectors, similarityFunction, confidenceInterval, (byte) bits);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {
       float[] vector = vectors.get(i);
-      if (normalize) {
+      if (similarityFunction == VectorSimilarityFunction.COSINE) {
         float[] copy = new float[vector.length];
         System.arraycopy(vector, 0, copy, 0, copy.length);
         VectorUtil.l2normalize(copy);

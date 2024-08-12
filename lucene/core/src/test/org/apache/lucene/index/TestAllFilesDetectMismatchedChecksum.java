@@ -122,7 +122,7 @@ public class TestAllFilesDetectMismatchedChecksum extends LuceneTestCase {
           dirCopy.copyFrom(dir, name, name, IOContext.DEFAULT);
         } else {
           try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-              IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+              IndexInput in = dir.openInput(name, IOContext.READONCE)) {
             out.copyBytes(in, flipOffset);
             out.writeByte((byte) (in.readByte() + TestUtil.nextInt(random(), 0x01, 0xFF)));
             out.copyBytes(in, victimLength - flipOffset - 1);

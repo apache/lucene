@@ -45,14 +45,14 @@ public interface MatchesIterator {
   boolean next() throws IOException;
 
   /**
-   * The start position of the current match
+   * The start position of the current match, or {@code -1} if positions are not available
    *
    * <p>Should only be called after {@link #next()} has returned {@code true}
    */
   int startPosition();
 
   /**
-   * The end position of the current match
+   * The end position of the current match, or {@code -1} if positions are not available
    *
    * <p>Should only be called after {@link #next()} has returned {@code true}
    */
