@@ -178,7 +178,8 @@ public final class ComparableUtils {
 
     @Override
     public boolean equals(Object obj) {
-      if (obj instanceof ByLongValueComparable other) {
+      if (obj instanceof ByLongValueComparable) {
+        ByLongValueComparable other = (ByLongValueComparable) obj;
         return other.value == value;
       }
       return false;
