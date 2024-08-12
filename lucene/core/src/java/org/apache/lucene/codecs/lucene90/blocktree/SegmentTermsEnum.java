@@ -309,8 +309,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   @Override
   public boolean seekExact(BytesRef target) throws IOException {
 
-    long withOutReloadFp = -1;
-    int origNextEnt = -1;
     if (fr.index == null) {
       throw new IllegalStateException("terms index was not loaded");
     }
@@ -377,9 +375,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = arcs[1 + targetUpto];
         assert arc.label() == (target.bytes[target.offset + targetUpto] & 0xFF)
             : "arc.label="
-                + (char) arc.label()
-                + " targetLabel="
-                + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
+            + (char) arc.label()
+            + " targetLabel="
+            + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
         outputAccumulator.push(arc.output());
 
         if (arc.isFinal()) {
@@ -436,24 +434,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         //   System.out.println("  target is before current (shares prefixLen=" + targetUpto + ");
         // rewind frame ord=" + lastFrame.ord);
         // }
-
-        // We got lastFrame by comparing target and last seeked term(at this point, currentFrame is
-        // last seeked block), and less than last seeked term. If lastFrame's fp is same with
-        // currentFrame's fp, and finally we seek the same block, we can reduce entCount to nextEnt.
-        boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
-
-        if (shouldRewind()) {
-          currentFrame.rewind();
-        } else {
-          // Prepare to reduce entCount.
-          if (currentIsLast && currentFrame.isLeafBlock) {
-            origNextEnt = currentFrame.nextEnt;
-            withOutReloadFp = currentFrame.fp;
-          }
-          currentFrame.rewindWithoutReload();
-        }
-
+        currentFrame.rewind();
       } else {
         // Target is exactly the same as current term
         assert term.length() == target.length;
@@ -536,20 +518,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         currentFrame.loadBlock();
 
-        // We still stay on withOutReload frame, reduce entCount to nextEnt.
-        int origEntCount = -1;
-        if (currentFrame.fp == withOutReloadFp && origNextEnt != 0) {
-          origEntCount = currentFrame.entCount;
-          currentFrame.entCount = origNextEnt;
-        }
-
         final SeekStatus result = currentFrame.scanToTerm(target, true);
-
-        // Restore entCount to origEntCount.
-        if (origEntCount != -1) {
-          currentFrame.entCount = origEntCount;
-        }
-
         if (result == SeekStatus.FOUND) {
           // if (DEBUG) {
           //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
@@ -604,20 +573,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     currentFrame.loadBlock();
 
-    // We still stay on withOutReload frame, reduce entCount to nextEnt.
-    int origEntCount = -1;
-    if (currentFrame.fp == withOutReloadFp && origNextEnt != 0) {
-      origEntCount = currentFrame.entCount;
-      currentFrame.entCount = origNextEnt;
-    }
-
     final SeekStatus result = currentFrame.scanToTerm(target, true);
-
-    // Restore entCount to origEntCount.
-    if (origEntCount != -1) {
-      currentFrame.entCount = origEntCount;
-    }
-
     if (result == SeekStatus.FOUND) {
       // if (DEBUG) {
       //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
@@ -635,8 +591,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   @Override
   public SeekStatus seekCeil(BytesRef target) throws IOException {
-    long withOutReloadFp = -1;
-    int origNextEnt = -1;
 
     if (fr.index == null) {
       throw new IllegalStateException("terms index was not loaded");
@@ -700,9 +654,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = arcs[1 + targetUpto];
         assert arc.label() == (target.bytes[target.offset + targetUpto] & 0xFF)
             : "arc.label="
-                + (char) arc.label()
-                + " targetLabel="
-                + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
+            + (char) arc.label()
+            + " targetLabel="
+            + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
 
         outputAccumulator.push(arc.output());
         if (arc.isFinal()) {
@@ -756,23 +710,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // System.out.println("  target is before current (shares prefixLen=" + targetUpto + ");
         // rewind frame ord=" + lastFrame.ord);
         // }
-
-        // We got lastFrame by comparing target and last seeked term(at this point, currentFrame is
-        // last seeked block), and less than last seeked term. If lastFrame's fp is same with
-        // currentFrame's fp, and finally we seek the same block, we can reduce entCount to nextEnt.
-        boolean currentIsLast = currentFrame.fp == lastFrame.fp;
         currentFrame = lastFrame;
-
-        if (shouldRewind()) {
-          currentFrame.rewind();
-        } else {
-          // Prepare to reduce entCount.
-          if (currentIsLast && currentFrame.isLeafBlock) {
-            origNextEnt = currentFrame.nextEnt;
-            withOutReloadFp = currentFrame.fp;
-          }
-          currentFrame.rewindWithoutReload();
-        }
+        currentFrame.rewind();
       } else {
         // Target is exactly the same as current term
         assert term.length() == target.length;
@@ -842,21 +781,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         currentFrame.loadBlock();
 
-        // We still stay on withOutReload frame, reduce entCount to nextEnt.
-        int origEntCount = -1;
-        if (currentFrame.fp == withOutReloadFp && origNextEnt != 0) {
-          origEntCount = currentFrame.entCount;
-          currentFrame.entCount = origNextEnt;
-        }
-
         // if (DEBUG) System.out.println("  now scanToTerm");
         final SeekStatus result = currentFrame.scanToTerm(target, false);
-
-        // Restore entCount to origEntCount.
-        if (origEntCount != -1) {
-          currentFrame.entCount = origEntCount;
-        }
-
         if (result == SeekStatus.END) {
           term.copyBytes(target);
           termExists = false;
@@ -912,19 +838,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     currentFrame.loadBlock();
 
-    // We still stay on withOutReload frame, reduce entCount to nextEnt.
-    int origEntCount = -1;
-    if (currentFrame.fp == withOutReloadFp && origNextEnt != 0) {
-      origEntCount = currentFrame.entCount;
-      currentFrame.entCount = origNextEnt;
-    }
-
     final SeekStatus result = currentFrame.scanToTerm(target, false);
-
-    // Restore entCount to origEntCount.
-    if (origEntCount != -1) {
-      currentFrame.entCount = origEntCount;
-    }
 
     if (result == SeekStatus.END) {
       term.copyBytes(target);
@@ -943,20 +857,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     } else {
       return result;
     }
-  }
-
-  // We should rewind a block in two cases:
-  // 1: currentFrame.fp != currentFrame.fpOrig. This is a floor multi-block and not the first one.
-  // 2: currentFrame.nextEnt == -1. This is a block we pushed in stack but haven't loaded its data,
-  // or a block we just changed its fp and set nextEnt to -1 by scanToFloorFrame to prepare reload.
-  // This means we only rewindWithoutReload for non-floor block or first floor block.
-  // TODO: We need currentFrame's first entry to judge whether we can rewindWithoutReload for
-  // non-first floor blocks.
-  private boolean shouldRewind() {
-    if (currentFrame.fp != currentFrame.fpOrig || currentFrame.nextEnt == -1) {
-      return true;
-    }
-    return false;
   }
 
   @SuppressWarnings("unused")
@@ -991,8 +891,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                   + f.isFloor
                   + " code="
                   + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-                      + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-                      + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
+                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
                   + " isLastInFloor="
                   + f.isLastInFloor
                   + " mdUpto="
@@ -1021,8 +921,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                   + f.isFloor
                   + " code="
                   + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-                      + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-                      + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
+                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
                   + " lastSubFP="
                   + f.lastSubFP
                   + " isLastInFloor="
@@ -1311,9 +1211,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     void setFloorData(ByteArrayDataInput floorData) {
       assert outputIndex == num - 1
           : "floor data should be stored in last arc, get outputIndex: "
-              + outputIndex
-              + ", num: "
-              + num;
+          + outputIndex
+          + ", num: "
+          + num;
       BytesRef output = outputs[outputIndex];
       floorData.reset(output.bytes, output.offset + index, output.length - index);
     }

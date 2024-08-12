@@ -17,8 +17,6 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99ScoreSkipReader.readImpacts;
-import static org.apache.lucene.tests.util.TestUtil.alwaysPostingsFormat;
-import static org.apache.lucene.tests.util.TestUtil.getDefaultPostingsFormat;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -26,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
-import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.lucene90.blocktree.FieldReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Stats;
 import org.apache.lucene.codecs.lucene99.Lucene99ScoreSkipReader.MutableImpactList;
@@ -152,114 +149,5 @@ public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
     // termsEnum.term should be the next leaf block's first entry.
     assertEquals(TermsEnum.SeekStatus.NOT_FOUND, termsEnum.seekCeil(new BytesRef("10004a")));
     assertEquals(termsEnum.term(), new BytesRef("100051"));
-  }
-
-  public void testFloorBlocks() throws Exception {
-    Directory dir = newDirectory();
-    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
-    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
-
-    IndexWriter writer =
-        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
-    String[] categories =
-        new String[] {
-          "regular", "request1", "request2", "request3", "request4", "rest", "teacher", "team"
-        };
-
-    for (String category : categories) {
-      Document doc = new Document();
-      doc.add(newStringField("category", category, Field.Store.YES));
-      writer.addDocument(doc);
-    }
-
-    IndexReader reader = DirectoryReader.open(writer);
-
-    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("category").iterator();
-
-    // Test seekExact.
-    BytesRef target = new BytesRef("request2");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request1");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request4");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request3");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request4");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request1");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request4");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("regular");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("rest");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("regular");
-    assertTrue(termsEnum.seekExact(target));
-    assertEquals(termsEnum.term(), target);
-
-    // Test seekCeil.
-    target = new BytesRef("request2");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request1");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request4");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request3");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request4");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request1");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("request4");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("regular");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("rest");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    target = new BytesRef("regular");
-    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(target));
-    assertEquals(termsEnum.term(), target);
-
-    writer.close();
-    reader.close();
-    dir.close();
   }
 }
