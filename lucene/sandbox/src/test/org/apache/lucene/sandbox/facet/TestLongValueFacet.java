@@ -158,7 +158,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     if (random().nextBoolean()) {
       maxValue = random().nextLong() & Long.MAX_VALUE;
     } else {
-      maxValue = RandomNumbers.randomIntBetween(random(), 0, 1000);
+      maxValue = random().nextInt(1000);
     }
     if (VERBOSE) {
       System.out.println(
@@ -288,7 +288,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount - 1);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -305,8 +305,8 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
           topN);
 
       // subset of docs
-      int minId = RandomNumbers.randomIntBetween(random(), 0, docCount);
-      int maxId = RandomNumbers.randomIntBetween(random(), 0, docCount);
+      int minId = RandomNumbers.randomIntBetween(random(), 0, docCount - 1);
+      int maxId = RandomNumbers.randomIntBetween(random(), 0, docCount - 1);
       if (minId > maxId) {
         int tmp = minId;
         minId = maxId;
@@ -386,7 +386,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount - 1);
       }
       actual = getTopChildren(topN, "field", longValuesFacetCutter, countRecorder);
       assertSame(
@@ -418,7 +418,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     if (random().nextBoolean()) {
       maxValue = random().nextLong() & Long.MAX_VALUE;
     } else {
-      maxValue = RandomNumbers.randomLongBetween(random(), 0, 1000);
+      maxValue = RandomNumbers.randomLongBetween(random(), 0, 999);
     }
     if (VERBOSE) {
       System.out.println(
@@ -551,7 +551,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount - 1);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -568,8 +568,8 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
           topN);
 
       // subset of docs
-      int minId = RandomNumbers.randomIntBetween(random(), 0, docCount);
-      int maxId = RandomNumbers.randomIntBetween(random(), 0, docCount);
+      int minId = RandomNumbers.randomIntBetween(random(), 0, docCount - 1);
+      int maxId = RandomNumbers.randomIntBetween(random(), 0, docCount - 1);
       if (minId > maxId) {
         int tmp = minId;
         minId = maxId;
@@ -627,7 +627,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount - 1);
       }
       actual = getTopChildren(topN, "field", longValuesFacetCutter, countRecorder);
       assertSame(
