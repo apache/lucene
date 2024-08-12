@@ -111,6 +111,8 @@ Bug Fixes
 
 * GITHUB#13627: Fix race condition on flush for DWPT seqNo generation. (Ben Trent, Ao Li)
 
+* GITHUB#13646: Fix rare test bug in TestLongValueFacetCounts that was introduced in 9.6. (Greg Miller)
+
 Other
 ---------------------
 (No changes)
