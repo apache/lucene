@@ -18,9 +18,11 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.FlatVectorsFormat;
-import org.apache.lucene.codecs.FlatVectorsReader;
-import org.apache.lucene.codecs.FlatVectorsWriter;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
@@ -29,14 +31,14 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   // The bits that are allowed for scalar quantization
   // We only allow unsigned byte (8), signed byte (7), and half-byte (4)
   private static final int ALLOWED_BITS = (1 << 8) | (1 << 7) | (1 << 4);
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
-  static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
+  public static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_ADD_BITS = 1;
@@ -46,13 +48,17 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
 
-  private static final FlatVectorsFormat rawVectorFormat = new Lucene99FlatVectorsFormat();
+  private static final FlatVectorsFormat rawVectorFormat =
+      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** The minimum confidence interval */
   private static final float MINIMUM_CONFIDENCE_INTERVAL = 0.9f;
 
   /** The maximum confidence interval */
   private static final float MAXIMUM_CONFIDENCE_INTERVAL = 1f;
+
+  /** Dynamic confidence interval */
+  public static final float DYNAMIC_CONFIDENCE_INTERVAL = 0f;
 
   /**
    * Controls the confidence interval used to scalar quantize the vectors the default value is
@@ -62,6 +68,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
 
   final byte bits;
   final boolean compress;
+  final Lucene99ScalarQuantizedVectorScorer flatVectorScorer;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
@@ -72,7 +79,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
    * Constructs a format using the given graph construction parameters.
    *
    * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
-   *     it is calculated dynamically.
+   *     it is calculated based on the vector dimension. When `0`, the quantiles are dynamically
+   *     determined by sampling many confidence intervals and determining the most accurate pair.
    * @param bits the number of bits to use for scalar quantization (must be between 1 and 8,
    *     inclusive)
    * @param compress whether to compress the vectors, if true, the vectors that are quantized with
@@ -81,7 +89,9 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
    */
   public Lucene99ScalarQuantizedVectorsFormat(
       Float confidenceInterval, int bits, boolean compress) {
+    super(NAME);
     if (confidenceInterval != null
+        && confidenceInterval != DYNAMIC_CONFIDENCE_INTERVAL
         && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL
             || confidenceInterval > MAXIMUM_CONFIDENCE_INTERVAL)) {
       throw new IllegalArgumentException(
@@ -89,6 +99,7 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
               + MINIMUM_CONFIDENCE_INTERVAL
               + " and "
               + MAXIMUM_CONFIDENCE_INTERVAL
+              + " or 0"
               + "; confidenceInterval="
               + confidenceInterval);
     }
@@ -98,6 +109,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
     this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;
     this.compress = compress;
+    this.flatVectorScorer =
+        new Lucene99ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
   }
 
   public static float calculateDefaultConfidenceInterval(int vectorDimension) {
@@ -115,6 +128,8 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
         + bits
         + ", compress="
         + compress
+        + ", flatVectorScorer="
+        + flatVectorScorer
         + ", rawVectorFormat="
         + rawVectorFormat
         + ")";
@@ -123,11 +138,17 @@ public final class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsForma
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsWriter(
-        state, confidenceInterval, bits, compress, rawVectorFormat.fieldsWriter(state));
+        state,
+        confidenceInterval,
+        bits,
+        compress,
+        rawVectorFormat.fieldsWriter(state),
+        flatVectorScorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99ScalarQuantizedVectorsReader(state, rawVectorFormat.fieldsReader(state));
+    return new Lucene99ScalarQuantizedVectorsReader(
+        state, rawVectorFormat.fieldsReader(state), flatVectorScorer);
   }
 }

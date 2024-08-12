@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.blockterms;
 import static org.apache.lucene.util.fst.FST.readMetadata;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
@@ -27,8 +26,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
@@ -167,22 +164,6 @@ public class VariableGapTermsIndexReader extends TermsIndexReaderBase {
 
   @Override
   public void close() throws IOException {}
-
-  @Override
-  public long ramBytesUsed() {
-    long sizeInBytes = 0;
-    for (FST<Long> entry : fields.values()) {
-      if (entry != null) {
-        sizeInBytes += entry.ramBytesUsed();
-      }
-    }
-    return sizeInBytes;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    return Accountables.namedAccountables("field", fields);
-  }
 
   @Override
   public String toString() {

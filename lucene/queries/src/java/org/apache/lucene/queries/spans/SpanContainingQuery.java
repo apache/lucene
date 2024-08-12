@@ -23,7 +23,9 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 
 /** Keep matches that contain another SpanScorer. */
 public final class SpanContainingQuery extends SpanContainQuery {
@@ -134,6 +136,17 @@ public final class SpanContainingQuery extends SpanContainQuery {
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return bigWeight.isCacheable(ctx) && littleWeight.isCacheable(ctx);
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Spans spans = getSpans(context, Postings.POSITIONS);
+      if (spans == null) {
+        return null;
+      }
+      final LeafSimScorer docScorer = getSimScorer(context);
+      final var scorer = new SpanScorer(spans, docScorer);
+      return new DefaultScorerSupplier(scorer);
     }
   }
 }

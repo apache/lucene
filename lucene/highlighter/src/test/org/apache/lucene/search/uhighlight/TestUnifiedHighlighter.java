@@ -30,13 +30,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -54,8 +61,13 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter.HighlightFlag;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.util.QueryBuilder;
 import org.apache.lucene.util.automaton.Automata;
+import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.RegExp;
 
 public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
   @ParametersFactory
@@ -1335,6 +1347,121 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
       highlighterFieldMatch = overrideFieldMatcherForTests(highlighterFieldMatch, null, "title");
     }
     ir.close();
+  }
+
+  public void testMaskedFields() throws IOException {
+    final Map<String, Analyzer> fieldAnalyzers = new TreeMap<>();
+    fieldAnalyzers.put("field", new WhitespaceAnalyzer());
+    fieldAnalyzers.put("field_english", new EnglishAnalyzer()); // English stemming and stopwords
+    fieldAnalyzers.put( // Each letter is a token
+        "field_characters",
+        new MockAnalyzer(random(), new CharacterRunAutomaton(new RegExp(".").toAutomaton()), true));
+    fieldAnalyzers.put( // Every three letters is a token
+        "field_tripples",
+        new MockAnalyzer(
+            random(), new CharacterRunAutomaton(new RegExp("...").toAutomaton()), true));
+    Analyzer analyzer =
+        new DelegatingAnalyzerWrapper(Analyzer.PER_FIELD_REUSE_STRATEGY) {
+          @Override
+          public Analyzer getWrappedAnalyzer(String fieldName) {
+            return fieldAnalyzers.get(fieldName);
+          }
+        };
+    FieldType fieldTypeMatched = new FieldType(fieldType);
+    fieldTypeMatched.setStored(false); // matched fields don't need to be stored
+    fieldTypeMatched.freeze();
+
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(analyzer))) {
+        Document doc = new Document();
+        doc.add(new Field("field", "dance with star", fieldType));
+        doc.add(new Field("field_english", "dance with star", fieldTypeMatched));
+        doc.add(new Field("field_characters", "dance with star", fieldTypeMatched));
+        doc.add(new Field("field_tripples", "dance with star", fieldTypeMatched));
+        writer.addDocument(doc);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+        // field is highlighted based on the matches from the "field_english"
+        maskedFieldsTestCase(
+            analyzer,
+            searcher,
+            "field",
+            Set.of("field_english"),
+            "dancing with the stars",
+            "<b>dance with star</b>",
+            "<b>dance</b> with <b>star</b>");
+
+        // field is highlighted based on the matches from the "field_characters"
+        maskedFieldsTestCase(
+            analyzer,
+            searcher,
+            "field",
+            Set.of("field_characters"),
+            "danc",
+            "<b>danc</b>e with star",
+            "<b>d</b><b>a</b><b>n</b><b>c</b>e with star");
+
+        // field is highlighted based on the matches from the "field_tripples"
+        maskedFieldsTestCase(
+            analyzer,
+            searcher,
+            "field",
+            Set.of("field_tripples"),
+            "danc",
+            "<b>dan</b>ce with star",
+            "<b>dan</b>ce with star");
+
+        // field is highlighted based on the matches from the "field_characters" and
+        // "field_tripples"
+        maskedFieldsTestCase(
+            analyzer,
+            searcher,
+            "field",
+            Set.of("field_tripples", "field_characters"),
+            "danc",
+            "<b>danc</b>e with star",
+            "<b>dan</b><b>c</b>e with star");
+      }
+    }
+  }
+
+  private static void maskedFieldsTestCase(
+      Analyzer analyzer,
+      IndexSearcher searcher,
+      String field,
+      Set<String> maskedFields,
+      String queryText,
+      String expectedSnippetWithWeightMatches,
+      String expectedSnippetWithoutWeightMatches)
+      throws IOException {
+    QueryBuilder queryBuilder = new QueryBuilder(analyzer);
+    BooleanQuery.Builder boolQueryBuilder = new BooleanQuery.Builder();
+    Query fieldPhraseQuery = queryBuilder.createPhraseQuery(field, queryText, 2);
+    boolQueryBuilder.add(fieldPhraseQuery, BooleanClause.Occur.SHOULD);
+    for (String maskedField : maskedFields) {
+      fieldPhraseQuery = queryBuilder.createPhraseQuery(maskedField, queryText, 2);
+      boolQueryBuilder.add(fieldPhraseQuery, BooleanClause.Occur.SHOULD);
+    }
+    Query query = boolQueryBuilder.build();
+    TopDocs topDocs = searcher.search(query, 10);
+    assertEquals(1, topDocs.totalHits.value);
+
+    Function<String, Set<String>> maskedFieldsFunc =
+        fieldName -> fieldName.equals(field) ? maskedFields : Collections.emptySet();
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder(searcher, analyzer).withMaskedFieldsFunc(maskedFieldsFunc);
+    UnifiedHighlighter highlighter =
+        randomUnifiedHighlighter(
+            uhBuilder, EnumSet.of(HighlightFlag.PHRASES), random().nextBoolean());
+    String[] snippets = highlighter.highlight(field, query, topDocs, 10);
+    String expectedSnippet =
+        highlighter.getFlags(field).contains(HighlightFlag.WEIGHT_MATCHES)
+            ? expectedSnippetWithWeightMatches
+            : expectedSnippetWithoutWeightMatches;
+    assertEquals(1, snippets.length);
+    assertEquals(expectedSnippet, snippets[0]);
   }
 
   public void testMatchesSlopBug() throws IOException {

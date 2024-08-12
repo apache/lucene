@@ -25,6 +25,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial.util.ShapeValuesPredicate;
@@ -96,10 +97,8 @@ public class CompositeVerifyQuery extends Query {
             searcher, ScoreMode.COMPLETE_NO_SCORES, boost); // scores aren't unsupported
 
     return new ConstantScoreWeight(this, boost) {
-
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final Scorer indexQueryScorer = indexQueryWeight.scorer(context);
         if (indexQueryScorer == null) {
           return null;
@@ -107,7 +106,8 @@ public class CompositeVerifyQuery extends Query {
 
         final TwoPhaseIterator predFuncValues =
             predicateValueSource.iterator(context, indexQueryScorer.iterator());
-        return new ConstantScoreScorer(this, score(), scoreMode, predFuncValues);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, predFuncValues);
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

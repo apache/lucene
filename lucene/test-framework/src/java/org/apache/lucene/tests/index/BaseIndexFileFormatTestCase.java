@@ -101,7 +101,7 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
 /** Common tests to all index formats. */
-abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
+public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
   private static final IndexWriterAccess INDEX_WRITER_ACCESS = TestSecrets.getIndexWriterAccess();
 
@@ -357,6 +357,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             proto.hasPayloads(),
             proto.getIndexOptions(),
             proto.getDocValuesType(),
+            proto.hasDocValuesSkipIndex(),
             proto.getDocValuesGen(),
             new HashMap<>(),
             proto.getPointDimensionCount(),

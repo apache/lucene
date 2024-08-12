@@ -117,7 +117,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
-  RandomAccessVectorValues<float[]> circularVectorValues(int nDoc) {
+  CircularFloatVectorValues circularVectorValues(int nDoc) {
     return new CircularFloatVectorValues(nDoc);
   }
 
@@ -129,7 +129,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   public void testSearchWithSkewedAcceptOrds() throws IOException {
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues.Floats vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());

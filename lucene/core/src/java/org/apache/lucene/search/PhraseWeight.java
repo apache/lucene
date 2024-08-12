@@ -60,12 +60,13 @@ public abstract class PhraseWeight extends Weight {
       LeafReaderContext context, SimScorer scorer, boolean exposeOffsets) throws IOException;
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
+  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
     PhraseMatcher matcher = getPhraseMatcher(context, stats, false);
     if (matcher == null) return null;
     LeafSimScorer simScorer =
         new LeafSimScorer(stats, context.reader(), field, scoreMode.needsScores());
-    return new PhraseScorer(this, matcher, scoreMode, simScorer);
+    final var scorer = new PhraseScorer(matcher, scoreMode, simScorer);
+    return new DefaultScorerSupplier(scorer);
   }
 
   @Override

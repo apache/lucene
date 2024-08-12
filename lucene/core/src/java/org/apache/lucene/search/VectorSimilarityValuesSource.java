@@ -33,8 +33,26 @@ abstract class VectorSimilarityValuesSource extends DoubleValuesSource {
   }
 
   @Override
-  public abstract DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
-      throws IOException;
+  public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+    VectorScorer scorer = getScorer(ctx);
+    if (scorer == null) {
+      return DoubleValues.EMPTY;
+    }
+    DocIdSetIterator iterator = scorer.iterator();
+    return new DoubleValues() {
+      @Override
+      public double doubleValue() throws IOException {
+        return scorer.score();
+      }
+
+      @Override
+      public boolean advanceExact(int doc) throws IOException {
+        return doc >= iterator.docID() && (iterator.docID() == doc || iterator.advance(doc) == doc);
+      }
+    };
+  }
+
+  protected abstract VectorScorer getScorer(LeafReaderContext ctx) throws IOException;
 
   @Override
   public boolean needsScores() {

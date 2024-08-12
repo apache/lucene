@@ -288,6 +288,24 @@ public class TestDocValuesQueries extends LuceneTestCase {
     dir.close();
   }
 
+  public void testSlowRangeQueryRewrite() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    IndexReader reader = iw.getReader();
+    iw.close();
+    IndexSearcher searcher = newSearcher(reader);
+
+    QueryUtils.checkEqual(
+        NumericDocValuesField.newSlowRangeQuery("foo", 10, 1).rewrite(searcher),
+        new MatchNoDocsQuery());
+    QueryUtils.checkEqual(
+        NumericDocValuesField.newSlowRangeQuery("foo", Long.MIN_VALUE, Long.MAX_VALUE)
+            .rewrite(searcher),
+        new FieldExistsQuery("foo"));
+    reader.close();
+    dir.close();
+  }
+
   public void testSortedNumericNPE() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);

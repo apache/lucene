@@ -26,6 +26,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRef;
@@ -524,7 +526,7 @@ public final class Util {
     // System.out.println("toDot: startArc: " + startArc);
 
     // A list of states on the same level (for ranking).
-    final List<Integer> sameLevelStates = new ArrayList<>();
+    final IntArrayList sameLevelStates = new IntArrayList();
 
     // A bitset of already seen states (target offset).
     final BitSet seen = new BitSet();
@@ -692,8 +694,8 @@ public final class Util {
       // Emit state ranking information.
       if (sameRank && sameLevelStates.size() > 1) {
         out.write("  {rank=same; ");
-        for (int state : sameLevelStates) {
-          out.write(state + "; ");
+        for (IntCursor state : sameLevelStates) {
+          out.write(state.value + "; ");
         }
         out.write(" }\n");
       }

@@ -25,4 +25,9 @@ public class TestLucene90FieldInfosFormat extends BaseFieldInfoFormatTestCase {
   protected Codec getCodec() {
     return TestUtil.getDefaultCodec();
   }
+
+  @Override
+  protected boolean supportDocValuesSkipIndex() {
+    return false;
+  }
 }

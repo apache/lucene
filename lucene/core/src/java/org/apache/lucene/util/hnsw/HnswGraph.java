@@ -21,11 +21,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 
 /**
  * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
@@ -222,10 +223,10 @@ public abstract class HnswGraph {
 
   /** Nodes iterator based on set representation of nodes. */
   public static class CollectionNodesIterator extends NodesIterator {
-    Iterator<Integer> nodes;
+    Iterator<IntCursor> nodes;
 
     /** Constructor for iterator based on collection representing nodes */
-    public CollectionNodesIterator(Collection<Integer> nodes) {
+    public CollectionNodesIterator(IntArrayList nodes) {
       super(nodes.size());
       this.nodes = nodes.iterator();
     }
@@ -249,7 +250,7 @@ public abstract class HnswGraph {
       if (hasNext() == false) {
         throw new NoSuchElementException();
       }
-      return nodes.next();
+      return nodes.next().value;
     }
 
     @Override

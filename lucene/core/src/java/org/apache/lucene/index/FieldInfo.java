@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,13 +28,16 @@ import java.util.Objects;
  * threads accessing this object.
  */
 public final class FieldInfo {
+
   /** Field's name */
   public final String name;
 
   /** Internal field number */
   public final int number;
 
-  private DocValuesType docValuesType;
+  private DocValuesType docValuesType = DocValuesType.NONE;
+
+  private final boolean docValuesSkipIndex;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -42,7 +47,7 @@ public final class FieldInfo {
   private final IndexOptions indexOptions;
   private boolean storePayloads; // whether this field stores payloads together with term positions
 
-  private final Map<String, String> attributes;
+  private Map<String, String> attributes;
 
   private long dvGen;
 
@@ -78,6 +83,7 @@ public final class FieldInfo {
       boolean storePayloads,
       IndexOptions indexOptions,
       DocValuesType docValues,
+      boolean hasDocValuesSkipIndex,
       long dvGen,
       Map<String, String> attributes,
       int pointDimensionCount,
@@ -93,6 +99,7 @@ public final class FieldInfo {
     this.docValuesType =
         Objects.requireNonNull(
             docValues, "DocValuesType must not be null (field: \"" + name + "\")");
+    this.docValuesSkipIndex = hasDocValuesSkipIndex;
     this.indexOptions =
         Objects.requireNonNull(
             indexOptions, "IndexOptions must not be null (field: \"" + name + "\")");
@@ -149,6 +156,13 @@ public final class FieldInfo {
 
     if (docValuesType == null) {
       throw new IllegalArgumentException("DocValuesType must not be null (field: '" + name + "')");
+    }
+    if (docValuesType.supportsSkipIndex == false && docValuesSkipIndex) {
+      throw new IllegalArgumentException(
+          "field '"
+              + name
+              + "' cannot have docValuesSkipIndex set to true with doc values type "
+              + docValuesType);
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
       throw new IllegalArgumentException(
@@ -233,6 +247,7 @@ public final class FieldInfo {
       verifySameStoreTermVectors(fieldName, this.storeTermVector, o.storeTermVector);
     }
     verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType);
+    verifySameDocValuesSkipIndex(fieldName, this.docValuesSkipIndex, o.docValuesSkipIndex);
     verifySamePointsOptions(
         fieldName,
         this.pointDimensionCount,
@@ -284,6 +299,24 @@ public final class FieldInfo {
               + docValuesType1
               + " to inconsistent doc values type="
               + docValuesType2);
+    }
+  }
+
+  /**
+   * Verify that the provided docValues type are the same
+   *
+   * @throws IllegalArgumentException if they are not the same
+   */
+  static void verifySameDocValuesSkipIndex(
+      String fieldName, boolean hasDocValuesSkipIndex1, boolean hasDocValuesSkipIndex2) {
+    if (hasDocValuesSkipIndex1 != hasDocValuesSkipIndex2) {
+      throw new IllegalArgumentException(
+          "cannot change field \""
+              + fieldName
+              + "\" from docValuesSkipIndex="
+              + hasDocValuesSkipIndex1
+              + " to inconsistent docValuesSkipIndex="
+              + hasDocValuesSkipIndex2);
     }
   }
 
@@ -555,6 +588,11 @@ public final class FieldInfo {
     return docValuesType;
   }
 
+  /** Returns true if, and only if, this field has a skip index. */
+  public boolean hasDocValuesSkipIndex() {
+    return docValuesSkipIndex;
+  }
+
   /** Sets the docValues generation of this field. */
   void setDocValuesGen(long dvGen) {
     this.dvGen = dvGen;
@@ -613,7 +651,7 @@ public final class FieldInfo {
   }
 
   /** Get a codec attribute value, or null if it does not exist */
-  public String getAttribute(String key) {
+  public synchronized String getAttribute(String key) {
     return attributes.get(key);
   }
 
@@ -628,12 +666,17 @@ public final class FieldInfo {
    * If the value of the attributes for a same field is changed between the documents, the behaviour
    * after merge is undefined.
    */
-  public String putAttribute(String key, String value) {
-    return attributes.put(key, value);
+  public synchronized String putAttribute(String key, String value) {
+    HashMap<String, String> newMap = new HashMap<>(attributes);
+    String oldValue = newMap.put(key, value);
+    // This needs to be thread-safe as multiple threads may be updating (different) attributes
+    // concurrently due to concurrent merging.
+    attributes = Collections.unmodifiableMap(newMap);
+    return oldValue;
   }
 
   /** Returns internal codec attributes map. */
-  public Map<String, String> attributes() {
+  public synchronized Map<String, String> attributes() {
     return attributes;
   }
 

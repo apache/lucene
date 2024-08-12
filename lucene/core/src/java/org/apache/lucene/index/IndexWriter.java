@@ -58,6 +58,8 @@ import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.MergePolicy.MergeReader;
 import org.apache.lucene.index.Sorter.DocMap;
+import org.apache.lucene.internal.hppc.LongObjectHashMap;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -153,9 +155,9 @@ import org.apache.lucene.util.Version;
  * and it decides when and how to run the merges. The default is {@link ConcurrentMergeScheduler}.
  * <a id="OOME"></a>
  *
- * <p><b>NOTE</b>: if you hit a VirtualMachineError, or disaster strikes during a checkpoint then
- * IndexWriter will close itself. This is a defensive measure in case any internal state (buffered
- * documents, deletions, reference counts) were corrupted. Any subsequent calls will throw an
+ * <p><b>NOTE</b>: if you hit an Error, or disaster strikes during a checkpoint then IndexWriter
+ * will close itself. This is a defensive measure in case any internal state (buffered documents,
+ * deletions, reference counts) were corrupted. Any subsequent calls will throw an
  * AlreadyClosedException. <a id="thread-safety"></a>
  *
  * <p><b>NOTE</b>: {@link IndexWriter} instances are completely thread safe, meaning multiple
@@ -704,7 +706,7 @@ public class IndexWriter
         infoStream.message("IW", "getReader took " + (System.currentTimeMillis() - tStart) + " ms");
       }
       success2 = true;
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "getReader");
       throw tragedy;
     } finally {
@@ -1122,6 +1124,7 @@ public class IndexWriter
       globalFieldNumberMap = getFieldNumberMap();
       if (create == false
           && conf.getParentField() != null
+          && globalFieldNumberMap.getFieldNames().isEmpty() == false
           && globalFieldNumberMap.getFieldNames().contains(conf.getParentField()) == false) {
         throw new IllegalArgumentException(
             "can't add a parent field to an already existing index without a parent field");
@@ -1549,7 +1552,7 @@ public class IndexWriter
       final long seqNo = maybeProcessEvents(docWriter.updateDocuments(docs, delNode));
       success = true;
       return seqNo;
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "updateDocuments");
       throw tragedy;
     } finally {
@@ -1786,7 +1789,7 @@ public class IndexWriter
     ensureOpen();
     try {
       return maybeProcessEvents(docWriter.deleteTerms(terms));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "deleteDocuments(Term..)");
       throw tragedy;
     }
@@ -1813,7 +1816,7 @@ public class IndexWriter
 
     try {
       return maybeProcessEvents(docWriter.deleteQueries(queries));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "deleteDocuments(Query..)");
       throw tragedy;
     }
@@ -1892,7 +1895,7 @@ public class IndexWriter
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new NumericDocValuesUpdate(term, field, value)));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "updateNumericDocValue");
       throw tragedy;
     }
@@ -1922,7 +1925,7 @@ public class IndexWriter
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value)));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "updateBinaryDocValue");
       throw tragedy;
     }
@@ -1944,7 +1947,7 @@ public class IndexWriter
     DocValuesUpdate[] dvUpdates = buildDocValuesUpdate(term, updates);
     try {
       return maybeProcessEvents(docWriter.updateDocValues(dvUpdates));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "updateDocValues");
       throw tragedy;
     }
@@ -2577,7 +2580,7 @@ public class IndexWriter
       } catch (Throwable t) {
         throwable.addSuppressed(t);
       } finally {
-        if (throwable instanceof VirtualMachineError) {
+        if (throwable instanceof Error) {
           try {
             tragicEvent(throwable, "rollbackInternal");
           } catch (Throwable t1) {
@@ -2678,7 +2681,7 @@ public class IndexWriter
           }
         }
       }
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "deleteAll");
       throw tragedy;
     }
@@ -3098,7 +3101,7 @@ public class IndexWriter
 
       successTop = true;
 
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "addIndexes(Directory...)");
       throw tragedy;
     } finally {
@@ -3270,7 +3273,7 @@ public class IndexWriter
         throw new RuntimeException(
             "failed to successfully merge all provided readers in addIndexes(CodecReader...)");
       }
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "addIndexes(CodecReader...)");
       throw tragedy;
     }
@@ -3623,7 +3626,7 @@ public class IndexWriter
         return true; // we wrote a segment
       }
       return false;
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "flushNextBuffer");
       throw tragedy;
     } finally {
@@ -3739,7 +3742,7 @@ public class IndexWriter
             doAfterFlush();
           }
         }
-      } catch (VirtualMachineError tragedy) {
+      } catch (Error tragedy) {
         tragicEvent(tragedy, "prepareCommit");
         throw tragedy;
       } finally {
@@ -4267,13 +4270,7 @@ public class IndexWriter
       synchronized (fullFlushLock) {
         boolean flushSuccess = false;
         try {
-          long seqNo = docWriter.flushAllThreads();
-          if (seqNo < 0) {
-            seqNo = -seqNo;
-            anyChanges = true;
-          } else {
-            anyChanges = false;
-          }
+          anyChanges = (docWriter.flushAllThreads() < 0);
           if (!anyChanges) {
             // flushCount is incremented in flushAllThreads
             flushCount.incrementAndGet();
@@ -4299,7 +4296,7 @@ public class IndexWriter
         success = true;
         return anyChanges;
       }
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "doFlush");
       throw tragedy;
     } finally {
@@ -4378,7 +4375,7 @@ public class IndexWriter
     final ReadersAndUpdates mergedDeletesAndUpdates = getPooledInstance(merge.info, true);
     int numDeletesBefore = mergedDeletesAndUpdates.getDelCount();
     // field -> delGen -> dv field updates
-    Map<String, Map<Long, DocValuesFieldUpdates>> mappedDVUpdates = new HashMap<>();
+    Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates = new HashMap<>();
 
     boolean anyDVUpdates = false;
 
@@ -4411,9 +4408,9 @@ public class IndexWriter
 
         String field = ent.getKey();
 
-        Map<Long, DocValuesFieldUpdates> mappedField = mappedDVUpdates.get(field);
+        LongObjectHashMap<DocValuesFieldUpdates> mappedField = mappedDVUpdates.get(field);
         if (mappedField == null) {
-          mappedField = new HashMap<>();
+          mappedField = new LongObjectHashMap<>();
           mappedDVUpdates.put(field, mappedField);
         }
 
@@ -4469,10 +4466,10 @@ public class IndexWriter
 
     if (anyDVUpdates) {
       // Persist the merged DV updates onto the RAU for the merged segment:
-      for (Map<Long, DocValuesFieldUpdates> d : mappedDVUpdates.values()) {
-        for (DocValuesFieldUpdates updates : d.values()) {
-          updates.finish();
-          mergedDeletesAndUpdates.addDVUpdate(updates);
+      for (LongObjectHashMap<DocValuesFieldUpdates> d : mappedDVUpdates.values()) {
+        for (ObjectCursor<DocValuesFieldUpdates> updates : d.values()) {
+          updates.value.finish();
+          mergedDeletesAndUpdates.addDVUpdate(updates.value);
         }
       }
     }
@@ -5693,7 +5690,7 @@ public class IndexWriter
           segmentInfos.updateGeneration(toSync);
         }
       }
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "startCommit");
       throw tragedy;
     }

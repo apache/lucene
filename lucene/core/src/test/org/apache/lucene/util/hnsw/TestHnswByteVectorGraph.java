@@ -132,7 +132,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  RandomAccessVectorValues<byte[]> circularVectorValues(int nDoc) {
+  CircularByteVectorValues circularVectorValues(int nDoc) {
     return new CircularByteVectorValues(nDoc);
   }
 

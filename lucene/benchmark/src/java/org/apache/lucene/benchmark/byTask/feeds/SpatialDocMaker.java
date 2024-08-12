@@ -17,13 +17,13 @@
 package org.apache.lucene.benchmark.byTask.feeds;
 
 import java.util.AbstractMap;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.spatial.SpatialStrategy;
 import org.apache.lucene.spatial.composite.CompositeSpatialStrategy;
 import org.apache.lucene.spatial.prefix.RecursivePrefixTreeStrategy;
@@ -50,7 +50,7 @@ public class SpatialDocMaker extends DocMaker {
   public static final String SPATIAL_FIELD = "spatial";
 
   // cache spatialStrategy by round number
-  private static Map<Integer, SpatialStrategy> spatialStrategyCache = new HashMap<>();
+  private static IntObjectHashMap<SpatialStrategy> spatialStrategyCache = new IntObjectHashMap<>();
 
   private SpatialStrategy strategy;
   private ShapeConverter shapeConverter;

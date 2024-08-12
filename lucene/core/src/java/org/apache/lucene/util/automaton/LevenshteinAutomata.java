@@ -16,9 +16,8 @@
  */
 package org.apache.lucene.util.automaton;
 
-import java.util.Iterator;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Arrays;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.UnicodeUtil;
 
 /**
@@ -68,7 +67,7 @@ public class LevenshteinAutomata {
     this.alphaMax = alphaMax;
 
     // calculate the alphabet
-    SortedSet<Integer> set = new TreeSet<>();
+    IntHashSet set = new IntHashSet();
     for (int i = 0; i < word.length; i++) {
       int v = word[i];
       if (v > alphaMax) {
@@ -76,9 +75,8 @@ public class LevenshteinAutomata {
       }
       set.add(v);
     }
-    alphabet = new int[set.size()];
-    Iterator<Integer> iterator = set.iterator();
-    for (int i = 0; i < alphabet.length; i++) alphabet[i] = iterator.next();
+    alphabet = set.toArray();
+    Arrays.sort(alphabet);
 
     rangeLower = new int[alphabet.length + 2];
     rangeUpper = new int[alphabet.length + 2];

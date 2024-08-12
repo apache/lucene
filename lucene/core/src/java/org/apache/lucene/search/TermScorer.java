@@ -34,8 +34,7 @@ public final class TermScorer extends Scorer {
   private final MaxScoreCache maxScoreCache;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
-  public TermScorer(Weight weight, PostingsEnum postingsEnum, LeafSimScorer docScorer) {
-    super(weight);
+  public TermScorer(PostingsEnum postingsEnum, LeafSimScorer docScorer) {
     iterator = this.postingsEnum = postingsEnum;
     ImpactsEnum impactsEnum = new SlowImpactsEnum(postingsEnum);
     maxScoreCache = new MaxScoreCache(impactsEnum, docScorer.getSimScorer());
@@ -52,7 +51,6 @@ public final class TermScorer extends Scorer {
       ImpactsEnum impactsEnum,
       LeafSimScorer docScorer,
       boolean topLevelScoringClause) {
-    super(weight);
     postingsEnum = impactsEnum;
     maxScoreCache = new MaxScoreCache(impactsEnum, docScorer.getSimScorer());
     if (topLevelScoringClause) {
@@ -106,11 +104,5 @@ public final class TermScorer extends Scorer {
     if (impactsDisi != null) {
       impactsDisi.setMinCompetitiveScore(minScore);
     }
-  }
-
-  /** Returns a string representation of this <code>TermScorer</code>. */
-  @Override
-  public String toString() {
-    return "scorer(" + weight + ")[" + super.toString() + "]";
   }
 }

@@ -30,6 +30,8 @@ import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
+import org.apache.lucene.util.packed.PackedInts;
+import org.apache.lucene.util.packed.PackedLongValues;
 
 public class TestOrdinalMap extends LuceneTestCase {
 
@@ -52,7 +54,9 @@ public class TestOrdinalMap extends LuceneTestCase {
             long shallowSize,
             java.util.Map<Field, Object> fieldValues,
             java.util.Collection<Object> queue) {
-          if (o == LongValues.ZEROES || o == LongValues.IDENTITY) {
+          if (o == LongValues.ZEROES
+              || o == LongValues.IDENTITY
+              || o == PackedInts.NullReader.forCount(PackedLongValues.DEFAULT_PAGE_SIZE)) {
             return 0L;
           }
           if (o instanceof OrdinalMap) {

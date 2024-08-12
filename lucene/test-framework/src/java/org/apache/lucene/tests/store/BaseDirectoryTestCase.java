@@ -58,6 +58,7 @@ import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Assert;
@@ -1464,6 +1465,37 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testGroupVIntOverflow() throws IOException {
+    try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
+      final int size = 32;
+      final long[] values = new long[size];
+      final long[] restore = new long[size];
+      values[0] = 1L << 31; // values[0] = 2147483648 as long, but as int it is -2147483648
+
+      for (int i = 0; i < size; i++) {
+        if (random().nextBoolean()) {
+          values[i] = values[0];
+        }
+      }
+
+      // a smaller limit value cover default implementation of readGroupVInts
+      // and a bigger limit value cover the faster implementation.
+      final int limit = random().nextInt(1, size);
+      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
+      out.writeGroupVInts(values, limit);
+      out.close();
+      try (IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
+        in.readGroupVInts(restore, limit);
+        for (int i = 0; i < limit; i++) {
+          assertEquals(values[i], restore[i]);
+        }
+      }
+
+      values[0] = 0xFFFFFFFFL + 1;
+      assertThrows(ArithmeticException.class, () -> out.writeGroupVInts(values, 4));
+    }
+  }
+
   public void testGroupVInt() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
       // test fallback to default implementation of readGroupVInt
@@ -1511,5 +1543,62 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     vIntIn.close();
     dir.deleteFile("group-varint");
     dir.deleteFile("vint");
+  }
+
+  public void testPrefetch() throws IOException {
+    doTestPrefetch(0);
+  }
+
+  public void testPrefetchOnSlice() throws IOException {
+    doTestPrefetch(TestUtil.nextInt(random(), 1, 1024));
+  }
+
+  private void doTestPrefetch(int startOffset) throws IOException {
+    try (Directory dir = getDirectory(createTempDir())) {
+      final int totalLength = startOffset + TestUtil.nextInt(random(), 16384, 65536);
+      byte[] arr = new byte[totalLength];
+      random().nextBytes(arr);
+      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
+        out.writeBytes(arr, arr.length);
+      }
+      byte[] temp = new byte[2048];
+
+      try (IndexInput orig = dir.openInput("temp.bin", IOContext.DEFAULT)) {
+        IndexInput in;
+        if (startOffset == 0) {
+          in = orig.clone();
+        } else {
+          in = orig.slice("slice", startOffset, totalLength - startOffset);
+        }
+        for (int i = 0; i < 10_000; ++i) {
+          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
+          if (random().nextBoolean()) {
+            final long prefetchLength = TestUtil.nextLong(random(), 1, in.length() - offset);
+            in.prefetch(offset, prefetchLength);
+          }
+          in.seek(offset);
+          assertEquals(offset, in.getFilePointer());
+          switch (random().nextInt(100)) {
+            case 0:
+              assertEquals(arr[startOffset + offset], in.readByte());
+              break;
+            case 1:
+              if (in.length() - offset >= Long.BYTES) {
+                assertEquals(
+                    (long) BitUtil.VH_LE_LONG.get(arr, startOffset + offset), in.readLong());
+              }
+              break;
+            default:
+              final int readLength =
+                  TestUtil.nextInt(random(), 1, (int) Math.min(temp.length, in.length() - offset));
+              in.readBytes(temp, 0, readLength);
+              assertArrayEquals(
+                  ArrayUtil.copyOfSubArray(
+                      arr, startOffset + offset, startOffset + offset + readLength),
+                  ArrayUtil.copyOfSubArray(temp, 0, readLength));
+          }
+        }
+      }
+    }
   }
 }

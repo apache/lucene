@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.StringTokenizer;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * Perf run configuration properties.
@@ -338,15 +339,15 @@ public class Config {
       return new int[] {Integer.parseInt(s)};
     }
 
-    ArrayList<Integer> a = new ArrayList<>();
+    IntArrayList a = new IntArrayList();
     StringTokenizer st = new StringTokenizer(s, ":");
     while (st.hasMoreTokens()) {
       String t = st.nextToken();
-      a.add(Integer.valueOf(t));
+      a.add(Integer.parseInt(t));
     }
     int[] res = new int[a.size()];
     for (int i = 0; i < a.size(); i++) {
-      res[i] = a.get(i).intValue();
+      res[i] = a.get(i);
     }
     return res;
   }

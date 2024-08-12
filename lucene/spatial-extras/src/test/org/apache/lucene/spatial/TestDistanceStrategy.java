@@ -108,7 +108,7 @@ public class TestDistanceStrategy extends StrategyTestCase {
 
   void checkDistValueSource(Point pt, float... distances) throws IOException {
     float multiplier = random().nextFloat() * 100f;
-    float[] dists2 = ArrayUtil.copyOfSubArray(distances, 0, distances.length);
+    float[] dists2 = ArrayUtil.copyArray(distances);
     for (int i = 0; i < dists2.length; i++) {
       dists2[i] *= multiplier;
     }

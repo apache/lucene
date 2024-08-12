@@ -29,7 +29,7 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  *
  * @lucene.experimental
  */
-public class Word2VecModel implements RandomAccessVectorValues<float[]> {
+public class Word2VecModel implements RandomAccessVectorValues.Floats {
 
   private final int dictionarySize;
   private final int vectorDimension;
@@ -88,7 +88,7 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
   }
 
   @Override
-  public RandomAccessVectorValues<float[]> copy() throws IOException {
+  public Word2VecModel copy() throws IOException {
     return new Word2VecModel(
         this.dictionarySize, this.vectorDimension, this.termsAndVectors, this.word2Vec);
   }

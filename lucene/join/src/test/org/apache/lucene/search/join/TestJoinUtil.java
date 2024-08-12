@@ -468,7 +468,7 @@ public class TestJoinUtil extends LuceneTestCase {
 
       final BitSet actualResult = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
       final TopScoreDocCollector topScoreDocCollector =
-          TopScoreDocCollector.create(10, Integer.MAX_VALUE);
+          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector();
       indexSearcher.search(
           joinQuery, MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector));
       assertBitSet(expectedResult, actualResult, indexSearcher);
@@ -579,24 +579,26 @@ public class TestJoinUtil extends LuceneTestCase {
           }
 
           @Override
-          public Scorer scorer(LeafReaderContext context) throws IOException {
+          public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
             Scorer fieldScorer = fieldWeight.scorer(context);
             if (fieldScorer == null) {
               return null;
             }
             NumericDocValues price = context.reader().getNumericDocValues(field);
-            return new FilterScorer(fieldScorer, this) {
-              @Override
-              public float score() throws IOException {
-                assertEquals(in.docID(), price.advance(in.docID()));
-                return (float) price.longValue();
-              }
+            final var scorer =
+                new FilterScorer(fieldScorer) {
+                  @Override
+                  public float score() throws IOException {
+                    assertEquals(in.docID(), price.advance(in.docID()));
+                    return (float) price.longValue();
+                  }
 
-              @Override
-              public float getMaxScore(int upTo) throws IOException {
-                return Float.POSITIVE_INFINITY;
-              }
-            };
+                  @Override
+                  public float getMaxScore(int upTo) throws IOException {
+                    return Float.POSITIVE_INFINITY;
+                  }
+                };
+            return new DefaultScorerSupplier(scorer);
           }
 
           @Override
@@ -1544,7 +1546,7 @@ public class TestJoinUtil extends LuceneTestCase {
         // be also testing TopDocsCollector...
         final BitSet actualResult = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
         final TopScoreDocCollector topScoreDocCollector =
-            TopScoreDocCollector.create(10, Integer.MAX_VALUE);
+            new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector();
         indexSearcher.search(
             joinQuery,
             MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector));

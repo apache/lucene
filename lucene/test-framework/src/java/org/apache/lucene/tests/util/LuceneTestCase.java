@@ -89,7 +89,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -102,6 +101,8 @@ import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -152,6 +153,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -1051,6 +1053,7 @@ public abstract class LuceneTestCase extends Assert {
   public static LogMergePolicy newLogMergePolicy(Random r) {
     LogMergePolicy logmp = r.nextBoolean() ? new LogDocMergePolicy() : new LogByteSizeMergePolicy();
     logmp.setCalibrateSizeByDeletes(r.nextBoolean());
+    logmp.setTargetSearchConcurrency(TestUtil.nextInt(random(), 1, 16));
     if (rarely(r)) {
       logmp.setMergeFactor(TestUtil.nextInt(r, 2, 9));
     } else {
@@ -1093,6 +1096,12 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       tmp.setSegmentsPerTier(TestUtil.nextInt(r, 10, 50));
     }
+    if (rarely(r)) {
+      tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 10, 50));
+    } else {
+      tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 2, 20));
+    }
+
     configureRandom(r, tmp);
     tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
     return tmp;
@@ -1104,14 +1113,14 @@ public abstract class LuceneTestCase extends Assert {
     return logmp;
   }
 
-  public static MergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
+  public static LogMergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
     LogMergePolicy logmp = newLogMergePolicy();
     logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
     logmp.setMergeFactor(mergeFactor);
     return logmp;
   }
 
-  public static MergePolicy newLogMergePolicy(int mergeFactor) {
+  public static LogMergePolicy newLogMergePolicy(int mergeFactor) {
     LogMergePolicy logmp = newLogMergePolicy();
     logmp.setMergeFactor(mergeFactor);
     return logmp;
@@ -1778,6 +1787,9 @@ public abstract class LuceneTestCase extends Assert {
 
   /** TODO: javadoc */
   public static IOContext newIOContext(Random random, IOContext oldContext) {
+    if (oldContext == IOContext.READONCE) {
+      return oldContext; // don't mess with the READONCE singleton
+    }
     final int randomNumDocs = random.nextInt(4192);
     final int size = random.nextInt(512) * randomNumDocs;
     if (oldContext.flushInfo() != null) {
@@ -1796,19 +1808,16 @@ public abstract class LuceneTestCase extends Assert {
               random.nextBoolean(),
               TestUtil.nextInt(random, 1, 100)));
     } else {
-      // Make a totally random IOContext:
+      // Make a totally random IOContext, except READONCE which has semantic implications
       final IOContext context;
-      switch (random.nextInt(4)) {
+      switch (random.nextInt(3)) {
         case 0:
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = IOContext.READONCE;
-          break;
-        case 2:
           context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
           break;
-        case 3:
+        case 2:
           context = new IOContext(new FlushInfo(randomNumDocs, size));
           break;
         default:
@@ -2987,7 +2996,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static boolean slowFileExists(Directory dir, String fileName) throws IOException {
     try {
-      dir.openInput(fileName, IOContext.DEFAULT).close();
+      dir.openInput(fileName, IOContext.READONCE).close();
       return true;
     } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
       return false;
@@ -3213,12 +3222,26 @@ public abstract class LuceneTestCase extends Assert {
     return it;
   }
 
-  protected KnnVectorsFormat randomVectorFormat() {
-    ServiceLoader<KnnVectorsFormat> formats = java.util.ServiceLoader.load(KnnVectorsFormat.class);
-    List<KnnVectorsFormat> availableFormats = new ArrayList<>();
-    for (KnnVectorsFormat f : formats) {
-      availableFormats.add(f);
+  private static boolean supportsVectorEncoding(
+      KnnVectorsFormat format, VectorEncoding vectorEncoding) {
+    if (format instanceof HnswBitVectorsFormat) {
+      // special case, this only supports BYTE
+      return vectorEncoding == VectorEncoding.BYTE;
     }
+    return true;
+  }
+
+  private static boolean supportsVectorSearch(KnnVectorsFormat format) {
+    return (format instanceof FlatVectorsFormat) == false;
+  }
+
+  protected static KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
+    List<KnnVectorsFormat> availableFormats =
+        KnnVectorsFormat.availableKnnVectorsFormats().stream()
+            .map(KnnVectorsFormat::forName)
+            .filter(format -> supportsVectorEncoding(format, vectorEncoding))
+            .filter(format -> supportsVectorSearch(format))
+            .toList();
     return RandomPicks.randomFrom(random(), availableFormats);
   }
 }

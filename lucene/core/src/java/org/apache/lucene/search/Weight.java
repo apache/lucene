@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -109,8 +110,10 @@ public abstract class Weight implements SegmentCacheable {
   }
 
   /**
-   * Returns a {@link Scorer} which can iterate in order over all matching documents and assign them
-   * a score.
+   * Optional method that delegates to scorerSupplier.
+   *
+   * <p>Returns a {@link Scorer} which can iterate in order over all matching documents and assign
+   * them a score.
    *
    * <p><b>NOTE:</b> null can be returned if no documents will be scored by this query.
    *
@@ -122,48 +125,44 @@ public abstract class Weight implements SegmentCacheable {
    * @return a {@link Scorer} which scores documents in/out-of order.
    * @throws IOException if there is a low-level I/O error
    */
-  public abstract Scorer scorer(LeafReaderContext context) throws IOException;
-
-  /**
-   * Optional method. Get a {@link ScorerSupplier}, which allows to know the cost of the {@link
-   * Scorer} before building it. The default implementation calls {@link #scorer} and builds a
-   * {@link ScorerSupplier} wrapper around it.
-   *
-   * @see #scorer
-   */
-  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-    final Scorer scorer = scorer(context);
-    if (scorer == null) {
+  public final Scorer scorer(LeafReaderContext context) throws IOException {
+    ScorerSupplier scorerSupplier = scorerSupplier(context);
+    if (scorerSupplier == null) {
       return null;
     }
-    return new ScorerSupplier() {
-      @Override
-      public Scorer get(long leadCost) {
-        return scorer;
-      }
-
-      @Override
-      public long cost() {
-        return scorer.iterator().cost();
-      }
-    };
+    return scorerSupplier.get(Long.MAX_VALUE);
   }
 
   /**
-   * Optional method, to return a {@link BulkScorer} to score the query and send hits to a {@link
-   * Collector}. Only queries that have a different top-level approach need to override this; the
-   * default implementation pulls a normal {@link Scorer} and iterates and collects the resulting
-   * hits which are not marked as deleted.
+   * Get a {@link ScorerSupplier}, which allows knowing the cost of the {@link Scorer} before
+   * building it.
    *
-   * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
-   *     {@link Scorer}.
-   * @return a {@link BulkScorer} which scores documents and passes them to a collector. Like {@link
-   *     #scorer(LeafReaderContext)}, this method can return null if this query matches no
-   *     documents.
-   * @throws IOException if there is a low-level I/O error
+   * <p><strong>Note:</strong> It must return null if the scorer is null.
+   *
+   * @param context the leaf reader context
+   * @return a {@link ScorerSupplier} providing the scorer, or null if scorer is null
+   * @throws IOException if an IOException occurs
+   * @see Scorer
+   * @see DefaultScorerSupplier
    */
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+  public abstract ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException;
 
+  /**
+   * Helper method that delegates to {@link #scorerSupplier(LeafReaderContext)}. It is implemented
+   * as
+   *
+   * <pre class="prettyprint">
+   * ScorerSupplier scorerSupplier = scorerSupplier(context);
+   * if (scorerSupplier == null) {
+   *   // No docs match
+   *   return null;
+   * }
+   *
+   * scorerSupplier.setTopLevelScoringClause();
+   * return scorerSupplier.bulkScorer();
+   * </pre>
+   */
+  public final BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
     ScorerSupplier scorerSupplier = scorerSupplier(context);
     if (scorerSupplier == null) {
       // No docs match
@@ -171,8 +170,7 @@ public abstract class Weight implements SegmentCacheable {
     }
 
     scorerSupplier.setTopLevelScoringClause();
-
-    return new DefaultBulkScorer(scorerSupplier.get(Long.MAX_VALUE));
+    return scorerSupplier.bulkScorer();
   }
 
   /**
@@ -194,6 +192,29 @@ public abstract class Weight implements SegmentCacheable {
    */
   public int count(LeafReaderContext context) throws IOException {
     return -1;
+  }
+
+  /**
+   * A wrap for default scorer supplier.
+   *
+   * @lucene.internal
+   */
+  protected static final class DefaultScorerSupplier extends ScorerSupplier {
+    private final Scorer scorer;
+
+    public DefaultScorerSupplier(Scorer scorer) {
+      this.scorer = Objects.requireNonNull(scorer, "Scorer must not be null");
+    }
+
+    @Override
+    public Scorer get(long leadCost) throws IOException {
+      return scorer;
+    }
+
+    @Override
+    public long cost() {
+      return scorer.iterator().cost();
+    }
   }
 
   /**

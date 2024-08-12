@@ -24,8 +24,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -43,11 +44,9 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -65,6 +64,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
+  private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
 
   Lucene95HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
@@ -229,7 +229,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return new FieldEntry(input, vectorEncoding, info.getVectorSimilarityFunction());
+    return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -251,6 +251,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               + VectorEncoding.FLOAT32);
     }
     return OffHeapFloatVectorValues.load(
+        fieldEntry.similarityFunction,
+        defaultFlatVectorScorer,
         fieldEntry.ordToDocVectorValues,
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
@@ -272,6 +274,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               + VectorEncoding.BYTE);
     }
     return OffHeapByteVectorValues.load(
+        fieldEntry.similarityFunction,
+        defaultFlatVectorScorer,
         fieldEntry.ordToDocVectorValues,
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
@@ -293,6 +297,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
 
     OffHeapFloatVectorValues vectorValues =
         OffHeapFloatVectorValues.load(
+            fieldEntry.similarityFunction,
+            defaultFlatVectorScorer,
             fieldEntry.ordToDocVectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,
@@ -300,7 +306,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             fieldEntry.vectorDataLength,
             vectorData);
     RandomVectorScorer scorer =
-        RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
+        defaultFlatVectorScorer.getRandomVectorScorer(
+            fieldEntry.similarityFunction, vectorValues, target);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
@@ -321,6 +328,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
 
     OffHeapByteVectorValues vectorValues =
         OffHeapByteVectorValues.load(
+            fieldEntry.similarityFunction,
+            defaultFlatVectorScorer,
             fieldEntry.ordToDocVectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,
@@ -328,7 +337,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             fieldEntry.vectorDataLength,
             vectorData);
     RandomVectorScorer scorer =
-        RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
+        defaultFlatVectorScorer.getRandomVectorScorer(
+            fieldEntry.similarityFunction, vectorValues, target);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
@@ -360,50 +370,46 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     IOUtils.close(vectorData, vectorIndex);
   }
 
-  static class FieldEntry implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
-    final VectorEncoding vectorEncoding;
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final long vectorIndexOffset;
-    final long vectorIndexLength;
-    final int M;
-    final int numLevels;
-    final int dimension;
-    final int size;
-    final int[][] nodesByLevel;
-    // for each level the start offsets in vectorIndex file from where to read neighbours
-    final DirectMonotonicReader.Meta offsetsMeta;
-    final long offsetsOffset;
-    final int offsetsBlockShift;
-    final long offsetsLength;
+  static record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding,
+      long vectorDataOffset,
+      long vectorDataLength,
+      long vectorIndexOffset,
+      long vectorIndexLength,
+      int M,
+      int numLevels,
+      int dimension,
+      int size,
+      int[][] nodesByLevel,
+      // for each level the start offsets in vectorIndex file from where to read neighbours
+      DirectMonotonicReader.Meta offsetsMeta,
+      long offsetsOffset,
+      int offsetsBlockShift,
+      long offsetsLength,
 
-    // Contains the configuration for reading sparse vectors and translating vector ordinals to
-    // docId
-    OrdToDocDISIReaderConfiguration ordToDocVectorValues;
+      // Contains the configuration for reading sparse vectors and translating vector ordinals to
+      // docId
+      OrdToDocDISIReaderConfiguration ordToDocVectorValues) {
 
-    FieldEntry(
+    static FieldEntry create(
         IndexInput input,
         VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
-      this.similarityFunction = similarityFunction;
-      this.vectorEncoding = vectorEncoding;
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
-      vectorIndexOffset = input.readVLong();
-      vectorIndexLength = input.readVLong();
-      dimension = input.readVInt();
-      size = input.readInt();
+      final var vectorDataOffset = input.readVLong();
+      final var vectorDataLength = input.readVLong();
+      final var vectorIndexOffset = input.readVLong();
+      final var vectorIndexLength = input.readVLong();
+      final var dimension = input.readVInt();
+      final var size = input.readInt();
 
-      ordToDocVectorValues = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      final var ordToDocVectorValues = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
 
       // read nodes by level
-      M = input.readVInt();
-      numLevels = input.readVInt();
-      nodesByLevel = new int[numLevels][];
+      final var M = input.readVInt();
+      final var numLevels = input.readVInt();
+      final var nodesByLevel = new int[numLevels][];
       long numberOfOffsets = 0;
       for (int level = 0; level < numLevels; level++) {
         if (level > 0) {
@@ -418,6 +424,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
           numberOfOffsets += size;
         }
       }
+      final long offsetsOffset;
+      final int offsetsBlockShift;
+      final DirectMonotonicReader.Meta offsetsMeta;
+      final long offsetsLength;
       if (numberOfOffsets > 0) {
         offsetsOffset = input.readLong();
         offsetsBlockShift = input.readVInt();
@@ -429,18 +439,23 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
         offsetsMeta = null;
         offsetsLength = 0;
       }
-    }
-
-    int size() {
-      return size;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE
-          + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(ordToDocVectorValues)
-          + RamUsageEstimator.sizeOf(offsetsMeta);
+      return new FieldEntry(
+          similarityFunction,
+          vectorEncoding,
+          vectorDataOffset,
+          vectorDataLength,
+          vectorIndexOffset,
+          vectorIndexLength,
+          M,
+          numLevels,
+          dimension,
+          size,
+          nodesByLevel,
+          offsetsMeta,
+          offsetsOffset,
+          offsetsBlockShift,
+          offsetsLength,
+          ordToDocVectorValues);
     }
   }
 

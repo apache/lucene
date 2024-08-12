@@ -21,7 +21,7 @@ apply plugin: 'java-library'
 description = 'Luke - Lucene Toolbox'
 
 ext {
-  standaloneDistDir = file("$buildDir/${archivesBaseName}-${project.version}")
+  standaloneDistDir = file("$buildDir/${project.base.archivesName.get()}-${project.version}")
 }
 
 dependencies {
@@ -72,7 +72,7 @@ tasks.withType(ProcessResources).configureEach { task ->
 task standaloneJar(type: Jar) {
   dependsOn classes
 
-  archiveFileName = "${archivesBaseName}-${project.version}-standalone.jar"
+  archiveFileName = "${project.base.archivesName.get()}-${project.version}-standalone.jar"
 
   from(sourceSets.main.output)
 
@@ -127,10 +127,10 @@ assemble.dependsOn standaloneAssemble
 task standalonePackage(type: Tar) {
   from standaloneAssemble
 
-  into "${archivesBaseName}-${project.version}/"
+  into "${project.base.archivesName.get()}-${project.version}/"
 
   compression = Compression.GZIP
-  archiveFileName = "${archivesBaseName}-${project.version}-standalone.tgz"
+  archiveFileName = "${project.base.archivesName.get()}-${project.version}-standalone.tgz"
 }
 
 // Utility to launch Luke (and fork it from the build).

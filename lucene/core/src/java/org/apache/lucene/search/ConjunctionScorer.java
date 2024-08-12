@@ -31,8 +31,7 @@ class ConjunctionScorer extends Scorer {
    * Create a new {@link ConjunctionScorer}, note that {@code scorers} must be a subset of {@code
    * required}.
    */
-  ConjunctionScorer(Weight weight, Collection<Scorer> required, Collection<Scorer> scorers) {
-    super(weight);
+  ConjunctionScorer(Collection<Scorer> required, Collection<Scorer> scorers) {
     assert required.containsAll(scorers);
     this.disi = ConjunctionUtils.intersectScorers(required);
     this.scorers = scorers.toArray(new Scorer[scorers.size()]);

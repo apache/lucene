@@ -67,4 +67,14 @@ public class TestLucene91HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   public void testSortedIndexBytes() throws Exception {
     // unimplemented
   }
+
+  @Override
+  public void testByteVectorScorerIteration() {
+    // unimplemented
+  }
+
+  @Override
+  public void testEmptyByteVectorData() {
+    // unimplemented
+  }
 }

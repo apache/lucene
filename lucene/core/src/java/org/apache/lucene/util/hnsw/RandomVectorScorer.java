@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 
 /** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
@@ -56,82 +55,16 @@ public interface RandomVectorScorer {
     return acceptDocs;
   }
 
-  /**
-   * Creates a default scorer for float vectors.
-   *
-   * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
-   * using it after calling this function. If you plan to use it again outside the returned {@link
-   * RandomVectorScorer}, think about passing a copied version ({@link
-   * RandomAccessVectorValues#copy}).
-   *
-   * @param vectors the underlying storage for vectors
-   * @param similarityFunction the similarity function to score vectors
-   * @param query the actual query
-   */
-  static RandomVectorScorer createFloats(
-      final RandomAccessVectorValues<float[]> vectors,
-      final VectorSimilarityFunction similarityFunction,
-      final float[] query) {
-    if (query.length != vectors.dimension()) {
-      throw new IllegalArgumentException(
-          "vector query dimension: "
-              + query.length
-              + " differs from field dimension: "
-              + vectors.dimension());
-    }
-    return new AbstractRandomVectorScorer<>(vectors) {
-      @Override
-      public float score(int node) throws IOException {
-        return similarityFunction.compare(query, vectors.vectorValue(node));
-      }
-    };
-  }
-
-  /**
-   * Creates a default scorer for byte vectors.
-   *
-   * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
-   * using it after calling this function. If you plan to use it again outside the returned {@link
-   * RandomVectorScorer}, think about passing a copied version ({@link
-   * RandomAccessVectorValues#copy}).
-   *
-   * @param vectors the underlying storage for vectors
-   * @param similarityFunction the similarity function to use to score vectors
-   * @param query the actual query
-   */
-  static RandomVectorScorer createBytes(
-      final RandomAccessVectorValues<byte[]> vectors,
-      final VectorSimilarityFunction similarityFunction,
-      final byte[] query) {
-    if (query.length != vectors.dimension()) {
-      throw new IllegalArgumentException(
-          "vector query dimension: "
-              + query.length
-              + " differs from field dimension: "
-              + vectors.dimension());
-    }
-    return new AbstractRandomVectorScorer<>(vectors) {
-      @Override
-      public float score(int node) throws IOException {
-        return similarityFunction.compare(query, vectors.vectorValue(node));
-      }
-    };
-  }
-
-  /**
-   * Creates a default scorer for random access vectors.
-   *
-   * @param <T> the type of the vector values
-   */
-  abstract class AbstractRandomVectorScorer<T> implements RandomVectorScorer {
-    private final RandomAccessVectorValues<T> values;
+  /** Creates a default scorer for random access vectors. */
+  abstract class AbstractRandomVectorScorer implements RandomVectorScorer {
+    private final RandomAccessVectorValues values;
 
     /**
      * Creates a new scorer for the given vector values.
      *
      * @param values the vector values
      */
-    public AbstractRandomVectorScorer(RandomAccessVectorValues<T> values) {
+    public AbstractRandomVectorScorer(RandomAccessVectorValues values) {
       this.values = values;
     }
 

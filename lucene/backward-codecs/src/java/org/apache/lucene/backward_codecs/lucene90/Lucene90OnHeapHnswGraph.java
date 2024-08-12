@@ -74,7 +74,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       float[] query,
       int topK,
       int numSeed,
-      RandomAccessVectorValues<float[]> vectors,
+      RandomAccessVectorValues.Floats vectors,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graphValues,
       Bits acceptOrds,

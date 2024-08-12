@@ -24,7 +24,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -41,7 +42,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -59,7 +59,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
 
-  public Lucene99FlatVectorsReader(SegmentReadState state) throws IOException {
+  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
+      throws IOException {
+    super(scorer);
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -152,59 +154,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta, info);
-      validateFieldEntry(info, fieldEntry);
+      FieldEntry fieldEntry = FieldEntry.create(meta, info);
       fields.put(info.name, fieldEntry);
     }
-  }
-
-  private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
-    int dimension = info.getVectorDimension();
-    if (dimension != fieldEntry.dimension) {
-      throw new IllegalStateException(
-          "Inconsistent vector dimension for field=\""
-              + info.name
-              + "\"; "
-              + dimension
-              + " != "
-              + fieldEntry.dimension);
-    }
-
-    int byteSize =
-        switch (info.getVectorEncoding()) {
-          case BYTE -> Byte.BYTES;
-          case FLOAT32 -> Float.BYTES;
-        };
-    long vectorBytes = Math.multiplyExact((long) dimension, byteSize);
-    long numBytes = Math.multiplyExact(vectorBytes, fieldEntry.size);
-    if (numBytes != fieldEntry.vectorDataLength) {
-      throw new IllegalStateException(
-          "Vector data length "
-              + fieldEntry.vectorDataLength
-              + " not matching size="
-              + fieldEntry.size
-              + " * dim="
-              + dimension
-              + " * byteSize="
-              + byteSize
-              + " = "
-              + numBytes);
-    }
-  }
-
-  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
-    VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    if (similarityFunction != info.getVectorSimilarityFunction()) {
-      throw new IllegalStateException(
-          "Inconsistent vector similarity function for field=\""
-              + info.name
-              + "\"; "
-              + similarityFunction
-              + " != "
-              + info.getVectorSimilarityFunction());
-    }
-    return new FieldEntry(input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
@@ -232,6 +184,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + VectorEncoding.FLOAT32);
     }
     return OffHeapFloatVectorValues.load(
+        fieldEntry.similarityFunction,
+        vectorScorer,
         fieldEntry.ordToDoc,
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
@@ -253,6 +207,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               + VectorEncoding.BYTE);
     }
     return OffHeapByteVectorValues.load(
+        fieldEntry.similarityFunction,
+        vectorScorer,
         fieldEntry.ordToDoc,
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
@@ -267,15 +223,17 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return null;
     }
-    return RandomVectorScorer.createFloats(
+    return vectorScorer.getRandomVectorScorer(
+        fieldEntry.similarityFunction,
         OffHeapFloatVectorValues.load(
+            fieldEntry.similarityFunction,
+            vectorScorer,
             fieldEntry.ordToDoc,
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             vectorData),
-        fieldEntry.similarityFunction,
         target);
   }
 
@@ -285,15 +243,17 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return null;
     }
-    return RandomVectorScorer.createBytes(
+    return vectorScorer.getRandomVectorScorer(
+        fieldEntry.similarityFunction,
         OffHeapByteVectorValues.load(
+            fieldEntry.similarityFunction,
+            vectorScorer,
             fieldEntry.ordToDoc,
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             vectorData),
-        fieldEntry.similarityFunction,
         target);
   }
 
@@ -302,34 +262,76 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     IOUtils.close(vectorData);
   }
 
-  private static class FieldEntry implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
-    final VectorEncoding vectorEncoding;
-    final int dimension;
-    final long vectorDataOffset;
-    final long vectorDataLength;
-    final int size;
-    final OrdToDocDISIReaderConfiguration ordToDoc;
+  private record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding,
+      long vectorDataOffset,
+      long vectorDataLength,
+      int dimension,
+      int size,
+      OrdToDocDISIReaderConfiguration ordToDoc,
+      FieldInfo info) {
 
-    FieldEntry(
-        IndexInput input,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
-        throws IOException {
-      this.similarityFunction = similarityFunction;
-      this.vectorEncoding = vectorEncoding;
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
-      dimension = input.readVInt();
-      size = input.readInt();
-      ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+    FieldEntry {
+      if (similarityFunction != info.getVectorSimilarityFunction()) {
+        throw new IllegalStateException(
+            "Inconsistent vector similarity function for field=\""
+                + info.name
+                + "\"; "
+                + similarityFunction
+                + " != "
+                + info.getVectorSimilarityFunction());
+      }
+      int infoVectorDimension = info.getVectorDimension();
+      if (infoVectorDimension != dimension) {
+        throw new IllegalStateException(
+            "Inconsistent vector dimension for field=\""
+                + info.name
+                + "\"; "
+                + infoVectorDimension
+                + " != "
+                + dimension);
+      }
+
+      int byteSize =
+          switch (info.getVectorEncoding()) {
+            case BYTE -> Byte.BYTES;
+            case FLOAT32 -> Float.BYTES;
+          };
+      long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
+      long numBytes = Math.multiplyExact(vectorBytes, size);
+      if (numBytes != vectorDataLength) {
+        throw new IllegalStateException(
+            "Vector data length "
+                + vectorDataLength
+                + " not matching size="
+                + size
+                + " * dim="
+                + dimension
+                + " * byteSize="
+                + byteSize
+                + " = "
+                + numBytes);
+      }
     }
 
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(ordToDoc);
+    static FieldEntry create(IndexInput input, FieldInfo info) throws IOException {
+      final VectorEncoding vectorEncoding = readVectorEncoding(input);
+      final VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
+      final var vectorDataOffset = input.readVLong();
+      final var vectorDataLength = input.readVLong();
+      final var dimension = input.readVInt();
+      final var size = input.readInt();
+      final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      return new FieldEntry(
+          similarityFunction,
+          vectorEncoding,
+          vectorDataOffset,
+          vectorDataLength,
+          dimension,
+          size,
+          ordToDoc,
+          info);
     }
   }
 }

@@ -20,9 +20,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
@@ -51,7 +52,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
    *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @throws IllegalArgumentException if <code>k</code> is less than 1
@@ -64,7 +65,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
    *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @param filter a filter applied before the vector search
@@ -83,22 +84,29 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
-    ByteVectorValues byteVectorValues = context.reader().getByteVectorValues(field);
+    LeafReader reader = context.reader();
+    ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
     if (byteVectorValues == null) {
-      ByteVectorValues.checkField(context.reader(), field);
+      ByteVectorValues.checkField(reader, field);
       return NO_RESULTS;
     }
     if (Math.min(knnCollector.k(), byteVectorValues.size()) == 0) {
       return NO_RESULTS;
     }
-    context.reader().searchNearestVectors(field, target, knnCollector, acceptDocs);
+    reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
     TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
   }
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    return VectorScorer.create(context, fi, target);
+    LeafReader reader = context.reader();
+    ByteVectorValues vectorValues = reader.getByteVectorValues(field);
+    if (vectorValues == null) {
+      ByteVectorValues.checkField(reader, field);
+      return null;
+    }
+    return vectorValues.scorer(target);
   }
 
   @Override
@@ -123,6 +131,6 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @return the target query vector of the search. Each vector element is a byte.
    */
   public byte[] getTargetCopy() {
-    return ArrayUtil.copyOfSubArray(target, 0, target.length);
+    return ArrayUtil.copyArray(target);
   }
 }

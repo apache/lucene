@@ -28,6 +28,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SloppyMath;
 
@@ -240,7 +241,7 @@ class NearestNeighbor {
       double pointLon,
       List<PointValues> readers,
       List<Bits> liveDocs,
-      List<Integer> docBases,
+      IntArrayList docBases,
       final int n)
       throws IOException {
 
