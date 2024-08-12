@@ -385,7 +385,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount - 1);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -477,7 +477,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount - 1);
       }
       actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
@@ -647,7 +647,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount - 1);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -717,7 +717,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount - 1);
       }
       actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
