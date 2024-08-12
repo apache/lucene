@@ -1,0 +1,282 @@
+package org.apache.lucene.codecs.lucene912;
+
+import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+
+public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
+
+  private static final long SHALLOW_SIZE =
+    RamUsageEstimator.shallowSizeOfInstance(Lucene912BinaryQuantizedVectorsReader.class);
+
+  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IndexInput quantizedVectorData;
+  private final FlatVectorsReader rawVectorsReader;
+
+  public Lucene912BinaryQuantizedVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer vectorsScorer) throws IOException {
+    super(vectorsScorer);
+    this.rawVectorsReader = rawVectorsReader;
+    int versionMeta = -1;
+    String metaFileName =
+      IndexFileNames.segmentFileName(
+        state.segmentInfo.name,
+        state.segmentSuffix,
+        Lucene912BinaryQuantizedVectorsFormat.META_EXTENSION);
+    boolean success = false;
+    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
+      Throwable priorE = null;
+      try {
+        versionMeta =
+          CodecUtil.checkIndexHeader(
+            meta,
+            Lucene912BinaryQuantizedVectorsFormat.META_CODEC_NAME,
+            Lucene912BinaryQuantizedVectorsFormat.VERSION_START,
+            Lucene912BinaryQuantizedVectorsFormat.VERSION_CURRENT,
+            state.segmentInfo.getId(),
+            state.segmentSuffix);
+        readFields(meta, state.fieldInfos);
+      } catch (Throwable exception) {
+        priorE = exception;
+      } finally {
+        CodecUtil.checkFooter(meta, priorE);
+      }
+      quantizedVectorData =
+        openDataInput(
+          state,
+          versionMeta,
+          Lucene912BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
+          Lucene912BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          // Quantized vectors are accessed randomly from their node ID stored in the HNSW
+          // graph.
+          state.context.withReadAdvice(ReadAdvice.RANDOM));
+      success = true;
+    } finally {
+      if (success == false) {
+        IOUtils.closeWhileHandlingException(this);
+      }
+    }
+  }
+
+  private void readFields(ChecksumIndexInput meta, FieldInfos infos)
+    throws IOException {
+    for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
+      FieldInfo info = infos.fieldInfo(fieldNumber);
+      if (info == null) {
+        throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
+      }
+      FieldEntry fieldEntry = readField(meta, info);
+      validateFieldEntry(info, fieldEntry);
+      fields.put(info.name, fieldEntry);
+    }
+  }
+
+  static void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
+    int dimension = info.getVectorDimension();
+    if (dimension != fieldEntry.dimension) {
+      throw new IllegalStateException(
+        "Inconsistent vector dimension for field=\""
+          + info.name
+          + "\"; "
+          + dimension
+          + " != "
+          + fieldEntry.dimension);
+    }
+
+    int binaryDims = (dimension + 63) / 64 * 64;
+    long numQuantizedVectorBytes = Math.multiplyExact(binaryDims + Float.BYTES + Float.BYTES, fieldEntry.size);
+    if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
+      throw new IllegalStateException(
+        "Binarized vector data length "
+          + fieldEntry.vectorDataLength
+          + " not matching size="
+          + fieldEntry.size
+          + " * (dim="
+          + dimension
+          + " + 8)"
+          + " = "
+          + numQuantizedVectorBytes);
+    }
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
+    // TODO
+    return rawVectorsReader.getRandomVectorScorer(field, target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
+    return rawVectorsReader.getRandomVectorScorer(field, target);
+  }
+
+  @Override
+  public void checkIntegrity() throws IOException {
+    rawVectorsReader.checkIntegrity();
+    CodecUtil.checksumEntireFile(quantizedVectorData);
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return rawVectorsReader.getFloatVectorValues(field);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String field) throws IOException {
+    return rawVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public void close() throws IOException {
+    IOUtils.close(quantizedVectorData, rawVectorsReader);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = SHALLOW_SIZE;
+    size +=
+      RamUsageEstimator.sizeOfMap(
+        fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
+    size += rawVectorsReader.ramBytesUsed();
+    return size;  }
+
+  private static IndexInput openDataInput(
+    SegmentReadState state,
+    int versionMeta,
+    String fileExtension,
+    String codecName,
+    IOContext context)
+    throws IOException {
+    String fileName =
+      IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
+    IndexInput in = state.directory.openInput(fileName, context);
+    boolean success = false;
+    try {
+      int versionVectorData =
+        CodecUtil.checkIndexHeader(
+          in,
+          codecName,
+          Lucene912BinaryQuantizedVectorsFormat.VERSION_START,
+          Lucene912BinaryQuantizedVectorsFormat.VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
+      if (versionMeta != versionVectorData) {
+        throw new CorruptIndexException(
+          "Format versions mismatch: meta="
+            + versionMeta
+            + ", "
+            + codecName
+            + "="
+            + versionVectorData,
+          in);
+      }
+      CodecUtil.retrieveChecksum(in);
+      success = true;
+      return in;
+    } finally {
+      if (success == false) {
+        IOUtils.closeWhileHandlingException(in);
+      }
+    }
+  }
+
+  private FieldEntry readField(IndexInput input, FieldInfo info)
+    throws IOException {
+    VectorEncoding vectorEncoding = readVectorEncoding(input);
+    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
+    if (similarityFunction != info.getVectorSimilarityFunction()) {
+      throw new IllegalStateException(
+        "Inconsistent vector similarity function for field=\""
+          + info.name
+          + "\"; "
+          + similarityFunction
+          + " != "
+          + info.getVectorSimilarityFunction());
+    }
+    return FieldEntry.create(
+      input, vectorEncoding, info.getVectorSimilarityFunction());
+  }
+
+  private record FieldEntry(
+    VectorSimilarityFunction similarityFunction,
+    VectorEncoding vectorEncoding,
+    int dimension,
+    int binaryDimensions,
+    long vectorDataOffset,
+    long vectorDataLength,
+    int size,
+    int numCentroids,
+    float[][] centroids,
+    int[] centroidOrdinalOffsets,
+    OrdToDocDISIReaderConfiguration[] ordToDocDISIReaderConfigurations
+  ) {
+
+      static FieldEntry create(IndexInput input, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction)
+        throws IOException {
+        int dimension = input.readVInt();
+        int binaryDimensions = input.readVInt();
+        long vectorDataOffset = input.readVLong();
+        long vectorDataLength = input.readVLong();
+        int size = input.readInt();
+        int numCentroids = input.readVInt();
+        float[][] centroids = new float[numCentroids][dimension];
+        for (int i = 0; i < numCentroids; i++) {
+          float[] centroid = centroids[i];
+          for (int j = 0; j < dimension; j++) {
+            input.readFloats(centroid, j, dimension);
+          }
+        }
+        int[] centroidOrdinalOffsets = new int[numCentroids];
+        for (int i = 0; i < size; i++) {
+          centroidOrdinalOffsets[i] = input.readVInt();
+        }
+        OrdToDocDISIReaderConfiguration[] ordToDocDISIReaderConfigurations =
+          new OrdToDocDISIReaderConfiguration[numCentroids];
+        for (int i = 0; i < numCentroids; i++) {
+          final int centroidLength;
+          if (i == numCentroids - 1) {
+            centroidLength = size - centroidOrdinalOffsets[i];
+          } else {
+            centroidLength = centroidOrdinalOffsets[i + 1] - centroidOrdinalOffsets[i];
+          }
+          ordToDocDISIReaderConfigurations[i] = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, centroidLength);
+        }
+        return new FieldEntry(
+          similarityFunction,
+          vectorEncoding,
+          dimension,
+          binaryDimensions,
+          vectorDataOffset,
+          vectorDataLength,
+          size,
+          numCentroids,
+          centroids,
+          centroidOrdinalOffsets,
+          ordToDocDISIReaderConfigurations);
+      }
+  }
+
+}
