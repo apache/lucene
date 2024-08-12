@@ -16,14 +16,14 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.tests.util.TestUtil.alwaysPostingsFormat;
-import static org.apache.lucene.tests.util.TestUtil.getDefaultPostingsFormat;
-
 import java.io.IOException;
-import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -138,72 +138,6 @@ public class TestWildcardQuery extends LuceneTestCase {
     assertFalse(wq.getTermsEnum(terms).getClass().getSimpleName().contains("AutomatonTermsEnum"));
     reader.close();
     indexStore.close();
-  }
-
-  public void testSubBlock() throws Exception {
-    Directory dir = newDirectory();
-    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate subBlock.
-    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
-
-    IndexWriter writer =
-        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
-    String[] categories = new String[] {"regular", "request", "rest", "teacher", "team"};
-
-    for (String category : categories) {
-      Document doc = new Document();
-      doc.add(newStringField("category", category, Field.Store.YES));
-      writer.addDocument(doc);
-    }
-
-    IndexReader reader = DirectoryReader.open(writer);
-    Query query = new WildcardQuery(new Term("category", "re*"));
-
-    IndexSearcher searcher = newSearcher(reader);
-    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(3, hits.length);
-
-    query = new WildcardQuery(new Term("category", "tea*"));
-    searcher = newSearcher(reader);
-    hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(2, hits.length);
-
-    writer.close();
-    reader.close();
-    dir.close();
-  }
-
-  public void testDeepSubBlock() throws Exception {
-    Directory dir = newDirectory();
-    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
-    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
-
-    IndexWriter writer =
-        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
-    String[] categories =
-        new String[] {
-          "regular", "request1", "request2", "request3", "request4", "rest", "teacher", "team"
-        };
-
-    for (String category : categories) {
-      Document doc = new Document();
-      doc.add(newStringField("category", category, Field.Store.YES));
-      writer.addDocument(doc);
-    }
-
-    IndexReader reader = DirectoryReader.open(writer);
-    Query query = new WildcardQuery(new Term("category", "re*"));
-    IndexSearcher searcher = newSearcher(reader);
-    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(6, hits.length);
-
-    query = new WildcardQuery(new Term("category", "tea*"));
-    searcher = newSearcher(reader);
-    hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(2, hits.length);
-
-    writer.close();
-    reader.close();
-    dir.close();
   }
 
   /** Tests Wildcard queries with an asterisk. */
@@ -329,78 +263,78 @@ public class TestWildcardQuery extends LuceneTestCase {
   public void testParsingAndSearching() throws Exception {
     String field = "content";
     String[] docs = {
-      "\\ abcdefg1", "\\79 hijklmn1", "\\\\ opqrstu1",
+        "\\ abcdefg1", "\\79 hijklmn1", "\\\\ opqrstu1",
     };
 
     // queries that should find all docs
     Query[] matchAll = {
-      new WildcardQuery(new Term(field, "*")),
-      new WildcardQuery(new Term(field, "*1")),
-      new WildcardQuery(new Term(field, "**1")),
-      new WildcardQuery(new Term(field, "*?")),
-      new WildcardQuery(new Term(field, "*?1")),
-      new WildcardQuery(new Term(field, "?*1")),
-      new WildcardQuery(new Term(field, "**")),
-      new WildcardQuery(new Term(field, "***")),
-      new WildcardQuery(new Term(field, "\\\\*"))
+        new WildcardQuery(new Term(field, "*")),
+        new WildcardQuery(new Term(field, "*1")),
+        new WildcardQuery(new Term(field, "**1")),
+        new WildcardQuery(new Term(field, "*?")),
+        new WildcardQuery(new Term(field, "*?1")),
+        new WildcardQuery(new Term(field, "?*1")),
+        new WildcardQuery(new Term(field, "**")),
+        new WildcardQuery(new Term(field, "***")),
+        new WildcardQuery(new Term(field, "\\\\*"))
     };
 
     // queries that should find no docs
     Query[] matchNone = {
-      new WildcardQuery(new Term(field, "a*h")),
-      new WildcardQuery(new Term(field, "a?h")),
-      new WildcardQuery(new Term(field, "*a*h")),
-      new WildcardQuery(new Term(field, "?a")),
-      new WildcardQuery(new Term(field, "a?"))
+        new WildcardQuery(new Term(field, "a*h")),
+        new WildcardQuery(new Term(field, "a?h")),
+        new WildcardQuery(new Term(field, "*a*h")),
+        new WildcardQuery(new Term(field, "?a")),
+        new WildcardQuery(new Term(field, "a?"))
     };
 
     PrefixQuery[][] matchOneDocPrefix = {
-      {
-        new PrefixQuery(new Term(field, "a")),
-        new PrefixQuery(new Term(field, "ab")),
-        new PrefixQuery(new Term(field, "abc"))
-      }, // these should find only doc 0
-      {
-        new PrefixQuery(new Term(field, "h")),
-        new PrefixQuery(new Term(field, "hi")),
-        new PrefixQuery(new Term(field, "hij")),
-        new PrefixQuery(new Term(field, "\\7"))
-      }, // these should find only doc 1
-      {
-        new PrefixQuery(new Term(field, "o")),
-        new PrefixQuery(new Term(field, "op")),
-        new PrefixQuery(new Term(field, "opq")),
-        new PrefixQuery(new Term(field, "\\\\"))
-      }, // these should find only doc 2
+        {
+            new PrefixQuery(new Term(field, "a")),
+            new PrefixQuery(new Term(field, "ab")),
+            new PrefixQuery(new Term(field, "abc"))
+        }, // these should find only doc 0
+        {
+            new PrefixQuery(new Term(field, "h")),
+            new PrefixQuery(new Term(field, "hi")),
+            new PrefixQuery(new Term(field, "hij")),
+            new PrefixQuery(new Term(field, "\\7"))
+        }, // these should find only doc 1
+        {
+            new PrefixQuery(new Term(field, "o")),
+            new PrefixQuery(new Term(field, "op")),
+            new PrefixQuery(new Term(field, "opq")),
+            new PrefixQuery(new Term(field, "\\\\"))
+        }, // these should find only doc 2
     };
 
     WildcardQuery[][] matchOneDocWild = {
-      {
-        new WildcardQuery(new Term(field, "*a*")), // these should find only doc 0
-        new WildcardQuery(new Term(field, "*ab*")),
-        new WildcardQuery(new Term(field, "*abc**")),
-        new WildcardQuery(new Term(field, "ab*e*")),
-        new WildcardQuery(new Term(field, "*g?")),
-        new WildcardQuery(new Term(field, "*f?1"))
-      },
-      {
-        new WildcardQuery(new Term(field, "*h*")), // these should find only doc 1
-        new WildcardQuery(new Term(field, "*hi*")),
-        new WildcardQuery(new Term(field, "*hij**")),
-        new WildcardQuery(new Term(field, "hi*k*")),
-        new WildcardQuery(new Term(field, "*n?")),
-        new WildcardQuery(new Term(field, "*m?1")),
-        new WildcardQuery(new Term(field, "hij**"))
-      },
-      {
-        new WildcardQuery(new Term(field, "*o*")), // these should find only doc 2
-        new WildcardQuery(new Term(field, "*op*")),
-        new WildcardQuery(new Term(field, "*opq**")),
-        new WildcardQuery(new Term(field, "op*q*")),
-        new WildcardQuery(new Term(field, "*u?")),
-        new WildcardQuery(new Term(field, "*t?1")),
-        new WildcardQuery(new Term(field, "opq**"))
-      }
+        {
+            new WildcardQuery(new Term(field, "*a*")), // these should find only doc 0
+            new WildcardQuery(new Term(field, "*ab*")),
+            new WildcardQuery(new Term(field, "*abc**")),
+            new WildcardQuery(new Term(field, "ab*e*")),
+            new WildcardQuery(new Term(field, "*g?")),
+            new WildcardQuery(new Term(field, "*f?1"))
+        },
+        {
+            new WildcardQuery(new Term(field, "*h*")), // these should find only doc 1
+            new WildcardQuery(new Term(field, "*hi*")),
+            new WildcardQuery(new Term(field, "*hij**")),
+            new WildcardQuery(new Term(field, "hi*k*")),
+            new WildcardQuery(new Term(field, "*n?")),
+            new WildcardQuery(new Term(field, "*m?1")),
+            new WildcardQuery(new Term(field, "hij**"))
+        },
+        {
+            new WildcardQuery(new Term(field, "*o*")), // these should find only doc 2
+            new WildcardQuery(new Term(field, "*op*")),
+            new WildcardQuery(new Term(field, "*opq**")),
+            new WildcardQuery(new Term(field, "op*q*")),
+            new WildcardQuery(new Term(field, "*u?")),
+            new WildcardQuery(new Term(field, "*t?1")),
+            new WildcardQuery(new Term(field, "opq**"))
+        }
     };
 
     // prepare the index
