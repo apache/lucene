@@ -18,6 +18,15 @@ API Changes
 
 * GITHUB#13559: Add BitSet#nextSetBit(int, int) to get the index of the first set bit in range. (Egor Potemkin)
 
+* GITHUB#13568: Add DoubleValuesSource#toSortableLongDoubleValuesSource and
+  MultiDoubleValuesSource#toSortableMultiLongValuesSource methods. (Shradha Shankar)
+
+* GITHUB#13568: Add CollectorOwner class that wraps CollectorManager, and handles list of Collectors and results.
+  Add IndexSearcher#search method that takes CollectorOwner. (Egor Potemkin)
+
+* GITHUB#13568: Add DrillSideways#search method that supports any collector types for any drill-sideways dimensions
+  or drill-down. (Egor Potemkin)
+
 New Features
 ---------------------
 
@@ -29,6 +38,8 @@ New Features
 * GITHUB#13517: Allow configuring the search concurrency on LogDocMergePolicy
   and LogByteSizeMergePolicy via a new #setTargetConcurrency setter.
   (Adrien Grand)
+
+* GITHUB#13568: Add sandbox facets module to compute facets while collecting. (Egor Potemkin, Shradha Shankar)
 
 Improvements
 ---------------------

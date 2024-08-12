@@ -14,14 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.facet.cutters;
 
-apply plugin: 'java-library'
+import java.io.IOException;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 
-description = 'Various third party contributions and new ideas'
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
+/**
+ * Interface to be implemented to cut documents into facets for an index segment (leaf).
+ *
+ * <p>When {@link #advanceExact(int)} returns true, {@link #nextOrd()} yields all facet ordinals for
+ * the current document. It is illegal to call {@link #nextOrd()} if {@link #advanceExact(int)}
+ * returns false.
+ *
+ * @lucene.experimental
+ */
+public interface LeafFacetCutter extends OrdinalIterator {
+  /** advance to the next doc */
+  boolean advanceExact(int doc) throws IOException;
 }
