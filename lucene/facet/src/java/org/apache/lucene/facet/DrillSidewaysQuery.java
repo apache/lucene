@@ -105,80 +105,81 @@ class DrillSidewaysQuery extends Query {
         return baseWeight.explain(context, doc);
       }
 
-        @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-            // We can only run as a top scorer:
-            throw new UnsupportedOperationException();
+      @Override
+      public Scorer scorer(LeafReaderContext context) throws IOException {
+        // We can only run as a top scorer:
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public boolean isCacheable(LeafReaderContext ctx) {
+        // We can never cache DSQ instances. It's critical that the BulkScorer produced by this
+        // Weight runs through the "normal" execution path so that it has access to an
+        // "acceptDocs" instance that accurately reflects deleted docs. During caching,
+        // "acceptDocs" is null so that caching over-matches (since the final BulkScorer would
+        // account for deleted docs). The problem is that this BulkScorer has a side-effect of
+        // populating the "sideways" FacetsCollectors, so it will use deleted docs in its
+        // sideways counting if caching kicks in. See LUCENE-10060:
+        return false;
+      }
+
+      @Override
+      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+        ScorerSupplier baseScorerSupplier = baseWeight.scorerSupplier(context);
+
+        int drillDownCount = drillDowns.length;
+
+        Collector drillDownCollector;
+        final LeafCollector drillDownLeafCollector;
+        if (drillDownCollectorOwner != null) {
+          drillDownCollector = drillDownCollectorOwner.newCollector();
+          drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
+        } else {
+          drillDownLeafCollector = null;
         }
 
-        @Override
-        public boolean isCacheable(LeafReaderContext ctx) {
-            // We can never cache DSQ instances. It's critical that the BulkScorer produced by this
-            // Weight runs through the "normal" execution path so that it has access to an
-            // "acceptDocs" instance that accurately reflects deleted docs. During caching,
-            // "acceptDocs" is null so that caching over-matches (since the final BulkScorer would
-            // account for deleted docs). The problem is that this BulkScorer has a side-effect of
-            // populating the "sideways" FacetsCollectors, so it will use deleted docs in its
-            // sideways counting if caching kicks in. See LUCENE-10060:
-            return false;
+        DrillSidewaysScorer.DocsAndCost[] dims =
+            new DrillSidewaysScorer.DocsAndCost[drillDownCount];
+
+        int nullCount = 0;
+        for (int dim = 0; dim < dims.length; dim++) {
+          Scorer scorer = drillDowns[dim].scorer(context);
+          if (scorer == null) {
+            nullCount++;
+            scorer =
+                new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
+          }
+
+          Collector sidewaysCollector = drillSidewaysCollectorOwners.get(dim).newCollector();
+
+          dims[dim] =
+              new DrillSidewaysScorer.DocsAndCost(
+                  scorer, sidewaysCollector.getLeafCollector(context));
         }
 
-        @Override
-        public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-            ScorerSupplier baseScorerSupplier = baseWeight.scorerSupplier(context);
-
-            int drillDownCount = drillDowns.length;
-
-            Collector drillDownCollector;
-            final LeafCollector drillDownLeafCollector;
-            if (drillDownCollectorOwner != null) {
-                drillDownCollector = drillDownCollectorOwner.newCollector();
-                drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
-            } else {
-                drillDownLeafCollector = null;
-            }
-
-            DrillSidewaysScorer.DocsAndCost[] dims =
-                    new DrillSidewaysScorer.DocsAndCost[drillDownCount];
-
-            int nullCount = 0;
-            for (int dim = 0; dim < dims.length; dim++) {
-                Scorer scorer = drillDowns[dim].scorer(context);
-                if (scorer == null) {
-                    nullCount++;
-                    scorer = new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
-                }
-
-                Collector sidewaysCollector = drillSidewaysCollectorOwners.get(dim).newCollector();
-
-                dims[dim] =
-                        new DrillSidewaysScorer.DocsAndCost(
-                                scorer, sidewaysCollector.getLeafCollector(context));
-            }
-
-            // If baseScorer is null or the dim nullCount > 1, then we have nothing to score. We return
-            // a null scorer in this case, but we need to make sure #finish gets called on all facet
-            // collectors since IndexSearcher won't handle this for us:
-            if (baseScorerSupplier == null || nullCount > 1) {
-                if (drillDownLeafCollector != null) {
-                    drillDownLeafCollector.finish();
-                }
-                for (DrillSidewaysScorer.DocsAndCost dim : dims) {
-                    dim.sidewaysLeafCollector.finish();
-                }
-                return null;
-            }
-
-            // Sort drill-downs by most restrictive first:
-            Arrays.sort(dims, Comparator.comparingLong(o -> o.approximation.cost()));
-
-            return new DrillSidewaysScorer(
-                    context,
-                    baseScorerSupplier.get(Long.MAX_VALUE),
-                    drillDownLeafCollector,
-                    dims,
-                    scoreSubDocsAtOnce);
+        // If baseScorer is null or the dim nullCount > 1, then we have nothing to score. We return
+        // a null scorer in this case, but we need to make sure #finish gets called on all facet
+        // collectors since IndexSearcher won't handle this for us:
+        if (baseScorerSupplier == null || nullCount > 1) {
+          if (drillDownLeafCollector != null) {
+            drillDownLeafCollector.finish();
+          }
+          for (DrillSidewaysScorer.DocsAndCost dim : dims) {
+            dim.sidewaysLeafCollector.finish();
+          }
+          return null;
         }
+
+        // Sort drill-downs by most restrictive first:
+        Arrays.sort(dims, Comparator.comparingLong(o -> o.approximation.cost()));
+
+        return new DrillSidewaysScorer(
+            context,
+            baseScorerSupplier.get(Long.MAX_VALUE),
+            drillDownLeafCollector,
+            dims,
+            scoreSubDocsAtOnce);
+      }
     };
   }
 

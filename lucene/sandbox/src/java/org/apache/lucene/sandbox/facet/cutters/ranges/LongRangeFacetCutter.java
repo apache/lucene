@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
@@ -300,87 +299,81 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     void maybeRollUp(IntervalTracker rollUpInto) {}
   }
 
-    final class LongRangeAndPos {
-        private final LongRange range;
-        private final int pos;
+  final class LongRangeAndPos {
+    private final LongRange range;
+    private final int pos;
 
-        LongRangeAndPos(LongRange range, int pos) {
-            this.range = range;
-            this.pos = pos;
-        }
-
-        @Override
-        public String toString() {
-            return "LongRangeAndPos[" + "range=" + range + ", " + "pos=" + pos + ']';
-        }
-
-        public LongRange range() {
-            return range;
-        }
-
-        public int pos() {
-            return pos;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) return true;
-            if (obj == null || obj.getClass() != this.getClass()) return false;
-            var that = (LongRangeAndPos) obj;
-            return Objects.equals(this.range, that.range) &&
-                    this.pos == that.pos;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(range, pos);
-        }
-
+    LongRangeAndPos(LongRange range, int pos) {
+      this.range = range;
+      this.pos = pos;
     }
 
-    /**
-     * Similar to InclusiveRange from LongRangeCounter.
-     *
-     * <p>TODO: dedup
-     */
-    final class InclusiveRange {
-        private final long start;
-        private final long end;
-
-        /**
-         *
-         */
-        InclusiveRange(long start, long end) {
-            this.start = start;
-            this.end = end;
-        }
-
-        @Override
-        public String toString() {
-            return start + " to " + end;
-        }
-
-        public long start() {
-            return start;
-        }
-
-        public long end() {
-            return end;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) return true;
-            if (obj == null || obj.getClass() != this.getClass()) return false;
-            var that = (InclusiveRange) obj;
-            return this.start == that.start &&
-                    this.end == that.end;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(start, end);
-        }
-
+    @Override
+    public String toString() {
+      return "LongRangeAndPos[" + "range=" + range + ", " + "pos=" + pos + ']';
     }
+
+    public LongRange range() {
+      return range;
+    }
+
+    public int pos() {
+      return pos;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) return true;
+      if (obj == null || obj.getClass() != this.getClass()) return false;
+      var that = (LongRangeAndPos) obj;
+      return Objects.equals(this.range, that.range) && this.pos == that.pos;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(range, pos);
+    }
+  }
+
+  /**
+   * Similar to InclusiveRange from LongRangeCounter.
+   *
+   * <p>TODO: dedup
+   */
+  final class InclusiveRange {
+    private final long start;
+    private final long end;
+
+    /** */
+    InclusiveRange(long start, long end) {
+      this.start = start;
+      this.end = end;
+    }
+
+    @Override
+    public String toString() {
+      return start + " to " + end;
+    }
+
+    public long start() {
+      return start;
+    }
+
+    public long end() {
+      return end;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) return true;
+      if (obj == null || obj.getClass() != this.getClass()) return false;
+      var that = (InclusiveRange) obj;
+      return this.start == that.start && this.end == that.end;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(start, end);
+    }
+  }
 }

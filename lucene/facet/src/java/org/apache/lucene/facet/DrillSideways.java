@@ -251,20 +251,19 @@ public class DrillSideways {
 
     final List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners = new ArrayList<>(numDims);
     for (int i = 0; i < numDims; i++) {
-      drillSidewaysCollectorOwners.add(new CollectorOwner<>(createDrillSidewaysFacetsCollectorManager()));
+      drillSidewaysCollectorOwners.add(
+          new CollectorOwner<>(createDrillSidewaysFacetsCollectorManager()));
     }
 
     DrillSidewaysQuery dsq =
         new DrillSidewaysQuery(
             baseQuery,
-                drillDownCollectorOwner,
-                drillSidewaysCollectorOwners,
+            drillDownCollectorOwner,
+            drillSidewaysCollectorOwners,
             drillDownQueries,
             scoreSubDocsAtOnce());
 
     searcher.search(dsq, hitCollector);
-
-
 
     FacetsCollector drillDownCollector;
     if (drillDownCollectorOwner != null) {
@@ -277,7 +276,7 @@ public class DrillSideways {
     final FacetsCollector[] drillSidewaysCollectors = new FacetsCollector[numDims];
     for (int dim = 0; dim < numDims; dim++) {
       drillSidewaysCollectors[dim] =
-              (FacetsCollector) drillSidewaysCollectorOwners.get(dim).getResult();
+          (FacetsCollector) drillSidewaysCollectorOwners.get(dim).getResult();
     }
 
     return new DrillSidewaysResult(

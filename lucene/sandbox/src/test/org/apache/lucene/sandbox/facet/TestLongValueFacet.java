@@ -17,6 +17,7 @@
 
 package org.apache.lucene.sandbox.facet;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,8 +25,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.NumericDocValuesField;
