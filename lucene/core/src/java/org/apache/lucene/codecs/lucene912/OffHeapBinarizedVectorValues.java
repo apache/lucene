@@ -1,5 +1,23 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.codecs.lucene912;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -9,10 +27,8 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorValues implements RandomAccessBinarizedByteVectorValues {
+public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorValues
+    implements RandomAccessBinarizedByteVectorValues {
 
   protected final int dimension;
   protected final int size;
@@ -110,7 +126,12 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   public static class DenseOffHeapVectorValues extends OffHeapBinarizedVectorValues {
     private int doc = -1;
 
-    public DenseOffHeapVectorValues(int dimension, int size, VectorSimilarityFunction similarityFunction, FlatVectorsScorer vectorsScorer, IndexInput slice) {
+    public DenseOffHeapVectorValues(
+        int dimension,
+        int size,
+        VectorSimilarityFunction similarityFunction,
+        FlatVectorsScorer vectorsScorer,
+        IndexInput slice) {
       super(dimension, size, similarityFunction, vectorsScorer, slice);
     }
 
@@ -141,11 +162,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-        dimension,
-        size,
-        similarityFunction,
-        vectorsScorer,
-        slice.clone());
+          dimension, size, similarityFunction, vectorsScorer, slice.clone());
     }
 
     @Override
@@ -168,14 +185,14 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     private final OrdToDocDISIReaderConfiguration configuration;
 
     SparseOffHeapVectorValues(
-      OrdToDocDISIReaderConfiguration configuration,
-      int dimension,
-      int size,
-      IndexInput dataIn,
-      VectorSimilarityFunction similarityFunction,
-      FlatVectorsScorer vectorsScorer,
-      IndexInput slice
-    ) throws IOException {
+        OrdToDocDISIReaderConfiguration configuration,
+        int dimension,
+        int size,
+        IndexInput dataIn,
+        VectorSimilarityFunction similarityFunction,
+        FlatVectorsScorer vectorsScorer,
+        IndexInput slice)
+        throws IOException {
       super(dimension, size, similarityFunction, vectorsScorer, slice);
       this.configuration = configuration;
       this.dataIn = dataIn;
@@ -207,14 +224,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
-        configuration,
-        dimension,
-        size,
-        dataIn,
-        similarityFunction,
-        vectorsScorer,
-        slice.clone()
-      );
+          configuration, dimension, size, dataIn, similarityFunction, vectorsScorer, slice.clone());
     }
 
     @Override
@@ -249,11 +259,11 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
 
   private static class EmptyOffHeapVectorValues extends OffHeapBinarizedVectorValues {
     private int doc = -1;
+
     EmptyOffHeapVectorValues(
-      int dimension,
-      VectorSimilarityFunction similarityFunction,
-      FlatVectorsScorer vectorsScorer
-    ) {
+        int dimension,
+        VectorSimilarityFunction similarityFunction,
+        FlatVectorsScorer vectorsScorer) {
       super(dimension, 0, similarityFunction, vectorsScorer, null);
     }
 
@@ -292,8 +302,4 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       throw null;
     }
   }
-
-
-
-
 }

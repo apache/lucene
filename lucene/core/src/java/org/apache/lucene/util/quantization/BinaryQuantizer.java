@@ -14,21 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.util.quantization;
 
-import java.io.IOException;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 
-/**
- * Gets access to the vector values stored in a binary format
- *
- * @lucene.experimental
- */
-public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVectorValues.Bytes {
-  float getCentroidDistance(int docID) throws IOException;
+public class BinaryQuantizer {
+  private static final int QUERY_PROJECTIONS = 4;
+  private final float[] centroid;
 
-  float getVectorMagnitude(int docID) throws IOException;
+  public BinaryQuantizer(float[] centroid) {
+    this.centroid = centroid;
+  }
 
-  @Override
-  RandomAccessBinarizedByteVectorValues copy() throws IOException;
+  public float[] quantizeForIndex(
+      float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
+    float[] corrections = new float[2];
+    return corrections;
+  }
+
+  public float[] quantizeForQuery(
+      float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
+    float[] corrections = new float[2];
+    return corrections;
+  }
 }
