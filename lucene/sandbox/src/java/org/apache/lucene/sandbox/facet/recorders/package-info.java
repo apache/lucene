@@ -14,14 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-apply plugin: 'java-library'
-
-description = 'Various third party contributions and new ideas'
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
-}
+/**
+ * Sandbox faceting: classes that can record per ordinal data E.g. aggregations per facet ordinals
+ * can be recorded.
+ *
+ * @lucene.experimental
+ */
+package org.apache.lucene.sandbox.facet.recorders;

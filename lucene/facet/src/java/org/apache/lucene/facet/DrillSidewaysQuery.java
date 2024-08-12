@@ -17,24 +17,12 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.ConstantScoreScorer;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafCollector;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryVisitor;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
+import org.apache.lucene.search.*;
 
 /** Only purpose is to punch through and return a DrillSidewaysScorer */
 
@@ -44,10 +32,8 @@ class DrillSidewaysQuery extends Query {
 
   final Query baseQuery;
 
-  final FacetsCollectorManager drillDownCollectorManager;
-  final FacetsCollectorManager[] drillSidewaysCollectorManagers;
-  final List<FacetsCollector> managedDrillDownCollectors;
-  final List<FacetsCollector[]> managedDrillSidewaysCollectors;
+  final CollectorOwner<?, ?> drillDownCollectorOwner;
+  final List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners;
 
   final Query[] drillDownQueries;
 
@@ -55,47 +41,17 @@ class DrillSidewaysQuery extends Query {
 
   /**
    * Construct a new {@code DrillSidewaysQuery} that will create new {@link FacetsCollector}s for
-   * each {@link LeafReaderContext} using the provided {@link FacetsCollectorManager}s. The caller
-   * can access the created {@link FacetsCollector}s through {@link #managedDrillDownCollectors} and
-   * {@link #managedDrillSidewaysCollectors}.
+   * each {@link LeafReaderContext} using the provided {@link FacetsCollectorManager}s.
    */
   DrillSidewaysQuery(
       Query baseQuery,
-      FacetsCollectorManager drillDownCollectorManager,
-      FacetsCollectorManager[] drillSidewaysCollectorManagers,
-      Query[] drillDownQueries,
-      boolean scoreSubDocsAtOnce) {
-    // Note that the "managed" facet collector lists are synchronized here since bulkScorer()
-    // can be invoked concurrently and needs to remain thread-safe. We're OK with synchronizing
-    // on the whole list as contention is expected to remain very low:
-    this(
-        baseQuery,
-        drillDownCollectorManager,
-        drillSidewaysCollectorManagers,
-        Collections.synchronizedList(new ArrayList<>()),
-        Collections.synchronizedList(new ArrayList<>()),
-        drillDownQueries,
-        scoreSubDocsAtOnce);
-  }
-
-  /**
-   * Needed for {@link Query#rewrite(IndexSearcher)}. Ensures the same "managed" lists get used
-   * since {@link DrillSideways} accesses references to these through the original {@code
-   * DrillSidewaysQuery}.
-   */
-  private DrillSidewaysQuery(
-      Query baseQuery,
-      FacetsCollectorManager drillDownCollectorManager,
-      FacetsCollectorManager[] drillSidewaysCollectorManagers,
-      List<FacetsCollector> managedDrillDownCollectors,
-      List<FacetsCollector[]> managedDrillSidewaysCollectors,
+      CollectorOwner<?, ?> drillDownCollectorOwner,
+      List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
     this.baseQuery = Objects.requireNonNull(baseQuery);
-    this.drillDownCollectorManager = drillDownCollectorManager;
-    this.drillSidewaysCollectorManagers = drillSidewaysCollectorManagers;
-    this.managedDrillDownCollectors = managedDrillDownCollectors;
-    this.managedDrillSidewaysCollectors = managedDrillSidewaysCollectors;
+    this.drillDownCollectorOwner = drillDownCollectorOwner;
+    this.drillSidewaysCollectorOwners = drillSidewaysCollectorOwners;
     this.drillDownQueries = drillDownQueries;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
@@ -120,10 +76,8 @@ class DrillSidewaysQuery extends Query {
     } else {
       return new DrillSidewaysQuery(
           newQuery,
-          drillDownCollectorManager,
-          drillSidewaysCollectorManagers,
-          managedDrillDownCollectors,
-          managedDrillSidewaysCollectors,
+          drillDownCollectorOwner,
+          drillSidewaysCollectorOwners,
           drillDownQueries,
           scoreSubDocsAtOnce);
     }
@@ -151,83 +105,80 @@ class DrillSidewaysQuery extends Query {
         return baseWeight.explain(context, doc);
       }
 
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        // We can only run as a top scorer:
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public boolean isCacheable(LeafReaderContext ctx) {
-        // We can never cache DSQ instances. It's critical that the BulkScorer produced by this
-        // Weight runs through the "normal" execution path so that it has access to an
-        // "acceptDocs" instance that accurately reflects deleted docs. During caching,
-        // "acceptDocs" is null so that caching over-matches (since the final BulkScorer would
-        // account for deleted docs). The problem is that this BulkScorer has a side-effect of
-        // populating the "sideways" FacetsCollectors, so it will use deleted docs in its
-        // sideways counting if caching kicks in. See LUCENE-10060:
-        return false;
-      }
-
-      @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        Scorer baseScorer = baseWeight.scorer(context);
-
-        int drillDownCount = drillDowns.length;
-
-        FacetsCollector drillDownCollector;
-        LeafCollector drillDownLeafCollector;
-        if (drillDownCollectorManager != null) {
-          drillDownCollector = drillDownCollectorManager.newCollector();
-          managedDrillDownCollectors.add(drillDownCollector);
-          drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
-        } else {
-          drillDownCollector = null;
-          drillDownLeafCollector = null;
+        @Override
+        public Scorer scorer(LeafReaderContext context) throws IOException {
+            // We can only run as a top scorer:
+            throw new UnsupportedOperationException();
         }
 
-        FacetsCollector[] sidewaysCollectors = new FacetsCollector[drillDownCount];
-        managedDrillSidewaysCollectors.add(sidewaysCollectors);
-
-        DrillSidewaysScorer.DocsAndCost[] dims =
-            new DrillSidewaysScorer.DocsAndCost[drillDownCount];
-
-        int nullCount = 0;
-        for (int dim = 0; dim < dims.length; dim++) {
-          Scorer scorer = drillDowns[dim].scorer(context);
-          if (scorer == null) {
-            nullCount++;
-            scorer =
-                new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
-          }
-
-          FacetsCollector sidewaysCollector = drillSidewaysCollectorManagers[dim].newCollector();
-          sidewaysCollectors[dim] = sidewaysCollector;
-
-          dims[dim] =
-              new DrillSidewaysScorer.DocsAndCost(
-                  scorer, sidewaysCollector.getLeafCollector(context));
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+            // We can never cache DSQ instances. It's critical that the BulkScorer produced by this
+            // Weight runs through the "normal" execution path so that it has access to an
+            // "acceptDocs" instance that accurately reflects deleted docs. During caching,
+            // "acceptDocs" is null so that caching over-matches (since the final BulkScorer would
+            // account for deleted docs). The problem is that this BulkScorer has a side-effect of
+            // populating the "sideways" FacetsCollectors, so it will use deleted docs in its
+            // sideways counting if caching kicks in. See LUCENE-10060:
+            return false;
         }
 
-        // If baseScorer is null or the dim nullCount > 1, then we have nothing to score. We return
-        // a null scorer in this case, but we need to make sure #finish gets called on all facet
-        // collectors since IndexSearcher won't handle this for us:
-        if (baseScorer == null || nullCount > 1) {
-          if (drillDownCollector != null) {
-            drillDownCollector.finish();
-          }
-          for (FacetsCollector fc : sidewaysCollectors) {
-            fc.finish();
-          }
-          return null;
+        @Override
+        public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+            ScorerSupplier baseScorerSupplier = baseWeight.scorerSupplier(context);
+
+            int drillDownCount = drillDowns.length;
+
+            Collector drillDownCollector;
+            final LeafCollector drillDownLeafCollector;
+            if (drillDownCollectorOwner != null) {
+                drillDownCollector = drillDownCollectorOwner.newCollector();
+                drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
+            } else {
+                drillDownLeafCollector = null;
+            }
+
+            DrillSidewaysScorer.DocsAndCost[] dims =
+                    new DrillSidewaysScorer.DocsAndCost[drillDownCount];
+
+            int nullCount = 0;
+            for (int dim = 0; dim < dims.length; dim++) {
+                Scorer scorer = drillDowns[dim].scorer(context);
+                if (scorer == null) {
+                    nullCount++;
+                    scorer = new ConstantScoreScorer(drillDowns[dim], 0f, scoreMode, DocIdSetIterator.empty());
+                }
+
+                Collector sidewaysCollector = drillSidewaysCollectorOwners.get(dim).newCollector();
+
+                dims[dim] =
+                        new DrillSidewaysScorer.DocsAndCost(
+                                scorer, sidewaysCollector.getLeafCollector(context));
+            }
+
+            // If baseScorer is null or the dim nullCount > 1, then we have nothing to score. We return
+            // a null scorer in this case, but we need to make sure #finish gets called on all facet
+            // collectors since IndexSearcher won't handle this for us:
+            if (baseScorerSupplier == null || nullCount > 1) {
+                if (drillDownLeafCollector != null) {
+                    drillDownLeafCollector.finish();
+                }
+                for (DrillSidewaysScorer.DocsAndCost dim : dims) {
+                    dim.sidewaysLeafCollector.finish();
+                }
+                return null;
+            }
+
+            // Sort drill-downs by most restrictive first:
+            Arrays.sort(dims, Comparator.comparingLong(o -> o.approximation.cost()));
+
+            return new DrillSidewaysScorer(
+                    context,
+                    baseScorerSupplier.get(Long.MAX_VALUE),
+                    drillDownLeafCollector,
+                    dims,
+                    scoreSubDocsAtOnce);
         }
-
-        // Sort drill-downs by most restrictive first:
-        Arrays.sort(dims, Comparator.comparingLong(o -> o.approximation.cost()));
-
-        return new DrillSidewaysScorer(
-            context, baseScorer, drillDownLeafCollector, dims, scoreSubDocsAtOnce);
-      }
     };
   }
 
@@ -238,9 +189,9 @@ class DrillSidewaysQuery extends Query {
     final int prime = 31;
     int result = classHash();
     result = prime * result + Objects.hashCode(baseQuery);
-    result = prime * result + Objects.hashCode(drillDownCollectorManager);
+    result = prime * result + Objects.hashCode(drillDownCollectorOwner);
     result = prime * result + Arrays.hashCode(drillDownQueries);
-    result = prime * result + Arrays.hashCode(drillSidewaysCollectorManagers);
+    result = prime * result + Objects.hashCode(drillSidewaysCollectorOwners);
     return result;
   }
 
@@ -251,8 +202,8 @@ class DrillSidewaysQuery extends Query {
 
   private boolean equalsTo(DrillSidewaysQuery other) {
     return Objects.equals(baseQuery, other.baseQuery)
-        && Objects.equals(drillDownCollectorManager, other.drillDownCollectorManager)
+        && Objects.equals(drillDownCollectorOwner, other.drillDownCollectorOwner)
         && Arrays.equals(drillDownQueries, other.drillDownQueries)
-        && Arrays.equals(drillSidewaysCollectorManagers, other.drillSidewaysCollectorManagers);
+        && Objects.equals(drillSidewaysCollectorOwners, other.drillSidewaysCollectorOwners);
   }
 }

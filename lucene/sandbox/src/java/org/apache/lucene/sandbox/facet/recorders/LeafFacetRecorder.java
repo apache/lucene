@@ -14,14 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.facet.recorders;
 
-apply plugin: 'java-library'
+import java.io.IOException;
 
-description = 'Various third party contributions and new ideas'
+/**
+ * Record data for each facet of each doc of a leaf (segment).
+ *
+ * @lucene.experimental
+ */
+public interface LeafFacetRecorder {
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
+  /**
+   * TODO: Rename: collect? accumulate?
+   *
+   * @param docId document ID
+   * @param facetOrd facet ordinal
+   */
+  void record(int docId, int facetOrd) throws IOException;
 }

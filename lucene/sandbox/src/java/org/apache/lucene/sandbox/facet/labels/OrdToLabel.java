@@ -14,14 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.facet.labels;
 
-apply plugin: 'java-library'
+import java.io.IOException;
+import org.apache.lucene.facet.taxonomy.FacetLabel;
 
-description = 'Various third party contributions and new ideas'
+/**
+ * Ordinal to label mapping interface.
+ *
+ * <p>TODO: move FacetLabel out of taxonomy folder to use it for any facets, not just taxonomy?
+ *
+ * @lucene.experimental
+ */
+public interface OrdToLabel {
+  /** get label of one ord TODO: what do we return when ordinal is not valid? null? */
+  FacetLabel getLabel(int ordinal) throws IOException;
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
+  /** get labels for multiple ords */
+  FacetLabel[] getLabels(int[] ordinals) throws IOException;
 }
