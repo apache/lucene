@@ -108,15 +108,6 @@ API Changes
 
 * GITHUB#13410: Removed Scorer#getWeight (Sanjay Dutt, Adrien Grand)
 
-* GITHUB#13568: Add DoubleValuesSource#toSortableLongDoubleValuesSource and
-  MultiDoubleValuesSource#toSortableMultiLongValuesSource methods. (Shradha Shankar)
-
-* GITHUB#13568: Add CollectorOwner class that wraps CollectorManager, and handles list of Collectors and results.
-  Add IndexSearcher#search method that takes CollectorOwner. (Egor Potemkin)
-
-* GITHUB#13568: Add DrillSideways#search method that supports any collector types for any drill-sideways dimensions
-  or drill-down. (Egor Potemkin)
-
 * GITHUB#13499: Remove deprecated TopScoreDocCollector + TopFieldCollector methods (#create, #createSharedManager) (Jakub Slowinski)
 
 * GITHUB#13632: CandidateMatcher public matching functions (Bryan Jacobowitz)
@@ -143,15 +134,12 @@ New Features
   DocValuesSkipper abstraction. A new flag is added to FieldType.java that configures whether
   to create a "skip index" for doc values. (Ignacio Vera)
 
-* GITHUB#13568: Add sandbox facets module to compute facets while collecting. (Egor Potemkin, Shradha Shankar)
-
 * GITHUB#13563: Add levels to doc values skip index. (Ignacio Vera)
 
 * GITHUB#13597: Align doc value skipper interval boundaries when an interval contains a constant
   value. (Ignacio Vera)
 
 * GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
-
 
 Improvements
 ---------------------
@@ -280,6 +268,15 @@ API Changes
 
 * GITHUB#13559: Add BitSet#nextSetBit(int, int) to get the index of the first set bit in range. (Egor Potemkin)
 
+* GITHUB#13568: Add DoubleValuesSource#toSortableLongDoubleValuesSource and
+  MultiDoubleValuesSource#toSortableMultiLongValuesSource methods. (Shradha Shankar)
+
+* GITHUB#13568: Add CollectorOwner class that wraps CollectorManager, and handles list of Collectors and results.
+  Add IndexSearcher#search method that takes CollectorOwner. (Egor Potemkin)
+
+* GITHUB#13568: Add DrillSideways#search method that supports any collector types for any drill-sideways dimensions
+  or drill-down. (Egor Potemkin)
+
 New Features
 ---------------------
 
@@ -291,6 +288,8 @@ New Features
 * GITHUB#13517: Allow configuring the search concurrency on LogDocMergePolicy
   and LogByteSizeMergePolicy via a new #setTargetConcurrency setter.
   (Adrien Grand)
+
+* GITHUB#13568: Add sandbox facets module to compute facets while collecting. (Egor Potemkin, Shradha Shankar)
 
 Improvements
 ---------------------
