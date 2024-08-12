@@ -14,14 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.facet.labels;
 
-apply plugin: 'java-library'
+import java.io.IOException;
+import org.apache.lucene.facet.taxonomy.FacetLabel;
 
-description = 'Various third party contributions and new ideas'
+/**
+ * Label to ord mapping interface.
+ *
+ * <p>TODO: move FacetLabel out of taxonomy folder to use it for any facets, not just taxonomy?
+ *
+ * <p>TODO: there is some overlap with {@link
+ * org.apache.lucene.facet.taxonomy.writercache.LabelToOrdinal}, can we reuse something?
+ *
+ * @lucene.experimental
+ */
+public interface LabelToOrd {
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
+  /**
+   * Ordinal to return if facet label doesn't exist in {@link #getOrd(FacetLabel)} and {@link
+   * #getOrds(FacetLabel[])}
+   */
+  int INVALID_ORD = -1;
+
+  /** get ord for one label */
+  int getOrd(FacetLabel label) throws IOException;
+
+  /** get ords for multiple labels */
+  int[] getOrds(FacetLabel[] labels) throws IOException;
 }
