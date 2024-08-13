@@ -264,5 +264,10 @@ public class HnswUtil {
     int size() {
       return size;
     }
+
+    @Override
+    public String toString() {
+      return "HnswUtil.Component<" + start + "," + size + ">";
+    }
   }
 }
