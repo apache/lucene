@@ -36,22 +36,48 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_CODEC_NAME = "Lucene912BinaryQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemb";
   static final String VECTOR_DATA_EXTENSION = "veb";
+  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+
+  static final int DEFAULT_NUM_VECTORS_PER_CLUSTER = 50_000_000;
+  // we set minimum here as we store the cluster ID in a byte, and we need to ensure that we can
+  // cluster the max number of docs supported in a segment
+  static final int MIN_NUM_VECTORS_PER_CLUSTER = 8_500_000;
 
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
+  private final int numVectorsPerCluster;
+  private final BinaryFlatVectorsScorer scorer = new Lucene912BinaryFlatVectorsScorer();
+
   /** Sole constructor */
-  protected Lucene912BinaryQuantizedVectorsFormat() {
+  public Lucene912BinaryQuantizedVectorsFormat() {
+    this(NAME, DEFAULT_NUM_VECTORS_PER_CLUSTER);
+  }
+
+  public Lucene912BinaryQuantizedVectorsFormat(int numVectorsPerCluster) {
     super(NAME);
+    if (numVectorsPerCluster < MIN_NUM_VECTORS_PER_CLUSTER) {
+      throw new IllegalArgumentException(
+          "numVectorsPerCluster must be at least " + MIN_NUM_VECTORS_PER_CLUSTER);
+    }
+    this.numVectorsPerCluster = numVectorsPerCluster;
+  }
+
+  // for testing
+  Lucene912BinaryQuantizedVectorsFormat(String name, int numVectorsPerCluster) {
+    super(name);
+    this.numVectorsPerCluster = numVectorsPerCluster;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return null;
+    return new Lucene912BinaryQuantizedVectorsWriter(
+        scorer, numVectorsPerCluster, rawVectorFormat.fieldsWriter(state), state);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return null;
+    return new Lucene912BinaryQuantizedVectorsReader(
+        state, rawVectorFormat.fieldsReader(state), scorer);
   }
 }

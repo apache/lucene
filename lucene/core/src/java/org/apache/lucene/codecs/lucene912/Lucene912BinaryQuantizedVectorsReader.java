@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -51,11 +50,15 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
+  private final BinaryFlatVectorsScorer vectorScorer;
 
   public Lucene912BinaryQuantizedVectorsReader(
-      SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer vectorsScorer)
+      SegmentReadState state,
+      FlatVectorsReader rawVectorsReader,
+      BinaryFlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
+    this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
     String metaFileName =
@@ -122,7 +125,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
               + fieldEntry.dimension);
     }
 
-    int binaryDims = (dimension + 63) / 64 * 64;
+    int binaryDims = (dimension + 7) / 8;
     long numQuantizedVectorBytes =
         Math.multiplyExact(binaryDims + Float.BYTES + Float.BYTES, fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
@@ -131,8 +134,8 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
               + fieldEntry.vectorDataLength
               + " not matching size="
               + fieldEntry.size
-              + " * (dim="
-              + dimension
+              + " * (binaryBytes="
+              + binaryDims
               + " + 8)"
               + " = "
               + numQuantizedVectorBytes);
@@ -179,6 +182,14 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
     size += rawVectorsReader.ramBytesUsed();
     return size;
+  }
+
+  public float[][] getCentroids(String field) {
+    FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry != null) {
+      return fieldEntry.centroids;
+    }
+    return null;
   }
 
   private static IndexInput openDataInput(
@@ -240,14 +251,12 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
       VectorSimilarityFunction similarityFunction,
       VectorEncoding vectorEncoding,
       int dimension,
-      int binaryDimensions,
       long vectorDataOffset,
       long vectorDataLength,
       int size,
       int numCentroids,
       float[][] centroids,
-      int[] centroidOrdinalOffsets,
-      OrdToDocDISIReaderConfiguration[] ordToDocDISIReaderConfigurations) {
+      OrdToDocDISIReaderConfiguration ordToDocDISIReaderConfiguration) {
 
     static FieldEntry create(
         IndexInput input,
@@ -255,46 +264,36 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
         VectorSimilarityFunction similarityFunction)
         throws IOException {
       int dimension = input.readVInt();
-      int binaryDimensions = input.readVInt();
       long vectorDataOffset = input.readVLong();
       long vectorDataLength = input.readVLong();
       int size = input.readInt();
-      int numCentroids = input.readVInt();
-      float[][] centroids = new float[numCentroids][dimension];
-      for (int i = 0; i < numCentroids; i++) {
-        float[] centroid = centroids[i];
-        for (int j = 0; j < dimension; j++) {
-          input.readFloats(centroid, j, dimension);
+      final int numCentroids;
+      final float[][] centroids;
+      if (size > 0) {
+        numCentroids = input.readVInt();
+        centroids = new float[numCentroids][dimension];
+        for (int i = 0; i < numCentroids; i++) {
+          float[] centroid = centroids[i];
+          for (int j = 0; j < dimension; j++) {
+            input.readFloats(centroid, j, dimension);
+          }
         }
+      } else {
+        numCentroids = 0;
+        centroids = null;
       }
-      int[] centroidOrdinalOffsets = new int[numCentroids];
-      for (int i = 0; i < size; i++) {
-        centroidOrdinalOffsets[i] = input.readVInt();
-      }
-      OrdToDocDISIReaderConfiguration[] ordToDocDISIReaderConfigurations =
-          new OrdToDocDISIReaderConfiguration[numCentroids];
-      for (int i = 0; i < numCentroids; i++) {
-        final int centroidLength;
-        if (i == numCentroids - 1) {
-          centroidLength = size - centroidOrdinalOffsets[i];
-        } else {
-          centroidLength = centroidOrdinalOffsets[i + 1] - centroidOrdinalOffsets[i];
-        }
-        ordToDocDISIReaderConfigurations[i] =
-            OrdToDocDISIReaderConfiguration.fromStoredMeta(input, centroidLength);
-      }
+      OrdToDocDISIReaderConfiguration conf =
+          OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
       return new FieldEntry(
           similarityFunction,
           vectorEncoding,
           dimension,
-          binaryDimensions,
           vectorDataOffset,
           vectorDataLength,
           size,
           numCentroids,
           centroids,
-          centroidOrdinalOffsets,
-          ordToDocDISIReaderConfigurations);
+          conf);
     }
   }
 }

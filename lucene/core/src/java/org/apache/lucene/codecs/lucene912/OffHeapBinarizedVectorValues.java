@@ -39,13 +39,17 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   protected final IndexInput slice;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
+  protected byte clusterId = 0;
   protected final int byteSize;
   protected int lastOrd = -1;
   protected final float[] correctiveValues = new float[2];
+  protected final boolean isMoreThanOneCluster;
 
+  // TODO do we want to use `LongValues` to store vectorOrd -> centroidOrd mapping?
   OffHeapBinarizedVectorValues(
       int dimension,
       int size,
+      boolean isMoreThanOneCluster,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       IndexInput slice) {
@@ -54,9 +58,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.similarityFunction = similarityFunction;
     this.vectorsScorer = vectorsScorer;
     this.slice = slice;
-    int binaryDimensions = (dimension + 63) / 64 * 64;
-    this.numBytes = binaryDimensions / 8;
-    this.byteSize = numBytes + 8;
+    this.isMoreThanOneCluster = isMoreThanOneCluster;
+    this.numBytes = (dimension + 7) / 8;
+    this.byteSize = (numBytes + 8) + (isMoreThanOneCluster ? 1 : 0);
     this.byteBuffer = ByteBuffer.allocate(numBytes);
     this.binaryValue = byteBuffer.array();
   }
@@ -78,6 +82,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), numBytes);
+    if (isMoreThanOneCluster) {
+      clusterId = slice.readByte();
+    }
     slice.readFloats(correctiveValues, 0, 2);
     lastOrd = targetOrd;
     return binaryValue;
@@ -98,7 +105,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (lastOrd == targetOrd) {
       return correctiveValues[0];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes);
+    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
     slice.readFloats(correctiveValues, 0, 2);
     return correctiveValues[0];
   }
@@ -108,9 +115,22 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (lastOrd == targetOrd) {
       return correctiveValues[0];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes);
+    slice.seek(((long) targetOrd * byteSize) + numBytes + 1);
     slice.readFloats(correctiveValues, 0, 2);
     return correctiveValues[1];
+  }
+
+  @Override
+  public byte getClusterId(int targetOrd) throws IOException {
+    if (lastOrd == targetOrd) {
+      return clusterId;
+    }
+    if (isMoreThanOneCluster == false) {
+      return clusterId;
+    }
+    slice.seek(((long) targetOrd * byteSize) + numBytes);
+    clusterId = slice.readByte();
+    return clusterId;
   }
 
   @Override
@@ -129,15 +149,21 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
+        boolean isMoreThanOneCluster,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice) {
-      super(dimension, size, similarityFunction, vectorsScorer, slice);
+      super(dimension, size, isMoreThanOneCluster, similarityFunction, vectorsScorer, slice);
     }
 
     @Override
     public byte[] vectorValue() throws IOException {
       return vectorValue(doc);
+    }
+
+    @Override
+    public byte clusterId() throws IOException {
+      return super.getClusterId(doc);
     }
 
     @Override
@@ -162,7 +188,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, size, similarityFunction, vectorsScorer, slice.clone());
+          dimension, size, isMoreThanOneCluster, similarityFunction, vectorsScorer, slice.clone());
     }
 
     @Override
@@ -188,12 +214,13 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         OrdToDocDISIReaderConfiguration configuration,
         int dimension,
         int size,
+        boolean isMoreThanOneCluster,
         IndexInput dataIn,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice)
         throws IOException {
-      super(dimension, size, similarityFunction, vectorsScorer, slice);
+      super(dimension, size, isMoreThanOneCluster, similarityFunction, vectorsScorer, slice);
       this.configuration = configuration;
       this.dataIn = dataIn;
       this.ordToDoc = configuration.getDirectMonotonicReader(dataIn);
@@ -203,6 +230,11 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public byte[] vectorValue() throws IOException {
       return vectorValue(disi.index());
+    }
+
+    @Override
+    public byte clusterId() throws IOException {
+      return super.getClusterId(disi.index());
     }
 
     @Override
@@ -224,7 +256,14 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
-          configuration, dimension, size, dataIn, similarityFunction, vectorsScorer, slice.clone());
+          configuration,
+          dimension,
+          size,
+          isMoreThanOneCluster,
+          dataIn,
+          similarityFunction,
+          vectorsScorer,
+          slice.clone());
     }
 
     @Override
@@ -264,7 +303,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         int dimension,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer) {
-      super(dimension, 0, similarityFunction, vectorsScorer, null);
+      super(dimension, 0, false, similarityFunction, vectorsScorer, null);
     }
 
     @Override
@@ -285,6 +324,11 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public byte[] vectorValue() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public byte clusterId() throws IOException {
+      return 0;
     }
 
     @Override

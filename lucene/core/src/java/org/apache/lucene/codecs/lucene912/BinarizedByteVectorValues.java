@@ -30,6 +30,8 @@ import org.apache.lucene.search.VectorScorer;
 public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
   public abstract float getDistanceToCentroid() throws IOException;
 
+  public abstract byte clusterId() throws IOException;
+
   public abstract float getMagnitude() throws IOException;
 
   public abstract byte[] vectorValue() throws IOException;

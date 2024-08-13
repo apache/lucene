@@ -17,22 +17,22 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
-public interface BinaryFlatVectorsScorer extends FlatVectorsScorer {
+/**
+ * Gets access to the query vector values stored in a binary format
+ *
+ * @lucene.experimental
+ */
+public interface RandomAccessBinarizedQueryByteVectorValues extends RandomAccessVectorValues.Bytes {
+  float getCentroidDistance(int targetOrd, int centroidOrd) throws IOException;
 
-  /**
-   * @param similarityFunction vector similarity function
-   * @param scoringVectors the vectors over which to score
-   * @param targetVectors the target vectors
-   * @return a {@link RandomVectorScorerSupplier} that can be used to score vectors
-   * @throws IOException if an I/O error occurs
-   */
-  RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessBinarizedQueryByteVectorValues scoringVectors,
-      RandomAccessBinarizedByteVectorValues targetVectors)
-      throws IOException;
+  float getVl(int targetOrd, int centroidOrd) throws IOException;
+
+  float getWidth(int targetOrd, int centroidOrd) throws IOException;
+
+  int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
+
+  @Override
+  RandomAccessBinarizedQueryByteVectorValues copy() throws IOException;
 }

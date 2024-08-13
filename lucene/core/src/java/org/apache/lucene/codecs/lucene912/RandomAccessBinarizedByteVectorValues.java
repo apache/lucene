@@ -29,6 +29,8 @@ public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVecto
 
   float getVectorMagnitude(int docID) throws IOException;
 
+  byte getClusterId(int docID) throws IOException;
+
   @Override
   RandomAccessBinarizedByteVectorValues copy() throws IOException;
 }

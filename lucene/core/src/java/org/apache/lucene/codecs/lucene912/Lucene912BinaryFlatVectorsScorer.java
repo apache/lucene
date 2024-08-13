@@ -17,22 +17,46 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
-public interface BinaryFlatVectorsScorer extends FlatVectorsScorer {
+public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer {
 
-  /**
-   * @param similarityFunction vector similarity function
-   * @param scoringVectors the vectors over which to score
-   * @param targetVectors the target vectors
-   * @return a {@link RandomVectorScorerSupplier} that can be used to score vectors
-   * @throws IOException if an I/O error occurs
-   */
-  RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+  public Lucene912BinaryFlatVectorsScorer() {}
+
+  @Override
+  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+      VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
+      throws IOException {
+    return null;
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues vectorValues,
+      float[] target)
+      throws IOException {
+    return null;
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      RandomAccessVectorValues vectorValues,
+      byte[] target)
+      throws IOException {
+    return null;
+  }
+
+  @Override
+  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
       RandomAccessBinarizedQueryByteVectorValues scoringVectors,
       RandomAccessBinarizedByteVectorValues targetVectors)
-      throws IOException;
+      throws IOException {
+    return null;
+  }
 }
