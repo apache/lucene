@@ -25,6 +25,11 @@ import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
+/**
+ * Codec for encoding/decoding binary quantized vectors
+ * The binary quantization format used here reflects RaBitQ: https://arxiv.org/abs/2405.12497
+ * TODO: add more details on the format
+ **/
 public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
 
   public static final String BINARIZED_VECTOR_COMPONENT = "BVEC";
@@ -38,7 +43,7 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veb";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
-  static final int DEFAULT_NUM_VECTORS_PER_CLUSTER = 50_000_000;
+  static final int DEFAULT_NUM_VECTORS_PER_CLUSTER = 100_000_000;
   // we set minimum here as we store the cluster ID in a byte, and we need to ensure that we can
   // cluster the max number of docs supported in a segment
   static final int MIN_NUM_VECTORS_PER_CLUSTER = 8_500_000;
