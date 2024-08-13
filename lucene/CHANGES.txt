@@ -352,6 +352,9 @@ Optimizations
 
 * GITHUB#13581: OnHeapHnswGraph no longer allocates a lock for every graph node (Mike Sokolov)
 
+* GITHUB#13636: Optimizations to the decoding logic of blocks of postings.
+  (Adrien Grand, Uwe Schindler)
+
 Changes in runtime behavior
 ---------------------
 
