@@ -108,7 +108,7 @@ configure(rootProject) {
 
     eclipseJdt {
         enabled = false
-        // dependsOn 'luceneEclipse'
+        dependsOn 'luceneEclipseJdt'
     }
 
     eclipseClasspath {
