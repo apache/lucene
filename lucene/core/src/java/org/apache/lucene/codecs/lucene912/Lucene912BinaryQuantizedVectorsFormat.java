@@ -85,4 +85,15 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
     return new Lucene912BinaryQuantizedVectorsReader(
         state, rawVectorFormat.fieldsReader(state), scorer);
   }
+
+  @Override
+  public String toString() {
+    return "Lucene912BinaryQuantizedVectorsFormat(name="
+        + NAME
+        + ", numVectorsPerCluster="
+        + numVectorsPerCluster
+        + ", flatVectorScorer="
+        + scorer
+        + ")";
+  }
 }

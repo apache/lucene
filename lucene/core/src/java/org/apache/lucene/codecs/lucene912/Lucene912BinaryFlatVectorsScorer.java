@@ -80,6 +80,11 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     return null;
   }
 
+  @Override
+  public String toString() {
+    return "Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
+  }
+
   public static class BinarizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
     private final RandomAccessBinarizedQueryByteVectorValues queryVectors;
     private final RandomAccessBinarizedByteVectorValues targetVectors;
