@@ -14,34 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.internal.vectorization;
 
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 
-/** Default provider returning scalar implementations. */
-final class DefaultVectorizationProvider extends VectorizationProvider {
+final class DefaultPostingDecodingUtil extends PostingDecodingUtil {
 
-  private final VectorUtilSupport vectorUtilSupport;
+  protected final IndexInput in;
 
-  DefaultVectorizationProvider() {
-    vectorUtilSupport = new DefaultVectorUtilSupport();
+  public DefaultPostingDecodingUtil(IndexInput in) {
+    this.in = in;
   }
 
   @Override
-  public VectorUtilSupport getVectorUtilSupport() {
-    return vectorUtilSupport;
-  }
-
-  @Override
-  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
-    return DefaultFlatVectorScorer.INSTANCE;
-  }
-
-  @Override
-  public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) {
-    return new DefaultPostingDecodingUtil(input);
+  public void splitLongs(
+      int count, long[] b, int bShift, long bMask, long[] c, int cIndex, long cMask)
+      throws IOException {
+    assert count <= 64;
+    in.readLongs(c, cIndex, count);
+    // The below loop is auto-vectorized
+    for (int i = 0; i < count; ++i) {
+      b[i] = (c[cIndex + i] >>> bShift) & bMask;
+      c[cIndex + i] &= cMask;
+    }
   }
 }

@@ -607,7 +607,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
 
     @Override
-    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+    public MemorySegment segmentSliceOrNull(long pos, long len) throws IOException {
       try {
         Objects.checkIndex(pos + len, this.length + 1);
         return curSegment.asSlice(pos, len);
@@ -676,7 +676,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
       return super.readLong(pos + offset);
     }
 
-    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+    @Override
+    public MemorySegment segmentSliceOrNull(long pos, long len) throws IOException {
       if (pos + len > length) {
         throw handlePositionalIOOBE(null, "segmentSliceOrNull", pos);
       }
