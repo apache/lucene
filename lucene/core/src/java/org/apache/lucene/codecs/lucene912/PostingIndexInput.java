@@ -32,11 +32,14 @@ public final class PostingIndexInput {
 
   public final IndexInput in;
   public final ForUtil forUtil;
+  public final ForDeltaUtil forDeltaUtil;
   private final PostingDecodingUtil postingDecodingUtil;
 
-  public PostingIndexInput(IndexInput in, ForUtil forUtil) throws IOException {
+  public PostingIndexInput(IndexInput in, ForUtil forUtil, ForDeltaUtil forDeltaUtil)
+      throws IOException {
     this.in = in;
     this.forUtil = forUtil;
+    this.forDeltaUtil = forDeltaUtil;
     this.postingDecodingUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
   }
 
@@ -50,6 +53,6 @@ public final class PostingIndexInput {
    * and store results into {@code longs}.
    */
   public void decodeAndPrefixSum(int bitsPerValue, long base, long[] longs) throws IOException {
-    forUtil.decodeAndPrefixSum(bitsPerValue, in, postingDecodingUtil, base, longs);
+    forDeltaUtil.decodeAndPrefixSum(bitsPerValue, in, postingDecodingUtil, base, longs);
   }
 }

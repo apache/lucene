@@ -22,11 +22,17 @@ import java.io.IOException;
 public abstract class PostingDecodingUtil {
 
   /**
-   * Read {@code count} longs. This number must not exceed 64. Apply shift {@code bShift} and mask
-   * {@code bMask} and store the result in {@code b} starting at offset 0. Apply mask {@code cMask}
-   * and store the result in {@code c} starting at offset {@code cIndex}.
+   * Core methods for decoding blocks of docs / freqs / positions / offsets.
+   *
+   * <ul>
+   *   <li>Read {@code count} longs.
+   *   <li>For all {@code i} &gt;= 0 so that {@code bShift - i * dec} &gt; 0, apply shift {@code
+   *       bShift - i * dec} and store the result in {@code b} at offset {@code count * i}.
+   *   <li>Apply mask {@code cMask} and store the result in {@code c} starting at offset {@code
+   *       cIndex}.
+   * </ul>
    */
   public abstract void splitLongs(
-      int count, long[] b, int bShift, long bMask, long[] c, int cIndex, long cMask)
+      int count, long[] b, int bShift, int dec, long bMask, long[] c, int cIndex, long cMask)
       throws IOException;
 }

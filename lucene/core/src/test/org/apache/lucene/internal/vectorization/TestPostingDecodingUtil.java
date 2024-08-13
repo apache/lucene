@@ -51,8 +51,10 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
             expectedC[i] = random().nextLong();
             actualC[i] = expectedC[i];
           }
-          int count = TestUtil.nextInt(random(), 1, 64);
           int bShift = TestUtil.nextInt(random(), 1, 31);
+          int dec = TestUtil.nextInt(random(), 1, bShift);
+          int numIters = (bShift + dec - 1) / dec;
+          int count = TestUtil.nextInt(random(), 1, 64 / numIters);
           long bMask = random().nextLong();
           int cIndex = random().nextInt(64);
           long cMask = random().nextLong();
@@ -67,10 +69,10 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           PostingDecodingUtil optimizedUtil = vectorizationProvider.newPostingDecodingUtil(slice);
 
           slice.seek(startFP);
-          defaultUtil.splitLongs(count, expectedB, bShift, bMask, expectedC, cIndex, cMask);
+          defaultUtil.splitLongs(count, expectedB, bShift, dec, bMask, expectedC, cIndex, cMask);
           long expectedEndFP = slice.getFilePointer();
           slice.seek(startFP);
-          optimizedUtil.splitLongs(count, actualB, bShift, bMask, actualC, cIndex, cMask);
+          optimizedUtil.splitLongs(count, actualB, bShift, dec, bMask, actualC, cIndex, cMask);
           assertEquals(expectedEndFP, slice.getFilePointer());
           assertArrayEquals(expectedB, actualB);
           assertArrayEquals(expectedC, actualC);
