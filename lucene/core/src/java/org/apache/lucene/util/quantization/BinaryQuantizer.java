@@ -20,20 +20,24 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 
 public class BinaryQuantizer {
   private static final int QUERY_PROJECTIONS = 4;
-  private final float[] centroid;
 
-  public BinaryQuantizer(float[] centroid) {
-    this.centroid = centroid;
-  }
+  public BinaryQuantizer() {}
 
   public float[] quantizeForIndex(
-      float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
+      float[] vector,
+      byte[] destination,
+      VectorSimilarityFunction similarityFunction,
+      float[] centroid) {
     float[] corrections = new float[2];
     return corrections;
   }
 
+  // TODO, need to return all the corrections
   public float[] quantizeForQuery(
-      float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
+      float[] vector,
+      byte[] destination,
+      VectorSimilarityFunction similarityFunction,
+      float[] centroid) {
     float[] corrections = new float[2];
     return corrections;
   }

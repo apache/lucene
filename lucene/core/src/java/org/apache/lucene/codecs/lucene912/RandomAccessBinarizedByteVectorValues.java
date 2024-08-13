@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 /**
  * Gets access to the vector values stored in a binary format
@@ -25,11 +26,25 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  * @lucene.experimental
  */
 public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVectorValues.Bytes {
-  float getCentroidDistance(int docID) throws IOException;
+  /** Returns the centroid distance for the vector */
+  float getCentroidDistance(int vectorOrd) throws IOException;
 
-  float getVectorMagnitude(int docID) throws IOException;
+  /** Returns the vector magnitude for the vector */
+  float getVectorMagnitude(int vectorOrd) throws IOException;
 
-  byte getClusterId(int docID) throws IOException;
+  /** Returns the cluster ID for the vector */
+  byte getClusterId(int vectorOrd) throws IOException;
+
+  /**
+   * @return the quantizer used to quantize the vectors
+   */
+  BinaryQuantizer getQuantizer();
+
+  /**
+   * @return coarse grained centroids for the vectors
+   * @throws IOException
+   */
+  float[][] getCentroids() throws IOException;
 
   @Override
   RandomAccessBinarizedByteVectorValues copy() throws IOException;

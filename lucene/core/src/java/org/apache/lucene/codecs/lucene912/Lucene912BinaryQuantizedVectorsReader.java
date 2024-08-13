@@ -144,7 +144,6 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
-    // TODO
     return rawVectorsReader.getRandomVectorScorer(field, target);
   }
 

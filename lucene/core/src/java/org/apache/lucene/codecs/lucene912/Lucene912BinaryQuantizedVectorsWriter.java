@@ -184,7 +184,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     for (float[] v : fieldData.getVectors()) {
       float[] corrections =
           scalarQuantizer.quantizeForIndex(
-              v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
+              v,
+              vector,
+              fieldData.fieldInfo.getVectorSimilarityFunction(),
+              fieldData.dimensionSums);
       binarizedVectorData.writeBytes(vector, vector.length);
       if (multipleClusters) {
         binarizedVectorData.writeByte(clusterId);
@@ -238,7 +241,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] v = fieldData.getVectors().get(ordinal);
       float[] corrections =
           scalarQuantizer.quantizeForIndex(
-              v, vector, fieldData.fieldInfo.getVectorSimilarityFunction());
+              v,
+              vector,
+              fieldData.fieldInfo.getVectorSimilarityFunction(),
+              fieldData.dimensionSums);
       binarizedVectorData.writeBytes(vector, vector.length);
       if (multipleClusters) {
         binarizedVectorData.writeByte(clusterId);
@@ -306,7 +312,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(
               KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-              new BinaryQuantizer(centroids[0]),
+              new BinaryQuantizer(),
+              centroids,
               fieldInfo.getVectorSimilarityFunction());
       long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
       DocsWithFieldSet docsWithField =
@@ -373,11 +380,14 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     IndexInput binarizedDataInput = null;
     IndexInput binarizedScoreDataInput = null;
     boolean success = false;
+    BinaryQuantizer quantizer = new BinaryQuantizer();
+
     try {
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(
               KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-              new BinaryQuantizer(centroids[0]),
+              quantizer,
+              centroids,
               fieldInfo.getVectorSimilarityFunction());
       DocsWithFieldSet docsWithField =
           writeBinarizedVectorData(tempQuantizedVectorData, binarizedVectorValues, false);
@@ -396,7 +406,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       BinarizedForQueryFloatVectorValues binarizedForQueryVectorValues =
           new BinarizedForQueryFloatVectorValues(
               KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-              new BinaryQuantizer(centroids[0]),
+              centroids,
+              quantizer,
               fieldInfo.getVectorSimilarityFunction());
       writeBinarizedVectorData(tempScoreQuantizedVectorData, binarizedForQueryVectorValues, false);
       CodecUtil.writeFooter(tempScoreQuantizedVectorData);
@@ -424,7 +435,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               new OffHeapBinarizedVectorValues.DenseOffHeapVectorValues(
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality(),
-                  false,
+                  centroids,
+                  quantizer,
                   fieldInfo.getVectorSimilarityFunction(),
                   vectorsScorer,
                   finalBinarizedDataInput));
@@ -607,9 +619,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     BinaryQuantizer createQuantizer() throws IOException {
       assert isFinished();
       if (flatFieldVectorsWriter.getVectors().size() == 0) {
-        return new BinaryQuantizer(new float[0]);
+        return new BinaryQuantizer();
       }
-      return new BinaryQuantizer(dimensionSums);
+      return new BinaryQuantizer();
     }
   }
 
@@ -731,21 +743,27 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
+  // TODO this assumes a single centroid, we will need to adjust so that we can get the appropriate
+  // query vector for each centroid, this means there will be num_centroid * num_docs quantized
+  // This is for writing out to a temp file for building the HNSW graph.
   static class BinarizedForQueryFloatVectorValues extends BinarizedByteVectorValues {
     private float[] corrections = new float[2];
     private final byte[] binarized;
     private final FloatVectorValues values;
     private final BinaryQuantizer quantizer;
     private final VectorSimilarityFunction vectorSimilarityFunction;
+    private final float[][] centroids;
 
     BinarizedForQueryFloatVectorValues(
         FloatVectorValues delegate,
+        float[][] centroids,
         BinaryQuantizer quantizer,
         VectorSimilarityFunction similarityFunction) {
       this.values = delegate;
       this.quantizer = quantizer;
       this.binarized = new byte[(delegate.dimension() + 1) / 2];
       this.vectorSimilarityFunction = similarityFunction;
+      this.centroids = centroids;
     }
 
     @Override
@@ -809,13 +827,15 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     private void binarize() throws IOException {
       corrections =
-          quantizer.quantizeForQuery(values.vectorValue(), binarized, vectorSimilarityFunction);
+          quantizer.quantizeForQuery(
+              values.vectorValue(), binarized, vectorSimilarityFunction, centroids[0]);
     }
   }
 
   static class BinarizedFloatVectorValues extends BinarizedByteVectorValues {
     private float[] corrections = new float[2];
     private final byte[] binarized;
+    private final float[][] centroids;
     private final FloatVectorValues values;
     private final BinaryQuantizer quantizer;
     private final VectorSimilarityFunction vectorSimilarityFunction;
@@ -823,11 +843,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     BinarizedFloatVectorValues(
         FloatVectorValues delegate,
         BinaryQuantizer quantizer,
+        float[][] centroids,
         VectorSimilarityFunction similarityFunction) {
       this.values = delegate;
       this.quantizer = quantizer;
       this.binarized = new byte[(delegate.dimension() + 7) / 8];
       this.vectorSimilarityFunction = similarityFunction;
+      this.centroids = centroids;
     }
 
     @Override
@@ -890,8 +912,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     private void binarize() throws IOException {
+      // TODO quantize for just nearest centroid
       corrections =
-          quantizer.quantizeForIndex(values.vectorValue(), binarized, vectorSimilarityFunction);
+          quantizer.quantizeForIndex(
+              values.vectorValue(), binarized, vectorSimilarityFunction, centroids[0]);
     }
   }
 

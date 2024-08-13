@@ -26,10 +26,9 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * Codec for encoding/decoding binary quantized vectors
- * The binary quantization format used here reflects RaBitQ: https://arxiv.org/abs/2405.12497
- * TODO: add more details on the format
- **/
+ * Codec for encoding/decoding binary quantized vectors The binary quantization format used here
+ * reflects RaBitQ: https://arxiv.org/abs/2405.12497 TODO: add more details on the format
+ */
 public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
 
   public static final String BINARIZED_VECTOR_COMPONENT = "BVEC";
@@ -52,7 +51,8 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final int numVectorsPerCluster;
-  private final BinaryFlatVectorsScorer scorer = new Lucene912BinaryFlatVectorsScorer();
+  private final BinaryFlatVectorsScorer scorer =
+      new Lucene912BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** Sole constructor */
   public Lucene912BinaryQuantizedVectorsFormat() {

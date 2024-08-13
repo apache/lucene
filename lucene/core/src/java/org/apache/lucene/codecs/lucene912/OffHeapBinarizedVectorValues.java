@@ -26,6 +26,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
+import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorValues
     implements RandomAccessBinarizedByteVectorValues {
@@ -44,12 +45,15 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   protected int lastOrd = -1;
   protected final float[] correctiveValues = new float[2];
   protected final boolean isMoreThanOneCluster;
+  protected final BinaryQuantizer binaryQuantizer;
+  protected final float[][] centroids;
 
   // TODO do we want to use `LongValues` to store vectorOrd -> centroidOrd mapping?
   OffHeapBinarizedVectorValues(
       int dimension,
       int size,
-      boolean isMoreThanOneCluster,
+      float[][] centroids,
+      BinaryQuantizer quantizer,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       IndexInput slice) {
@@ -58,11 +62,13 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.similarityFunction = similarityFunction;
     this.vectorsScorer = vectorsScorer;
     this.slice = slice;
-    this.isMoreThanOneCluster = isMoreThanOneCluster;
+    this.centroids = centroids;
+    this.isMoreThanOneCluster = centroids != null && centroids.length > 1;
     this.numBytes = (dimension + 7) / 8;
     this.byteSize = (numBytes + 8) + (isMoreThanOneCluster ? 1 : 0);
     this.byteBuffer = ByteBuffer.allocate(numBytes);
     this.binaryValue = byteBuffer.array();
+    this.binaryQuantizer = quantizer;
   }
 
   @Override
@@ -134,6 +140,16 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   @Override
+  public BinaryQuantizer getQuantizer() {
+    return binaryQuantizer;
+  }
+
+  @Override
+  public float[][] getCentroids() {
+    return centroids;
+  }
+
+  @Override
   public IndexInput getSlice() {
     return slice;
   }
@@ -143,17 +159,60 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     return numBytes;
   }
 
+  public static OffHeapBinarizedVectorValues load(
+      OrdToDocDISIReaderConfiguration configuration,
+      int dimension,
+      int size,
+      BinaryQuantizer binaryQuantizer,
+      VectorSimilarityFunction similarityFunction,
+      FlatVectorsScorer vectorsScorer,
+      float[][] centroids,
+      long quantizedVectorDataOffset,
+      long quantizedVectorDataLength,
+      IndexInput vectorData)
+      throws IOException {
+    if (configuration.isEmpty()) {
+      return new EmptyOffHeapVectorValues(dimension, similarityFunction, vectorsScorer);
+    }
+    assert centroids != null && centroids.length == 1;
+    IndexInput bytesSlice =
+        vectorData.slice(
+            "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
+    if (configuration.isDense()) {
+      return new DenseOffHeapVectorValues(
+          dimension,
+          size,
+          centroids,
+          binaryQuantizer,
+          similarityFunction,
+          vectorsScorer,
+          bytesSlice);
+    } else {
+      return new SparseOffHeapVectorValues(
+          configuration,
+          dimension,
+          size,
+          centroids,
+          binaryQuantizer,
+          vectorData,
+          similarityFunction,
+          vectorsScorer,
+          bytesSlice);
+    }
+  }
+
   public static class DenseOffHeapVectorValues extends OffHeapBinarizedVectorValues {
     private int doc = -1;
 
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
-        boolean isMoreThanOneCluster,
+        float[][] centroids,
+        BinaryQuantizer binaryQuantizer,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice) {
-      super(dimension, size, isMoreThanOneCluster, similarityFunction, vectorsScorer, slice);
+      super(dimension, size, centroids, binaryQuantizer, similarityFunction, vectorsScorer, slice);
     }
 
     @Override
@@ -188,7 +247,13 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, size, isMoreThanOneCluster, similarityFunction, vectorsScorer, slice.clone());
+          dimension,
+          size,
+          centroids,
+          binaryQuantizer,
+          similarityFunction,
+          vectorsScorer,
+          slice.clone());
     }
 
     @Override
@@ -214,13 +279,14 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         OrdToDocDISIReaderConfiguration configuration,
         int dimension,
         int size,
-        boolean isMoreThanOneCluster,
+        float[][] centroids,
+        BinaryQuantizer binaryQuantizer,
         IndexInput dataIn,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice)
         throws IOException {
-      super(dimension, size, isMoreThanOneCluster, similarityFunction, vectorsScorer, slice);
+      super(dimension, size, centroids, binaryQuantizer, similarityFunction, vectorsScorer, slice);
       this.configuration = configuration;
       this.dataIn = dataIn;
       this.ordToDoc = configuration.getDirectMonotonicReader(dataIn);
@@ -259,7 +325,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           configuration,
           dimension,
           size,
-          isMoreThanOneCluster,
+          centroids,
+          binaryQuantizer,
           dataIn,
           similarityFunction,
           vectorsScorer,
@@ -303,7 +370,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         int dimension,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer) {
-      super(dimension, 0, false, similarityFunction, vectorsScorer, null);
+      super(dimension, 0, null, null, similarityFunction, vectorsScorer, null);
     }
 
     @Override
