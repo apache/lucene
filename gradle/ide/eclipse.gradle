@@ -22,10 +22,11 @@ import org.gradle.plugins.ide.eclipse.model.ClasspathEntry
 def resources = scriptResources(buildscript)
 
 configure(rootProject) {
-  plugins.withType(JavaPlugin) {
-    apply plugin: "eclipse"
+  if (gradle.startParameter.taskNames.contains("eclipse")) {
+    project.pluginManager.apply("java-library")
+    project.pluginManager.apply("eclipse")
 
-    def eclipseJavaVersion = propertyOrDefault("eclipse.javaVersion", rootProject.minJavaVersion)
+    def eclipseJavaVersion = propertyOrDefault("eclipse.javaVersion", deps.versions.minJava.get())
     def relativize = { other -> rootProject.rootDir.relativePath(other).toString() }
 
     eclipse {
@@ -105,9 +106,9 @@ configure(rootProject) {
         }
       }
 
-      eclipseJdt {
+    eclipseJdt {
         enabled = false
-        dependsOn 'luceneEclipse'
+        // dependsOn 'luceneEclipse'
     }
 
     eclipseClasspath {
