@@ -89,7 +89,8 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   @Override
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
     if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS
-        && input instanceof MemorySegmentAccessInput msai) {
+        && input instanceof MemorySegmentAccessInput) {
+      MemorySegmentAccessInput msai = (MemorySegmentAccessInput) input;
       MemorySegment ms = msai.segmentSliceOrNull(0, input.length());
       if (ms != null) {
         return new MemorySegmentPostingDecodingUtil(input, ms);

@@ -1266,10 +1266,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
 
       docFreq = termState.docFreq;
-      if (docFreq > 1 && docIn == null) {
+      if (docFreq > 1) {
         // lazy init
         docIn = startDocIn.clone();
         postingDocIn = new PostingIndexInput(docIn, forUtil);
+      } else {
+        docIn = null;
+        postingDocIn = null;
       }
 
       doc = -1;
@@ -1653,10 +1656,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       posTermStartFP = termState.posStartFP;
       totalTermFreq = termState.totalTermFreq;
       singletonDocID = termState.singletonDocID;
-      if (docFreq > 1 && docIn == null) {
+      if (docFreq > 1) {
         // lazy init
         docIn = startDocIn.clone();
         postingDocIn = new PostingIndexInput(docIn, forUtil);
+      } else {
+        docIn = null;
+        postingDocIn = null;
       }
       posIn.seek(posTermStartFP);
       level1PosEndFP = posTermStartFP;
