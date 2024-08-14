@@ -21,14 +21,15 @@ package org.apache.lucene.util.quantization;
 // import jdk.incubator.vector.VectorOperators;
 // import jdk.incubator.vector.VectorSpecies;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
-record SubspaceOutput(float projection, byte[] packedBinaryVector) {}
+record SubspaceOutput(byte[] packedBinaryVector, float projection) {}
 
 record SubspaceOutputMIP(
-    float projection, byte[] packedBinaryVector, float oDotC, float normOC, float OOQ) {}
+    byte[] packedBinaryVector, float xbSum, float oDotC, float normOC, float OOQ) {}
 
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
@@ -211,6 +212,10 @@ public class BinaryQuantizer {
     return allBinary;
   }
 
+  public static int popcount(byte[] d, int dimensions) {
+    return BitSet.valueOf(d).cardinality();
+  }
+
   public SubspaceOutput generateSubSpace(float[] vector, float[] centroid) {
 
     // typically no-op if dimensions/64
@@ -255,7 +260,9 @@ public class BinaryQuantizer {
     }
     OOQ = OOQ / sqrtDimensions;
 
-    return new SubspaceOutputMIP(projection, packedBinaryVector, oDotC, normOC, OOQ);
+    short xbSum = (short) popcount(packedBinaryVector, discretizedDimensions);
+
+    return new SubspaceOutputMIP(packedBinaryVector, xbSum, oDotC, normOC, OOQ);
   }
 
   // FIXME: reintroduce a space utils
@@ -395,11 +402,12 @@ public class BinaryQuantizer {
       case VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT:
         SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid);
         corrections = new float[5];
-        corrections[0] = distToCentroid;
-        corrections[1] = subspaceOutputMIP.projection();
-        corrections[2] = subspaceOutputMIP.oDotC();
-        corrections[3] = subspaceOutputMIP.normOC();
-        corrections[4] = subspaceOutputMIP.OOQ();
+        corrections[0] = subspaceOutputMIP.xbSum();
+        // FIXME: quantize these values so we are passing back 1 byte values for all three of these
+        // instead of floats
+        corrections[1] = subspaceOutputMIP.oDotC();
+        corrections[2] = subspaceOutputMIP.normOC();
+        corrections[3] = subspaceOutputMIP.OOQ();
         destination = subspaceOutputMIP.packedBinaryVector();
         break;
     }

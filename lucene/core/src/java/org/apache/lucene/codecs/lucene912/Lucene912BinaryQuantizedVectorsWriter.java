@@ -299,10 +299,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      CloseableRandomVectorScorerSupplier vectorScorerSupplier = rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
+      CloseableRandomVectorScorerSupplier vectorScorerSupplier =
+          rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
       // we assume floats here as that is what KMeans currently requires
-      RandomAccessVectorValues.Floats vectorValues = (RandomAccessVectorValues.Floats)vectorScorerSupplier.vectors();
-      // calculate centroids if total number of vectors now exceeds the number of vectors per cluster
+      RandomAccessVectorValues.Floats vectorValues =
+          (RandomAccessVectorValues.Floats) vectorScorerSupplier.vectors();
+      // calculate centroids if total number of vectors now exceeds the number of vectors per
+      // cluster
       float[][] centroids = mergeAndRecalculateCentroids(mergeState, fieldInfo);
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(
