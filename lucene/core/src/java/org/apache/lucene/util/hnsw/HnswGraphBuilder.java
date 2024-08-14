@@ -165,7 +165,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
     addVectors(maxOrd);
-    return hnsw;
+    return getCompletedGraph();
   }
 
   @Override
@@ -403,7 +403,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   void finish() throws IOException {
-    // System.out.println("finish " + frozen);
+    System.out.println("finish " + frozen);
     connectComponents();
     frozen = true;
   }
@@ -430,7 +430,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       maxConn *= 2;
     }
     List<Component> components = HnswUtil.components(hnsw, level, notFullyConnected, maxConn);
-    // System.out.println("HnswGraphBuilder.connectComponents level=" + level + ": " + components);
+    System.out.println("HnswGraphBuilder.connectComponents level=" + level + ": " + components);
     boolean result = true;
     if (components.size() > 1) {
       // connect other components to the largest one
@@ -460,7 +460,7 @@ public class HnswGraphBuilder implements HnswBuilder {
             float score = beam.minimumScore();
             assert notFullyConnected.get(c0node);
             // link the nodes
-            // System.out.println("link " + c0 + "." + c0node + " to " + c + "." + c.start());
+            System.out.println("link " + c0 + "." + c0node + " to " + c + "." + c.start());
             link(level, c0node, c.start(), score, notFullyConnected);
             linked = true;
           }
