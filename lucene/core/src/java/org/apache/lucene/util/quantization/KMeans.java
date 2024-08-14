@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.codecs.quantization;
+package org.apache.lucene.util.quantization;
 
-import static org.apache.lucene.sandbox.codecs.quantization.SampleReader.createSampleReader;
+import static org.apache.lucene.util.quantization.SampleReader.createSampleReader;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -34,6 +34,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -41,6 +42,7 @@ import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
@@ -144,7 +146,24 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
-    return rawVectorsReader.getRandomVectorScorer(field, target);
+    FieldEntry fi = fields.get(field);
+    if (fi == null) {
+      return null;
+    }
+    return vectorScorer.getRandomVectorScorer(
+        fi.similarityFunction,
+        OffHeapBinarizedVectorValues.load(
+            fi.ordToDocDISIReaderConfiguration,
+            fi.dimension,
+            fi.size,
+            new BinaryQuantizer(fi.dimension, fi.similarityFunction),
+            fi.similarityFunction,
+            vectorScorer,
+            fi.centroids,
+            fi.vectorDataOffset,
+            fi.vectorDataLength,
+            quantizedVectorData),
+        target);
   }
 
   @Override
@@ -160,7 +179,32 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    return rawVectorsReader.getFloatVectorValues(field);
+    FieldEntry fi = fields.get(field);
+    if (fi == null) {
+      return null;
+    }
+    if (fi.vectorEncoding != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fi.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT32);
+    }
+    OffHeapBinarizedVectorValues bvv =
+        OffHeapBinarizedVectorValues.load(
+            fi.ordToDocDISIReaderConfiguration,
+            fi.dimension,
+            fi.size,
+            new BinaryQuantizer(fi.dimension, fi.similarityFunction),
+            fi.similarityFunction,
+            vectorScorer,
+            fi.centroids,
+            fi.vectorDataOffset,
+            fi.vectorDataLength,
+            quantizedVectorData);
+    return new BinarizedVectorValues(rawVectorsReader.getFloatVectorValues(field), bvv);
   }
 
   @Override
@@ -293,6 +337,58 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
           numCentroids,
           centroids,
           conf);
+    }
+  }
+
+  private static final class BinarizedVectorValues extends FloatVectorValues {
+    private final FloatVectorValues rawVectorValues;
+    private final OffHeapBinarizedVectorValues quantizedVectorValues;
+
+    BinarizedVectorValues(
+        FloatVectorValues rawVectorValues, OffHeapBinarizedVectorValues quantizedVectorValues) {
+      this.rawVectorValues = rawVectorValues;
+      this.quantizedVectorValues = quantizedVectorValues;
+    }
+
+    @Override
+    public int dimension() {
+      return rawVectorValues.dimension();
+    }
+
+    @Override
+    public int size() {
+      return rawVectorValues.size();
+    }
+
+    @Override
+    public float[] vectorValue() throws IOException {
+      return rawVectorValues.vectorValue();
+    }
+
+    @Override
+    public int docID() {
+      return rawVectorValues.docID();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      int rawDocId = rawVectorValues.nextDoc();
+      int quantizedDocId = quantizedVectorValues.nextDoc();
+      assert rawDocId == quantizedDocId;
+      return quantizedDocId;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      int rawDocId = rawVectorValues.advance(target);
+      int quantizedDocId = quantizedVectorValues.advance(target);
+      assert rawDocId == quantizedDocId;
+      return quantizedDocId;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      return quantizedVectorValues.scorer(query);
     }
   }
 }

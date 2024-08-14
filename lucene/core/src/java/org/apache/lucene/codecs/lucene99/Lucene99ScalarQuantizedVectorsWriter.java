@@ -58,6 +58,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
@@ -509,22 +510,23 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           docsWithField);
       success = true;
       final IndexInput finalQuantizationDataInput = quantizationDataInput;
+      final RandomAccessVectorValues ravv =
+          new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
+              fieldInfo.getVectorDimension(),
+              docsWithField.cardinality(),
+              mergedQuantizationState,
+              compress,
+              fieldInfo.getVectorSimilarityFunction(),
+              vectorsScorer,
+              quantizationDataInput);
       return new ScalarQuantizedCloseableRandomVectorScorerSupplier(
           () -> {
             IOUtils.close(finalQuantizationDataInput);
             segmentWriteState.directory.deleteFile(tempQuantizedVectorData.getName());
           },
-          docsWithField.cardinality(),
+          ravv,
           vectorsScorer.getRandomVectorScorerSupplier(
-              fieldInfo.getVectorSimilarityFunction(),
-              new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
-                  fieldInfo.getVectorDimension(),
-                  docsWithField.cardinality(),
-                  mergedQuantizationState,
-                  compress,
-                  fieldInfo.getVectorSimilarityFunction(),
-                  vectorsScorer,
-                  quantizationDataInput)));
+              fieldInfo.getVectorSimilarityFunction(), ravv));
     } finally {
       if (success == false) {
         IOUtils.closeWhileHandlingException(tempQuantizedVectorData, quantizationDataInput);
@@ -1111,14 +1113,16 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       implements CloseableRandomVectorScorerSupplier {
 
     private final RandomVectorScorerSupplier supplier;
+    private final RandomAccessVectorValues vectorsValues;
     private final Closeable onClose;
-    private final int numVectors;
 
     ScalarQuantizedCloseableRandomVectorScorerSupplier(
-        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier) {
+        Closeable onClose,
+        RandomAccessVectorValues vectorValues,
+        RandomVectorScorerSupplier supplier) {
       this.onClose = onClose;
       this.supplier = supplier;
-      this.numVectors = numVectors;
+      this.vectorsValues = vectorValues;
     }
 
     @Override
@@ -1138,7 +1142,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public int totalVectorCount() {
-      return numVectors;
+      return vectorsValues.size();
+    }
+
+    @Override
+    public RandomAccessVectorValues vectors() {
+      return vectorsValues;
     }
   }
 

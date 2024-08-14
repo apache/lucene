@@ -50,6 +50,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
@@ -140,28 +141,33 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter field : fields) {
       // TODO handle more than one centroid
+      final float[][] clusters;
+      if (field.flatFieldVectorsWriter.getVectors().size() > numberOfVectorsPerCluster) {
+        // Use kmeans
+        assert false;
+        clusters = new float[0][0];
+      } else {
+        clusters = new float[1][];
+        clusters[0] = field.dimensionSums;
+      }
       BinaryQuantizer quantizer =
           new BinaryQuantizer(
               field.fieldInfo.getVectorDimension(), field.fieldInfo.getVectorSimilarityFunction());
       if (sortMap == null) {
-        writeField(field, (byte) 0, false, maxDoc, quantizer);
+        writeField(field, clusters, maxDoc, quantizer);
       } else {
-        writeSortingField(field, (byte) 0, false, maxDoc, sortMap, quantizer);
+        writeSortingField(field, clusters, maxDoc, sortMap, quantizer);
       }
       field.finish();
     }
   }
 
   private void writeField(
-      FieldWriter fieldData,
-      byte clusterId,
-      boolean multipleClusters,
-      int maxDoc,
-      BinaryQuantizer quantizer)
+      FieldWriter fieldData, float[][] clusters, int maxDoc, BinaryQuantizer quantizer)
       throws IOException {
     // write vector values
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
-    writeBinarizedVectors(fieldData, clusterId, multipleClusters, quantizer);
+    writeBinarizedVectors(fieldData, clusters, quantizer);
     long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
 
     writeMeta(
@@ -174,20 +180,18 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   private void writeBinarizedVectors(
-      FieldWriter fieldData,
-      byte clusterId,
-      boolean multipleClusters,
-      BinaryQuantizer scalarQuantizer)
+      FieldWriter fieldData, float[][] clusters, BinaryQuantizer scalarQuantizer)
       throws IOException {
+    assert clusters.length == 1;
     byte[] vector = new byte[(fieldData.fieldInfo.getVectorDimension() + 7) / 8];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * 2).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
     for (float[] v : fieldData.getVectors()) {
-      float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, fieldData.dimensionSums);
+      float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusters[0]);
       binarizedVectorData.writeBytes(vector, vector.length);
-      if (multipleClusters) {
-        binarizedVectorData.writeByte(clusterId);
+      if (clusters.length > 1) {
+        // binarizedVectorData.writeByte(clusterId);
       }
       correctionsBuffer.putFloat(corrections[0]);
       correctionsBuffer.putFloat(corrections[1]);
@@ -198,8 +202,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
   private void writeSortingField(
       FieldWriter fieldData,
-      byte clusterId,
-      boolean multipleClusters,
+      float[][] clusters,
       int maxDoc,
       Sorter.DocMap sortMap,
       BinaryQuantizer scalarQuantizer)
@@ -212,7 +215,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     // write vector values
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
-    writeSortedBinarizedVectors(fieldData, clusterId, multipleClusters, ordMap, scalarQuantizer);
+    writeSortedBinarizedVectors(fieldData, clusters, ordMap, scalarQuantizer);
     long quantizedVectorLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
     writeMeta(
         fieldData.fieldInfo,
@@ -224,22 +227,19 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   private void writeSortedBinarizedVectors(
-      FieldWriter fieldData,
-      byte clusterId,
-      boolean multipleClusters,
-      int[] ordMap,
-      BinaryQuantizer scalarQuantizer)
+      FieldWriter fieldData, float[][] clusters, int[] ordMap, BinaryQuantizer scalarQuantizer)
       throws IOException {
+    assert clusters.length == 1;
     byte[] vector = new byte[(fieldData.fieldInfo.getVectorDimension() + 7) / 8];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * 2).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
     for (int ordinal : ordMap) {
       float[] v = fieldData.getVectors().get(ordinal);
-      float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, fieldData.dimensionSums);
+      float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusters[0]);
       binarizedVectorData.writeBytes(vector, vector.length);
-      if (multipleClusters) {
-        binarizedVectorData.writeByte(clusterId);
+      if (clusters.length > 1) {
+        // binarizedVectorData.writeByte(clusterId);
       }
       correctionsBuffer.putFloat(corrections[0]);
       correctionsBuffer.putFloat(corrections[1]);
@@ -298,8 +298,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+      CloseableRandomVectorScorerSupplier vectorScorerSupplier = rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
+      // we assume floats here as that is what KMeans currently requires
+      RandomAccessVectorValues.Floats vectorValues = (RandomAccessVectorValues.Floats)vectorScorerSupplier.vectors();
+      // calculate centroids if total number of vectors now exceeds the number of vectors per cluster
       float[][] centroids = mergeAndRecalculateCentroids(mergeState, fieldInfo);
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(
@@ -319,6 +322,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           vectorDataLength,
           centroids,
           docsWithField);
+    } else {
+      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
     }
   }
 
@@ -420,6 +425,15 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       success = true;
       final IndexInput finalBinarizedDataInput = binarizedDataInput;
       final IndexInput finalBinarizedScoreDataInput = binarizedScoreDataInput;
+      OffHeapBinarizedVectorValues vectorValues =
+          new OffHeapBinarizedVectorValues.DenseOffHeapVectorValues(
+              fieldInfo.getVectorDimension(),
+              docsWithField.cardinality(),
+              centroids,
+              quantizer,
+              fieldInfo.getVectorSimilarityFunction(),
+              vectorsScorer,
+              finalBinarizedDataInput);
       RandomVectorScorerSupplier scorerSupplier =
           vectorsScorer.getRandomVectorScorerSupplier(
               fieldInfo.getVectorSimilarityFunction(),
@@ -427,24 +441,17 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
                   finalBinarizedScoreDataInput,
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality()),
-              new OffHeapBinarizedVectorValues.DenseOffHeapVectorValues(
-                  fieldInfo.getVectorDimension(),
-                  docsWithField.cardinality(),
-                  centroids,
-                  quantizer,
-                  fieldInfo.getVectorSimilarityFunction(),
-                  vectorsScorer,
-                  finalBinarizedDataInput));
+              vectorValues);
       return new BinarizedCloseableRandomVectorScorerSupplier(
           scorerSupplier,
+          vectorValues,
           () -> {
             IOUtils.close(finalBinarizedDataInput, finalBinarizedScoreDataInput);
             IOUtils.deleteFilesIgnoringExceptions(
                 segmentWriteState.directory,
                 tempQuantizedVectorData.getName(),
                 tempScoreQuantizedVectorData.getName());
-          },
-          docsWithField.cardinality());
+          });
     } finally {
       if (success == false) {
         IOUtils.closeWhileHandlingException(
@@ -905,14 +912,16 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   static class BinarizedCloseableRandomVectorScorerSupplier
       implements CloseableRandomVectorScorerSupplier {
     private final RandomVectorScorerSupplier supplier;
+    private final RandomAccessVectorValues vectorValues;
     private final Closeable onClose;
-    private final int numVectors;
 
     BinarizedCloseableRandomVectorScorerSupplier(
-        RandomVectorScorerSupplier supplier, Closeable onClose, int numVectors) {
+        RandomVectorScorerSupplier supplier,
+        RandomAccessVectorValues vectorValues,
+        Closeable onClose) {
       this.supplier = supplier;
       this.onClose = onClose;
-      this.numVectors = numVectors;
+      this.vectorValues = vectorValues;
     }
 
     @Override
@@ -932,7 +941,12 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public int totalVectorCount() {
-      return numVectors;
+      return vectorValues.size();
+    }
+
+    @Override
+    public RandomAccessVectorValues vectors() {
+      return vectorValues;
     }
   }
 }
