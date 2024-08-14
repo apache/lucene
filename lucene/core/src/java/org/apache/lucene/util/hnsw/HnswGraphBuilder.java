@@ -403,6 +403,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   void finish() throws IOException {
+    // System.out.println("finish " + frozen);
     connectComponents();
     frozen = true;
   }
@@ -429,7 +430,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       maxConn *= 2;
     }
     List<Component> components = HnswUtil.components(hnsw, level, notFullyConnected, maxConn);
-    // System.out.println("HnswGraphBuilder.connectComponents(level=" + level + "): " + components);
+    // System.out.println("HnswGraphBuilder.connectComponents level=" + level + ": " + components);
     boolean result = true;
     if (components.size() > 1) {
       // connect other components to the largest one

@@ -774,9 +774,9 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       lastDocID = docID;
     }
 
-    OnHeapHnswGraph getGraph() {
+    OnHeapHnswGraph getGraph() throws IOException {
       if (vectors.size() > 0) {
-        return hnswGraphBuilder.getGraph();
+        return hnswGraphBuilder.getCompletedGraph();
       } else {
         return null;
       }
