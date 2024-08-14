@@ -82,8 +82,8 @@ configure(rootProject) {
     ]
   }.configureEach {
     it.doLast {
-      File inFile = it.catalogFile.get().asFile
-      ant.fixcrlf(srcdir: inFile.getParent(), includes: inFile.getName(), eol: "lf", fixlast: "true", encoding: "UTF-8")
+      ant.fixcrlf(file: it.catalogFile.get().asFile,
+        eol: "lf", fixlast: "true", encoding: "UTF-8")
     }
   }
 
