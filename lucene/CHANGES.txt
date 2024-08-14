@@ -355,6 +355,8 @@ Optimizations
 * GITHUB#13636: Optimizations to the decoding logic of blocks of postings.
   (Adrien Grand, Uwe Schindler)
 
+* GITHUB##13644: Compare the missing value with the top value even after the hit queue is full (Pan Guixin)
+
 Changes in runtime behavior
 ---------------------
 
