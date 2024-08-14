@@ -53,7 +53,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       BinaryQuantizer quantizer = binarizedQueryVectors.getQuantizer();
       float[][] centroids = binarizedQueryVectors.getCentroids();
       byte[] quantized = new byte[(target.length + 1) / 2];
-      quantizer.quantizeForQuery(target, quantized, similarityFunction, centroids[0]);
+      quantizer.quantizeForQuery(target, quantized, centroids[0]);
       return new BinarizedRandomVectorScorer(
           new BinaryQueryVector[] {new BinaryQueryVector(quantized, 0, 0, 0, 0)},
           binarizedQueryVectors,

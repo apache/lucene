@@ -33,32 +33,27 @@ record SubspaceOutputMIP(
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
   private static final int QUERY_PROJECTIONS = 4;
-  private final float[] centroid;
 
   //  private static final VectorSpecies<Float> FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
 
-  private final int dimensions;
   private final int discretizedDimensions;
 
-  private final float[]
-      u; // discretizedDimensions of floats random numbers sampled from the uniform distribution
+  // discretizedDimensions of floats random numbers sampled from the uniform distribution
   // [0,1]
+  private final float[] u;
 
+  private final VectorSimilarityFunction similarityFunction;
   private final float sqrtDimensions;
 
-  public BinaryQuantizer(float[] centroid) {
-    this.centroid = centroid;
-    this.dimensions = centroid.length;
+  public BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction) {
     this.discretizedDimensions = (dimensions + 63) / 64 * 64;
-
-    // FIXME: allow the seed to be settable
-    Random random = new Random(1);
+    this.similarityFunction = similarityFunction;
+    Random random = new Random(42);
     u = new float[discretizedDimensions];
     for (int i = 0; i < discretizedDimensions; i++) {
       u[i] = (float) random.nextDouble();
     }
-
-    this.sqrtDimensions = (float) Math.sqrt(discretizedDimensions); // FIXME: cache this
+    this.sqrtDimensions = (float) Math.sqrt(discretizedDimensions);
   }
 
   // FIXME: move this out to vector utils
@@ -86,12 +81,8 @@ public class BinaryQuantizer {
 
   // FIXME: move this out to vector utils
   public static float norm(float[] vector) {
-    double magnitude = 0;
-    for (int i = 0; i < vector.length; i++) {
-      magnitude = Math.fma(vector[i], vector[i], magnitude);
-    }
-
-    magnitude = Math.sqrt(magnitude);
+    float magnitude = VectorUtil.dotProduct(vector, vector);
+    magnitude = (float) Math.sqrt(magnitude);
 
     // FIXME: FUTURE - not good; sometimes this needs to be 0
     //            if (magnitude == 0) {
@@ -99,7 +90,7 @@ public class BinaryQuantizer {
     // zero.");
     //            }
 
-    return (float) magnitude;
+    return magnitude;
   }
 
   // FIXME: move this out to vector utils
@@ -288,8 +279,7 @@ public class BinaryQuantizer {
   }
 
   // FIXME: clean up this function and move to utils like "space utils"
-  public byte[] transposeBin(byte[] q, int dimensions) {
-    byte[] quantQueryByte = new byte[B_QUERY * dimensions / 8];
+  public void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
     int byte_mask = 1;
     for (int i = 0; i < B_QUERY - 1; i++) {
       byte_mask = byte_mask << 1 | 0b00000001;
@@ -327,7 +317,6 @@ public class BinaryQuantizer {
       }
       qOffset += 32;
     }
-    return quantQueryByte;
   }
 
   // FIXME: clean up this function and move to utils like "space utils" in java21 directory
@@ -388,8 +377,7 @@ public class BinaryQuantizer {
     return new float[] {vl, vr};
   }
 
-  public float[] quantizeForIndex(
-      float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
+  public float[] quantizeForIndex(float[] vector, byte[] destination, float[] centroid) {
     float[] corrections = null;
 
     float distToCentroid = VectorUtil.squareDistance(vector, centroid);
@@ -437,8 +425,7 @@ public class BinaryQuantizer {
   // FIXME: pull this out
   public record QuantResult(byte[] result, int sumQ) {}
 
-  public float[] quantizeForQuery(
-      float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
+  public float[] quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     float[] corrections = null;
 
     float distToCentroid = VectorUtil.squareDistance(vector, centroid);
@@ -461,7 +448,7 @@ public class BinaryQuantizer {
         sumQ = quantResult.sumQ();
 
         // Binary String Representation
-        destination = transposeBin(byteQuery, discretizedDimensions);
+        transposeBin(byteQuery, discretizedDimensions, destination);
         corrections[0] = sumQ;
         corrections[1] = vl;
         corrections[2] = width;
@@ -499,7 +486,7 @@ public class BinaryQuantizer {
 
         // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
         // q¯ is an approximation of q′  (scalar quantized approximation)
-        destination = transposeBin(byteQuery, discretizedDimensions);
+        transposeBin(byteQuery, discretizedDimensions, destination);
         corrections[0] = sumQ;
         corrections[1] = vl;
         corrections[2] = width;

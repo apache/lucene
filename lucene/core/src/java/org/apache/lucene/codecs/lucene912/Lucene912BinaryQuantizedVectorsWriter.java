@@ -140,7 +140,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter field : fields) {
       // TODO handle more than one centroid
-      BinaryQuantizer quantizer = field.createQuantizer();
+      BinaryQuantizer quantizer =
+          new BinaryQuantizer(
+              field.fieldInfo.getVectorDimension(), field.fieldInfo.getVectorSimilarityFunction());
       if (sortMap == null) {
         writeField(field, (byte) 0, false, maxDoc, quantizer);
       } else {
@@ -182,12 +184,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         ByteBuffer.allocate(Float.BYTES * 2).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
     for (float[] v : fieldData.getVectors()) {
-      float[] corrections =
-          scalarQuantizer.quantizeForIndex(
-              v,
-              vector,
-              fieldData.fieldInfo.getVectorSimilarityFunction(),
-              fieldData.dimensionSums);
+      float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, fieldData.dimensionSums);
       binarizedVectorData.writeBytes(vector, vector.length);
       if (multipleClusters) {
         binarizedVectorData.writeByte(clusterId);
@@ -239,12 +236,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     // TODO do we need to normalize for cosine?
     for (int ordinal : ordMap) {
       float[] v = fieldData.getVectors().get(ordinal);
-      float[] corrections =
-          scalarQuantizer.quantizeForIndex(
-              v,
-              vector,
-              fieldData.fieldInfo.getVectorSimilarityFunction(),
-              fieldData.dimensionSums);
+      float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, fieldData.dimensionSums);
       binarizedVectorData.writeBytes(vector, vector.length);
       if (multipleClusters) {
         binarizedVectorData.writeByte(clusterId);
@@ -312,7 +304,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(
               KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-              new BinaryQuantizer(),
+              new BinaryQuantizer(
+                  fieldInfo.getVectorDimension(), fieldInfo.getVectorSimilarityFunction()),
               centroids,
               fieldInfo.getVectorSimilarityFunction());
       long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
@@ -380,7 +373,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     IndexInput binarizedDataInput = null;
     IndexInput binarizedScoreDataInput = null;
     boolean success = false;
-    BinaryQuantizer quantizer = new BinaryQuantizer();
+    BinaryQuantizer quantizer =
+        new BinaryQuantizer(
+            fieldInfo.getVectorDimension(), fieldInfo.getVectorSimilarityFunction());
 
     try {
       BinarizedFloatVectorValues binarizedVectorValues =
@@ -615,14 +610,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       size += RamUsageEstimator.sizeOf(dimensionSums);
       return size;
     }
-
-    BinaryQuantizer createQuantizer() throws IOException {
-      assert isFinished();
-      if (flatFieldVectorsWriter.getVectors().size() == 0) {
-        return new BinaryQuantizer();
-      }
-      return new BinaryQuantizer();
-    }
   }
 
   // TODO this assumes a single centroid, we will need to adjust so that we can get the appropriate
@@ -826,9 +813,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     private void binarize() throws IOException {
-      corrections =
-          quantizer.quantizeForQuery(
-              values.vectorValue(), binarized, vectorSimilarityFunction, centroids[0]);
+      corrections = quantizer.quantizeForQuery(values.vectorValue(), binarized, centroids[0]);
     }
   }
 
@@ -913,9 +898,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     private void binarize() throws IOException {
       // TODO quantize for just nearest centroid
-      corrections =
-          quantizer.quantizeForIndex(
-              values.vectorValue(), binarized, vectorSimilarityFunction, centroids[0]);
+      corrections = quantizer.quantizeForIndex(values.vectorValue(), binarized, centroids[0]);
     }
   }
 
