@@ -16,10 +16,10 @@
  */
 package org.apache.lucene.util.quantization;
 
-import jdk.incubator.vector.ByteVector;
-import jdk.incubator.vector.FloatVector;
-import jdk.incubator.vector.VectorOperators;
-import jdk.incubator.vector.VectorSpecies;
+//import jdk.incubator.vector.ByteVector;
+//import jdk.incubator.vector.FloatVector;
+//import jdk.incubator.vector.VectorOperators;
+//import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
@@ -35,7 +35,7 @@ public class BinaryQuantizer {
   private static final int QUERY_PROJECTIONS = 4;
   private final float[] centroid;
 
-  private static final VectorSpecies<Float> FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
+//  private static final VectorSpecies<Float> FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
 
   private final int dimensions;
   private final int discretizedDimensions;
@@ -84,29 +84,10 @@ public class BinaryQuantizer {
 
   // FIXME: move this out to vector utils
   public static float norm(float[] vector) {
-    float normalized = 0f;
-    // Calculate magnitude/length of the vector
     double magnitude = 0;
-
-    int size = vector.length / FLOAT_SPECIES.length();
-    for (int r = 0; r < size; r++) {
-      int offset = FLOAT_SPECIES.length() * r;
-      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, vector, offset);
-      magnitude += va.mul(va).reduceLanes(VectorOperators.ADD);
-    }
-
-    // tail
-    int remainder = vector.length % FLOAT_SPECIES.length();
-    if (remainder != 0) {
-      for (int i = vector.length - remainder; i < vector.length; i++) {
+    for (int i = 0; i < vector.length; i++) {
         magnitude = Math.fma(vector[i], vector[i], magnitude);
-      }
     }
-
-    // FIXME: evaluate for small dimensions whether this is faster
-    //            for (int i = 0; i < vector.length; i++) {
-    //                magnitude = Math.fma(vector[i], vector[i], magnitude);
-    //            }
 
     magnitude = Math.sqrt(magnitude);
 
@@ -116,10 +97,47 @@ public class BinaryQuantizer {
     // zero.");
     //            }
 
-    normalized = (float) magnitude;
-
-    return normalized;
+    return (float) magnitude;
   }
+
+  // FIXME: move this out to vector utils
+//  public static float norm(float[] vector) {
+//    float normalized = 0f;
+//    // Calculate magnitude/length of the vector
+//    double magnitude = 0;
+//
+//    int size = vector.length / FLOAT_SPECIES.length();
+//    for (int r = 0; r < size; r++) {
+//      int offset = FLOAT_SPECIES.length() * r;
+//      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, vector, offset);
+//      magnitude += va.mul(va).reduceLanes(VectorOperators.ADD);
+//    }
+//
+//    // tail
+//    int remainder = vector.length % FLOAT_SPECIES.length();
+//    if (remainder != 0) {
+//      for (int i = vector.length - remainder; i < vector.length; i++) {
+//        magnitude = Math.fma(vector[i], vector[i], magnitude);
+//      }
+//    }
+//
+//    // FIXME: evaluate for small dimensions whether this is faster
+//    //            for (int i = 0; i < vector.length; i++) {
+//    //                magnitude = Math.fma(vector[i], vector[i], magnitude);
+//    //            }
+//
+//    magnitude = Math.sqrt(magnitude);
+//
+//    // FIXME: FUTURE - not good; sometimes this needs to be 0
+//    //            if (magnitude == 0) {
+//    //                throw new IllegalArgumentException("Cannot normalize a vector of length
+//    // zero.");
+//    //            }
+//
+//    normalized = (float) magnitude;
+//
+//    return normalized;
+//  }
 
   // FIXME: move this out to vector utils
   public static float[] subset(float[] a, int lastColumn) {
@@ -127,24 +145,31 @@ public class BinaryQuantizer {
   }
 
   // FIXME: move this out to vector utils
-  public static void removeSignAndDivide(float[] a, float divisor) {
-    // FIXME: revert to old behavior for small dimensions
-    //            for(int j = 0; j < a[0].length; j++) {
-    //                a[i][j] = Math.abs(a[i][j]) / divisor;
-    //            }
-    int size = a.length / FLOAT_SPECIES.length();
-    for (int r = 0; r < size; r++) {
-      int offset = FLOAT_SPECIES.length() * r;
-      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, offset);
-      va.abs().div(divisor).intoArray(a, offset);
-    }
+//  public static void removeSignAndDivide(float[] a, float divisor) {
+//    // FIXME: revert to old behavior for small dimensions
+//    //            for(int j = 0; j < a[0].length; j++) {
+//    //                a[i][j] = Math.abs(a[i][j]) / divisor;
+//    //            }
+//    int size = a.length / FLOAT_SPECIES.length();
+//    for (int r = 0; r < size; r++) {
+//      int offset = FLOAT_SPECIES.length() * r;
+//      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, offset);
+//      va.abs().div(divisor).intoArray(a, offset);
+//    }
+//
+//    // tail
+//    int remainder = a.length % FLOAT_SPECIES.length();
+//    if (remainder != 0) {
+//      for (int i = a.length - remainder; i < a.length; i++) {
+//        a[i] = Math.abs(a[i]) / divisor;
+//      }
+//    }
+//  }
 
-    // tail
-    int remainder = a.length % FLOAT_SPECIES.length();
-    if (remainder != 0) {
-      for (int i = a.length - remainder; i < a.length; i++) {
+  // FIXME: move this out to vector utils
+  public static void removeSignAndDivide(float[] a, float divisor) {
+    for(int i = 0; i < a.length; i++) {
         a[i] = Math.abs(a[i]) / divisor;
-      }
     }
   }
 
@@ -191,11 +216,6 @@ public class BinaryQuantizer {
     }
 
     return allBinary;
-  }
-
-  public static float computeOOQ(float[] vector, int dimensions) {
-    // FIXME: write me
-    return 0.0f;
   }
 
   public SubspaceOutput generateSubSpace(
@@ -249,7 +269,7 @@ public class BinaryQuantizer {
 
   // FIXME: reintroduce a space utils
   public static final int B_QUERY = 4;
-  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
+//  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
   private static final byte BYTE_MASK = (1 << B_QUERY) - 1;
 
   // FIXME: clean up this function and move to utils like "space utils"
@@ -268,42 +288,102 @@ public class BinaryQuantizer {
   }
 
   // FIXME: clean up this function and move to utils like "space utils"
-  public static byte[] transposeBinPan(byte[] q, int D) {
-    assert B_QUERY > 0;
-    int B = (D + 63) / 64 * 64;
-    byte[] quantQueryByte = new byte[B_QUERY * B / 8];
+  public byte[] transposeBin(byte[] q, int dimensions) {
+    byte[] quantQueryByte = new byte[B_QUERY * dimensions / 8];
+    int byte_mask = 1;
+    for (int i = 0; i < B_QUERY - 1; i++) {
+      byte_mask = byte_mask << 1 | 0b00000001;
+    }
     int qOffset = 0;
-
+    final byte[] v1 = new byte[4];
     final byte[] v = new byte[32];
-    final byte[] v1b = new byte[4];
-    for (int i = 0; i < B; i += 32) {
-      ByteVector q0 = ByteVector.fromArray(SPECIES, q, qOffset);
-      ByteVector q1 = ByteVector.fromArray(SPECIES, q, qOffset + 16);
-
-      ByteVector v0 = q0.lanewise(VectorOperators.LSHL, 8 - B_QUERY);
-      ByteVector v1 = q1.lanewise(VectorOperators.LSHL, 8 - B_QUERY);
-      v0 =
-              v0.lanewise(
-                      VectorOperators.OR, q0.lanewise(VectorOperators.LSHR, B_QUERY).and(BYTE_MASK));
-      v1 =
-              v1.lanewise(
-                      VectorOperators.OR, q1.lanewise(VectorOperators.LSHR, B_QUERY).and(BYTE_MASK));
-
+    for (int i = 0; i < dimensions; i += 32) {
+      // for every four bytes we shift left (with remainder across those bytes)
+      int shift = 8 - B_QUERY;
+      for (int j = 0; j < v.length; j += 4) {
+        v[j] = (byte) (q[qOffset + j] << shift | ((q[qOffset + j] >>> (8 - shift)) & byte_mask));
+        v[j + 1] =
+                (byte)
+                        (q[qOffset + j + 1] << shift | ((q[qOffset + j + 1] >>> (8 - shift)) & byte_mask));
+        v[j + 2] =
+                (byte)
+                        (q[qOffset + j + 2] << shift | ((q[qOffset + j + 2] >>> (8 - shift)) & byte_mask));
+        v[j + 3] =
+                (byte)
+                        (q[qOffset + j + 3] << shift | ((q[qOffset + j + 3] >>> (8 - shift)) & byte_mask));
+      }
       for (int j = 0; j < B_QUERY; j++) {
-        v0.intoArray(v, 0);
-        v1.intoArray(v, 16);
-        moveMaskEpi8Byte(v, v1b);
+        moveMaskEpi8Byte(v, v1);
         for (int k = 0; k < 4; k++) {
-          quantQueryByte[(B_QUERY - j - 1) * (B / 8) + i / 8 + k] = v1b[k];
-          v1b[k] = 0;
+          quantQueryByte[(B_QUERY - j - 1) * (dimensions / 8) + i / 8 + k] = v1[k];
+          v1[k] = 0;
         }
-
-        v0 = v0.lanewise(VectorOperators.ADD, v0);
-        v1 = v1.lanewise(VectorOperators.ADD, v1);
+        for (int k = 0; k < v.length; k += 4) {
+          v[k] = (byte) (v[k] + v[k]);
+          v[k + 1] = (byte) (v[k + 1] + v[k + 1]);
+          v[k + 2] = (byte) (v[k + 2] + v[k + 2]);
+          v[k + 3] = (byte) (v[k + 3] + v[k + 3]);
+        }
       }
       qOffset += 32;
     }
     return quantQueryByte;
+  }
+
+  // FIXME: clean up this function and move to utils like "space utils" in java21 directory
+//  public static byte[] transposeBinPan(byte[] q, int D) {
+//    assert B_QUERY > 0;
+//    int B = (D + 63) / 64 * 64;
+//    byte[] quantQueryByte = new byte[B_QUERY * B / 8];
+//    int qOffset = 0;
+//
+//    final byte[] v = new byte[32];
+//    final byte[] v1b = new byte[4];
+//    for (int i = 0; i < B; i += 32) {
+//      ByteVector q0 = ByteVector.fromArray(SPECIES, q, qOffset);
+//      ByteVector q1 = ByteVector.fromArray(SPECIES, q, qOffset + 16);
+//
+//      ByteVector v0 = q0.lanewise(VectorOperators.LSHL, 8 - B_QUERY);
+//      ByteVector v1 = q1.lanewise(VectorOperators.LSHL, 8 - B_QUERY);
+//      v0 =
+//              v0.lanewise(
+//                      VectorOperators.OR, q0.lanewise(VectorOperators.LSHR, B_QUERY).and(BYTE_MASK));
+//      v1 =
+//              v1.lanewise(
+//                      VectorOperators.OR, q1.lanewise(VectorOperators.LSHR, B_QUERY).and(BYTE_MASK));
+//
+//      for (int j = 0; j < B_QUERY; j++) {
+//        v0.intoArray(v, 0);
+//        v1.intoArray(v, 16);
+//        moveMaskEpi8Byte(v, v1b);
+//        for (int k = 0; k < 4; k++) {
+//          quantQueryByte[(B_QUERY - j - 1) * (B / 8) + i / 8 + k] = v1b[k];
+//          v1b[k] = 0;
+//        }
+//
+//        v0 = v0.lanewise(VectorOperators.ADD, v0);
+//        v1 = v1.lanewise(VectorOperators.ADD, v1);
+//      }
+//      qOffset += 32;
+//    }
+//    return quantQueryByte;
+//  }
+
+  // FIXME: move this to a utils class
+  public static float[] range(float[] q, float[] c) {
+    float vl = Float.POSITIVE_INFINITY;
+    float vr = Float.NEGATIVE_INFINITY;
+    for (int i = 0; i < q.length; i++) {
+      float tmp = q[i] - c[i];
+      if (tmp < vl) {
+        vl = tmp;
+      }
+      if (tmp > vr) {
+        vr = tmp;
+      }
+    }
+
+    return new float[] {vl, vr};
   }
 
   public float[] quantizeForIndex(
@@ -335,23 +415,6 @@ public class BinaryQuantizer {
     }
 
     return corrections;
-  }
-
-  // FIXME: move this to a utils class
-  public static float[] range(float[] q, float[] c) {
-    float vl = Float.POSITIVE_INFINITY;
-    float vr = Float.NEGATIVE_INFINITY;
-    for (int i = 0; i < q.length; i++) {
-      float tmp = q[i] - c[i];
-      if (tmp < vl) {
-        vl = tmp;
-      }
-      if (tmp > vr) {
-        vr = tmp;
-      }
-    }
-
-    return new float[] {vl, vr};
   }
 
   // FIXME: move this to a utils class
@@ -396,7 +459,7 @@ public class BinaryQuantizer {
         sumQ = quantResult.sumQ();
 
         // Binary String Representation
-        destination = transposeBinPan(byteQuery, discretizedDimensions);
+        destination = transposeBin(byteQuery, discretizedDimensions);
         corrections[0] = sumQ;
         corrections[1] = vl;
         corrections[2] = width;
@@ -434,7 +497,7 @@ public class BinaryQuantizer {
 
         // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
         // q¯ is an approximation of q′  (scalar quantized approximation)
-        destination = transposeBinPan(byteQuery, discretizedDimensions);
+        destination = transposeBin(byteQuery, discretizedDimensions);
         corrections[0] = sumQ;
         corrections[1] = vl;
         corrections[2] = width;
