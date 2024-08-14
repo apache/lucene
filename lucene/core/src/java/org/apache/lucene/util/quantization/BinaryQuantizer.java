@@ -16,31 +16,33 @@
  */
 package org.apache.lucene.util.quantization;
 
-//import jdk.incubator.vector.ByteVector;
-//import jdk.incubator.vector.FloatVector;
-//import jdk.incubator.vector.VectorOperators;
-//import jdk.incubator.vector.VectorSpecies;
+// import jdk.incubator.vector.ByteVector;
+// import jdk.incubator.vector.FloatVector;
+// import jdk.incubator.vector.VectorOperators;
+// import jdk.incubator.vector.VectorSpecies;
+import java.util.Arrays;
+import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
-import java.util.Arrays;
-import java.util.Random;
-
-
 record SubspaceOutput(float projection, byte[] packedBinaryVector) {}
-record SubspaceOutputMIP(float projection, byte[] packedBinaryVector, float oDotC, float normOC, float OOQ) {}
+
+record SubspaceOutputMIP(
+    float projection, byte[] packedBinaryVector, float oDotC, float normOC, float OOQ) {}
 
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
   private static final int QUERY_PROJECTIONS = 4;
   private final float[] centroid;
 
-//  private static final VectorSpecies<Float> FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
+  //  private static final VectorSpecies<Float> FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
 
   private final int dimensions;
   private final int discretizedDimensions;
 
-  private final float[] u; // discretizedDimensions of floats random numbers sampled from the uniform distribution [0,1]
+  private final float[]
+      u; // discretizedDimensions of floats random numbers sampled from the uniform distribution
+  // [0,1]
 
   private final float sqrtDimensions;
 
@@ -86,7 +88,7 @@ public class BinaryQuantizer {
   public static float norm(float[] vector) {
     double magnitude = 0;
     for (int i = 0; i < vector.length; i++) {
-        magnitude = Math.fma(vector[i], vector[i], magnitude);
+      magnitude = Math.fma(vector[i], vector[i], magnitude);
     }
 
     magnitude = Math.sqrt(magnitude);
@@ -101,43 +103,43 @@ public class BinaryQuantizer {
   }
 
   // FIXME: move this out to vector utils
-//  public static float norm(float[] vector) {
-//    float normalized = 0f;
-//    // Calculate magnitude/length of the vector
-//    double magnitude = 0;
-//
-//    int size = vector.length / FLOAT_SPECIES.length();
-//    for (int r = 0; r < size; r++) {
-//      int offset = FLOAT_SPECIES.length() * r;
-//      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, vector, offset);
-//      magnitude += va.mul(va).reduceLanes(VectorOperators.ADD);
-//    }
-//
-//    // tail
-//    int remainder = vector.length % FLOAT_SPECIES.length();
-//    if (remainder != 0) {
-//      for (int i = vector.length - remainder; i < vector.length; i++) {
-//        magnitude = Math.fma(vector[i], vector[i], magnitude);
-//      }
-//    }
-//
-//    // FIXME: evaluate for small dimensions whether this is faster
-//    //            for (int i = 0; i < vector.length; i++) {
-//    //                magnitude = Math.fma(vector[i], vector[i], magnitude);
-//    //            }
-//
-//    magnitude = Math.sqrt(magnitude);
-//
-//    // FIXME: FUTURE - not good; sometimes this needs to be 0
-//    //            if (magnitude == 0) {
-//    //                throw new IllegalArgumentException("Cannot normalize a vector of length
-//    // zero.");
-//    //            }
-//
-//    normalized = (float) magnitude;
-//
-//    return normalized;
-//  }
+  //  public static float norm(float[] vector) {
+  //    float normalized = 0f;
+  //    // Calculate magnitude/length of the vector
+  //    double magnitude = 0;
+  //
+  //    int size = vector.length / FLOAT_SPECIES.length();
+  //    for (int r = 0; r < size; r++) {
+  //      int offset = FLOAT_SPECIES.length() * r;
+  //      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, vector, offset);
+  //      magnitude += va.mul(va).reduceLanes(VectorOperators.ADD);
+  //    }
+  //
+  //    // tail
+  //    int remainder = vector.length % FLOAT_SPECIES.length();
+  //    if (remainder != 0) {
+  //      for (int i = vector.length - remainder; i < vector.length; i++) {
+  //        magnitude = Math.fma(vector[i], vector[i], magnitude);
+  //      }
+  //    }
+  //
+  //    // FIXME: evaluate for small dimensions whether this is faster
+  //    //            for (int i = 0; i < vector.length; i++) {
+  //    //                magnitude = Math.fma(vector[i], vector[i], magnitude);
+  //    //            }
+  //
+  //    magnitude = Math.sqrt(magnitude);
+  //
+  //    // FIXME: FUTURE - not good; sometimes this needs to be 0
+  //    //            if (magnitude == 0) {
+  //    //                throw new IllegalArgumentException("Cannot normalize a vector of length
+  //    // zero.");
+  //    //            }
+  //
+  //    normalized = (float) magnitude;
+  //
+  //    return normalized;
+  //  }
 
   // FIXME: move this out to vector utils
   public static float[] subset(float[] a, int lastColumn) {
@@ -145,31 +147,31 @@ public class BinaryQuantizer {
   }
 
   // FIXME: move this out to vector utils
-//  public static void removeSignAndDivide(float[] a, float divisor) {
-//    // FIXME: revert to old behavior for small dimensions
-//    //            for(int j = 0; j < a[0].length; j++) {
-//    //                a[i][j] = Math.abs(a[i][j]) / divisor;
-//    //            }
-//    int size = a.length / FLOAT_SPECIES.length();
-//    for (int r = 0; r < size; r++) {
-//      int offset = FLOAT_SPECIES.length() * r;
-//      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, offset);
-//      va.abs().div(divisor).intoArray(a, offset);
-//    }
-//
-//    // tail
-//    int remainder = a.length % FLOAT_SPECIES.length();
-//    if (remainder != 0) {
-//      for (int i = a.length - remainder; i < a.length; i++) {
-//        a[i] = Math.abs(a[i]) / divisor;
-//      }
-//    }
-//  }
+  //  public static void removeSignAndDivide(float[] a, float divisor) {
+  //    // FIXME: revert to old behavior for small dimensions
+  //    //            for(int j = 0; j < a[0].length; j++) {
+  //    //                a[i][j] = Math.abs(a[i][j]) / divisor;
+  //    //            }
+  //    int size = a.length / FLOAT_SPECIES.length();
+  //    for (int r = 0; r < size; r++) {
+  //      int offset = FLOAT_SPECIES.length() * r;
+  //      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, offset);
+  //      va.abs().div(divisor).intoArray(a, offset);
+  //    }
+  //
+  //    // tail
+  //    int remainder = a.length % FLOAT_SPECIES.length();
+  //    if (remainder != 0) {
+  //      for (int i = a.length - remainder; i < a.length; i++) {
+  //        a[i] = Math.abs(a[i]) / divisor;
+  //      }
+  //    }
+  //  }
 
   // FIXME: move this out to vector utils
   public static void removeSignAndDivide(float[] a, float divisor) {
-    for(int i = 0; i < a.length; i++) {
-        a[i] = Math.abs(a[i]) / divisor;
+    for (int i = 0; i < a.length; i++) {
+      a[i] = Math.abs(a[i]) / divisor;
     }
   }
 
@@ -218,9 +220,7 @@ public class BinaryQuantizer {
     return allBinary;
   }
 
-  public SubspaceOutput generateSubSpace(
-          float[] vector,
-          float[] centroid) {
+  public SubspaceOutput generateSubSpace(float[] vector, float[] centroid) {
 
     // typically no-op if dimensions/64
     float[] paddedCentroid = pad(centroid, discretizedDimensions);
@@ -237,9 +237,7 @@ public class BinaryQuantizer {
   }
 
   // FIXME: write me & come up with a better name for this function
-  public SubspaceOutputMIP generateSubSpaceMIP(
-          float[] vector,
-          float[] centroid) {
+  public SubspaceOutputMIP generateSubSpaceMIP(float[] vector, float[] centroid) {
 
     // typically no-op if dimensions/64
     float[] paddedCentroid = pad(centroid, discretizedDimensions);
@@ -257,9 +255,11 @@ public class BinaryQuantizer {
 
     // FIXME: pull this out to a function
     float OOQ = 0f;
-    for(int j = 0; j < vector.length / 8; j++) {
-      for(int r = 0; r < 8; r++) {
-        OOQ += (normOMinusC[j*8+r] * (2f * ((packedBinaryVector[j] >> (7-r)) & 0b00000001) - 1f));
+    for (int j = 0; j < vector.length / 8; j++) {
+      for (int r = 0; r < 8; r++) {
+        OOQ +=
+            (normOMinusC[j * 8 + r]
+                * (2f * ((packedBinaryVector[j] >> (7 - r)) & 0b00000001) - 1f));
       }
     }
     OOQ = OOQ / sqrtDimensions;
@@ -269,7 +269,7 @@ public class BinaryQuantizer {
 
   // FIXME: reintroduce a space utils
   public static final int B_QUERY = 4;
-//  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
+  //  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
   private static final byte BYTE_MASK = (1 << B_QUERY) - 1;
 
   // FIXME: clean up this function and move to utils like "space utils"
@@ -303,14 +303,14 @@ public class BinaryQuantizer {
       for (int j = 0; j < v.length; j += 4) {
         v[j] = (byte) (q[qOffset + j] << shift | ((q[qOffset + j] >>> (8 - shift)) & byte_mask));
         v[j + 1] =
-                (byte)
-                        (q[qOffset + j + 1] << shift | ((q[qOffset + j + 1] >>> (8 - shift)) & byte_mask));
+            (byte)
+                (q[qOffset + j + 1] << shift | ((q[qOffset + j + 1] >>> (8 - shift)) & byte_mask));
         v[j + 2] =
-                (byte)
-                        (q[qOffset + j + 2] << shift | ((q[qOffset + j + 2] >>> (8 - shift)) & byte_mask));
+            (byte)
+                (q[qOffset + j + 2] << shift | ((q[qOffset + j + 2] >>> (8 - shift)) & byte_mask));
         v[j + 3] =
-                (byte)
-                        (q[qOffset + j + 3] << shift | ((q[qOffset + j + 3] >>> (8 - shift)) & byte_mask));
+            (byte)
+                (q[qOffset + j + 3] << shift | ((q[qOffset + j + 3] >>> (8 - shift)) & byte_mask));
       }
       for (int j = 0; j < B_QUERY; j++) {
         moveMaskEpi8Byte(v, v1);
@@ -331,43 +331,45 @@ public class BinaryQuantizer {
   }
 
   // FIXME: clean up this function and move to utils like "space utils" in java21 directory
-//  public static byte[] transposeBinPan(byte[] q, int D) {
-//    assert B_QUERY > 0;
-//    int B = (D + 63) / 64 * 64;
-//    byte[] quantQueryByte = new byte[B_QUERY * B / 8];
-//    int qOffset = 0;
-//
-//    final byte[] v = new byte[32];
-//    final byte[] v1b = new byte[4];
-//    for (int i = 0; i < B; i += 32) {
-//      ByteVector q0 = ByteVector.fromArray(SPECIES, q, qOffset);
-//      ByteVector q1 = ByteVector.fromArray(SPECIES, q, qOffset + 16);
-//
-//      ByteVector v0 = q0.lanewise(VectorOperators.LSHL, 8 - B_QUERY);
-//      ByteVector v1 = q1.lanewise(VectorOperators.LSHL, 8 - B_QUERY);
-//      v0 =
-//              v0.lanewise(
-//                      VectorOperators.OR, q0.lanewise(VectorOperators.LSHR, B_QUERY).and(BYTE_MASK));
-//      v1 =
-//              v1.lanewise(
-//                      VectorOperators.OR, q1.lanewise(VectorOperators.LSHR, B_QUERY).and(BYTE_MASK));
-//
-//      for (int j = 0; j < B_QUERY; j++) {
-//        v0.intoArray(v, 0);
-//        v1.intoArray(v, 16);
-//        moveMaskEpi8Byte(v, v1b);
-//        for (int k = 0; k < 4; k++) {
-//          quantQueryByte[(B_QUERY - j - 1) * (B / 8) + i / 8 + k] = v1b[k];
-//          v1b[k] = 0;
-//        }
-//
-//        v0 = v0.lanewise(VectorOperators.ADD, v0);
-//        v1 = v1.lanewise(VectorOperators.ADD, v1);
-//      }
-//      qOffset += 32;
-//    }
-//    return quantQueryByte;
-//  }
+  //  public static byte[] transposeBinPan(byte[] q, int D) {
+  //    assert B_QUERY > 0;
+  //    int B = (D + 63) / 64 * 64;
+  //    byte[] quantQueryByte = new byte[B_QUERY * B / 8];
+  //    int qOffset = 0;
+  //
+  //    final byte[] v = new byte[32];
+  //    final byte[] v1b = new byte[4];
+  //    for (int i = 0; i < B; i += 32) {
+  //      ByteVector q0 = ByteVector.fromArray(SPECIES, q, qOffset);
+  //      ByteVector q1 = ByteVector.fromArray(SPECIES, q, qOffset + 16);
+  //
+  //      ByteVector v0 = q0.lanewise(VectorOperators.LSHL, 8 - B_QUERY);
+  //      ByteVector v1 = q1.lanewise(VectorOperators.LSHL, 8 - B_QUERY);
+  //      v0 =
+  //              v0.lanewise(
+  //                      VectorOperators.OR, q0.lanewise(VectorOperators.LSHR,
+  // B_QUERY).and(BYTE_MASK));
+  //      v1 =
+  //              v1.lanewise(
+  //                      VectorOperators.OR, q1.lanewise(VectorOperators.LSHR,
+  // B_QUERY).and(BYTE_MASK));
+  //
+  //      for (int j = 0; j < B_QUERY; j++) {
+  //        v0.intoArray(v, 0);
+  //        v1.intoArray(v, 16);
+  //        moveMaskEpi8Byte(v, v1b);
+  //        for (int k = 0; k < 4; k++) {
+  //          quantQueryByte[(B_QUERY - j - 1) * (B / 8) + i / 8 + k] = v1b[k];
+  //          v1b[k] = 0;
+  //        }
+  //
+  //        v0 = v0.lanewise(VectorOperators.ADD, v0);
+  //        v1 = v1.lanewise(VectorOperators.ADD, v1);
+  //      }
+  //      qOffset += 32;
+  //    }
+  //    return quantQueryByte;
+  //  }
 
   // FIXME: move this to a utils class
   public static float[] range(float[] q, float[] c) {
@@ -387,7 +389,7 @@ public class BinaryQuantizer {
   }
 
   public float[] quantizeForIndex(
-          float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
+      float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
     float[] corrections = null;
 
     float distToCentroid = VectorUtil.squareDistance(vector, centroid);
@@ -436,7 +438,7 @@ public class BinaryQuantizer {
   public record QuantResult(byte[] result, int sumQ) {}
 
   public float[] quantizeForQuery(
-          float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
+      float[] vector, byte[] destination, VectorSimilarityFunction similarityFunction) {
     float[] corrections = null;
 
     float distToCentroid = VectorUtil.squareDistance(vector, centroid);
