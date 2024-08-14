@@ -75,6 +75,22 @@ configure(rootProject) {
     it.dependsOn(":versionCatalogFormatDeps")
   }
 
+  // correct crlf/ default encoding after version catalog formatting finishes.
+  tasks.matching {
+    it.path in [
+      ":versionCatalogFormatDeps"
+    ]
+  }.configureEach {
+    it.doLast {
+      File inFile = it.catalogFile.get().asFile
+      String text = inFile.getText()
+      String cleaned = text.replaceAll("\r\n", "\n")
+      if (!cleaned.equals(text)) {
+        inFile.setText(cleaned, "UTF-8")
+      }
+    }
+  }
+
   tasks.matching {
     it.path in [
       ":versionCatalogUpdateDeps"
