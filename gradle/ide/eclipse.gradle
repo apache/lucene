@@ -23,7 +23,7 @@ def resources = scriptResources(buildscript)
 
 configure(rootProject) {
   if (gradle.startParameter.taskNames.contains("eclipse")) {
-    project.pluginManager.apply("java-library")
+    project.pluginManager.apply("java-base")
     project.pluginManager.apply("eclipse")
 
     def eclipseJavaVersion = propertyOrDefault("eclipse.javaVersion", deps.versions.minJava.get())
