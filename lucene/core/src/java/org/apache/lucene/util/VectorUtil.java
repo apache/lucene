@@ -47,6 +47,8 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
  */
 public final class VectorUtil {
 
+  private static final float EPSILON = 1e-4f;
+
   private static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
 
@@ -70,9 +72,7 @@ public final class VectorUtil {
    * Returns the cosine similarity between the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
-   * @deprecated use dot-product instead using normalized vectors
    */
-  @Deprecated
   public static float cosine(float[] a, float[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -82,12 +82,7 @@ public final class VectorUtil {
     return r;
   }
 
-  /**
-   * Returns the cosine similarity between the two vectors.
-   *
-   * @deprecated use dot-product instead using normalized vectors
-   */
-  @Deprecated
+  /** Returns the cosine similarity between the two vectors. */
   public static float cosine(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -128,6 +123,11 @@ public final class VectorUtil {
     return v;
   }
 
+  public static boolean isUnitVector(float[] v) {
+    double l1norm = IMPL.dotProduct(v, v);
+    return Math.abs(l1norm - 1.0d) <= EPSILON;
+  }
+
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm.
    *
@@ -145,7 +145,7 @@ public final class VectorUtil {
         return v;
       }
     }
-    if (Math.abs(l1norm - 1.0d) <= 1e-5) {
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
       return v;
     }
     int dim = v.length;
