@@ -165,7 +165,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
     addVectors(maxOrd);
-    return hnsw;
+    return getCompletedGraph();
   }
 
   @Override
