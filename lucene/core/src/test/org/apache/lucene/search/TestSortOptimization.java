@@ -302,7 +302,11 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(afterValue + 1 + i, fieldDoc.fields[0]);
       }
       assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
-      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+      // expect to skip all but the first leaf in the BKD tree in the first segment as well as the
+      // second segment
+      // doc-500 has no target field, so we need to minus 1
+      final int expectedSkipped = (7001 - 512 - 1) + (numDocs - 7001);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs - expectedSkipped + 1);
     }
 
     reader.close();
