@@ -26,11 +26,6 @@ import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
-record SubspaceOutput(byte[] packedBinaryVector, float projection) {}
-
-record SubspaceOutputMIP(
-    byte[] packedBinaryVector, float xbSum, float oDotC, float normOC, float OOQ) {}
-
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
   private static final int QUERY_PROJECTIONS = 4;
@@ -58,7 +53,7 @@ public class BinaryQuantizer {
   }
 
   // FIXME: move this out to vector utils
-  public static float[] pad(float[] vector, int dimensions) {
+  private static float[] pad(float[] vector, int dimensions) {
     if (vector.length >= dimensions) {
       return vector;
     }
@@ -74,14 +69,14 @@ public class BinaryQuantizer {
   }
 
   // FIXME: move this out to vector utils
-  public static void subtract(float[] a, float[] b) {
+  private static void subtract(float[] a, float[] b) {
     for (int j = 0; j < a.length; j++) {
       a[j] -= b[j];
     }
   }
 
   // FIXME: move this out to vector utils
-  public static float norm(float[] vector) {
+  private static float norm(float[] vector) {
     float magnitude = VectorUtil.dotProduct(vector, vector);
     magnitude = (float) Math.sqrt(magnitude);
 
@@ -134,7 +129,7 @@ public class BinaryQuantizer {
   //  }
 
   // FIXME: move this out to vector utils
-  public static float[] subset(float[] a, int lastColumn) {
+  private static float[] subset(float[] a, int lastColumn) {
     return Arrays.copyOf(a, lastColumn);
   }
 
@@ -161,14 +156,14 @@ public class BinaryQuantizer {
   //  }
 
   // FIXME: move this out to vector utils
-  public static void removeSignAndDivide(float[] a, float divisor) {
+  private static void removeSignAndDivide(float[] a, float divisor) {
     for (int i = 0; i < a.length; i++) {
       a[i] = Math.abs(a[i]) / divisor;
     }
   }
 
   // FIXME: move this out to vector utils
-  public static float sumAndNormalize(float[] a, float norm) {
+  private static float sumAndNormalize(float[] a, float norm) {
     float aDivided = 0f;
 
     for (int i = 0; i < a.length; i++) {
@@ -184,7 +179,7 @@ public class BinaryQuantizer {
   }
 
   // FIXME: move this out to vector utils
-  public static float[] divide(float[] a, float b) {
+  private static float[] divide(float[] a, float b) {
     float[] c = new float[a.length];
     for (int j = 0; j < a.length; j++) {
       c[j] = a[j] / b;
@@ -192,7 +187,7 @@ public class BinaryQuantizer {
     return c;
   }
 
-  public static byte[] packAsBinary(float[] vector, int dimensions) {
+  private static byte[] packAsBinary(float[] vector, int dimensions) {
     int totalValues = dimensions / 8;
 
     byte[] allBinary = new byte[totalValues];
@@ -212,11 +207,16 @@ public class BinaryQuantizer {
     return allBinary;
   }
 
-  public static int popcount(byte[] d, int dimensions) {
+  // FIXME: utils class?
+  private static int popcount(byte[] d, int dimensions) {
     return BitSet.valueOf(d).cardinality();
   }
 
-  public SubspaceOutput generateSubSpace(float[] vector, float[] centroid) {
+  private record SubspaceOutput(byte[] packedBinaryVector, float projection) {}
+
+  private SubspaceOutput generateSubSpace(float[] vector, float[] centroid) {
+
+    // FIXME: do common things once across generateSubSpace and generateSubSpaceMIP
 
     // typically no-op if dimensions/64
     float[] paddedCentroid = pad(centroid, discretizedDimensions);
@@ -225,15 +225,19 @@ public class BinaryQuantizer {
 
     // The inner product between the data vector and the quantized data vector
     float norm = norm(paddedVector);
-    float[] vectorSubset = subset(paddedVector, discretizedDimensions); // typically no-op if D/64
+    float[] vectorSubset =
+        subset(paddedVector, discretizedDimensions); // FIXME: typically no-op if D/64?
     removeSignAndDivide(vectorSubset, (float) Math.pow(discretizedDimensions, 0.5));
     float projection = sumAndNormalize(vectorSubset, norm);
     byte[] packedBinaryVector = packAsBinary(paddedVector, discretizedDimensions);
-    return new SubspaceOutput(projection, packedBinaryVector);
+    return new SubspaceOutput(packedBinaryVector, projection);
   }
 
+  record SubspaceOutputMIP(
+      byte[] packedBinaryVector, float xbSum, float oDotC, float normOC, float OOQ) {}
+
   // FIXME: write me & come up with a better name for this function
-  public SubspaceOutputMIP generateSubSpaceMIP(float[] vector, float[] centroid) {
+  private SubspaceOutputMIP generateSubSpaceMIP(float[] vector, float[] centroid) {
 
     // typically no-op if dimensions/64
     float[] paddedCentroid = pad(centroid, discretizedDimensions);
@@ -244,7 +248,8 @@ public class BinaryQuantizer {
     float normOC = norm(paddedVector);
     float[] normOMinusC = divide(paddedVector, normOC); // == OmC / norm(OmC)
 
-    float[] vectorSubset = subset(paddedVector, discretizedDimensions); // typically no-op if D/64
+    float[] vectorSubset =
+        subset(paddedVector, discretizedDimensions); // FIXME: typically no-op if D/64?
     removeSignAndDivide(vectorSubset, (float) Math.pow(discretizedDimensions, 0.5));
     float projection = sumAndNormalize(vectorSubset, normOC);
     byte[] packedBinaryVector = packAsBinary(paddedVector, discretizedDimensions);
@@ -266,7 +271,7 @@ public class BinaryQuantizer {
   }
 
   // FIXME: reintroduce a space utils
-  public static final int B_QUERY = 4;
+  private static final int B_QUERY = 4;
   //  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
   private static final byte BYTE_MASK = (1 << B_QUERY) - 1;
 
@@ -286,7 +291,7 @@ public class BinaryQuantizer {
   }
 
   // FIXME: clean up this function and move to utils like "space utils"
-  public void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
+  private void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
     int byte_mask = 1;
     for (int i = 0; i < B_QUERY - 1; i++) {
       byte_mask = byte_mask << 1 | 0b00000001;
@@ -368,7 +373,7 @@ public class BinaryQuantizer {
   //  }
 
   // FIXME: move this to a utils class
-  public static float[] range(float[] q, float[] c) {
+  private static float[] range(float[] q, float[] c) {
     float vl = Float.POSITIVE_INFINITY;
     float vr = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < q.length; i++) {
@@ -401,7 +406,7 @@ public class BinaryQuantizer {
         break;
       case VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT:
         SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid);
-        corrections = new float[5];
+        corrections = new float[4];
         corrections[0] = subspaceOutputMIP.xbSum();
         // FIXME: quantize these values so we are passing back 1 byte values for all three of these
         // instead of floats
@@ -415,8 +420,10 @@ public class BinaryQuantizer {
     return corrections;
   }
 
+  private record QuantResult(byte[] result, int sumQ) {}
+
   // FIXME: move this to a utils class
-  public static QuantResult quantize(float[] q, float[] c, float[] u, float vl, float width) {
+  private static QuantResult quantize(float[] q, float[] c, float[] u, float vl, float width) {
     // FIXME: speed up with panama?
     byte[] result = new byte[q.length];
     float oneOverWidth = 1.0f / width;
@@ -429,9 +436,6 @@ public class BinaryQuantizer {
 
     return new QuantResult(result, sumQ);
   }
-
-  // FIXME: pull this out
-  public record QuantResult(byte[] result, int sumQ) {}
 
   public float[] quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     float[] corrections = null;
