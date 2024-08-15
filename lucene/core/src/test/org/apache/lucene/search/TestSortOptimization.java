@@ -285,6 +285,30 @@ public class TestSortOptimization extends LuceneTestCase {
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
+    {
+      // test that optimization is run when missing value setting of SortField is NOT competitive
+      // with after on asc order
+      long afterValue = 3L;
+      FieldDoc after = new FieldDoc(3, Float.NaN, new Long[] {afterValue});
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG);
+      sortField.setMissingValue(2L);
+      final Sort sort = new Sort(sortField);
+      final TopFieldCollectorManager collectorManager =
+          new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), collectorManager);
+      assertEquals(topDocs.scoreDocs.length, numHits);
+      for (int i = 0; i < numHits; i++) {
+        FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
+        assertEquals(afterValue + 1 + i, fieldDoc.fields[0]);
+      }
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      // expect to skip all but the first leaf in the BKD tree in the first segment as well as the
+      // second segment
+      // doc-0 has no target field, so we need to minus 1
+      final int expectedSkipped = (7001 - 512 - 1) + (numDocs - 7001);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs - expectedSkipped + 1);
+    }
+
     reader.close();
     dir.close();
   }
