@@ -36,8 +36,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
       throws IOException {
     if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedQueryVectors) {
-      throw new UnsupportedOperationException(
-          "when using binary quantized vectors, you must use the query quantized vectors");
     }
     return nonQuantizedDelegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
