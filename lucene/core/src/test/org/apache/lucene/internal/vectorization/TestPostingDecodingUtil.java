@@ -65,7 +65,7 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           // padding bytes.
           IndexInput slice = in.slice("test", 0, startFP + count * Long.BYTES);
 
-          PostingDecodingUtil defaultUtil = new DefaultPostingDecodingUtil(slice);
+          PostingDecodingUtil defaultUtil = new PostingDecodingUtil(slice);
           PostingDecodingUtil optimizedUtil = vectorizationProvider.newPostingDecodingUtil(slice);
 
           slice.seek(startFP);

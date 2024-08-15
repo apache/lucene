@@ -29,11 +29,10 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
   private static final VectorSpecies<Long> LONG_SPECIES =
       PanamaVectorConstants.PRERERRED_LONG_SPECIES;
 
-  private final IndexInput in;
   private final MemorySegment memorySegment;
 
   MemorySegmentPostingDecodingUtil(IndexInput in, MemorySegment memorySegment) {
-    this.in = in;
+    super(in);
     this.memorySegment = memorySegment;
   }
 
@@ -55,7 +54,7 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
       // Not enough data to vectorize without going out-of-bounds. In practice, this branch is never
       // used if the bit width is 256, and is used for 2 and 3 bits per value if the bit width is
       // 512.
-      defaultSplitLongs(in, count, b, bShift, dec, bMask, c, cIndex, cMask);
+      super.splitLongs(count, b, bShift, dec, bMask, c, cIndex, cMask);
       return;
     }
 

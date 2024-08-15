@@ -222,7 +222,7 @@ public final class ForUtil {
     return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
-  static void decodeSlow(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs)
+  static void decodeSlow(int bitsPerValue, PostingDecodingUtil pdu, long[] tmp, long[] longs)
       throws IOException {
     final int numLongs = bitsPerValue << 1;
     final long mask = MASKS32[bitsPerValue];
@@ -287,9 +287,9 @@ def writeDecode(bpv, f):
     next_primitive = 8
   elif bpv <= 16:
     next_primitive = 16
-  f.write('  static void decode%d(IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %bpv)
+  f.write('  static void decode%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %bpv)
   if bpv == next_primitive:
-    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
+    f.write('    pdu.in.readLongs(longs, 0, %d);\n' %(bpv*2))
   else:
     num_values_per_long = 64 / next_primitive
     remaining_bits = next_primitive % bpv
@@ -324,7 +324,7 @@ if __name__ == '__main__':
 
   f.write("""
   /** Decode 128 integers into {@code longs}. */
-  void decode(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long[] longs) throws IOException {
+  void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -334,11 +334,11 @@ if __name__ == '__main__':
     elif bpv <= 16:
       next_primitive = 16
     f.write('      case %d:\n' %bpv)
-    f.write('        decode%d(in, pdu, tmp, longs);\n' %bpv)
+    f.write('        decode%d(pdu, tmp, longs);\n' %bpv)
     f.write('        expand%d(longs);\n' %next_primitive)
     f.write('        break;\n')
   f.write('      default:\n')
-  f.write('        decodeSlow(bitsPerValue, in, pdu, tmp, longs);\n')
+  f.write('        decodeSlow(bitsPerValue, pdu, tmp, longs);\n')
   f.write('        expand32(longs);\n')
   f.write('        break;\n')
   f.write('    }\n')

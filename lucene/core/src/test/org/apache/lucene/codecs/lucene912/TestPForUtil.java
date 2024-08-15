@@ -50,7 +50,7 @@ public class TestPForUtil extends LuceneTestCase {
         continue;
       }
       final long[] restored = new long[ForUtil.BLOCK_SIZE];
-      pforUtil.decode(in, pdu, restored);
+      pforUtil.decode(pdu, restored);
       int[] ints = new int[ForUtil.BLOCK_SIZE];
       for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
         ints[j] = Math.toIntExact(restored[j]);

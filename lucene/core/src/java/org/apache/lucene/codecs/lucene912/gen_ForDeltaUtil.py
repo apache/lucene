@@ -299,12 +299,12 @@ public final class ForDeltaUtil {
   }
 
   /** Decode deltas, compute the prefix sum and add {@code base} to all decoded longs. */
-  void decodeAndPrefixSum(IndexInput in, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
-    final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
+  void decodeAndPrefixSum(PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
+    final int bitsPerValue = Byte.toUnsignedInt(pdu.in.readByte());
     if (bitsPerValue == 0) {
       prefixSumOfOnes(longs, base);
     } else {
-      decodeAndPrefixSum(bitsPerValue, in, pdu, base, longs);
+      decodeAndPrefixSum(bitsPerValue, pdu, base, longs);
     }
   }
 
@@ -366,9 +366,9 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
   
 def writeDecode(bpv, f):
   next_primitive = primitive_size_for_bpv(bpv)
-  f.write('  private static void decode%dTo%d(IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %(bpv, next_primitive))
+  f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %(bpv, next_primitive))
   if bpv == next_primitive:
-    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
+    f.write('    pdu.in.readLongs(longs, 0, %d);\n' %(bpv*2))
   else:
     num_values_per_long = 64 / next_primitive
     remaining_bits = next_primitive % bpv
@@ -388,20 +388,20 @@ if __name__ == '__main__':
   /**
    * Delta-decode 128 integers into {@code longs}.
    */
-  void decodeAndPrefixSum(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
+  void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
     primitive_size = primitive_size_for_bpv(bpv)
     f.write('    case %d:\n' %bpv)
     if next_primitive(bpv) == primitive_size:
-      f.write('        decode%d(in, pdu, tmp, longs);\n' %bpv)
+      f.write('        decode%d(pdu, tmp, longs);\n' %bpv)
     else:
-      f.write('        decode%dTo%d(in, pdu, tmp, longs);\n' %(bpv, primitive_size))
+      f.write('        decode%dTo%d(pdu, tmp, longs);\n' %(bpv, primitive_size))
     f.write('      prefixSum%d(longs, base);\n' %primitive_size)
     f.write('      break;\n')
   f.write('    default:\n')
-  f.write('      decodeSlow(bitsPerValue, in, pdu, tmp, longs);\n')
+  f.write('      decodeSlow(bitsPerValue, pdu, tmp, longs);\n')
   f.write('      prefixSum32(longs, base);\n')
   f.write('      break;\n')
   f.write('    }\n')

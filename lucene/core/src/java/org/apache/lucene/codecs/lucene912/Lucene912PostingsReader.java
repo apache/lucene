@@ -452,7 +452,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     public int freq() throws IOException {
       if (freqFP != -1) {
         docIn.seek(freqFP);
-        pforUtil.decode(docIn, docInUtil, freqBuffer);
+        pforUtil.decode(docInUtil, freqBuffer);
         freqFP = -1;
       }
 
@@ -487,7 +487,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private void refillFullBlock() throws IOException {
       assert docFreq - docCountUpto >= BLOCK_SIZE;
 
-      forDeltaUtil.decodeAndPrefixSum(docIn, docInUtil, prevDocID, docBuffer);
+      forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
 
       if (indexHasFreq) {
         if (needsFreq) {
@@ -843,8 +843,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, docInUtil, prevDocID, docBuffer);
-        pforUtil.decode(docIn, docInUtil, freqBuffer);
+        forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
+        pforUtil.decode(docInUtil, freqBuffer);
         docCountUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
@@ -1123,11 +1123,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
         payloadByteUpto = 0;
       } else {
-        pforUtil.decode(posIn, posInUtil, posDeltaBuffer);
+        pforUtil.decode(posInUtil, posDeltaBuffer);
 
         if (indexHasPayloads) {
           if (needsPayloads) {
-            pforUtil.decode(payIn, payInUtil, payloadLengthBuffer);
+            pforUtil.decode(payInUtil, payloadLengthBuffer);
             int numBytes = payIn.readVInt();
 
             if (numBytes > payloadBytes.length) {
@@ -1146,8 +1146,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
         if (indexHasOffsets) {
           if (needsOffsets) {
-            pforUtil.decode(payIn, payInUtil, offsetStartDeltaBuffer);
-            pforUtil.decode(payIn, payInUtil, offsetLengthBuffer);
+            pforUtil.decode(payInUtil, offsetStartDeltaBuffer);
+            pforUtil.decode(payInUtil, offsetLengthBuffer);
           } else {
             // this works, because when writing a vint block we always force the first length to be
             // written
@@ -1316,7 +1316,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     public int freq() throws IOException {
       if (freqFP != -1) {
         docIn.seek(freqFP);
-        pforUtil.decode(docIn, docInUtil, freqBuffer);
+        pforUtil.decode(docInUtil, freqBuffer);
         freqFP = -1;
       }
       return (int) freqBuffer[docBufferUpto - 1];
@@ -1352,7 +1352,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, docInUtil, prevDocID, docBuffer);
+        forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
 
         if (indexHasFreq) {
           freqFP = docIn.getFilePointer();
@@ -1724,8 +1724,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docIn, docInUtil, prevDocID, docBuffer);
-        pforUtil.decode(docIn, docInUtil, freqBuffer);
+        forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
+        pforUtil.decode(docInUtil, freqBuffer);
         docCountUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
@@ -1998,7 +1998,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           }
         }
       } else {
-        pforUtil.decode(posIn, posInUtil, posDeltaBuffer);
+        pforUtil.decode(posInUtil, posDeltaBuffer);
       }
     }
 

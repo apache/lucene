@@ -20,31 +20,14 @@ import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 
 /** Utility class to decode postings. */
-public abstract class PostingDecodingUtil {
+public class PostingDecodingUtil {
 
-  /**
-   * Default implementation, which takes advantage of the C2 compiler's loop unrolling and
-   * auto-vectorization.
-   */
-  protected static void defaultSplitLongs(
-      IndexInput in,
-      int count,
-      long[] b,
-      int bShift,
-      int dec,
-      long bMask,
-      long[] c,
-      int cIndex,
-      long cMask)
-      throws IOException {
-    in.readLongs(c, cIndex, count);
-    int maxIter = (bShift - 1) / dec;
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0; j <= maxIter; ++j) {
-        b[count * j + i] = (c[cIndex + i] >>> (bShift - j * dec)) & bMask;
-      }
-      c[cIndex + i] &= cMask;
-    }
+  /** The wrapper {@link IndexInput}. */
+  public final IndexInput in;
+
+  /** Sole constructor, called by sub-classes. */
+  protected PostingDecodingUtil(IndexInput in) {
+    this.in = in;
   }
 
   /**
@@ -58,7 +41,18 @@ public abstract class PostingDecodingUtil {
    *       cIndex}.
    * </ul>
    */
-  public abstract void splitLongs(
+  public void splitLongs(
       int count, long[] b, int bShift, int dec, long bMask, long[] c, int cIndex, long cMask)
-      throws IOException;
+      throws IOException {
+    // Default implementation, which takes advantage of the C2 compiler's loop unrolling and
+    // auto-vectorization.
+    in.readLongs(c, cIndex, count);
+    int maxIter = (bShift - 1) / dec;
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j <= maxIter; ++j) {
+        b[count * j + i] = (c[cIndex + i] >>> (bShift - j * dec)) & bMask;
+      }
+      c[cIndex + i] &= cMask;
+    }
+  }
 }

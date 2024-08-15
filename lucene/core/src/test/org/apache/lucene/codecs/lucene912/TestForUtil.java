@@ -77,7 +77,7 @@ public class TestForUtil extends LuceneTestCase {
         final int bitsPerValue = in.readByte();
         final long currentFilePointer = in.getFilePointer();
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
-        forUtil.decode(bitsPerValue, in, pdu, restored);
+        forUtil.decode(bitsPerValue, pdu, restored);
         int[] ints = new int[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           ints[j] = Math.toIntExact(restored[j]);
