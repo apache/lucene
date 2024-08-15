@@ -1260,8 +1260,8 @@ public final class TestUtil {
         return new LuceneFixedGap();
       case 1:
         return new BlockTreeOrdsPostingsFormat();
-        // TODO: these don't actually support ords!
-        // case 2: return new FSTOrdPostingsFormat();
+      // TODO: these don't actually support ords!
+      // case 2: return new FSTOrdPostingsFormat();
       default:
         throw new AssertionError();
     }
