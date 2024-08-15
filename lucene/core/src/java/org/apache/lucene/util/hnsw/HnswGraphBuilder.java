@@ -454,11 +454,11 @@ public class HnswGraphBuilder implements HnswBuilder {
       int[] eps = new int[1];
       for (Component c : components) {
         if (c != c0) {
-          beam.clear();
-          eps[0] = c0.start();
           if (c.start() == NO_MORE_DOCS) {
             continue;
           }
+          beam.clear();
+          eps[0] = c0.start();
           RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
           // find the closest node in the largest component to the lowest-numbered node in this
           // component that has room to make a connection
