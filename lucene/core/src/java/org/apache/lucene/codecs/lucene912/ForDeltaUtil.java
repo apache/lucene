@@ -256,111 +256,19 @@ public final class ForDeltaUtil {
       assert or != 0;
       final int bitsPerValue = PackedInts.bitsRequired(or);
       out.writeByte((byte) bitsPerValue);
-      encodeDeltas(longs, bitsPerValue, out);
-    }
-  }
 
-  private void encodeDeltas(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
-    final int nextPrimitive;
-    final int numLongs;
-    if (bitsPerValue <= 4) {
-      nextPrimitive = 8;
-      numLongs = BLOCK_SIZE / 8;
-      collapse8(longs);
-    } else if (bitsPerValue <= 11) {
-      nextPrimitive = 16;
-      numLongs = BLOCK_SIZE / 4;
-      collapse16(longs);
-    } else {
-      nextPrimitive = 32;
-      numLongs = BLOCK_SIZE / 2;
-      collapse32(longs);
-    }
-
-    final int numLongsPerShift = bitsPerValue * 2;
-    int idx = 0;
-    int shift = nextPrimitive - bitsPerValue;
-    for (int i = 0; i < numLongsPerShift; ++i) {
-      tmp[i] = longs[idx++] << shift;
-    }
-    for (shift = shift - bitsPerValue; shift >= 0; shift -= bitsPerValue) {
-      for (int i = 0; i < numLongsPerShift; ++i) {
-        tmp[i] |= longs[idx++] << shift;
-      }
-    }
-
-    final int remainingBitsPerLong = shift + bitsPerValue;
-    final long maskRemainingBitsPerLong;
-    if (nextPrimitive == 8) {
-      maskRemainingBitsPerLong = MASKS8[remainingBitsPerLong];
-    } else if (nextPrimitive == 16) {
-      maskRemainingBitsPerLong = MASKS16[remainingBitsPerLong];
-    } else {
-      maskRemainingBitsPerLong = MASKS32[remainingBitsPerLong];
-    }
-
-    int tmpIdx = 0;
-    int remainingBitsPerValue = bitsPerValue;
-    while (idx < numLongs) {
-      if (remainingBitsPerValue >= remainingBitsPerLong) {
-        remainingBitsPerValue -= remainingBitsPerLong;
-        tmp[tmpIdx++] |= (longs[idx] >>> remainingBitsPerValue) & maskRemainingBitsPerLong;
-        if (remainingBitsPerValue == 0) {
-          idx++;
-          remainingBitsPerValue = bitsPerValue;
-        }
+      final int primitiveSize;
+      if (bitsPerValue <= 4) {
+        primitiveSize = 8;
+        collapse8(longs);
+      } else if (bitsPerValue <= 11) {
+        primitiveSize = 16;
+        collapse16(longs);
       } else {
-        final long mask1, mask2;
-        if (nextPrimitive == 8) {
-          mask1 = MASKS8[remainingBitsPerValue];
-          mask2 = MASKS8[remainingBitsPerLong - remainingBitsPerValue];
-        } else if (nextPrimitive == 16) {
-          mask1 = MASKS16[remainingBitsPerValue];
-          mask2 = MASKS16[remainingBitsPerLong - remainingBitsPerValue];
-        } else {
-          mask1 = MASKS32[remainingBitsPerValue];
-          mask2 = MASKS32[remainingBitsPerLong - remainingBitsPerValue];
-        }
-        tmp[tmpIdx] |= (longs[idx++] & mask1) << (remainingBitsPerLong - remainingBitsPerValue);
-        remainingBitsPerValue = bitsPerValue - remainingBitsPerLong + remainingBitsPerValue;
-        tmp[tmpIdx++] |= (longs[idx] >>> remainingBitsPerValue) & mask2;
+        primitiveSize = 32;
+        collapse32(longs);
       }
-    }
-
-    for (int i = 0; i < numLongsPerShift; ++i) {
-      out.writeLong(tmp[i]);
-    }
-  }
-
-  /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
-  int numBytes(int bitsPerValue) {
-    return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
-  }
-
-  private static void decodeSlow(
-      int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    final int numLongs = bitsPerValue << 1;
-    final long mask = MASKS32[bitsPerValue];
-    pdu.splitLongs(numLongs, longs, 32 - bitsPerValue, 32, mask, tmp, 0, -1L);
-    final int remainingBitsPerLong = 32 - bitsPerValue;
-    final long mask32RemainingBitsPerLong = MASKS32[remainingBitsPerLong];
-    int tmpIdx = 0;
-    int remainingBits = remainingBitsPerLong;
-    for (int longsIdx = numLongs; longsIdx < BLOCK_SIZE / 2; ++longsIdx) {
-      int b = bitsPerValue - remainingBits;
-      long l = (tmp[tmpIdx++] & MASKS32[remainingBits]) << b;
-      while (b >= remainingBitsPerLong) {
-        b -= remainingBitsPerLong;
-        l |= (tmp[tmpIdx++] & mask32RemainingBitsPerLong) << b;
-      }
-      if (b > 0) {
-        l |= (tmp[tmpIdx] >>> (remainingBitsPerLong - b)) & MASKS32[b];
-        remainingBits = remainingBitsPerLong - b;
-      } else {
-        remainingBits = remainingBitsPerLong;
-      }
-      longs[longsIdx] = l;
+      encode(longs, bitsPerValue, primitiveSize, out, tmp);
     }
   }
 

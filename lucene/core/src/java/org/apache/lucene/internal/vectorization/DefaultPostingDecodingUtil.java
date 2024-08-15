@@ -31,13 +31,6 @@ final class DefaultPostingDecodingUtil extends PostingDecodingUtil {
   public void splitLongs(
       int count, long[] b, int bShift, int dec, long bMask, long[] c, int cIndex, long cMask)
       throws IOException {
-    in.readLongs(c, cIndex, count);
-    // The below loop is auto-vectorized
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0, end = (bShift - 1) / dec; j <= end; ++j) {
-        b[count * j + i] = (c[cIndex + i] >>> (bShift - j * dec)) & bMask;
-      }
-      c[cIndex + i] &= cMask;
-    }
+    defaultSplitLongs(in, count, b, bShift, dec, bMask, c, cIndex, cMask);
   }
 }

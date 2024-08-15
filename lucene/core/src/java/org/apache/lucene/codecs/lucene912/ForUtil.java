@@ -120,24 +120,26 @@ public final class ForUtil {
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
     final int nextPrimitive;
-    final int numLongs;
     if (bitsPerValue <= 8) {
       nextPrimitive = 8;
-      numLongs = BLOCK_SIZE / 8;
       collapse8(longs);
     } else if (bitsPerValue <= 16) {
       nextPrimitive = 16;
-      numLongs = BLOCK_SIZE / 4;
       collapse16(longs);
     } else {
       nextPrimitive = 32;
-      numLongs = BLOCK_SIZE / 2;
       collapse32(longs);
     }
+    encode(longs, bitsPerValue, nextPrimitive, out, tmp);
+  }
+
+  static void encode(long[] longs, int bitsPerValue, int primitiveSize, DataOutput out, long[] tmp)
+      throws IOException {
+    final int numLongs = BLOCK_SIZE * primitiveSize / Long.SIZE;
 
     final int numLongsPerShift = bitsPerValue * 2;
     int idx = 0;
-    int shift = nextPrimitive - bitsPerValue;
+    int shift = primitiveSize - bitsPerValue;
     for (int i = 0; i < numLongsPerShift; ++i) {
       tmp[i] = longs[idx++] << shift;
     }
@@ -149,9 +151,9 @@ public final class ForUtil {
 
     final int remainingBitsPerLong = shift + bitsPerValue;
     final long maskRemainingBitsPerLong;
-    if (nextPrimitive == 8) {
+    if (primitiveSize == 8) {
       maskRemainingBitsPerLong = MASKS8[remainingBitsPerLong];
-    } else if (nextPrimitive == 16) {
+    } else if (primitiveSize == 16) {
       maskRemainingBitsPerLong = MASKS16[remainingBitsPerLong];
     } else {
       maskRemainingBitsPerLong = MASKS32[remainingBitsPerLong];
@@ -169,10 +171,10 @@ public final class ForUtil {
         }
       } else {
         final long mask1, mask2;
-        if (nextPrimitive == 8) {
+        if (primitiveSize == 8) {
           mask1 = MASKS8[remainingBitsPerValue];
           mask2 = MASKS8[remainingBitsPerLong - remainingBitsPerValue];
-        } else if (nextPrimitive == 16) {
+        } else if (primitiveSize == 16) {
           mask1 = MASKS16[remainingBitsPerValue];
           mask2 = MASKS16[remainingBitsPerLong - remainingBitsPerValue];
         } else {
@@ -191,11 +193,11 @@ public final class ForUtil {
   }
 
   /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
-  int numBytes(int bitsPerValue) {
+  static int numBytes(int bitsPerValue) {
     return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
-  private static void decodeSlow(
+  static void decodeSlow(
       int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs)
       throws IOException {
     final int numLongs = bitsPerValue << 1;

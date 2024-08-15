@@ -86,7 +86,7 @@ public class TestForUtil extends LuceneTestCase {
             Arrays.toString(ints),
             ArrayUtil.copyOfSubArray(values, i * ForUtil.BLOCK_SIZE, (i + 1) * ForUtil.BLOCK_SIZE),
             ints);
-        assertEquals(forUtil.numBytes(bitsPerValue), in.getFilePointer() - currentFilePointer);
+        assertEquals(ForUtil.numBytes(bitsPerValue), in.getFilePointer() - currentFilePointer);
       }
       assertEquals(endPointer, in.getFilePointer());
       in.close();

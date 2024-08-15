@@ -130,7 +130,7 @@ final class PForUtil {
       in.readVLong();
       in.skipBytes((numExceptions << 1));
     } else {
-      in.skipBytes(forUtil.numBytes(bitsPerValue) + (numExceptions << 1));
+      in.skipBytes(ForUtil.numBytes(bitsPerValue) + (numExceptions << 1));
     }
   }
 }

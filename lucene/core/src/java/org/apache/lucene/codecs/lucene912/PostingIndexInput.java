@@ -23,7 +23,8 @@ import org.apache.lucene.store.IndexInput;
 
 /**
  * Wrapper around an {@link IndexInput} and a {@link ForUtil} that optionally optimizes decoding
- * using vectorization.
+ * using vectorization. This class mostly exists to enable benchmarking the decoding logic of
+ * postings since it internally calls code that may only be called from the lucene-core JAR.
  */
 public final class PostingIndexInput {
 
