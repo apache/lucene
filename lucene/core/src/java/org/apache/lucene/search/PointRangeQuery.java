@@ -128,8 +128,8 @@ public abstract class PointRangeQuery extends Query {
       private final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
 
       private boolean matches(byte[] packedValue) {
-        for (int dim = 0; dim < numDims; dim++) {
-          int offset = dim * bytesPerDim;
+        int offset = 0;
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
           if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
             // Doc's value is too low, in this dimension
             return false;
@@ -145,9 +145,9 @@ public abstract class PointRangeQuery extends Query {
       private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
 
         boolean crosses = false;
+        int offset = 0;
 
-        for (int dim = 0; dim < numDims; dim++) {
-          int offset = dim * bytesPerDim;
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
 
           if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
               || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {

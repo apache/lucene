@@ -185,7 +185,7 @@ public final class ArrayUtil {
           // round up to multiple of 8
           return (newSize + 7) & 0x7ffffff8;
         case 8:
-          // no rounding
+        // no rounding
         default:
           // odd (invalid?) size
           return newSize;
@@ -205,7 +205,7 @@ public final class ArrayUtil {
           // align with size of 5,7,9,11...
           return (newSize & 0x7ffffffe) + 1;
         case 8:
-          // no processing required
+        // no processing required
         default:
           // odd (invalid?) size
           return newSize;

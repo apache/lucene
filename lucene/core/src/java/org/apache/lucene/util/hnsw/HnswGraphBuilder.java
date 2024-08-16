@@ -180,7 +180,6 @@ public class HnswGraphBuilder implements HnswBuilder {
   public OnHeapHnswGraph getCompletedGraph() throws IOException {
     if (!frozen) {
       finish();
-      frozen = true;
     }
     return getGraph();
   }
@@ -413,7 +412,9 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   void finish() throws IOException {
+    // System.out.println("finish " + frozen);
     connectComponents();
+    frozen = true;
   }
 
   private void connectComponents() throws IOException {
@@ -438,6 +439,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       maxConn *= 2;
     }
     List<Component> components = HnswUtil.components(hnsw, level, notFullyConnected, maxConn);
+    // System.out.println("HnswGraphBuilder.connectComponents level=" + level + ": " + components);
     boolean result = true;
     if (components.size() > 1) {
       // connect other components to the largest one
@@ -448,7 +450,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       }
       // try for more connections? We only do one since otherwise they may become full
       // while linking
-      GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(1);
+      GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(2);
       int[] eps = new int[1];
       for (Component c : components) {
         if (c != c0) {
@@ -460,10 +462,14 @@ public class HnswGraphBuilder implements HnswBuilder {
           graphSearcher.searchLevel(beam, scorer, 0, eps, hnsw, notFullyConnected);
           boolean linked = false;
           while (beam.size() > 0) {
-            float score = beam.minimumScore();
             int c0node = beam.popNode();
+            if (c0node == c.start() || notFullyConnected.get(c0node) == false) {
+              continue;
+            }
+            float score = beam.minimumScore();
             assert notFullyConnected.get(c0node);
             // link the nodes
+            // System.out.println("link " + c0 + "." + c0node + " to " + c + "." + c.start());
             link(level, c0node, c.start(), score, notFullyConnected);
             linked = true;
           }

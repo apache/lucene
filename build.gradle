@@ -80,6 +80,9 @@ ext {
   // Minimum Java version required to compile and run Lucene.
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
 
+  // also change this in extractor tool: ExtractForeignAPI
+  vectorIncubatorJavaVersions = [ JavaVersion.VERSION_21, JavaVersion.VERSION_22 ] as Set
+
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
 
@@ -117,10 +120,6 @@ apply from: file('gradle/generation/local-settings.gradle')
 // Make sure the build environment is consistent.
 apply from: file('gradle/validation/check-environment.gradle')
 
-// IDE support, settings and specials.
-apply from: file('gradle/ide/intellij-idea.gradle')
-apply from: file('gradle/ide/eclipse.gradle')
-
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
 apply from: file('gradle/java/folder-layout.gradle')
@@ -132,6 +131,10 @@ apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/testing/alternative-jdk-support.gradle')
 apply from: file('gradle/java/jar-manifest.gradle')
 apply from: file('gradle/java/modules.gradle')
+
+// IDE support, settings and specials.
+apply from: file('gradle/ide/intellij-idea.gradle')
+apply from: file('gradle/ide/eclipse.gradle')
 
 // Maven artifact publishing.
 apply from: file('gradle/maven/publications.gradle')
