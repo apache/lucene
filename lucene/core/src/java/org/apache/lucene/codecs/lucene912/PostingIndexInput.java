@@ -23,26 +23,28 @@ import org.apache.lucene.store.IndexInput;
 
 /**
  * Wrapper around an {@link IndexInput} and a {@link ForUtil} that optionally optimizes decoding
- * using vectorization.
+ * using vectorization. This class mostly exists to enable benchmarking the decoding logic of
+ * postings since it internally calls code that may only be called from the lucene-core JAR.
  */
 public final class PostingIndexInput {
 
   private static final VectorizationProvider VECTORIZATION_PROVIDER =
       VectorizationProvider.getInstance();
 
-  public final IndexInput in;
   public final ForUtil forUtil;
+  public final ForDeltaUtil forDeltaUtil;
   private final PostingDecodingUtil postingDecodingUtil;
 
-  public PostingIndexInput(IndexInput in, ForUtil forUtil) throws IOException {
-    this.in = in;
+  public PostingIndexInput(IndexInput in, ForUtil forUtil, ForDeltaUtil forDeltaUtil)
+      throws IOException {
     this.forUtil = forUtil;
+    this.forDeltaUtil = forDeltaUtil;
     this.postingDecodingUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
   }
 
   /** Decode 128 integers stored on {@code bitsPerValues} bits per value into {@code longs}. */
   public void decode(int bitsPerValue, long[] longs) throws IOException {
-    forUtil.decode(bitsPerValue, in, postingDecodingUtil, longs);
+    forUtil.decode(bitsPerValue, postingDecodingUtil, longs);
   }
 
   /**
@@ -50,6 +52,6 @@ public final class PostingIndexInput {
    * and store results into {@code longs}.
    */
   public void decodeAndPrefixSum(int bitsPerValue, long base, long[] longs) throws IOException {
-    forUtil.decodeAndPrefixSum(bitsPerValue, in, postingDecodingUtil, base, longs);
+    forDeltaUtil.decodeAndPrefixSum(bitsPerValue, postingDecodingUtil, base, longs);
   }
 }
