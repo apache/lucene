@@ -17,6 +17,7 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import java.io.IOException;
 import java.lang.Runtime.Version;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
@@ -30,6 +31,7 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
 
@@ -96,6 +98,9 @@ public abstract class VectorizationProvider {
 
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
+
+  /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
+  public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
   // *** Lookup mechanism: ***
 
@@ -206,7 +211,8 @@ public abstract class VectorizationProvider {
   private static final Set<String> VALID_CALLERS =
       Set.of(
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
-          "org.apache.lucene.util.VectorUtil");
+          "org.apache.lucene.util.VectorUtil",
+          "org.apache.lucene.codecs.lucene912.PostingIndexInput");
 
   private static void ensureCaller() {
     final boolean validCaller =

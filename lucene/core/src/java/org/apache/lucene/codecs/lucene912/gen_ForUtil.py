@@ -43,17 +43,20 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import org.apache.lucene.store.DataInput;
+import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexInput;
 
-// Inspired from https://fulmicoton.com/posts/bitpacking/
-// Encodes multiple integers in a long to get SIMD-like speedups.
-// If bitsPerValue <= 8 then we pack 8 ints per long
-// else if bitsPerValue <= 16 we pack 4 ints per long
-// else we pack 2 ints per long
-final class ForUtil {
+/**
+ * Inspired from https://fulmicoton.com/posts/bitpacking/
+ * Encodes multiple integers in a long to get SIMD-like speedups.
+ * If bitsPerValue &lt;= 8 then we pack 8 ints per long
+ * else if bitsPerValue &lt;= 16 we pack 4 ints per long
+ * else we pack 2 ints per long
+ */
+public final class ForUtil {
 
-  static final int BLOCK_SIZE = 128;
+  public static final int BLOCK_SIZE = 128;
   private static final int BLOCK_SIZE_LOG2 = 7;
 
   private static long expandMask32(long mask32) {
@@ -324,13 +327,13 @@ final class ForUtil {
     return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
-  private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
+  private static void decodeSlow(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs)
       throws IOException {
     final int numLongs = bitsPerValue << 1;
-    in.readLongs(tmp, 0, numLongs);
     final long mask = MASKS32[bitsPerValue];
-    int longsIdx = 0;
-    int shift = 32 - bitsPerValue;
+    pdu.splitLongs(numLongs, longs, 32 - bitsPerValue, mask, tmp, 0, -1L);
+    int longsIdx = numLongs;
+    int shift = 32 - 2 * bitsPerValue;
     for (; shift >= 0; shift -= bitsPerValue) {
       shiftLongs(tmp, numLongs, longs, longsIdx, shift, mask);
       longsIdx += numLongs;
@@ -366,30 +369,16 @@ final class ForUtil {
     }
   }
 
+  /**
+   * Likewise, but for a simple mask.
+   */
+  private static void maskLongs(long[] a, int count, long[] b, int bi, long mask) {
+    for (int i = 0; i < count; ++i) {
+      b[bi + i] = a[i] & mask;
+    }
+  }
+
 """
-
-def writeRemainderWithSIMDOptimize(bpv, next_primitive, remaining_bits_per_long, o, num_values, f):
-  iteration = 1
-  num_longs = bpv * num_values / remaining_bits_per_long
-  while num_longs % 2 == 0 and num_values % 2 == 0:
-    num_longs /= 2
-    num_values /= 2
-    iteration *= 2
-
-  f.write('    shiftLongs(tmp, %d, tmp, 0, 0, MASK%d_%d);\n' % (iteration * num_longs, next_primitive, remaining_bits_per_long))
-  f.write('    for (int iter = 0, tmpIdx = 0, longsIdx = %d; iter < %d; ++iter, tmpIdx += %d, longsIdx += %d) {\n' %(o, iteration, num_longs, num_values))
-  tmp_idx = 0
-  b = bpv
-  b -= remaining_bits_per_long
-  f.write('      long l0 = tmp[tmpIdx + %d] << %d;\n' %(tmp_idx, b))
-  tmp_idx += 1
-  while b >= remaining_bits_per_long:
-    b -= remaining_bits_per_long
-    f.write('      l0 |= tmp[tmpIdx + %d] << %d;\n' %(tmp_idx, b))
-    tmp_idx += 1
-  f.write('      longs[longsIdx + 0] = l0;\n')
-  f.write('    }\n')
-  
 
 def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, f):
   iteration = 1
@@ -406,14 +395,14 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
     b = bpv
     if remaining_bits == 0:
       b -= remaining_bits_per_long
-      f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits_per_long, b))
+      f.write('      long l%d = tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
     else:
       b -= remaining_bits
       f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
     tmp_idx += 1
     while b >= remaining_bits_per_long:
       b -= remaining_bits_per_long
-      f.write('      l%d |= (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits_per_long, b))
+      f.write('      l%d |= tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
       tmp_idx += 1
     if b > 0:
       f.write('      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_long-b, next_primitive, b))
@@ -428,23 +417,30 @@ def writeDecode(bpv, f):
     next_primitive = 8
   elif bpv <= 16:
     next_primitive = 16
-  f.write('  private static void decode%d(DataInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
-  num_values_per_long = 64 / next_primitive
+  f.write('  private static void decode%d(IndexInput in, PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %bpv)
   if bpv == next_primitive:
     f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
+  elif bpv * 2 == next_primitive:
+    f.write('    pdu.splitLongs(%d, longs, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, next_primitive, bpv, bpv*2, next_primitive, next_primitive - bpv))
   else:
-    f.write('    in.readLongs(tmp, 0, %d);\n' %(bpv*2))
-    shift = next_primitive - bpv
-    o = 0
+    num_values_per_long = 64 / next_primitive
+    f.write('    pdu.splitLongs(%d, longs, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, next_primitive, bpv, next_primitive, next_primitive - bpv))
+
+    shift = next_primitive - 2 * bpv
+    o = 2 * bpv
     while shift >= 0:
-      f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*2, o, shift, next_primitive, bpv))
+      if shift == 0:
+        f.write('    maskLongs(tmp, %d, longs, %d, MASK%d_%d);\n' %(bpv*2, o, next_primitive, bpv))
+      else:
+        f.write('    shiftLongs(tmp, %d, longs, %d, %d, MASK%d_%d);\n' %(bpv*2, o, shift, next_primitive, bpv))
       o += bpv*2
       shift -= bpv
-    if shift + bpv > 0:
-      if bpv % (next_primitive % bpv) == 0:
-        writeRemainderWithSIMDOptimize(bpv, next_primitive, shift + bpv, o, 128/num_values_per_long - o, f)
-      else:
-        writeRemainder(bpv, next_primitive, shift + bpv, o, 128/num_values_per_long - o, f)
+    remaining_bits = shift + bpv
+    if remaining_bits > 0:
+      if remaining_bits != next_primitive - bpv:
+        # values in tmp still have more bits per value than remaining_bits, clear the higher bits now
+        f.write('    maskLongs(tmp, %d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive, remaining_bits))
+      writeRemainder(bpv, next_primitive, remaining_bits, o, 128/num_values_per_long - o, f)
   f.write('  }\n')
 
 
@@ -471,7 +467,7 @@ if __name__ == '__main__':
 
   f.write("""
   /** Decode 128 integers into {@code longs}. */
-  void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
+  void decode(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -481,11 +477,11 @@ if __name__ == '__main__':
     elif bpv <= 16:
       next_primitive = 16
     f.write('      case %d:\n' %bpv)
-    f.write('        decode%d(in, tmp, longs);\n' %bpv)
+    f.write('        decode%d(in, pdu, tmp, longs);\n' %bpv)
     f.write('        expand%d(longs);\n' %next_primitive)
     f.write('        break;\n')
   f.write('      default:\n')
-  f.write('        decodeSlow(bitsPerValue, in, tmp, longs);\n')
+  f.write('        decodeSlow(bitsPerValue, in, pdu, tmp, longs);\n')
   f.write('        expand32(longs);\n')
   f.write('        break;\n')
   f.write('    }\n')
@@ -495,7 +491,7 @@ if __name__ == '__main__':
   /**
    * Delta-decode 128 integers into {@code longs}.
    */
-  void decodeAndPrefixSum(int bitsPerValue, DataInput in, long base, long[] longs) throws IOException {
+  void decodeAndPrefixSum(int bitsPerValue, IndexInput in, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -505,11 +501,11 @@ if __name__ == '__main__':
     elif bpv <= 16:
       next_primitive = 16
     f.write('    case %d:\n' %bpv)
-    f.write('      decode%d(in, tmp, longs);\n' %bpv)
+    f.write('      decode%d(in, pdu, tmp, longs);\n' %bpv)
     f.write('      prefixSum%d(longs, base);\n' %next_primitive)
     f.write('      break;\n')
   f.write('    default:\n')
-  f.write('      decodeSlow(bitsPerValue, in, tmp, longs);\n')
+  f.write('      decodeSlow(bitsPerValue, in, pdu, tmp, longs);\n')
   f.write('      prefixSum32(longs, base);\n')
   f.write('      break;\n')
   f.write('    }\n')

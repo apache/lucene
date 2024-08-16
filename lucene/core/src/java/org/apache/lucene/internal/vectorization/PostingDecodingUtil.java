@@ -14,34 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.internal.vectorization;
 
-import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.store.IndexInput;
+import java.io.IOException;
 
-/** Default provider returning scalar implementations. */
-final class DefaultVectorizationProvider extends VectorizationProvider {
+/** Utility class to decode postings. */
+public abstract class PostingDecodingUtil {
 
-  private final VectorUtilSupport vectorUtilSupport;
-
-  DefaultVectorizationProvider() {
-    vectorUtilSupport = new DefaultVectorUtilSupport();
-  }
-
-  @Override
-  public VectorUtilSupport getVectorUtilSupport() {
-    return vectorUtilSupport;
-  }
-
-  @Override
-  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
-    return DefaultFlatVectorScorer.INSTANCE;
-  }
-
-  @Override
-  public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) {
-    return new DefaultPostingDecodingUtil(input);
-  }
+  /**
+   * Read {@code count} longs. This number must not exceed 64. Apply shift {@code bShift} and mask
+   * {@code bMask} and store the result in {@code b} starting at offset 0. Apply mask {@code cMask}
+   * and store the result in {@code c} starting at offset {@code cIndex}.
+   */
+  public abstract void splitLongs(
+      int count, long[] b, int bShift, long bMask, long[] c, int cIndex, long cMask)
+      throws IOException;
 }
