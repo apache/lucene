@@ -18,6 +18,8 @@ package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitUtil;
@@ -194,6 +196,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       }
     }
 
+    record Factors(float sqrX, float error, float PPC, float IP) {}
+
+    private final Map<Integer, Factors> factorsCache = new HashMap<>();
+
     // FIXME: write tests to validate how this flow works and that a score is realized
     @Override
     public float score(int targetOrd) {
@@ -234,23 +240,37 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
           // somewhere?
           // .. not sure how to enumerate the target ordinals but it seems expensive to do all of
           // this here
-          float sqrX = targetDistToCentroid * targetDistToCentroid;
-          double xX0 = targetDistToCentroid / x0;
-          float sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
-          float maxX1 = (float) (1.9 / Utils.constSqrt(discretizedDimensions - 1.0));
-          float error =
-              (float)
-                  (2.0
-                      * maxX1
-                      * Math.sqrt(xX0 * xX0 - targetDistToCentroid * targetDistToCentroid));
-          float factorPPC =
-              (float)
-                  (-2.0
-                      / sqrtDimensions
-                      * xX0
-                      * ((float) popcount(binaryCode, discretizedDimensions) * 2.0
-                          - discretizedDimensions));
-          float factorIP = (float) (-2.0 / sqrtDimensions * xX0);
+          // ... could cache these as well on each call to score using targetOrd as the lookup
+          float sqrX;
+          float error;
+          float factorPPC;
+          float factorIP;
+          if (factorsCache.containsKey(targetOrd)) {
+            Factors factors = factorsCache.get(targetOrd);
+            sqrX = factors.sqrX();
+            error = factors.error();
+            factorPPC = factors.PPC();
+            factorIP = factors.IP();
+          } else {
+            sqrX = targetDistToCentroid * targetDistToCentroid;
+            double xX0 = targetDistToCentroid / x0;
+            float sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
+            float maxX1 = (float) (1.9 / Utils.constSqrt(discretizedDimensions - 1.0));
+            error =
+                (float)
+                    (2.0
+                        * maxX1
+                        * Math.sqrt(xX0 * xX0 - targetDistToCentroid * targetDistToCentroid));
+            factorPPC =
+                (float)
+                    (-2.0
+                        / sqrtDimensions
+                        * xX0
+                        * ((float) popcount(binaryCode, discretizedDimensions) * 2.0
+                            - discretizedDimensions));
+            factorIP = (float) (-2.0 / sqrtDimensions * xX0);
+            factorsCache.put(targetOrd, new Factors(sqrX, error, factorPPC, factorIP));
+          }
           ////////
 
           long qcDist = ipByteBinByte(quantizedQuery, binaryCode);
