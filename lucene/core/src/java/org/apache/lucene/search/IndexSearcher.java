@@ -630,21 +630,23 @@ public class IndexSearcher {
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
-    final LeafSlice[] leafSlices = getSlices();
-    final List<C> collectors = new ArrayList<>(leafSlices.length);
     final C firstCollector = collectorManager.newCollector();
     query = rewrite(query, firstCollector.scoreMode().needsScores());
+    // Initializing `collectors` here (before createWeight) causes regression...
+    final List<C> collectors = new ArrayList<>(8);
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
-    return search(weight, collectorManager, firstCollector, collectors, leafSlices);
+    // ... but if we move the initialization here, there is no impact.
+    // final List<C> collectors = new ArrayList<>(8);
+    return search(weight, collectorManager, firstCollector, collectors);
   }
 
   private <C extends Collector, T> T search(
       Weight weight,
       CollectorManager<C, T> collectorManager,
       C firstCollector,
-      List<C> collectors,
-      LeafSlice[] leafSlices)
+      List<C> collectors)
       throws IOException {
+    final LeafSlice[] leafSlices = getSlices();
     if (leafSlices.length == 0) {
       // there are no segments, nothing to offload to the executor, but we do need to call reduce to
       // create some kind of empty result
