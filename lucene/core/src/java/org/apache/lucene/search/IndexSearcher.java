@@ -631,12 +631,28 @@ public class IndexSearcher {
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
     final C firstCollector = collectorManager.newCollector();
-    query = rewrite(query, firstCollector.scoreMode().needsScores());
-    // Initializing `collectors` here (before createWeight) causes regression...
+    final ScoreMode scoreMode = firstCollector.scoreMode();
+    query = rewrite(query, scoreMode.needsScores());
+
+    ////////
+    // Inlining the createWeight method...
+
+    // Initializing `collectors` here (before query.createWeight) causes regression...
     final List<C> collectors = new ArrayList<>(8);
-    final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
+
+    Weight weight = query.createWeight(this, scoreMode, 1);
+
     // ... but if we move the initialization here, there is no impact.
     // final List<C> collectors = new ArrayList<>(8);
+
+    final QueryCache queryCache = this.queryCache;
+    if (scoreMode.needsScores() == false && queryCache != null) {
+      weight = queryCache.doCache(weight, queryCachingPolicy);
+    }
+
+    // ...end inlining of createWeight method
+    ////////
+
     return search(weight, collectorManager, firstCollector, collectors);
   }
 
