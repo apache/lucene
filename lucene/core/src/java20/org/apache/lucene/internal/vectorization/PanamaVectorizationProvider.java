@@ -91,6 +91,6 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   // practice.
   @Override
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
-    return new DefaultPostingDecodingUtil(input);
+    return new PostingDecodingUtil(input);
   }
 }

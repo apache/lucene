@@ -96,6 +96,6 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
         return new MemorySegmentPostingDecodingUtil(input, ms);
       }
     }
-    return new DefaultPostingDecodingUtil(input);
+    return new PostingDecodingUtil(input);
   }
 }

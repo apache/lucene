@@ -95,8 +95,8 @@ Optimizations
 
 * GITHUB#13581: OnHeapHnswGraph no longer allocates a lock for every graph node (Mike Sokolov)
 
-* GITHUB#13636: Optimizations to the decoding logic of blocks of postings.
-  (Adrien Grand, Uwe Schindler)
+* GITHUB#13636, GITHUB#13658: Optimizations to the decoding logic of blocks of
+  postings. (Adrien Grand, Uwe Schindler, Greg Miller)
 
 * GITHUB##13644: Improve NumericComparator competitive iterator logic by comparing the missing value with the top
   value even after the hit queue is full (Pan Guixin)

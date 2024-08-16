@@ -1,4 +1,28 @@
-// This file has been automatically generated, DO NOT EDIT
+#! /usr/bin/env python
+
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from math import gcd
+
+"""Code generation for ForDeltaUtil.java"""
+
+MAX_SPECIALIZED_BITS_PER_VALUE = 24
+OUTPUT_FILE = "ForDeltaUtil.java"
+PRIMITIVE_SIZE = [8, 16, 32]
+HEADER = """// This file has been automatically generated, DO NOT EDIT
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -18,18 +42,20 @@
  */
 package org.apache.lucene.codecs.lucene912;
 
-import static org.apache.lucene.codecs.lucene912.ForUtil.*;
-
 import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.packed.PackedInts;
 
+import static org.apache.lucene.codecs.lucene912.ForUtil.*;
+
 /**
- * Inspired from https://fulmicoton.com/posts/bitpacking/ Encodes multiple integers in a long to get
- * SIMD-like speedups. If bitsPerValue &lt;= 4 then we pack 8 ints per long else if bitsPerValue
- * &lt;= 11 we pack 4 ints per long else we pack 2 ints per long
+ * Inspired from https://fulmicoton.com/posts/bitpacking/
+ * Encodes multiple integers in a long to get SIMD-like speedups.
+ * If bitsPerValue &lt;= 4 then we pack 8 ints per long
+ * else if bitsPerValue &lt;= 11 we pack 4 ints per long
+ * else we pack 2 ints per long
  */
 public final class ForDeltaUtil {
 
@@ -112,8 +138,8 @@ public final class ForDeltaUtil {
     arr[0] += base << 32;
     innerPrefixSum32(arr);
     expand32(arr);
-    final long l = arr[BLOCK_SIZE / 2 - 1];
-    for (int i = BLOCK_SIZE / 2; i < BLOCK_SIZE; ++i) {
+    final long l = arr[BLOCK_SIZE/2-1];
+    for (int i = BLOCK_SIZE/2; i < BLOCK_SIZE; ++i) {
       arr[i] += l;
     }
   }
@@ -287,249 +313,105 @@ public final class ForDeltaUtil {
     in.skipBytes(numBytes(bitsPerValue));
   }
 
-  /** Delta-decode 128 integers into {@code longs}. */
-  void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs)
-      throws IOException {
+"""
+
+def primitive_size_for_bpv(bpv):
+  if bpv <= 4:
+    # If we have 4 bits per value or less then we can compute the prefix sum of 16 longs that store 8 4-bit values each without overflowing.
+    return 8
+  elif bpv <= 11:
+    # If we have 11 bits per value or less then we can compute the prefix sum of 32 longs that store 4 16-bit values each without overflowing.
+    return 16
+  else:
+    # No risk of overflow with 32 bits per value
+    return 32
+
+def next_primitive(bpv):
+  if bpv <= 8:
+    return 8
+  elif bpv <= 16:
+    return 16
+  else:
+    return 32
+
+def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, f):
+  iteration = 1
+  num_longs = bpv * num_values / remaining_bits_per_long
+  while num_longs % 2 == 0 and num_values % 2 == 0:
+    num_longs /= 2
+    num_values /= 2
+    iteration *= 2
+  f.write('    for (int iter = 0, tmpIdx = 0, longsIdx = %d; iter < %d; ++iter, tmpIdx += %d, longsIdx += %d) {\n' %(o, iteration, num_longs, num_values))
+  i = 0
+  remaining_bits = 0
+  tmp_idx = 0
+  for i in range(int(num_values)):
+    b = bpv
+    if remaining_bits == 0:
+      b -= remaining_bits_per_long
+      f.write('      long l%d = tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
+    else:
+      b -= remaining_bits
+      f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
+    tmp_idx += 1
+    while b >= remaining_bits_per_long:
+      b -= remaining_bits_per_long
+      f.write('      l%d |= tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
+      tmp_idx += 1
+    if b > 0:
+      f.write('      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_long-b, next_primitive, b))
+      remaining_bits = remaining_bits_per_long-b
+    f.write('      longs[longsIdx + %d] = l%d;\n' %(i, i))
+  f.write('    }\n')
+  
+def writeDecode(bpv, f):
+  next_primitive = primitive_size_for_bpv(bpv)
+  f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %(bpv, next_primitive))
+  if bpv == next_primitive:
+    f.write('    pdu.in.readLongs(longs, 0, %d);\n' %(bpv*2))
+  else:
+    num_values_per_long = 64 / next_primitive
+    remaining_bits = next_primitive % bpv
+    num_iters = (next_primitive - 1) // bpv
+    o = 2 * bpv * num_iters
+    if remaining_bits == 0:
+      f.write('    pdu.splitLongs(%d, longs, %d, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, o, next_primitive, next_primitive - num_iters * bpv))
+    else:
+      f.write('    pdu.splitLongs(%d, longs, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, next_primitive, next_primitive - num_iters * bpv))
+      writeRemainder(bpv, next_primitive, remaining_bits, o, 128/num_values_per_long - o, f)
+  f.write('  }\n')
+
+if __name__ == '__main__':
+  f = open(OUTPUT_FILE, 'w')
+  f.write(HEADER)
+  f.write("""
+  /**
+   * Delta-decode 128 integers into {@code longs}.
+   */
+  void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
     switch (bitsPerValue) {
-      case 1:
-        decode1(pdu, tmp, longs);
-        prefixSum8(longs, base);
-        break;
-      case 2:
-        decode2(pdu, tmp, longs);
-        prefixSum8(longs, base);
-        break;
-      case 3:
-        decode3(pdu, tmp, longs);
-        prefixSum8(longs, base);
-        break;
-      case 4:
-        decode4(pdu, tmp, longs);
-        prefixSum8(longs, base);
-        break;
-      case 5:
-        decode5To16(pdu, tmp, longs);
-        prefixSum16(longs, base);
-        break;
-      case 6:
-        decode6To16(pdu, tmp, longs);
-        prefixSum16(longs, base);
-        break;
-      case 7:
-        decode7To16(pdu, tmp, longs);
-        prefixSum16(longs, base);
-        break;
-      case 8:
-        decode8To16(pdu, tmp, longs);
-        prefixSum16(longs, base);
-        break;
-      case 9:
-        decode9(pdu, tmp, longs);
-        prefixSum16(longs, base);
-        break;
-      case 10:
-        decode10(pdu, tmp, longs);
-        prefixSum16(longs, base);
-        break;
-      case 11:
-        decode11(pdu, tmp, longs);
-        prefixSum16(longs, base);
-        break;
-      case 12:
-        decode12To32(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 13:
-        decode13To32(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 14:
-        decode14To32(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 15:
-        decode15To32(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 16:
-        decode16To32(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 17:
-        decode17(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 18:
-        decode18(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 19:
-        decode19(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 20:
-        decode20(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 21:
-        decode21(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 22:
-        decode22(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 23:
-        decode23(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      case 24:
-        decode24(pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-      default:
-        decodeSlow(bitsPerValue, pdu, tmp, longs);
-        prefixSum32(longs, base);
-        break;
-    }
-  }
+""")
+  for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
+    primitive_size = primitive_size_for_bpv(bpv)
+    f.write('    case %d:\n' %bpv)
+    if next_primitive(bpv) == primitive_size:
+      f.write('        decode%d(pdu, tmp, longs);\n' %bpv)
+    else:
+      f.write('        decode%dTo%d(pdu, tmp, longs);\n' %(bpv, primitive_size))
+    f.write('      prefixSum%d(longs, base);\n' %primitive_size)
+    f.write('      break;\n')
+  f.write('    default:\n')
+  f.write('      decodeSlow(bitsPerValue, pdu, tmp, longs);\n')
+  f.write('      prefixSum32(longs, base);\n')
+  f.write('      break;\n')
+  f.write('    }\n')
+  f.write('  }\n')
 
-  private static void decode5To16(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(10, longs, 11, 5, MASK16_5, tmp, 0, MASK16_1);
-    for (int iter = 0, tmpIdx = 0, longsIdx = 30; iter < 2; ++iter, tmpIdx += 5, longsIdx += 1) {
-      long l0 = tmp[tmpIdx + 0] << 4;
-      l0 |= tmp[tmpIdx + 1] << 3;
-      l0 |= tmp[tmpIdx + 2] << 2;
-      l0 |= tmp[tmpIdx + 3] << 1;
-      l0 |= tmp[tmpIdx + 4] << 0;
-      longs[longsIdx + 0] = l0;
-    }
-  }
+  f.write('\n')
+  for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
+    if next_primitive(bpv) != primitive_size_for_bpv(bpv):
+      writeDecode(bpv, f)
+      if bpv < MAX_SPECIALIZED_BITS_PER_VALUE:
+        f.write('\n')
 
-  private static void decode6To16(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(12, longs, 10, 6, MASK16_6, tmp, 0, MASK16_4);
-    for (int iter = 0, tmpIdx = 0, longsIdx = 24; iter < 4; ++iter, tmpIdx += 3, longsIdx += 2) {
-      long l0 = tmp[tmpIdx + 0] << 2;
-      l0 |= (tmp[tmpIdx + 1] >>> 2) & MASK16_2;
-      longs[longsIdx + 0] = l0;
-      long l1 = (tmp[tmpIdx + 1] & MASK16_2) << 4;
-      l1 |= tmp[tmpIdx + 2] << 0;
-      longs[longsIdx + 1] = l1;
-    }
-  }
-
-  private static void decode7To16(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(14, longs, 9, 7, MASK16_7, tmp, 0, MASK16_2);
-    for (int iter = 0, tmpIdx = 0, longsIdx = 28; iter < 2; ++iter, tmpIdx += 7, longsIdx += 2) {
-      long l0 = tmp[tmpIdx + 0] << 5;
-      l0 |= tmp[tmpIdx + 1] << 3;
-      l0 |= tmp[tmpIdx + 2] << 1;
-      l0 |= (tmp[tmpIdx + 3] >>> 1) & MASK16_1;
-      longs[longsIdx + 0] = l0;
-      long l1 = (tmp[tmpIdx + 3] & MASK16_1) << 6;
-      l1 |= tmp[tmpIdx + 4] << 4;
-      l1 |= tmp[tmpIdx + 5] << 2;
-      l1 |= tmp[tmpIdx + 6] << 0;
-      longs[longsIdx + 1] = l1;
-    }
-  }
-
-  private static void decode8To16(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(16, longs, 8, 8, MASK16_8, longs, 16, MASK16_8);
-  }
-
-  private static void decode12To32(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(24, longs, 20, 12, MASK32_12, tmp, 0, MASK32_8);
-    for (int iter = 0, tmpIdx = 0, longsIdx = 48; iter < 8; ++iter, tmpIdx += 3, longsIdx += 2) {
-      long l0 = tmp[tmpIdx + 0] << 4;
-      l0 |= (tmp[tmpIdx + 1] >>> 4) & MASK32_4;
-      longs[longsIdx + 0] = l0;
-      long l1 = (tmp[tmpIdx + 1] & MASK32_4) << 8;
-      l1 |= tmp[tmpIdx + 2] << 0;
-      longs[longsIdx + 1] = l1;
-    }
-  }
-
-  private static void decode13To32(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(26, longs, 19, 13, MASK32_13, tmp, 0, MASK32_6);
-    for (int iter = 0, tmpIdx = 0, longsIdx = 52; iter < 2; ++iter, tmpIdx += 13, longsIdx += 6) {
-      long l0 = tmp[tmpIdx + 0] << 7;
-      l0 |= tmp[tmpIdx + 1] << 1;
-      l0 |= (tmp[tmpIdx + 2] >>> 5) & MASK32_1;
-      longs[longsIdx + 0] = l0;
-      long l1 = (tmp[tmpIdx + 2] & MASK32_5) << 8;
-      l1 |= tmp[tmpIdx + 3] << 2;
-      l1 |= (tmp[tmpIdx + 4] >>> 4) & MASK32_2;
-      longs[longsIdx + 1] = l1;
-      long l2 = (tmp[tmpIdx + 4] & MASK32_4) << 9;
-      l2 |= tmp[tmpIdx + 5] << 3;
-      l2 |= (tmp[tmpIdx + 6] >>> 3) & MASK32_3;
-      longs[longsIdx + 2] = l2;
-      long l3 = (tmp[tmpIdx + 6] & MASK32_3) << 10;
-      l3 |= tmp[tmpIdx + 7] << 4;
-      l3 |= (tmp[tmpIdx + 8] >>> 2) & MASK32_4;
-      longs[longsIdx + 3] = l3;
-      long l4 = (tmp[tmpIdx + 8] & MASK32_2) << 11;
-      l4 |= tmp[tmpIdx + 9] << 5;
-      l4 |= (tmp[tmpIdx + 10] >>> 1) & MASK32_5;
-      longs[longsIdx + 4] = l4;
-      long l5 = (tmp[tmpIdx + 10] & MASK32_1) << 12;
-      l5 |= tmp[tmpIdx + 11] << 6;
-      l5 |= tmp[tmpIdx + 12] << 0;
-      longs[longsIdx + 5] = l5;
-    }
-  }
-
-  private static void decode14To32(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(28, longs, 18, 14, MASK32_14, tmp, 0, MASK32_4);
-    for (int iter = 0, tmpIdx = 0, longsIdx = 56; iter < 4; ++iter, tmpIdx += 7, longsIdx += 2) {
-      long l0 = tmp[tmpIdx + 0] << 10;
-      l0 |= tmp[tmpIdx + 1] << 6;
-      l0 |= tmp[tmpIdx + 2] << 2;
-      l0 |= (tmp[tmpIdx + 3] >>> 2) & MASK32_2;
-      longs[longsIdx + 0] = l0;
-      long l1 = (tmp[tmpIdx + 3] & MASK32_2) << 12;
-      l1 |= tmp[tmpIdx + 4] << 8;
-      l1 |= tmp[tmpIdx + 5] << 4;
-      l1 |= tmp[tmpIdx + 6] << 0;
-      longs[longsIdx + 1] = l1;
-    }
-  }
-
-  private static void decode15To32(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(30, longs, 17, 15, MASK32_15, tmp, 0, MASK32_2);
-    for (int iter = 0, tmpIdx = 0, longsIdx = 60; iter < 2; ++iter, tmpIdx += 15, longsIdx += 2) {
-      long l0 = tmp[tmpIdx + 0] << 13;
-      l0 |= tmp[tmpIdx + 1] << 11;
-      l0 |= tmp[tmpIdx + 2] << 9;
-      l0 |= tmp[tmpIdx + 3] << 7;
-      l0 |= tmp[tmpIdx + 4] << 5;
-      l0 |= tmp[tmpIdx + 5] << 3;
-      l0 |= tmp[tmpIdx + 6] << 1;
-      l0 |= (tmp[tmpIdx + 7] >>> 1) & MASK32_1;
-      longs[longsIdx + 0] = l0;
-      long l1 = (tmp[tmpIdx + 7] & MASK32_1) << 14;
-      l1 |= tmp[tmpIdx + 8] << 12;
-      l1 |= tmp[tmpIdx + 9] << 10;
-      l1 |= tmp[tmpIdx + 10] << 8;
-      l1 |= tmp[tmpIdx + 11] << 6;
-      l1 |= tmp[tmpIdx + 12] << 4;
-      l1 |= tmp[tmpIdx + 13] << 2;
-      l1 |= tmp[tmpIdx + 14] << 0;
-      longs[longsIdx + 1] = l1;
-    }
-  }
-
-  private static void decode16To32(PostingDecodingUtil pdu, long[] tmp, long[] longs)
-      throws IOException {
-    pdu.splitLongs(32, longs, 16, 16, MASK32_16, longs, 32, MASK32_16);
-  }
-}
+  f.write('}\n')
