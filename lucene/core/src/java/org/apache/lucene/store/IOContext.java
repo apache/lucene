@@ -68,10 +68,10 @@ public record IOContext(
     Objects.requireNonNull(context, "context must not be null");
     Objects.requireNonNull(readAdvice, "readAdvice must not be null");
     switch (context) {
-      case MERGE -> Objects.requireNonNull(
-          mergeInfo, "mergeInfo must not be null if context is MERGE");
-      case FLUSH -> Objects.requireNonNull(
-          flushInfo, "flushInfo must not be null if context is FLUSH");
+      case MERGE ->
+          Objects.requireNonNull(mergeInfo, "mergeInfo must not be null if context is MERGE");
+      case FLUSH ->
+          Objects.requireNonNull(flushInfo, "flushInfo must not be null if context is FLUSH");
     }
     if ((context == Context.FLUSH || context == Context.MERGE)
         && readAdvice != ReadAdvice.SEQUENTIAL) {

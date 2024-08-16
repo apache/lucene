@@ -180,10 +180,10 @@ public abstract class StringHelper {
     switch (len & 0x03) {
       case 3:
         k1 = (data[roundedEnd + 2] & 0xff) << 16;
-        // fallthrough
+      // fallthrough
       case 2:
         k1 |= (data[roundedEnd + 1] & 0xff) << 8;
-        // fallthrough
+      // fallthrough
       case 1:
         k1 |= (data[roundedEnd] & 0xff);
         k1 *= c1;
