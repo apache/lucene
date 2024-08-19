@@ -92,5 +92,29 @@ public record BKDConfig(
               + "); got "
               + maxPointsInLeafNode);
     }
+    if (packedBytesLength != numDims * bytesPerDim) {
+      throw new IllegalArgumentException(
+          "packedBytesLength must be "
+              + (numDims * bytesPerDim)
+              + " (got: "
+              + packedBytesLength
+              + ")");
+    }
+    if (packedIndexBytesLength != numIndexDims * bytesPerDim) {
+      throw new IllegalArgumentException(
+          "packedBytesLength must be "
+              + (numIndexDims * bytesPerDim)
+              + " (got: "
+              + packedIndexBytesLength
+              + ")");
+    }
+    if (bytesPerDoc != packedBytesLength + Integer.BYTES) {
+      throw new IllegalArgumentException(
+          "bytesPerDoc must be "
+              + (packedBytesLength + Integer.BYTES)
+              + " (got: "
+              + bytesPerDoc
+              + ")");
+    }
   }
 }
