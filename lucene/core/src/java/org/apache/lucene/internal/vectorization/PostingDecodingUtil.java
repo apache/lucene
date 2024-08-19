@@ -17,16 +17,42 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
+import org.apache.lucene.store.IndexInput;
 
 /** Utility class to decode postings. */
-public abstract class PostingDecodingUtil {
+public class PostingDecodingUtil {
+
+  /** The wrapper {@link IndexInput}. */
+  public final IndexInput in;
+
+  /** Sole constructor, called by sub-classes. */
+  protected PostingDecodingUtil(IndexInput in) {
+    this.in = in;
+  }
 
   /**
-   * Read {@code count} longs. This number must not exceed 64. Apply shift {@code bShift} and mask
-   * {@code bMask} and store the result in {@code b} starting at offset 0. Apply mask {@code cMask}
-   * and store the result in {@code c} starting at offset {@code cIndex}.
+   * Core methods for decoding blocks of docs / freqs / positions / offsets.
+   *
+   * <ul>
+   *   <li>Read {@code count} longs.
+   *   <li>For all {@code i} &gt;= 0 so that {@code bShift - i * dec} &gt; 0, apply shift {@code
+   *       bShift - i * dec} and store the result in {@code b} at offset {@code count * i}.
+   *   <li>Apply mask {@code cMask} and store the result in {@code c} starting at offset {@code
+   *       cIndex}.
+   * </ul>
    */
-  public abstract void splitLongs(
-      int count, long[] b, int bShift, long bMask, long[] c, int cIndex, long cMask)
-      throws IOException;
+  public void splitLongs(
+      int count, long[] b, int bShift, int dec, long bMask, long[] c, int cIndex, long cMask)
+      throws IOException {
+    // Default implementation, which takes advantage of the C2 compiler's loop unrolling and
+    // auto-vectorization.
+    in.readLongs(c, cIndex, count);
+    int maxIter = (bShift - 1) / dec;
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j <= maxIter; ++j) {
+        b[count * j + i] = (c[cIndex + i] >>> (bShift - j * dec)) & bMask;
+      }
+      c[cIndex + i] &= cMask;
+    }
+  }
 }

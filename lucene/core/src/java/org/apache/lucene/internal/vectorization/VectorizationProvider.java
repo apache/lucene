@@ -190,6 +190,7 @@ public abstract class VectorizationProvider {
       Set.of(
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil",
+          "org.apache.lucene.codecs.lucene912.Lucene912PostingsReader",
           "org.apache.lucene.codecs.lucene912.PostingIndexInput");
 
   private static void ensureCaller() {
