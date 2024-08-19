@@ -19,8 +19,25 @@ package org.apache.lucene.util.bkd;
 
 import org.apache.lucene.util.ArrayUtil;
 
-/** Basic parameters for indexing points on the BKD tree. */
-public final class BKDConfig {
+/**
+ * Basic parameters for indexing points on the BKD tree.
+ *
+ * @param numDims How many dimensions we are storing at the leaf (data) node
+ * @param numIndexDims How many dimensions we are indexing in the internal nodes
+ * @param bytesPerDim How many bytes each value in each dimension takes.
+ * @param maxPointsInLeafNode max points allowed on a Leaf block
+ * @param packedBytesLength numDataDims * bytesPerDim
+ * @param packedIndexBytesLength numIndexDims * bytesPerDim
+ * @param bytesPerDoc (numDims * bytesPerDim) + Integer.BYTES (packedBytesLength plus docID size)
+ */
+public record BKDConfig(
+    int numDims,
+    int numIndexDims,
+    int bytesPerDim,
+    int maxPointsInLeafNode,
+    int packedBytesLength,
+    int packedIndexBytesLength,
+    int bytesPerDoc) {
 
   /** Default maximum number of point in each leaf block */
   public static final int DEFAULT_MAX_POINTS_IN_LEAF_NODE = 512;
@@ -31,48 +48,23 @@ public final class BKDConfig {
   /** Maximum number of index dimensions */
   public static final int MAX_INDEX_DIMS = 8;
 
-  /** How many dimensions we are storing at the leaf (data) nodes */
-  public final int numDims;
-
-  /** How many dimensions we are indexing in the internal nodes */
-  public final int numIndexDims;
-
-  /** How many bytes each value in each dimension takes. */
-  public final int bytesPerDim;
-
-  /** max points allowed on a Leaf block */
-  public final int maxPointsInLeafNode;
-
-  /** numDataDims * bytesPerDim */
-  public final int packedBytesLength;
-
-  /** numIndexDims * bytesPerDim */
-  public final int packedIndexBytesLength;
-
-  /** packedBytesLength plus docID size */
-  public final int bytesPerDoc;
-
+  /** Constructor that populates the derived input parameters. */
   public BKDConfig(
       final int numDims,
       final int numIndexDims,
       final int bytesPerDim,
       final int maxPointsInLeafNode) {
-    verifyParams(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
-    this.numDims = numDims;
-    this.numIndexDims = numIndexDims;
-    this.bytesPerDim = bytesPerDim;
-    this.maxPointsInLeafNode = maxPointsInLeafNode;
-    this.packedIndexBytesLength = numIndexDims * bytesPerDim;
-    this.packedBytesLength = numDims * bytesPerDim;
-    // dimensional values (numDims * bytesPerDim) + docID (int)
-    this.bytesPerDoc = this.packedBytesLength + Integer.BYTES;
+    this(
+        numDims,
+        numIndexDims,
+        bytesPerDim,
+        maxPointsInLeafNode,
+        numDims * bytesPerDim,
+        numIndexDims * bytesPerDim,
+        numDims * bytesPerDim + Integer.BYTES);
   }
 
-  private static void verifyParams(
-      final int numDims,
-      final int numIndexDims,
-      final int bytesPerDim,
-      final int maxPointsInLeafNode) {
+  public BKDConfig {
     // Check inputs are on bounds
     if (numDims < 1 || numDims > MAX_DIMS) {
       throw new IllegalArgumentException(
