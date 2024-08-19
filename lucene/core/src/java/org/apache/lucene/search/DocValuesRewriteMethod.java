@@ -17,7 +17,9 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.document.DocValuesRangeIterator;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -166,27 +168,29 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
                 return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
               }
 
+              // Leverage a DV skipper if one was indexed for the field:
+              DocValuesSkipper skipper = context.reader().getDocValuesSkipper(query.field);
+
               // Create a bit set for the "term set" ordinals (these are the terms provided by the
               // query that are actually present in the doc values field). Cannot use FixedBitSet
               // because we require long index (ord):
               final LongBitSet termSet = new LongBitSet(values.getValueCount());
+              long minOrd = termsEnum.ord();
+              assert minOrd >= 0;
               long maxOrd = -1;
               do {
                 long ord = termsEnum.ord();
-                if (ord >= 0) {
-                  assert ord > maxOrd;
-                  maxOrd = ord;
-                  termSet.set(ord);
-                }
+                assert ord >= 0 && ord > maxOrd && ord > minOrd;
+                maxOrd = ord;
+                termSet.set(ord);
               } while (termsEnum.next() != null);
 
-              // no terms matched in this segment
-              if (maxOrd < 0) {
+              if (skipper != null && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
                 return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
               }
 
               final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-              final TwoPhaseIterator iterator;
+              TwoPhaseIterator iterator;
               final long max = maxOrd;
               if (singleton != null) {
                 iterator =
@@ -224,6 +228,9 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
                     };
               }
 
+              if (skipper != null) {
+                iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd);
+              }
               return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 

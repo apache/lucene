@@ -24,8 +24,10 @@ import org.apache.lucene.search.TwoPhaseIterator;
 /**
  * Wrapper around a {@link TwoPhaseIterator} for a doc-values range query that speeds things up by
  * taking advantage of a {@link DocValuesSkipper}.
+ *
+ * @lucene.experimental
  */
-final class DocValuesRangeIterator extends TwoPhaseIterator {
+public final class DocValuesRangeIterator extends TwoPhaseIterator {
 
   enum Match {
     /** None of the documents in the range match */
@@ -41,7 +43,7 @@ final class DocValuesRangeIterator extends TwoPhaseIterator {
   private final Approximation approximation;
   private final TwoPhaseIterator innerTwoPhase;
 
-  DocValuesRangeIterator(
+  public DocValuesRangeIterator(
       TwoPhaseIterator twoPhase, DocValuesSkipper skipper, long lowerValue, long upperValue) {
     super(new Approximation(twoPhase.approximation(), skipper, lowerValue, upperValue));
     this.approximation = (Approximation) approximation();
