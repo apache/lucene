@@ -309,7 +309,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
       int dimension = input.readVInt();
       long vectorDataOffset = input.readVLong();
       long vectorDataLength = input.readVLong();
-      int size = input.readInt();
+      int size = input.readVInt();
       final int numCentroids;
       final float[][] centroids;
       if (size > 0) {
@@ -317,9 +317,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
         centroids = new float[numCentroids][dimension];
         for (int i = 0; i < numCentroids; i++) {
           float[] centroid = centroids[i];
-          for (int j = 0; j < dimension; j++) {
-            input.readFloats(centroid, j, dimension);
-          }
+          input.readFloats(centroid, 0, dimension);
         }
       } else {
         numCentroids = 0;
