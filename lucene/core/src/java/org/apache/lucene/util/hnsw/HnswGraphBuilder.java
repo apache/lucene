@@ -445,6 +445,9 @@ public class HnswGraphBuilder implements HnswBuilder {
       int[] eps = new int[1];
       for (Component c : components) {
         if (c != c0) {
+          if (c.start() == NO_MORE_DOCS) {
+            continue;
+          }
           beam.clear();
           eps[0] = c0.start();
           RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
