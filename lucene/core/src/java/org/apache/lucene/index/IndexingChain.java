@@ -1034,10 +1034,12 @@ final class IndexingChain implements Accountable {
       int docID, PerField pf, VectorEncoding vectorEncoding, IndexableField field)
       throws IOException {
     switch (vectorEncoding) {
-      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
-      case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+      case BYTE ->
+          ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 ->
+          ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }
   }
 

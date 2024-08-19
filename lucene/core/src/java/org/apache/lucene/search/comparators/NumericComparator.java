@@ -342,25 +342,31 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     private boolean isMissingValueCompetitive() {
-      // if queue is full, always compare with bottom,
-      // if not, check if we can compare with topValue
+      // if queue is full, compare with bottom first,
+      // if competitive, then check if we can compare with topValue
       if (queueFull) {
         int result = Long.compare(missingValueAsLong, bottomAsComparableLong());
         // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
         // in asc sort missingValue is competitive when it's smaller or equal to bottom
-        return reverse
-            ? (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result > 0 : result >= 0)
-            : (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result < 0 : result <= 0);
-      } else if (leafTopSet) {
+        final boolean competitive =
+            reverse
+                ? (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result > 0 : result >= 0)
+                : (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result < 0 : result <= 0);
+        if (competitive == false) {
+          return false;
+        }
+      }
+
+      if (leafTopSet) {
         int result = Long.compare(missingValueAsLong, topAsComparableLong());
         // in reverse (desc) sort missingValue is competitive when it's smaller or equal to
         // topValue,
         // in asc sort missingValue is competitive when it's greater or equal to topValue
         return reverse ? (result <= 0) : (result >= 0);
-      } else {
-        // by default competitive
-        return true;
       }
+
+      // by default competitive
+      return true;
     }
 
     @Override
