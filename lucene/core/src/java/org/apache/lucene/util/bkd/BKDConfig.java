@@ -102,7 +102,7 @@ public record BKDConfig(
     }
     if (packedIndexBytesLength != numIndexDims * bytesPerDim) {
       throw new IllegalArgumentException(
-          "packedBytesLength must be "
+          "packedIndexBytesLength must be "
               + (numIndexDims * bytesPerDim)
               + " (got: "
               + packedIndexBytesLength
