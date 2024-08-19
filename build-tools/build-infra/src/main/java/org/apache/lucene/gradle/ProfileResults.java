@@ -59,7 +59,7 @@ public class ProfileResults {
       builder.append(":");
       builder.append(frame.getLineNumber());
     }
-    if (frameTypes) {
+    if (clazz != null && frameTypes) {
     	builder.append(" [");
     	builder.append(frame.getType());
     	builder.append(" code]");
