@@ -14,14 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.document;
+package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDocValuesRangeIterator extends LuceneTestCase {

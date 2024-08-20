@@ -14,12 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.document;
+package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.DocValuesSkipper;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.TwoPhaseIterator;
 
 /**
  * Wrapper around a {@link TwoPhaseIterator} for a doc-values range query that speeds things up by
@@ -145,7 +143,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
     protected abstract Match match(int level);
   }
 
-  static class RangeNoGapsApproximation extends Approximation {
+  private static final class RangeNoGapsApproximation extends Approximation {
 
     RangeNoGapsApproximation(DocIdSetIterator innerApproximation, DocValuesSkipper skipper, long lowerValue, long upperValue) {
       super(innerApproximation, skipper, lowerValue, upperValue);
@@ -168,7 +166,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
     }
   }
 
-  static class RangeWithGapsApproximation extends Approximation {
+  private static final class RangeWithGapsApproximation extends Approximation {
 
     RangeWithGapsApproximation(DocIdSetIterator innerApproximation, DocValuesSkipper skipper, long lowerValue, long upperValue) {
       super(innerApproximation, skipper, lowerValue, upperValue);

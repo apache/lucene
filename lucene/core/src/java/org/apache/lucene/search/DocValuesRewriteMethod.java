@@ -17,7 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.document.DocValuesRangeIterator;
+
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
