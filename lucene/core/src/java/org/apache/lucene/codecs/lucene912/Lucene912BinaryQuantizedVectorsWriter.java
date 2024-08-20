@@ -561,12 +561,14 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       MergeState mergeState, FieldInfo fieldInfo, float[] mergedCentroid) throws IOException {
     boolean recalculate = false;
     int vectorCount = 0;
-    for (int i = 0; i < mergeState.liveDocs.length; i++) {
-      if (mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name) == null) {
+    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
+      if (knnVectorsReader == null
+          || knnVectorsReader.getFloatVectorValues(fieldInfo.name) == null) {
         continue;
       }
-      float[][] centroids = getCentroids(mergeState.knnVectorsReaders[i], fieldInfo.name);
-      vectorCount += mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name).size();
+      float[][] centroids = getCentroids(knnVectorsReader, fieldInfo.name);
+      vectorCount += knnVectorsReader.getFloatVectorValues(fieldInfo.name).size();
       // If there aren't centroids, or previously clustered with more than one cluster
       // or if there are deleted docs, we must recalculate the centroid
       if (centroids == null || centroids.length > 1 || mergeState.liveDocs[i] != null) {
@@ -575,8 +577,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       for (int j = 0; j < centroids[0].length; j++) {
         mergedCentroid[j] +=
-            (centroids[0][j]
-                / mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name).size());
+            (centroids[0][j] / knnVectorsReader.getFloatVectorValues(fieldInfo.name).size());
       }
     }
     if (recalculate) {

@@ -22,9 +22,11 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
@@ -263,8 +265,20 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
 
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
-      // TODO
-      throw new UnsupportedOperationException();
+      DenseOffHeapVectorValues copy = copy();
+      RandomVectorScorer scorer =
+          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return scorer.score(copy.doc);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return copy;
+        }
+      };
     }
   }
 
@@ -358,8 +372,20 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
 
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
-      // TODO
-      throw new UnsupportedOperationException();
+      SparseOffHeapVectorValues copy = copy();
+      RandomVectorScorer scorer =
+          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return scorer.score(copy.disi.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return copy;
+        }
+      };
     }
   }
 
@@ -410,7 +436,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
 
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
-      throw null;
+      return null;
     }
   }
 }
