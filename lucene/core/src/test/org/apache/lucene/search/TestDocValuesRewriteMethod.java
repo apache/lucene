@@ -70,9 +70,9 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
         String s = TestUtil.randomUnicodeString(random());
         doc.add(newStringField(fieldName, s, Field.Store.NO));
         if (createDocValueSkiplist == false) {
-          doc.add(new SortedSetDocValuesField(fieldName, new BytesRef(s)));
-        } else {
           doc.add(SortedSetDocValuesField.indexedField(fieldName, new BytesRef(s)));
+        } else {
+          doc.add(new SortedSetDocValuesField(fieldName, new BytesRef(s)));
         }
         terms.add(s);
       }

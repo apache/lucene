@@ -220,7 +220,7 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
         };
 
     DocValuesRangeIterator rangeIterator =
-        new DocValuesRangeIterator(twoPhase, skipper, queryMin, queryMax);
+        new DocValuesRangeIterator(twoPhase, skipper, queryMin, queryMax, false);
     DocValuesRangeIterator.Approximation rangeApproximation =
         (DocValuesRangeIterator.Approximation) rangeIterator.approximation();
 

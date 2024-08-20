@@ -31,6 +31,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.KeywordField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -119,11 +120,13 @@ public class TestTermInSetQuery extends LuceneTestCase {
       }
       Directory dir = newDirectory();
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
-      final int numDocs = atLeast(100);
+      final int numDocs = atLeast(10_000);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final BytesRef term = allTerms.get(random().nextInt(allTerms.size()));
         doc.add(new StringField(field, term, Store.NO));
+        // Also include a doc values field with a skip-list so we can test doc-value rewrite as well:
+        doc.add(SortedSetDocValuesField.indexedField(field, term));
         iw.addDocument(doc);
       }
       if (numTerms > 1 && random().nextBoolean()) {
@@ -154,7 +157,9 @@ public class TestTermInSetQuery extends LuceneTestCase {
         }
         final Query q1 = new ConstantScoreQuery(bq.build());
         final Query q2 = new TermInSetQuery(field, queryTerms);
+        final Query q3 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, queryTerms);
         assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+        assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q3, boost), false);
       }
 
       reader.close();
@@ -223,6 +228,49 @@ public class TestTermInSetQuery extends LuceneTestCase {
         }
       }
     }
+  }
+
+  /**
+   * Make sure the doc values skipper isn't making the incorrect assumption that the min/max
+   * terms from a TermInSetQuery don't form a continuous range.
+   */
+  public void testSkipperOptimizationGapAssumption() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    // Index the first 10,000 docs all with the term "b" to get some skip list blocks with the range [b, b]:
+    for (int i = 0; i < 10_000; i++) {
+      Document doc = new Document();
+      BytesRef term = new BytesRef("b");
+      doc.add(new SortedSetDocValuesField("field", term));
+      doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+      iw.addDocument(doc);
+    }
+
+    // Index a couple more docs with terms "a" and "c":
+    Document doc = new Document();
+    BytesRef term = new BytesRef("a");
+    doc.add(new SortedSetDocValuesField("field", term));
+    doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+    iw.addDocument(doc);
+    doc = new Document();
+    term = new BytesRef("c");
+    doc.add(new SortedSetDocValuesField("field", term));
+    doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+    iw.addDocument(doc);
+
+    iw.commit();
+    IndexReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // Our query is for (or "a" "c") which should use a skip-list optimization to exclude blocks of documents that fall outside the range [a, c]. We want to test that they don't incorrectly do the inverse and include all docs in a block that fall within [a, c] (which is why we have blocks of only "b" docs up-front):
+    List<BytesRef> queryTerms = List.of(new BytesRef("a"), new BytesRef("c"));
+    Query q1 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "field", queryTerms);
+    Query q2 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "idx_field", queryTerms);
+    assertSameMatches(searcher, q1, q2, false);
+
+    reader.close();
+    dir.close();
   }
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)

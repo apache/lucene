@@ -44,11 +44,6 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
   private final TwoPhaseIterator innerTwoPhase;
 
   public DocValuesRangeIterator(
-      TwoPhaseIterator twoPhase, DocValuesSkipper skipper, long lowerValue, long upperValue) {
-    this(twoPhase, skipper, lowerValue, upperValue, false);
-  }
-
-  public DocValuesRangeIterator(
       TwoPhaseIterator twoPhase, DocValuesSkipper skipper, long lowerValue, long upperValue, boolean queryRangeHasGaps) {
     super(queryRangeHasGaps ?
         new RangeWithGapsApproximation(twoPhase.approximation(), skipper, lowerValue, upperValue) :

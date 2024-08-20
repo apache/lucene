@@ -179,7 +179,7 @@ final class SortedNumericDocValuesRangeQuery extends Query {
               };
         }
         if (skipper != null) {
-          iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue);
+          iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue, false);
         }
         final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
         return new DefaultScorerSupplier(scorer);

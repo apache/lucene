@@ -180,7 +180,7 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               long maxOrd = -1;
               do {
                 long ord = termsEnum.ord();
-                assert ord >= 0 && ord > maxOrd && ord > minOrd;
+                assert ord >= 0 && ord > maxOrd;
                 maxOrd = ord;
                 termSet.set(ord);
               } while (termsEnum.next() != null);
@@ -229,7 +229,7 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               }
 
               if (skipper != null) {
-                iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd);
+                iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd, true);
               }
               return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
