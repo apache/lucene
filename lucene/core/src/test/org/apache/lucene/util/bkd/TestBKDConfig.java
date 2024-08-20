@@ -70,22 +70,4 @@ public class TestBKDConfig extends LuceneTestCase {
           ex.getMessage().contains("maxPointsInLeafNode must be <= ArrayUtil.MAX_ARRAY_LENGTH"));
     }
   }
-
-  public void testInvalidPackedBytesLength() {
-    IllegalArgumentException ex =
-        expectThrows(IllegalArgumentException.class, () -> new BKDConfig(1, 1, 8, 1024, 0, 0, 0));
-    assertTrue(ex.getMessage().contains("packedBytesLength must be 8"));
-  }
-
-  public void testInvalidPackedIndexBytesLength() {
-    IllegalArgumentException ex =
-        expectThrows(IllegalArgumentException.class, () -> new BKDConfig(1, 1, 8, 1024, 8, 0, 0));
-    assertTrue(ex.getMessage().contains("packedIndexBytesLength must be 8"));
-  }
-
-  public void testInvalidBytesPerDoc() {
-    IllegalArgumentException ex =
-        expectThrows(IllegalArgumentException.class, () -> new BKDConfig(1, 1, 8, 1024, 8, 8, 0));
-    assertTrue(ex.getMessage().contains("bytesPerDoc must be 12"));
-  }
 }

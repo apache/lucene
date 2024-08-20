@@ -26,18 +26,8 @@ import org.apache.lucene.util.ArrayUtil;
  * @param numIndexDims How many dimensions we are indexing in the internal nodes
  * @param bytesPerDim How many bytes each value in each dimension takes.
  * @param maxPointsInLeafNode max points allowed on a Leaf block
- * @param packedBytesLength numDataDims * bytesPerDim
- * @param packedIndexBytesLength numIndexDims * bytesPerDim
- * @param bytesPerDoc (numDims * bytesPerDim) + Integer.BYTES (packedBytesLength plus docID size)
  */
-public record BKDConfig(
-    int numDims,
-    int numIndexDims,
-    int bytesPerDim,
-    int maxPointsInLeafNode,
-    int packedBytesLength,
-    int packedIndexBytesLength,
-    int bytesPerDoc) {
+public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxPointsInLeafNode) {
 
   /** Default maximum number of point in each leaf block */
   public static final int DEFAULT_MAX_POINTS_IN_LEAF_NODE = 512;
@@ -47,22 +37,6 @@ public record BKDConfig(
 
   /** Maximum number of index dimensions */
   public static final int MAX_INDEX_DIMS = 8;
-
-  /** Constructor that populates the derived input parameters. */
-  public BKDConfig(
-      final int numDims,
-      final int numIndexDims,
-      final int bytesPerDim,
-      final int maxPointsInLeafNode) {
-    this(
-        numDims,
-        numIndexDims,
-        bytesPerDim,
-        maxPointsInLeafNode,
-        numDims * bytesPerDim,
-        numIndexDims * bytesPerDim,
-        numDims * bytesPerDim + Integer.BYTES);
-  }
 
   public BKDConfig {
     // Check inputs are on bounds
@@ -92,29 +66,20 @@ public record BKDConfig(
               + "); got "
               + maxPointsInLeafNode);
     }
-    if (packedBytesLength != numDims * bytesPerDim) {
-      throw new IllegalArgumentException(
-          "packedBytesLength must be "
-              + (numDims * bytesPerDim)
-              + " (got: "
-              + packedBytesLength
-              + ")");
-    }
-    if (packedIndexBytesLength != numIndexDims * bytesPerDim) {
-      throw new IllegalArgumentException(
-          "packedIndexBytesLength must be "
-              + (numIndexDims * bytesPerDim)
-              + " (got: "
-              + packedIndexBytesLength
-              + ")");
-    }
-    if (bytesPerDoc != packedBytesLength + Integer.BYTES) {
-      throw new IllegalArgumentException(
-          "bytesPerDoc must be "
-              + (packedBytesLength + Integer.BYTES)
-              + " (got: "
-              + bytesPerDoc
-              + ")");
-    }
+  }
+
+  /** numDims * bytesPerDim */
+  public int packedBytesLength() {
+    return numDims * bytesPerDim;
+  }
+
+  /** numIndexDims * bytesPerDim */
+  public int packedIndexBytesLength() {
+    return numIndexDims * bytesPerDim;
+  }
+
+  /** (numDims * bytesPerDim) + Integer.BYTES (packedBytesLength plus docID size) */
+  public int bytesPerDoc() {
+    return packedBytesLength() + Integer.BYTES;
   }
 }
