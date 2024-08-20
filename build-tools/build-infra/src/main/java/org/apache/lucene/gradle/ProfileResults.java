@@ -60,9 +60,9 @@ public class ProfileResults {
       builder.append(frame.getLineNumber());
     }
     if (clazz != null && frameTypes) {
-    	builder.append(" [");
-    	builder.append(frame.getType());
-    	builder.append(" code]");
+      builder.append(" [");
+      builder.append(frame.getType());
+      builder.append(" code]");
     }
     return builder.toString();
   }
