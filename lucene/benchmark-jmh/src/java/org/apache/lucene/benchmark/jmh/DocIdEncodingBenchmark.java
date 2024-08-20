@@ -23,6 +23,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +50,7 @@ import org.openjdk.jmh.annotations.Warmup;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 1, time = 5)
+@Warmup(iterations = 3, time = 5)
 @Measurement(iterations = 5, time = 8)
 @Fork(value = 1)
 public class DocIdEncodingBenchmark {
@@ -72,10 +74,10 @@ public class DocIdEncodingBenchmark {
     }
   }
 
-  @Param({"Bit24Encoder", "Bit21With2StepsAddEncoder", "Bit21With3StepsAddEncoder"})
+  @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder"})
   String encoderName;
 
-  private static final int INPUT_SCALE_FACTOR = 50_000;
+  private static final int INPUT_SCALE_FACTOR = 2_00_000;
 
   private DocIdEncoder docIdEncoder;
 
@@ -86,7 +88,7 @@ public class DocIdEncodingBenchmark {
   @Setup(Level.Trial)
   public void init() throws IOException {
     tmpDir = Files.createTempDirectory("docIdJmh");
-    docIdEncoder = DocIdEncoder.Factory.fromName(encoderName);
+    docIdEncoder = DocIdEncoder.SingletonFactory.fromName(encoderName);
   }
 
   @TearDown(Level.Trial)
@@ -114,6 +116,16 @@ public class DocIdEncodingBenchmark {
         for (int[] docIdSequence : docIdSequences) {
           for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
             docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
+            // Uncomment to test the output of Encoder
+            //            if (!Arrays.equals(
+            //                docIdSequence, Arrays.copyOfRange(scratch, 0, docIdSequence.length)))
+            // {
+            //              throw new RuntimeException(
+            //                  String.format(
+            //                      "Error for Encoder %s with sequence Expected %s Got %s",
+            //                      encoderName, Arrays.toString(docIdSequence),
+            // Arrays.toString(scratch)));
+            //            }
           }
         }
       } finally {
@@ -127,22 +139,25 @@ public class DocIdEncodingBenchmark {
    * are taken from org.apache.lucene.util.bkd.DocIdsWriter.
    */
   public interface DocIdEncoder {
-    public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException;
 
-    public void decode(IndexInput in, int start, int count, int[] docIds) throws IOException;
+    void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException;
 
-    static class Factory {
+    void decode(IndexInput in, int start, int count, int[] docIds) throws IOException;
+
+    class SingletonFactory {
+
+      static final Map<String, DocIdEncoder> ENCODER_NAME_TO_INSTANCE_MAPPING =
+          Map.of(
+              Bit24Encoder.class.getSimpleName().toLowerCase(Locale.ROOT), new Bit24Encoder(),
+              Bit21With2StepsEncoder.class.getSimpleName().toLowerCase(Locale.ROOT),
+                  new Bit21With2StepsEncoder(),
+              Bit21With3StepsEncoder.class.getSimpleName().toLowerCase(Locale.ROOT),
+                  new Bit21With3StepsEncoder());
 
       public static DocIdEncoder fromName(String encoderName) {
-        String parsedEncoderName = encoderName.trim();
-        if (parsedEncoderName.equalsIgnoreCase(Bit24Encoder.class.getSimpleName())) {
-          return new Bit24Encoder();
-        } else if (parsedEncoderName.equalsIgnoreCase(
-            Bit21With2StepsAddEncoder.class.getSimpleName())) {
-          return new Bit21With2StepsAddEncoder();
-        } else if (parsedEncoderName.equalsIgnoreCase(
-            Bit21With3StepsAddEncoder.class.getSimpleName())) {
-          return new Bit21With3StepsAddEncoder();
+        String parsedEncoderName = encoderName.trim().toLowerCase(Locale.ROOT);
+        if (ENCODER_NAME_TO_INSTANCE_MAPPING.containsKey(parsedEncoderName)) {
+          return ENCODER_NAME_TO_INSTANCE_MAPPING.get(parsedEncoderName);
         } else {
           throw new IllegalArgumentException("Unknown DocIdEncoder " + encoderName);
         }
@@ -202,7 +217,7 @@ public class DocIdEncodingBenchmark {
     }
   }
 
-  static class Bit21With2StepsAddEncoder implements DocIdEncoder {
+  static class Bit21With2StepsEncoder implements DocIdEncoder {
     @Override
     public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
       int i = 0;
@@ -234,9 +249,10 @@ public class DocIdEncodingBenchmark {
   }
 
   /**
-   * Variation of @{@link Bit21With2StepsAddEncoder} but uses 3 loops to decode the array of DocIds.
+   * Variation of @{@link Bit21With2StepsEncoder} but uses 3 loops to decode the array of DocIds.
+   * Comparatively better than @{@link Bit21With2StepsEncoder} on aarch64 with JDK 22
    */
-  static class Bit21With3StepsAddEncoder implements DocIdEncoder {
+  static class Bit21With3StepsEncoder implements DocIdEncoder {
 
     @Override
     public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
