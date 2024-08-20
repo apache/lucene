@@ -42,15 +42,22 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
   private final TwoPhaseIterator innerTwoPhase;
 
   public DocValuesRangeIterator(
-      TwoPhaseIterator twoPhase, DocValuesSkipper skipper, long lowerValue, long upperValue, boolean queryRangeHasGaps) {
-    super(queryRangeHasGaps ?
-        new RangeWithGapsApproximation(twoPhase.approximation(), skipper, lowerValue, upperValue) :
-        new RangeNoGapsApproximation(twoPhase.approximation(), skipper, lowerValue, upperValue));
+      TwoPhaseIterator twoPhase,
+      DocValuesSkipper skipper,
+      long lowerValue,
+      long upperValue,
+      boolean queryRangeHasGaps) {
+    super(
+        queryRangeHasGaps
+            ? new RangeWithGapsApproximation(
+                twoPhase.approximation(), skipper, lowerValue, upperValue)
+            : new RangeNoGapsApproximation(
+                twoPhase.approximation(), skipper, lowerValue, upperValue));
     this.approximation = (Approximation) approximation();
     this.innerTwoPhase = twoPhase;
   }
 
-  static abstract class Approximation extends DocIdSetIterator {
+  abstract static class Approximation extends DocIdSetIterator {
 
     private final DocIdSetIterator innerApproximation;
 
@@ -145,7 +152,11 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
 
   private static final class RangeNoGapsApproximation extends Approximation {
 
-    RangeNoGapsApproximation(DocIdSetIterator innerApproximation, DocValuesSkipper skipper, long lowerValue, long upperValue) {
+    RangeNoGapsApproximation(
+        DocIdSetIterator innerApproximation,
+        DocValuesSkipper skipper,
+        long lowerValue,
+        long upperValue) {
       super(innerApproximation, skipper, lowerValue, upperValue);
     }
 
@@ -168,7 +179,11 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
 
   private static final class RangeWithGapsApproximation extends Approximation {
 
-    RangeWithGapsApproximation(DocIdSetIterator innerApproximation, DocValuesSkipper skipper, long lowerValue, long upperValue) {
+    RangeWithGapsApproximation(
+        DocIdSetIterator innerApproximation,
+        DocValuesSkipper skipper,
+        long lowerValue,
+        long upperValue) {
       super(innerApproximation, skipper, lowerValue, upperValue);
     }
 

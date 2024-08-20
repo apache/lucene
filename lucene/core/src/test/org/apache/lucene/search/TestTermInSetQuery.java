@@ -125,7 +125,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
         Document doc = new Document();
         final BytesRef term = allTerms.get(random().nextInt(allTerms.size()));
         doc.add(new StringField(field, term, Store.NO));
-        // Also include a doc values field with a skip-list so we can test doc-value rewrite as well:
+        // Also include a doc values field with a skip-list so we can test doc-value rewrite as
+        // well:
         doc.add(SortedSetDocValuesField.indexedField(field, term));
         iw.addDocument(doc);
       }
@@ -231,13 +232,14 @@ public class TestTermInSetQuery extends LuceneTestCase {
   }
 
   /**
-   * Make sure the doc values skipper isn't making the incorrect assumption that the min/max
-   * terms from a TermInSetQuery don't form a continuous range.
+   * Make sure the doc values skipper isn't making the incorrect assumption that the min/max terms
+   * from a TermInSetQuery don't form a continuous range.
    */
   public void testSkipperOptimizationGapAssumption() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
-    // Index the first 10,000 docs all with the term "b" to get some skip list blocks with the range [b, b]:
+    // Index the first 10,000 docs all with the term "b" to get some skip list blocks with the range
+    // [b, b]:
     for (int i = 0; i < 10_000; i++) {
       Document doc = new Document();
       BytesRef term = new BytesRef("b");
@@ -263,7 +265,10 @@ public class TestTermInSetQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     iw.close();
 
-    // Our query is for (or "a" "c") which should use a skip-list optimization to exclude blocks of documents that fall outside the range [a, c]. We want to test that they don't incorrectly do the inverse and include all docs in a block that fall within [a, c] (which is why we have blocks of only "b" docs up-front):
+    // Our query is for (or "a" "c") which should use a skip-list optimization to exclude blocks of
+    // documents that fall outside the range [a, c]. We want to test that they don't incorrectly do
+    // the inverse and include all docs in a block that fall within [a, c] (which is why we have
+    // blocks of only "b" docs up-front):
     List<BytesRef> queryTerms = List.of(new BytesRef("a"), new BytesRef("c"));
     Query q1 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "field", queryTerms);
     Query q2 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "idx_field", queryTerms);
