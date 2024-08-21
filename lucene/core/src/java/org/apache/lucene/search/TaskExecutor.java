@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,7 +54,20 @@ public final class TaskExecutor {
    * @param executor the executor to be used for running tasks concurrently
    */
   public TaskExecutor(Executor executor) {
-    this.executor = Objects.requireNonNull(executor, "Executor is null");
+    Objects.requireNonNull(executor, "Executor is null");
+    this.executor =
+        r -> {
+          try {
+            executor.execute(r);
+          } catch (
+              @SuppressWarnings("unused")
+              RejectedExecutionException rejectedExecutionException) {
+            // execute directly on the current thread in case of rejection to ensure a rejecting
+            // executor only reduces parallelism and does not
+            // result in failure
+            r.run();
+          }
+        };
   }
 
   /**

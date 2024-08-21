@@ -463,6 +463,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       // unsafe; no bounds checking
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
+      assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
         currentNeighborsBuffer[0] = dataIn.readVInt();
         for (int i = 1; i < arcCount; i++) {

@@ -43,26 +43,27 @@ import org.apache.lucene.util.BytesRef;
 public class TestTopDocsMerge extends LuceneTestCase {
 
   private static class ShardSearcher extends IndexSearcher {
-    private final List<LeafReaderContext> ctx;
+    private final LeafReaderContext ctx;
 
     public ShardSearcher(LeafReaderContext ctx, IndexReaderContext parent) {
       super(parent);
-      this.ctx = Collections.singletonList(ctx);
+      this.ctx = ctx;
     }
 
     public void search(Weight weight, Collector collector) throws IOException {
-      search(ctx, weight, collector);
+      searchLeaf(ctx, weight, collector);
     }
 
     public TopDocs search(Weight weight, int topN) throws IOException {
-      TopScoreDocCollector collector = TopScoreDocCollector.create(topN, Integer.MAX_VALUE);
-      search(ctx, weight, collector);
+      TopScoreDocCollector collector =
+          new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE, false).newCollector();
+      searchLeaf(ctx, weight, collector);
       return collector.topDocs();
     }
 
     @Override
     public String toString() {
-      return "ShardSearcher(" + ctx.get(0) + ")";
+      return "ShardSearcher(" + ctx + ")";
     }
   }
 
@@ -346,7 +347,9 @@ public class TestTopDocsMerge extends LuceneTestCase {
         if (sort == null) {
           subHits = subSearcher.search(w, numHits);
         } else {
-          final TopFieldCollector c = TopFieldCollector.create(sort, numHits, Integer.MAX_VALUE);
+          final TopFieldCollector c =
+              new TopFieldCollectorManager(sort, numHits, null, Integer.MAX_VALUE, false)
+                  .newCollector();
           subSearcher.search(w, c);
           subHits = c.topDocs(0, numHits);
         }

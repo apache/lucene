@@ -108,6 +108,11 @@ API Changes
 
 * GITHUB#13410: Removed Scorer#getWeight (Sanjay Dutt, Adrien Grand)
 
+* GITHUB#13499: Remove deprecated TopScoreDocCollector + TopFieldCollector methods (#create, #createSharedManager) (Jakub Slowinski)
+
+* GITHUB#13632: CandidateMatcher public matching functions (Bryan Jacobowitz)
+
+
 New Features
 ---------------------
 
@@ -133,6 +138,8 @@ New Features
 
 * GITHUB#13597: Align doc value skipper interval boundaries when an interval contains a constant
   value. (Ignacio Vera)
+
+* GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
 
 Improvements
 ---------------------
@@ -244,14 +251,36 @@ Other
 
 * GITHUB#13332: Improve MissingDoclet linter to check records correctly. (Uwe Schindler)
 
+* GITHUB#13499: Remove usage of TopScoreDocCollector + TopFieldCollector deprecated methods (#create, #createSharedManager) (Jakub Slowinski)
+
+Build
+---------------------
+
+* GITHUB#13649: Fix eclipse ide settings generation #13649 (Uwe Schindler, Dawid Weiss)
+
 ======================== Lucene 9.12.0 =======================
 
 API Changes
 ---------------------
 
-* GITHUB#13281: Mark COSINE VectorSimilarityFunction as deprecated. (Pulkit Gupta)
+* GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov)
 
-* GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov) 
+* GITHUB#13612: Hunspell: add Suggester#proceedPastRep to avoid losing relevant suggestions. (Peter Gromov)
+
+* GITHUB#13603: Introduced `IndexSearcher#searchLeaf(LeafReaderContext, Weight, Collector)` protected method to
+  facilitate customizing per-leaf behavior of search without requiring to override
+  `search(LeafReaderContext[], Weight, Collector)` which requires overriding the entire loop across the leaves (Luca Cavanna)
+
+* GITHUB#13559: Add BitSet#nextSetBit(int, int) to get the index of the first set bit in range. (Egor Potemkin)
+
+* GITHUB#13568: Add DoubleValuesSource#toSortableLongDoubleValuesSource and
+  MultiDoubleValuesSource#toSortableMultiLongValuesSource methods. (Shradha Shankar)
+
+* GITHUB#13568: Add CollectorOwner class that wraps CollectorManager, and handles list of Collectors and results.
+  Add IndexSearcher#search method that takes CollectorOwner. (Egor Potemkin)
+
+* GITHUB#13568: Add DrillSideways#search method that supports any collector types for any drill-sideways dimensions
+  or drill-down. (Egor Potemkin)
 
 New Features
 ---------------------
@@ -265,6 +294,8 @@ New Features
   and LogByteSizeMergePolicy via a new #setTargetConcurrency setter.
   (Adrien Grand)
 
+* GITHUB#13568: Add sandbox facets module to compute facets while collecting. (Egor Potemkin, Shradha Shankar)
+
 Improvements
 ---------------------
 
@@ -272,6 +303,17 @@ Improvements
 
 * GITHUB#13562: Add Intervals.regexp and Intervals.range methods to produce  IntervalsSource
   for regexp and range queries. (Mayya Sharipova)
+
+* GITHUB#13625: Remove BitSet#nextSetBit code duplication. (Greg Miller)
+
+* GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
+  IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
+  
+* GITHUB#13633: Add ability to read/write knn vector values to a MemoryIndex. (Ben Trent)
+
+* GITHUB#12627: patch HNSW graphs to improve reachability of all nodes from entry points
+
+* GITHUB#13201: Better cost estimation on MultiTermQuery over few terms. (Michael Froh)
 
 Optimizations
 ---------------------
@@ -307,6 +349,20 @@ Optimizations
   by 1) using a confined Arena where appropriate, and 2) grouping files from the same segment to a
   single shared Arena. (Chris Hegarty, Michael Gibney, Uwe Schindler)
 
+* GITHUB#13585: Lucene912PostingsFormat, the new default postings format, now
+  only has 2 levels of skip data, which are inlined into postings instead of
+  being stored at the end of postings lists. This translates into better
+  performance for queries that need skipping such as conjunctions.
+  (Adrien Grand)
+
+* GITHUB#13581: OnHeapHnswGraph no longer allocates a lock for every graph node (Mike Sokolov)
+
+* GITHUB#13636, GITHUB#13658: Optimizations to the decoding logic of blocks of
+  postings. (Adrien Grand, Uwe Schindler, Greg Miller)
+
+* GITHUB##13644: Improve NumericComparator competitive iterator logic by comparing the missing value with the top
+  value even after the hit queue is full (Pan Guixin)
+
 Changes in runtime behavior
 ---------------------
 
@@ -326,6 +382,11 @@ Bug Fixes
 
 * GITHUB#13553: Correct RamUsageEstimate for scalar quantized knn vector formats so that raw vectors are correctly
   accounted for. (Ben Trent)
+
+* GITHUB#13615: Correct scalar quantization when used in conjunction with COSINE similarity. Vectors are normalized
+  before quantization to ensure the cosine similarity is correctly calculated. (Ben Trent)
+
+* GITHUB#13627: Fix race condition on flush for DWPT seqNo generation. (Ben Trent, Ao Li)
 
 Other
 --------------------
