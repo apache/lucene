@@ -38,25 +38,25 @@ class TeluguNormalizer {
 
     for (int i = 0; i < len; i++) {
       switch (s[i]) {
-          // candrabindu (ఀ and ఁ) -> bindu (ం)
+        // candrabindu (ఀ and ఁ) -> bindu (ం)
         case '\u0C00': // ఀ
         case '\u0C01': // ఁ
           s[i] = '\u0C02'; // ం
           break;
-          // delete visarga (ః)
+        // delete visarga (ః)
         case '\u0C03':
           len = delete(s, i, len);
           i--;
           break;
 
-          // zwj/zwnj -> delete
+        // zwj/zwnj -> delete
         case '\u200D':
         case '\u200C':
           len = delete(s, i, len);
           i--;
           break;
 
-          // long -> short vowels
+        // long -> short vowels
         case '\u0C14': // ఔ
           s[i] = '\u0C13'; // ఓ
           break;
@@ -73,7 +73,7 @@ class TeluguNormalizer {
           s[i] = '\u0C09'; // ఉ
           break;
 
-          // long -> short vowels matras
+        // long -> short vowels matras
         case '\u0C40': // ీ
           s[i] = '\u0C3F'; // ి
           break;
@@ -86,14 +86,14 @@ class TeluguNormalizer {
         case '\u0C4B': // ో
           s[i] = '\u0C4A'; // ొ
           break;
-          // decomposed dipthong (ె + ౖ) -> precomposed diphthong vowel sign (ై)
+        // decomposed dipthong (ె + ౖ) -> precomposed diphthong vowel sign (ై)
         case '\u0C46':
           if (i + 1 < len && s[i + 1] == '\u0C56') {
             s[i] = '\u0C48';
             len = delete(s, i + 1, len);
           }
           break;
-          // composed oo or au -> oo or au
+        // composed oo or au -> oo or au
         case '\u0C12':
           if (i + 1 < len && s[i + 1] == '\u0C55') {
             // (ఒ + ౕ) -> oo (ఓ)

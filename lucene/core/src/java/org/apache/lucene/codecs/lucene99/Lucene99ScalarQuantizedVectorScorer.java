@@ -99,14 +99,20 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       RandomAccessQuantizedByteVectorValues values) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(values, constMultiplier, targetBytes);
-      case COSINE, DOT_PRODUCT -> dotProductFactory(
-          targetBytes, offsetCorrection, constMultiplier, values, f -> Math.max((1 + f) / 2, 0));
-      case MAXIMUM_INNER_PRODUCT -> dotProductFactory(
-          targetBytes,
-          offsetCorrection,
-          constMultiplier,
-          values,
-          VectorUtil::scaleMaxInnerProductScore);
+      case COSINE, DOT_PRODUCT ->
+          dotProductFactory(
+              targetBytes,
+              offsetCorrection,
+              constMultiplier,
+              values,
+              f -> Math.max((1 + f) / 2, 0));
+      case MAXIMUM_INNER_PRODUCT ->
+          dotProductFactory(
+              targetBytes,
+              offsetCorrection,
+              constMultiplier,
+              values,
+              VectorUtil::scaleMaxInnerProductScore);
     };
   }
 
