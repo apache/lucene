@@ -160,6 +160,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
       super(innerApproximation, skipper, lowerValue, upperValue);
     }
 
+    @Override
     protected Match match(int level) {
       long minValue = skipper.minValue(level);
       long maxValue = skipper.maxValue(level);
@@ -187,6 +188,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
       super(innerApproximation, skipper, lowerValue, upperValue);
     }
 
+    @Override
     protected Match match(int level) {
       long minValue = skipper.minValue(level);
       long maxValue = skipper.maxValue(level);
