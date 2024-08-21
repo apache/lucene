@@ -954,22 +954,22 @@ public class TestBKD extends LuceneTestCase {
       @Override
       public void visit(int docID, byte[] packedValue) {
         // System.out.println("visit check docID=" + docID);
-        for (int dim = 0; dim < config.numIndexDims; dim++) {
+        for (int dim = 0; dim < config.numIndexDims(); dim++) {
           if (Arrays.compareUnsigned(
                       packedValue,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMin[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   < 0
               || Arrays.compareUnsigned(
                       packedValue,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMax[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   > 0) {
             // System.out.println("  no");
             return;
@@ -1005,39 +1005,39 @@ public class TestBKD extends LuceneTestCase {
       @Override
       public Relation compare(byte[] minPacked, byte[] maxPacked) {
         boolean crosses = false;
-        for (int dim = 0; dim < config.numIndexDims; dim++) {
+        for (int dim = 0; dim < config.numIndexDims(); dim++) {
           if (Arrays.compareUnsigned(
                       maxPacked,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMin[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   < 0
               || Arrays.compareUnsigned(
                       minPacked,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMax[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   > 0) {
             return Relation.CELL_OUTSIDE_QUERY;
           } else if (Arrays.compareUnsigned(
                       minPacked,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMin[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   < 0
               || Arrays.compareUnsigned(
                       maxPacked,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMax[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   > 0) {
             crosses = true;
           }
