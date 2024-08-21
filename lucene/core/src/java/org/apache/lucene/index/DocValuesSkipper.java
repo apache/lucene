@@ -107,20 +107,17 @@ public abstract class DocValuesSkipper {
    * has not been called yet.
    */
   public final void advance(long minValue, long maxValue) throws IOException {
-    while (true) {
-      if (minDocID(0) == DocIdSetIterator.NO_MORE_DOCS
-          || (minValue(0) <= maxValue && maxValue(0) >= minValue)) {
-        break;
-      } else {
-        int maxDocID = maxDocID(0);
-        int nextLevel = 1;
-        while (nextLevel < numLevels()
-            && (minValue(nextLevel) > maxValue || maxValue(nextLevel) < minValue)) {
-          maxDocID = maxDocID(nextLevel);
-          nextLevel++;
-        }
-        advance(maxDocID + 1);
+    assert minDocID(0) > -1;
+    while (minDocID(0) != DocIdSetIterator.NO_MORE_DOCS
+        && ((minValue(0) > maxValue || maxValue(0) < minValue))) {
+      int maxDocID = maxDocID(0);
+      int nextLevel = 1;
+      while (nextLevel < numLevels()
+          && (minValue(nextLevel) > maxValue || maxValue(nextLevel) < minValue)) {
+        maxDocID = maxDocID(nextLevel);
+        nextLevel++;
       }
+      advance(maxDocID + 1);
     }
   }
 }
