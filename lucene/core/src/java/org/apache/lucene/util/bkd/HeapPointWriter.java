@@ -40,11 +40,11 @@ public final class HeapPointWriter implements PointWriter {
 
   public HeapPointWriter(BKDConfig config, int size) {
     this.config = config;
-    this.block = new byte[config.bytesPerDoc * size];
+    this.block = new byte[config.bytesPerDoc() * size];
     this.size = size;
-    this.dimComparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
-    this.dataDimsAndDocLength = config.bytesPerDoc - config.packedIndexBytesLength;
-    this.scratch = new byte[config.bytesPerDoc];
+    this.dimComparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim());
+    this.dataDimsAndDocLength = config.bytesPerDoc() - config.packedIndexBytesLength();
+    this.scratch = new byte[config.bytesPerDoc()];
     if (size > 0) {
       pointValue = new HeapPointValue(config, block);
     } else {
@@ -56,23 +56,23 @@ public final class HeapPointWriter implements PointWriter {
   /** Returns a reference, in <code>result</code>, to the byte[] slice holding this value */
   public PointValue getPackedValueSlice(int index) {
     assert index < nextWrite : "nextWrite=" + (nextWrite) + " vs index=" + index;
-    pointValue.setOffset(index * config.bytesPerDoc);
+    pointValue.setOffset(index * config.bytesPerDoc());
     return pointValue;
   }
 
   @Override
   public void append(byte[] packedValue, int docID) {
     assert closed == false : "point writer is already closed";
-    assert packedValue.length == config.packedBytesLength
+    assert packedValue.length == config.packedBytesLength()
         : "[packedValue] must have length ["
-            + config.packedBytesLength
+            + config.packedBytesLength()
             + "] but was ["
             + packedValue.length
             + "]";
     assert nextWrite < size : "nextWrite=" + (nextWrite + 1) + " vs size=" + size;
-    final int position = nextWrite * config.bytesPerDoc;
-    System.arraycopy(packedValue, 0, block, position, config.packedBytesLength);
-    BitUtil.VH_BE_INT.set(block, position + config.packedBytesLength, docID);
+    final int position = nextWrite * config.bytesPerDoc();
+    System.arraycopy(packedValue, 0, block, position, config.packedBytesLength());
+    BitUtil.VH_BE_INT.set(block, position + config.packedBytesLength(), docID);
     nextWrite++;
   }
 
@@ -81,33 +81,33 @@ public final class HeapPointWriter implements PointWriter {
     assert closed == false : "point writer is already closed";
     assert nextWrite < size : "nextWrite=" + (nextWrite + 1) + " vs size=" + size;
     final BytesRef packedValueDocID = pointValue.packedValueDocIDBytes();
-    assert packedValueDocID.length == config.bytesPerDoc
+    assert packedValueDocID.length == config.bytesPerDoc()
         : "[packedValue] must have length ["
-            + (config.bytesPerDoc)
+            + (config.bytesPerDoc())
             + "] but was ["
             + packedValueDocID.length
             + "]";
-    final int position = nextWrite * config.bytesPerDoc;
+    final int position = nextWrite * config.bytesPerDoc();
     System.arraycopy(
-        packedValueDocID.bytes, packedValueDocID.offset, block, position, config.bytesPerDoc);
+        packedValueDocID.bytes, packedValueDocID.offset, block, position, config.bytesPerDoc());
     nextWrite++;
   }
 
   /** Swaps the point at point {@code i} with the point at position {@code j} */
   void swap(int i, int j) {
-    final int indexI = i * config.bytesPerDoc;
-    final int indexJ = j * config.bytesPerDoc;
+    final int indexI = i * config.bytesPerDoc();
+    final int indexJ = j * config.bytesPerDoc();
     // scratch1 = values[i]
-    System.arraycopy(block, indexI, scratch, 0, config.bytesPerDoc);
+    System.arraycopy(block, indexI, scratch, 0, config.bytesPerDoc());
     // values[i] = values[j]
-    System.arraycopy(block, indexJ, block, indexI, config.bytesPerDoc);
+    System.arraycopy(block, indexJ, block, indexI, config.bytesPerDoc());
     // values[j] = scratch1
-    System.arraycopy(scratch, 0, block, indexJ, config.bytesPerDoc);
+    System.arraycopy(scratch, 0, block, indexJ, config.bytesPerDoc());
   }
 
   /** Return the byte at position {@code k} of the point at position {@code i} */
   int byteAt(int i, int k) {
-    return block[i * config.bytesPerDoc + k] & 0xff;
+    return block[i * config.bytesPerDoc() + k] & 0xff;
   }
 
   /**
@@ -115,7 +115,7 @@ public final class HeapPointWriter implements PointWriter {
    * at the given offset
    */
   void copyDim(int i, int dim, byte[] bytes, int offset) {
-    System.arraycopy(block, i * config.bytesPerDoc + dim, bytes, offset, config.bytesPerDim);
+    System.arraycopy(block, i * config.bytesPerDoc() + dim, bytes, offset, config.bytesPerDim());
   }
 
   /**
@@ -125,7 +125,7 @@ public final class HeapPointWriter implements PointWriter {
   void copyDataDimsAndDoc(int i, byte[] bytes, int offset) {
     System.arraycopy(
         block,
-        i * config.bytesPerDoc + config.packedIndexBytesLength,
+        i * config.bytesPerDoc() + config.packedIndexBytesLength(),
         bytes,
         offset,
         dataDimsAndDocLength);
@@ -136,8 +136,8 @@ public final class HeapPointWriter implements PointWriter {
    * position {@code j}
    */
   int compareDim(int i, int j, int dim) {
-    final int iOffset = i * config.bytesPerDoc + dim;
-    final int jOffset = j * config.bytesPerDoc + dim;
+    final int iOffset = i * config.bytesPerDoc() + dim;
+    final int jOffset = j * config.bytesPerDoc() + dim;
     return compareDim(block, iOffset, block, jOffset);
   }
 
@@ -146,7 +146,7 @@ public final class HeapPointWriter implements PointWriter {
    * value
    */
   int compareDim(int j, byte[] dimValue, int offset, int dim) {
-    final int jOffset = j * config.bytesPerDoc + dim;
+    final int jOffset = j * config.bytesPerDoc() + dim;
     return compareDim(dimValue, offset, block, jOffset);
   }
 
@@ -159,8 +159,8 @@ public final class HeapPointWriter implements PointWriter {
    * at position {@code j}
    */
   int compareDataDimsAndDoc(int i, int j) {
-    final int iOffset = i * config.bytesPerDoc + config.packedIndexBytesLength;
-    final int jOffset = j * config.bytesPerDoc + config.packedIndexBytesLength;
+    final int iOffset = i * config.bytesPerDoc() + config.packedIndexBytesLength();
+    final int jOffset = j * config.bytesPerDoc() + config.packedIndexBytesLength();
     return compareDataDimsAndDoc(block, iOffset, block, jOffset);
   }
 
@@ -169,7 +169,7 @@ public final class HeapPointWriter implements PointWriter {
    * provided value
    */
   int compareDataDimsAndDoc(int j, byte[] dataDimsAndDocs, int offset) {
-    final int jOffset = j * config.bytesPerDoc + config.packedIndexBytesLength;
+    final int jOffset = j * config.bytesPerDoc() + config.packedIndexBytesLength();
     return compareDataDimsAndDoc(dataDimsAndDocs, offset, block, jOffset);
   }
 
@@ -187,11 +187,11 @@ public final class HeapPointWriter implements PointWriter {
   public int computeCardinality(int from, int to, int[] commonPrefixLengths) {
     int leafCardinality = 1;
     for (int i = from + 1; i < to; i++) {
-      final int pointOffset = (i - 1) * config.bytesPerDoc;
-      final int nextPointOffset = pointOffset + config.bytesPerDoc;
-      for (int dim = 0; dim < config.numDims; dim++) {
-        final int start = dim * config.bytesPerDim + commonPrefixLengths[dim];
-        final int end = dim * config.bytesPerDim + config.bytesPerDim;
+      final int pointOffset = (i - 1) * config.bytesPerDoc();
+      final int nextPointOffset = pointOffset + config.bytesPerDoc();
+      for (int dim = 0; dim < config.numDims(); dim++) {
+        final int start = dim * config.bytesPerDim() + commonPrefixLengths[dim];
+        final int end = dim * config.bytesPerDim() + config.bytesPerDim();
         if (Arrays.mismatch(
                 block,
                 nextPointOffset + start,
@@ -245,9 +245,9 @@ public final class HeapPointWriter implements PointWriter {
     private final int packedValueLength;
 
     HeapPointValue(BKDConfig config, byte[] value) {
-      this.packedValueLength = config.packedBytesLength;
+      this.packedValueLength = config.packedBytesLength();
       this.packedValue = new BytesRef(value, 0, packedValueLength);
-      this.packedValueDocID = new BytesRef(value, 0, config.bytesPerDoc);
+      this.packedValueDocID = new BytesRef(value, 0, config.bytesPerDoc());
     }
 
     /** Sets a new value by changing the offset. */

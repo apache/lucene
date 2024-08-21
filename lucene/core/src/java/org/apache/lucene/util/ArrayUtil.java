@@ -174,42 +174,34 @@ public final class ArrayUtil {
 
     if (Constants.JRE_IS_64BIT) {
       // round up to 8 byte alignment in 64bit env
-      switch (bytesPerElement) {
-        case 4:
-          // round up to multiple of 2
-          return (newSize + 1) & 0x7ffffffe;
-        case 2:
-          // round up to multiple of 4
-          return (newSize + 3) & 0x7ffffffc;
-        case 1:
-          // round up to multiple of 8
-          return (newSize + 7) & 0x7ffffff8;
-        case 8:
+      return switch (bytesPerElement) {
+        // round up to multiple of 2
+        case 4 -> (newSize + 1) & 0x7ffffffe;
+        // round up to multiple of 4
+        case 2 -> (newSize + 3) & 0x7ffffffc;
+        // round up to multiple of 8
+        case 1 -> (newSize + 7) & 0x7ffffff8;
         // no rounding
-        default:
-          // odd (invalid?) size
-          return newSize;
-      }
+        case 8 -> newSize;
+        // odd (invalid?) size
+        default -> newSize;
+      };
     } else {
       // In 32bit jvm, it's still 8-byte aligned,
       // but the array header is 12 bytes, not a multiple of 8.
       // So saving 4,12,20,28... bytes of data is the most cost-effective.
-      switch (bytesPerElement) {
-        case 1:
-          // align with size of 4,12,20,28...
-          return ((newSize + 3) & 0x7ffffff8) + 4;
-        case 2:
-          // align with size of 6,10,14,18...
-          return ((newSize + 1) & 0x7ffffffc) + 2;
-        case 4:
-          // align with size of 5,7,9,11...
-          return (newSize & 0x7ffffffe) + 1;
-        case 8:
+      return switch (bytesPerElement) {
+        // align with size of 4,12,20,28...
+        case 1 -> ((newSize + 3) & 0x7ffffff8) + 4;
+        // align with size of 6,10,14,18...
+        case 2 -> ((newSize + 1) & 0x7ffffffc) + 2;
+        // align with size of 5,7,9,11...
+        case 4 -> (newSize & 0x7ffffffe) + 1;
         // no processing required
-        default:
-          // odd (invalid?) size
-          return newSize;
-      }
+        case 8 -> newSize;
+        // odd (invalid?) size
+        default -> newSize;
+      };
     }
   }
 

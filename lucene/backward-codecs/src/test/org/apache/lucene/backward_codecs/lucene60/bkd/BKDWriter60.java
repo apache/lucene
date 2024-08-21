@@ -642,13 +642,13 @@ public class BKDWriter60 implements Closeable {
       throws IOException {
     assert docMaps == null || readers.size() == docMaps.size();
 
-    BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim, readers.size());
+    BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim(), readers.size());
 
     for (int i = 0; i < readers.size(); i++) {
       PointValues pointValues = readers.get(i);
-      assert pointValues.getNumDimensions() == config.numDims
-          && pointValues.getBytesPerDimension() == config.bytesPerDim
-          && pointValues.getNumIndexDimensions() == config.numIndexDims;
+      assert pointValues.getNumDimensions() == config.numDims()
+          && pointValues.getBytesPerDimension() == config.bytesPerDim()
+          && pointValues.getNumIndexDimensions() == config.numIndexDims();
       MergeState.DocMap docMap;
       if (docMaps == null) {
         docMap = null;
