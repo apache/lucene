@@ -177,15 +177,25 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               long minOrd = termsEnum.ord();
               assert minOrd >= 0;
               long maxOrd = -1;
+              long prev = minOrd - 1;
+              boolean hasGaps = false;
               do {
                 long ord = termsEnum.ord();
                 assert ord >= 0 && ord > maxOrd;
+                if (ord - prev > 1) {
+                  hasGaps = true;
+                }
+                prev = ord;
                 maxOrd = ord;
                 termSet.set(ord);
               } while (termsEnum.next() != null);
 
               if (skipper != null && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
                 return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
+              }
+
+              if (hasGaps == false) {
+                return new SortedSetDocValuesRangeScorer(values, minOrd, maxOrd, scoreMode, score(), skipper);
               }
 
               final SortedDocValues singleton = DocValues.unwrapSingleton(values);

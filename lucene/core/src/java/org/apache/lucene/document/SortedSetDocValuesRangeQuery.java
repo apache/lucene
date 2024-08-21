@@ -37,6 +37,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortedSetDocValuesRangeScorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
@@ -154,6 +155,9 @@ final class SortedSetDocValuesRangeQuery extends Query {
               }
             }
 
+            return new SortedSetDocValuesRangeScorer(values, minOrd, maxOrd, scoreMode, score(), skipper);
+
+            /**
             // no terms matched in this segment
             if (minOrd > maxOrd
                 || (skipper != null
@@ -228,6 +232,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
             return values.cost();
           }
         };
+          **/
       }
 
       @Override
