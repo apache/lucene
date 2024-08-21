@@ -60,7 +60,6 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
                 .setMaxBufferedDocs(TestUtil.nextInt(random(), 50, 1000)));
     List<String> terms = new ArrayList<>();
     int num = atLeast(200);
-    boolean createDocValueSkiplist = random().nextBoolean();
     for (int i = 0; i < num; i++) {
       Document doc = new Document();
       doc.add(newStringField("id", Integer.toString(i), Field.Store.NO));
