@@ -26,26 +26,6 @@ public class BQSpaceUtils {
   //  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
   // private static final byte BYTE_MASK = (1 << B_QUERY) - 1;
 
-  public static long ipByteBinByte(byte[] q, byte[] d) {
-    long ret = 0;
-    int size = d.length;
-    for (int i = 0; i < B_QUERY; i++) {
-      int r = 0;
-      long subRet = 0;
-      for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
-        subRet +=
-            Integer.bitCount(
-                (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
-                    & (int) BitUtil.VH_NATIVE_INT.get(d, r));
-      }
-      for (; r < d.length; r++) {
-        subRet += Integer.bitCount((q[i * size + r] & d[i]) & 0xFF);
-      }
-      ret += subRet << i;
-    }
-    return ret;
-  }
-
   // FIXME: clean up this function and move to utils like "space utils"
   public static void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
     int byte_mask = 1;
