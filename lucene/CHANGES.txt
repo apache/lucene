@@ -168,6 +168,8 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
+* GITHUB#13587: Use Max WAND optimizations with ToParentBlockJoinQuery when using ScoreMode.Max (Mike Pellegrini)
+
 Bug Fixes
 ---------------------
 
