@@ -101,7 +101,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   @Override
-  public float getDistanceToCentroid()  {
+  public float getDistanceToCentroid() {
     return correctiveValues[0];
   }
 

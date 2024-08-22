@@ -16,11 +16,10 @@
  */
 package org.apache.lucene.util.quantization;
 
+import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
-
-import java.util.Random;
 
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
