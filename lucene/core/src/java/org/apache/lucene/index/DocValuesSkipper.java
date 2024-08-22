@@ -98,4 +98,28 @@ public abstract class DocValuesSkipper {
 
   /** Return the global number of documents with a value for the field. */
   public abstract int docCount();
+
+  /**
+   * Advance this skipper so that all levels intersects the range given by {@code minValue} and
+   * {@code maxValue}. If there are no intersecting levels, the skipper is exhausted.
+   */
+  public final void advance(long minValue, long maxValue) throws IOException {
+    if (minDocID(0) == -1) {
+      // #advance has not been called yet
+      advance(0);
+    }
+    // check if the current interval intersects the provided range
+    while (minDocID(0) != DocIdSetIterator.NO_MORE_DOCS
+        && ((minValue(0) > maxValue || maxValue(0) < minValue))) {
+      int maxDocID = maxDocID(0);
+      int nextLevel = 1;
+      // check if the next levels intersects to skip as many docs as possible
+      while (nextLevel < numLevels()
+          && (minValue(nextLevel) > maxValue || maxValue(nextLevel) < minValue)) {
+        maxDocID = maxDocID(nextLevel);
+        nextLevel++;
+      }
+      advance(maxDocID + 1);
+    }
+  }
 }
