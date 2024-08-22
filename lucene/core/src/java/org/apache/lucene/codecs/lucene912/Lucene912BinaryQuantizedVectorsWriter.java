@@ -145,34 +145,43 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter field : fields) {
-      // TODO handle more than one centroid
-      final float[][] clusters;
-      if (field.flatFieldVectorsWriter.getVectors().size() > numberOfVectorsPerCluster) {
-        // Use kmeans
-        assert false;
-        clusters = new float[0][0];
+      final float[][] clusterCenters;
+      short[] vectorClusters = null;
+      int vectorCount = field.flatFieldVectorsWriter.getVectors().size();
+      if (vectorCount > numberOfVectorsPerCluster) {
+        RandomAccessVectorValues.Floats vectorValues =
+            RandomAccessVectorValues.fromFloats(
+                field.flatFieldVectorsWriter.getVectors(), field.fieldInfo.getVectorDimension());
+        KMeans.Results kmeansResult = cluster(vectorValues, true);
+        assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
+        clusterCenters = kmeansResult.centroids();
+        vectorClusters = kmeansResult.vectorCentroids();
       } else {
-        clusters = new float[1][];
-        clusters[0] = field.dimensionSums;
+        clusterCenters = new float[1][];
+        clusterCenters[0] = field.dimensionSums;
       }
       BinaryQuantizer quantizer =
           new BinaryQuantizer(
               field.fieldInfo.getVectorDimension(), field.fieldInfo.getVectorSimilarityFunction());
       if (sortMap == null) {
-        writeField(field, clusters, maxDoc, quantizer);
+        writeField(field, clusterCenters, vectorClusters, maxDoc, quantizer);
       } else {
-        writeSortingField(field, clusters, maxDoc, sortMap, quantizer);
+        writeSortingField(field, clusterCenters, vectorClusters, maxDoc, sortMap, quantizer);
       }
       field.finish();
     }
   }
 
   private void writeField(
-      FieldWriter fieldData, float[][] clusters, int maxDoc, BinaryQuantizer quantizer)
+      FieldWriter fieldData,
+      float[][] clusterCenters,
+      short[] vectorClusters,
+      int maxDoc,
+      BinaryQuantizer quantizer)
       throws IOException {
     // write vector values
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
-    writeBinarizedVectors(fieldData, clusters, quantizer);
+    writeBinarizedVectors(fieldData, clusterCenters, vectorClusters, quantizer);
     long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
 
     writeMeta(
@@ -180,36 +189,56 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         maxDoc,
         vectorDataOffset,
         vectorDataLength,
-        new float[][] {fieldData.dimensionSums},
+        clusterCenters,
         fieldData.getDocsWithFieldSet());
   }
 
   private void writeBinarizedVectors(
-      FieldWriter fieldData, float[][] clusters, BinaryQuantizer scalarQuantizer)
+      FieldWriter fieldData,
+      float[][] clusterCenters,
+      short[] vectorClusters,
+      BinaryQuantizer scalarQuantizer)
       throws IOException {
-    assert clusters.length == 1;
     // FIXME: not sure if this was a bug or a misunderstanding:    byte[] vector = new
     // byte[(fieldData.fieldInfo.getVectorDimension() + 7) / 8];
     byte[] vector = new byte[(((fieldData.fieldInfo.getVectorDimension() + 63) / 64) * 64) / 8];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * 2).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
-    for (float[] v : fieldData.getVectors()) {
-      float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusters[0]);
-      binarizedVectorData.writeBytes(vector, vector.length);
-      if (clusters.length > 1) {
-        // binarizedVectorData.writeByte(clusterId);
+    if (clusterCenters.length > 1) {
+      int cnt = 0;
+      short clusterId;
+      byte bClusterId;
+      for (float[] v : fieldData.getVectors()) {
+        clusterId = vectorClusters[cnt++];
+        float[] corrections =
+            scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
+        binarizedVectorData.writeBytes(vector, vector.length);
+        // encode short to byte
+        bClusterId = clusterId <= 127 ? (byte) clusterId : (byte) (clusterId - 256);
+        binarizedVectorData.writeByte(bClusterId);
+        correctionsBuffer.putFloat(corrections[0]);
+        correctionsBuffer.putFloat(corrections[1]);
+        binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
+        correctionsBuffer.rewind();
       }
-      correctionsBuffer.putFloat(corrections[0]);
-      correctionsBuffer.putFloat(corrections[1]);
-      binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
-      correctionsBuffer.rewind();
+    } else {
+      float[] clusterCenter = clusterCenters[0];
+      for (float[] v : fieldData.getVectors()) {
+        float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusterCenter);
+        binarizedVectorData.writeBytes(vector, vector.length);
+        correctionsBuffer.putFloat(corrections[0]);
+        correctionsBuffer.putFloat(corrections[1]);
+        binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
+        correctionsBuffer.rewind();
+      }
     }
   }
 
   private void writeSortingField(
       FieldWriter fieldData,
-      float[][] clusters,
+      float[][] clusterCenters,
+      short[] vectorClusters,
       int maxDoc,
       Sorter.DocMap sortMap,
       BinaryQuantizer scalarQuantizer)
@@ -222,38 +251,59 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     // write vector values
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
-    writeSortedBinarizedVectors(fieldData, clusters, ordMap, scalarQuantizer);
+    writeSortedBinarizedVectors(fieldData, clusterCenters, vectorClusters, ordMap, scalarQuantizer);
     long quantizedVectorLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
     writeMeta(
         fieldData.fieldInfo,
         maxDoc,
         vectorDataOffset,
         quantizedVectorLength,
-        new float[][] {fieldData.dimensionSums},
+        clusterCenters,
         newDocsWithField);
   }
 
   private void writeSortedBinarizedVectors(
-      FieldWriter fieldData, float[][] clusters, int[] ordMap, BinaryQuantizer scalarQuantizer)
+      FieldWriter fieldData,
+      float[][] clusterCenters,
+      short[] vectorClusters,
+      int[] ordMap,
+      BinaryQuantizer scalarQuantizer)
       throws IOException {
-    assert clusters.length == 1;
     // FIXME: not sure if this was a bug or a misunderstanding:    byte[] vector = new
     // byte[(fieldData.fieldInfo.getVectorDimension() + 7) / 8];
     byte[] vector = new byte[(((fieldData.fieldInfo.getVectorDimension() + 63) / 64) * 64) / 8];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * 2).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
-    for (int ordinal : ordMap) {
-      float[] v = fieldData.getVectors().get(ordinal);
-      float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusters[0]);
-      binarizedVectorData.writeBytes(vector, vector.length);
-      if (clusters.length > 1) {
-        // binarizedVectorData.writeByte(clusterId);
+
+    if (clusterCenters.length > 1) {
+      short clusterId;
+      byte bClusterId;
+      for (int ordinal : ordMap) {
+        float[] v = fieldData.getVectors().get(ordinal);
+        clusterId = vectorClusters[ordinal];
+        float[] corrections =
+            scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
+        binarizedVectorData.writeBytes(vector, vector.length);
+        // encode short to byte
+        bClusterId = clusterId <= 127 ? (byte) clusterId : (byte) (clusterId - 256);
+        binarizedVectorData.writeByte(bClusterId);
+        correctionsBuffer.putFloat(corrections[0]);
+        correctionsBuffer.putFloat(corrections[1]);
+        binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
+        correctionsBuffer.rewind();
       }
-      correctionsBuffer.putFloat(corrections[0]);
-      correctionsBuffer.putFloat(corrections[1]);
-      binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
-      correctionsBuffer.rewind();
+    } else {
+      float[] clusterCenter = clusterCenters[0];
+      for (int ordinal : ordMap) {
+        float[] v = fieldData.getVectors().get(ordinal);
+        float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusterCenter);
+        binarizedVectorData.writeBytes(vector, vector.length);
+        correctionsBuffer.putFloat(corrections[0]);
+        correctionsBuffer.putFloat(corrections[1]);
+        binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
+        correctionsBuffer.rewind();
+      }
     }
   }
 
@@ -310,7 +360,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       final float[][] centroids;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
-      double vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+      int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
       // If we have more vectors than allowed for a single cluster, we will use KMeans to cluster
       if (vectorCount > numberOfVectorsPerCluster) {
         try (CloseableRandomVectorScorerSupplier vectorScorerSupplier =
@@ -319,17 +369,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           // we assume floats here as that is what KMeans currently requires
           RandomAccessVectorValues.Floats vectorValues =
               (RandomAccessVectorValues.Floats) vectorScorerSupplier.vectors();
-          KMeans.Results kmeansResult =
-              KMeans.cluster(
-                  vectorValues,
-                  (int) (vectorCount / numberOfVectorsPerCluster + 1),
-                  false,
-                  42,
-                  KMeans.KmeansInitializationMethod.PLUS_PLUS,
-                  false,
-                  DEFAULT_RESTARTS,
-                  DEFAULT_ITRS,
-                  (int) Math.min(DEFAULT_SAMPLE_SIZE, vectorCount * 0.01));
+          KMeans.Results kmeansResult = cluster(vectorValues, false);
           assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
           centroids = kmeansResult.centroids();
         }
@@ -416,7 +456,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       final float[][] centroids;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
-      double vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+      int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
       // If we have more vectors than allowed for a single cluster, we will use KMeans to cluster
       if (vectorCount > numberOfVectorsPerCluster) {
         try (CloseableRandomVectorScorerSupplier vectorScorerSupplier =
@@ -425,17 +465,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           // we assume floats here as that is what KMeans currently requires
           RandomAccessVectorValues.Floats vectorValues =
               (RandomAccessVectorValues.Floats) vectorScorerSupplier.vectors();
-          KMeans.Results kmeansResult =
-              KMeans.cluster(
-                  vectorValues,
-                  (int) (vectorCount / numberOfVectorsPerCluster + 1),
-                  false,
-                  42,
-                  KMeans.KmeansInitializationMethod.PLUS_PLUS,
-                  false,
-                  DEFAULT_RESTARTS,
-                  DEFAULT_ITRS,
-                  (int) Math.min(DEFAULT_SAMPLE_SIZE, vectorCount * 0.01));
+          KMeans.Results kmeansResult = cluster(vectorValues, false);
           assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
           centroids = kmeansResult.centroids();
         }
@@ -627,6 +657,21 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       centroid[i] /= count;
     }
     return count;
+  }
+
+  private KMeans.Results cluster(
+      RandomAccessVectorValues.Floats vectorValues, boolean assignCentroidsToVectors)
+      throws IOException {
+    return KMeans.cluster(
+        vectorValues,
+        (vectorValues.size() / numberOfVectorsPerCluster + 1),
+        assignCentroidsToVectors,
+        42,
+        KMeans.KmeansInitializationMethod.FORGY,
+        false,
+        DEFAULT_RESTARTS,
+        DEFAULT_ITRS,
+        (int) Math.min(DEFAULT_SAMPLE_SIZE, vectorValues.size() * 0.01));
   }
 
   @Override
@@ -832,7 +877,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private final float[][] centroids;
     private final FloatVectorValues values;
     private final BinaryQuantizer quantizer;
-    private int centroidId;
+    private int lastDoc;
+    private short clusterId = 0;
+    private byte bClusterId = 0;
 
     BinarizedFloatVectorValues(
         FloatVectorValues delegate, BinaryQuantizer quantizer, float[][] centroids) {
@@ -842,21 +889,21 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       // byte[(delegate.dimension() + 7) / 8];
       this.binarized = new byte[(((delegate.dimension() + 63) / 64) * 64) / 8];
       this.centroids = centroids;
+      lastDoc = -1;
     }
 
     @Override
-    public float getDistanceToCentroid() throws IOException {
+    public float getDistanceToCentroid() {
       return corrections[0];
     }
 
     @Override
-    public byte clusterId() throws IOException {
-      // TODO implement more than one cluster
-      return 0;
+    public byte clusterId() {
+      return bClusterId;
     }
 
     @Override
-    public float getMagnitude() throws IOException {
+    public float getMagnitude() {
       return corrections[1];
     }
 
@@ -886,6 +933,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       if (doc != NO_MORE_DOCS) {
         binarize();
       }
+      lastDoc = doc;
       return doc;
     }
 
@@ -895,6 +943,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       if (doc != NO_MORE_DOCS) {
         binarize();
       }
+      lastDoc = doc;
       return doc;
     }
 
@@ -904,6 +953,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     private void binarize() throws IOException {
+      if (lastDoc == docID()) return;
       if (centroids.length > 1) {
         float[] values = this.values.vectorValue();
         int nearestCentroid = 0;
@@ -916,12 +966,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           }
         }
         assert nearestCentroid >= 0 && nearestCentroid < centroids.length;
-        centroidId = nearestCentroid;
-      } else {
-        centroidId = 0;
+        clusterId = (short) nearestCentroid;
+        bClusterId = clusterId <= 127 ? (byte) clusterId : (byte) (clusterId - 256);
       }
       corrections =
-          quantizer.quantizeForIndex(values.vectorValue(), binarized, centroids[centroidId]);
+          quantizer.quantizeForIndex(values.vectorValue(), binarized, centroids[clusterId]);
     }
   }
 

@@ -30,6 +30,11 @@ import org.apache.lucene.search.VectorScorer;
 public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
   public abstract float getDistanceToCentroid() throws IOException;
 
+  /**
+   * Returns the cluster ID for the vector in the range  [-128 to 127]
+   *
+   * Negative values should be added to 256 to get a proper cluster id.
+   */
   public abstract byte clusterId() throws IOException;
 
   public abstract float getMagnitude() throws IOException;

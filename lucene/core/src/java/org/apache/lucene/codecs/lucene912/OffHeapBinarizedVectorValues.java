@@ -101,12 +101,12 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   @Override
-  public float getDistanceToCentroid() throws IOException {
+  public float getDistanceToCentroid() {
     return correctiveValues[0];
   }
 
   @Override
-  public float getMagnitude() throws IOException {
+  public float getMagnitude() {
     return correctiveValues[1];
   }
 
@@ -123,9 +123,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   @Override
   public float getVectorMagnitude(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
-      return correctiveValues[0];
+      return correctiveValues[1];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes + 1);
+    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
     slice.readFloats(correctiveValues, 0, 2);
     return correctiveValues[1];
   }
@@ -178,7 +178,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (configuration.isEmpty()) {
       return new EmptyOffHeapVectorValues(dimension, similarityFunction, vectorsScorer);
     }
-    assert centroids != null && centroids.length == 1;
+    assert centroids != null;
     IndexInput bytesSlice =
         vectorData.slice(
             "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);

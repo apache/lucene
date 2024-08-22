@@ -32,7 +32,12 @@ public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVecto
   /** Returns the vector magnitude for the vector */
   float getVectorMagnitude(int vectorOrd) throws IOException;
 
-  /** Returns the cluster ID for the vector */
+
+  /**
+   * Returns the cluster ID for the vector in the range  [-128 to 127]
+   *
+   * Negative values should be added to 256 to get a proper cluster id.
+   */
   byte getClusterId(int vectorOrd) throws IOException;
 
   /**
