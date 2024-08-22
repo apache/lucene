@@ -112,7 +112,7 @@ public abstract class VectorizationProvider {
   // visible for tests
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion >= 20 && runtimeVersion <= 22) {
+    if (runtimeVersion >= 20 && runtimeVersion <= 23) {
       // is locale sane (only buggy in Java 20)
       if (isAffectedByJDK8301190()) {
         LOG.warning(
