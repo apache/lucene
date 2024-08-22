@@ -127,7 +127,8 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
               + fieldEntry.dimension);
     }
 
-    int binaryDims = (dimension + 7) / 8;
+// FIXME: not sure if this was a bug or a misunderstanding:    int binaryDims = (dimension + 7) / 8;
+    int binaryDims = (((dimension + 63) / 64) * 64) / 8;
     long numQuantizedVectorBytes =
         Math.multiplyExact(binaryDims + Float.BYTES + Float.BYTES, fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {

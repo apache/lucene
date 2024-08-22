@@ -66,7 +66,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.slice = slice;
     this.centroids = centroids;
     this.isMoreThanOneCluster = centroids != null && centroids.length > 1;
-    this.numBytes = (dimension + 7) / 8;
+// FIXME: not sure if this was a bug or a misunderstanding:    this.numBytes = (dimension + 7) / 8;
+    this.numBytes = (((dimension + 63) / 64) * 64) / 8;
     this.byteSize = (numBytes + 8) + (isMoreThanOneCluster ? 1 : 0);
     this.byteBuffer = ByteBuffer.allocate(numBytes);
     this.binaryValue = byteBuffer.array();

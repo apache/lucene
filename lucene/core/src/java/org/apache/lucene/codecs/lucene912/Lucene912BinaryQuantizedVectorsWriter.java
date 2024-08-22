@@ -188,7 +188,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldWriter fieldData, float[][] clusters, BinaryQuantizer scalarQuantizer)
       throws IOException {
     assert clusters.length == 1;
-    byte[] vector = new byte[(fieldData.fieldInfo.getVectorDimension() + 7) / 8];
+// FIXME: not sure if this was a bug or a misunderstanding:    byte[] vector = new byte[(fieldData.fieldInfo.getVectorDimension() + 7) / 8];
+    byte[] vector = new byte[(((fieldData.fieldInfo.getVectorDimension() + 63) / 64) * 64) / 8];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * 2).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -235,7 +236,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldWriter fieldData, float[][] clusters, int[] ordMap, BinaryQuantizer scalarQuantizer)
       throws IOException {
     assert clusters.length == 1;
-    byte[] vector = new byte[(fieldData.fieldInfo.getVectorDimension() + 7) / 8];
+// FIXME: not sure if this was a bug or a misunderstanding:    byte[] vector = new byte[(fieldData.fieldInfo.getVectorDimension() + 7) / 8];
+    byte[] vector = new byte[(((fieldData.fieldInfo.getVectorDimension() + 63) / 64) * 64) / 8];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * 2).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -829,7 +831,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         FloatVectorValues delegate, BinaryQuantizer quantizer, float[][] centroids) {
       this.values = delegate;
       this.quantizer = quantizer;
-      this.binarized = new byte[(delegate.dimension() + 7) / 8];
+// FIXME: not sure if this was a bug or a misunderstanding:      this.binarized = new byte[(delegate.dimension() + 7) / 8];
+      this.binarized = new byte[(((delegate.dimension() + 63) / 64) * 64) / 8];
       this.centroids = centroids;
     }
 

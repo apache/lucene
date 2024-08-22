@@ -29,7 +29,6 @@ public class BQSpaceUtils {
     return ret;
   }
 
-  // FIXME: clean up this function and move to utils like "space utils"
   public static void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
     int byte_mask = 1;
     for (int i = 0; i < B_QUERY - 1; i++) {

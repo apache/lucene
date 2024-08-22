@@ -25,6 +25,7 @@ import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
+// FIXME: replace Arrays.copyOf with System.arrayCopy?
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
   private static final int QUERY_PROJECTIONS = 4;
@@ -49,22 +50,6 @@ public class BinaryQuantizer {
       u[i] = (float) random.nextDouble();
     }
     this.sqrtDimensions = (float) Math.sqrt(discretizedDimensions);
-  }
-
-  // FIXME: move this out to vector utils
-  private static float[] pad(float[] vector, int dimensions) {
-    if (vector.length >= dimensions) {
-      return vector;
-    }
-    float[] paddedVector = new float[dimensions];
-    for (int i = 0; i < dimensions; i++) {
-      if (i < vector.length) {
-        paddedVector[i] = vector[i];
-      } else {
-        paddedVector[i] = 0;
-      }
-    }
-    return paddedVector;
   }
 
   // FIXME: move this out to vector utils?
@@ -144,8 +129,8 @@ public class BinaryQuantizer {
     // FIXME: do common things once across generateSubSpace and generateSubSpaceMIP
 
     // typically no-op if dimensions/64
-    float[] paddedCentroid = pad(centroid, discretizedDimensions);
-    float[] paddedVector = pad(vector, discretizedDimensions);
+    float[] paddedCentroid = BQVectorUtils.pad(centroid, discretizedDimensions);
+    float[] paddedVector = BQVectorUtils.pad(vector, discretizedDimensions);
     BQVectorUtils.subtractInPlace(paddedVector, paddedCentroid);
 
     // The inner product between the data vector and the quantized data vector
@@ -165,8 +150,8 @@ public class BinaryQuantizer {
   private SubspaceOutputMIP generateSubSpaceMIP(float[] vector, float[] centroid) {
 
     // typically no-op if dimensions/64
-    float[] paddedCentroid = pad(centroid, discretizedDimensions);
-    float[] paddedVector = pad(vector, discretizedDimensions);
+    float[] paddedCentroid = BQVectorUtils.pad(centroid, discretizedDimensions);
+    float[] paddedVector = BQVectorUtils.pad(vector, discretizedDimensions);
     float oDotC = VectorUtil.dotProduct(paddedVector, paddedCentroid);
     BQVectorUtils.subtractInPlace(paddedVector, paddedCentroid);
 
@@ -176,7 +161,6 @@ public class BinaryQuantizer {
     float[] vectorSubset =
         subset(paddedVector, discretizedDimensions); // FIXME: typically no-op if D/64?
     removeSignAndDivide(vectorSubset, (float) Math.pow(discretizedDimensions, 0.5));
-    float projection = sumAndNormalize(vectorSubset, normOC);
     byte[] packedBinaryVector = packAsBinary(paddedVector, discretizedDimensions);
 
     // FIXME: pull this out to a function
@@ -197,8 +181,8 @@ public class BinaryQuantizer {
 
   // FIXME: move this to a utils class
   private static float[] range(float[] q, float[] c) {
-    float vl = Float.POSITIVE_INFINITY;
-    float vr = Float.NEGATIVE_INFINITY;
+    float vl = 1e20f;
+    float vr = -1e20f;
     for (int i = 0; i < q.length; i++) {
       float tmp = q[i] - c[i];
       if (tmp < vl) {
@@ -225,7 +209,7 @@ public class BinaryQuantizer {
         corrections = new float[2];
         corrections[0] = distToCentroid;
         corrections[1] = subspaceOutput.projection();
-        destination = subspaceOutput.packedBinaryVector();
+        System.arraycopy(subspaceOutput.packedBinaryVector(), 0, destination, 0, destination.length);
         break;
       case VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT:
         SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid);
@@ -236,7 +220,7 @@ public class BinaryQuantizer {
         corrections[1] = subspaceOutputMIP.oDotC();
         corrections[2] = subspaceOutputMIP.normOC();
         corrections[3] = subspaceOutputMIP.OOQ();
-        destination = subspaceOutputMIP.packedBinaryVector();
+        System.arraycopy(subspaceOutputMIP.packedBinaryVector(), 0, destination, 0, destination.length);
         break;
     }
 
@@ -245,7 +229,6 @@ public class BinaryQuantizer {
 
   private record QuantResult(byte[] result, int sumQ) {}
 
-  // FIXME: move this to a utils class
   private static QuantResult quantize(float[] q, float[] c, float[] u, float vl, float width) {
     // FIXME: speed up with panama? and/or use existing scalar quantization utils in Lucene?
     byte[] result = new byte[q.length];
@@ -267,6 +250,7 @@ public class BinaryQuantizer {
     float vl, vr, width;
     byte[] byteQuery;
     int sumQ;
+    byte[] destinationPadded;
     switch (similarityFunction) {
       case VectorSimilarityFunction.EUCLIDEAN:
       case VectorSimilarityFunction.COSINE:
@@ -285,12 +269,18 @@ public class BinaryQuantizer {
         sumQ = quantResult.sumQ();
 
         // Binary String Representation
-        BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
+        // FIXME: destination must be 64 byte aligned ... should be padded coming into this function
+        // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal with it
+        byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
+        destinationPadded = new byte[discretizedDimensions];
+        BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destinationPadded);
+        destination = Arrays.copyOfRange(destinationPadded, 0, destination.length);
         corrections[0] = sumQ;
         corrections[1] = vl;
         corrections[2] = width;
         break;
       case VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT:
+
         // FIXME: clean up and pull out this stuff into a function
         corrections = new float[3];
         // FIXME: make a copy of vector so we don't overwrite it here?
@@ -299,8 +289,8 @@ public class BinaryQuantizer {
 
         // FIXME: group this and pull it out as a separate function for quanization
         // Preprocess the residual query and the quantized query
-        vl = Float.POSITIVE_INFINITY;
-        vr = Float.NEGATIVE_INFINITY;
+        vl = 1e20f;
+        vr = -1e20f;
         for (int i = 0; i < QmCn.length; i++) {
           if (QmCn[i] < vl) {
             vl = QmCn[i];
@@ -324,7 +314,12 @@ public class BinaryQuantizer {
 
         // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
         // q¯ is an approximation of q′  (scalar quantized approximation)
-        BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
+        // FIXME: destination must be 64 byte aligned ... should be padded coming into this function
+        // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal with it
+        byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
+        destinationPadded = new byte[discretizedDimensions];
+        BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destinationPadded);
+        destination = Arrays.copyOfRange(destinationPadded, 0, destination.length);
         corrections[0] = sumQ;
         corrections[1] = vl;
         corrections[2] = width;

@@ -59,6 +59,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float[][] centroids = binarizedQueryVectors.getCentroids();
       byte[] quantized = new byte[(target.length + 1) / 2];
       quantizer.quantizeForQuery(target, quantized, centroids[0]);
+      // FIXME: do I need this or can I derive it from the query vector? or target vectors?
       int discretizedDimensions = (target.length + 63) / 64 * 64;
       return new BinarizedRandomVectorScorer(
           new BinaryQueryVector[] {new BinaryQueryVector(quantized, 0, 0, 0, 0)},
@@ -111,6 +112,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       // FIXME: may have to move this in further as it's not clear that query vectors is always
       // known by a supplier
+      // FIXME: do I need this or can I derive it from the query vector? or target vectors?
       this.discretizedDimensions = (this.queryVectors.dimension() + 63) / 64 * 64;
     }
 
@@ -181,8 +183,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     // FIXME: write tests to validate how this flow works and that a score is realized
     @Override
     public float score(int targetOrd) {
-      // FIXME: write me
-      // FIXME: deal with similarity function .. for now assuming euclidean
       // FIXME: implement fastscan in the future
       // FIXME: clean up and rename the variables
 
@@ -258,6 +258,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
           //          }
           ////////
 
+          quantizedQuery = BQVectorUtils.pad(quantizedQuery, discretizedDimensions);
           qcDist = BQSpaceUtils.ipByteBinByte(quantizedQuery, binaryCode);
           float y = (float) Math.sqrt(distanceToCentroid);
           dist =
