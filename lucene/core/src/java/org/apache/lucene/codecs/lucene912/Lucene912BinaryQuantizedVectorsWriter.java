@@ -636,7 +636,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   static class FieldWriter extends FlatFieldVectorsWriter<float[]> {
     private static final long SHALLOW_SIZE = shallowSizeOfInstance(FieldWriter.class);
     private final FieldInfo fieldInfo;
-    private final InfoStream infoStream;
+    // private final InfoStream infoStream;
     private boolean finished;
     private final FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter;
     private final float[] dimensionSums;
@@ -646,7 +646,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         InfoStream infoStream,
         FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
       this.fieldInfo = fieldInfo;
-      this.infoStream = infoStream;
+      // this.infoStream = infoStream;
       this.flatFieldVectorsWriter = flatFieldVectorsWriter;
       this.dimensionSums = new float[fieldInfo.getVectorDimension()];
     }
