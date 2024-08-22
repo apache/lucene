@@ -76,10 +76,9 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
   public void testDuelPointNumericSortedWithSkipperRangeQuery() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
     config.setIndexSort(new Sort(new SortField("dv", SortField.Type.LONG, random().nextBoolean())));
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
-    config.setCodec(getCodec());
     final int numDocs = atLeast(1000);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
@@ -115,10 +114,9 @@ public class TestDocValuesQueries extends LuceneTestCase {
       if (sortedNumeric || random().nextBoolean()) {
         iw = new RandomIndexWriter(random(), dir);
       } else {
-        IndexWriterConfig config = new IndexWriterConfig();
+        IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
         config.setIndexSort(
             new Sort(new SortField("dv", SortField.Type.LONG, random().nextBoolean())));
-        config.setCodec(getCodec());
         iw = new RandomIndexWriter(random(), dir, config);
       }
       final int numDocs = atLeast(100);
@@ -180,10 +178,9 @@ public class TestDocValuesQueries extends LuceneTestCase {
       if (sortedSet || random().nextBoolean()) {
         iw = new RandomIndexWriter(random(), dir);
       } else {
-        IndexWriterConfig config = new IndexWriterConfig();
+        IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
         config.setIndexSort(
             new Sort(new SortField("dv", SortField.Type.STRING, random().nextBoolean())));
-        config.setCodec(getCodec());
         iw = new RandomIndexWriter(random(), dir, config);
       }
       final int numDocs = atLeast(100);
@@ -290,11 +287,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
   public void testDuelPointSortedSetSortedWithSkipperRangeQuery() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
     config.setIndexSort(
         new Sort(new SortField("dv", SortField.Type.STRING, random().nextBoolean())));
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
-    config.setCodec(getCodec());
     final int numDocs = atLeast(1000);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
