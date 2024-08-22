@@ -101,9 +101,10 @@ public class ToParentBlockJoinQuery extends Query {
               .rewrite(new ConstantScoreQuery(childQuery))
               .createWeight(searcher, weightScoreMode, 0f);
     } else {
-      // if the score is needed and the score mode is not max, we force the collection mode to COMPLETE because the
-      // child query cannot skip non-competitive documents.
-      // weightScoreMode.needsScores() will always be true here, but keep the check to make the logic clearer.
+      // if the score is needed and the score mode is not max, we force the collection mode to
+      // COMPLETE because the child query cannot skip non-competitive documents.
+      // weightScoreMode.needsScores() will always be true here, but keep the check to make the
+      // logic clearer.
       childWeight =
           childQuery.createWeight(
               searcher,
