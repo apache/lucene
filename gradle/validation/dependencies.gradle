@@ -75,6 +75,18 @@ configure(rootProject) {
     it.dependsOn(":versionCatalogFormatDeps")
   }
 
+  // correct crlf/ default encoding after version catalog formatting finishes.
+  tasks.matching {
+    it.path in [
+      ":versionCatalogFormatDeps"
+    ]
+  }.configureEach {
+    it.doLast {
+      ant.fixcrlf(file: it.catalogFile.get().asFile,
+        eol: "lf", fixlast: "true", encoding: "UTF-8")
+    }
+  }
+
   tasks.matching {
     it.path in [
       ":versionCatalogUpdateDeps"
