@@ -151,6 +151,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     // FIXME: does it make sense to have this here or should be higher or lower?  not sure ...
     // computed on score?
     private final int discretizedDimensions;
+    private final float sqrtDimensions;
+    private final float maxX1;
 
     public BinarizedRandomVectorScorer(
         BinaryQueryVector[] queryVectors,
@@ -162,6 +164,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       this.targetVectors = targetVectors;
       this.similarityFunction = similarityFunction;
       this.discretizedDimensions = discretizedDimensions;
+      this.sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
+      this.maxX1 = (float) (1.9 / Utils.constSqrt(discretizedDimensions - 1.0));
     }
 
     // FIXME: utils class; pull this out
@@ -179,26 +183,13 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     // FIXME: use a weak map instead -- limit the size .. LRU cache .. thread safe
     //    private final HashMap<Integer, Factors> factorsCache = new WeakHashMap<>();
 
-    // FIXME: write tests to validate how this flow works and that a score is realized
     @Override
-    public float score(int targetOrd) {
+    public float score(int targetOrd) throws IOException {
       // FIXME: implement fastscan in the future
-      // FIXME: clean up and rename the variables
 
-      // FIXME: precompute and cache these
-      float sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
-      float maxX1 = (float) (1.9 / Utils.constSqrt(discretizedDimensions - 1.0));
-
-      // FIXME: why is this an array of query vectors? ... how to return more than a single
-      // score
-      //      for(int i = 0; i < queryVectors.length; i++) {
+      // FIXME: handle multiple query vectors
       BinaryQueryVector queryVector = queryVectors[0];
 
-      // FIXME: clean this code up and break it up into two separate functions ... classes?
-      float dist;
-      float errorBound;
-      long qcDist;
-      byte[] binaryCode;
       byte[] quantizedQuery = queryVector.vector();
       float sumQ = queryVector.quantizedSum();
       float vl = queryVector.vl();
@@ -209,116 +200,108 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         case VectorSimilarityFunction.EUCLIDEAN:
         case VectorSimilarityFunction.COSINE:
         case VectorSimilarityFunction.DOT_PRODUCT:
-
-          // FIXME: throw exception with these I'm assuming??
-          float targetDistToCentroid;
-          float x0;
-          try {
-            targetDistToCentroid = targetVectors.getCentroidDistance(targetOrd);
-            binaryCode = targetVectors.vectorValue(targetOrd);
-            x0 = targetVectors.getVectorMagnitude(targetOrd);
-          } catch (IOException e) {
-            // FIXME: bad
-            throw new RuntimeException(e);
-          }
-
-          // FIXME: pre-compute these only once for each target vector ... pull this out ...
-          // somewhere?
-          // .. not sure how to enumerate the target ordinals but it seems expensive to do all of
-          // this here
-          // ... could cache these as well on each call to score using targetOrd as the lookup
-          float sqrX;
-          float error;
-          float factorPPC;
-          float factorIP;
-          //          if (factorsCache.containsKey(targetOrd)) {
-          //            Factors factors = factorsCache.get(targetOrd);
-          //            sqrX = factors.sqrX();
-          //            error = factors.error();
-          //            factorPPC = factors.PPC();
-          //            factorIP = factors.IP();
-          //          } else {
-          sqrX = targetDistToCentroid * targetDistToCentroid;
-          double xX0 = targetDistToCentroid / x0;
-          error =
-              (float)
-                  (2.0
-                      * maxX1
-                      * Math.sqrt(xX0 * xX0 - targetDistToCentroid * targetDistToCentroid));
-          factorPPC =
-              (float)
-                  (-2.0
-                      / sqrtDimensions
-                      * xX0
-                      * ((float) BQVectorUtils.popcount(binaryCode, discretizedDimensions) * 2.0
-                          - discretizedDimensions));
-          factorIP = (float) (-2.0 / sqrtDimensions * xX0);
-          //            factorsCache.put(targetOrd, new Factors(sqrX, error, factorPPC, factorIP));
-          //          }
-          ////////
-
-          qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
-          float y = (float) Math.sqrt(distanceToCentroid);
-          dist =
-              sqrX + distanceToCentroid + factorPPC * vl + (qcDist * 2 - sumQ) * factorIP * width;
-          errorBound = y * error;
-          return dist - errorBound;
+          return score(targetOrd, maxX1, sqrtDimensions, quantizedQuery, distanceToCentroid, vl, sumQ, width);
         case MAXIMUM_INNER_PRODUCT:
-          // FIXME: write me ... have impl waiting to reconcile some of the above questions before
-          // including
-          // FIXME: need a way to pull through the different corrective factors
-          // FIXME: revisit how we pass through the correct factors with a class that's just about
-          // looking up those factors
-
-          try {
-            binaryCode = targetVectors.vectorValue(targetOrd);
-          } catch (IOException e) {
-            // FIXME: bad
-            throw new RuntimeException(e);
-          }
-
-          // FIXME: TEMPORARY FACTORS - have to precompute several of these
-          float[] C = new float[0]; // centroids[c];   // FIXME: supply from query quantization
-
-          float[] QmC =
-              new float
-                  [0]; // BQVectorUtils.subtract(query, C); // FIXME: supply from query quantization
-          float normQC = BQVectorUtils.norm(QmC); // FIXME: supply from query quantization
-
-          float qDotC =
-              0.0f; // VectorUtil.dotProduct(query, C); // FIXME: supply from query quantization
-          float cDotC = VectorUtil.dotProduct(C, C);
-          ////////
-
-          // FIXME: pre-compute these only once for each target vector ... pull this out ...
-          error = 0.0f;
-          ////////
-
-          qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
-
-          float normOC = 0.0f; // FIXME: suppy from indexing
-          float oDotC = 0.0f; // FIXME: suppy from indexing
-
-          float sqrtD = (float) Math.sqrt(discretizedDimensions);
-
-          float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
-
-          float ooq = 0.0f; // FIXME: supply from indexing
-
-          float estimatedDot =
-              (2 * width / sqrtD * qcDist
-                      + 2 * vl / sqrtD * xbSum
-                      - width / sqrtD * sumQ
-                      - sqrtD * vl)
-                  / ooq;
-
-          dist = normQC * normOC * estimatedDot + oDotC + qDotC - cDotC;
-          errorBound = 0.0f; // FIXME: prior error bound computation: y * error;
-          return dist + errorBound;
+          return scoreMIP(targetOrd, quantizedQuery, width, vl, sumQ);
         default:
           throw new UnsupportedOperationException(
               "Unsupported similarity function: " + similarityFunction);
       }
+    }
+
+    private float scoreMIP(int targetOrd, byte[] quantizedQuery, float width, float vl, float sumQ) throws IOException {
+      float errorBound;
+      float error;
+      byte[] binaryCode;
+      float dist;
+      long qcDist;
+      // FIXME: need a way to pull through the different corrective factors
+
+      binaryCode = targetVectors.vectorValue(targetOrd);
+
+      // FIXME: precompute these somewhere where we have access to a centroid
+      ////////// VVVVVV ////////
+      float[] C = new float[0]; // centroids[c];   // FIXME: supply from query quantization
+
+      float[] QmC =
+          new float
+              [0]; // BQVectorUtils.subtract(query, C); // FIXME: supply from query quantization
+      float normQC = BQVectorUtils.norm(QmC); // FIXME: supply from query quantization
+
+      float qDotC =
+          0.0f; // VectorUtil.dotProduct(query, C); // FIXME: supply from query quantization
+      float cDotC = VectorUtil.dotProduct(C, C);
+      //////// ^^^^^^^ ////////
+
+      // FIXME: pre-compute these only once for each target vector ... pull this out ...
+      error = 0.0f;
+      ////////
+
+      qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
+
+      float normOC = 0.0f; // FIXME: suppy from indexing
+      float oDotC = 0.0f; // FIXME: suppy from indexing
+
+      float sqrtD = (float) Math.sqrt(discretizedDimensions);
+
+      float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
+
+      float ooq = 0.0f; // FIXME: supply from indexing
+
+      float estimatedDot =
+          (2 * width / sqrtD * qcDist
+                  + 2 * vl / sqrtD * xbSum
+                  - width / sqrtD * sumQ
+                  - sqrtD * vl)
+              / ooq;
+
+      dist = normQC * normOC * estimatedDot + oDotC + qDotC - cDotC;
+      // FIXME: need a true error computation here; don't know what that is for MIP
+      errorBound = 0.0f; // FIXME: prior error bound computation: y * error;
+      return dist + errorBound;
+    }
+
+    private float score(int targetOrd, float maxX1, float sqrtDimensions, byte[] quantizedQuery, float distanceToCentroid, float vl, float sumQ, float width) throws IOException {
+      byte[] binaryCode;
+      long qcDist;
+      float errorBound;
+      float dist;
+      float targetDistToCentroid = targetVectors.getCentroidDistance(targetOrd);
+      binaryCode = targetVectors.vectorValue(targetOrd);
+      float x0 = targetVectors.getVectorMagnitude(targetOrd);
+
+      // FIXME: pre-compute these only once for each target vector ... pull this out ...
+      // .. not sure how to enumerate the target ordinals but it seems expensive to this here
+      // ... could cache these as well on each call to score using targetOrd as the lookup
+      float sqrX;
+      float error;
+      float factorPPC;
+      float factorIP;
+      //          if (factorsCache.containsKey(targetOrd)) {
+      //            Factors factors = factorsCache.get(targetOrd);
+      //            sqrX = factors.sqrX();
+      //            error = factors.error();
+      //            factorPPC = factors.PPC();
+      //            factorIP = factors.IP();
+      //          } else {
+      sqrX = targetDistToCentroid * targetDistToCentroid;
+      double xX0 = targetDistToCentroid / x0;
+      error = (float) (2.0 * maxX1
+                  * Math.sqrt(xX0 * xX0 - targetDistToCentroid * targetDistToCentroid));
+      factorPPC = (float) (-2.0 / sqrtDimensions * xX0
+                  * ((float) BQVectorUtils.popcount(binaryCode, discretizedDimensions) * 2.0
+                      - discretizedDimensions));
+      factorIP = (float) (-2.0 / sqrtDimensions * xX0);
+      //            factorsCache.put(targetOrd, new Factors(sqrX, error, factorPPC, factorIP));
+      //          }
+      ////////
+
+      qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
+      float y = (float) Math.sqrt(distanceToCentroid);
+      dist =
+          sqrX + distanceToCentroid + factorPPC * vl + (qcDist * 2 - sumQ) * factorIP * width;
+      errorBound = y * error;
+      return dist - errorBound;
     }
   }
 }

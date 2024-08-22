@@ -24,14 +24,9 @@ import java.util.Random;
 
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
-  // private static final int QUERY_PROJECTIONS = 4;
-
-  // private static final VectorSpecies<Float> FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
-
   private final int discretizedDimensions;
 
-  // discretizedDimensions of floats random numbers sampled from the uniform distribution
-  // [0,1]
+  // dim floats random numbers sampled from the uniform distribution [0,1]
   private final float[] u;
 
   private final VectorSimilarityFunction similarityFunction;
@@ -50,6 +45,9 @@ public class BinaryQuantizer {
 
   // FIXME: move this out to vector utils?
   private static float[] subset(float[] a, int lastColumn) {
+    if(a.length == lastColumn) {
+      return a;
+    }
     return ArrayUtil.copyOfSubArray(a, 0, lastColumn);
   }
 
@@ -121,42 +119,39 @@ public class BinaryQuantizer {
   private record SubspaceOutput(byte[] packedBinaryVector, float projection) {}
 
   private SubspaceOutput generateSubSpace(float[] vector, float[] centroid) {
-
-    // FIXME: do common things once across generateSubSpace and generateSubSpaceMIP
-
     // typically no-op if dimensions/64
     float[] paddedCentroid = BQVectorUtils.pad(centroid, discretizedDimensions);
     float[] paddedVector = BQVectorUtils.pad(vector, discretizedDimensions);
+
     BQVectorUtils.subtractInPlace(paddedVector, paddedCentroid);
 
     // The inner product between the data vector and the quantized data vector
     float norm = BQVectorUtils.norm(paddedVector);
-    float[] vectorSubset =
-        subset(paddedVector, discretizedDimensions); // FIXME: typically no-op if D/64?
-    removeSignAndDivide(vectorSubset, (float) Math.pow(discretizedDimensions, 0.5));
-    float projection = sumAndNormalize(vectorSubset, norm);
+
     byte[] packedBinaryVector = packAsBinary(paddedVector, discretizedDimensions);
+
+    paddedVector = subset(paddedVector, discretizedDimensions); // typically no-op if dimensions/64
+    removeSignAndDivide(paddedVector, (float) Math.pow(discretizedDimensions, 0.5));
+    float projection = sumAndNormalize(paddedVector, norm);
+
     return new SubspaceOutput(packedBinaryVector, projection);
   }
 
   record SubspaceOutputMIP(
       byte[] packedBinaryVector, float xbSum, float oDotC, float normOC, float OOQ) {}
 
-  // FIXME: write me & come up with a better name for this function
   private SubspaceOutputMIP generateSubSpaceMIP(float[] vector, float[] centroid) {
 
     // typically no-op if dimensions/64
     float[] paddedCentroid = BQVectorUtils.pad(centroid, discretizedDimensions);
     float[] paddedVector = BQVectorUtils.pad(vector, discretizedDimensions);
+
     float oDotC = VectorUtil.dotProduct(paddedVector, paddedCentroid);
     BQVectorUtils.subtractInPlace(paddedVector, paddedCentroid);
 
     float normOC = BQVectorUtils.norm(paddedVector);
-    float[] normOMinusC = BQVectorUtils.divide(paddedVector, normOC); // == OmC / norm(OmC)
+    float[] normOMinusC = BQVectorUtils.divide(paddedVector, normOC); // OmC / norm(OmC)
 
-    float[] vectorSubset =
-        subset(paddedVector, discretizedDimensions); // FIXME: typically no-op if D/64?
-    removeSignAndDivide(vectorSubset, (float) Math.pow(discretizedDimensions, 0.5));
     byte[] packedBinaryVector = packAsBinary(paddedVector, discretizedDimensions);
 
     // FIXME: pull this out to a function
