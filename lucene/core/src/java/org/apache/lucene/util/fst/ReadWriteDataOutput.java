@@ -78,10 +78,10 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
     assert byteBuffers != null; // freeze() must be called first
     if (byteBuffers.size() == 1) {
       // use a faster implementation for single-block case
-      return new ReverseBytesReader(byteBuffers.get(0).array());
+      return new ReverseBytesReader(byteBuffers.getFirst().array());
     }
     return new FST.BytesReader() {
-      private byte[] current = byteBuffers.get(0).array();
+      private byte[] current = byteBuffers.getFirst().array();
       private int nextBuffer = -1;
       private int nextRead;
 
