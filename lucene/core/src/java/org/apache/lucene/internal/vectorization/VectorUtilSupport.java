@@ -44,4 +44,7 @@ public interface VectorUtilSupport {
 
   /** Returns the sum of squared differences of the two byte vectors. */
   int squareDistance(byte[] a, byte[] b);
+
+  /* Returns the ... TODO ... */
+  long ipByteBinByte(byte[] q, byte[] d);
 }

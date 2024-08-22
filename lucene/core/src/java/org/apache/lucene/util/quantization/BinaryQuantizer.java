@@ -16,21 +16,18 @@
  */
 package org.apache.lucene.util.quantization;
 
-// import jdk.incubator.vector.ByteVector;
-// import jdk.incubator.vector.FloatVector;
-// import jdk.incubator.vector.VectorOperators;
-// import jdk.incubator.vector.VectorSpecies;
 import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 
 // FIXME: replace Arrays.copyOf with System.arrayCopy?
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
-  private static final int QUERY_PROJECTIONS = 4;
+  // private static final int QUERY_PROJECTIONS = 4;
 
-  //  private static final VectorSpecies<Float> FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
+  // private static final VectorSpecies<Float> FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
 
   private final int discretizedDimensions;
 
@@ -54,7 +51,7 @@ public class BinaryQuantizer {
 
   // FIXME: move this out to vector utils?
   private static float[] subset(float[] a, int lastColumn) {
-    return Arrays.copyOf(a, lastColumn);
+    return ArrayUtil.copyOfSubArray(a, 0, lastColumn);
   }
 
   // FIXME: move this out to vector utils
@@ -246,7 +243,7 @@ public class BinaryQuantizer {
   public float[] quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     float[] corrections = null;
 
-    float distToCentroid = VectorUtil.squareDistance(vector, centroid);
+    // float distToCentroid = VectorUtil.squareDistance(vector, centroid);
     float vl, vr, width;
     byte[] byteQuery;
     int sumQ;

@@ -817,7 +817,7 @@ public class RegExp {
 
   void toStringTree(StringBuilder b, String indent) {
     switch (kind) {
-        // binary
+      // binary
       case REGEXP_UNION:
       case REGEXP_CONCATENATION:
       case REGEXP_INTERSECTION:
@@ -827,7 +827,7 @@ public class RegExp {
         exp1.toStringTree(b, indent + "  ");
         exp2.toStringTree(b, indent + "  ");
         break;
-        // unary
+      // unary
       case REGEXP_OPTIONAL:
       case REGEXP_REPEAT:
       case REGEXP_COMPLEMENT:

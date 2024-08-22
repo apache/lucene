@@ -412,6 +412,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   void finish() throws IOException {
+    // System.out.println("finish " + frozen);
     connectComponents();
     frozen = true;
   }
@@ -438,7 +439,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       maxConn *= 2;
     }
     List<Component> components = HnswUtil.components(hnsw, level, notFullyConnected, maxConn);
-    // System.out.println("HnswGraphBuilder.connectComponents " + components);
+    // System.out.println("HnswGraphBuilder.connectComponents level=" + level + ": " + components);
     boolean result = true;
     if (components.size() > 1) {
       // connect other components to the largest one
@@ -453,6 +454,9 @@ public class HnswGraphBuilder implements HnswBuilder {
       int[] eps = new int[1];
       for (Component c : components) {
         if (c != c0) {
+          if (c.start() == NO_MORE_DOCS) {
+            continue;
+          }
           beam.clear();
           eps[0] = c0.start();
           RandomVectorScorer scorer = scorerSupplier.scorer(c.start());

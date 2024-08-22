@@ -42,7 +42,6 @@ public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVecto
 
   /**
    * @return coarse grained centroids for the vectors
-   * @throws IOException
    */
   float[][] getCentroids() throws IOException;
 

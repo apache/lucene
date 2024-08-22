@@ -259,7 +259,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
           ////////
 
           quantizedQuery = BQVectorUtils.pad(quantizedQuery, discretizedDimensions);
-          qcDist = BQSpaceUtils.ipByteBinByte(quantizedQuery, binaryCode);
+          qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
           float y = (float) Math.sqrt(distanceToCentroid);
           dist =
               sqrX + distanceToCentroid + factorPPC * vl + (qcDist * 2 - sumQ) * factorIP * width;
@@ -296,7 +296,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
           error = 0.0f;
           ////////
 
-          qcDist = BQSpaceUtils.ipByteBinByte(quantizedQuery, binaryCode);
+          qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
 
           float normOC = 0.0f; // FIXME: suppy from indexing
           float oDotC = 0.0f; // FIXME: suppy from indexing

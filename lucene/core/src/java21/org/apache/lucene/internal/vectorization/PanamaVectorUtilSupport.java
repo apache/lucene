@@ -31,6 +31,7 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.Vector;
+import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
@@ -52,20 +53,15 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
-  private static final VectorSpecies<Integer> INT_SPECIES;
+  private static final VectorSpecies<Integer> INT_SPECIES =
+      PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
 
   static final int VECTOR_BITSIZE;
-  static final boolean HAS_FAST_INTEGER_VECTORS;
 
   static {
-    // default to platform supported bitsize
-    int vectorBitSize = VectorShape.preferredShape().vectorBitSize();
-    // but allow easy overriding for testing
-    vectorBitSize = VectorizationProvider.TESTS_VECTOR_SIZE.orElse(vectorBitSize);
-    INT_SPECIES = VectorSpecies.of(int.class, VectorShape.forBitSize(vectorBitSize));
-    VECTOR_BITSIZE = INT_SPECIES.vectorBitSize();
+    VECTOR_BITSIZE = PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
     FLOAT_SPECIES = INT_SPECIES.withLanes(float.class);
     // compute BYTE/SHORT sizes relative to preferred integer vector size
     if (VECTOR_BITSIZE >= 256) {
@@ -76,11 +72,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       BYTE_SPECIES = null;
       SHORT_SPECIES = null;
     }
-    // hotspot misses some SSE intrinsics, workaround it
-    // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
-    boolean isAMD64withoutAVX2 = Constants.OS_ARCH.equals("amd64") && VECTOR_BITSIZE < 256;
-    HAS_FAST_INTEGER_VECTORS =
-        VectorizationProvider.TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
@@ -320,7 +311,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound(a.byteSize());
@@ -414,7 +405,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         } else if (VECTOR_BITSIZE == 256) {
           i += ByteVector.SPECIES_128.loopBound(packed.length);
           res += dotProductBody256Int4Packed(unpacked, packed, i);
-        } else if (HAS_FAST_INTEGER_VECTORS) {
+        } else if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
           i += ByteVector.SPECIES_64.loopBound(packed.length);
           res += dotProductBody128Int4Packed(unpacked, packed, i);
         }
@@ -430,7 +421,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     } else {
       if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
         return dotProduct(a, b);
-      } else if (a.length >= 32 && HAS_FAST_INTEGER_VECTORS) {
+      } else if (a.length >= 32 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
         i += ByteVector.SPECIES_128.loopBound(a.length);
         res += int4DotProductBody128(a, b, i);
       }
@@ -588,7 +579,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
       final float[] ret;
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound((int) a.byteSize());
@@ -711,7 +702,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
       if (VECTOR_BITSIZE >= 256) {
         i += BYTE_SPECIES.loopBound((int) a.byteSize());
         res += squareDistanceBody256(a, b, i);
@@ -770,5 +761,79 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     // reduce
     return acc1.add(acc2).reduceLanes(ADD);
+  }
+
+  @Override
+  public long ipByteBinByte(byte[] q, byte[] d) {
+    if (VECTOR_BITSIZE >= 128) {
+      return ipByteBinByte128(MemorySegment.ofArray(q), MemorySegment.ofArray(d));
+    }
+    throw new UnsupportedOperationException("Vector bit size=" + VECTOR_BITSIZE);
+  }
+
+  // TODO: document the max dims size
+  public static long ipByteBinByte128(MemorySegment q, MemorySegment d) {
+    long ret = 0;
+    long subRet0 = 0;
+    long subRet1 = 0;
+    long subRet2 = 0;
+    long subRet3 = 0;
+
+    final int limit = (int) ByteVector.SPECIES_128.loopBound(d.byteSize());
+    // iterate in chunks of 256 bytes to ensure we don't overflow the accumulator (256bytes/16lanes=16itrs)
+    for (int j =0; j < limit; j += 256) {
+      ByteVector acc0 = ByteVector.zero(ByteVector.SPECIES_128);
+      ByteVector acc1 = ByteVector.zero(ByteVector.SPECIES_128);
+      ByteVector acc2 = ByteVector.zero(ByteVector.SPECIES_128);
+      ByteVector acc3 = ByteVector.zero(ByteVector.SPECIES_128);
+      int innerLimit = Math.min(limit - j, 256);
+      for (int k = 0; k < innerLimit; k += ByteVector.SPECIES_128.length()) {
+        ByteVector vd = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, d, j + k, LITTLE_ENDIAN);
+        ByteVector vq0 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k, LITTLE_ENDIAN);
+        ByteVector vq1 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + d.byteSize(), LITTLE_ENDIAN);
+        ByteVector vq2 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + 2 * d.byteSize(), LITTLE_ENDIAN);
+        ByteVector vq3 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + 3 * d.byteSize(), LITTLE_ENDIAN);
+        ByteVector vres0 = vq0.and(vd);
+        ByteVector vres1 = vq1.and(vd);
+        ByteVector vres2 = vq2.and(vd);
+        ByteVector vres3 = vq3.and(vd);
+        vres0 = vres0.lanewise(VectorOperators.BIT_COUNT);
+        vres1 = vres1.lanewise(VectorOperators.BIT_COUNT);
+        vres2 = vres2.lanewise(VectorOperators.BIT_COUNT);
+        vres3 = vres3.lanewise(VectorOperators.BIT_COUNT);
+        acc0 = acc0.add(vres0);
+        acc1 = acc1.add(vres1);
+        acc2 = acc2.add(vres2);
+        acc3 = acc3.add(vres3);
+      }
+      ShortVector sumShort1 = acc0.reinterpretAsShorts().and((short) 0xFF);
+      ShortVector sumShort2 = acc0.reinterpretAsShorts().lanewise(VectorOperators.LSHR, 8);
+      subRet0 += sumShort1.add(sumShort2).reduceLanes(VectorOperators.ADD);
+
+      sumShort1 = acc1.reinterpretAsShorts().and((short) 0xFF);
+      sumShort2 = acc1.reinterpretAsShorts().lanewise(VectorOperators.LSHR, 8);
+      subRet1 += sumShort1.add(sumShort2).reduceLanes(VectorOperators.ADD);
+
+      sumShort1 = acc2.reinterpretAsShorts().and((short) 0xFF);
+      sumShort2 = acc2.reinterpretAsShorts().lanewise(VectorOperators.LSHR, 8);
+      subRet2 += sumShort1.add(sumShort2).reduceLanes(VectorOperators.ADD);
+
+      sumShort1 = acc3.reinterpretAsShorts().and((short) 0xFF);
+      sumShort2 = acc3.reinterpretAsShorts().lanewise(VectorOperators.LSHR, 8);
+      subRet3 += sumShort1.add(sumShort2).reduceLanes(VectorOperators.ADD);
+    }
+    // tail as bytes
+    for (int r = limit; r < d.byteSize(); r++) {
+      byte dByte = d.get(JAVA_BYTE, r);
+      subRet0 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r)) & 0xFF); // TODO: DO I need the 0xFF?
+      subRet1 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r + d.byteSize())) & 0xFF);
+      subRet2 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r + 2 * d.byteSize())) & 0xFF);
+      subRet3 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r + 3 * d.byteSize())) & 0xFF);
+    }
+    ret += subRet0;
+    ret += subRet1 << 1;
+    ret += subRet2 << 2;
+    ret += subRet3 << 3;
+    return ret;
   }
 }

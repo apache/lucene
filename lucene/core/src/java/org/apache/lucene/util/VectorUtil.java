@@ -307,4 +307,15 @@ public final class VectorUtil {
     }
     return v;
   }
+
+  // FIXME: allow for a settable B_QUERY of 4 or 2
+  public static final short B_QUERY = 4;
+
+  /** Return the  .. TODO ..*/
+  public static long ipByteBinByte(byte[] q, byte[] d) {
+    if (q.length != d.length * B_QUERY) {
+      throw new IllegalArgumentException("vector dimensions incompatible: " + q.length + "!= 4 x " + d.length);
+    }
+    return IMPL.ipByteBinByte(q, d);
+  }
 }

@@ -253,6 +253,11 @@ Other
 
 * GITHUB#13499: Remove usage of TopScoreDocCollector + TopFieldCollector deprecated methods (#create, #createSharedManager) (Jakub Slowinski)
 
+Build
+---------------------
+
+* GITHUB#13649: Fix eclipse ide settings generation #13649 (Uwe Schindler, Dawid Weiss)
+
 ======================== Lucene 9.12.0 =======================
 
 API Changes
@@ -351,6 +356,12 @@ Optimizations
   (Adrien Grand)
 
 * GITHUB#13581: OnHeapHnswGraph no longer allocates a lock for every graph node (Mike Sokolov)
+
+* GITHUB#13636, GITHUB#13658: Optimizations to the decoding logic of blocks of
+  postings. (Adrien Grand, Uwe Schindler, Greg Miller)
+
+* GITHUB##13644: Improve NumericComparator competitive iterator logic by comparing the missing value with the top
+  value even after the hit queue is full (Pan Guixin)
 
 Changes in runtime behavior
 ---------------------

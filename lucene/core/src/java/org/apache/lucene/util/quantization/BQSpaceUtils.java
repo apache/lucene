@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.util.quantization;
 
 import org.apache.lucene.util.BitUtil;
@@ -6,28 +22,9 @@ public class BQSpaceUtils {
 
   // FIXME: allow for a settable B_QUERY of 4 or 2
   public static final short B_QUERY = 4;
-  //  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
-  private static final byte BYTE_MASK = (1 << B_QUERY) - 1;
 
-  public static long ipByteBinByte(byte[] q, byte[] d) {
-    long ret = 0;
-    int size = d.length;
-    for (int i = 0; i < B_QUERY; i++) {
-      int r = 0;
-      long subRet = 0;
-      for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
-        subRet +=
-            Integer.bitCount(
-                (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
-                    & (int) BitUtil.VH_NATIVE_INT.get(d, r));
-      }
-      for (; r < d.length; r++) {
-        subRet += Integer.bitCount((q[i * size + r] & d[i]) & 0xFF);
-      }
-      ret += subRet << i;
-    }
-    return ret;
-  }
+  //  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
+  // private static final byte BYTE_MASK = (1 << B_QUERY) - 1;
 
   public static void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
     int byte_mask = 1;
