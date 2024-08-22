@@ -22,6 +22,7 @@ public class BQSpaceUtils {
 
   // FIXME: allow for a settable B_QUERY of 4 or 2
   public static final short B_QUERY = 4;
+
   //  private static final VectorSpecies<Byte> SPECIES = ByteVector.SPECIES_128;
   // private static final byte BYTE_MASK = (1 << B_QUERY) - 1;
 
