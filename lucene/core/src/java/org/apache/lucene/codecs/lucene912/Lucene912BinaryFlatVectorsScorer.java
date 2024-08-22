@@ -200,7 +200,15 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         case VectorSimilarityFunction.EUCLIDEAN:
         case VectorSimilarityFunction.COSINE:
         case VectorSimilarityFunction.DOT_PRODUCT:
-          return score(targetOrd, maxX1, sqrtDimensions, quantizedQuery, distanceToCentroid, vl, sumQ, width);
+          return score(
+              targetOrd,
+              maxX1,
+              sqrtDimensions,
+              quantizedQuery,
+              distanceToCentroid,
+              vl,
+              sumQ,
+              width);
         case MAXIMUM_INNER_PRODUCT:
           return scoreMIP(targetOrd, quantizedQuery, width, vl, sumQ);
         default:
@@ -209,7 +217,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       }
     }
 
-    private float scoreMIP(int targetOrd, byte[] quantizedQuery, float width, float vl, float sumQ) throws IOException {
+    private float scoreMIP(int targetOrd, byte[] quantizedQuery, float width, float vl, float sumQ)
+        throws IOException {
       float errorBound;
       float error;
       byte[] binaryCode;
@@ -249,10 +258,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float ooq = 0.0f; // FIXME: supply from indexing
 
       float estimatedDot =
-          (2 * width / sqrtD * qcDist
-                  + 2 * vl / sqrtD * xbSum
-                  - width / sqrtD * sumQ
-                  - sqrtD * vl)
+          (2 * width / sqrtD * qcDist + 2 * vl / sqrtD * xbSum - width / sqrtD * sumQ - sqrtD * vl)
               / ooq;
 
       dist = normQC * normOC * estimatedDot + oDotC + qDotC - cDotC;
@@ -261,7 +267,16 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       return dist + errorBound;
     }
 
-    private float score(int targetOrd, float maxX1, float sqrtDimensions, byte[] quantizedQuery, float distanceToCentroid, float vl, float sumQ, float width) throws IOException {
+    private float score(
+        int targetOrd,
+        float maxX1,
+        float sqrtDimensions,
+        byte[] quantizedQuery,
+        float distanceToCentroid,
+        float vl,
+        float sumQ,
+        float width)
+        throws IOException {
       byte[] binaryCode;
       long qcDist;
       float errorBound;
@@ -286,9 +301,14 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       //          } else {
       sqrX = targetDistToCentroid * targetDistToCentroid;
       double xX0 = targetDistToCentroid / x0;
-      error = (float) (2.0 * maxX1
-                  * Math.sqrt(xX0 * xX0 - targetDistToCentroid * targetDistToCentroid));
-      factorPPC = (float) (-2.0 / sqrtDimensions * xX0
+      error =
+          (float)
+              (2.0 * maxX1 * Math.sqrt(xX0 * xX0 - targetDistToCentroid * targetDistToCentroid));
+      factorPPC =
+          (float)
+              (-2.0
+                  / sqrtDimensions
+                  * xX0
                   * ((float) BQVectorUtils.popcount(binaryCode, discretizedDimensions) * 2.0
                       - discretizedDimensions));
       factorIP = (float) (-2.0 / sqrtDimensions * xX0);
@@ -298,8 +318,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
       float y = (float) Math.sqrt(distanceToCentroid);
-      dist =
-          sqrX + distanceToCentroid + factorPPC * vl + (qcDist * 2 - sumQ) * factorIP * width;
+      dist = sqrX + distanceToCentroid + factorPPC * vl + (qcDist * 2 - sumQ) * factorIP * width;
       errorBound = y * error;
       return dist - errorBound;
     }

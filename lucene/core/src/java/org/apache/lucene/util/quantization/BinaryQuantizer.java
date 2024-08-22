@@ -21,7 +21,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 
-// FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
   private final int discretizedDimensions;
 
@@ -44,7 +43,7 @@ public class BinaryQuantizer {
 
   // FIXME: move this out to vector utils?
   private static float[] subset(float[] a, int lastColumn) {
-    if(a.length == lastColumn) {
+    if (a.length == lastColumn) {
       return a;
     }
     return ArrayUtil.copyOfSubArray(a, 0, lastColumn);
@@ -153,7 +152,14 @@ public class BinaryQuantizer {
 
     byte[] packedBinaryVector = packAsBinary(paddedVector, discretizedDimensions);
 
-    // FIXME: pull this out to a function
+    float OOQ = computerOOQ(vector, normOMinusC, packedBinaryVector);
+
+    short xbSum = (short) BQVectorUtils.popcount(packedBinaryVector, discretizedDimensions);
+
+    return new SubspaceOutputMIP(packedBinaryVector, xbSum, oDotC, normOC, OOQ);
+  }
+
+  private float computerOOQ(float[] vector, float[] normOMinusC, byte[] packedBinaryVector) {
     float OOQ = 0f;
     for (int j = 0; j < vector.length / 8; j++) {
       for (int r = 0; r < 8; r++) {
@@ -163,10 +169,7 @@ public class BinaryQuantizer {
       }
     }
     OOQ = OOQ / sqrtDimensions;
-
-    short xbSum = (short) BQVectorUtils.popcount(packedBinaryVector, discretizedDimensions);
-
-    return new SubspaceOutputMIP(packedBinaryVector, xbSum, oDotC, normOC, OOQ);
+    return OOQ;
   }
 
   // FIXME: move this to a utils class
@@ -240,25 +243,23 @@ public class BinaryQuantizer {
   public float[] quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     float[] corrections = null;
 
-    // float distToCentroid = VectorUtil.squareDistance(vector, centroid);
-    float vl, vr, width;
+    float lower, upper, width;
     byte[] byteQuery;
     int sumQ;
-    byte[] destinationPadded;
+    float[] range;
     switch (similarityFunction) {
       case VectorSimilarityFunction.EUCLIDEAN:
       case VectorSimilarityFunction.COSINE:
       case VectorSimilarityFunction.DOT_PRODUCT:
-        // FIXME: clean up and pull out this stuff into a function
         corrections = new float[3];
 
-        // FIXME: group this and pull it out as a separate function for quanization
-        float[] v = range(vector, centroid);
-        vl = v[0];
-        vr = v[1];
-        width = (vr - vl) / ((1 << BQSpaceUtils.B_QUERY) - 1);
+        range = range(vector, centroid);
+        lower = range[0];
+        upper = range[1];
+        // Δ := (𝑣𝑟 − 𝑣𝑙)/(2𝐵𝑞 − 1)
+        width = (upper - lower) / ((1 << BQSpaceUtils.B_QUERY) - 1);
 
-        QuantResult quantResult = quantize(vector, centroid, u, vl, width);
+        QuantResult quantResult = quantize(vector, centroid, u, lower, width);
         byteQuery = quantResult.result();
         sumQ = quantResult.sumQ();
 
@@ -267,38 +268,28 @@ public class BinaryQuantizer {
         byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
         BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
         corrections[0] = sumQ;
-        corrections[1] = vl;
+        corrections[1] = lower;
         corrections[2] = width;
         break;
       case VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT:
-
-        // FIXME: clean up and pull out this stuff into a function
         corrections = new float[3];
         // FIXME: make a copy of vector so we don't overwrite it here?
         BQVectorUtils.subtract(vector, centroid);
-        float[] QmCn = BQVectorUtils.divide(vector, BQVectorUtils.norm(vector));
+        float[] qmCn = BQVectorUtils.divide(vector, BQVectorUtils.norm(vector));
 
         // FIXME: group this and pull it out as a separate function for quanization
         // Preprocess the residual query and the quantized query
-        vl = 1e20f;
-        vr = -1e20f;
-        for (int i = 0; i < QmCn.length; i++) {
-          if (QmCn[i] < vl) {
-            vl = QmCn[i];
-          }
-          if (QmCn[i] > vr) {
-            vr = QmCn[i];
-          }
-        }
-
+        range = range(qmCn, centroid);
+        lower = range[0];
+        upper = range[1];
         // Δ := (𝑣𝑟 − 𝑣𝑙)/(2𝐵𝑞 − 1)
-        width = (vr - vl) / ((1 << BQSpaceUtils.B_QUERY) - 1);
+        width = (upper - lower) / ((1 << BQSpaceUtils.B_QUERY) - 1);
 
-        byteQuery = new byte[QmCn.length];
+        byteQuery = new byte[qmCn.length];
         float oneOverWidth = 1.0f / width;
         sumQ = 0;
-        for (int i = 0; i < QmCn.length; i++) {
-          byte res = (byte) ((QmCn[i] - vl) * oneOverWidth + u[i]);
+        for (int i = 0; i < qmCn.length; i++) {
+          byte res = (byte) ((qmCn[i] - lower) * oneOverWidth + u[i]);
           byteQuery[i] = res;
           sumQ += res;
         }
@@ -309,7 +300,7 @@ public class BinaryQuantizer {
         byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
         BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
         corrections[0] = sumQ;
-        corrections[1] = vl;
+        corrections[1] = lower;
         corrections[2] = width;
         break;
     }
