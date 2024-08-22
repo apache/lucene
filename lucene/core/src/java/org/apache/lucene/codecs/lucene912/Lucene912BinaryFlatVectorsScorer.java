@@ -169,7 +169,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     }
 
     // FIXME: utils class; pull this out
-    public class Utils {
+    private class Utils {
       public static double sqrtNewtonRaphson(double x, double curr, double prev) {
         return (curr == prev) ? curr : sqrtNewtonRaphson(x, 0.5 * (curr + x / curr), curr);
       }
@@ -248,8 +248,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
 
-      float normOC = 0.0f; // FIXME: suppy from indexing
-      float oDotC = 0.0f; // FIXME: suppy from indexing
+      float normOC = 0.0f; // FIXME: supply from indexing
+      float oDotC = 0.0f; // FIXME: supply from indexing
 
       float sqrtD = (float) Math.sqrt(discretizedDimensions);
 
