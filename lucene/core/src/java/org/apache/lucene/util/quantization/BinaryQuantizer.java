@@ -16,13 +16,12 @@
  */
 package org.apache.lucene.util.quantization;
 
-import java.util.Arrays;
-import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 
-// FIXME: replace Arrays.copyOf with System.arrayCopy?
+import java.util.Random;
+
 // FIXME: write a couple of high level tests for now
 public class BinaryQuantizer {
   // private static final int QUERY_PROJECTIONS = 4;
@@ -204,6 +203,8 @@ public class BinaryQuantizer {
         // FIXME: pass in a copy of vector as we will make changes to it in this function?
         SubspaceOutput subspaceOutput = generateSubSpace(vector, centroid);
         corrections = new float[2];
+        // FIXME: quantize these values so we are passing back 1 byte values for all three of these
+        // instead of floats
         corrections[0] = distToCentroid;
         corrections[1] = subspaceOutput.projection();
         System.arraycopy(
@@ -268,13 +269,9 @@ public class BinaryQuantizer {
         sumQ = quantResult.sumQ();
 
         // Binary String Representation
-        // FIXME: destination must be 64 byte aligned ... should be padded coming into this function
-        // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal with
-        // it
+        // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal
         byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
-        destinationPadded = new byte[discretizedDimensions];
-        BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destinationPadded);
-        destination = Arrays.copyOfRange(destinationPadded, 0, destination.length);
+        BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
         corrections[0] = sumQ;
         corrections[1] = vl;
         corrections[2] = width;
@@ -314,13 +311,9 @@ public class BinaryQuantizer {
 
         // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
         // q¯ is an approximation of q′  (scalar quantized approximation)
-        // FIXME: destination must be 64 byte aligned ... should be padded coming into this function
-        // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal with
-        // it
+        // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal
         byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
-        destinationPadded = new byte[discretizedDimensions];
-        BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destinationPadded);
-        destination = Arrays.copyOfRange(destinationPadded, 0, destination.length);
+        BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
         corrections[0] = sumQ;
         corrections[1] = vl;
         corrections[2] = width;

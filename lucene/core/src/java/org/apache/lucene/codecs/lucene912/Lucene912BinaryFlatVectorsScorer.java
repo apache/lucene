@@ -23,6 +23,7 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
@@ -56,10 +57,9 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       // TODO, implement & handle more than one coarse grained cluster
       BinaryQuantizer quantizer = binarizedQueryVectors.getQuantizer();
       float[][] centroids = binarizedQueryVectors.getCentroids();
-      byte[] quantized = new byte[(target.length + 1) / 2];
-      quantizer.quantizeForQuery(target, quantized, centroids[0]);
-      // FIXME: do I need this or can I derive it from the query vector? or target vectors?
       int discretizedDimensions = (target.length + 63) / 64 * 64;
+      byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
+      quantizer.quantizeForQuery(target, quantized, centroids[0]);
       return new BinarizedRandomVectorScorer(
           new BinaryQueryVector[] {new BinaryQueryVector(quantized, 0, 0, 0, 0)},
           binarizedQueryVectors,
@@ -257,7 +257,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
           //          }
           ////////
 
-          quantizedQuery = BQVectorUtils.pad(quantizedQuery, discretizedDimensions);
           qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
           float y = (float) Math.sqrt(distanceToCentroid);
           dist =

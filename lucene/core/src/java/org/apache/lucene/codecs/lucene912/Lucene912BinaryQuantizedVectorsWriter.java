@@ -375,6 +375,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         docV = floatVectorValues.nextDoc()) {
       float[] floatVector = floatVectorValues.vectorValue();
       for (int i = 0; i < centroids.length; i++) {
+        // FIXME: is this supposed to be for indexing??
+        // FIXME: need to pull through corrective factors??
         float[] corrections = quantizer.quantizeForQuery(floatVector, vector, centroids[i]);
         output.writeBytes(vector, vector.length);
         correctionsBuffer.putFloat(corrections[0]);
