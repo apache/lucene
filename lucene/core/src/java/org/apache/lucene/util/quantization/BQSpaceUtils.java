@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util.quantization;
 
-import org.apache.lucene.util.BitUtil;
-
 public class BQSpaceUtils {
 
   // FIXME: allow for a settable B_QUERY of 4 or 2

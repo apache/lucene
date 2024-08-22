@@ -26,6 +26,7 @@ import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
 import java.lang.foreign.MemorySegment;
+import java.nio.ByteOrder;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -771,6 +772,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     throw new UnsupportedOperationException("Vector bit size=" + VECTOR_BITSIZE);
   }
 
+  static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
+
   // TODO: document the max dims size
   public static long ipByteBinByte128(MemorySegment q, MemorySegment d) {
     long ret = 0;
@@ -780,19 +783,21 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     long subRet3 = 0;
 
     final int limit = (int) ByteVector.SPECIES_128.loopBound(d.byteSize());
-    // iterate in chunks of 256 bytes to ensure we don't overflow the accumulator (256bytes/16lanes=16itrs)
-    for (int j =0; j < limit; j += 256) {
+    // iterate in chunks of 256 bytes to ensure we don't overflow the accumulator
+    // (256bytes/16lanes=16itrs)
+    final int dSize = (int) d.byteSize();
+    for (int j = 0; j < limit; j += 256) {
       ByteVector acc0 = ByteVector.zero(ByteVector.SPECIES_128);
       ByteVector acc1 = ByteVector.zero(ByteVector.SPECIES_128);
       ByteVector acc2 = ByteVector.zero(ByteVector.SPECIES_128);
       ByteVector acc3 = ByteVector.zero(ByteVector.SPECIES_128);
       int innerLimit = Math.min(limit - j, 256);
       for (int k = 0; k < innerLimit; k += ByteVector.SPECIES_128.length()) {
-        ByteVector vd = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, d, j + k, LITTLE_ENDIAN);
-        ByteVector vq0 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k, LITTLE_ENDIAN);
-        ByteVector vq1 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + d.byteSize(), LITTLE_ENDIAN);
-        ByteVector vq2 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + 2 * d.byteSize(), LITTLE_ENDIAN);
-        ByteVector vq3 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + 3 * d.byteSize(), LITTLE_ENDIAN);
+        var vd = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, d, j + k, LE);
+        var vq0 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k, LE);
+        var vq1 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + dSize, LE);
+        var vq2 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + 2 * dSize, LE);
+        var vq3 = ByteVector.fromMemorySegment(ByteVector.SPECIES_128, q, j + k + 3 * dSize, LE);
         ByteVector vres0 = vq0.and(vd);
         ByteVector vres1 = vq1.and(vd);
         ByteVector vres2 = vq2.and(vd);
@@ -825,7 +830,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // tail as bytes
     for (int r = limit; r < d.byteSize(); r++) {
       byte dByte = d.get(JAVA_BYTE, r);
-      subRet0 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r)) & 0xFF); // TODO: DO I need the 0xFF?
+      // TODO: DO I need the 0xFF?
+      subRet0 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r)) & 0xFF);
       subRet1 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r + d.byteSize())) & 0xFF);
       subRet2 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r + 2 * d.byteSize())) & 0xFF);
       subRet3 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r + 3 * d.byteSize())) & 0xFF);
