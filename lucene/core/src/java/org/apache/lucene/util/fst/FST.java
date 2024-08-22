@@ -621,9 +621,7 @@ public final class FST<T> implements Accountable {
    * @return Returns the second argument (<code>arc</code>).
    */
   Arc<T> readLastTargetArc(Arc<T> follow, Arc<T> arc, BytesReader in) throws IOException {
-    // System.out.println("readLast");
     if (!targetHasArcs(follow)) {
-      // System.out.println("  end node");
       assert follow.isFinal();
       arc.label = END_LABEL;
       arc.target = FINAL_END_NODE;
