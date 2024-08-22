@@ -296,6 +296,8 @@ New Features
 
 * GITHUB#13568: Add sandbox facets module to compute facets while collecting. (Egor Potemkin, Shradha Shankar)
 
+* GITHUB#13678: Add support JDK 23 to the Panama Vectorization Provider. (Chris Hegarty)
+
 Improvements
 ---------------------
 
