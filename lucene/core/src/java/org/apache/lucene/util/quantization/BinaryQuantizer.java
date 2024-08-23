@@ -36,7 +36,7 @@ public class BinaryQuantizer {
     Random random = new Random(42);
     u = new float[discretizedDimensions];
     for (int i = 0; i < discretizedDimensions; i++) {
-      if(fixedU) {
+      if (fixedU) {
         u[i] = 0.5f;
       } else {
         u[i] = (float) random.nextDouble();
