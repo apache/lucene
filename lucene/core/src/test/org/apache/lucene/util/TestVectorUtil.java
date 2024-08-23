@@ -353,4 +353,6 @@ public class TestVectorUtil extends LuceneTestCase {
     }
     return res;
   }
+
+  //FIXME: write at least one test for ipByteBin
 }

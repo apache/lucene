@@ -30,15 +30,23 @@ public class BinaryQuantizer {
   private final VectorSimilarityFunction similarityFunction;
   private final float sqrtDimensions;
 
-  public BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction) {
+  BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction, boolean fixedU) {
     this.discretizedDimensions = (dimensions + 63) / 64 * 64;
     this.similarityFunction = similarityFunction;
     Random random = new Random(42);
     u = new float[discretizedDimensions];
     for (int i = 0; i < discretizedDimensions; i++) {
-      u[i] = (float) random.nextDouble();
+      if(fixedU) {
+        u[i] = 0.5f;
+      } else {
+        u[i] = (float) random.nextDouble();
+      }
     }
     this.sqrtDimensions = (float) Math.sqrt(discretizedDimensions);
+  }
+
+  public BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction) {
+    this(dimensions, similarityFunction, false);
   }
 
   // FIXME: move this out to vector utils?
