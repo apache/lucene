@@ -151,6 +151,19 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertLongReturningProviders(p -> p.ipByteBinByte(q, d));
   }
 
+  public void testIpByteBinBoundaries() {
+    var d = new byte[size];
+    var q = new byte[size * 4];
+
+    Arrays.fill(d, Byte.MAX_VALUE);
+    Arrays.fill(q, Byte.MAX_VALUE);
+    assertLongReturningProviders(p -> p.ipByteBinByte(q, d));
+
+    Arrays.fill(d, Byte.MIN_VALUE);
+    Arrays.fill(q, Byte.MIN_VALUE);
+    assertLongReturningProviders(p -> p.ipByteBinByte(q, d));
+  }
+
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
     assertEquals(
         func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
