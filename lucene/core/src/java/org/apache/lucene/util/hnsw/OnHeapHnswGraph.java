@@ -188,6 +188,11 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     return entryNode.get().level + 1;
   }
 
+  @Override
+  public int maxConn() {
+    return nsize - 1;
+  }
+
   /**
    * Returns the graph's current entry node on the top level shown as ordinals of the nodes on 0th
    * level

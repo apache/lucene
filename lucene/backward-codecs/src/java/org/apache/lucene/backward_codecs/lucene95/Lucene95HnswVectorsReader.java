@@ -544,6 +544,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int maxConn() {
+      return currentNeighborsBuffer.length / 2;
+    }
+
+    @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
         return new ArrayNodesIterator(size());

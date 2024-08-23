@@ -517,6 +517,11 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
+    public int maxConn() {
+      return delegate.maxConn();
+    }
+
+    @Override
     public int entryNode() throws IOException {
       return sortMap.oldToNew(delegate.entryNode());
     }
