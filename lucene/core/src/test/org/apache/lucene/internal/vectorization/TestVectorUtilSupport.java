@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.util.VectorUtil.B_QUERY;
+
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.util.Arrays;
 import java.util.function.ToDoubleFunction;
@@ -145,7 +147,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
   public void testIpByteBin() {
     var d = new byte[size];
-    var q = new byte[size * 4];
+    var q = new byte[size * B_QUERY];
     random().nextBytes(d);
     random().nextBytes(q);
     assertLongReturningProviders(p -> p.ipByteBinByte(q, d));
@@ -153,7 +155,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
   public void testIpByteBinBoundaries() {
     var d = new byte[size];
-    var q = new byte[size * 4];
+    var q = new byte[size * B_QUERY];
 
     Arrays.fill(d, Byte.MAX_VALUE);
     Arrays.fill(q, Byte.MAX_VALUE);
