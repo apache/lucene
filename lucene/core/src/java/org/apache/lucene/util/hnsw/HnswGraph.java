@@ -85,7 +85,7 @@ public abstract class HnswGraph {
   public abstract int numLevels() throws IOException;
 
   /** returns M, the maximum number of connections for a node. */
-  public abstract int maxConn();
+  public abstract int maxConn() throws IOException;
 
   /** Returns graph's entry point on the top level * */
   public abstract int entryNode() throws IOException;

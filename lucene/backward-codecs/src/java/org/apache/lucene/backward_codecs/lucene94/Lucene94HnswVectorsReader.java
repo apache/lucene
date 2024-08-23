@@ -506,7 +506,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public int maxConn() {
-      return 0;
+      return maxConn;
     }
 
     @Override

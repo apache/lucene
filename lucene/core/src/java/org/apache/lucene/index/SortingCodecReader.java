@@ -517,7 +517,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public int maxConn() {
+    public int maxConn() throws IOException {
       return delegate.maxConn();
     }
 

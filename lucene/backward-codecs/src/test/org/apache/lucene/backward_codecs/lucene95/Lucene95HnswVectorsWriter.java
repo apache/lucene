@@ -368,6 +368,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       @Override
+      public int maxConn() {
+        throw new UnsupportedOperationException("Not supported on a mock graph");
+      }
+
+      @Override
       public NodesIterator getNodesOnLevel(int level) {
         if (level == 0) {
           return graph.getNodesOnLevel(0);

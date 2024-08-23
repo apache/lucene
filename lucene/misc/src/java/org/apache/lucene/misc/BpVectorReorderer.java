@@ -70,6 +70,16 @@ public class BpVectorReorderer {
   public static final int DEFAULT_MIN_PARTITION_SIZE = 32;
 
   /**
+   * Limits how many incremental updates we do before initiating a full recalculation.  Some wasted
+   * work is done when this is exceeded, but more is saved when it is not. Setting this to zero
+   * prevents any incremental updates from being done, instead the centroids are fully recalculated
+   * for each iteration. We're not able to make it very big since too much numerical error
+   * accumulates, which seems to be around 50, thus resulting in suboptimal reordering. It's not
+   * clear how helpful this is though; measurements vary.
+   */
+  private static final int MAX_CENTROID_UPDATES = 0;
+
+  /**
    * Default maximum number of iterations per recursion level: 20. Higher numbers of iterations
    * typically don't help significantly.
    */
@@ -274,23 +284,25 @@ public class BpVectorReorderer {
       }
 
       for (int iter = 0; iter < maxIters; ++iter) {
-        boolean moved;
+        int moved;
         try {
           moved =
               shuffle(
-                  vectors, ids, right.offset, leftCentroid, rightCentroid, scratch, biases, iter);
+                  vectors, ids, right.offset, leftCentroid, rightCentroid, scratch, biases);
         } catch (IOException e) {
           throw new UncheckedIOException(e);
         }
-        if (moved == false) {
+        if (moved == 0) {
           break;
         }
-        try {
-          // TODO: should we use incremental updates?
-          computeCentroid(left, vectors, leftCentroid);
-          computeCentroid(right, vectors, rightCentroid);
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
+        if (moved > MAX_CENTROID_UPDATES) {
+          // if we swapped too many times we don't use the relative calculation because it introduces too much error
+          try {
+            computeCentroid(left, vectors, leftCentroid);
+            computeCentroid(right, vectors, rightCentroid);
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
         }
       }
 
@@ -307,7 +319,7 @@ public class BpVectorReorderer {
       }
     }
 
-    void computeCentroid(IntsRef ids, FloatValues vectors, float[] centroid) throws IOException {
+    static void computeCentroid(IntsRef ids, FloatValues vectors, float[] centroid) throws IOException {
       Arrays.fill(centroid, 0);
       for (int i = ids.offset; i < ids.offset + ids.length; i++) {
         VectorUtil.add(centroid, vectors.get(ids.ints[i]));
@@ -316,20 +328,19 @@ public class BpVectorReorderer {
     }
 
     /** Shuffle IDs across both partitions so that each partition is closer to its centroid. */
-    private boolean shuffle(
+    private int shuffle(
         FloatValues vectors,
         IntsRef ids,
         int midPoint,
         float[] leftCentroid,
         float[] rightCentroid,
         float[] scratch,
-        float[] biases,
-        int iter)
+        float[] biases)
         throws IOException {
 
       // Computing biases is typically a bottleneck, because each iteration needs to iterate over
       // all postings to recompute biases, and the total number of postings is usually one order of
-      // magnitude or more larger than the number of docs. So we try to parallelize it.
+      // magnitude or more than the number of docs. So we try to parallelize it.
       new ComputeBiasTask(
               ids.ints,
               biases,
@@ -359,7 +370,7 @@ public class BpVectorReorderer {
       // 0.2% of the size of the vectors.
       //System.out.printf("at depth=%d, midPoint=%d, after %d iters, gain=%f\n", depth, midPoint, iter, gain);
       if (500 * gain <= scale) {
-        return false;
+        return 0;
       }
 
       class Selector extends IntroSelector {
@@ -401,7 +412,7 @@ public class BpVectorReorderer {
             int to = Math.max(i, j);
             try {
               swapIdsAndCentroids(
-                  ids.ints, from, to, midPoint, vectors, leftCentroid, rightCentroid, scratch);
+                  ids, from, to, midPoint, vectors, leftCentroid, rightCentroid, scratch, count);
             } catch (IOException e) {
               throw new UncheckedIOException(e);
             }
@@ -412,55 +423,66 @@ public class BpVectorReorderer {
       Selector selector = new Selector();
       selector.select(ids.offset, ids.offset + ids.length, midPoint);
       // System.out.printf("swapped %d / %d\n", selector.count, ids.length);
-      // assert centroidValid(leftCentroid, vectors, new IntsRef(ids.ints, ids.offset, midPoint -
-      // ids.offset));
-      // assert centroidValid(rightCentroid, vectors, new IntsRef(ids.ints, midPoint, ids.length -
-      // midPoint));
-      return true;
+      return selector.count;
     }
 
-    /*
-    private boolean centroidValid(float[] centroid, FloatValues vectors, IntsRef ids) {
+    private static boolean centroidValid(float[] centroid, FloatValues vectors, IntsRef ids, int count) throws IOException {
       // recompute centroid to check the incremental calculation
       float[] check = new float[centroid.length];
       computeCentroid(ids, vectors, check);
       for (int i = 0; i < check.length; ++i) {
-        if (Math.abs(check[i] - centroid[i]) > 1e-6) {
+        float diff = Math.abs(check[i] - centroid[i]);
+        if (diff > 1e-4) {
+          System.out.println("diff=" + diff + " count=" + count);
           return false;
         }
       }
       return true;
     }
-     */
 
     private static void swapIdsAndCentroids(
-        int[] ids,
+        IntsRef ids,
         int from,
         int to,
         int midPoint,
         FloatValues vectors,
         float[] leftCentroid,
         float[] rightCentroid,
-        float[] scratch)
+        float[] scratch,
+        int count)
         throws IOException {
       assert from < to;
 
-      int fromId = ids[from];
-      int toId = ids[to];
+      int[] idArr = ids.ints;
+      int fromId = idArr[from];
+      int toId = idArr[to];
 
       // Now update the centroids, this makes things much faster than invalidating it and having to
-      // recompute on the next iteration. It might not though?
-      /*
-      vectorSubtract(vectors.get(to), vectors.get(from), scratch);
-      // we must normalize to the proper scale by accounting for the number of points contributing to each centroid
-      vectorScalarMul(1 / (float) midPoint, scratch);
-      VectorUtil.add(leftCentroid, scratch);
-      vectorScalarMul(-midPoint / (float) (ids.length - midPoint), scratch);
-      VectorUtil.add(rightCentroid, scratch);
-       */
+      // recompute on the next iteration.  Should be faster than full recalculation if the number of
+      // swaps is reasonable.
 
-      ids[from] = toId;
-      ids[to] = fromId;
+      // We want the net effect to be moving "from" left->right and "to" right->left
+
+      // (1) scratch = to - from
+      if (count <= MAX_CENTROID_UPDATES) {
+        int relativeMidpoint = midPoint - ids.offset;
+        vectorSubtract(vectors.get(toId), vectors.get(fromId), scratch);
+        // we must normalize to the proper scale by accounting for the number of points contributing to each centroid
+        // left += scratch / size(left)
+        vectorScalarMul(1 / (float) relativeMidpoint, scratch);
+        VectorUtil.add(leftCentroid, scratch);
+        // right -= scratch / size(right)
+        vectorScalarMul(-relativeMidpoint / (float) (ids.length - relativeMidpoint), scratch);
+        VectorUtil.add(rightCentroid, scratch);
+      }
+
+      idArr[from] = toId;
+      idArr[to] = fromId;
+
+      if (count <= MAX_CENTROID_UPDATES) {
+        assert centroidValid(leftCentroid, vectors, new IntsRef(idArr, ids.offset, midPoint - ids.offset), count);
+        assert centroidValid(rightCentroid, vectors, new IntsRef(ids.ints, midPoint, ids.length - midPoint + ids.offset), count);
+      }
     }
   }
 
@@ -682,11 +704,9 @@ public class BpVectorReorderer {
 
   static class VectorValuesFloatValues implements FloatValues {
     private final RandomAccessVectorValues.Floats input;
-    private final float[] scratch;
 
     VectorValuesFloatValues(RandomAccessVectorValues.Floats input) {
       this.input = input;
-      scratch = new float[input.dimension()];
     }
 
     @Override
