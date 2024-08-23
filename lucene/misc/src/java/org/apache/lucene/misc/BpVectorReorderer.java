@@ -157,7 +157,11 @@ public class BpVectorReorderer {
     final float[] scratch;
 
     PerThreadState(FloatValues vectors) {
-      this.vectors = vectors;
+      try {
+        this.vectors = vectors.copy();
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
       leftCentroid = new float[vectors.dimension()];
       rightCentroid = new float[leftCentroid.length];
       scratch = new float[leftCentroid.length];
@@ -606,6 +610,8 @@ public class BpVectorReorderer {
     int size();
 
     int dimension();
+
+    FloatValues copy() throws IOException;
   }
 
   static class ListFloatValues implements FloatValues {
@@ -629,27 +635,32 @@ public class BpVectorReorderer {
     public int dimension() {
       return get(0).length;
     }
+
+    @Override
+    public FloatValues copy() {
+      // this is thread-safe
+      return this;
+    }
   }
 
   static class IndexFloatValues implements FloatValues {
     private final IndexInput input;
     private final int dimension;
     private final int size;
-    private final ThreadLocal<float[]> scratch;
+    private final float[] scratch;
 
     IndexFloatValues(IndexInput input, int dimension, int size) {
       this.input = input;
       this.dimension = dimension;
       this.size = size;
-      scratch = ThreadLocal.withInitial(() -> new float[dimension]);
+      scratch = new float[dimension];
     }
 
     @Override
     public float[] get(int i) throws IOException {
       input.seek((long) i * dimension * Float.BYTES);
-      float[] array = scratch.get();
-      input.readFloats(array, 0, dimension);
-      return array;
+      input.readFloats(scratch, 0, dimension);
+      return scratch;
     }
 
     @Override
@@ -661,15 +672,20 @@ public class BpVectorReorderer {
     public int dimension() {
       return dimension;
     }
+
+    @Override
+    public FloatValues copy() {
+      return new IndexFloatValues(input.clone(), dimension, size);
+    }
   }
 
   static class VectorValuesFloatValues implements FloatValues {
     private final RandomAccessVectorValues.Floats input;
-    private final ThreadLocal<float[]> scratch;
+    private final float[] scratch;
 
     VectorValuesFloatValues(RandomAccessVectorValues.Floats input) {
       this.input = input;
-      scratch = ThreadLocal.withInitial(() -> new float[input.dimension()]);
+      scratch = new float[input.dimension()];
     }
 
     @Override
@@ -685,6 +701,11 @@ public class BpVectorReorderer {
     @Override
     public int dimension() {
       return input.dimension();
+    }
+
+    @Override
+    public FloatValues copy() throws IOException {
+      return new VectorValuesFloatValues(input.copy());
     }
   }
 
@@ -711,11 +732,7 @@ public class BpVectorReorderer {
    */
   public static void main(String... args) throws IOException {
     if (args.length < 2 || args.length > 6) {
-      throw new IllegalArgumentException("""
-              usage: reorder <directory> <field>
-                [--max-iters N]
-                [--min-partition-size P]
-                [--thread-count T]""");
+      usage();
     }
     BpVectorReorderer reorderer = new BpVectorReorderer();
     String directory = args[0];
@@ -731,7 +748,7 @@ public class BpVectorReorderer {
         }
       }
     } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-      throw new IllegalArgumentException("Expectedarguments: <directory> <field> [--max-iters N] [--min-partition-size P]");
+      usage();
     }
     if (threadCount != 1) {
       ForkJoinPool pool = new ForkJoinPool(threadCount, p -> new ForkJoinWorkerThread(p) {}, null, false);
@@ -752,6 +769,7 @@ public class BpVectorReorderer {
              if (finfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
                throw new IllegalStateException("vector field not encoded as float32: " + field + " in leaf " + ctx.ord);
              }
+             // FIXME: read the HnswGraph to find out its max conns so we can recreate
              reorderer.setVectorSimilarity(finfo.getVectorSimilarityFunction());
              OffHeapFloatVectorValues values = (OffHeapFloatVectorValues) ctx.reader().getFloatVectorValues(field);
              Sorter.DocMap valueMap = reorderer.computeDocMapFloat(values);
@@ -760,6 +778,15 @@ public class BpVectorReorderer {
            }
     }
   }
+
+  private static void usage() {
+    throw new IllegalArgumentException("""
+              usage: reorder <directory> <field>
+                [--max-iters N]
+                [--min-partition-size P]
+                [--thread-count T]""");
+  }
+
 
   private static Sorter.DocMap valueMapToDocMap(Sorter.DocMap valueMap, OffHeapFloatVectorValues values, int maxDoc) throws IOException {
     if (maxDoc == values.size()) {
