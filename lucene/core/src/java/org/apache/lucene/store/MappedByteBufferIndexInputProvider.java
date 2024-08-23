@@ -68,8 +68,8 @@ final class MappedByteBufferIndexInputProvider
       IOContext context,
       int chunkSizePower,
       boolean preload,
-      Optional<String> group,
-      Object attachment)
+      Optional<String> unusedGroup,
+      Object unusedAttachment)
       throws IOException {
     if (chunkSizePower > 30) {
       throw new IllegalArgumentException(
