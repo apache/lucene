@@ -25,6 +25,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.RecursiveAction;
 
+import org.apache.lucene.codecs.lucene912.Lucene912Codec;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -43,9 +45,11 @@ import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
 
 /**
  * Implementation of "recursive graph bisection", also called "bipartite graph partitioning" and
@@ -356,7 +360,7 @@ public class BpVectorReorderer {
         return false;
       }
        */
-      System.out.printf("at depth=%d, midPoint=%d, after %d iters, gain=%f\n", depth, midPoint, iter, gain);
+      // System.out.printf("at depth=%d, midPoint=%d, after %d iters, gain=%f\n", depth, midPoint, iter, gain);
       if (gain <= 0) {
         return false;
       }
@@ -410,7 +414,7 @@ public class BpVectorReorderer {
 
       Selector selector = new Selector();
       selector.select(ids.offset, ids.offset + ids.length, midPoint);
-      System.out.printf("swapped %d / %d\n", selector.count, ids.length);
+      // System.out.printf("swapped %d / %d\n", selector.count, ids.length);
       // assert centroidValid(leftCentroid, vectors, new IntsRef(ids.ints, ids.offset, midPoint -
       // ids.offset));
       // assert centroidValid(rightCentroid, vectors, new IntsRef(ids.ints, midPoint, ids.length -
@@ -754,28 +758,54 @@ public class BpVectorReorderer {
       ForkJoinPool pool = new ForkJoinPool(threadCount, p -> new ForkJoinWorkerThread(p) {}, null, false);
       reorderer.setForkJoinPool(pool);
     }
-    IndexWriterConfig iwc = new IndexWriterConfig();
-    iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-    try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(directory)));
-         IndexWriter writer = new IndexWriter(FSDirectory.open(Path.of(directory)), iwc)) {
-           for (LeafReaderContext ctx: reader.leaves()) {
-             FieldInfo finfo = ctx.reader().getFieldInfos().fieldInfo(field);
-             if (finfo == null) {
-               throw new IllegalStateException("field not found: " + field + " in leaf " + ctx.ord);
-             }
-             if (finfo.hasVectorValues() == false) {
-               throw new IllegalStateException("field not a vector field: " + field + " in leaf " + ctx.ord);
-             }
-             if (finfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
-               throw new IllegalStateException("vector field not encoded as float32: " + field + " in leaf " + ctx.ord);
-             }
-             // FIXME: read the HnswGraph to find out its max conns so we can recreate
-             reorderer.setVectorSimilarity(finfo.getVectorSimilarityFunction());
-             OffHeapFloatVectorValues values = (OffHeapFloatVectorValues) ctx.reader().getFloatVectorValues(field);
-             Sorter.DocMap valueMap = reorderer.computeDocMapFloat(values);
-             Sorter.DocMap docMap = valueMapToDocMap(valueMap, values, ctx.reader().maxDoc());
-             writer.addIndexes(SortingCodecReader.wrap((CodecReader) ctx.reader(), docMap, null));
-           }
+    // We need to read prior graph, determine its maxconn in order to make sure our data structures
+    // are big enough to handle the HNSW since we will not be creating a new one.
+    int maxConn = 0;
+    VectorSimilarityFunction similarity = null;
+    try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(directory)))) {
+      for (LeafReaderContext ctx: reader.leaves()) {
+        FieldInfo finfo = ctx.reader().getFieldInfos().fieldInfo(field);
+        if (finfo == null) {
+          throw new IllegalStateException("field not found: " + field + " in leaf " + ctx.ord);
+        }
+        if (finfo.hasVectorValues() == false) {
+          throw new IllegalStateException("field not a vector field: " + field + " in leaf " + ctx.ord);
+        }
+        if (finfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
+          throw new IllegalStateException("vector field not encoded as float32: " + field + " in leaf " + ctx.ord);
+        }
+        if (similarity == null) {
+          similarity = finfo.getVectorSimilarityFunction();
+        } else if (similarity != finfo.getVectorSimilarityFunction()) {
+          throw new IllegalStateException("vector field " + field + " was indexed with inconsistent similarity functions");
+        }
+        HnswGraph hnsw = ((CodecReader) ctx.reader()).getVectorReader().getGraph(field);
+        if (hnsw == null) {
+          throw new IllegalStateException("No HNSW graph for vector field: " + field + " in leaf " + ctx.ord);
+        }
+        maxConn = Math.max(hnsw.maxConn(), maxConn);
+      }
+      final int maxConnFinal = maxConn;
+      reorderer.setVectorSimilarity(similarity);
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+      iwc.setCodec(new Lucene912Codec() {
+          @Override
+          public Lucene99HnswVectorsFormat getKnnVectorsFormatForField(String field) {
+            // We have no idea what beam width was used to create the graph but it doesn't
+            // matter because we will not be searching/reindexing these graphs, merely
+            // renumbering them, so use DEFAULT_BEAM_WIDTH to satisfy the codec/format setup.
+            return new Lucene99HnswVectorsFormat(maxConnFinal, DEFAULT_BEAM_WIDTH, 1, null);
+          }
+        });
+      try (IndexWriter writer = new IndexWriter(FSDirectory.open(Path.of(directory)), iwc)) {
+        for (LeafReaderContext ctx: reader.leaves()) {
+          OffHeapFloatVectorValues values = (OffHeapFloatVectorValues) ctx.reader().getFloatVectorValues(field);
+          Sorter.DocMap valueMap = reorderer.computeDocMapFloat(values);
+          Sorter.DocMap docMap = valueMapToDocMap(valueMap, values, ctx.reader().maxDoc());
+          writer.addIndexes(SortingCodecReader.wrap((CodecReader) ctx.reader(), docMap, null));
+        }
+      }
     }
   }
 

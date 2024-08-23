@@ -79,7 +79,9 @@ public class TestBpVectorReorderer extends LuceneTestCase {
   public void testRandom() {
     reorderer.setVectorSimilarity(VectorSimilarityFunction.EUCLIDEAN);
     List<float[]> points = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
+    // This test may fail for small N; 100 seems big enough for the law of large numbers to make it
+    // work w/very high probability
+    for (int i = 0; i < 100; i++) {
       points.add(new float[]{random().nextFloat(), random().nextFloat(), random().nextFloat()});
     }
     double closestDistanceSum = sumClosestDistances(points);
@@ -91,10 +93,12 @@ public class TestBpVectorReorderer extends LuceneTestCase {
       reordered.add(points.get(map.newToOld(i)));
     }
     double reorderedClosestDistanceSum = sumClosestDistances(reordered);
-    System.out.println(reorderedClosestDistanceSum + " <= "  + closestDistanceSum);
     assertTrue(reorderedClosestDistanceSum + ">"  + closestDistanceSum, reorderedClosestDistanceSum <= closestDistanceSum);
   }
 
+  // Compute the sum of (for each point, the absolute difference between its ordinal and the ordinal
+  // of its closest neighbor in Euclidean space) as a measure of whether the reordering successfully
+  // brought vector-space neighbors closer together in ordinal space.
   private static double sumClosestDistances(List<float[]> points) {
     int sum = 0;
     for (int i = 0; i < points.size(); i++) {
