@@ -281,7 +281,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       long qcDist;
       float errorBound;
       float dist;
-      float targetDistToCentroid = targetVectors.getCentroidDistance(targetOrd);
+      float targetDistToC = targetVectors.getCentroidDistance(targetOrd);
       binaryCode = targetVectors.vectorValue(targetOrd);
       float x0 = targetVectors.getVectorMagnitude(targetOrd);
 
@@ -299,18 +299,12 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       //            factorPPC = factors.PPC();
       //            factorIP = factors.IP();
       //          } else {
-      sqrX = targetDistToCentroid * targetDistToCentroid;
-      double xX0 = targetDistToCentroid / x0;
-      error =
-          (float)
-              (2.0 * maxX1 * Math.sqrt(xX0 * xX0 - targetDistToCentroid * targetDistToCentroid));
-      factorPPC =
-          (float)
-              (-2.0
-                  / sqrtDimensions
-                  * xX0
-                  * ((float) BQVectorUtils.popcount(binaryCode, discretizedDimensions) * 2.0
-                      - discretizedDimensions));
+      sqrX = targetDistToC * targetDistToC;
+      double xX0 = targetDistToC / x0;
+      float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
+      error = 2.0f * maxX1 * projectionDist;
+      float count = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
+      factorPPC = (float) (-2.0 / sqrtDimensions * xX0 * (count * 2.0 - discretizedDimensions));
       factorIP = (float) (-2.0 / sqrtDimensions * xX0);
       //            factorsCache.put(targetOrd, new Factors(sqrX, error, factorPPC, factorIP));
       //          }

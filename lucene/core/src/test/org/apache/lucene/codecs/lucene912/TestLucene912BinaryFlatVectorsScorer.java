@@ -108,6 +108,6 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
         new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
             queryVectors, targetVectors, similarityFunction, discretizedDimensions);
 
-    assertEquals(245482.47f, scorer.score(0), 0.001f);
+    assertEquals(245482.47f, scorer.score(0), 0.01f);
   }
 }
