@@ -25,17 +25,22 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
 @SuppressWarnings("preview")
-final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
+final class MemorySegmentIndexInputProvider
+    implements MMapDirectory.MMapIndexInputProvider<
+        ConcurrentHashMap<String, RefCountedSharedArena>> {
 
   private final Optional<NativeAccess> nativeAccess;
+  private final int sharedArenaMaxPermits;
 
-  public MemorySegmentIndexInputProvider() {
+  public MemorySegmentIndexInputProvider(int maxPermits) {
     this.nativeAccess = NativeAccess.getImplementation();
+    this.sharedArenaMaxPermits = checkMaxPermits(maxPermits);
     var log = Logger.getLogger(getClass().getName());
     log.info(
         String.format(
@@ -46,7 +51,13 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   @Override
-  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  public IndexInput openInput(
+      Path path,
+      IOContext context,
+      int chunkSizePower,
+      boolean preload,
+      Optional<String> group,
+      ConcurrentHashMap<String, RefCountedSharedArena> arenas)
       throws IOException {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
@@ -55,7 +66,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
-    final Arena arena = confined ? Arena.ofConfined() : Arena.ofShared();
+    final Arena arena = confined ? Arena.ofConfined() : getSharedArena(group, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =
@@ -135,5 +146,54 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       startOffset += segSize;
     }
     return segments;
+  }
+
+  @Override
+  public ConcurrentHashMap<String, RefCountedSharedArena> attachment() {
+    return new ConcurrentHashMap<>();
+  }
+
+  private static int checkMaxPermits(int maxPermits) {
+    if (RefCountedSharedArena.validMaxPermits(maxPermits)) {
+      return maxPermits;
+    }
+    Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
+        .warning(
+            "Invalid value for sysprop "
+                + MMapDirectory.SHARED_ARENA_MAX_PERMITS_SYSPROP
+                + ", must be positive and <= 0x07FF. The default value will be used.");
+    return RefCountedSharedArena.DEFAULT_MAX_PERMITS;
+  }
+
+  /**
+   * Gets an arena for the given group, potentially aggregating files from the same segment into a
+   * single ref counted shared arena. A ref counted shared arena, if created will be added to the
+   * given arenas map.
+   */
+  private Arena getSharedArena(
+      Optional<String> group, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
+    if (group.isEmpty()) {
+      return Arena.ofShared();
+    }
+
+    String key = group.get();
+    var refCountedArena =
+        arenas.computeIfAbsent(
+            key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s), sharedArenaMaxPermits));
+    if (refCountedArena.acquire()) {
+      return refCountedArena;
+    } else {
+      return arenas.compute(
+          key,
+          (s, v) -> {
+            if (v != null && v.acquire()) {
+              return v;
+            } else {
+              v = new RefCountedSharedArena(s, () -> arenas.remove(s), sharedArenaMaxPermits);
+              v.acquire(); // guaranteed to succeed
+              return v;
+            }
+          });
+    }
   }
 }
