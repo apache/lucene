@@ -267,6 +267,7 @@ public class BinaryQuantizer {
         // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal
         byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
         BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
+        // FIXME: sumQ is an int and so should be passed back and managed as such
         corrections[0] = sumQ;
         corrections[1] = lower;
         corrections[2] = width;
