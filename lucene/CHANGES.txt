@@ -141,6 +141,9 @@ New Features
 
 * GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
 
+* GITHUB#13597: Take advantage of the doc value skipper when it is primary sort in SortedNumericDocValuesRangeQuery
+  and SortedSetDocValuesRangeQuery. (Ignacio Vera)
+
 Improvements
 ---------------------
 
@@ -295,6 +298,8 @@ New Features
   (Adrien Grand)
 
 * GITHUB#13568: Add sandbox facets module to compute facets while collecting. (Egor Potemkin, Shradha Shankar)
+
+* GITHUB#13678: Add support JDK 23 to the Panama Vectorization Provider. (Chris Hegarty)
 
 Improvements
 ---------------------
