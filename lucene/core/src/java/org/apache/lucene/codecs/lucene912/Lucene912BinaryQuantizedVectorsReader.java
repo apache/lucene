@@ -130,18 +130,21 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
     // FIXME: not sure if this was a bug or a misunderstanding:    int binaryDims = (dimension + 7)
     // / 8;
     int binaryDims = (((dimension + 63) / 64) * 64) / 8;
+    int centroidByte = fieldEntry.numCentroids > 1 ? 1 : 0;
     long numQuantizedVectorBytes =
-        Math.multiplyExact(binaryDims + Float.BYTES + Float.BYTES, fieldEntry.size);
+        Math.multiplyExact(binaryDims + Float.BYTES + Float.BYTES + centroidByte, fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
+      String centroidStr = centroidByte == 1 ? " + centroidByte=1" : "";
       throw new IllegalStateException(
           "Binarized vector data length "
               + fieldEntry.vectorDataLength
-              + " not matching size="
+              + " not matching size = "
               + fieldEntry.size
               + " * (binaryBytes="
               + binaryDims
-              + " + 8)"
-              + " = "
+              + " + 8"
+              + centroidStr
+              + ") = "
               + numQuantizedVectorBytes);
     }
   }

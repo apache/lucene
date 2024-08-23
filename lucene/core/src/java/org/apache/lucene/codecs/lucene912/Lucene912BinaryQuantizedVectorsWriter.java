@@ -153,7 +153,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
             RandomAccessVectorValues.fromFloats(
                 field.flatFieldVectorsWriter.getVectors(), field.fieldInfo.getVectorDimension());
         KMeans.Results kmeansResult = cluster(vectorValues, true);
-        assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
         clusterCenters = kmeansResult.centroids();
         vectorClusters = kmeansResult.vectorCentroids();
       } else {
@@ -664,14 +663,14 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     return KMeans.cluster(
         vectorValues,
-        (vectorValues.size() / numberOfVectorsPerCluster + 1),
+        Math.max(1, vectorValues.size() / numberOfVectorsPerCluster),
         assignCentroidsToVectors,
         42,
         KMeans.KmeansInitializationMethod.FORGY,
         false,
         DEFAULT_RESTARTS,
         DEFAULT_ITRS,
-        (int) Math.min(DEFAULT_SAMPLE_SIZE, vectorValues.size() * 0.01));
+        DEFAULT_SAMPLE_SIZE);
   }
 
   @Override
