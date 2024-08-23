@@ -215,7 +215,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
                     & (int) BitUtil.VH_NATIVE_INT.get(d, r));
       }
       for (; r < d.length; r++) {
-        subRet += Integer.bitCount((q[i * size + r] & d[i]) & 0xFF);
+        subRet += Integer.bitCount((q[i * size + r] & d[r]) & 0xFF);
       }
       ret += subRet << i;
     }

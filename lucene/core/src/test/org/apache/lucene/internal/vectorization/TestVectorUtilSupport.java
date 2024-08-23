@@ -20,6 +20,7 @@ import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.util.Arrays;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
 import java.util.stream.IntStream;
 
 public class TestVectorUtilSupport extends BaseVectorizationTestCase {
@@ -142,6 +143,14 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     return packed;
   }
 
+  public void testIpByteBin() {
+    var d = new byte[size];
+    var q = new byte[size * 4];
+    random().nextBytes(d);
+    random().nextBytes(q);
+    assertLongReturningProviders(p -> p.ipByteBinByte(q, d));
+  }
+
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
     assertEquals(
         func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
@@ -153,5 +162,11 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertEquals(
         func.applyAsInt(LUCENE_PROVIDER.getVectorUtilSupport()),
         func.applyAsInt(PANAMA_PROVIDER.getVectorUtilSupport()));
+  }
+
+  private void assertLongReturningProviders(ToLongFunction<VectorUtilSupport> func) {
+    assertEquals(
+        func.applyAsLong(LUCENE_PROVIDER.getVectorUtilSupport()),
+        func.applyAsLong(PANAMA_PROVIDER.getVectorUtilSupport()));
   }
 }
