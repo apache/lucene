@@ -200,11 +200,12 @@ public class BinaryQuantizer {
   public float[] quantizeForIndex(float[] vector, byte[] destination, float[] centroid) {
     float[] corrections = null;
 
-    float distToCentroid = VectorUtil.squareDistance(vector, centroid);
     switch (similarityFunction) {
       case VectorSimilarityFunction.EUCLIDEAN:
       case VectorSimilarityFunction.COSINE:
       case VectorSimilarityFunction.DOT_PRODUCT:
+        float distToCentroid = (float) Math.sqrt(VectorUtil.squareDistance(vector, centroid));
+
         // FIXME: pass in a copy of vector as we will make changes to it in this function?
         SubspaceOutput subspaceOutput = generateSubSpace(vector, centroid);
         corrections = new float[2];
