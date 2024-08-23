@@ -341,6 +341,7 @@ public class BpVectorReorderer {
               depth)
           .compute();
 
+      float scale = VectorUtil.dotProduct(leftCentroid, leftCentroid) + VectorUtil.dotProduct(rightCentroid, rightCentroid);
       float maxLeftBias = Float.NEGATIVE_INFINITY;
       for (int i = ids.offset; i < midPoint; ++i) {
         maxLeftBias = Math.max(maxLeftBias, biases[i]);
@@ -353,15 +354,11 @@ public class BpVectorReorderer {
       // This uses the simulated annealing proposed by Mackenzie et al in "Tradeoff Options for
       // Bipartite Graph Partitioning" by comparing the gain of swapping the doc from the left side
       // that is most attracted to the right and the doc from the right side that is most attracted
-      // to the left against `iter` rather than zero.
-      /*
-       * TODO: we can only use this if we know something about the expected values of gain
-      if (gain <= iter) {
-        return false;
-      }
-       */
-      // System.out.printf("at depth=%d, midPoint=%d, after %d iters, gain=%f\n", depth, midPoint, iter, gain);
-      if (gain <= 0) {
+      // to the left against `iter` rather than zero. We use the lengths of the centroids to determine
+      // an appropriate scale, so that roughly speaking we stop iterating when the gain becomes less than
+      // 0.2% of the size of the vectors.
+      //System.out.printf("at depth=%d, midPoint=%d, after %d iters, gain=%f\n", depth, midPoint, iter, gain);
+      if (500 * gain <= scale) {
         return false;
       }
 
