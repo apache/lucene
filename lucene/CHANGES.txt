@@ -351,8 +351,14 @@ Optimizations
   Closing many individual index files can potentially lead to a degradation in execution performance.
   Index files are mmapped one-to-one with the JDK's foreign shared Arena. The JVM deoptimizes the top
   few frames of all threads when closing a shared Arena (see JDK-8335480). We mitigate this situation
-  by 1) using a confined Arena where appropriate, and 2) grouping files from the same segment to a
-  single shared Arena. (Chris Hegarty, Michael Gibney, Uwe Schindler)
+  when running with JDK 21 and greater, by 1) using a confined Arena where appropriate, and 2) grouping
+  files from the same segment to a single shared Arena.
+  A system property has been added that allows to control the total maximum number of mmapped files
+  that may be associated with a single shared Arena. For example, to set the max number of permits to
+  256, pass the following on the command line
+  -Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=256. Setting a value of 1 associates
+  a single file to a single shared arena.
+  (Chris Hegarty, Michael Gibney, Uwe Schindler)
 
 * GITHUB#13585: Lucene912PostingsFormat, the new default postings format, now
   only has 2 levels of skip data, which are inlined into postings instead of
