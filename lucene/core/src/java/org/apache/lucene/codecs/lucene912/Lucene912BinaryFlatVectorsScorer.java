@@ -248,7 +248,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
 
       float estimatedDot =
-          (2 * width / sqrtD * qcDist + 2 * lower / sqrtD * xbSum - width / sqrtD * sumQ - sqrtD * lower)
+          (2 * width / sqrtD * qcDist
+                  + 2 * lower / sqrtD * xbSum
+                  - width / sqrtD * sumQ
+                  - sqrtD * lower)
               / ooq;
 
       float dist = normVmC * normOC * estimatedDot + oDotC + vDotC - cDotC;

@@ -57,6 +57,7 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 import org.apache.lucene.util.quantization.KMeans;
@@ -440,7 +441,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       FloatVectorValues floatVectorValues,
       float[][] centroids)
       throws IOException {
-    byte[] vector = new byte[(floatVectorValues.dimension() + 1) / 2];
+    byte[] vector =
+        new byte
+            [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
+                * BQSpaceUtils.B_QUERY];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Short.BYTES + Float.BYTES * 5).order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = floatVectorValues.nextDoc();

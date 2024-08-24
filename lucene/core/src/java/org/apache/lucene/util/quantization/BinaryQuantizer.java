@@ -128,8 +128,7 @@ public class BinaryQuantizer {
     return new SubspaceOutput(packedBinaryVector, projection);
   }
 
-  record SubspaceOutputMIP(
-      byte[] packedBinaryVector, float OOQ, float normOC, float oDotC) {}
+  record SubspaceOutputMIP(byte[] packedBinaryVector, float OOQ, float normOC, float oDotC) {}
 
   private SubspaceOutputMIP generateSubSpaceMIP(float[] vector, float[] centroid) {
 
