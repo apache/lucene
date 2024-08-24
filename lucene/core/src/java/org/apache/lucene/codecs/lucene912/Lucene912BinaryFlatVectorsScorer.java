@@ -122,7 +122,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float vl = queryVectors.getLower(ord, 0);
       float width = queryVectors.getWidth(ord, 0);
 
-      float normVmC = queryVectors.getVmC(ord, 0);
+      float normVmC = queryVectors.getNormVmC(ord, 0);
       float vDotC = queryVectors.getVDotC(ord, 0);
       float cDotC = queryVectors.getCDotC(ord, 0);
 
@@ -228,7 +228,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         int targetOrd,
         byte[] quantizedQuery,
         float width,
-        float vl,
+        float lower,
         short sumQ,
         float normVmC,
         float vDotC,
@@ -248,7 +248,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
 
       float estimatedDot =
-          (2 * width / sqrtD * qcDist + 2 * vl / sqrtD * xbSum - width / sqrtD * sumQ - sqrtD * vl)
+          (2 * width / sqrtD * qcDist + 2 * lower / sqrtD * xbSum - width / sqrtD * sumQ - sqrtD * lower)
               / ooq;
 
       float dist = normVmC * normOC * estimatedDot + oDotC + vDotC - cDotC;

@@ -31,7 +31,7 @@ public interface RandomAccessBinarizedQueryByteVectorValues extends RandomAccess
 
   float getWidth(int targetOrd, int centroidOrd) throws IOException;
 
-  float getVmC(int targetOrd, int centroidOrd) throws IOException;
+  float getNormVmC(int targetOrd, int centroidOrd) throws IOException;
 
   float getVDotC(int targetOrd, int centroidOrd) throws IOException;
 

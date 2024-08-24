@@ -442,7 +442,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector = new byte[(floatVectorValues.dimension() + 1) / 2];
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Short.BYTES + Float.BYTES * 3).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Short.BYTES + Float.BYTES * 5).order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = floatVectorValues.nextDoc();
         docV != NO_MORE_DOCS;
         docV = floatVectorValues.nextDoc()) {
@@ -454,12 +454,16 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         correctionsBuffer.putShort(factors.quantizedSum());
         // FIXME: handle other similarity types here like COSINE
         if (quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+          correctionsBuffer.putFloat(factors.lower());
+          correctionsBuffer.putFloat(factors.width());
           correctionsBuffer.putFloat(factors.normVmC());
           correctionsBuffer.putFloat(factors.vDotC());
           correctionsBuffer.putFloat(factors.cDotC());
         } else {
           correctionsBuffer.putFloat(factors.lower());
           correctionsBuffer.putFloat(factors.width());
+          correctionsBuffer.putFloat(0f);
+          correctionsBuffer.putFloat(0f);
           correctionsBuffer.putFloat(0f);
         }
         output.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
@@ -822,7 +826,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     // 0 centroid distance
     // 1 quantized value lower bound
     // 2 quantized value widths
-    protected final float[] correctiveValues = new float[3];
+    protected final float[] correctiveValues = new float[6];
     private short sumQuantizationValues;
     private int lastOrd = -1;
 
@@ -868,39 +872,39 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public float getVmC(int targetOrd, int centroidOrd) throws IOException {
+    public float getNormVmC(int targetOrd, int centroidOrd) throws IOException {
       assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[0];
+        return correctiveValues[3];
       }
       readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[0];
+      return correctiveValues[3];
     }
 
     @Override
     public float getVDotC(int targetOrd, int centroidOrd) throws IOException {
       assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[1];
+        return correctiveValues[4];
       }
       readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[1];
+      return correctiveValues[4];
     }
 
     @Override
     public float getCDotC(int targetOrd, int centroidOrd) throws IOException {
       assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[2];
+        return correctiveValues[5];
       }
       readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[2];
+      return correctiveValues[5];
     }
 
     private void readCorrectiveValues(int targetOrd, int centroidOrd) throws IOException {
       lastOrd = -1;
       slice.seek(((long) targetOrd * byteSize) + binaryValue.length);
-      slice.readFloats(correctiveValues, 0, 3);
+      slice.readFloats(correctiveValues, 0, 6);
     }
 
     @Override
@@ -942,7 +946,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       slice.seek((long) targetOrd * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), binaryValue.length);
-      slice.readFloats(correctiveValues, 0, 3);
+      slice.readFloats(correctiveValues, 0, 6);
       sumQuantizationValues = slice.readShort();
       lastOrd = targetOrd;
       return binaryValue;

@@ -129,7 +129,7 @@ public class BinaryQuantizer {
   }
 
   record SubspaceOutputMIP(
-      byte[] packedBinaryVector, short xbSum, float oDotC, float normOC, float OOQ) {}
+      byte[] packedBinaryVector, float OOQ, float normOC, float oDotC) {}
 
   private SubspaceOutputMIP generateSubSpaceMIP(float[] vector, float[] centroid) {
 
@@ -147,9 +147,7 @@ public class BinaryQuantizer {
 
     float OOQ = computerOOQ(vector, normOMinusC, packedBinaryVector);
 
-    short xbSum = (short) BQVectorUtils.popcount(packedBinaryVector, discretizedDimensions);
-
-    return new SubspaceOutputMIP(packedBinaryVector, xbSum, oDotC, normOC, OOQ);
+    return new SubspaceOutputMIP(packedBinaryVector, OOQ, normOC, oDotC);
   }
 
   private float computerOOQ(float[] vector, float[] normOMinusC, byte[] packedBinaryVector) {
