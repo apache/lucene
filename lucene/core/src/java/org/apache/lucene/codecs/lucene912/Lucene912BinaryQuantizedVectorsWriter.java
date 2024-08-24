@@ -199,7 +199,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       short[] vectorClusters,
       BinaryQuantizer scalarQuantizer)
       throws IOException {
-    byte[] vector = new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
+    byte[] vector =
+        new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * 3).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -283,7 +284,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       int[] ordMap,
       BinaryQuantizer scalarQuantizer)
       throws IOException {
-    byte[] vector = new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
+    byte[] vector =
+        new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * 3).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -415,7 +417,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
       DocsWithFieldSet docsWithField =
           writeBinarizedVectorData(
-              binarizedVectorData, binarizedVectorValues, centroids.length > 1, fieldInfo.getVectorSimilarityFunction());
+              binarizedVectorData,
+              binarizedVectorValues,
+              centroids.length > 1,
+              fieldInfo.getVectorSimilarityFunction());
       long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
       writeMeta(
           fieldInfo,
@@ -481,7 +486,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       // FIXME: handle other similarity functions the same as MIP such as COSINE
       // TODO handle quantization output correctly
-      if(similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+      if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getOOQ()));
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getNormOC()));
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getODotC()));
@@ -551,8 +556,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               centroids);
       DocsWithFieldSet docsWithField =
           writeBinarizedVectorData(
-              tempQuantizedVectorData, binarizedVectorValues, centroids.length > 1,
-                  fieldInfo.getVectorSimilarityFunction());
+              tempQuantizedVectorData,
+              binarizedVectorValues,
+              centroids.length > 1,
+              fieldInfo.getVectorSimilarityFunction());
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       binarizedDataInput =

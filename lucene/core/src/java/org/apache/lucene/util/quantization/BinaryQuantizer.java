@@ -185,7 +185,10 @@ public class BinaryQuantizer {
     if (this.discretizedDimensions != destination.length * 8) {
       throw new IllegalArgumentException(
           "vector and quantized vector destination must be compatible dimensions: "
-              + BQVectorUtils.discretize(vector.length, 64) + " [ " + this.discretizedDimensions + " ]"
+              + BQVectorUtils.discretize(vector.length, 64)
+              + " [ "
+              + this.discretizedDimensions
+              + " ]"
               + "!= "
               + destination.length
               + " * 8");
@@ -263,7 +266,10 @@ public class BinaryQuantizer {
     if (this.discretizedDimensions != (destination.length * 8) / BQSpaceUtils.B_QUERY) {
       throw new IllegalArgumentException(
           "vector and quantized vector destination must be compatible dimensions: "
-              + BQVectorUtils.discretize(vector.length, 64) + " [ " + this.discretizedDimensions + " ]"
+              + BQVectorUtils.discretize(vector.length, 64)
+              + " [ "
+              + this.discretizedDimensions
+              + " ]"
               + "!= ("
               + destination.length
               + " * 8) / "

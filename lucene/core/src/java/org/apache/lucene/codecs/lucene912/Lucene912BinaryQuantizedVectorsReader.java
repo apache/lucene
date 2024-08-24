@@ -136,10 +136,15 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
       String centroidStr = centroidByte == 1 ? " + centroidByte=1" : "";
       throw new IllegalStateException(
           "Binarized vector data length "
-          + fieldEntry.vectorDataLength + " not matching size = "
-          + fieldEntry.size + " * (binaryBytes="
-          + binaryDims + " + 8" + centroidStr + ") = " + numQuantizedVectorBytes
-      );
+              + fieldEntry.vectorDataLength
+              + " not matching size = "
+              + fieldEntry.size
+              + " * (binaryBytes="
+              + binaryDims
+              + " + 8"
+              + centroidStr
+              + ") = "
+              + numQuantizedVectorBytes);
     }
   }
 
