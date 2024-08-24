@@ -39,6 +39,12 @@ public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
 
   public abstract float getMagnitude() throws IOException;
 
+  public abstract float getOOQ() throws IOException;
+
+  public abstract float getNormOC() throws IOException;
+
+  public abstract float getODotC() throws IOException;
+
   public abstract byte[] vectorValue() throws IOException;
 
   /** Return the dimension of the vectors */

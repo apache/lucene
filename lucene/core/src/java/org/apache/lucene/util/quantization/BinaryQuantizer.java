@@ -25,21 +25,27 @@ public class BinaryQuantizer {
   private final int discretizedDimensions;
 
   // dim floats random numbers sampled from the uniform distribution [0,1]
-  private final float[] u;
+  private final float[] uniformDistribution;
 
   private final VectorSimilarityFunction similarityFunction;
   private final float sqrtDimensions;
 
-  BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction, boolean fixedU) {
-    this.discretizedDimensions = (dimensions + 63) / 64 * 64;
+  BinaryQuantizer(
+      int dimensions,
+      VectorSimilarityFunction similarityFunction,
+      boolean fixedUniformDistribution) {
+    if (dimensions <= 0) {
+      throw new IllegalArgumentException("dimensions must be > 0 but was: " + dimensions);
+    }
+    this.discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
     this.similarityFunction = similarityFunction;
     Random random = new Random(42);
-    u = new float[discretizedDimensions];
+    uniformDistribution = new float[discretizedDimensions];
     for (int i = 0; i < discretizedDimensions; i++) {
-      if (fixedU) {
-        u[i] = 0.5f;
+      if (fixedUniformDistribution) {
+        uniformDistribution[i] = 0.5f;
       } else {
-        u[i] = (float) random.nextDouble();
+        uniformDistribution[i] = (float) random.nextDouble();
       }
     }
     this.sqrtDimensions = (float) Math.sqrt(discretizedDimensions);
@@ -95,6 +101,10 @@ public class BinaryQuantizer {
     }
 
     return allBinary;
+  }
+
+  public VectorSimilarityFunction getSimilarity() {
+    return this.similarityFunction;
   }
 
   private record SubspaceOutput(byte[] packedBinaryVector, float projection) {}
@@ -170,7 +180,26 @@ public class BinaryQuantizer {
   }
 
   public float[] quantizeForIndex(float[] vector, byte[] destination, float[] centroid) {
-    float[] corrections = null;
+    assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
+
+    if (this.discretizedDimensions != destination.length * 8) {
+      throw new IllegalArgumentException(
+          "vector and quantized vector destination must be compatible dimensions: "
+              + BQVectorUtils.discretize(vector.length, 64) + " [ " + this.discretizedDimensions + " ]"
+              + "!= "
+              + destination.length
+              + " * 8");
+    }
+
+    if (vector.length != centroid.length) {
+      throw new IllegalArgumentException(
+          "vector and centroid dimensions must be the same: "
+              + vector.length
+              + "!= "
+              + centroid.length);
+    }
+
+    float[] corrections;
 
     // FIXME: make a copy of vector so we don't overwrite it here?
     //  ... (could trade subtractInPlace w subtract in genSubSpace)
@@ -192,13 +221,11 @@ public class BinaryQuantizer {
         break;
       case VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT:
         SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid);
-        corrections = new float[4];
-        // FIXME: should be a short instead of a float
-        corrections[0] = subspaceOutputMIP.xbSum();
+        corrections = new float[3];
         // FIXME: quantize these values so we are passing back 1 byte values for all three of these
-        corrections[1] = subspaceOutputMIP.oDotC();
-        corrections[2] = subspaceOutputMIP.normOC();
-        corrections[3] = subspaceOutputMIP.OOQ();
+        corrections[0] = subspaceOutputMIP.OOQ();
+        corrections[1] = subspaceOutputMIP.normOC();
+        corrections[2] = subspaceOutputMIP.oDotC();
         System.arraycopy(
             subspaceOutputMIP.packedBinaryVector(), 0, destination, 0, destination.length);
         break;
@@ -210,15 +237,16 @@ public class BinaryQuantizer {
     return corrections;
   }
 
-  private record QuantResult(byte[] result, short sumQ) {}
+  private record QuantResult(byte[] result, short quantizedSum) {}
 
-  private static QuantResult quantize(float[] q, float[] u, float vl, float width) {
+  private static QuantResult quantize(
+      float[] vector, float[] uniformRand, float lower, float width) {
     // FIXME: speed up with panama? and/or use existing scalar quantization utils in Lucene?
-    byte[] result = new byte[q.length];
+    byte[] result = new byte[vector.length];
     float oneOverWidth = 1.0f / width;
     short sumQ = 0;
-    for (int i = 0; i < q.length; i++) {
-      byte res = (byte) ((q[i] - vl) * oneOverWidth + u[i]);
+    for (int i = 0; i < vector.length; i++) {
+      byte res = (byte) ((vector[i] - lower) * oneOverWidth + uniformRand[i]);
       result[i] = res;
       sumQ += res;
     }
@@ -226,23 +254,47 @@ public class BinaryQuantizer {
     return new QuantResult(result, sumQ);
   }
 
-  public float[] quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
-    // FIXME: make a copy of vector so we don't overwrite it here?
-    //  ... (could subtractInPlace but the passed vector is modified)
-    vector = BQVectorUtils.subtract(vector, centroid);
+  public record QueryFactors(
+      short quantizedSum, float lower, float width, float normVmC, float vDotC, float cDotC) {}
 
-    // FIXME: should other similarity functions behave like MIP on query
-    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
-      vector = BQVectorUtils.divide(vector, BQVectorUtils.norm(vector));
+  public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
+    assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
+
+    if (this.discretizedDimensions != (destination.length * 8) / BQSpaceUtils.B_QUERY) {
+      throw new IllegalArgumentException(
+          "vector and quantized vector destination must be compatible dimensions: "
+              + BQVectorUtils.discretize(vector.length, 64) + " [ " + this.discretizedDimensions + " ]"
+              + "!= ("
+              + destination.length
+              + " * 8) / "
+              + BQSpaceUtils.B_QUERY);
     }
 
-    float[] range = range(vector);
+    if (vector.length != centroid.length) {
+      throw new IllegalArgumentException(
+          "vector and centroid dimensions must be the same: "
+              + vector.length
+              + "!= "
+              + centroid.length);
+    }
+
+    // FIXME: make a copy of vector so we don't overwrite it here?
+    //  ... (could subtractInPlace but the passed vector is modified)
+    float[] vmC = BQVectorUtils.subtract(vector, centroid);
+
+    // FIXME: should other similarity functions behave like MIP on query like COSINE
+    float normVmC = 0f;
+    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+      normVmC = BQVectorUtils.norm(vmC);
+      vmC = BQVectorUtils.divide(vmC, normVmC);
+    }
+    float[] range = range(vmC);
     float lower = range[0];
     float upper = range[1];
     // Δ := (𝑣𝑟 − 𝑣𝑙)/(2𝐵𝑞 − 1)
     float width = (upper - lower) / ((1 << BQSpaceUtils.B_QUERY) - 1);
 
-    QuantResult quantResult = quantize(vector, u, lower, width);
+    QuantResult quantResult = quantize(vmC, uniformDistribution, lower, width);
     byte[] byteQuery = quantResult.result();
 
     // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
@@ -250,12 +302,18 @@ public class BinaryQuantizer {
     // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal
     byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
     BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
-    // FIXME: quantize the corrections as well so we store less
-    float[] corrections = new float[3];
-    corrections[0] = quantResult.sumQ(); // FIXME: can be stored as a short
-    corrections[1] = lower;
-    corrections[2] = width;
 
-    return corrections;
+    QueryFactors factors;
+    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+      float vDotC = VectorUtil.dotProduct(vector, centroid);
+      float cDotC = VectorUtil.dotProduct(centroid, centroid);
+      // FIXME: quantize the corrections as well so we store less
+      factors = new QueryFactors(quantResult.quantizedSum, lower, width, normVmC, vDotC, cDotC);
+    } else {
+      // FIXME: quantize the corrections as well so we store less
+      factors = new QueryFactors(quantResult.quantizedSum, lower, width, 0f, 0f, 0f);
+    }
+
+    return factors;
   }
 }

@@ -108,12 +108,12 @@ public class TestBinaryQuantization extends LuceneTestCase {
           33.582f, 35.997f, 33.528f, 30.369f, 36.955f, 21.23f, 15.2f, 30.252f, 34.56f, 22.295f,
           29.413f, 16.576f, 11.226f, 10.754f, 12.936f, 15.525f, 15.868f, 16.43f
         };
-    float[] corrections = quantizer.quantizeForQuery(vector, destination, centroid);
+    BinaryQuantizer.QueryFactors corrections =
+        quantizer.quantizeForQuery(vector, destination, centroid);
 
-    assertEquals(3, corrections.length);
-    float sumQ = corrections[0];
-    float lower = corrections[1];
-    float width = corrections[2];
+    float sumQ = corrections.quantizedSum();
+    float lower = corrections.lower();
+    float width = corrections.width();
 
     assertEquals(793, (int) sumQ);
     assertEquals(-57.883f, lower, 0.001f);

@@ -22,6 +22,10 @@ import org.apache.lucene.util.VectorUtil;
 // FIXME: move these to VectorUtils?
 public class BQVectorUtils {
 
+  public static int discretize(int value, int bucket) {
+    return ((value + (bucket-1)) / bucket) * bucket;
+  }
+
   public static float[] pad(float[] vector, int dimensions) {
     if (vector.length >= dimensions) {
       return vector;

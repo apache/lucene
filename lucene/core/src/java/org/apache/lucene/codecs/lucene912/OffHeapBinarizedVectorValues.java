@@ -28,6 +28,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
+import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorValues
@@ -45,7 +46,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   protected byte clusterId = 0;
   protected final int byteSize;
   protected int lastOrd = -1;
-  protected final float[] correctiveValues = new float[2];
+  protected final float[] correctiveValues = new float[3];
   protected final boolean isMoreThanOneCluster;
   protected final BinaryQuantizer binaryQuantizer;
   protected final float[][] centroids;
@@ -66,9 +67,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.slice = slice;
     this.centroids = centroids;
     this.isMoreThanOneCluster = centroids != null && centroids.length > 1;
-    // FIXME: not sure if this was a bug or a misunderstanding:    this.numBytes = (dimension + 7) /
-    // 8;
-    this.numBytes = (((dimension + 63) / 64) * 64) / 8;
+    this.numBytes = BQVectorUtils.discretize(dimension, 64) / 8;
     this.byteSize = (numBytes + 8) + (isMoreThanOneCluster ? 1 : 0);
     this.byteBuffer = ByteBuffer.allocate(numBytes);
     this.binaryValue = byteBuffer.array();
@@ -95,7 +94,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (isMoreThanOneCluster) {
       clusterId = slice.readByte();
     }
-    slice.readFloats(correctiveValues, 0, 2);
+    slice.readFloats(correctiveValues, 0, 3);
     lastOrd = targetOrd;
     return binaryValue;
   }
@@ -111,12 +110,27 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   @Override
+  public float getOOQ() {
+    return correctiveValues[0];
+  }
+
+  @Override
+  public float getNormOC() {
+    return correctiveValues[1];
+  }
+
+  @Override
+  public float getODotC() {
+    return correctiveValues[2];
+  }
+
+  @Override
   public float getCentroidDistance(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
       return correctiveValues[0];
     }
     slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
-    slice.readFloats(correctiveValues, 0, 2);
+    slice.readFloats(correctiveValues, 0, 3);
     return correctiveValues[0];
   }
 
@@ -126,8 +140,38 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       return correctiveValues[1];
     }
     slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
-    slice.readFloats(correctiveValues, 0, 2);
+    slice.readFloats(correctiveValues, 0, 3);
     return correctiveValues[1];
+  }
+
+  @Override
+  public float getOOQ(int targetOrd) throws IOException {
+    if (lastOrd == targetOrd) {
+      return correctiveValues[0];
+    }
+    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
+    slice.readFloats(correctiveValues, 0, 3);
+    return correctiveValues[0];
+  }
+
+  @Override
+  public float getNormOC(int targetOrd) throws IOException {
+    if (lastOrd == targetOrd) {
+      return correctiveValues[1];
+    }
+    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
+    slice.readFloats(correctiveValues, 0, 3);
+    return correctiveValues[1];
+  }
+
+  @Override
+  public float getODotC(int targetOrd) throws IOException {
+    if (lastOrd == targetOrd) {
+      return correctiveValues[2];
+    }
+    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
+    slice.readFloats(correctiveValues, 0, 3);
+    return correctiveValues[2];
   }
 
   @Override

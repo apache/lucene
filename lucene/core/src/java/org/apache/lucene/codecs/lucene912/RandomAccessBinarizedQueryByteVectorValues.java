@@ -27,11 +27,17 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 public interface RandomAccessBinarizedQueryByteVectorValues extends RandomAccessVectorValues.Bytes {
   float getCentroidDistance(int targetOrd, int centroidOrd) throws IOException;
 
-  float getVl(int targetOrd, int centroidOrd) throws IOException;
+  float getLower(int targetOrd, int centroidOrd) throws IOException;
 
   float getWidth(int targetOrd, int centroidOrd) throws IOException;
 
-  int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
+  float getVmC(int targetOrd, int centroidOrd) throws IOException;
+
+  float getVDotC(int targetOrd, int centroidOrd) throws IOException;
+
+  float getCDotC(int targetOrd, int centroidOrd) throws IOException;
+
+  short sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
 
   @Override
   RandomAccessBinarizedQueryByteVectorValues copy() throws IOException;

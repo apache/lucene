@@ -32,6 +32,21 @@ public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVecto
   /** Returns the vector magnitude for the vector */
   float getVectorMagnitude(int vectorOrd) throws IOException;
 
+  /** Returns OOQ corrective factor for the given vector ordinal */
+  float getOOQ(int targetOrd) throws IOException;
+
+  /**
+   * Returns the norm of the target vector w the centroid corrective factor for the given vector
+   * ordinal
+   */
+  float getNormOC(int targetOrd) throws IOException;
+
+  /**
+   * Returns the target vector dot product the centroid corrective factor for the given vector
+   * ordinal
+   */
+  float getODotC(int targetOrd) throws IOException;
+
   /**
    * Returns the cluster ID for the vector in the range [-128 to 127]
    *

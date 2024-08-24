@@ -315,7 +315,7 @@ public final class VectorUtil {
   public static long ipByteBinByte(byte[] q, byte[] d) {
     if (q.length != d.length * B_QUERY) {
       throw new IllegalArgumentException(
-          "vector dimensions incompatible: " + q.length + "!= 4 x " + d.length);
+          "vector dimensions incompatible: " + q.length + "!= " + B_QUERY + " x " + d.length);
     }
     return IMPL.ipByteBinByte(q, d);
   }
