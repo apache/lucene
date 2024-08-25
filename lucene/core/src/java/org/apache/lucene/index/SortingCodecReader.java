@@ -222,6 +222,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     final FloatVectorValues delegate;
     final Sorter.DocMap sortMap;
 
+    protected int docId = -1;
+
     static SortingFloatVectorValues create(
         FloatVectorValues delegate, Sorter.DocMap sortMap, int maxDoc) throws IOException {
       if (delegate instanceof RandomAccessVectorValues.Floats && delegate.size() == maxDoc) {
@@ -248,6 +250,16 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
+    public int docID() {
+      return docId;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(docId + 1);
+    }
+
+    @Override
     public VectorScorer scorer(float[] target) {
       throw new UnsupportedOperationException();
     }
@@ -256,6 +268,8 @@ public final class SortingCodecReader extends FilterCodecReader {
   private abstract static class SortingByteVectorValues extends ByteVectorValues {
     final ByteVectorValues delegate;
     final Sorter.DocMap sortMap;
+
+    protected int docId = -1;
 
     static SortingByteVectorValues create(
         ByteVectorValues delegate, Sorter.DocMap sortMap, int maxDoc) throws IOException {
@@ -283,6 +297,16 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
+    public int docID() {
+      return docId;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(docId + 1);
+    }
+
+    @Override
     public VectorScorer scorer(byte[] target) {
       throw new UnsupportedOperationException();
     }
@@ -292,21 +316,10 @@ public final class SortingCodecReader extends FilterCodecReader {
   private static class OffHeapSortingByteVectorValues extends SortingByteVectorValues {
 
     final RandomAccessVectorValues.Bytes bytes;
-    private int docId = -1;
 
     OffHeapSortingByteVectorValues(RandomAccessVectorValues.Bytes delegate, Sorter.DocMap sortMap) {
       super((ByteVectorValues) delegate, sortMap);
       this.bytes = delegate;
-    }
-
-    @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
     }
 
     @Override
@@ -327,8 +340,6 @@ public final class SortingCodecReader extends FilterCodecReader {
     final FixedBitSet docsWithField;
     final byte[][] vectors;
 
-    private int docId = -1;
-
     OnHeapSortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap)
         throws IOException {
       super(delegate, sortMap);
@@ -339,16 +350,6 @@ public final class SortingCodecReader extends FilterCodecReader {
         docsWithField.set(newDocID);
         vectors[newDocID] = delegate.vectorValue().clone();
       }
-    }
-
-    @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
     }
 
     @Override
@@ -369,22 +370,11 @@ public final class SortingCodecReader extends FilterCodecReader {
   private static class OffHeapSortingFloatVectorValues extends SortingFloatVectorValues {
 
     final RandomAccessVectorValues.Floats floats;
-    private int docId = -1;
 
     OffHeapSortingFloatVectorValues(
         RandomAccessVectorValues.Floats delegate, Sorter.DocMap sortMap) {
       super((FloatVectorValues) delegate, sortMap);
       this.floats = delegate;
-    }
-
-    @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
     }
 
     @Override
@@ -405,8 +395,6 @@ public final class SortingCodecReader extends FilterCodecReader {
     final FixedBitSet docsWithField;
     final float[][] vectors;
 
-    private int docId = -1;
-
     OnHeapSortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap)
         throws IOException {
       super(delegate, sortMap);
@@ -417,16 +405,6 @@ public final class SortingCodecReader extends FilterCodecReader {
         docsWithField.set(newDocID);
         vectors[newDocID] = delegate.vectorValue().clone();
       }
-    }
-
-    @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() {
-      return advance(docId + 1);
     }
 
     @Override
