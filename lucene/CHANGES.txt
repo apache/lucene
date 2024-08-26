@@ -312,6 +312,9 @@ New Features
 
 * GITHUB#13678: Add support JDK 23 to the Panama Vectorization Provider. (Chris Hegarty)
 
+* GITHUB#13689: Dynamic range facets - create weighted ranges over numeric fields with counts per range.
+  (Yuting Gan, Greg Miller, Stefan Vodita)
+
 Improvements
 ---------------------
 
