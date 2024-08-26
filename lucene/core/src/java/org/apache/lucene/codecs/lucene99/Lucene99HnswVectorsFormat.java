@@ -51,8 +51,9 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
  *               <li><b>array[vint]</b> the delta encoded neighbor ordinals
  *             </ul>
  *       </ul>
- *   <li>After all levels are encoded, memory offsets for each node's neighbor nodes are appended to the end of the
- *       file. The offsets are encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}.
+ *   <li>After all levels are encoded, memory offsets for each node's neighbor nodes are appended to
+ *       the end of the file. The offsets are encoded by {@link
+ *       org.apache.lucene.util.packed.DirectMonotonicWriter}.
  * </ul>
  *
  * <h2>.vem (vector metadata) file</h2>
@@ -101,8 +102,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   /**
    * The maximum size of the queue to maintain while searching during graph construction. This
-   * maximum value preserves the ratio of the `DEFAULT_BEAM_WIDTH`/`DEFAULT_MAX_CONN` (i.e. `6.25 * 16 =
-   * 3200`).
+   * maximum value preserves the ratio of the `DEFAULT_BEAM_WIDTH`/`DEFAULT_MAX_CONN` (i.e. `6.25 *
+   * 16 = 3200`).
    */
   public static final int MAXIMUM_BEAM_WIDTH = 3200;
 
