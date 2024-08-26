@@ -766,7 +766,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public long ipByteBinByte(byte[] q, byte[] d) {
-    if (VECTOR_BITSIZE >= 128) {
+    if (VECTOR_BITSIZE == 128) {
       return ipByteBinByte128(MemorySegment.ofArray(q), MemorySegment.ofArray(d));
     }
     throw new UnsupportedOperationException("Vector bit size=" + VECTOR_BITSIZE);
@@ -774,7 +774,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
 
-  // TODO: document the max dims size
   public static long ipByteBinByte128(MemorySegment q, MemorySegment d) {
     long ret = 0;
     long subRet0 = 0;
@@ -830,7 +829,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // tail as bytes
     for (int r = limit; r < d.byteSize(); r++) {
       byte dByte = d.get(JAVA_BYTE, r);
-      // TODO: DO I need the 0xFF?
       subRet0 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r)) & 0xFF);
       subRet1 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r + d.byteSize())) & 0xFF);
       subRet2 += Integer.bitCount((dByte & q.get(JAVA_BYTE, r + 2 * d.byteSize())) & 0xFF);
