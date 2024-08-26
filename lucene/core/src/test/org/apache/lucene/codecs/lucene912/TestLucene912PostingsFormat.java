@@ -31,6 +31,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
@@ -151,6 +152,20 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
                 new ByteArrayDataInput(b),
                 new MutableImpactList(impacts.size() + random().nextInt(3)));
         assertEquals(impacts, impacts2);
+      }
+    }
+  }
+
+  public void testFindNextGEQ() {
+    long[] values = new long[ForUtil.BLOCK_SIZE + 1];
+    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+      values[i] = i * 2;
+    }
+    values[ForUtil.BLOCK_SIZE] = DocIdSetIterator.NO_MORE_DOCS;
+    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+      for (int start = 0; start <= i; ++start) {
+        assertEquals(i, Lucene912PostingsReader.findNextGEQ(values, i * 2, start));
+        assertEquals(i + 1, Lucene912PostingsReader.findNextGEQ(values, i * 2 + 1, start));
       }
     }
   }

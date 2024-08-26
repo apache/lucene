@@ -212,13 +212,51 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
   }
 
-  static int findFirstGreater(long[] buffer, int target, int from) {
-    for (int i = from; i < BLOCK_SIZE; ++i) {
-      if (buffer[i] >= target) {
-        return i;
+  /**
+   * Return the first index in sorted array {@code buffer} whose value is greater than or equal to
+   * {@code target}.
+   */
+  static int findNextGEQ(long[] values, long target, int start) {
+    assert values.length == BLOCK_SIZE + 1;
+    assert values[values.length - 1] == DocIdSetIterator.NO_MORE_DOCS;
+    assert start < BLOCK_SIZE;
+
+    if (values[start] >= target) {
+      // Surprisingly this is a likely condition in practice, so optimizing for it helps.
+      return start;
+    }
+
+    // We just ruled out that our target index is at `start`.
+    start += 1;
+
+    // Now find the first interval of 4 values that contains our target.
+    int rangeStart = values.length - 4;
+
+    for (int i = start; i + 4 <= values.length; i += 4) {
+      if (values[i + 3] >= target) {
+        rangeStart = i;
+        break;
       }
     }
-    return BLOCK_SIZE;
+
+    // Binary search in this interval of 4 values.
+    return binarySearch4(values, target, rangeStart);
+  }
+
+  /**
+   * Return the first index whose value is greater than or equal to {@code target} among the 4
+   * values starting at {@code start}. If none of the values is greater than or equal to {@code
+   * target}, this returns {@code start+3}.
+   */
+  private static int binarySearch4(long[] values, long target, int start) {
+    // This code is organized in a way that compiles to a branchless binary search.
+    for (int shift = 1; shift >= 0; --shift) {
+      int halfRange = 1 << shift;
+      if (values[start + halfRange - 1] < target) {
+        start += halfRange;
+      }
+    }
+    return start;
   }
 
   @Override
@@ -509,15 +547,14 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
-        docBuffer[1] = NO_MORE_DOCS;
         docCountUpto++;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
         prefixSum(docBuffer, left, prevDocID);
-        docBuffer[left] = NO_MORE_DOCS;
         docCountUpto += left;
       }
+      Arrays.fill(docBuffer, left, docBuffer.length, NO_MORE_DOCS);
       docBufferUpto = 0;
       freqFP = -1;
     }
@@ -615,7 +652,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = findNextGEQ(docBuffer, target, docBufferUpto);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -849,13 +886,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
-        docBuffer[1] = NO_MORE_DOCS;
+        Arrays.fill(docBuffer, left, docBuffer.length, NO_MORE_DOCS);
         docCountUpto++;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
         prefixSum(docBuffer, left, prevDocID);
-        docBuffer[left] = NO_MORE_DOCS;
+        Arrays.fill(docBuffer, left, docBuffer.length, NO_MORE_DOCS);
         docCountUpto += left;
       }
       prevDocID = docBuffer[BLOCK_SIZE - 1];
@@ -1022,7 +1059,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = findNextGEQ(docBuffer, target, docBufferUpto);
       for (int i = docBufferUpto; i <= next; ++i) {
         posPendingCount += freqBuffer[i];
       }
@@ -1363,7 +1400,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
         prefixSum(docBuffer, left, prevDocID);
-        docBuffer[left] = NO_MORE_DOCS;
+        Arrays.fill(docBuffer, left, docBuffer.length, NO_MORE_DOCS);
         freqFP = -1;
         docCountUpto += left;
       }
@@ -1495,7 +1532,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = findNextGEQ(docBuffer, target, docBufferUpto);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -1730,13 +1767,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = totalTermFreq;
-        docBuffer[1] = NO_MORE_DOCS;
+        Arrays.fill(docBuffer, left, docBuffer.length, NO_MORE_DOCS);
         docCountUpto++;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
         prefixSum(docBuffer, left, prevDocID);
-        docBuffer[left] = NO_MORE_DOCS;
+        Arrays.fill(docBuffer, left, docBuffer.length, NO_MORE_DOCS);
         docCountUpto += left;
       }
       prevDocID = docBuffer[BLOCK_SIZE - 1];
@@ -1938,7 +1975,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = findNextGEQ(docBuffer, target, docBufferUpto);
       for (int i = docBufferUpto; i <= next; ++i) {
         posPendingCount += freqBuffer[i];
       }
