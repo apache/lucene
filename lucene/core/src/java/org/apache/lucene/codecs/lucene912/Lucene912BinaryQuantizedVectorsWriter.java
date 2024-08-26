@@ -575,7 +575,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               tempQuantizedVectorData.getName(), segmentWriteState.context);
       binarizedVectorData.copyBytes(
           binarizedDataInput, binarizedDataInput.length() - CodecUtil.footerLength());
-      long vectorDataLength = binarizedDataInput.getFilePointer() - vectorDataOffset;
+      long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(binarizedDataInput);
       writeQueryBinarizedVectorData(
           tempScoreQuantizedVectorData,
