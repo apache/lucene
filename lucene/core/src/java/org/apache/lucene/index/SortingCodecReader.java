@@ -791,7 +791,12 @@ public final class SortingCodecReader extends FilterCodecReader {
         if (values == null) {
           throw new IllegalStateException("HnswGraph with no vector values");
         }
-        return new SortingHnswGraph(delegate.getGraph(field), values, docMap);
+        HnswGraph hnswDelegate = delegate.getGraph(field);
+        if (hnswDelegate == null) {
+          return null;
+        } else {
+          return new SortingHnswGraph(hnswDelegate, values, docMap);
+        }
       }
 
       @Override
