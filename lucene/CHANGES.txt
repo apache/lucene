@@ -374,6 +374,8 @@ Optimizations
 * GITHUB##13644: Improve NumericComparator competitive iterator logic by comparing the missing value with the top
   value even after the hit queue is full (Pan Guixin)
 
+* GITHUB#13587: Use Max WAND optimizations with ToParentBlockJoinQuery when using ScoreMode.Max (Mike Pellegrini)
+
 Changes in runtime behavior
 ---------------------
 
