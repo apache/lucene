@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.search.ScoreMode.COMPLETE;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
@@ -166,9 +168,7 @@ public class ToParentBlockJoinQuery extends Query {
           if (innerBulkScorer == null) {
             return null;
           }
-          return new BlockJoinBulkScorer(
-              innerBulkScorer,
-              new BlockJoinScorer(childScorerSupplier.get(Long.MAX_VALUE), parents, scoreMode));
+          return new BlockJoinBulkScorer(innerBulkScorer, scoreMode, parents);
         }
 
         @Override
@@ -290,6 +290,51 @@ public class ToParentBlockJoinQuery extends Query {
     }
   }
 
+  private static class Score extends Scorable {
+    private final ScoreMode scoreMode;
+    private float score;
+    private int freq;
+
+    public Score(ScoreMode scoreMode) {
+      this.scoreMode = scoreMode;
+      reset();
+    }
+
+    public void reset() {
+      score = 0.0f;
+      freq = 0;
+    }
+
+    public void addChildScore(float childScore) {
+      freq += 1;
+      switch (scoreMode) {
+        case Total:
+        case Avg:
+          score += childScore;
+          break;
+        case Min:
+          score = Math.min(score, childScore);
+          break;
+        case Max:
+          score = Math.max(score, childScore);
+          break;
+        case None:
+          break;
+        default:
+          throw new AssertionError();
+      }
+    }
+
+    @Override
+    public float score() {
+      float score = this.score;
+      if (scoreMode == ScoreMode.Avg && freq > 0) {
+        score /= freq;
+      }
+      return score;
+    }
+  }
+
   static class BlockJoinScorer extends Scorer {
     private final Scorer childScorer;
     private final BitSet parentBits;
@@ -372,6 +417,7 @@ public class ToParentBlockJoinQuery extends Query {
       while (childApproximation.nextDoc() < parentApproximation.docID()) {
         if (childTwoPhase == null || childTwoPhase.matches()) {
           final float childScore = scoreMode == ScoreMode.None ? 0 : childScorer.score();
+          // TODO: Refactor
           freq += 1;
           switch (scoreMode) {
             case Total:
@@ -457,11 +503,13 @@ public class ToParentBlockJoinQuery extends Query {
 
   private static class BlockJoinBulkScorer extends BulkScorer {
     private final BulkScorer childBulkScorer;
-    private final BlockJoinScorer blockJoinScorer;
+    private final ScoreMode scoreMode;
+    private final BitSet parents;
 
-    public BlockJoinBulkScorer(BulkScorer childBulkScorer, BlockJoinScorer blockJoinScorer) {
+    public BlockJoinBulkScorer(BulkScorer childBulkScorer, ScoreMode scoreMode, BitSet parents) {
       this.childBulkScorer = childBulkScorer;
-      this.blockJoinScorer = blockJoinScorer;
+      this.scoreMode = scoreMode;
+      this.parents = parents;
     }
 
     @Override
@@ -475,10 +523,36 @@ public class ToParentBlockJoinQuery extends Query {
       return childBulkScorer.cost();
     }
 
-    private LeafCollector wrapCollector(LeafCollector collector) throws IOException {
-      FilterLeafCollector wrappedCollector = new FilterLeafCollector(collector) {};
-      wrappedCollector.setScorer(blockJoinScorer);
-      return wrappedCollector;
+    // TODO: Handle non-zero docBase
+    private LeafCollector wrapCollector(LeafCollector collector) {
+      return new FilterLeafCollector(collector) {
+        private final Score currentParentScore = new Score(scoreMode);
+        private Integer currentParent = null;
+        private Scorable scorer = null;
+
+        @Override
+        public void setScorer(Scorable scorer) throws IOException {
+          this.scorer = scorer;
+          super.setScorer(scorer != null ? currentParentScore : null);
+        }
+
+        @Override
+        public void collect(int doc) throws IOException {
+          if (currentParent == null) {
+            currentParent = parents.nextSetBit(doc);
+          } else if (doc > currentParent) {
+            currentParent = parents.nextSetBit(doc);
+            currentParentScore.reset();
+          }
+          assert currentParent != NO_MORE_DOCS;
+
+          if (scorer != null) {
+            currentParentScore.addChildScore(scorer.score());
+          }
+
+          in.collect(currentParent);
+        }
+      };
     }
   }
 
