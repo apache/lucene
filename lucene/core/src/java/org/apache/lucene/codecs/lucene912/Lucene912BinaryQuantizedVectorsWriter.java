@@ -694,6 +694,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     Arrays.fill(centroid, 0);
     int count = 0;
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
+      if (knnVectorsReader == null) continue;
       FloatVectorValues vectorValues =
           mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name);
       if (vectorValues == null) {

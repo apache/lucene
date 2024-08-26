@@ -86,7 +86,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       RandomAccessBinarizedQueryByteVectorValues scoringVectors,
       RandomAccessBinarizedByteVectorValues targetVectors)
       throws IOException {
-    return new BinarizedRandomVectorScorerSupplier(scoringVectors, targetVectors, similarityFunction);
+    return new BinarizedRandomVectorScorerSupplier(
+        scoringVectors, targetVectors, similarityFunction);
   }
 
   @Override
