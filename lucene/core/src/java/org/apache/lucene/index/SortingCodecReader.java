@@ -226,10 +226,12 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     static SortingFloatVectorValues create(
         FloatVectorValues delegate, Sorter.DocMap sortMap, int maxDoc) throws IOException {
-      if (delegate instanceof RandomAccessVectorValues.Floats && delegate.size() == maxDoc) {
+      if (delegate instanceof RandomAccessVectorValues.Floats) {
         return new OffHeapSortingFloatVectorValues(
             (RandomAccessVectorValues.Floats) delegate, sortMap);
       } else {
+        // just checking - this never occurs for standard Lucene classes
+        // assert false : "on heap";
         return new OnHeapSortingFloatVectorValues(delegate, sortMap);
       }
     }
@@ -273,10 +275,11 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     static SortingByteVectorValues create(
         ByteVectorValues delegate, Sorter.DocMap sortMap, int maxDoc) throws IOException {
-      if (delegate instanceof RandomAccessVectorValues.Bytes && delegate.size() == maxDoc) {
+      if (delegate instanceof RandomAccessVectorValues.Bytes) {
         return new OffHeapSortingByteVectorValues(
             (RandomAccessVectorValues.Bytes) delegate, sortMap);
       } else {
+        assert false : "on heap";
         return new OnHeapSortingByteVectorValues(delegate, sortMap);
       }
     }
@@ -312,14 +315,29 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  // only create when new docs in Sorter.DocMap are dense - has docs from 0 .. size-1.
   private static class OffHeapSortingByteVectorValues extends SortingByteVectorValues {
 
-    final RandomAccessVectorValues.Bytes bytes;
+    private final FixedBitSet docsWithField;
+    private final int[] docToOrd;
+    private final RandomAccessVectorValues.Bytes bytes;
 
-    OffHeapSortingByteVectorValues(RandomAccessVectorValues.Bytes delegate, Sorter.DocMap sortMap) {
+    OffHeapSortingByteVectorValues(RandomAccessVectorValues.Bytes delegate, Sorter.DocMap sortMap)
+        throws IOException {
       super((ByteVectorValues) delegate, sortMap);
       this.bytes = delegate;
+      if (delegate.size() == sortMap.size()) {
+        docsWithField = null;
+        docToOrd = null;
+      } else {
+        docsWithField = new FixedBitSet(sortMap.size());
+        docToOrd = new int[sortMap.size()];
+        DocIdSetIterator disi = (DocIdSetIterator) delegate;
+        for (int doc = disi.nextDoc(), ord = 0; doc != NO_MORE_DOCS; doc = disi.nextDoc(), ord++) {
+          int newDocID = sortMap.oldToNew(doc);
+          docsWithField.set(newDocID);
+          docToOrd[newDocID] = ord;
+        }
+      }
     }
 
     @Override
@@ -327,12 +345,21 @@ public final class SortingCodecReader extends FilterCodecReader {
       if (target >= size()) {
         return NO_MORE_DOCS;
       }
-      return docId = target;
+      if (docsWithField == null) {
+        docId = target;
+      } else {
+        docId = docsWithField.nextSetBit(target);
+      }
+      return docId;
     }
 
     @Override
     public byte[] vectorValue() throws IOException {
-      return bytes.vectorValue(sortMap.newToOld(docId));
+      if (docToOrd == null) {
+        return bytes.vectorValue(sortMap.oldToNew(docId));
+      } else {
+        return bytes.vectorValue(docToOrd[docId]);
+      }
     }
   }
 
@@ -366,15 +393,29 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  // only create when new docs in Sorter.DocMap are dense - has docs from 0 .. size-1.
   private static class OffHeapSortingFloatVectorValues extends SortingFloatVectorValues {
 
-    final RandomAccessVectorValues.Floats floats;
+    private final RandomAccessVectorValues.Floats floats;
+    private final FixedBitSet docsWithField;
+    private final int[] docToOrd;
 
-    OffHeapSortingFloatVectorValues(
-        RandomAccessVectorValues.Floats delegate, Sorter.DocMap sortMap) {
+    OffHeapSortingFloatVectorValues(RandomAccessVectorValues.Floats delegate, Sorter.DocMap sortMap)
+        throws IOException {
       super((FloatVectorValues) delegate, sortMap);
       this.floats = delegate;
+      if (delegate.size() == sortMap.size()) {
+        docsWithField = null;
+        docToOrd = null;
+      } else {
+        docsWithField = new FixedBitSet(sortMap.size());
+        docToOrd = new int[sortMap.size()];
+        DocIdSetIterator disi = (DocIdSetIterator) delegate;
+        for (int doc = disi.nextDoc(), ord = 0; doc != NO_MORE_DOCS; doc = disi.nextDoc(), ord++) {
+          int newDocID = sortMap.oldToNew(doc);
+          docsWithField.set(newDocID);
+          docToOrd[newDocID] = ord;
+        }
+      }
     }
 
     @Override
@@ -382,12 +423,21 @@ public final class SortingCodecReader extends FilterCodecReader {
       if (target >= size()) {
         return NO_MORE_DOCS;
       }
-      return docId = target;
+      if (docsWithField == null) {
+        docId = target;
+      } else {
+        docId = docsWithField.nextSetBit(target);
+      }
+      return docId;
     }
 
     @Override
     public float[] vectorValue() throws IOException {
-      return floats.vectorValue(sortMap.newToOld(docId));
+      if (docToOrd == null) {
+        return floats.vectorValue(sortMap.oldToNew(docId));
+      } else {
+        return floats.vectorValue(docToOrd[docId]);
+      }
     }
   }
 
@@ -438,7 +488,7 @@ public final class SortingCodecReader extends FilterCodecReader {
         int[] oldToNewOrd = new int[delegate.size()];
         for (int oldOrd = 0, doc = oldValues.nextDoc();
             doc != NO_MORE_DOCS;
-            doc = oldValues.nextDoc()) {
+            doc = oldValues.nextDoc(), oldOrd++) {
           int newDoc = sortMap.oldToNew(doc);
           // record old ord in LSBits so we can recover it after sorting
           docsWithField[oldOrd] = (long) newDoc << 32 | oldOrd;
@@ -449,23 +499,33 @@ public final class SortingCodecReader extends FilterCodecReader {
           newToOldOrd[ord] = oldOrd;
           oldToNewOrd[oldOrd] = ord;
         }
-        this.sortMap =
-            new Sorter.DocMap() {
-              @Override
-              public int oldToNew(int ord) {
-                return oldToNewOrd[ord];
-              }
+        this.sortMap = new DocMap(oldToNewOrd, newToOldOrd);
+      }
+    }
 
-              @Override
-              public int newToOld(int ord) {
-                return newToOldOrd[ord];
-              }
+    class DocMap extends Sorter.DocMap {
 
-              @Override
-              public int size() {
-                return newToOldOrd.length;
-              }
-            };
+      final int[] oldToNewOrd;
+      final int[] newToOldOrd;
+
+      DocMap(int[] oldToNewOrd, int[] newToOldOrd) {
+        this.oldToNewOrd = oldToNewOrd;
+        this.newToOldOrd = newToOldOrd;
+      }
+
+      @Override
+      public int oldToNew(int ord) {
+        return oldToNewOrd[ord];
+      }
+
+      @Override
+      public int newToOld(int ord) {
+        return newToOldOrd[ord];
+      }
+
+      @Override
+      public int size() {
+        return newToOldOrd.length;
       }
     }
 

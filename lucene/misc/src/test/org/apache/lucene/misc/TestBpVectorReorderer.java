@@ -19,14 +19,12 @@ package org.apache.lucene.misc;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -35,17 +33,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersIndexInput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 import org.junit.Before;
@@ -82,7 +76,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     // This test may fail for small N; 100 seems big enough for the law of large numbers to make it
     // work w/very high probability
     for (int i = 0; i < 100; i++) {
-      points.add(new float[]{random().nextFloat(), random().nextFloat(), random().nextFloat()});
+      points.add(new float[] {random().nextFloat(), random().nextFloat(), random().nextFloat()});
     }
     double closestDistanceSum = sumClosestDistances(points);
     // run one iter so we can see what it did
@@ -93,7 +87,9 @@ public class TestBpVectorReorderer extends LuceneTestCase {
       reordered.add(points.get(map.newToOld(i)));
     }
     double reorderedClosestDistanceSum = sumClosestDistances(reordered);
-    assertTrue(reorderedClosestDistanceSum + ">"  + closestDistanceSum, reorderedClosestDistanceSum <= closestDistanceSum);
+    assertTrue(
+        reorderedClosestDistanceSum + ">" + closestDistanceSum,
+        reorderedClosestDistanceSum <= closestDistanceSum);
   }
 
   // Compute the sum of (for each point, the absolute difference between its ordinal and the ordinal
@@ -277,7 +273,8 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         }
       }
       // reorder using the index reordering tool
-      BpVectorReorderer.main(tmpdir.toString(), "f", "--min-partition-size", "1", "--max-iters", "10");
+      BpVectorReorderer.main(
+          tmpdir.toString(), "f", "--min-partition-size", "1", "--max-iters", "10");
       // verify the ordering is the same
       try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader leafReader = getOnlyLeafReader(reader);
@@ -307,7 +304,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
             for (int i = 0; i < random().nextInt(3); i++) {
               // insert some gaps -- docs with no vectors
               writer.addDocument(doc);
-              maxDoc ++;
+              maxDoc++;
             }
           }
           doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.EUCLIDEAN));
@@ -316,7 +313,8 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         }
       }
       // reorder using the index reordering tool
-      BpVectorReorderer.main(tmpdir.toString(), "f", "--min-partition-size", "1", "--max-iters", "10");
+      BpVectorReorderer.main(
+          tmpdir.toString(), "f", "--min-partition-size", "1", "--max-iters", "10");
       // verify the ordering is the same
       try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader leafReader = getOnlyLeafReader(reader);

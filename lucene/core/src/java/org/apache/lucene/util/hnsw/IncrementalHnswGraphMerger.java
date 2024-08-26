@@ -121,7 +121,6 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorIterator, initializedNodes);
     return InitializedHnswGraphBuilder.fromGraph(
         scorerSupplier,
-        M,
         beamWidth,
         HnswGraphBuilder.randSeed,
         initializerGraph,

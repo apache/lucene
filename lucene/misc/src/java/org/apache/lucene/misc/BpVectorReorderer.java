@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.misc;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -24,10 +27,9 @@ import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.RecursiveAction;
-
 import org.apache.lucene.codecs.lucene912.Lucene912Codec;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
@@ -48,9 +50,6 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
-
 /**
  * Implementation of "recursive graph bisection", also called "bipartite graph partitioning" and
  * often abbreviated BP, an approach to doc ID assignment that aims at reducing the sum of the log
@@ -70,7 +69,7 @@ public class BpVectorReorderer {
   public static final int DEFAULT_MIN_PARTITION_SIZE = 32;
 
   /**
-   * Limits how many incremental updates we do before initiating a full recalculation.  Some wasted
+   * Limits how many incremental updates we do before initiating a full recalculation. Some wasted
    * work is done when this is exceeded, but more is saved when it is not. Setting this to zero
    * prevents any incremental updates from being done, instead the centroids are fully recalculated
    * for each iteration. We're not able to make it very big since too much numerical error
@@ -286,9 +285,7 @@ public class BpVectorReorderer {
       for (int iter = 0; iter < maxIters; ++iter) {
         int moved;
         try {
-          moved =
-              shuffle(
-                  vectors, ids, right.offset, leftCentroid, rightCentroid, scratch, biases);
+          moved = shuffle(vectors, ids, right.offset, leftCentroid, rightCentroid, scratch, biases);
         } catch (IOException e) {
           throw new UncheckedIOException(e);
         }
@@ -296,7 +293,8 @@ public class BpVectorReorderer {
           break;
         }
         if (moved > MAX_CENTROID_UPDATES) {
-          // if we swapped too many times we don't use the relative calculation because it introduces too much error
+          // if we swapped too many times we don't use the relative calculation because it
+          // introduces too much error
           try {
             computeCentroid(left, vectors, leftCentroid);
             computeCentroid(right, vectors, rightCentroid);
@@ -319,7 +317,8 @@ public class BpVectorReorderer {
       }
     }
 
-    static void computeCentroid(IntsRef ids, FloatValues vectors, float[] centroid) throws IOException {
+    static void computeCentroid(IntsRef ids, FloatValues vectors, float[] centroid)
+        throws IOException {
       Arrays.fill(centroid, 0);
       for (int i = ids.offset; i < ids.offset + ids.length; i++) {
         VectorUtil.add(centroid, vectors.get(ids.ints[i]));
@@ -352,7 +351,9 @@ public class BpVectorReorderer {
               depth)
           .compute();
 
-      float scale = VectorUtil.dotProduct(leftCentroid, leftCentroid) + VectorUtil.dotProduct(rightCentroid, rightCentroid);
+      float scale =
+          VectorUtil.dotProduct(leftCentroid, leftCentroid)
+              + VectorUtil.dotProduct(rightCentroid, rightCentroid);
       float maxLeftBias = Float.NEGATIVE_INFINITY;
       for (int i = ids.offset; i < midPoint; ++i) {
         maxLeftBias = Math.max(maxLeftBias, biases[i]);
@@ -365,10 +366,13 @@ public class BpVectorReorderer {
       // This uses the simulated annealing proposed by Mackenzie et al in "Tradeoff Options for
       // Bipartite Graph Partitioning" by comparing the gain of swapping the doc from the left side
       // that is most attracted to the right and the doc from the right side that is most attracted
-      // to the left against `iter` rather than zero. We use the lengths of the centroids to determine
-      // an appropriate scale, so that roughly speaking we stop iterating when the gain becomes less than
+      // to the left against `iter` rather than zero. We use the lengths of the centroids to
+      // determine
+      // an appropriate scale, so that roughly speaking we stop iterating when the gain becomes less
+      // than
       // 0.2% of the size of the vectors.
-      //System.out.printf("at depth=%d, midPoint=%d, after %d iters, gain=%f\n", depth, midPoint, iter, gain);
+      // System.out.printf("at depth=%d, midPoint=%d, after %d iters, gain=%f\n", depth, midPoint,
+      // iter, gain);
       if (500 * gain <= scale) {
         return 0;
       }
@@ -407,7 +411,7 @@ public class BpVectorReorderer {
           } else {
             // If we're swapping across the left and right sides, we need to keep centroids
             // up-to-date.
-            count ++;
+            count++;
             int from = Math.min(i, j);
             int to = Math.max(i, j);
             try {
@@ -426,14 +430,14 @@ public class BpVectorReorderer {
       return selector.count;
     }
 
-    private static boolean centroidValid(float[] centroid, FloatValues vectors, IntsRef ids, int count) throws IOException {
+    private static boolean centroidValid(
+        float[] centroid, FloatValues vectors, IntsRef ids, int count) throws IOException {
       // recompute centroid to check the incremental calculation
       float[] check = new float[centroid.length];
       computeCentroid(ids, vectors, check);
       for (int i = 0; i < check.length; ++i) {
         float diff = Math.abs(check[i] - centroid[i]);
         if (diff > 1e-4) {
-          System.out.println("diff=" + diff + " count=" + count);
           return false;
         }
       }
@@ -467,7 +471,8 @@ public class BpVectorReorderer {
       if (count <= MAX_CENTROID_UPDATES) {
         int relativeMidpoint = midPoint - ids.offset;
         vectorSubtract(vectors.get(toId), vectors.get(fromId), scratch);
-        // we must normalize to the proper scale by accounting for the number of points contributing to each centroid
+        // we must normalize to the proper scale by accounting for the number of points contributing
+        // to each centroid
         // left += scratch / size(left)
         vectorScalarMul(1 / (float) relativeMidpoint, scratch);
         VectorUtil.add(leftCentroid, scratch);
@@ -480,8 +485,13 @@ public class BpVectorReorderer {
       idArr[to] = fromId;
 
       if (count <= MAX_CENTROID_UPDATES) {
-        assert centroidValid(leftCentroid, vectors, new IntsRef(idArr, ids.offset, midPoint - ids.offset), count);
-        assert centroidValid(rightCentroid, vectors, new IntsRef(ids.ints, midPoint, ids.length - midPoint + ids.offset), count);
+        assert centroidValid(
+            leftCentroid, vectors, new IntsRef(idArr, ids.offset, midPoint - ids.offset), count);
+        assert centroidValid(
+            rightCentroid,
+            vectors,
+            new IntsRef(ids.ints, midPoint, ids.length - midPoint + ids.offset),
+            count);
       }
     }
   }
@@ -561,12 +571,15 @@ public class BpVectorReorderer {
      */
     private float computeBias(float[] vector, float[] leftCentroid, float[] rightCentroid) {
       return switch (vectorScore) {
-        case EUCLIDEAN -> VectorUtil.squareDistance(vector, leftCentroid)
-            - VectorUtil.squareDistance(vector, rightCentroid);
+        case EUCLIDEAN ->
+            VectorUtil.squareDistance(vector, leftCentroid)
+                - VectorUtil.squareDistance(vector, rightCentroid);
         // TODO: is this actually OK for COSINE and MAXIMUM_INNER_PRODUCT? I think it is?
-        // perhaps instead we ought to measure <vector, (right - left)> .. oh wait that's the same thing!
-        case MAXIMUM_INNER_PRODUCT, COSINE, DOT_PRODUCT -> VectorUtil.dotProduct(vector, rightCentroid)
-            - VectorUtil.dotProduct(vector, leftCentroid);
+        // perhaps instead we ought to measure <vector, (right - left)> .. oh wait that's the same
+        // thing!
+        case MAXIMUM_INNER_PRODUCT, COSINE, DOT_PRODUCT ->
+            VectorUtil.dotProduct(vector, rightCentroid)
+                - VectorUtil.dotProduct(vector, leftCentroid);
         default -> throw new IllegalStateException("unsupported vector score: " + vectorScore);
       };
     }
@@ -747,10 +760,10 @@ public class BpVectorReorderer {
   }
 
   /**
-   * @param args  two args:
-   *             a path containing an index to reorder.
-   *              the name of the field the contents of which to use for reordering
+   * @param args two args: a path containing an index to reorder. the name of the field the contents
+   *     of which to use for reordering
    */
+  @SuppressWarnings("unused")
   public static void main(String... args) throws IOException {
     if (args.length < 2 || args.length > 6) {
       usage();
@@ -772,7 +785,8 @@ public class BpVectorReorderer {
       usage();
     }
     if (threadCount != 1) {
-      ForkJoinPool pool = new ForkJoinPool(threadCount, p -> new ForkJoinWorkerThread(p) {}, null, false);
+      ForkJoinPool pool =
+          new ForkJoinPool(threadCount, p -> new ForkJoinWorkerThread(p) {}, null, false);
       reorderer.setForkJoinPool(pool);
     }
     // We need to read prior graph, determine its maxconn in order to make sure our data structures
@@ -780,25 +794,29 @@ public class BpVectorReorderer {
     int maxConn = 0;
     VectorSimilarityFunction similarity = null;
     try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(directory)))) {
-      for (LeafReaderContext ctx: reader.leaves()) {
+      for (LeafReaderContext ctx : reader.leaves()) {
         FieldInfo finfo = ctx.reader().getFieldInfos().fieldInfo(field);
         if (finfo == null) {
           throw new IllegalStateException("field not found: " + field + " in leaf " + ctx.ord);
         }
         if (finfo.hasVectorValues() == false) {
-          throw new IllegalStateException("field not a vector field: " + field + " in leaf " + ctx.ord);
+          throw new IllegalStateException(
+              "field not a vector field: " + field + " in leaf " + ctx.ord);
         }
         if (finfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
-          throw new IllegalStateException("vector field not encoded as float32: " + field + " in leaf " + ctx.ord);
+          throw new IllegalStateException(
+              "vector field not encoded as float32: " + field + " in leaf " + ctx.ord);
         }
         if (similarity == null) {
           similarity = finfo.getVectorSimilarityFunction();
         } else if (similarity != finfo.getVectorSimilarityFunction()) {
-          throw new IllegalStateException("vector field " + field + " was indexed with inconsistent similarity functions");
+          throw new IllegalStateException(
+              "vector field " + field + " was indexed with inconsistent similarity functions");
         }
         HnswGraph hnsw = ((CodecReader) ctx.reader()).getVectorReader().getGraph(field);
         if (hnsw == null) {
-          throw new IllegalStateException("No HNSW graph for vector field: " + field + " in leaf " + ctx.ord);
+          throw new IllegalStateException(
+              "No HNSW graph for vector field: " + field + " in leaf " + ctx.ord);
         }
         maxConn = Math.max(hnsw.maxConn(), maxConn);
       }
@@ -806,18 +824,20 @@ public class BpVectorReorderer {
       reorderer.setVectorSimilarity(similarity);
       IndexWriterConfig iwc = new IndexWriterConfig();
       iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-      iwc.setCodec(new Lucene912Codec() {
-          @Override
-          public Lucene99HnswVectorsFormat getKnnVectorsFormatForField(String field) {
-            // We have no idea what beam width was used to create the graph but it doesn't
-            // matter because we will not be searching/reindexing these graphs, merely
-            // renumbering them, so use DEFAULT_BEAM_WIDTH to satisfy the codec/format setup.
-            return new Lucene99HnswVectorsFormat(maxConnFinal, DEFAULT_BEAM_WIDTH, 1, null);
-          }
-        });
+      iwc.setCodec(
+          new Lucene912Codec() {
+            @Override
+            public Lucene99HnswVectorsFormat getKnnVectorsFormatForField(String field) {
+              // We have no idea what beam width was used to create the graph but it doesn't
+              // matter because we will not be searching/reindexing these graphs, merely
+              // renumbering them, so use DEFAULT_BEAM_WIDTH to satisfy the codec/format setup.
+              return new Lucene99HnswVectorsFormat(maxConnFinal, DEFAULT_BEAM_WIDTH, 1, null);
+            }
+          });
       try (IndexWriter writer = new IndexWriter(FSDirectory.open(Path.of(directory)), iwc)) {
-        for (LeafReaderContext ctx: reader.leaves()) {
-          OffHeapFloatVectorValues values = (OffHeapFloatVectorValues) ctx.reader().getFloatVectorValues(field);
+        for (LeafReaderContext ctx : reader.leaves()) {
+          OffHeapFloatVectorValues values =
+              (OffHeapFloatVectorValues) ctx.reader().getFloatVectorValues(field);
           Sorter.DocMap valueMap = reorderer.computeDocMapFloat(values);
           Sorter.DocMap docMap = valueMapToDocMap(valueMap, values, ctx.reader().maxDoc());
           writer.addIndexes(SortingCodecReader.wrap((CodecReader) ctx.reader(), docMap, null));
@@ -827,15 +847,16 @@ public class BpVectorReorderer {
   }
 
   private static void usage() {
-    throw new IllegalArgumentException("""
+    throw new IllegalArgumentException(
+        """
               usage: reorder <directory> <field>
                 [--max-iters N]
                 [--min-partition-size P]
                 [--thread-count T]""");
   }
 
-
-  private static Sorter.DocMap valueMapToDocMap(Sorter.DocMap valueMap, OffHeapFloatVectorValues values, int maxDoc) throws IOException {
+  private static Sorter.DocMap valueMapToDocMap(
+      Sorter.DocMap valueMap, OffHeapFloatVectorValues values, int maxDoc) throws IOException {
     if (maxDoc == values.size()) {
       return valueMap;
     }

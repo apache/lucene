@@ -49,13 +49,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       throws IOException {
     if (initReader == null) {
       return new HnswConcurrentMergeBuilder(
-          taskExecutor,
-          numWorker,
-          scorerSupplier,
-          M,
-          beamWidth,
-          new OnHeapHnswGraph(M, maxOrd),
-          null);
+          taskExecutor, numWorker, scorerSupplier, beamWidth, new OnHeapHnswGraph(M, maxOrd), null);
     }
 
     HnswGraph initializerGraph = initReader.getGraph(fieldInfo.name);
@@ -66,9 +60,8 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
         taskExecutor,
         numWorker,
         scorerSupplier,
-        M,
         beamWidth,
-        InitializedHnswGraphBuilder.initGraph(M, initializerGraph, oldToNewOrdinalMap, maxOrd),
+        InitializedHnswGraphBuilder.initGraph(initializerGraph, oldToNewOrdinalMap, maxOrd),
         initializedNodes);
   }
 }
