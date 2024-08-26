@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 public class TestLucene99ScalarQuantizedVectorsWriter extends LuceneTestCase {
@@ -87,12 +88,12 @@ public class TestLucene99ScalarQuantizedVectorsWriter extends LuceneTestCase {
     for (int i = 0; i < 30; i++) {
       float[] vector = new float[] {i, i + 1, i + 2, i + 3};
       vectors.add(vector);
+      if (vectorSimilarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+        VectorUtil.l2normalize(vector);
+      }
     }
     FloatVectorValues vectorValues =
-        new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(
-            vectors,
-            vectorSimilarityFunction == VectorSimilarityFunction.COSINE
-                || vectorSimilarityFunction == VectorSimilarityFunction.DOT_PRODUCT);
+        new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors);
     ScalarQuantizer scalarQuantizer =
         Lucene99ScalarQuantizedVectorsWriter.buildScalarQuantizer(
             vectorValues, 30, vectorSimilarityFunction, confidenceInterval, bits);

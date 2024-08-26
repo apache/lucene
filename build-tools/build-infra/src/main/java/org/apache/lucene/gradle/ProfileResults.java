@@ -41,7 +41,7 @@ import jdk.jfr.consumer.RecordingFile;
  */
 public class ProfileResults {
   /** Formats a frame to a formatted line. This is deduplicated on! */
-  static String frameToString(RecordedFrame frame, boolean lineNumbers) {
+  static String frameToString(RecordedFrame frame, boolean lineNumbers, boolean frameTypes) {
     StringBuilder builder = new StringBuilder();
     RecordedMethod method = frame.getMethod();
     RecordedClass clazz = method.getType();
@@ -55,13 +55,14 @@ public class ProfileResults {
     builder.append("#");
     builder.append(method.getName());
     builder.append("()");
-    if (lineNumbers) {
+    if (lineNumbers && frame.getLineNumber() != -1) {
       builder.append(":");
-      if (frame.getLineNumber() == -1) {
-        builder.append("(" + frame.getType() + " code)");
-      } else {
-        builder.append(frame.getLineNumber());
-      }
+      builder.append(frame.getLineNumber());
+    }
+    if (clazz != null && frameTypes) {
+      builder.append(" [");
+      builder.append(frame.getType());
+      builder.append(" code]");
     }
     return builder.toString();
   }
@@ -77,6 +78,8 @@ public class ProfileResults {
   public static final String COUNT_DEFAULT = "10";
   public static final String LINENUMBERS_KEY = "tests.profile.linenumbers";
   public static final String LINENUMBERS_DEFAULT = "false";
+  public static final String FRAMETYPES_KEY = "tests.profile.frametypes";
+  public static final String FRAMETYPES_DEFAULT = "true";
 
   /**
    * Driver method, for testing standalone.
@@ -92,7 +95,8 @@ public class ProfileResults {
         System.getProperty(MODE_KEY, MODE_DEFAULT),
         Integer.parseInt(System.getProperty(STACKSIZE_KEY, STACKSIZE_DEFAULT)),
         Integer.parseInt(System.getProperty(COUNT_KEY, COUNT_DEFAULT)),
-        Boolean.parseBoolean(System.getProperty(LINENUMBERS_KEY, LINENUMBERS_DEFAULT)));
+        Boolean.parseBoolean(System.getProperty(LINENUMBERS_KEY, LINENUMBERS_DEFAULT)),
+        Boolean.parseBoolean(System.getProperty(FRAMETYPES_KEY, FRAMETYPES_DEFAULT)));
   }
 
   /** true if we care about this event */
@@ -152,7 +156,7 @@ public class ProfileResults {
 
   /** Process all the JFR files passed in args and print a merged summary. */
   public static void printReport(
-      List<String> files, String mode, int stacksize, int count, boolean lineNumbers)
+      List<String> files, String mode, int stacksize, int count, boolean lineNumbers, boolean frameTypes)
       throws IOException {
     if (!"cpu".equals(mode) && !"heap".equals(mode)) {
       throw new IllegalArgumentException("tests.profile.mode must be one of (cpu,heap)");
@@ -181,7 +185,7 @@ public class ProfileResults {
               if (stack.length() > 0) {
                 stack.append("\n").append(framePadding).append("  at ");
               }
-              stack.append(frameToString(trace.getFrames().get(i), lineNumbers));
+              stack.append(frameToString(trace.getFrames().get(i), lineNumbers, frameTypes));
             }
             String line = stack.toString();
             SimpleEntry<String, Long> entry =

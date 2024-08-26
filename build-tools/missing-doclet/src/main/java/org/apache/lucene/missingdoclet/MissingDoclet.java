@@ -231,8 +231,8 @@ public class MissingDoclet extends StandardDoclet {
       case PACKAGE:
         checkComment(element);
         break;
-        // class-like elements, check them, then recursively check their children (fields and
-        // methods)
+      // class-like elements, check them, then recursively check their children (fields and
+      // methods)
       case CLASS:
       case INTERFACE:
       case ENUM:
@@ -257,7 +257,7 @@ public class MissingDoclet extends StandardDoclet {
           }
         }
         break;
-        // method-like elements, check them if we are configured to do so
+      // method-like elements, check them if we are configured to do so
       case METHOD:
       case CONSTRUCTOR:
       case FIELD:

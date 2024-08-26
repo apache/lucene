@@ -30,6 +30,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 
 /**
  * Lucene 9.9 vector format, which encodes numeric vector values into an associated graph connecting
@@ -97,7 +98,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   public static final int MAXIMUM_MAX_CONN = 512;
 
   /** Default number of maximum connections per node */
-  public static final int DEFAULT_MAX_CONN = 16;
+  public static final int DEFAULT_MAX_CONN = HnswGraphBuilder.DEFAULT_MAX_CONN;
 
   /**
    * The maximum size of the queue to maintain while searching during graph construction This
@@ -109,7 +110,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   /**
    * Default number of the size of the queue maintained while searching during a graph construction.
    */
-  public static final int DEFAULT_BEAM_WIDTH = 100;
+  public static final int DEFAULT_BEAM_WIDTH = HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
 
   /** Default to use single thread merge */
   public static final int DEFAULT_NUM_MERGE_WORKER = 1;

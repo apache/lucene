@@ -17,6 +17,8 @@
 
 package org.apache.lucene.index;
 
+import static org.hamcrest.Matchers.instanceOf;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,6 +29,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -263,5 +266,54 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
     assertEquals(1, dirCalled.get());
     assertEquals(1, leafCalled.get());
     IOUtils.close(reader, writer, dir);
+  }
+
+  public void testAvoidWrappingReadersWithoutSoftDeletes() throws Exception {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    String softDeletesField = "soft_deletes";
+    iwc.setSoftDeletesField(softDeletesField);
+    MergePolicy mergePolicy = iwc.mergePolicy;
+    iwc.setMergePolicy(
+        new SoftDeletesRetentionMergePolicy(softDeletesField, MatchAllDocsQuery::new, mergePolicy));
+    try (Directory dir = newDirectory();
+        IndexWriter writer = new IndexWriter(dir, iwc)) {
+      int numDocs = 1 + random().nextInt(10);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        String docId = Integer.toString(i);
+        doc.add(new StringField("id", docId, Field.Store.YES));
+        writer.addDocument(doc);
+      }
+      int numDeletes = 1 + random().nextInt(5);
+      for (int i = 0; i < numDeletes; i++) {
+        Document doc = new Document();
+        String docId = Integer.toString(random().nextInt(numDocs));
+        doc.add(new StringField("id", docId, Field.Store.YES));
+        writer.softUpdateDocument(
+            new Term("id", docId), doc, new NumericDocValuesField(softDeletesField, 0));
+      }
+      writer.flush();
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        SoftDeletesDirectoryReaderWrapper wrapped =
+            new SoftDeletesDirectoryReaderWrapper(reader, softDeletesField);
+        assertEquals(numDocs, wrapped.numDocs());
+        assertEquals(numDeletes, wrapped.numDeletedDocs());
+      }
+      writer
+          .getConfig()
+          .setMergePolicy(
+              new SoftDeletesRetentionMergePolicy(
+                  softDeletesField, MatchNoDocsQuery::new, mergePolicy));
+      writer.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        SoftDeletesDirectoryReaderWrapper wrapped =
+            new SoftDeletesDirectoryReaderWrapper(reader, softDeletesField);
+        assertEquals(numDocs, wrapped.numDocs());
+        assertEquals(0, wrapped.numDeletedDocs());
+        for (LeafReaderContext leaf : wrapped.leaves()) {
+          assertThat(leaf.reader(), instanceOf(SegmentReader.class));
+        }
+      }
+    }
   }
 }
