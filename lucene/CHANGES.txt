@@ -141,7 +141,7 @@ New Features
 
 * GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
 
-* GITHUB#13597: Take advantage of the doc value skipper when it is primary sort in SortedNumericDocValuesRangeQuery
+* GITHUB#13592: Take advantage of the doc value skipper when it is primary sort in SortedNumericDocValuesRangeQuery
   and SortedSetDocValuesRangeQuery. (Ignacio Vera)
 
 Improvements
