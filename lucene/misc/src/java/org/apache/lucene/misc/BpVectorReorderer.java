@@ -371,8 +371,7 @@ public class BpVectorReorderer {
       // an appropriate scale, so that roughly speaking we stop iterating when the gain becomes less
       // than
       // 0.2% of the size of the vectors.
-      // System.out.printf("at depth=%d, midPoint=%d, after %d iters, gain=%f\n", depth, midPoint,
-      // iter, gain);
+      // System.out.printf("at depth=%d, midPoint=%d, gain=%f\n", depth, midPoint, gain);
       if (500 * gain <= scale) {
         return 0;
       }
@@ -765,7 +764,7 @@ public class BpVectorReorderer {
    */
   @SuppressWarnings("unused")
   public static void main(String... args) throws IOException {
-    if (args.length < 2 || args.length > 6) {
+    if (args.length < 2 || args.length > 8) {
       usage();
     }
     BpVectorReorderer reorderer = new BpVectorReorderer();

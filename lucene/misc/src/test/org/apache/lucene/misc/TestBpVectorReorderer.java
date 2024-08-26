@@ -27,6 +27,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -34,6 +35,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteBuffersDataInput;
@@ -266,23 +268,43 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     try (Directory dir = newFSDirectory(tmpdir)) {
       // create an index with a single leaf
       try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+        int id = 0;
         for (float[] vector : vectors) {
           Document doc = new Document();
           doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.EUCLIDEAN));
+          doc.add(new StoredField("id", id++));
           writer.addDocument(doc);
         }
       }
+      int threadCount = random().nextInt(4) + 1;
+      threadCount = 1;
       // reorder using the index reordering tool
       BpVectorReorderer.main(
-          tmpdir.toString(), "f", "--min-partition-size", "1", "--max-iters", "10");
+          tmpdir.toString(),
+          "f",
+          "--min-partition-size",
+          "1",
+          "--max-iters",
+          "10",
+          "--thread-count",
+          Integer.toString(threadCount));
       // verify the ordering is the same
       try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader leafReader = getOnlyLeafReader(reader);
         FloatVectorValues values = leafReader.getFloatVectorValues("f");
+        int newId = 0;
+        StoredFields storedFields = reader.storedFields();
         while (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          int storedId = Integer.parseInt(storedFields.document(values.docID()).get("id"));
+          assertEquals(expected.oldToNew(storedId), newId);
           float[] expectedVector = vectors.get(expected.newToOld(values.docID()));
           float[] actualVector = values.vectorValue();
-          assertArrayEquals(expectedVector, actualVector, 0);
+          assertArrayEquals(
+              "values differ at index " + storedId + "->" + newId + " docid=" + values.docID(),
+              expectedVector,
+              actualVector,
+              0);
+          newId++;
         }
       }
     }

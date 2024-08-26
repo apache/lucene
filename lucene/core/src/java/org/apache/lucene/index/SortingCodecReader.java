@@ -356,7 +356,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     @Override
     public byte[] vectorValue() throws IOException {
       if (docToOrd == null) {
-        return bytes.vectorValue(sortMap.oldToNew(docId));
+        return bytes.vectorValue(sortMap.newToOld(docId));
       } else {
         return bytes.vectorValue(docToOrd[docId]);
       }
@@ -434,7 +434,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     @Override
     public float[] vectorValue() throws IOException {
       if (docToOrd == null) {
-        return floats.vectorValue(sortMap.oldToNew(docId));
+        return floats.vectorValue(sortMap.newToOld(docId));
       } else {
         return floats.vectorValue(docToOrd[docId]);
       }
