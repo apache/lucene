@@ -24,11 +24,14 @@ import java.util.Collections;
 import java.util.Locale;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
@@ -38,6 +41,7 @@ import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.Bits;
 
 /**
  * This query requires that you index children and parent docs as a single block, using the {@link
@@ -154,6 +158,17 @@ public class ToParentBlockJoinQuery extends Query {
         @Override
         public Scorer get(long leadCost) throws IOException {
           return new BlockJoinScorer(childScorerSupplier.get(leadCost), parents, scoreMode);
+        }
+
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          final BulkScorer innerBulkScorer = childScorerSupplier.bulkScorer();
+          if (innerBulkScorer == null) {
+            return null;
+          }
+          return new BlockJoinBulkScorer(
+              innerBulkScorer,
+              new BlockJoinScorer(childScorerSupplier.get(Long.MAX_VALUE), parents, scoreMode));
         }
 
         @Override
@@ -437,6 +452,33 @@ public class ToParentBlockJoinQuery extends Query {
           start,
           end,
           scoreMode);
+    }
+  }
+
+  private static class BlockJoinBulkScorer extends BulkScorer {
+    private final BulkScorer childBulkScorer;
+    private final BlockJoinScorer blockJoinScorer;
+
+    public BlockJoinBulkScorer(BulkScorer childBulkScorer, BlockJoinScorer blockJoinScorer) {
+      this.childBulkScorer = childBulkScorer;
+      this.blockJoinScorer = blockJoinScorer;
+    }
+
+    @Override
+    public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+        throws IOException {
+      return childBulkScorer.score(wrapCollector(collector), acceptDocs, min, max);
+    }
+
+    @Override
+    public long cost() {
+      return childBulkScorer.cost();
+    }
+
+    private LeafCollector wrapCollector(LeafCollector collector) throws IOException {
+      FilterLeafCollector wrappedCollector = new FilterLeafCollector(collector) {};
+      wrappedCollector.setScorer(blockJoinScorer);
+      return wrappedCollector;
     }
   }
 
