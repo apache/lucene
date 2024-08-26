@@ -376,6 +376,8 @@ Optimizations
 
 * GITHUB#13587: Use Max WAND optimizations with ToParentBlockJoinQuery when using ScoreMode.Max (Mike Pellegrini)
 
+* GITHUB#13672: Leverage doc value skip lists in DocValuesRewriteMethod if indexed. (Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
