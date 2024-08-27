@@ -515,7 +515,11 @@ public class ToParentBlockJoinQuery extends Query {
     @Override
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
-      return childBulkScorer.score(wrapCollector(collector), acceptDocs, min, max);
+      LeafCollector wrappedCollector = wrapCollector(collector, max);
+      int value = childBulkScorer.score(wrappedCollector, acceptDocs, min, max);
+      // Call collect with max to signal to the collector that we are at the end of the batch
+      wrappedCollector.collect(max);
+      return value;
     }
 
     @Override
@@ -523,8 +527,8 @@ public class ToParentBlockJoinQuery extends Query {
       return childBulkScorer.cost();
     }
 
-    // TODO: Handle non-zero docBase
-    private LeafCollector wrapCollector(LeafCollector collector) {
+    // TODO: Need to resolve parent doc IDs in multi-reader space?
+    private LeafCollector wrapCollector(LeafCollector collector, int maxDocId) {
       return new FilterLeafCollector(collector) {
         private final Score currentParentScore = new Score(scoreMode);
         private Integer currentParent = null;
@@ -538,19 +542,29 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public void collect(int doc) throws IOException {
+          if (currentParent == null && doc == maxDocId) {
+            // No child doc matches in this batch
+            return;
+          }
+
           if (currentParent == null) {
+            // First child doc match, get the first parent
             currentParent = parents.nextSetBit(doc);
           } else if (doc > currentParent) {
+            in.collect(currentParent); // Emit the current parent
+            if (doc == maxDocId) {
+              // Short-circuit the rest of the method logic because we are at the end of the batch
+              return;
+            }
+
+            // Get the next parent and reset the score
             currentParent = parents.nextSetBit(doc);
             currentParentScore.reset();
           }
-          assert currentParent != NO_MORE_DOCS;
 
           if (scorer != null) {
             currentParentScore.addChildScore(scorer.score());
           }
-
-          in.collect(currentParent);
         }
       };
     }
