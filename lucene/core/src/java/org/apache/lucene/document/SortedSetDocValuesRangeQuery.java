@@ -16,11 +16,15 @@
  */
 package org.apache.lucene.document;
 
+import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -31,9 +35,6 @@ import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SortedSetDocValuesRangeScorer;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
-
-import java.io.IOException;
-import java.util.Objects;
 
 final class SortedSetDocValuesRangeQuery extends Query {
 
@@ -148,7 +149,15 @@ final class SortedSetDocValuesRangeQuery extends Query {
               }
             }
 
-            return new SortedSetDocValuesRangeScorer(field, values, minOrd, maxOrd, scoreMode, score(), skipper, context);
+            // no terms matched in this segment
+            if (minOrd > maxOrd
+                || (skipper != null
+                    && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()))) {
+              return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
+            }
+
+            return new SortedSetDocValuesRangeScorer(
+                field, values, minOrd, maxOrd, scoreMode, score(), skipper, context.reader());
           }
 
           @Override

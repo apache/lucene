@@ -178,24 +178,35 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               assert minOrd >= 0;
               long maxOrd = -1;
               long prev = minOrd - 1;
-              boolean hasGaps = false;
+              boolean contiguous = true;
               do {
                 long ord = termsEnum.ord();
                 assert ord >= 0 && ord > maxOrd;
                 if (ord - prev > 1) {
-                  hasGaps = true;
+                  contiguous = false;
                 }
                 prev = ord;
                 maxOrd = ord;
                 termSet.set(ord);
               } while (termsEnum.next() != null);
 
+              // no terms matched in this segment
               if (skipper != null && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
                 return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
               }
 
-              if (hasGaps == false) {
-                return new SortedSetDocValuesRangeScorer(query.field, values, minOrd, maxOrd, scoreMode, score(), skipper, context);
+              // if the term set happens to create a contiguous range we can optimize with a range
+              // scorer
+              if (contiguous) {
+                return new SortedSetDocValuesRangeScorer(
+                    query.field,
+                    values,
+                    minOrd,
+                    maxOrd,
+                    scoreMode,
+                    score(),
+                    skipper,
+                    context.reader());
               }
 
               final SortedDocValues singleton = DocValues.unwrapSingleton(values);

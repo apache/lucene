@@ -16,17 +16,24 @@
  */
 package org.apache.lucene.search;
 
-import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.DocValuesSkipper;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.index.SortedSetDocValues;
-
 import java.io.IOException;
 import java.util.Collection;
 import java.util.function.LongPredicate;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
 
+/**
+ * Implements a "slow" {@link Scorer} for a term range defined by min/max ordinals. This is really
+ * just a common implementation detail of a couple different queries and not intended to be directly
+ * used (but must be public due to our package structure). You're probably better off looking at
+ * {@link org.apache.lucene.document.SortedSetDocValuesField#newSlowRangeQuery} or {@link
+ * org.apache.lucene.document.SortedSetDocValuesField#newSlowSetQuery}.
+ *
+ * @lucene.experimental
+ */
 public class SortedSetDocValuesRangeScorer extends Scorer {
   final Scorer delegate;
 
@@ -38,8 +45,9 @@ public class SortedSetDocValuesRangeScorer extends Scorer {
       ScoreMode scoreMode,
       float score,
       DocValuesSkipper skipper,
-      LeafReaderContext context) throws IOException {
-    delegate = setupScorer(field, values, minOrd, maxOrd, scoreMode, score, skipper, context);
+      LeafReader reader)
+      throws IOException {
+    delegate = setupScorer(field, values, minOrd, maxOrd, scoreMode, score, skipper, reader);
   }
 
   static Scorer setupScorer(
@@ -50,21 +58,14 @@ public class SortedSetDocValuesRangeScorer extends Scorer {
       ScoreMode scoreMode,
       float score,
       DocValuesSkipper skipper,
-      LeafReaderContext context) throws IOException {
-    // no terms matched in this segment
-    if (minOrd > maxOrd
-        || (skipper != null
-        && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()))) {
-      return new ConstantScoreScorer(score, scoreMode, DocIdSetIterator.empty());
-    }
-
+      LeafReader reader)
+      throws IOException {
     // all terms matched in this segment
     if (skipper != null
-        && skipper.docCount() == context.reader().maxDoc()
+        && skipper.docCount() == reader.maxDoc()
         && skipper.minValue() >= minOrd
         && skipper.maxValue() <= maxOrd) {
-      return new ConstantScoreScorer(
-          score, scoreMode, DocIdSetIterator.all(skipper.docCount()));
+      return new ConstantScoreScorer(score, scoreMode, DocIdSetIterator.all(skipper.docCount()));
     }
 
     final SortedDocValues singleton = DocValues.unwrapSingleton(values);
@@ -73,7 +74,7 @@ public class SortedSetDocValuesRangeScorer extends Scorer {
       if (skipper != null) {
         final DocIdSetIterator psIterator =
             getDocIdSetIteratorOrNullForPrimarySort(
-                context.reader(), field, singleton, skipper, minOrd, maxOrd);
+                reader, field, singleton, skipper, minOrd, maxOrd);
         if (psIterator != null) {
           return new ConstantScoreScorer(score, scoreMode, psIterator);
         }
