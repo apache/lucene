@@ -59,11 +59,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float[][] centroids = binarizedQueryVectors.getCentroids();
       int discretizedDimensions = BQVectorUtils.discretize(target.length, 64);
       byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
-      float distToCentroid = VectorUtil.squareDistance(target, centroids[0]);
       BinaryQuantizer.QueryFactors factors =
           quantizer.quantizeForQuery(target, quantized, centroids[0]);
       return new BinarizedRandomVectorScorer(
-          new BinaryQueryVector[] {new BinaryQueryVector(quantized, distToCentroid, factors)},
+          new BinaryQueryVector[] {new BinaryQueryVector(quantized, factors)},
           binarizedQueryVectors,
           similarityFunction,
           discretizedDimensions);
@@ -120,7 +119,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       short quantizedSum = queryVectors.sumQuantizedValues(ord, 0);
 
       float distanceToCentroid = queryVectors.getCentroidDistance(ord, 0);
-      float vl = queryVectors.getLower(ord, 0);
+      float lower = queryVectors.getLower(ord, 0);
       float width = queryVectors.getWidth(ord, 0);
 
       float normVmC = queryVectors.getNormVmC(ord, 0);
@@ -131,8 +130,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
           new BinaryQueryVector[] {
             new BinaryQueryVector(
                 queryVector,
-                distanceToCentroid,
-                new BinaryQuantizer.QueryFactors(quantizedSum, vl, width, normVmC, vDotC, cDotC))
+                new BinaryQuantizer.QueryFactors(quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC, cDotC))
           },
           targetVectors,
           similarityFunction,
@@ -147,7 +145,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
   }
 
   public record BinaryQueryVector(
-      byte[] vector, float distanceToCentroid, BinaryQuantizer.QueryFactors factors) {}
+      byte[] vector, BinaryQuantizer.QueryFactors factors) {}
 
   public static class BinarizedRandomVectorScorer
       extends RandomVectorScorer.AbstractRandomVectorScorer {
@@ -199,7 +197,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       short quantizedSum = queryVector.factors().quantizedSum();
       float lower = queryVector.factors().lower();
       float width = queryVector.factors().width();
-      float distanceToCentroid = queryVector.distanceToCentroid();
+      float distanceToCentroid = queryVector.factors().distToC();
 
       switch (similarityFunction) {
         case VectorSimilarityFunction.EUCLIDEAN:
@@ -312,7 +310,9 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
       errorBound = y * error;
-      return dist - errorBound;
+      float result = dist - errorBound;
+      // FIXME: this is not ok? right?
+      return result > 0 ? result : 0f;
     }
   }
 }

@@ -255,7 +255,13 @@ public class BinaryQuantizer {
   }
 
   public record QueryFactors(
-      short quantizedSum, float lower, float width, float normVmC, float vDotC, float cDotC) {}
+      short quantizedSum,
+      float distToC,
+      float lower,
+      float width,
+      float normVmC,
+      float vDotC,
+      float cDotC) {}
 
   public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
@@ -280,6 +286,8 @@ public class BinaryQuantizer {
               + "!= "
               + centroid.length);
     }
+
+    float distToC = VectorUtil.squareDistance(vector, centroid);
 
     // FIXME: make a copy of vector so we don't overwrite it here?
     //  ... (could subtractInPlace but the passed vector is modified)
@@ -311,10 +319,11 @@ public class BinaryQuantizer {
       float vDotC = VectorUtil.dotProduct(vector, centroid);
       float cDotC = VectorUtil.dotProduct(centroid, centroid);
       // FIXME: quantize the corrections as well so we store less
-      factors = new QueryFactors(quantResult.quantizedSum, lower, width, normVmC, vDotC, cDotC);
+      factors =
+          new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC, cDotC);
     } else {
       // FIXME: quantize the corrections as well so we store less
-      factors = new QueryFactors(quantResult.quantizedSum, lower, width, 0f, 0f, 0f);
+      factors = new QueryFactors(quantResult.quantizedSum, distToC, lower, width, 0f, 0f, 0f);
     }
 
     return factors;

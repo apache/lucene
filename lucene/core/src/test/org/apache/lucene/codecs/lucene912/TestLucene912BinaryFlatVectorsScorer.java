@@ -31,8 +31,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
     queryVectors[0] =
         new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
             vector,
-            distanceToCentroid,
-            new BinaryQuantizer.QueryFactors(quantizedSum, vl, width, 0f, 0f, 0f));
+            new BinaryQuantizer.QueryFactors(
+                quantizedSum, distanceToCentroid, vl, width, 0f, 0f, 0f));
 
     RandomAccessBinarizedByteVectorValues targetVectors =
         new RandomAccessBinarizedByteVectorValues() {
@@ -170,8 +170,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
     queryVectors[0] =
         new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
             vector,
-            distanceToCentroid,
-            new BinaryQuantizer.QueryFactors(quantizedSum, vl, width, normVmC, vDotC, cDotC));
+            new BinaryQuantizer.QueryFactors(
+                quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC, cDotC));
 
     RandomAccessBinarizedByteVectorValues targetVectors =
         new RandomAccessBinarizedByteVectorValues() {
