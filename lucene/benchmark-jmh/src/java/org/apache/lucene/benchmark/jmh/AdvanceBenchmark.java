@@ -259,13 +259,13 @@ public class AdvanceBenchmark {
     // Iteration over linearSearch that tries to reduce branches
     while (startIndex + 4 <= values.length) {
       int count = values[startIndex] < target ? 1 : 0;
-      if (values[startIndex+1] < target) {
+      if (values[startIndex + 1] < target) {
         count++;
       }
-      if (values[startIndex+2] < target) {
+      if (values[startIndex + 2] < target) {
         count++;
       }
-      if (values[startIndex+3] < target) {
+      if (values[startIndex + 3] < target) {
         count++;
       }
       if (count != 4) {
