@@ -62,7 +62,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           }
 
           @Override
-          public byte getClusterId(int vectorOrd) throws IOException {
+          public short getClusterId(int vectorOrd) throws IOException {
             return 0;
           }
 
@@ -201,7 +201,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           }
 
           @Override
-          public byte getClusterId(int vectorOrd) throws IOException {
+          public short getClusterId(int vectorOrd) throws IOException {
             return 0;
           }
 

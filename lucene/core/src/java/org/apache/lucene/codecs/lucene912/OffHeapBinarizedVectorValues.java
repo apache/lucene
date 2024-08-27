@@ -43,7 +43,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   protected final IndexInput slice;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
-  protected byte clusterId = 0;
+  protected short clusterId = 0;
   protected final int byteSize;
   protected int lastOrd = -1;
   protected final float[] correctiveValues = new float[3];
@@ -92,7 +92,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), numBytes);
     if (isMoreThanOneCluster) {
-      clusterId = slice.readByte();
+      byte bClusterId = slice.readByte();
+      clusterId = BinarizedByteVectorValues.decodeClusterIdFromByte(bClusterId);
     }
     slice.readFloats(correctiveValues, 0, 3);
     lastOrd = targetOrd;
@@ -175,7 +176,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   @Override
-  public byte getClusterId(int targetOrd) throws IOException {
+  public short getClusterId(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
       return clusterId;
     }
@@ -183,7 +184,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       return clusterId;
     }
     slice.seek(((long) targetOrd * byteSize) + numBytes);
-    clusterId = slice.readByte();
+    byte bClusterId = slice.readByte();
+    clusterId = BinarizedByteVectorValues.decodeClusterIdFromByte(bClusterId);
     return clusterId;
   }
 
@@ -269,7 +271,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
 
     @Override
-    public byte clusterId() throws IOException {
+    public short clusterId() throws IOException {
       return super.getClusterId(doc);
     }
 
@@ -359,7 +361,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
 
     @Override
-    public byte clusterId() throws IOException {
+    public short clusterId() throws IOException {
       return super.getClusterId(disi.index());
     }
 
@@ -466,7 +468,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
 
     @Override
-    public byte clusterId() throws IOException {
+    public short clusterId() {
       return 0;
     }
 

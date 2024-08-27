@@ -47,12 +47,8 @@ public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVecto
    */
   float getODotC(int targetOrd) throws IOException;
 
-  /**
-   * Returns the cluster ID for the vector in the range [-128 to 127]
-   *
-   * <p>Negative values should be added to 256 to get a proper cluster id.
-   */
-  byte getClusterId(int vectorOrd) throws IOException;
+  /** Returns the cluster ID for the vector in the range [0, 255] */
+  short getClusterId(int vectorOrd) throws IOException;
 
   /**
    * @return the quantizer used to quantize the vectors

@@ -214,8 +214,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         float[] corrections =
             scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
         binarizedVectorData.writeBytes(vector, vector.length);
-        // encode short to byte
-        bClusterId = clusterId <= 127 ? (byte) clusterId : (byte) (clusterId - 256);
+        bClusterId = BinarizedByteVectorValues.encodeClusterIdToByte(clusterId);
         binarizedVectorData.writeByte(bClusterId);
         // FIXME: handle of sim types like MIP such as COSINE?
         if (scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
@@ -300,8 +299,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         float[] corrections =
             scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
         binarizedVectorData.writeBytes(vector, vector.length);
-        // encode short to byte
-        bClusterId = clusterId <= 127 ? (byte) clusterId : (byte) (clusterId - 256);
+        bClusterId = BinarizedByteVectorValues.encodeClusterIdToByte(clusterId);
         binarizedVectorData.writeByte(bClusterId);
         // FIXME: handle of sim types like MIP such as COSINE?
         if (scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
@@ -492,7 +490,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       byte[] binaryValue = binarizedByteVectorValues.vectorValue();
       output.writeBytes(binaryValue, binaryValue.length);
       if (moreThanOneCluster) {
-        output.writeByte(binarizedByteVectorValues.clusterId());
+        output.writeByte(
+            BinarizedByteVectorValues.encodeClusterIdToByte(binarizedByteVectorValues.clusterId()));
       }
       // FIXME: handle other similarity functions the same as MIP such as COSINE
       // TODO handle quantization output correctly
@@ -977,7 +976,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private final BinaryQuantizer quantizer;
     private int lastDoc;
     private short clusterId = 0;
-    private byte bClusterId = 0;
 
     BinarizedFloatVectorValues(
         FloatVectorValues delegate, BinaryQuantizer quantizer, float[][] centroids) {
@@ -989,8 +987,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public byte clusterId() {
-      return bClusterId;
+    public short clusterId() {
+      return clusterId;
     }
 
     @Override
@@ -1078,7 +1076,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         }
         assert nearestCentroid >= 0 && nearestCentroid < centroids.length;
         clusterId = (short) nearestCentroid;
-        bClusterId = clusterId <= 127 ? (byte) clusterId : (byte) (clusterId - 256);
       }
       corrections =
           quantizer.quantizeForIndex(values.vectorValue(), binarized, centroids[clusterId]);

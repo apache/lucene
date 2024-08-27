@@ -53,19 +53,21 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       RandomAccessVectorValues vectorValues,
       float[] target)
       throws IOException {
-    if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedQueryVectors) {
-      // TODO, implement & handle more than one coarse grained cluster
-      BinaryQuantizer quantizer = binarizedQueryVectors.getQuantizer();
-      float[][] centroids = binarizedQueryVectors.getCentroids();
+    if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedVectors) {
+      BinaryQuantizer quantizer = binarizedVectors.getQuantizer();
+      float[][] centroids = binarizedVectors.getCentroids();
       int discretizedDimensions = BQVectorUtils.discretize(target.length, 64);
       byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
-      BinaryQuantizer.QueryFactors factors =
-          quantizer.quantizeForQuery(target, quantized, centroids[0]);
+
+      BinaryQueryVector[] queryVectors = new BinaryQueryVector[centroids.length];
+      for (int i = 0; i < centroids.length; i++) {
+        // TODO: if there are many clusters, do quantizing of query lazily
+        BinaryQuantizer.QueryFactors factors =
+            quantizer.quantizeForQuery(target, quantized, centroids[i]);
+        queryVectors[i] = new BinaryQueryVector(quantized, factors);
+      }
       return new BinarizedRandomVectorScorer(
-          new BinaryQueryVector[] {new BinaryQueryVector(quantized, factors)},
-          binarizedQueryVectors,
-          similarityFunction,
-          discretizedDimensions);
+          queryVectors, binarizedVectors, similarityFunction, discretizedDimensions);
     }
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
@@ -130,7 +132,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
           new BinaryQueryVector[] {
             new BinaryQueryVector(
                 queryVector,
-                new BinaryQuantizer.QueryFactors(quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC, cDotC))
+                new BinaryQuantizer.QueryFactors(
+                    quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC, cDotC))
           },
           targetVectors,
           similarityFunction,
@@ -144,8 +147,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     }
   }
 
-  public record BinaryQueryVector(
-      byte[] vector, BinaryQuantizer.QueryFactors factors) {}
+  public record BinaryQueryVector(byte[] vector, BinaryQuantizer.QueryFactors factors) {}
 
   public static class BinarizedRandomVectorScorer
       extends RandomVectorScorer.AbstractRandomVectorScorer {
@@ -190,8 +192,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     public float score(int targetOrd) throws IOException {
       // FIXME: implement fastscan in the future?
 
-      // FIXME: handle multiple query vectors
-      BinaryQueryVector queryVector = queryVectors[0];
+      short clusterID = targetVectors.getClusterId(targetOrd);
+      BinaryQueryVector queryVector = queryVectors[clusterID];
 
       byte[] quantizedQuery = queryVector.vector();
       short quantizedSum = queryVector.factors().quantizedSum();
