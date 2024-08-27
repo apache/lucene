@@ -129,13 +129,27 @@ public class AdvanceBenchmark {
     // Explicitly inline the binary-search logic to see if it helps the compiler.
     int start = 0;
 
-    start += values[63] < target ? 64 : 0;
-    start += values[start + 31] < target ? 32 : 0;
-    start += values[start + 15] < target ? 16 : 0;
-    start += values[start + 7] < target ? 8 : 0;
-    start += values[start + 3] < target ? 4 : 0;
-    start += values[start + 1] < target ? 2 : 0;
-    start += values[start] < target ? 1 : 0;
+    if (values[63] < target) {
+      start += 64;
+    }
+    if (values[start + 31] < target) {
+      start += 32;
+    }
+    if (values[start + 15] < target) {
+      start += 16;
+    }
+    if (values[start + 7] < target) {
+      start += 8;
+    }
+    if (values[start + 3] < target) {
+      start += 4;
+    }
+    if (values[start + 1] < target) {
+      start += 2;
+    }
+    if (values[start] < target) {
+      start += 1;
+    }
 
     return start;
   }
@@ -305,13 +319,16 @@ public class AdvanceBenchmark {
     return binarySearchHelper8(values, target, rangeEnd - 7);
   }
 
-  // Compiles to a branchless binary search.
+  // branchless binary search over 8 values
   private static int binarySearchHelper8(long[] values, long target, int start) {
-    for (int shift = 2; shift >= 0; --shift) {
-      int halfRange = 1 << shift;
-      if (values[start + halfRange - 1] < target) {
-        start += halfRange;
-      }
+    if (values[start + 3] < target) {
+      start += 4;
+    }
+    if (values[start + 1] < target) {
+      start += 2;
+    }
+    if (values[start] < target) {
+      start += 1;
     }
     return start;
   }
