@@ -195,7 +195,7 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               }
 
               if (hasGaps == false) {
-                return new SortedSetDocValuesRangeScorer(values, minOrd, maxOrd, scoreMode, score(), skipper);
+                return new SortedSetDocValuesRangeScorer(query.field, values, minOrd, maxOrd, scoreMode, score(), skipper, context);
               }
 
               final SortedDocValues singleton = DocValues.unwrapSingleton(values);
