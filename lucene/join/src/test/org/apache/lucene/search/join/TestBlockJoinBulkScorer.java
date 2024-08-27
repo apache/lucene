@@ -1,5 +1,7 @@
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.ScoreMode.TOP_SCORES;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -9,6 +11,21 @@ import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.BulkScorer;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.Weight;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -64,7 +81,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       throws IOException {
     Map<Integer, List<ChildDocMatch>> expectedMatches = new HashMap<>();
 
-    final int parentDocCount = random().nextInt(maxParentDocCount + 1);
+    final int parentDocCount = random().nextInt(1, maxParentDocCount + 1);
     int currentDocId = 0;
     for (int i = 0; i < parentDocCount; i++) {
       final int childDocCount = random().nextInt(maxChildDocCount + 1);
@@ -91,6 +108,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       }
 
       // Build a parent doc
+      // TODO: Don't add parent docs with no children to expectedMatches
       Document parentDoc = new Document();
       parentDoc.add(newStringField(TYPE_FIELD_NAME, PARENT_FILTER_VALUE, Field.Store.NO));
       docs.add(parentDoc);
@@ -100,5 +118,65 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     }
 
     return expectedMatches;
+  }
+
+  public void testScoreRandomIndex() throws IOException {
+    try (Directory dir = newDirectory()) {
+      Map<Integer, List<ChildDocMatch>> expectedMatches;
+      try (RandomIndexWriter w =
+          new RandomIndexWriter(
+              random(),
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(
+                      // retain doc id order
+                      newLogMergePolicy(random().nextBoolean())))) {
+
+        expectedMatches = populateIndex(w, 10, 5, 3);
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        final IndexSearcher searcher = newSearcher(reader);
+        final ScoreMode scoreMode = ScoreMode.Max; // TODO: Randomize score mode
+
+        BooleanQuery.Builder childQueryBuilder = new BooleanQuery.Builder();
+        for (MatchValue matchValue : MatchValue.VALUES) {
+          childQueryBuilder.add(
+              new BoostQuery(
+                  new ConstantScoreQuery(
+                      new TermQuery(new Term(VALUE_FIELD_NAME, matchValue.getText()))),
+                  matchValue.getScore()),
+              BooleanClause.Occur.SHOULD);
+        }
+        BitSetProducer parentsFilter =
+            new QueryBitSetProducer(new TermQuery(new Term(TYPE_FIELD_NAME, PARENT_FILTER_VALUE)));
+        ToParentBlockJoinQuery parentQuery =
+            new ToParentBlockJoinQuery(childQueryBuilder.build(), parentsFilter, scoreMode);
+
+        // TODO: Randomize (other) score mode
+        Weight weight = searcher.createWeight(searcher.rewrite(parentQuery), TOP_SCORES, 1);
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+
+        BulkScorer bulkScorer = ss.bulkScorer();
+        bulkScorer.score(
+            new LeafCollector() {
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                assertNotNull(scorer);
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                assertNotNull(scorer);
+                assertTrue(expectedMatches.containsKey(doc));
+              }
+            },
+            null);
+      }
+    }
   }
 }
