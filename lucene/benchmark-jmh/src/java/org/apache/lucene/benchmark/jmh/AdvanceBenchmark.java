@@ -243,22 +243,22 @@ public class AdvanceBenchmark {
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   private static int linearSearch2(long[] values, long target, int startIndex) {
     // Two-level linear search, first checking every 8-th value, then values within an 8-value range
-    int rangeEnd = values.length;
+    int rangeStart = values.length - 8;
 
-    for (int i = startIndex + 7; i < values.length; i += 8) {
-      if (values[i] >= target) {
-        rangeEnd = i;
+    for (int i = startIndex; i + 8 <= values.length; i += 8) {
+      if (values[i + 7] >= target) {
+        rangeStart = i;
         break;
       }
     }
 
-    for (int i = rangeEnd - 7; i < rangeEnd; ++i) {
-      if (values[i] >= target) {
-        return i;
+    for (int i = 0; i < 8; ++i) {
+      if (values[rangeStart + i] >= target) {
+        return rangeStart + i;
       }
     }
 
-    return rangeEnd;
+    return values.length;
   }
 
   @Benchmark
@@ -307,16 +307,16 @@ public class AdvanceBenchmark {
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   private static int hybridSearch(long[] values, long target, int startIndex) {
     // Two-level linear search, first checking every 8-th value, then values within an 8-value range
-    int rangeEnd = values.length;
+    int rangeStart = values.length - 8;
 
-    for (int i = startIndex + 7; i < values.length; i += 8) {
-      if (values[i] >= target) {
-        rangeEnd = i;
+    for (int i = startIndex; i + 8 <= values.length; i += 8) {
+      if (values[i + 7] >= target) {
+        rangeStart = i;
         break;
       }
     }
 
-    return binarySearchHelper8(values, target, rangeEnd - 7);
+    return binarySearchHelper8(values, target, rangeStart);
   }
 
   // branchless binary search over 8 values
