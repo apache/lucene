@@ -403,6 +403,8 @@ Bug Fixes
 
 * GITHUB#13627: Fix race condition on flush for DWPT seqNo generation. (Ben Trent, Ao Li)
 
+* GITHUB#13691: Fix incorrect exponent value in explain of SigmoidFunction. (Owais Kazi)
+
 Other
 --------------------
 (No changes)
