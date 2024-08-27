@@ -203,6 +203,10 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public long ipByteBinByte(byte[] q, byte[] d) {
+    return ipByteBinByteImpl(q, d);
+  }
+
+  public static long ipByteBinByteImpl(byte[] q, byte[] d) {
     long ret = 0;
     int size = d.length;
     for (int i = 0; i < B_QUERY; i++) {
