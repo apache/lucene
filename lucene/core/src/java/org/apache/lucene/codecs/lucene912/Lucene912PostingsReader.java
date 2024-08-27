@@ -250,11 +250,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
    */
   private static int binarySearch4(long[] values, long target, int start) {
     // This code is organized in a way that compiles to a branchless binary search.
-    for (int shift = 1; shift >= 0; --shift) {
-      int halfRange = 1 << shift;
-      if (values[start + halfRange - 1] < target) {
-        start += halfRange;
-      }
+    if (values[start + 1] < target) {
+      start += 2;
+    }
+    if (values[start] < target) {
+      start += 1;
     }
     return start;
   }
