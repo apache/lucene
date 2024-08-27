@@ -157,11 +157,12 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
   }
 
   public void testFindNextGEQ() {
-    long[] values = new long[ForUtil.BLOCK_SIZE + 1];
+    long[] values =
+        new long[ForUtil.BLOCK_SIZE + Lucene912PostingsReader.BINARY_SEARCH_WINDOW_SIZE];
     for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
       values[i] = i * 2;
     }
-    values[ForUtil.BLOCK_SIZE] = DocIdSetIterator.NO_MORE_DOCS;
+    Arrays.fill(values, ForUtil.BLOCK_SIZE, values.length, DocIdSetIterator.NO_MORE_DOCS);
     for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
       for (int start = 0; start <= i; ++start) {
         assertEquals(i, Lucene912PostingsReader.findNextGEQ(values, i * 2, start));
