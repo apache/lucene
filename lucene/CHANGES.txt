@@ -147,6 +147,8 @@ Bug Fixes
 
 * GITHUB#13646: Fix rare test bug in TestLongValueFacetCounts that was introduced in 9.6. (Greg Miller)
 
+* GITHUB#13691: Fix incorrect exponent value in explain of SigmoidFunction. (Owais Kazi)
+
 Other
 ---------------------
 (No changes)
