@@ -6,9 +6,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -41,7 +42,6 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     MATCH_C("C", 3);
 
     private static final List<MatchValue> VALUES = List.of(values());
-    private static final Random RANDOM = new Random();
 
     private final String text;
     private final int score;
@@ -65,7 +65,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     }
 
     public static MatchValue random() {
-      return VALUES.get(RANDOM.nextInt(VALUES.size()));
+      return VALUES.get(LuceneTestCase.random().nextInt(VALUES.size()));
     }
   }
 
@@ -88,7 +88,6 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       List<Document> docs = new ArrayList<>(childDocCount);
       List<ChildDocMatch> childDocMatches = new ArrayList<>(childDocCount);
 
-      // TODO: Need special handling for 0 child docs?
       for (int j = 0; j < childDocCount; j++) {
         // Build a child doc
         Document childDoc = new Document();
@@ -108,16 +107,66 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       }
 
       // Build a parent doc
-      // TODO: Don't add parent docs with no children to expectedMatches
       Document parentDoc = new Document();
       parentDoc.add(newStringField(TYPE_FIELD_NAME, PARENT_FILTER_VALUE, Field.Store.NO));
       docs.add(parentDoc);
-      expectedMatches.put(currentDocId++, childDocMatches);
+
+      // Don't add parent docs with no children to expectedMatches
+      if (childDocCount > 0) {
+        expectedMatches.put(currentDocId, childDocMatches);
+      }
+      currentDocId++;
 
       writer.addDocuments(docs);
     }
 
     return expectedMatches;
+  }
+
+  private static Map<Integer, Float> computeExpectedScores(
+      Map<Integer, List<ChildDocMatch>> expectedMatches, ScoreMode scoreMode) {
+    Map<Integer, Float> expectedScores = new HashMap<>();
+    for (var entry : expectedMatches.entrySet()) {
+      float expectedScore = 0.0f;
+      List<ChildDocMatch> childDocMatches = entry.getValue();
+      for (ChildDocMatch childDocMatch : childDocMatches) {
+        float expectedChildDocScore = computeExpectedScore(childDocMatch);
+        switch (scoreMode) {
+          case Total:
+          case Avg:
+            expectedScore += expectedChildDocScore;
+            break;
+          case Min:
+            expectedScore = Math.min(expectedScore, expectedChildDocScore);
+            break;
+          case Max:
+            expectedScore = Math.max(expectedScore, expectedChildDocScore);
+            break;
+          case None:
+            break;
+          default:
+            throw new AssertionError();
+        }
+      }
+
+      if (scoreMode == ScoreMode.Avg && !childDocMatches.isEmpty()) {
+        expectedScore /= childDocMatches.size();
+      }
+
+      expectedScores.put(entry.getKey(), expectedScore);
+    }
+
+    return expectedScores;
+  }
+
+  private static float computeExpectedScore(ChildDocMatch childDocMatch) {
+    float expectedScore = 0.0f;
+    Set<MatchValue> matchValueSet = new HashSet<>(childDocMatch.matches());
+    for (MatchValue matchValue : matchValueSet) {
+      expectedScore += matchValue.getScore();
+    }
+
+    return expectedScore;
   }
 
   public void testScoreRandomIndex() throws IOException {
@@ -139,6 +188,8 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         final IndexSearcher searcher = newSearcher(reader);
         final ScoreMode scoreMode = ScoreMode.Max; // TODO: Randomize score mode
+        final Map<Integer, Float> expectedScores =
+            computeExpectedScores(expectedMatches, scoreMode);
 
         BooleanQuery.Builder childQueryBuilder = new BooleanQuery.Builder();
         for (MatchValue matchValue : MatchValue.VALUES) {
@@ -158,13 +209,14 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         Weight weight = searcher.createWeight(searcher.rewrite(parentQuery), TOP_SCORES, 1);
         ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
 
+        Map<Integer, Float> actualScores = new HashMap<>();
         BulkScorer bulkScorer = ss.bulkScorer();
         bulkScorer.score(
             new LeafCollector() {
               private Scorable scorer;
 
               @Override
-              public void setScorer(Scorable scorer) throws IOException {
+              public void setScorer(Scorable scorer) {
                 assertNotNull(scorer);
                 this.scorer = scorer;
               }
@@ -172,10 +224,11 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
               @Override
               public void collect(int doc) throws IOException {
                 assertNotNull(scorer);
-                assertTrue(expectedMatches.containsKey(doc));
+                actualScores.put(doc, scorer.score());
               }
             },
             null);
+        assertEquals(expectedScores, actualScores);
       }
     }
   }
