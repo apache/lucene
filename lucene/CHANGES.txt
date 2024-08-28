@@ -405,6 +405,12 @@ Bug Fixes
 
 * GITHUB#13691: Fix incorrect exponent value in explain of SigmoidFunction. (Owais Kazi)
 
+Build
+---------------------
+
+* GITHUB#13695, GITHUB#13696: Fix Gradle build sometimes gives spurious "unreferenced license file" warnings.
+  (Uwe Schindler)
+
 Other
 --------------------
 (No changes)
