@@ -285,13 +285,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         short quantizedSum,
         float width)
         throws IOException {
-      byte[] binaryCode;
-      long qcDist;
-      float errorBound;
-      float dist;
-      float targetDistToC = targetVectors.getCentroidDistance(targetOrd);
-      binaryCode = targetVectors.vectorValue(targetOrd);
-      float x0 = targetVectors.getVectorMagnitude(targetOrd);
+      byte[] binaryCode = targetVectors.vectorValue(targetOrd);
 
       // FIXME: pre-compute these only once for each target vector
       // .. not sure how to enumerate the target ordinals but that's what we did in PoC
@@ -306,6 +300,9 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         factorPPC = factors.PPC();
         factorIP = factors.IP();
       } else {
+        float targetDistToC = targetVectors.getCentroidDistance(targetOrd);
+        float x0 = targetVectors.getVectorMagnitude(targetOrd);
+
         sqrX = targetDistToC * targetDistToC;
         double xX0 = targetDistToC / x0;
         float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
@@ -316,14 +313,14 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         factorsCache.put(targetOrd, new IndexFactors(sqrX, error, factorPPC, factorIP));
       }
 
-      qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
+      long qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
       float y = (float) Math.sqrt(distanceToCentroid);
-      dist =
+      float dist =
           sqrX
               + distanceToCentroid
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
-      errorBound = y * error;
+      float errorBound = y * error;
       float result = dist - errorBound;
       // FIXME: this seems to only happen during randomized testing; never happened in PoC
       return result > 0 ? result : 0f;
