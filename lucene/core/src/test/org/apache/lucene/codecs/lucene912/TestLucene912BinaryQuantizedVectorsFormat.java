@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene912;
 
 import static java.lang.String.format;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -37,8 +38,11 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.util.quantization.BQVectorUtils;
+import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
@@ -105,8 +109,8 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
             .setMergePolicy(NoMergePolicy.INSTANCE);
 
     float[] vector = randomVector(dims);
-    KnnFloatVectorField knnField = new KnnFloatVectorField(fieldName, vector, randomSimilarity());
-
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    KnnFloatVectorField knnField = new KnnFloatVectorField(fieldName, vector, similarityFunction);
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, conf)) {
         for (int i = 0; i < numVectors; i++) {
@@ -121,6 +125,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           LeafReader r = getOnlyLeafReader(reader);
           FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
           assert (vectorValues.size() == numVectors);
+
           KnnVectorsReader knnVectorsReader = ((SegmentReader) r).getVectorReader();
           if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
             knnVectorsReader = fieldsReader.getFieldReader(fieldName);
@@ -130,6 +135,25 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
             assert centroids[0].length == dims;
             int expectedNumCentroids = Math.max(1, numVectors / numberOfVectorsPerCluster);
             assert centroids.length == expectedNumCentroids;
+
+            BinaryQuantizer quantizer = new BinaryQuantizer(dims, similarityFunction);
+            byte[] expectedVector = new byte[BQVectorUtils.discretize(dims, 64) / 8];
+            OffHeapBinarizedVectorValues qvectorValues =
+                ((Lucene912BinaryQuantizedVectorsReader.BinarizedVectorValues) vectorValues)
+                    .getQuantizedVectorValues();
+            while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+              float[] centroid = centroids[qvectorValues.clusterId()];
+              float[] corrections =
+                  quantizer.quantizeForIndex(vectorValues.vectorValue(), expectedVector, centroid);
+              assertArrayEquals(expectedVector, qvectorValues.vectorValue());
+              assertEquals(corrections[0], qvectorValues.getOOQ(), 0.00001f);
+              assertEquals(corrections[1], qvectorValues.getNormOC(), 0.00001f);
+              if (corrections.length == 3) {
+                assertEquals(corrections[2], qvectorValues.getODotC(), 0.00001f);
+              } else {
+                assertEquals(0f, qvectorValues.getODotC(), 0.00001f);
+              }
+            }
           }
         }
       }

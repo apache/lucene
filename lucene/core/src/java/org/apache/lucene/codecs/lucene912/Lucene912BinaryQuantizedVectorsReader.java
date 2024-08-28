@@ -342,7 +342,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
     }
   }
 
-  private static final class BinarizedVectorValues extends FloatVectorValues {
+  protected static final class BinarizedVectorValues extends FloatVectorValues {
     private final FloatVectorValues rawVectorValues;
     private final OffHeapBinarizedVectorValues quantizedVectorValues;
 
@@ -391,6 +391,10 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       return quantizedVectorValues.scorer(query);
+    }
+
+    protected OffHeapBinarizedVectorValues getQuantizedVectorValues() throws IOException {
+      return quantizedVectorValues;
     }
   }
 }

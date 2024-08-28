@@ -45,7 +45,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   protected final ByteBuffer byteBuffer;
   protected short clusterId = 0;
   protected final int byteSize;
-  protected int lastOrd = -1;
+  protected final int centroidByteSize;
+  private int lastOrd = -1;
   protected final float[] correctiveValues = new float[3];
   protected final boolean isMoreThanOneCluster;
   protected final BinaryQuantizer binaryQuantizer;
@@ -68,7 +69,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.centroids = centroids;
     this.isMoreThanOneCluster = centroids != null && centroids.length > 1;
     this.numBytes = BQVectorUtils.discretize(dimension, 64) / 8;
-    this.byteSize = (numBytes + 8) + (isMoreThanOneCluster ? 1 : 0);
+    this.centroidByteSize = isMoreThanOneCluster ? 1 : 0;
+    this.byteSize = numBytes + 12 + centroidByteSize;
     this.byteBuffer = ByteBuffer.allocate(numBytes);
     this.binaryValue = byteBuffer.array();
     this.binaryQuantizer = quantizer;
@@ -130,7 +132,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (lastOrd == targetOrd) {
       return correctiveValues[0];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
+    slice.seek(((long) targetOrd * byteSize) + numBytes + centroidByteSize);
     slice.readFloats(correctiveValues, 0, 3);
     return correctiveValues[0];
   }
@@ -140,7 +142,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (lastOrd == targetOrd) {
       return correctiveValues[1];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
+    slice.seek(((long) targetOrd * byteSize) + numBytes + centroidByteSize);
     slice.readFloats(correctiveValues, 0, 3);
     return correctiveValues[1];
   }
@@ -150,7 +152,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (lastOrd == targetOrd) {
       return correctiveValues[0];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
+    slice.seek(((long) targetOrd * byteSize) + numBytes + centroidByteSize);
     slice.readFloats(correctiveValues, 0, 3);
     return correctiveValues[0];
   }
@@ -160,7 +162,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (lastOrd == targetOrd) {
       return correctiveValues[1];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
+    slice.seek(((long) targetOrd * byteSize) + numBytes + centroidByteSize);
     slice.readFloats(correctiveValues, 0, 3);
     return correctiveValues[1];
   }
@@ -170,7 +172,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     if (lastOrd == targetOrd) {
       return correctiveValues[2];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes + (isMoreThanOneCluster ? 1 : 0));
+    slice.seek(((long) targetOrd * byteSize) + numBytes + centroidByteSize);
     slice.readFloats(correctiveValues, 0, 3);
     return correctiveValues[2];
   }
