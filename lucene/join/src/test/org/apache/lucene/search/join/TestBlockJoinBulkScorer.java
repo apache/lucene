@@ -2,6 +2,7 @@ package org.apache.lucene.search.join;
 
 import static org.apache.lucene.search.ScoreMode.TOP_SCORES;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -65,7 +66,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     }
 
     public static MatchValue random() {
-      return VALUES.get(LuceneTestCase.random().nextInt(VALUES.size()));
+      return RandomPicks.randomFrom(LuceneTestCase.random(), VALUES);
     }
   }
 
@@ -169,66 +170,70 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     return expectedScore;
   }
 
-  public void testScoreRandomIndex() throws IOException {
-    try (Directory dir = newDirectory()) {
-      Map<Integer, List<ChildDocMatch>> expectedMatches;
-      try (RandomIndexWriter w =
-          new RandomIndexWriter(
-              random(),
-              dir,
-              newIndexWriterConfig()
-                  .setMergePolicy(
-                      // retain doc id order
-                      newLogMergePolicy(random().nextBoolean())))) {
+  public void testScoreRandomIndices() throws IOException {
+    for (int i = 0; i < 10; i++) {
+      try (Directory dir = newDirectory()) {
+        Map<Integer, List<ChildDocMatch>> expectedMatches;
+        try (RandomIndexWriter w =
+            new RandomIndexWriter(
+                random(),
+                dir,
+                newIndexWriterConfig()
+                    .setMergePolicy(
+                        // retain doc id order
+                        newLogMergePolicy(random().nextBoolean())))) {
 
-        expectedMatches = populateIndex(w, 10, 5, 3);
-        w.forceMerge(1);
-      }
-
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        final IndexSearcher searcher = newSearcher(reader);
-        final ScoreMode scoreMode = ScoreMode.Max; // TODO: Randomize score mode
-        final Map<Integer, Float> expectedScores =
-            computeExpectedScores(expectedMatches, scoreMode);
-
-        BooleanQuery.Builder childQueryBuilder = new BooleanQuery.Builder();
-        for (MatchValue matchValue : MatchValue.VALUES) {
-          childQueryBuilder.add(
-              new BoostQuery(
-                  new ConstantScoreQuery(
-                      new TermQuery(new Term(VALUE_FIELD_NAME, matchValue.getText()))),
-                  matchValue.getScore()),
-              BooleanClause.Occur.SHOULD);
+          expectedMatches = populateIndex(w, 10, 5, 3);
+          w.forceMerge(1);
         }
-        BitSetProducer parentsFilter =
-            new QueryBitSetProducer(new TermQuery(new Term(TYPE_FIELD_NAME, PARENT_FILTER_VALUE)));
-        ToParentBlockJoinQuery parentQuery =
-            new ToParentBlockJoinQuery(childQueryBuilder.build(), parentsFilter, scoreMode);
 
-        // TODO: Randomize (other) score mode
-        Weight weight = searcher.createWeight(searcher.rewrite(parentQuery), TOP_SCORES, 1);
-        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        try (IndexReader reader = DirectoryReader.open(dir)) {
+          final IndexSearcher searcher = newSearcher(reader);
+          final ScoreMode scoreMode =
+              RandomPicks.randomFrom(LuceneTestCase.random(), ScoreMode.values());
+          final Map<Integer, Float> expectedScores =
+              computeExpectedScores(expectedMatches, scoreMode);
 
-        Map<Integer, Float> actualScores = new HashMap<>();
-        BulkScorer bulkScorer = ss.bulkScorer();
-        bulkScorer.score(
-            new LeafCollector() {
-              private Scorable scorer;
+          BooleanQuery.Builder childQueryBuilder = new BooleanQuery.Builder();
+          for (MatchValue matchValue : MatchValue.VALUES) {
+            childQueryBuilder.add(
+                new BoostQuery(
+                    new ConstantScoreQuery(
+                        new TermQuery(new Term(VALUE_FIELD_NAME, matchValue.getText()))),
+                    matchValue.getScore()),
+                BooleanClause.Occur.SHOULD);
+          }
+          BitSetProducer parentsFilter =
+              new QueryBitSetProducer(
+                  new TermQuery(new Term(TYPE_FIELD_NAME, PARENT_FILTER_VALUE)));
+          ToParentBlockJoinQuery parentQuery =
+              new ToParentBlockJoinQuery(childQueryBuilder.build(), parentsFilter, scoreMode);
 
-              @Override
-              public void setScorer(Scorable scorer) {
-                assertNotNull(scorer);
-                this.scorer = scorer;
-              }
+          // TODO: Randomize (other) score mode
+          Weight weight = searcher.createWeight(searcher.rewrite(parentQuery), TOP_SCORES, 1);
+          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
 
-              @Override
-              public void collect(int doc) throws IOException {
-                assertNotNull(scorer);
-                actualScores.put(doc, scorer.score());
-              }
-            },
-            null);
-        assertEquals(expectedScores, actualScores);
+          Map<Integer, Float> actualScores = new HashMap<>();
+          BulkScorer bulkScorer = ss.bulkScorer();
+          bulkScorer.score(
+              new LeafCollector() {
+                private Scorable scorer;
+
+                @Override
+                public void setScorer(Scorable scorer) {
+                  assertNotNull(scorer);
+                  this.scorer = scorer;
+                }
+
+                @Override
+                public void collect(int doc) throws IOException {
+                  assertNotNull(scorer);
+                  actualScores.put(doc, scorer.score());
+                }
+              },
+              null);
+          assertEquals(expectedScores, actualScores);
+        }
       }
     }
   }
