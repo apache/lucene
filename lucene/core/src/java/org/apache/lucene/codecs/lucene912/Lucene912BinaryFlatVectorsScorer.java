@@ -17,9 +17,8 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
@@ -167,16 +166,9 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     // FIXME: may be a better place to do this (at some point where we have all of the
     //  target ordinals and are comfortable caching all of this data); not seeing this pattern
     // anywhere else in the code
-    // FIXME: determine how large this cache should be
-    // FIXME: not sure how efficient this cache will be
-    final int MAX_CACHE_ENTRIES = 10_000_000;
-    Map<Integer, IndexFactors> factorsCache =
-        new LinkedHashMap<>(MAX_CACHE_ENTRIES + 1, .75F, true) {
-          // This method is called just after a new entry has been added
-          public boolean removeEldestEntry(Map.Entry eldest) {
-            return size() > MAX_CACHE_ENTRIES;
-          }
-        };
+    // FIXME: determine how large this cache should be and control the policy LRU (LFU?)
+    // FIXME: not sure how efficient this cache will be need to test it w threads
+    private final Map<Integer, IndexFactors> factorsCache = new ConcurrentHashMap<>();
 
     public BinarizedRandomVectorScorer(
         BinaryQueryVector[] queryVectors,
@@ -190,7 +182,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       this.discretizedDimensions = discretizedDimensions;
       this.sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
       this.maxX1 = (float) (1.9 / Utils.constSqrt(discretizedDimensions - 1.0));
-      this.factorsCache = Collections.synchronizedMap(this.factorsCache);
     }
 
     // FIXME: utils class; pull this out
