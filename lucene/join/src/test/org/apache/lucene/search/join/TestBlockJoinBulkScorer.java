@@ -1,7 +1,5 @@
 package org.apache.lucene.search.join;
 
-import static org.apache.lucene.search.ScoreMode.TOP_SCORES;
-
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -125,38 +123,43 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
   }
 
   private static Map<Integer, Float> computeExpectedScores(
-      Map<Integer, List<ChildDocMatch>> expectedMatches, ScoreMode scoreMode) {
+      Map<Integer, List<ChildDocMatch>> expectedMatches,
+      ScoreMode joinScoreMode,
+      org.apache.lucene.search.ScoreMode searchScoreMode) {
     Map<Integer, Float> expectedScores = new HashMap<>();
     for (var entry : expectedMatches.entrySet()) {
       // Filter out child docs with no matches since those will never contribute to the score
-      List<ChildDocMatch> childDocMatches = entry.getValue().stream().filter(m -> !m.matches().isEmpty()).toList();
+      List<ChildDocMatch> childDocMatches =
+          entry.getValue().stream().filter(m -> !m.matches().isEmpty()).toList();
       if (childDocMatches.isEmpty()) {
         continue;
       }
 
       float expectedScore = 0.0f;
-      for (ChildDocMatch childDocMatch : childDocMatches) {
-        float expectedChildDocScore = computeExpectedScore(childDocMatch);
-        switch (scoreMode) {
-          case Total:
-          case Avg:
-            expectedScore += expectedChildDocScore;
-            break;
-          case Min:
-            expectedScore = Math.min(expectedScore, expectedChildDocScore);
-            break;
-          case Max:
-            expectedScore = Math.max(expectedScore, expectedChildDocScore);
-            break;
-          case None:
-            break;
-          default:
-            throw new AssertionError();
+      if (searchScoreMode.needsScores()) {
+        for (ChildDocMatch childDocMatch : childDocMatches) {
+          float expectedChildDocScore = computeExpectedScore(childDocMatch);
+          switch (joinScoreMode) {
+            case Total:
+            case Avg:
+              expectedScore += expectedChildDocScore;
+              break;
+            case Min:
+              expectedScore = Math.min(expectedScore, expectedChildDocScore);
+              break;
+            case Max:
+              expectedScore = Math.max(expectedScore, expectedChildDocScore);
+              break;
+            case None:
+              break;
+            default:
+              throw new AssertionError();
+          }
         }
-      }
 
-      if (scoreMode == ScoreMode.Avg && !childDocMatches.isEmpty()) {
-        expectedScore /= childDocMatches.size();
+        if (joinScoreMode == ScoreMode.Avg) {
+          expectedScore /= childDocMatches.size();
+        }
       }
 
       expectedScores.put(entry.getKey(), expectedScore);
@@ -194,10 +197,13 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
         try (IndexReader reader = DirectoryReader.open(dir)) {
           final IndexSearcher searcher = newSearcher(reader);
-          final ScoreMode scoreMode =
+          final ScoreMode joinScoreMode =
               RandomPicks.randomFrom(LuceneTestCase.random(), ScoreMode.values());
+          final org.apache.lucene.search.ScoreMode searchScoreMode =
+              RandomPicks.randomFrom(
+                  LuceneTestCase.random(), org.apache.lucene.search.ScoreMode.values());
           final Map<Integer, Float> expectedScores =
-              computeExpectedScores(expectedMatches, scoreMode);
+              computeExpectedScores(expectedMatches, joinScoreMode, searchScoreMode);
 
           BooleanQuery.Builder childQueryBuilder = new BooleanQuery.Builder();
           for (MatchValue matchValue : MatchValue.VALUES) {
@@ -212,10 +218,9 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
               new QueryBitSetProducer(
                   new TermQuery(new Term(TYPE_FIELD_NAME, PARENT_FILTER_VALUE)));
           ToParentBlockJoinQuery parentQuery =
-              new ToParentBlockJoinQuery(childQueryBuilder.build(), parentsFilter, scoreMode);
+              new ToParentBlockJoinQuery(childQueryBuilder.build(), parentsFilter, joinScoreMode);
 
-          // TODO: Randomize (other) score mode
-          Weight weight = searcher.createWeight(searcher.rewrite(parentQuery), TOP_SCORES, 1);
+          Weight weight = searcher.createWeight(searcher.rewrite(parentQuery), searchScoreMode, 1);
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
 
           Map<Integer, Float> actualScores = new HashMap<>();
