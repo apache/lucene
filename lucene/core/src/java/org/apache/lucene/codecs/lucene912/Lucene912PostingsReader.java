@@ -238,7 +238,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   }
 
   /**
-   * Return the first index in sorted array {@code buffer} whose value is greater than or equal to
+   * Return the first index in sorted array {@code values} whose value is greater than or equal to
    * {@code target}. For correctness, it requires the last 4 values to be set to {@code
    * NO_MORE_DOCS}.
    */
