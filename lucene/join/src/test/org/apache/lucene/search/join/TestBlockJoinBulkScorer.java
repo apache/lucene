@@ -128,8 +128,13 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       Map<Integer, List<ChildDocMatch>> expectedMatches, ScoreMode scoreMode) {
     Map<Integer, Float> expectedScores = new HashMap<>();
     for (var entry : expectedMatches.entrySet()) {
+      // Filter out child docs with no matches since those will never contribute to the score
+      List<ChildDocMatch> childDocMatches = entry.getValue().stream().filter(m -> !m.matches().isEmpty()).toList();
+      if (childDocMatches.isEmpty()) {
+        continue;
+      }
+
       float expectedScore = 0.0f;
-      List<ChildDocMatch> childDocMatches = entry.getValue();
       for (ChildDocMatch childDocMatch : childDocMatches) {
         float expectedChildDocScore = computeExpectedScore(childDocMatch);
         switch (scoreMode) {
