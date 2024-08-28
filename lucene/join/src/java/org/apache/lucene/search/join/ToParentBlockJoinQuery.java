@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.join;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.search.ScoreMode.COMPLETE;
 
 import java.io.IOException;
@@ -520,7 +519,7 @@ public class ToParentBlockJoinQuery extends Query {
       this.childBulkScorer = childBulkScorer;
       this.scoreMode = scoreMode;
       this.parents = parents;
-      this.currentParentScore = new Score(this.scoreMode);
+      this.currentParentScore = new Score(scoreMode);
       this.currentParent = null;
     }
 
@@ -561,7 +560,7 @@ public class ToParentBlockJoinQuery extends Query {
             currentParentScore.reset();
           }
 
-          if (scorer != null) {
+          if (scorer != null && scoreMode != ScoreMode.None) {
             currentParentScore.addChildScore(scorer.score());
           }
         }
