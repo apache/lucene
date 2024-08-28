@@ -33,6 +33,7 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -41,6 +42,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.CloseableThreadLocal;
@@ -276,8 +278,8 @@ public class BpVectorReorderer {
       float[] scratch = state.scratch;
 
       try {
-        computeCentroid(left, vectors, leftCentroid);
-        computeCentroid(right, vectors, rightCentroid);
+        computeCentroid(left, vectors, leftCentroid, vectorScore);
+        computeCentroid(right, vectors, rightCentroid, vectorScore);
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
@@ -296,8 +298,8 @@ public class BpVectorReorderer {
           // if we swapped too many times we don't use the relative calculation because it
           // introduces too much error
           try {
-            computeCentroid(left, vectors, leftCentroid);
-            computeCentroid(right, vectors, rightCentroid);
+            computeCentroid(left, vectors, leftCentroid, vectorScore);
+            computeCentroid(right, vectors, rightCentroid, vectorScore);
           } catch (IOException e) {
             throw new UncheckedIOException(e);
           }
@@ -317,13 +319,23 @@ public class BpVectorReorderer {
       }
     }
 
-    static void computeCentroid(IntsRef ids, FloatValues vectors, float[] centroid)
+    static void computeCentroid(
+        IntsRef ids,
+        FloatValues vectors,
+        float[] centroid,
+        VectorSimilarityFunction vectorSimilarity)
         throws IOException {
       Arrays.fill(centroid, 0);
       for (int i = ids.offset; i < ids.offset + ids.length; i++) {
         VectorUtil.add(centroid, vectors.get(ids.ints[i]));
       }
-      vectorScalarMul(1 / (float) ids.length, centroid);
+      switch (vectorSimilarity) {
+        case EUCLIDEAN, MAXIMUM_INNER_PRODUCT -> vectorScalarMul(1 / (float) ids.length, centroid);
+        case DOT_PRODUCT, COSINE ->
+            vectorScalarMul(
+                1 / (float) Math.sqrt(VectorUtil.dotProduct(centroid, centroid)), centroid);
+      }
+      ;
     }
 
     /** Shuffle IDs across both partitions so that each partition is closer to its centroid. */
@@ -363,14 +375,13 @@ public class BpVectorReorderer {
         minRightBias = Math.min(minRightBias, biases[i]);
       }
       float gain = maxLeftBias - minRightBias;
-      // This uses the simulated annealing proposed by Mackenzie et al in "Tradeoff Options for
-      // Bipartite Graph Partitioning" by comparing the gain of swapping the doc from the left side
-      // that is most attracted to the right and the doc from the right side that is most attracted
-      // to the left against `iter` rather than zero. We use the lengths of the centroids to
-      // determine
-      // an appropriate scale, so that roughly speaking we stop iterating when the gain becomes less
-      // than
-      // 0.2% of the size of the vectors.
+      // This compares the gain of swapping the doc from the left side that is most attracted to the
+      // right and the doc from the right side that is most attracted to the left against the
+      // average vector length (/500) rather than zero.
+      //
+      // We could try incorporating simulated annealing by including the iteration number in the
+      // formula? eg { 1000 * gain <= scale * iter }.
+      //
       // System.out.printf("at depth=%d, midPoint=%d, gain=%f\n", depth, midPoint, gain);
       if (500 * gain <= scale) {
         return 0;
@@ -415,7 +426,16 @@ public class BpVectorReorderer {
             int to = Math.max(i, j);
             try {
               swapIdsAndCentroids(
-                  ids, from, to, midPoint, vectors, leftCentroid, rightCentroid, scratch, count);
+                  ids,
+                  from,
+                  to,
+                  midPoint,
+                  vectors,
+                  leftCentroid,
+                  rightCentroid,
+                  scratch,
+                  count,
+                  vectorScore);
             } catch (IOException e) {
               throw new UncheckedIOException(e);
             }
@@ -433,7 +453,7 @@ public class BpVectorReorderer {
         float[] centroid, FloatValues vectors, IntsRef ids, int count) throws IOException {
       // recompute centroid to check the incremental calculation
       float[] check = new float[centroid.length];
-      computeCentroid(ids, vectors, check);
+      computeCentroid(ids, vectors, check, VectorSimilarityFunction.EUCLIDEAN);
       for (int i = 0; i < check.length; ++i) {
         float diff = Math.abs(check[i] - centroid[i]);
         if (diff > 1e-4) {
@@ -452,7 +472,8 @@ public class BpVectorReorderer {
         float[] leftCentroid,
         float[] rightCentroid,
         float[] scratch,
-        int count)
+        int count,
+        VectorSimilarityFunction vectorScore)
         throws IOException {
       assert from < to;
 
@@ -467,7 +488,7 @@ public class BpVectorReorderer {
       // We want the net effect to be moving "from" left->right and "to" right->left
 
       // (1) scratch = to - from
-      if (count <= MAX_CENTROID_UPDATES) {
+      if (count <= MAX_CENTROID_UPDATES && vectorScore == VectorSimilarityFunction.EUCLIDEAN) {
         int relativeMidpoint = midPoint - ids.offset;
         vectorSubtract(vectors.get(toId), vectors.get(fromId), scratch);
         // we must normalize to the proper scale by accounting for the number of points contributing
@@ -588,7 +609,7 @@ public class BpVectorReorderer {
     return computeDocMap(new IndexFloatValues(input, dimension, size));
   }
 
-  public Sorter.DocMap computeDocMapFloat(OffHeapFloatVectorValues values) {
+  public Sorter.DocMap computeDocMapFloat(RandomAccessVectorValues.Floats values) {
     return computeDocMap(new VectorValuesFloatValues(values));
   }
 
@@ -788,11 +809,17 @@ public class BpVectorReorderer {
           new ForkJoinPool(threadCount, p -> new ForkJoinWorkerThread(p) {}, null, false);
       reorderer.setForkJoinPool(pool);
     }
+    try (Directory dir = FSDirectory.open(Path.of(directory))) {
+      reorderer.reorderIndexDirectory(dir, field);
+    }
+  }
+
+  void reorderIndexDirectory(Directory directory, String field) throws IOException {
     // We need to read prior graph, determine its maxconn in order to make sure our data structures
     // are big enough to handle the HNSW since we will not be creating a new one.
     int maxConn = 0;
     VectorSimilarityFunction similarity = null;
-    try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(directory)))) {
+    try (IndexReader reader = DirectoryReader.open(directory)) {
       for (LeafReaderContext ctx : reader.leaves()) {
         FieldInfo finfo = ctx.reader().getFieldInfos().fieldInfo(field);
         if (finfo == null) {
@@ -820,7 +847,7 @@ public class BpVectorReorderer {
         maxConn = Math.max(hnsw.maxConn(), maxConn);
       }
       final int maxConnFinal = maxConn;
-      reorderer.setVectorSimilarity(similarity);
+      setVectorSimilarity(similarity);
       IndexWriterConfig iwc = new IndexWriterConfig();
       iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
       iwc.setCodec(
@@ -833,13 +860,21 @@ public class BpVectorReorderer {
               return new Lucene99HnswVectorsFormat(maxConnFinal, DEFAULT_BEAM_WIDTH, 1, null);
             }
           });
-      try (IndexWriter writer = new IndexWriter(FSDirectory.open(Path.of(directory)), iwc)) {
+      try (IndexWriter writer = new IndexWriter(directory, iwc)) {
         for (LeafReaderContext ctx : reader.leaves()) {
-          OffHeapFloatVectorValues values =
-              (OffHeapFloatVectorValues) ctx.reader().getFloatVectorValues(field);
-          Sorter.DocMap valueMap = reorderer.computeDocMapFloat(values);
-          Sorter.DocMap docMap = valueMapToDocMap(valueMap, values, ctx.reader().maxDoc());
-          writer.addIndexes(SortingCodecReader.wrap((CodecReader) ctx.reader(), docMap, null));
+          FloatVectorValues floats = ctx.reader().getFloatVectorValues(field);
+          if (floats instanceof OffHeapFloatVectorValues) {
+            Sorter.DocMap valueMap = computeDocMapFloat((OffHeapFloatVectorValues) floats);
+            Sorter.DocMap docMap =
+                valueMapToDocMap(
+                    valueMap, (OffHeapFloatVectorValues) floats, ctx.reader().maxDoc());
+            writer.addIndexes(SortingCodecReader.wrap((CodecReader) ctx.reader(), docMap, null));
+          } else {
+            throw new IllegalStateException(
+                "vector field "
+                    + field
+                    + " was indexed in a format that is not compatible with BP reordering");
+          }
         }
       }
     }

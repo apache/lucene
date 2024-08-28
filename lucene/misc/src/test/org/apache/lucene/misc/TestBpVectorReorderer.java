@@ -17,6 +17,7 @@
 
 package org.apache.lucene.misc;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
@@ -25,6 +26,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene912.Lucene912Codec;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredField;
@@ -50,6 +54,7 @@ import org.junit.Ignore;
 /** Tests reordering vector values using Binary Partitioning */
 public class TestBpVectorReorderer extends LuceneTestCase {
 
+  public static final String FIELD_NAME = "knn";
   BpVectorReorderer reorderer;
 
   @Before
@@ -70,6 +75,26 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     // BBDataInput expects this?
     buffer.position(0);
     return new ByteBuffersIndexInput(new ByteBuffersDataInput(List.of(buffer)), "test-input");
+  }
+
+  private void createQuantizedIndex(Directory dir, List<float[]> vectors) throws IOException {
+    IndexWriterConfig cfg = newIndexWriterConfig();
+    cfg.setCodec(
+        new Lucene912Codec() {
+          @Override
+          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+            return new Lucene99HnswScalarQuantizedVectorsFormat(8, 32);
+          }
+        });
+    try (IndexWriter writer = new IndexWriter(dir, cfg)) {
+      int i = 0;
+      for (float[] vector : vectors) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField(FIELD_NAME, vector));
+        doc.add(new StoredField("id", i++));
+        writer.addDocument(doc);
+      }
+    }
   }
 
   public void testRandom() {
@@ -127,6 +152,15 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     doTestEuclideanLinearIndex();
   }
 
+  public void testQuantizedIndex() throws Exception {
+    reorderer.setVectorSimilarity(VectorSimilarityFunction.EUCLIDEAN);
+    IllegalStateException e =
+        expectThrows(IllegalStateException.class, () -> doTestQuantizedIndex());
+    assertEquals(
+        "vector field knn was indexed in a format that is not compatible with BP reordering",
+        e.getMessage());
+  }
+
   public void testEuclideanLinearConcurrent() {
     reorderer.setVectorSimilarity(VectorSimilarityFunction.EUCLIDEAN);
     int concurrency = random().nextInt(7) + 1;
@@ -158,6 +192,47 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     Sorter.DocMap map =
         reorderer.computeDocMapFloat(createTestIndexInput(shuffled), 2, vectors.size());
     verifyEuclideanLinear(map, vectors, shuffled);
+  }
+
+  private void doTestQuantizedIndex() throws IOException {
+    // a set of 2d points on a line
+    List<float[]> vectors = randomLinearVectors();
+    List<float[]> shuffled = shuffleVectors(vectors);
+    try (Directory dir = newDirectory()) {
+      createQuantizedIndex(dir, shuffled);
+      reorderer.reorderIndexDirectory(dir, FIELD_NAME);
+      int[] newToOld = new int[vectors.size()];
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        for (int docid = 0; docid < reader.maxDoc(); docid++) {
+          if (leafReader.getLiveDocs().get(docid)) {
+            int oldid = Integer.parseInt(leafReader.storedFields().document(docid).get(FIELD_NAME));
+            newToOld[docid] = oldid;
+          } else {
+            newToOld[docid] = -1;
+          }
+        }
+      }
+      verifyEuclideanLinear(
+          new Sorter.DocMap() {
+            @Override
+            public int oldToNew(int docID) {
+              return -1;
+            }
+
+            @Override
+            public int newToOld(int docID) {
+              return newToOld[docID];
+            }
+
+            @Override
+            public int size() {
+              return newToOld.length;
+            }
+          },
+          vectors,
+          shuffled);
+    }
   }
 
   private static List<float[]> shuffleVectors(List<float[]> vectors) {
