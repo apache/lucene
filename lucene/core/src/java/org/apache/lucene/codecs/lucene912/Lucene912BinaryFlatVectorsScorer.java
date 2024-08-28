@@ -17,6 +17,9 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
@@ -159,6 +162,22 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     private final float sqrtDimensions;
     private final float maxX1;
 
+    private record IndexFactors(float sqrX, float error, float PPC, float IP) {}
+
+    // FIXME: may be a better place to do this (at some point where we have all of the
+    //  target ordinals and are comfortable caching all of this data); not seeing this pattern
+    // anywhere else in the code
+    // FIXME: determine how large this cache should be
+    // FIXME: not sure how efficient this cache will be
+    final int MAX_CACHE_ENTRIES = 10_000_000;
+    Map<Integer, IndexFactors> factorsCache =
+        new LinkedHashMap<>(MAX_CACHE_ENTRIES + 1, .75F, true) {
+          // This method is called just after a new entry has been added
+          public boolean removeEldestEntry(Map.Entry eldest) {
+            return size() > MAX_CACHE_ENTRIES;
+          }
+        };
+
     public BinarizedRandomVectorScorer(
         BinaryQueryVector[] queryVectors,
         RandomAccessBinarizedByteVectorValues targetVectors,
@@ -171,6 +190,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       this.discretizedDimensions = discretizedDimensions;
       this.sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
       this.maxX1 = (float) (1.9 / Utils.constSqrt(discretizedDimensions - 1.0));
+      this.factorsCache = Collections.synchronizedMap(this.factorsCache);
     }
 
     // FIXME: utils class; pull this out
@@ -183,10 +203,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         return x >= 0 && !Double.isInfinite(x) ? sqrtNewtonRaphson(x, x, 0) : Double.NaN;
       }
     }
-
-    //    record Factors(float sqrX, float error, float PPC, float IP) {}
-    // FIXME: use a weak map instead -- limit the size .. LRU cache .. thread safe
-    //    private final HashMap<Integer, Factors> factorsCache = new WeakHashMap<>();
 
     @Override
     public float score(int targetOrd) throws IOException {
@@ -242,17 +258,15 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       float qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
 
-      // FIXME: cache this value or pull it out to the scorer creation
-      float sqrtD = (float) Math.sqrt(discretizedDimensions);
-
-      // FIXME: pre-compute these only once for each target vector ... pull this out ...
+      // FIXME: pre-compute these only once for each target vector
+      //  ... pull this out or use a similar cache mechanism as do in score
       float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
 
       float estimatedDot =
-          (2 * width / sqrtD * qcDist
-                  + 2 * lower / sqrtD * xbSum
-                  - width / sqrtD * sumQ
-                  - sqrtD * lower)
+          (2 * width / sqrtDimensions * qcDist
+                  + 2 * lower / sqrtDimensions * xbSum
+                  - width / sqrtDimensions * sumQ
+                  - sqrtDimensions * lower)
               / ooq;
 
       float dist = normVmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
@@ -279,30 +293,28 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       binaryCode = targetVectors.vectorValue(targetOrd);
       float x0 = targetVectors.getVectorMagnitude(targetOrd);
 
-      // FIXME: pre-compute these only once for each target vector ... pull this out ...
-      // .. not sure how to enumerate the target ordinals but it seems expensive to this here
-      // ... could cache these as well on each call to score using targetOrd as the lookup
+      // FIXME: pre-compute these only once for each target vector
+      // .. not sure how to enumerate the target ordinals but that's what we did in PoC
       float sqrX;
       float error;
       float factorPPC;
       float factorIP;
-      //          if (factorsCache.containsKey(targetOrd)) {
-      //            Factors factors = factorsCache.get(targetOrd);
-      //            sqrX = factors.sqrX();
-      //            error = factors.error();
-      //            factorPPC = factors.PPC();
-      //            factorIP = factors.IP();
-      //          } else {
-      sqrX = targetDistToC * targetDistToC;
-      double xX0 = targetDistToC / x0;
-      float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
-      error = 2.0f * maxX1 * projectionDist;
-      float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
-      factorPPC = (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - discretizedDimensions));
-      factorIP = (float) (-2.0 / sqrtDimensions * xX0);
-      //            factorsCache.put(targetOrd, new Factors(sqrX, error, factorPPC, factorIP));
-      //          }
-      ////////
+      IndexFactors factors = factorsCache.get(targetOrd);
+      if (factors != null) {
+        sqrX = factors.sqrX();
+        error = factors.error();
+        factorPPC = factors.PPC();
+        factorIP = factors.IP();
+      } else {
+        sqrX = targetDistToC * targetDistToC;
+        double xX0 = targetDistToC / x0;
+        float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
+        error = 2.0f * maxX1 * projectionDist;
+        float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
+        factorPPC = (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - discretizedDimensions));
+        factorIP = (float) (-2.0 / sqrtDimensions * xX0);
+        factorsCache.put(targetOrd, new IndexFactors(sqrX, error, factorPPC, factorIP));
+      }
 
       qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
       float y = (float) Math.sqrt(distanceToCentroid);
@@ -313,7 +325,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               + (qcDist * 2 - quantizedSum) * factorIP * width;
       errorBound = y * error;
       float result = dist - errorBound;
-      // FIXME: this is not ok? right?
+      // FIXME: this seems to only happen during randomized testing; never happened in PoC
       return result > 0 ? result : 0f;
     }
   }
