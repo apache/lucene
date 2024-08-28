@@ -303,5 +303,12 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     public ScalarQuantizedRandomVectorScorerSupplier copy() throws IOException {
       return new ScalarQuantizedRandomVectorScorerSupplier(values.copy(), vectorSimilarityFunction);
     }
+
+    @Override
+    public String toString() {
+      return "ScalarQuantizedRandomVectorScorerSupplier(vectorSimilarityFunction="
+          + vectorSimilarityFunction
+          + ")";
+    }
   }
 }

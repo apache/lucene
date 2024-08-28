@@ -149,10 +149,14 @@ public class ProfileResults {
     return String.format(Locale.ROOT, COLUMN_PAD, input);
   }
 
-  /**
-   * Process all the JFR files passed in args and print a merged summary.
-   */
-  public static void printReport(List<String> files, String mode, int stacksize, int count, boolean lineNumbers) throws IOException {
+  /** Process all the JFR files passed in args and print a merged summary. */
+  public static void printReport(
+      List<String> files,
+      String mode,
+      int stacksize,
+      int count,
+      boolean lineNumbers)
+      throws IOException {
     if (!"cpu".equals(mode) && !"heap".equals(mode)) {
       throw new IllegalArgumentException("tests.profile.mode must be one of (cpu,heap)");
     }
