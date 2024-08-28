@@ -179,7 +179,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
   }
 
   public void testScoreRandomIndices() throws IOException {
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 100; i++) {
       try (Directory dir = newDirectory()) {
         Map<Integer, List<ChildDocMatch>> expectedMatches;
         try (RandomIndexWriter w =
@@ -238,7 +238,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                 @Override
                 public void collect(int doc) throws IOException {
                   assertNotNull(scorer);
-                  actualScores.put(doc, scorer.score());
+                  actualScores.put(doc, searchScoreMode.needsScores() ? scorer.score() : 0);
                 }
               },
               null);
