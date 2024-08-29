@@ -80,6 +80,7 @@ jobs:
       - run: ./gradlew helpWorkflow
       - run: ./gradlew licenses updateLicenses
       - run: ./gradlew tidy
+      - run: git diff
       - run: ./gradlew check -x test
       - run: ./gradlew assembleRelease mavenToLocal
 
