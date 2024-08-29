@@ -843,7 +843,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           // verify scorer iteration scores are valid & iteration with vectorValues is consistent
           while (iterator.nextDoc() != NO_MORE_DOCS && vectorValues.nextDoc() != NO_MORE_DOCS) {
             float score = scorer.score();
-            //            assertTrue(score >= 0f);
+            assertTrue(score >= 0f);
             assertEquals(iterator.docID(), vectorValues.docID());
           }
           // verify that a new scorer can be obtained after iteration
