@@ -22,6 +22,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.Unwrappable;
 
 /**
@@ -161,6 +162,7 @@ public abstract class FilterLeafReader extends LeafReader {
 
   /** Base class for filtering {@link TermsEnum} implementations. */
   public abstract static class FilterTermsEnum extends TermsEnum {
+
     /** The underlying TermsEnum instance. */
     protected final TermsEnum in;
 
@@ -234,6 +236,11 @@ public abstract class FilterLeafReader extends LeafReader {
     @Override
     public void seekExact(BytesRef term, TermState state) throws IOException {
       in.seekExact(term, state);
+    }
+
+    @Override
+    public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+      return in.prepareSeekExact(text);
     }
 
     @Override

@@ -109,35 +109,32 @@ public class TestConcurrentFacetedIndexing extends FacetTestCase {
 
     for (int i = 0; i < indexThreads.length; i++) {
       indexThreads[i] =
-          new Thread() {
+          new Thread(
+              () -> {
+                Random random = random();
+                while (numDocs.decrementAndGet() > 0) {
+                  try {
+                    Document doc = new Document();
+                    int numCats = random.nextInt(3) + 1; // 1-3
+                    while (numCats-- > 0) {
+                      FacetField ff = newCategory();
+                      doc.add(ff);
 
-            @Override
-            public void run() {
-              Random random = random();
-              while (numDocs.decrementAndGet() > 0) {
-                try {
-                  Document doc = new Document();
-                  int numCats = random.nextInt(3) + 1; // 1-3
-                  while (numCats-- > 0) {
-                    FacetField ff = newCategory();
-                    doc.add(ff);
-
-                    FacetLabel label = new FacetLabel(ff.dim, ff.path);
-                    // add all prefixes to values
-                    int level = label.length;
-                    while (level > 0) {
-                      String s = FacetsConfig.pathToString(label.components, level);
-                      values.put(s, s);
-                      --level;
+                      FacetLabel label = new FacetLabel(ff.dim, ff.path);
+                      // add all prefixes to values
+                      int level = label.length;
+                      while (level > 0) {
+                        String s = FacetsConfig.pathToString(label.components, level);
+                        values.put(s, s);
+                        --level;
+                      }
                     }
+                    iw.addDocument(config.build(tw, doc));
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
                   }
-                  iw.addDocument(config.build(tw, doc));
-                } catch (IOException e) {
-                  throw new RuntimeException(e);
                 }
-              }
-            }
-          };
+              });
     }
 
     for (Thread t : indexThreads) t.start();

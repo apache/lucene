@@ -475,7 +475,7 @@ public final class FeatureField extends Field {
           Explanation.match(
               pivot, "k, pivot feature value that would give a score contribution equal to w/2"),
           Explanation.match(
-              pivot,
+              a,
               "a, exponent, higher values make the function grow slower before k and faster after k"),
           Explanation.match(featureValue, "S, feature value"));
     }

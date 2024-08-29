@@ -31,6 +31,7 @@ class ModifyingSuggester {
   private final String misspelled;
   private final WordCase wordCase;
   private final FragmentChecker fragmentChecker;
+  private final boolean proceedPastRep;
   private final char[] tryChars;
   private final Hunspell speller;
 
@@ -39,13 +40,15 @@ class ModifyingSuggester {
       LinkedHashSet<Suggestion> result,
       String misspelled,
       WordCase wordCase,
-      FragmentChecker checker) {
+      FragmentChecker checker,
+      boolean proceedPastRep) {
     this.speller = speller;
     tryChars = speller.dictionary.tryChars.toCharArray();
     this.result = result;
     this.misspelled = misspelled;
     this.wordCase = wordCase;
     fragmentChecker = checker;
+    this.proceedPastRep = proceedPastRep;
   }
 
   /**
@@ -125,9 +128,9 @@ class ModifyingSuggester {
     boolean hasGoodSuggestions = trySuggestion(word.toUpperCase(Locale.ROOT));
 
     GradedSuggestions repResult = tryRep(word);
-    if (repResult == GradedSuggestions.Best) return true;
+    if (repResult == GradedSuggestions.Best && !proceedPastRep) return true;
 
-    hasGoodSuggestions |= repResult == GradedSuggestions.Normal;
+    hasGoodSuggestions |= repResult != GradedSuggestions.None;
 
     if (!speller.dictionary.mapTable.isEmpty()) {
       enumerateMapReplacements(word, "", 0);

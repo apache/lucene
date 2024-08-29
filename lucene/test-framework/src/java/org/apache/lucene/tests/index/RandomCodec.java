@@ -308,7 +308,7 @@ public class RandomCodec extends AssertingCodec {
     protected int split(byte[] minPackedValue, byte[] maxPackedValue, int[] parentDims) {
       // BKD normally defaults by the widest dimension, to try to make as squarish cells as
       // possible, but we just pick a random one ;)
-      return random.nextInt(config.numIndexDims);
+      return random.nextInt(config.numIndexDims());
     }
   }
 }
