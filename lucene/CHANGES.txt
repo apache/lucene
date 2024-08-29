@@ -218,6 +218,9 @@ Changes in Backwards Compatibility Policy
 * GITHUB#13230: Remove the Kp and Lovins snowball algorithms which are not supported
   or intended for general use. (Robert Muir)
 
+* GITHUB#13602: SearchWithCollectorTask no longer supports the `collector.class` config parameter to load a custom
+  collector implementation. `collector.manager.class` allows users to load a collector manager instead. (Luca Cavanna)
+
 Other
 ---------------------
 
