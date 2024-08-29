@@ -505,30 +505,40 @@ public class ToParentBlockJoinQuery extends Query {
       super(in);
     }
 
-    public void endBatch(int doc) throws IOException {}
+    public void endBatch() throws IOException {}
   }
 
   private static class BlockJoinBulkScorer extends BulkScorer {
     private final BulkScorer childBulkScorer;
     private final ScoreMode scoreMode;
     private final BitSet parents;
-    private final Score currentParentScore;
-    private Integer currentParent;
+    private int currentMin;
 
     public BlockJoinBulkScorer(BulkScorer childBulkScorer, ScoreMode scoreMode, BitSet parents) {
       this.childBulkScorer = childBulkScorer;
       this.scoreMode = scoreMode;
       this.parents = parents;
-      this.currentParentScore = new Score(scoreMode);
-      this.currentParent = null;
+      this.currentMin = -1;
     }
 
     @Override
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
+      // Subtract one because max is exclusive w.r.t. score but inclusive w.r.t prevSetBit
+      int lastParent = parents.prevSetBit(Math.min(parents.length() - 1, max - 1));
+      if (lastParent < min) {
+        // No parent docs in this range. Save the passed-in min so we can score over this range once
+        // we find a parent doc.
+        currentMin = min;
+        return max;
+      } else if (currentMin == -1) {
+        currentMin = min;
+      }
+
       BatchAwareLeafCollector wrappedCollector = wrapCollector(collector);
-      childBulkScorer.score(wrappedCollector, acceptDocs, min, max);
-      wrappedCollector.endBatch(max);
+      childBulkScorer.score(wrappedCollector, acceptDocs, currentMin, lastParent + 1);
+      wrappedCollector.endBatch();
+      currentMin = lastParent + 1;
       return max;
     }
 
@@ -540,6 +550,8 @@ public class ToParentBlockJoinQuery extends Query {
     // TODO: Need to resolve parent doc IDs in multi-reader space?
     private BatchAwareLeafCollector wrapCollector(LeafCollector collector) {
       return new BatchAwareLeafCollector(collector) {
+        private final Score currentParentScore = new Score(scoreMode);
+        private int currentParent = -1;
         private Scorable scorer = null;
 
         @Override
@@ -550,10 +562,10 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public void collect(int doc) throws IOException {
-          if (currentParent == null) {
-            currentParent = parents.nextSetBit(doc);
-          } else if (doc > currentParent) {
-            in.collect(currentParent); // Emit the current parent
+          if (doc > currentParent) {
+            if (currentParent >= 0) {
+              in.collect(currentParent); // Emit the current parent
+            }
 
             // Get the next parent and reset the score
             currentParent = parents.nextSetBit(doc);
@@ -566,11 +578,9 @@ public class ToParentBlockJoinQuery extends Query {
         }
 
         @Override
-        public void endBatch(int doc) throws IOException {
-          if (currentParent != null && doc > currentParent) {
+        public void endBatch() throws IOException {
+          if (currentParent >= 0) {
             in.collect(currentParent);
-            currentParent = null;
-            currentParentScore.reset();
           }
         }
       };
