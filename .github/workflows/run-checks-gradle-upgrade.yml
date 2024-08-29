@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java-version: [ '23' ]
+        java-version: [ '23-ea' ]
         uses-alt-java: [ true, false ]
 
     runs-on: ${{ matrix.os }}
