@@ -156,7 +156,12 @@ public class ProfileResults {
 
   /** Process all the JFR files passed in args and print a merged summary. */
   public static void printReport(
-      List<String> files, String mode, int stacksize, int count, boolean lineNumbers, boolean frameTypes)
+      List<String> files,
+      String mode,
+      int stacksize,
+      int count,
+      boolean lineNumbers,
+      boolean frameTypes)
       throws IOException {
     if (!"cpu".equals(mode) && !"heap".equals(mode)) {
       throw new IllegalArgumentException("tests.profile.mode must be one of (cpu,heap)");
