@@ -74,7 +74,7 @@ public class DocIdEncodingBenchmark {
     }
   }
 
-  @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder"})
+  @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder", "Bit32Encoder"})
   String encoderName;
 
   private static final int INPUT_SCALE_FACTOR = 2_00_000;
@@ -148,11 +148,14 @@ public class DocIdEncodingBenchmark {
 
       static final Map<String, DocIdEncoder> ENCODER_NAME_TO_INSTANCE_MAPPING =
           Map.of(
-              Bit24Encoder.class.getSimpleName().toLowerCase(Locale.ROOT), new Bit24Encoder(),
+              Bit24Encoder.class.getSimpleName().toLowerCase(Locale.ROOT),
+              new Bit24Encoder(),
               Bit21With2StepsEncoder.class.getSimpleName().toLowerCase(Locale.ROOT),
-                  new Bit21With2StepsEncoder(),
+              new Bit21With2StepsEncoder(),
               Bit21With3StepsEncoder.class.getSimpleName().toLowerCase(Locale.ROOT),
-                  new Bit21With3StepsEncoder());
+              new Bit21With3StepsEncoder(),
+              Bit32Encoder.class.getSimpleName().toLowerCase(Locale.ROOT),
+              new Bit32Encoder());
 
       public static DocIdEncoder fromName(String encoderName) {
         String parsedEncoderName = encoderName.trim().toLowerCase(Locale.ROOT);
@@ -311,6 +314,23 @@ public class DocIdEncodingBenchmark {
       }
       for (; i < count; i++) {
         docIDs[i] = in.readInt();
+      }
+    }
+  }
+
+  static class Bit32Encoder implements DocIdEncoder {
+
+    @Override
+    public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
+      for (int i = 0; i < count; i++) {
+        out.writeInt(docIds[i]);
+      }
+    }
+
+    @Override
+    public void decode(IndexInput in, int start, int count, int[] docIds) throws IOException {
+      for (int i = 0; i < count; i++) {
+        docIds[i] = in.readInt();
       }
     }
   }
