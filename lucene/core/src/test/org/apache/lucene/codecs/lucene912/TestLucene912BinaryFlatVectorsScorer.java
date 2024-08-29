@@ -3,16 +3,121 @@ package org.apache.lucene.codecs.lucene912;
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.quantization.BQSpaceUtils;
+import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
-// FIXME: tests other api's / functions in this class
 public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
-  public void testScoreEuclidean() throws IOException {
-    // FIXME: add tests around known edge cases including varying vector sizes that are not 64 byte
-    // aligned, etc
-    // FIXME: replace this test with the random one entirely?
+  public void testScore() throws IOException {
+    int dimensions = random().nextInt(1, 4097);
+    int discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
 
+    int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
+
+    float[][] centroids = new float[2][dimensions];
+    for (int i = 0; i < centroids.length; i++) {
+      for (int j = 0; j < dimensions; j++) {
+        centroids[i][j] = random().nextFloat(-50f, 50f);
+      }
+    }
+
+    Lucene912BinaryFlatVectorsScorer.BinaryQueryVector[] queryVectors =
+        new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector[2];
+    for (int i = 0; i < 2; i++) {
+      byte[] vector = new byte[discretizedDimensions / 8 * BQSpaceUtils.B_QUERY];
+      random().nextBytes(vector);
+      float distanceToCentroid = random().nextFloat(0f, 10_000.0f);
+      float vl = random().nextFloat(-1000f, 1000f);
+      float width = random().nextFloat(0f, 1000f);
+      short quantizedSum = (short) random().nextInt(0, 4097);
+      float normVmC = random().nextFloat(-1000f, 1000f);
+      float vDotC = random().nextFloat(-1000f, 1000f);
+      float cDotC = random().nextFloat(-1000f, 1000f);
+      queryVectors[i] =
+          new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
+              vector,
+              new BinaryQuantizer.QueryFactors(
+                  quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC, cDotC));
+    }
+
+    RandomAccessBinarizedByteVectorValues targetVectors =
+        new RandomAccessBinarizedByteVectorValues() {
+          @Override
+          public float getCentroidDistance(int vectorOrd) throws IOException {
+            return random().nextFloat(0f, 1000f);
+          }
+
+          @Override
+          public float getVectorMagnitude(int vectorOrd) throws IOException {
+            return random().nextFloat(0f, 100f);
+          }
+
+          @Override
+          public float getOOQ(int targetOrd) throws IOException {
+            return random().nextFloat(-1000f, 1000f);
+          }
+
+          @Override
+          public float getNormOC(int targetOrd) throws IOException {
+            return random().nextFloat(-1000f, 1000f);
+          }
+
+          @Override
+          public float getODotC(int targetOrd) throws IOException {
+            return random().nextFloat(-1000f, 1000f);
+          }
+
+          @Override
+          public short getClusterId(int vectorOrd) throws IOException {
+            return (short) random().nextInt(0, 2);
+          }
+
+          @Override
+          public BinaryQuantizer getQuantizer() {
+            int dimensions = 128;
+            return new BinaryQuantizer(dimensions, VectorSimilarityFunction.EUCLIDEAN);
+          }
+
+          @Override
+          public float[][] getCentroids() throws IOException {
+            return centroids;
+          }
+
+          @Override
+          public RandomAccessBinarizedByteVectorValues copy() throws IOException {
+            return null;
+          }
+
+          @Override
+          public byte[] vectorValue(int targetOrd) throws IOException {
+            byte[] vectorBytes = new byte[discretizedDimensions / 8];
+            random().nextBytes(vectorBytes);
+            return vectorBytes;
+          }
+
+          @Override
+          public int size() {
+            return 1;
+          }
+
+          @Override
+          public int dimension() {
+            return dimensions;
+          }
+        };
+
+    Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
+        new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
+            queryVectors, targetVectors, similarityFunction, discretizedDimensions);
+
+    float score = scorer.score(0);
+
+    assertTrue(score >= 0f);
+  }
+
+  public void testScoreEuclidean() throws IOException {
     int dimensions = 128;
 
     Lucene912BinaryFlatVectorsScorer.BinaryQueryVector[] queryVectors =
@@ -129,10 +234,6 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
   }
 
   public void testScoreMIP() throws IOException {
-    // FIXME: add tests around known edge cases including varying vector sizes that are not 64 byte
-    // aligned, etc
-    // FIXME: replace this test with the random one entirely?
-
     int dimensions = 768;
 
     Lucene912BinaryFlatVectorsScorer.BinaryQueryVector[] queryVectors =

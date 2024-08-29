@@ -17,8 +17,6 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
@@ -161,15 +159,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     private final float sqrtDimensions;
     private final float maxX1;
 
-    private record IndexFactors(float sqrX, float error, float PPC, float IP) {}
-
-    // FIXME: may be a better place to do this (at some point where we have all of the
-    //  target ordinals and are comfortable caching all of this data); not seeing this pattern
-    // anywhere else in the code
-    // FIXME: determine how large this cache should be and control the policy LRU (LFU?)
-    // FIXME: not sure how efficient this cache will be need to test it w threads
-    private final Map<Integer, IndexFactors> factorsCache = new ConcurrentHashMap<>();
-
     public BinarizedRandomVectorScorer(
         BinaryQueryVector[] queryVectors,
         RandomAccessBinarizedByteVectorValues targetVectors,
@@ -199,8 +188,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     public float score(int targetOrd) throws IOException {
       // FIXME: implement fastscan in the future?
 
-      short clusterID = targetVectors.getClusterId(targetOrd);
-      BinaryQueryVector queryVector = queryVectors[clusterID];
+      short clusterId = targetVectors.getClusterId(targetOrd);
+      BinaryQueryVector queryVector = queryVectors[clusterId];
 
       byte[] quantizedQuery = queryVector.vector();
       short quantizedSum = queryVector.factors().quantizedSum();
@@ -208,28 +197,35 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float width = queryVector.factors().width();
       float distanceToCentroid = queryVector.factors().distToC();
 
+      float score;
       switch (similarityFunction) {
         case VectorSimilarityFunction.EUCLIDEAN:
         case VectorSimilarityFunction.COSINE:
         case VectorSimilarityFunction.DOT_PRODUCT:
-          return score(
-              targetOrd,
-              maxX1,
-              sqrtDimensions,
-              quantizedQuery,
-              distanceToCentroid,
-              lower,
-              quantizedSum,
-              width);
+          score =
+              score(
+                  targetOrd,
+                  maxX1,
+                  sqrtDimensions,
+                  quantizedQuery,
+                  distanceToCentroid,
+                  lower,
+                  quantizedSum,
+                  width);
+          break;
         case MAXIMUM_INNER_PRODUCT:
           float vmC = queryVector.factors().normVmC();
           float vDotC = queryVector.factors().vDotC();
           float cDotC = queryVector.factors().cDotC();
-          return scoreMIP(targetOrd, quantizedQuery, width, lower, quantizedSum, vmC, vDotC, cDotC);
+          score =
+              scoreMIP(targetOrd, quantizedQuery, width, lower, quantizedSum, vmC, vDotC, cDotC);
+          break;
         default:
           throw new UnsupportedOperationException(
               "Unsupported similarity function: " + similarityFunction);
       }
+      // FIXME: this seems to only happen during randomized testing; never happened in PoC
+      return score > 0 ? score : 0f;
     }
 
     private float scoreMIP(
@@ -280,29 +276,16 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       // FIXME: pre-compute these only once for each target vector
       // .. not sure how to enumerate the target ordinals but that's what we did in PoC
-      float sqrX;
-      float error;
-      float factorPPC;
-      float factorIP;
-      IndexFactors factors = factorsCache.get(targetOrd);
-      if (factors != null) {
-        sqrX = factors.sqrX();
-        error = factors.error();
-        factorPPC = factors.PPC();
-        factorIP = factors.IP();
-      } else {
-        float targetDistToC = targetVectors.getCentroidDistance(targetOrd);
-        float x0 = targetVectors.getVectorMagnitude(targetOrd);
-
-        sqrX = targetDistToC * targetDistToC;
-        double xX0 = targetDistToC / x0;
-        float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
-        error = 2.0f * maxX1 * projectionDist;
-        float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
-        factorPPC = (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - discretizedDimensions));
-        factorIP = (float) (-2.0 / sqrtDimensions * xX0);
-        factorsCache.put(targetOrd, new IndexFactors(sqrX, error, factorPPC, factorIP));
-      }
+      float targetDistToC = targetVectors.getCentroidDistance(targetOrd);
+      float x0 = targetVectors.getVectorMagnitude(targetOrd);
+      float sqrX = targetDistToC * targetDistToC;
+      double xX0 = targetDistToC / x0;
+      float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
+      float error = 2.0f * maxX1 * projectionDist;
+      float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
+      float factorPPC =
+          (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - discretizedDimensions));
+      float factorIP = (float) (-2.0 / sqrtDimensions * xX0);
 
       long qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
       float y = (float) Math.sqrt(distanceToCentroid);
@@ -312,9 +295,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
       float errorBound = y * error;
-      float result = dist - errorBound;
-      // FIXME: this seems to only happen during randomized testing; never happened in PoC
-      return result > 0 ? result : 0f;
+      return dist - errorBound;
     }
   }
 }

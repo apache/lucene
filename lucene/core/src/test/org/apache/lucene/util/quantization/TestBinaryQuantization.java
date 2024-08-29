@@ -4,14 +4,99 @@ import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-// FIXME: tests other api's / functions in this class
 public class TestBinaryQuantization extends LuceneTestCase {
 
-  public void testQuantizeForIndexEuclidean() throws IOException {
-    // FIXME: add tests around known edge cases including varying vector sizes that are not 64 byte
-    // aligned, etc
-    // FIXME: replace this test with the random one entirely?
+  public void testQuantizeForIndex() throws IOException {
+    int dimensions = random().nextInt(1, 4097);
+    int discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
 
+    int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
+
+    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, similarityFunction, true);
+
+    float[] centroid = new float[dimensions];
+    for (int i = 0; i < dimensions; i++) {
+      centroid[i] = random().nextFloat(-50f, 50f);
+    }
+
+    float[] vector = new float[dimensions];
+    for (int i = 0; i < dimensions; i++) {
+      vector[i] = random().nextFloat(-50f, 50f);
+    }
+
+    byte[] destination = new byte[discretizedDimensions / 8];
+    float[] corrections = quantizer.quantizeForIndex(vector, destination, centroid);
+
+    for (float correction : corrections) {
+      assertFalse(Float.isNaN(correction));
+    }
+
+    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+      assertEquals(3, corrections.length);
+      assertTrue(corrections[0] >= 0);
+      assertTrue(corrections[1] > 0);
+    } else {
+      assertEquals(2, corrections.length);
+      assertTrue(corrections[0] > 0);
+      assertTrue(corrections[1] > 0);
+    }
+  }
+
+  public void testQuantizeForQuery() throws IOException {
+    int dimensions = random().nextInt(1, 4097);
+    int discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
+
+    int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
+
+    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, similarityFunction, true);
+
+    float[] centroid = new float[dimensions];
+    for (int i = 0; i < dimensions; i++) {
+      centroid[i] = random().nextFloat(-50f, 50f);
+    }
+
+    float[] vector = new float[dimensions];
+    for (int i = 0; i < dimensions; i++) {
+      vector[i] = random().nextFloat(-50f, 50f);
+    }
+
+    byte[] destination = new byte[discretizedDimensions / 8 * BQSpaceUtils.B_QUERY];
+    BinaryQuantizer.QueryFactors corrections =
+        quantizer.quantizeForQuery(vector, destination, centroid);
+
+    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+      short sumQ = corrections.quantizedSum();
+      float distToC = corrections.distToC();
+      float lower = corrections.lower();
+      float width = corrections.width();
+      float normVmC = corrections.normVmC();
+      float vDotC = corrections.vDotC();
+      float cDotC = corrections.cDotC();
+      assertTrue(sumQ >= 0);
+      assertTrue(distToC >= 0);
+      assertFalse(Float.isNaN(lower));
+      assertTrue(width >= 0);
+      assertTrue(normVmC >= 0);
+      assertFalse(Float.isNaN(vDotC));
+      assertTrue(cDotC >= 0);
+    } else {
+      short sumQ = corrections.quantizedSum();
+      float distToC = corrections.distToC();
+      float lower = corrections.lower();
+      float width = corrections.width();
+      assertTrue(sumQ >= 0);
+      assertTrue(distToC >= 0);
+      assertFalse(Float.isNaN(lower));
+      assertTrue(width >= 0);
+      assertEquals(corrections.normVmC(), 0.0f, 0.01f);
+      assertEquals(corrections.vDotC(), 0.0f, 0.01f);
+      assertEquals(corrections.cDotC(), 0.0f, 0.01f);
+    }
+  }
+
+  public void testQuantizeForIndexEuclidean() throws IOException {
     int dimensions = 128;
 
     BinaryQuantizer quantizer =
@@ -66,10 +151,6 @@ public class TestBinaryQuantization extends LuceneTestCase {
   }
 
   public void testQuantizeForQueryEuclidean() throws IOException {
-    // FIXME: add tests around known edge cases including varying vector sizes that are not 64 byte
-    // aligned, etc
-    // FIXME: replace this test with the random one entirely?
-
     int dimensions = 128;
 
     BinaryQuantizer quantizer =
@@ -474,10 +555,6 @@ public class TestBinaryQuantization extends LuceneTestCase {
   // spotless:on
 
   public void testQuantizeForIndexMIP() throws IOException {
-    // FIXME: add tests around known edge cases including varying vector sizes that are not 64 byte
-    // aligned, etc
-    // FIXME: replace this test with the random one entirely?
-
     int dimensions = 768;
 
     BinaryQuantizer quantizer =
@@ -508,10 +585,6 @@ public class TestBinaryQuantization extends LuceneTestCase {
   }
 
   public void testQuantizeForQueryMIP() throws IOException {
-    // FIXME: add tests around known edge cases including varying vector sizes that are not 64 byte
-    // aligned, etc
-    // FIXME: replace this test with the random one entirely?
-
     int dimensions = 768;
 
     BinaryQuantizer quantizer =
