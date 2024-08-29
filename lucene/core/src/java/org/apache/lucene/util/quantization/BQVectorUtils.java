@@ -19,6 +19,8 @@ package org.apache.lucene.util.quantization;
 import java.util.BitSet;
 import org.apache.lucene.util.VectorUtil;
 
+/** Utility class for vector quantization calculations */
+
 // FIXME: move these to VectorUtils?
 public class BQVectorUtils {
 

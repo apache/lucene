@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util.quantization;
 
+/** Utility class for quantization calculations */
 public class BQSpaceUtils {
 
   // FIXME: allow for a settable B_QUERY of 4 or 2

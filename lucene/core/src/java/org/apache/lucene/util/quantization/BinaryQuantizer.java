@@ -21,6 +21,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 
+/** Quantized that quantizes raw vector values to binary */
 public class BinaryQuantizer {
   private final int discretizedDimensions;
 
@@ -254,6 +255,7 @@ public class BinaryQuantizer {
     return new QuantResult(result, sumQ);
   }
 
+  /** Factors for quantizing query */
   public record QueryFactors(
       short quantizedSum,
       float distToC,
