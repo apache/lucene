@@ -42,8 +42,6 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
     };
   }
 
-  public void testQuantizedVectorsWriteAndRead() throws Exception {}
-
   public void testToString() {
     FilterCodec customCodec =
         new FilterCodec("foo", Codec.getDefault()) {
@@ -90,8 +88,7 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
                 20, 100, 1, 90_000_000, new SameThreadExecutorService()));
   }
 
-  // Ensures that all expected vector similarity functions are translatable
-  // in the format.
+  // Ensures that all expected vector similarity functions are translatable in the format.
   public void testVectorSimilarityFuncs() {
     // This does not necessarily have to be all similarity functions, but
     // differences should be considered carefully.
