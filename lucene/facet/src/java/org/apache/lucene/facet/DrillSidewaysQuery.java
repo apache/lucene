@@ -17,19 +17,20 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.CollectorOwner;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -41,12 +42,14 @@ import org.apache.lucene.search.Weight;
 
 // TODO change the way DrillSidewaysScorer is used, this query does not work
 // with filter caching
-class DrillSidewaysQuery extends Query {
+class DrillSidewaysQuery<K extends Collector, R> extends Query {
 
   final Query baseQuery;
 
-  final CollectorOwner<?, ?> drillDownCollectorOwner;
-  final List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners;
+  // final CollectorManager<C, T> drillDownCollectorManager;
+  final List<CollectorManager<K, R>> drillSidewaysCollectorManagers;
+  // final List<C> managedDrillDownCollectors;
+  final List<List<K>> managedDrillSidewaysCollectors;
 
   final Query[] drillDownQueries;
 
@@ -58,15 +61,40 @@ class DrillSidewaysQuery extends Query {
    */
   DrillSidewaysQuery(
       Query baseQuery,
-      CollectorOwner<?, ?> drillDownCollectorOwner,
-      List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners,
+      // CollectorManager<C, T> drillDownCollectorManager,
+      List<CollectorManager<K, R>> drillSidewaysCollectorManagers,
+      Query[] drillDownQueries,
+      boolean scoreSubDocsAtOnce) {
+    this(
+        baseQuery,
+        // drillDownCollectorManager,
+        drillSidewaysCollectorManagers,
+        // Collections.synchronizedList(new ArrayList<>()),
+        Collections.synchronizedList(new ArrayList<>()),
+        drillDownQueries,
+        scoreSubDocsAtOnce);
+  }
+
+  /**
+   * Needed for {@link Query#rewrite(IndexSearcher)}. Ensures the same "managed" lists get used
+   * since {@link DrillSideways} accesses references to these through the original {@code
+   * DrillSidewaysQuery}.
+   */
+  private DrillSidewaysQuery(
+      Query baseQuery,
+      // CollectorManager<C, T> drillDownCollectorManager,
+      List<CollectorManager<K, R>> drillSidewaysCollectorManagers,
+      // List<C> managedDrillDownCollectors,
+      final List<List<K>> managedDrillSidewaysCollectors,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
     this.baseQuery = Objects.requireNonNull(baseQuery);
-    this.drillDownCollectorOwner = drillDownCollectorOwner;
-    this.drillSidewaysCollectorOwners = drillSidewaysCollectorOwners;
+    // this.drillDownCollectorManager = drillDownCollectorManager;
+    this.drillSidewaysCollectorManagers = drillSidewaysCollectorManagers;
     this.drillDownQueries = drillDownQueries;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
+    // this.managedDrillDownCollectors = managedDrillDownCollectors;
+    this.managedDrillSidewaysCollectors = managedDrillSidewaysCollectors;
   }
 
   @Override
@@ -87,10 +115,12 @@ class DrillSidewaysQuery extends Query {
     if (newQuery == baseQuery) {
       return super.rewrite(indexSearcher);
     } else {
-      return new DrillSidewaysQuery(
+      return new DrillSidewaysQuery<>(
           newQuery,
-          drillDownCollectorOwner,
-          drillSidewaysCollectorOwners,
+          // drillDownCollectorManager,
+          drillSidewaysCollectorManagers,
+          // managedDrillDownCollectors,
+          managedDrillSidewaysCollectors,
           drillDownQueries,
           scoreSubDocsAtOnce);
     }
@@ -124,14 +154,16 @@ class DrillSidewaysQuery extends Query {
 
         int drillDownCount = drillDowns.length;
 
-        Collector drillDownCollector;
-        final LeafCollector drillDownLeafCollector;
-        if (drillDownCollectorOwner != null) {
-          drillDownCollector = drillDownCollectorOwner.newCollector();
+        /*final LeafCollector drillDownLeafCollector;
+        if (drillDownCollectorManager != null) {
+          C drillDownCollector = drillDownCollectorManager.newCollector();
+          managedDrillDownCollectors.add(drillDownCollector);
           drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
         } else {
           drillDownLeafCollector = null;
-        }
+        }*/
+        List<K> sidewaysCollectors = new ArrayList<>(drillDownCount);
+        managedDrillSidewaysCollectors.add(sidewaysCollectors);
 
         DrillSidewaysScorer.DocsAndCost[] dims =
             new DrillSidewaysScorer.DocsAndCost[drillDownCount];
@@ -144,7 +176,8 @@ class DrillSidewaysQuery extends Query {
             scorer = new ConstantScoreScorer(0f, scoreMode, DocIdSetIterator.empty());
           }
 
-          Collector sidewaysCollector = drillSidewaysCollectorOwners.get(dim).newCollector();
+          K sidewaysCollector = drillSidewaysCollectorManagers.get(dim).newCollector();
+          sidewaysCollectors.add(dim, sidewaysCollector);
 
           dims[dim] =
               new DrillSidewaysScorer.DocsAndCost(
@@ -155,9 +188,9 @@ class DrillSidewaysQuery extends Query {
         // a null scorer in this case, but we need to make sure #finish gets called on all facet
         // collectors since IndexSearcher won't handle this for us:
         if (baseScorerSupplier == null || nullCount > 1) {
-          if (drillDownLeafCollector != null) {
+          /*if (drillDownLeafCollector != null) {
             drillDownLeafCollector.finish();
-          }
+          }*/
           for (DrillSidewaysScorer.DocsAndCost dim : dims) {
             dim.sidewaysLeafCollector.finish();
           }
@@ -179,7 +212,7 @@ class DrillSidewaysQuery extends Query {
             return new DrillSidewaysScorer(
                 context,
                 baseScorerSupplier.get(Long.MAX_VALUE),
-                drillDownLeafCollector,
+                // drillDownLeafCollector,
                 dims,
                 scoreSubDocsAtOnce);
           }
@@ -212,9 +245,9 @@ class DrillSidewaysQuery extends Query {
     final int prime = 31;
     int result = classHash();
     result = prime * result + Objects.hashCode(baseQuery);
-    result = prime * result + Objects.hashCode(drillDownCollectorOwner);
+    // result = prime * result + Objects.hashCode(drillDownCollectorManager);
     result = prime * result + Arrays.hashCode(drillDownQueries);
-    result = prime * result + Objects.hashCode(drillSidewaysCollectorOwners);
+    result = prime * result + Objects.hashCode(drillSidewaysCollectorManagers);
     return result;
   }
 
@@ -223,10 +256,10 @@ class DrillSidewaysQuery extends Query {
     return sameClassAs(other) && equalsTo(getClass().cast(other));
   }
 
-  private boolean equalsTo(DrillSidewaysQuery other) {
+  private boolean equalsTo(DrillSidewaysQuery<?, ?> other) {
     return Objects.equals(baseQuery, other.baseQuery)
-        && Objects.equals(drillDownCollectorOwner, other.drillDownCollectorOwner)
+        // && Objects.equals(drillDownCollectorManager, other.drillDownCollectorManager)
         && Arrays.equals(drillDownQueries, other.drillDownQueries)
-        && Objects.equals(drillSidewaysCollectorOwners, other.drillSidewaysCollectorOwners);
+        && Objects.equals(drillSidewaysCollectorManagers, other.drillSidewaysCollectorManagers);
   }
 }

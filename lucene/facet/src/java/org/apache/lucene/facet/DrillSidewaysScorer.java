@@ -45,7 +45,7 @@ class DrillSidewaysScorer extends BulkScorer {
 
   // private static boolean DEBUG = false;
 
-  private final LeafCollector drillDownLeafCollector;
+  // private final LeafCollector drillDownLeafCollector;
 
   private final DocsAndCost[] dims;
 
@@ -68,7 +68,7 @@ class DrillSidewaysScorer extends BulkScorer {
   DrillSidewaysScorer(
       LeafReaderContext context,
       Scorer baseScorer,
-      LeafCollector drillDownLeafCollector,
+      // LeafCollector drillDownLeafCollector,
       DocsAndCost[] dims,
       boolean scoreSubDocsAtOnce) {
     this.dims = dims;
@@ -81,7 +81,7 @@ class DrillSidewaysScorer extends BulkScorer {
     } else {
       this.baseApproximation = baseIterator;
     }
-    this.drillDownLeafCollector = drillDownLeafCollector;
+    // this.drillDownLeafCollector = drillDownLeafCollector;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
 
@@ -709,9 +709,9 @@ class DrillSidewaysScorer extends BulkScorer {
     // }
 
     collector.collect(collectDocID);
-    if (drillDownLeafCollector != null) {
+    /*if (drillDownLeafCollector != null) {
       drillDownLeafCollector.collect(collectDocID);
-    }
+    }*/
 
     // TODO: we could "fix" faceting of the sideways counts
     // to do this "union" (of the drill down hits) in the
@@ -725,9 +725,9 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void collectHit(LeafCollector collector, DocsAndCost dim) throws IOException {
     collector.collect(collectDocID);
-    if (drillDownLeafCollector != null) {
+    /*if (drillDownLeafCollector != null) {
       drillDownLeafCollector.collect(collectDocID);
-    }
+    }*/
 
     // Tally sideways count:
     dim.sidewaysLeafCollector.collect(collectDocID);
@@ -735,9 +735,9 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void collectHit(LeafCollector collector, List<DocsAndCost> dims) throws IOException {
     collector.collect(collectDocID);
-    if (drillDownLeafCollector != null) {
+    /*if (drillDownLeafCollector != null) {
       drillDownLeafCollector.collect(collectDocID);
-    }
+    }*/
 
     // Tally sideways counts:
     for (DocsAndCost dim : dims) {
@@ -756,9 +756,9 @@ class DrillSidewaysScorer extends BulkScorer {
     // Note: We _only_ call #finish on the facets collectors we're managing here, but not the
     // "main" collector. This is because IndexSearcher handles calling #finish on the main
     // collector.
-    if (drillDownLeafCollector != null) {
+    /*if (drillDownLeafCollector != null) {
       drillDownLeafCollector.finish();
-    }
+    }*/
     for (DocsAndCost dim : dims) {
       dim.sidewaysLeafCollector.finish();
     }
@@ -766,9 +766,9 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void setScorer(LeafCollector mainCollector, Scorable scorer) throws IOException {
     mainCollector.setScorer(scorer);
-    if (drillDownLeafCollector != null) {
+    /*if (drillDownLeafCollector != null) {
       drillDownLeafCollector.setScorer(scorer);
-    }
+    }*/
     for (DocsAndCost dim : dims) {
       dim.sidewaysLeafCollector.setScorer(scorer);
     }
