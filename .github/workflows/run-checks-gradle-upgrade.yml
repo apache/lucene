@@ -81,7 +81,7 @@ jobs:
       - run: ./gradlew licenses updateLicenses
       - run: ./gradlew tidy
       - run: git diff
-      - run: ./gradlew check -x test
+      - run: ./gradlew check -x test -Pvalidation.git.failOnModified=false
       - run: ./gradlew assembleRelease mavenToLocal
 
       # Conserve resources: only run these in non-alt-java mode.
