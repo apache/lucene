@@ -62,7 +62,7 @@ allprojects {
 // Configure test property defaults and their descriptions.
 allprojects {
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
       String randomVectorSize = RandomPicks.randomFrom(new Random(projectSeedLong), ["default", "128", "256", "512"])
       testOptions += [
           // seed, repetition and amplification.
