@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.search.ScoreMode.COMPLETE;
 
 import java.io.IOException;
@@ -509,12 +510,14 @@ public class ToParentBlockJoinQuery extends Query {
     private final BulkScorer childBulkScorer;
     private final ScoreMode scoreMode;
     private final BitSet parents;
+    private final int parentsLength;
     private int currentMin;
 
     public BlockJoinBulkScorer(BulkScorer childBulkScorer, ScoreMode scoreMode, BitSet parents) {
       this.childBulkScorer = childBulkScorer;
       this.scoreMode = scoreMode;
       this.parents = parents;
+      this.parentsLength = parents.length();
       this.currentMin = -1;
     }
 
@@ -522,7 +525,7 @@ public class ToParentBlockJoinQuery extends Query {
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
       // Subtract one because max is exclusive w.r.t. score but inclusive w.r.t prevSetBit
-      int lastParent = parents.prevSetBit(Math.min(parents.length() - 1, max - 1));
+      int lastParent = parents.prevSetBit(Math.min(parentsLength - 1, max - 1));
       if (lastParent < min) {
         // No parent docs in this range. Save the passed-in min so we can score over this range once
         // we find a parent doc.
@@ -536,7 +539,9 @@ public class ToParentBlockJoinQuery extends Query {
       childBulkScorer.score(wrappedCollector, acceptDocs, currentMin, lastParent + 1);
       wrappedCollector.endBatch();
       currentMin = lastParent + 1;
-      return max;
+
+      // If we've scored the last parent, return NO_MORE_DOCS to indicate we are done scoring
+      return currentMin >= parentsLength ? NO_MORE_DOCS : max;
     }
 
     @Override
