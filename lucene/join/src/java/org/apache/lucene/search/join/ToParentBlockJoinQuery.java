@@ -531,7 +531,7 @@ public class ToParentBlockJoinQuery extends Query {
       }
 
       BatchAwareLeafCollector wrappedCollector = wrapCollector(collector);
-      childBulkScorer.score(wrappedCollector, acceptDocs, prevParent + 1, lastParent);
+      childBulkScorer.score(wrappedCollector, acceptDocs, prevParent + 1, lastParent + 1);
       wrappedCollector.endBatch();
 
       // If we've scored the last parent in the bit set, return NO_MORE_DOCS to indicate we are done
@@ -568,6 +568,14 @@ public class ToParentBlockJoinQuery extends Query {
             // Get the next parent and reset the score
             currentParent = parents.nextSetBit(doc);
             currentParentScore.reset();
+          } else if (doc == currentParent) {
+            throw new IllegalStateException(
+                "Child query must not match same docs with parent filter. "
+                    + "Combine them as must clauses (+) to find a problem doc. "
+                    + "docId="
+                    + doc
+                    + ", "
+                    + childBulkScorer.getClass());
           }
 
           if (scoreMode != ScoreMode.None) {
