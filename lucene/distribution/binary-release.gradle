@@ -37,9 +37,9 @@ configure(project(":lucene:distribution")) {
 
     // Maven-published submodule JARs are part of the binary distribution.
     // We don't copy their transitive dependencies.
-    def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p in [
+    def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p.path in [
       // Placed in a separate folder (module layer conflicts).
-      project(":lucene:test-framework"),
+      ":lucene:test-framework",
     ]) }
     for (Project module : binaryModules) {
       jars(module, {
