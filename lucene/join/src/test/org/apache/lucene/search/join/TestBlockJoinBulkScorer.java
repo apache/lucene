@@ -244,9 +244,9 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           Weight weight = searcher.createWeight(searcher.rewrite(parentQuery), searchScoreMode, 1);
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
-
-          // TODO: Why is score supplier null sometimes?
           if (ss == null) {
+            // Score supplier will be null when there are no matches
+            assertTrue(expectedScores.isEmpty());
             continue;
           }
 
