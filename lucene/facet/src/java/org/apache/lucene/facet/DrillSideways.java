@@ -431,8 +431,8 @@ public class DrillSideways {
   }
 
   /**
-   * {@link #searchConcurrently(DrillDownQuery, CollectorManager, List)} result. It doesn't depend
-   * on {@link Facets} to allow users to use any type of {@link CollectorManager} for drill-down or
+   * {@link #search(DrillDownQuery, CollectorManager, List)} result. It doesn't depend on {@link
+   * Facets} to allow users to use any type of {@link CollectorManager} for drill-down or
    * drill-sideways dimension.
    *
    * @param drillDownResult result from drill down (main) {@link CollectorManager}
