@@ -62,6 +62,11 @@ import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 import org.apache.lucene.util.quantization.KMeans;
 
+/**
+ * Writes raw and binarized vector values to index segments for KNN search.
+ *
+ * @lucene.experimental
+ */
 public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene912BinaryQuantizedVectorsWriter.class);

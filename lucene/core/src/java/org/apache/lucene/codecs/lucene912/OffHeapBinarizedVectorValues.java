@@ -31,6 +31,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
+/** Binarized vector values loaded from off-heap */
 public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorValues
     implements RandomAccessBinarizedByteVectorValues {
 
@@ -253,6 +254,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
   }
 
+  /** Dense off-heap binarized vector values */
   public static class DenseOffHeapVectorValues extends OffHeapBinarizedVectorValues {
     private int doc = -1;
 
@@ -332,6 +334,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
   }
 
+  /** Sparse off-heap binarized vector values */
   private static class SparseOffHeapVectorValues extends OffHeapBinarizedVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;

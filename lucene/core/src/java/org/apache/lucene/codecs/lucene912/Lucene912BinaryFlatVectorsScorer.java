@@ -27,6 +27,7 @@ import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
+/** Vector scorer over binarized vector values */
 public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
@@ -96,6 +97,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     return "Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
   }
 
+  /** Vector scorer supplier over binarized vector values */
   public static class BinarizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
     private final RandomAccessBinarizedQueryByteVectorValues queryVectors;
     private final RandomAccessBinarizedByteVectorValues targetVectors;
@@ -147,8 +149,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     }
   }
 
+  /** A binarized query representing its quantized form along with factors */
   public record BinaryQueryVector(byte[] vector, BinaryQuantizer.QueryFactors factors) {}
 
+  /** Vector scorer over binarized vector values */
   public static class BinarizedRandomVectorScorer
       extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final BinaryQueryVector[] queryVectors;

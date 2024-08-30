@@ -45,6 +45,11 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
+/**
+ * Reads raw and binarized vectors from the index segments for KNN search.
+ *
+ * @lucene.experimental
+ */
 public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
   private static final long SHALLOW_SIZE =
@@ -342,6 +347,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
     }
   }
 
+  /** Binarized vector values holding row and quantized vector values */
   protected static final class BinarizedVectorValues extends FloatVectorValues {
     private final FloatVectorValues rawVectorValues;
     private final OffHeapBinarizedVectorValues quantizedVectorValues;

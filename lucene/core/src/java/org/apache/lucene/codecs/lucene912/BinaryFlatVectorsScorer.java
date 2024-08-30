@@ -21,6 +21,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
+/** An interface of flat vector scorer over binarized vector values */
 public interface BinaryFlatVectorsScorer extends FlatVectorsScorer {
 
   /**
