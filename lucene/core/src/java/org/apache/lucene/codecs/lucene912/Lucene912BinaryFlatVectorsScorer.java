@@ -197,13 +197,12 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float width = queryVector.factors().width();
       float distanceToCentroid = queryVector.factors().distToC();
 
-      float score;
-      switch (similarityFunction) {
-        case VectorSimilarityFunction.EUCLIDEAN:
-        case VectorSimilarityFunction.COSINE:
-        case VectorSimilarityFunction.DOT_PRODUCT:
-          score =
-              score(
+      float score =
+          switch (similarityFunction) {
+            case VectorSimilarityFunction.EUCLIDEAN:
+            case VectorSimilarityFunction.COSINE:
+            case VectorSimilarityFunction.DOT_PRODUCT:
+              yield score(
                   targetOrd,
                   maxX1,
                   sqrtDimensions,
@@ -212,18 +211,13 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
                   lower,
                   quantizedSum,
                   width);
-          break;
-        case MAXIMUM_INNER_PRODUCT:
-          float vmC = queryVector.factors().normVmC();
-          float vDotC = queryVector.factors().vDotC();
-          float cDotC = queryVector.factors().cDotC();
-          score =
-              scoreMIP(targetOrd, quantizedQuery, width, lower, quantizedSum, vmC, vDotC, cDotC);
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              "Unsupported similarity function: " + similarityFunction);
-      }
+            case MAXIMUM_INNER_PRODUCT:
+              float vmC = queryVector.factors().normVmC();
+              float vDotC = queryVector.factors().vDotC();
+              float cDotC = queryVector.factors().cDotC();
+              yield scoreMIP(
+                  targetOrd, quantizedQuery, width, lower, quantizedSum, vmC, vDotC, cDotC);
+          };
       // FIXME: this seems to only happen during randomized testing; never happened in PoC
       return score > 0 ? score : 0f;
     }

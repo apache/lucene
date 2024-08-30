@@ -158,8 +158,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         clusterCenters = kmeansResult.centroids();
         vectorClusters = kmeansResult.vectorCentroids();
       } else {
-        clusterCenters = new float[1][];
-        clusterCenters[0] = field.dimensionSums;
+        clusterCenters = new float[1][field.dimensionSums.length];
+        for (int i = 0; i < field.dimensionSums.length; i++) {
+          clusterCenters[0][i] = field.dimensionSums[i] / vectorCount;
+        }
       }
       BinaryQuantizer quantizer =
           new BinaryQuantizer(

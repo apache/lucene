@@ -83,11 +83,7 @@ public class BinaryQuantizer {
     return aDivided;
   }
 
-  private static byte[] packAsBinary(float[] vector, int dimensions) {
-    int totalValues = dimensions / 8;
-
-    byte[] allBinary = new byte[totalValues];
-
+  private static void packAsBinary(float[] vector, byte[] packedVector) {
     for (int h = 0; h < vector.length; h += 8) {
       byte result = 0;
       int q = 0;
@@ -97,19 +93,18 @@ public class BinaryQuantizer {
         }
         q++;
       }
-      allBinary[h / 8] = result;
+      packedVector[h / 8] = result;
     }
-
-    return allBinary;
   }
 
   public VectorSimilarityFunction getSimilarity() {
     return this.similarityFunction;
   }
 
-  private record SubspaceOutput(byte[] packedBinaryVector, float projection) {}
+  private record SubspaceOutput(float projection) {}
 
-  private SubspaceOutput generateSubSpace(float[] vector, float[] centroid) {
+  private SubspaceOutput generateSubSpace(
+      float[] vector, float[] centroid, byte[] quantizedVector) {
     // typically no-op if dimensions/64
     float[] paddedCentroid = BQVectorUtils.pad(centroid, discretizedDimensions);
     float[] paddedVector = BQVectorUtils.pad(vector, discretizedDimensions);
@@ -119,18 +114,19 @@ public class BinaryQuantizer {
     // The inner product between the data vector and the quantized data vector
     float norm = BQVectorUtils.norm(paddedVector);
 
-    byte[] packedBinaryVector = packAsBinary(paddedVector, discretizedDimensions);
+    packAsBinary(paddedVector, quantizedVector);
 
     paddedVector = subset(paddedVector, discretizedDimensions); // typically no-op if dimensions/64
     removeSignAndDivide(paddedVector, (float) Math.sqrt(discretizedDimensions));
     float projection = sumAndNormalize(paddedVector, norm);
 
-    return new SubspaceOutput(packedBinaryVector, projection);
+    return new SubspaceOutput(projection);
   }
 
-  record SubspaceOutputMIP(byte[] packedBinaryVector, float OOQ, float normOC, float oDotC) {}
+  record SubspaceOutputMIP(float OOQ, float normOC, float oDotC) {}
 
-  private SubspaceOutputMIP generateSubSpaceMIP(float[] vector, float[] centroid) {
+  private SubspaceOutputMIP generateSubSpaceMIP(
+      float[] vector, float[] centroid, byte[] quantizedVector) {
 
     // typically no-op if dimensions/64
     float[] paddedCentroid = BQVectorUtils.pad(centroid, discretizedDimensions);
@@ -142,11 +138,11 @@ public class BinaryQuantizer {
     float normOC = BQVectorUtils.norm(paddedVector);
     float[] normOMinusC = BQVectorUtils.divide(paddedVector, normOC); // OmC / norm(OmC)
 
-    byte[] packedBinaryVector = packAsBinary(paddedVector, discretizedDimensions);
+    packAsBinary(paddedVector, quantizedVector);
 
-    float OOQ = computerOOQ(vector, normOMinusC, packedBinaryVector);
+    float OOQ = computerOOQ(vector, normOMinusC, quantizedVector);
 
-    return new SubspaceOutputMIP(packedBinaryVector, OOQ, normOC, oDotC);
+    return new SubspaceOutputMIP(OOQ, normOC, oDotC);
   }
 
   private float computerOOQ(float[] vector, float[] normOMinusC, byte[] packedBinaryVector) {
@@ -211,23 +207,19 @@ public class BinaryQuantizer {
       case VectorSimilarityFunction.DOT_PRODUCT:
         float distToCentroid = (float) Math.sqrt(VectorUtil.squareDistance(vector, centroid));
 
-        SubspaceOutput subspaceOutput = generateSubSpace(vector, centroid);
+        SubspaceOutput subspaceOutput = generateSubSpace(vector, centroid, destination);
         corrections = new float[2];
         // FIXME: quantize these values so we are passing back 1 byte values for all three of these
         corrections[0] = distToCentroid;
         corrections[1] = subspaceOutput.projection();
-        System.arraycopy(
-            subspaceOutput.packedBinaryVector(), 0, destination, 0, destination.length);
         break;
       case VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT:
-        SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid);
+        SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid, destination);
         corrections = new float[3];
         // FIXME: quantize these values so we are passing back 1 byte values for all three of these
         corrections[0] = subspaceOutputMIP.OOQ();
         corrections[1] = subspaceOutputMIP.normOC();
         corrections[2] = subspaceOutputMIP.oDotC();
-        System.arraycopy(
-            subspaceOutputMIP.packedBinaryVector(), 0, destination, 0, destination.length);
         break;
       default:
         throw new UnsupportedOperationException(
