@@ -287,7 +287,7 @@ public class ToParentBlockJoinQuery extends Query {
 
   private static class Score extends Scorable {
     private final ScoreMode scoreMode;
-    private Float score;
+    private float score;
     private int freq;
 
     public Score(ScoreMode scoreMode) {
@@ -296,33 +296,34 @@ public class ToParentBlockJoinQuery extends Query {
     }
 
     public void reset() {
-      score = null;
+      score = 0;
       freq = 0;
     }
 
     public void addChildScore(float childScore) {
-      freq += 1;
       switch (scoreMode) {
         case Total:
         case Avg:
-          score = score == null ? childScore : score + childScore;
+          score += childScore;
           break;
         case Min:
-          score = score == null ? childScore : Math.min(score, childScore);
+          score = freq == 0 ? childScore : Math.min(score, childScore);
           break;
         case Max:
-          score = score == null ? childScore : Math.max(score, childScore);
+          score = Math.max(score, childScore);
           break;
         case None:
           break;
         default:
           throw new AssertionError();
       }
+
+      freq++;
     }
 
     @Override
     public float score() {
-      float score = this.score != null ? this.score : 0;
+      float score = this.score;
       if (scoreMode == ScoreMode.Avg && freq > 0) {
         score /= freq;
       }

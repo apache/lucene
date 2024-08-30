@@ -151,35 +151,32 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         continue;
       }
 
-      Float expectedScore = null;
+      float expectedScore = 0;
       if (searchScoreMode.needsScores()) {
+        boolean firstScore = true;
         for (ChildDocMatch childDocMatch : childDocMatches) {
           float expectedChildDocScore = computeExpectedScore(childDocMatch);
           switch (joinScoreMode) {
             case Total:
             case Avg:
-              expectedScore =
-                  expectedScore == null
-                      ? expectedChildDocScore
-                      : expectedScore + expectedChildDocScore;
+              expectedScore += expectedChildDocScore;
               break;
             case Min:
               expectedScore =
-                  expectedScore == null
+                  firstScore
                       ? expectedChildDocScore
                       : Math.min(expectedScore, expectedChildDocScore);
               break;
             case Max:
-              expectedScore =
-                  expectedScore == null
-                      ? expectedChildDocScore
-                      : Math.max(expectedScore, expectedChildDocScore);
+              expectedScore = Math.max(expectedScore, expectedChildDocScore);
               break;
             case None:
               break;
             default:
               throw new AssertionError();
           }
+
+          firstScore = false;
         }
 
         if (joinScoreMode == ScoreMode.Avg) {
@@ -187,7 +184,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         }
       }
 
-      expectedScores.put(entry.getKey(), expectedScore != null ? expectedScore : 0);
+      expectedScores.put(entry.getKey(), expectedScore);
     }
 
     return expectedScores;
