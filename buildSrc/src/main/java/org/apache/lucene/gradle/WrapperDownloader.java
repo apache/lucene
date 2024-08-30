@@ -61,8 +61,8 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.getRuntime().version().feature();
-    if (major < 11 || major > 22) {
-      throw new IllegalStateException("java version must be between 17 and 22, your version: " + major);
+    if (major < 11 || major > 23) {
+      throw new IllegalStateException("java version must be between 17 and 23, your version: " + major);
     }
   }
 

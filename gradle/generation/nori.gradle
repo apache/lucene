@@ -33,7 +33,7 @@ configure(project(":lucene:analysis:nori")) {
   apply plugin: "de.undercouch.download"
 
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
       targetDir = file("src/resources")
     }
 

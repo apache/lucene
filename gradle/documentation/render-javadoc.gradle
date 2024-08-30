@@ -34,7 +34,7 @@ allprojects {
       missingdoclet "org.apache.lucene.tools:missing-doclet"
     }
 
-    ext {
+    project.ext {
       relativeDocPath = project.path.replaceFirst(/:\w+:/, "").replace(':', '/')
     }
 
