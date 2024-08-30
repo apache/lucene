@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.RecursiveAction;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
@@ -839,7 +841,11 @@ public class BpVectorReorderer {
           throw new IllegalStateException(
               "vector field " + field + " was indexed with inconsistent similarity functions");
         }
-        HnswGraph hnsw = ((CodecReader) ctx.reader()).getVectorReader().getGraph(field);
+        KnnVectorsReader vectorsReader = ((CodecReader) ctx.reader()).getVectorReader();
+        if (!(vectorsReader instanceof HnswGraphProvider)) {
+          throw new IllegalStateException(field + " is not a graph: " + vectorsReader);
+        }
+        HnswGraph hnsw = ((HnswGraphProvider) vectorsReader).getGraph(field);
         if (hnsw == null) {
           throw new IllegalStateException(
               "No HNSW graph for vector field: " + field + " in leaf " + ctx.ord);

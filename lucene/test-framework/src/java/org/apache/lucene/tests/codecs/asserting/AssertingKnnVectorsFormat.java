@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -101,7 +102,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
   }
 
-  static class AssertingKnnVectorsReader extends KnnVectorsReader {
+  static class AssertingKnnVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
     final KnnVectorsReader delegate;
     final FieldInfos fis;
 
@@ -172,7 +173,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public HnswGraph getGraph(String field) throws IOException {
-      return delegate.getGraph(field);
+      if (delegate instanceof HnswGraphProvider) {
+        return ((HnswGraphProvider) delegate).getGraph(field);
+      } else {
+        return null;
+      }
     }
   }
 }

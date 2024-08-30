@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -185,7 +186,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   }
 
   /** VectorReader that can wrap multiple delegate readers, selected by field. */
-  public static class FieldsReader extends KnnVectorsReader {
+  public static class FieldsReader extends KnnVectorsReader implements HnswGraphProvider {
 
     private final Map<String, KnnVectorsReader> fields = new HashMap<>();
 
@@ -285,10 +286,10 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public HnswGraph getGraph(String field) throws IOException {
       KnnVectorsReader knnVectorsReader = fields.get(field);
-      if (knnVectorsReader == null) {
-        return null;
+      if (knnVectorsReader instanceof HnswGraphProvider) {
+        return ((HnswGraphProvider) knnVectorsReader).getGraph(field);
       } else {
-        return knnVectorsReader.getGraph(field);
+        return null;
       }
     }
 

@@ -17,6 +17,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
@@ -52,7 +53,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
           taskExecutor, numWorker, scorerSupplier, beamWidth, new OnHeapHnswGraph(M, maxOrd), null);
     }
 
-    HnswGraph initializerGraph = initReader.getGraph(fieldInfo.name);
+    HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
     BitSet initializedNodes = new FixedBitSet(maxOrd);
     int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorIterator, initializedNodes);
 

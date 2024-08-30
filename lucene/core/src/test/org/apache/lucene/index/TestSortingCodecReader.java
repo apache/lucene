@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -246,7 +247,8 @@ public class TestSortingCodecReader extends LuceneTestCase {
             SortedSetDocValues sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
             SortedDocValues binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
             FloatVectorValues vectorValues = leaf.getFloatVectorValues("vector");
-            HnswGraph graph = ((CodecReader) leaf).getVectorReader().getGraph("vector");
+            HnswGraph graph =
+                ((HnswGraphProvider) ((CodecReader) leaf).getVectorReader()).getGraph("vector");
             NumericDocValues ids = leaf.getNumericDocValues("id");
             long prevValue = -1;
             boolean usingAltIds = false;

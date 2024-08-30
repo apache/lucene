@@ -23,6 +23,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterLeafReader;
@@ -222,12 +224,16 @@ public class HnswUtil {
   public static boolean graphIsRooted(IndexReader reader, String vectorField) throws IOException {
     for (LeafReaderContext ctx : reader.leaves()) {
       CodecReader codecReader = (CodecReader) FilterLeafReader.unwrap(ctx.reader());
-      HnswGraph graph =
+      KnnVectorsReader vectorsReader =
           ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
-              .getFieldReader(vectorField)
-              .getGraph(vectorField);
-      if (isRooted(graph) == false) {
-        return false;
+              .getFieldReader(vectorField);
+      if (vectorsReader instanceof HnswGraphProvider) {
+        HnswGraph graph = ((HnswGraphProvider) vectorsReader).getGraph(vectorField);
+        if (isRooted(graph) == false) {
+          return false;
+        }
+      } else {
+        throw new IllegalArgumentException("not a graph: " + vectorsReader);
       }
     }
     return true;

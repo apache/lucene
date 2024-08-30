@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
@@ -763,57 +764,67 @@ public final class SortingCodecReader extends FilterCodecReader {
 
   @Override
   public KnnVectorsReader getVectorReader() {
-    KnnVectorsReader delegate = in.getVectorReader();
-    return new KnnVectorsReader() {
-      @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
-      }
+    return new SortingKnnVectorReader(in.getVectorReader());
+  }
 
-      @Override
-      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-        return SortingFloatVectorValues.create(
-            delegate.getFloatVectorValues(field), docMap, maxDoc());
-      }
+  private class SortingKnnVectorReader extends KnnVectorsReader implements HnswGraphProvider {
+    private final KnnVectorsReader delegate;
 
-      @Override
-      public ByteVectorValues getByteVectorValues(String field) throws IOException {
-        return SortingByteVectorValues.create(
-            delegate.getByteVectorValues(field), docMap, maxDoc());
-      }
+    SortingKnnVectorReader(KnnVectorsReader delegate) {
+      this.delegate = delegate;
+    }
 
-      @Override
-      public HnswGraph getGraph(String field) throws IOException {
-        DocIdSetIterator values = delegate.getFloatVectorValues(field);
-        if (values == null) {
-          values = delegate.getByteVectorValues(field);
-        }
-        if (values == null) {
-          throw new IllegalStateException("HnswGraph with no vector values");
-        }
-        HnswGraph hnswDelegate = delegate.getGraph(field);
+    @Override
+    public void checkIntegrity() throws IOException {
+      delegate.checkIntegrity();
+    }
+
+    @Override
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      return SortingFloatVectorValues.create(
+          delegate.getFloatVectorValues(field), docMap, maxDoc());
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      return SortingByteVectorValues.create(delegate.getByteVectorValues(field), docMap, maxDoc());
+    }
+
+    @Override
+    public HnswGraph getGraph(String field) throws IOException {
+      DocIdSetIterator values = delegate.getFloatVectorValues(field);
+      if (values == null) {
+        values = delegate.getByteVectorValues(field);
+      }
+      if (values == null) {
+        throw new IllegalStateException("HnswGraph with no vector values");
+      }
+      if (delegate instanceof HnswGraphProvider) {
+        HnswGraph hnswDelegate = ((HnswGraphProvider) delegate).getGraph(field);
         if (hnswDelegate == null) {
           return null;
         } else {
           return new SortingHnswGraph(hnswDelegate, values, docMap);
         }
+      } else {
+        return null;
       }
+    }
 
-      @Override
-      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
-        throw new UnsupportedOperationException();
-      }
+    @Override
+    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+      throw new UnsupportedOperationException();
+    }
 
-      @Override
-      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
-        throw new UnsupportedOperationException();
-      }
+    @Override
+    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+      throw new UnsupportedOperationException();
+    }
 
-      @Override
-      public void close() throws IOException {
-        delegate.close();
-      }
-    };
+    @Override
+    public void close() throws IOException {
+      delegate.close();
+    }
   }
 
   @Override

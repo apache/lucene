@@ -20,6 +20,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -61,16 +62,16 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
 
   /**
    * Adds a reader to the graph merger if it meets the following criteria: 1. Does not contain any
-   * deleted docs 2. Is a HnswGraphProvider/PerFieldKnnVectorReader 3. Has the most docs of any
-   * previous reader that met the above criteria
+   * deleted docs 2. Is a HnswGraphProvider 3. Has the most docs of any previous reader that met the
+   * above criteria
    */
   @Override
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
-    if (!noDeletes(liveDocs) || reader == null) {
+    if (!noDeletes(liveDocs) || !(reader instanceof HnswGraphProvider)) {
       return this;
     }
-    HnswGraph graph = reader.getGraph(fieldInfo.name);
+    HnswGraph graph = ((HnswGraphProvider) reader).getGraph(fieldInfo.name);
     if (graph == null || graph.size() == 0) {
       return this;
     }
@@ -115,7 +116,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
           scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, maxOrd);
     }
 
-    HnswGraph initializerGraph = initReader.getGraph(fieldInfo.name);
+    HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
 
     BitSet initializedNodes = new FixedBitSet(maxOrd);
     int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorIterator, initializedNodes);
