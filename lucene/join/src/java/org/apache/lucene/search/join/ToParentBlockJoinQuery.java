@@ -288,7 +288,7 @@ public class ToParentBlockJoinQuery extends Query {
 
   private static class Score extends Scorable {
     private final ScoreMode scoreMode;
-    private float score;
+    private double score;
     private int freq;
 
     public Score(ScoreMode scoreMode) {
@@ -324,11 +324,11 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public float score() {
-      float score = this.score;
+      double score = this.score;
       if (scoreMode == ScoreMode.Avg && freq > 0) {
         score /= freq;
       }
-      return score;
+      return (float) score;
     }
   }
 

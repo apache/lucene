@@ -151,7 +151,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         continue;
       }
 
-      float expectedScore = 0;
+      double expectedScore = 0;
       if (searchScoreMode.needsScores()) {
         boolean firstScore = true;
         for (ChildDocMatch childDocMatch : childDocMatches) {
@@ -184,7 +184,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         }
       }
 
-      expectedScores.put(entry.getKey(), expectedScore);
+      expectedScores.put(entry.getKey(), (float) expectedScore);
     }
 
     return expectedScores;
