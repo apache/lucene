@@ -553,8 +553,9 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public void setScorer(Scorable scorer) throws IOException {
+          assert scorer != null;
           this.scorer = scorer;
-          super.setScorer(scorer != null ? currentParentScore : null);
+          super.setScorer(currentParentScore);
         }
 
         @Override
@@ -569,7 +570,7 @@ public class ToParentBlockJoinQuery extends Query {
             currentParentScore.reset();
           }
 
-          if (scorer != null && scoreMode != ScoreMode.None) {
+          if (scoreMode != ScoreMode.None) {
             currentParentScore.addChildScore(scorer.score());
           }
         }
