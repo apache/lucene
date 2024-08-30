@@ -562,13 +562,13 @@ public class SandboxFacetsExample {
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
     FacetFieldCollectorManager<CountFacetRecorder> publishDayDimensionCollectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, publishDayDimensionRecorder);
-    List<CollectorManager<FacetFieldCollector, CountFacetRecorder>> drillSidewaysOwners =
+    List<CollectorManager<FacetFieldCollector, CountFacetRecorder>> drillSidewaysManagers =
         List.of(publishDayDimensionCollectorManager);
 
     //// (3) search
     // Right now we return the same Recorder we created - so we can ignore results
     DrillSideways ds = new DrillSideways(searcher, config, taxoReader);
-    ds.search(q, drillDownCollectorManager, drillSidewaysOwners);
+    ds.search(q, drillDownCollectorManager, drillSidewaysManagers);
 
     //// (4) Get top 10 results by count for Author
     List<FacetResult> facetResults = new ArrayList<>(2);
