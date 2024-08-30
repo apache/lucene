@@ -511,37 +511,32 @@ public class ToParentBlockJoinQuery extends Query {
     private final ScoreMode scoreMode;
     private final BitSet parents;
     private final int parentsLength;
-    private int currentMin;
 
     public BlockJoinBulkScorer(BulkScorer childBulkScorer, ScoreMode scoreMode, BitSet parents) {
       this.childBulkScorer = childBulkScorer;
       this.scoreMode = scoreMode;
       this.parents = parents;
       this.parentsLength = parents.length();
-      this.currentMin = -1;
     }
 
     @Override
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
       // Subtract one because max is exclusive w.r.t. score but inclusive w.r.t prevSetBit
-      int lastParent = parents.prevSetBit(Math.min(parentsLength - 1, max - 1));
-      if (lastParent < min) {
-        // No parent docs in this range. Save the passed-in min so we can score over this range once
-        // we find a parent doc.
-        currentMin = min;
+      int lastParent = parents.prevSetBit(Math.min(parentsLength, max) - 1);
+      int prevParent = min == 0 ? -1 : parents.prevSetBit(min - 1);
+      if (lastParent == prevParent) {
+        // No parent docs in this range
         return max;
-      } else if (currentMin == -1) {
-        currentMin = min;
       }
 
       BatchAwareLeafCollector wrappedCollector = wrapCollector(collector);
-      childBulkScorer.score(wrappedCollector, acceptDocs, currentMin, lastParent + 1);
+      childBulkScorer.score(wrappedCollector, acceptDocs, prevParent + 1, lastParent);
       wrappedCollector.endBatch();
-      currentMin = lastParent + 1;
 
-      // If we've scored the last parent, return NO_MORE_DOCS to indicate we are done scoring
-      return currentMin >= parentsLength ? NO_MORE_DOCS : max;
+      // If we've scored the last parent in the bit set, return NO_MORE_DOCS to indicate we are done
+      // scoring
+      return lastParent + 1 >= parentsLength ? NO_MORE_DOCS : max;
     }
 
     @Override
