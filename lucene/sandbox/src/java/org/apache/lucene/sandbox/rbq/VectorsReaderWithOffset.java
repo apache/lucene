@@ -22,6 +22,8 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
+/** Class for testing binary quantization */
+
 // FIXME: Temporary to help with debugging and iteration
 public class VectorsReaderWithOffset implements RandomAccessVectorValues.Floats {
   private final IndexInput slice;
