@@ -163,11 +163,7 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public BulkScorer bulkScorer() throws IOException {
-          final BulkScorer innerBulkScorer = childScorerSupplier.bulkScorer();
-          if (innerBulkScorer == null) {
-            return null;
-          }
-          return new BlockJoinBulkScorer(innerBulkScorer, scoreMode, parents);
+          return new BlockJoinBulkScorer(childScorerSupplier.bulkScorer(), scoreMode, parents);
         }
 
         @Override
