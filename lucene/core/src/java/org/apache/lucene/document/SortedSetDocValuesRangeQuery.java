@@ -28,6 +28,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -217,7 +218,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
                   };
             }
             if (skipper != null) {
-              iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd);
+              iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd, false);
             }
             return new ConstantScoreScorer(score(), scoreMode, iterator);
           }

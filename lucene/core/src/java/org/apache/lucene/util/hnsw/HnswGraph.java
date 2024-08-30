@@ -68,7 +68,7 @@ public abstract class HnswGraph {
   /** Returns the number of nodes in the graph */
   public abstract int size();
 
-  /** Returns max node id, inclusive, normally this value will be size - 1 */
+  /** Returns max node id, inclusive. Normally this value will be size - 1. */
   public int maxNodeId() {
     return size() - 1;
   }
@@ -138,7 +138,7 @@ public abstract class HnswGraph {
       };
 
   /**
-   * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total
+   * Iterator over the graph nodes on a certain level. Iterator also provides the size – the total
    * number of nodes to be iterated over. The nodes are NOT guaranteed to be presented in any
    * particular order.
    */

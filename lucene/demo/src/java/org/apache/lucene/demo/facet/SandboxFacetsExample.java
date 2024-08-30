@@ -148,9 +148,10 @@ public class SandboxFacetsExample {
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, defaultRecorder);
 
-    //// (2.1) if we need to collect data using multiple different collectors, e.g. taxonomy and
-    ////       ranges, or even two taxonomy facets that use different Category List Field, we can
-    ////       use MultiCollectorManager, e.g.:
+    // (2.1) if we need to collect data using multiple different collectors, e.g. taxonomy and
+    // ranges, or even two taxonomy facets that use different Category List Field, we can
+    // use MultiCollectorManager, e.g.:
+    //
     // TODO: add a demo for it.
     // TaxonomyFacetsCutter publishDateCutter = new
     // TaxonomyFacetsCutter(config.getDimConfig("Publish Date"), taxoReader);

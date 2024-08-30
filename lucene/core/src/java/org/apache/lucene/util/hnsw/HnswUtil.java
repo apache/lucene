@@ -66,8 +66,8 @@ public class HnswUtil {
   /**
    * Returns the sizes of the distinct graph components on the given level. The forest starting at
    * the entry points (nodes in the next highest level) is considered as a single component. If the
-   * entire graph is rooted in the entry points, that is every node is reachable from at least one
-   * entry point, the returned list will have a single entry. If the graph is empty, the returned
+   * entire graph is rooted in the entry points--that is, every node is reachable from at least one
+   * entry point--the returned list will have a single entry. If the graph is empty, the returned
    * list will be empty.
    */
   static List<Integer> componentSizes(HnswGraph hnsw, int level) throws IOException {
