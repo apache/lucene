@@ -17,6 +17,10 @@
 
 package org.apache.lucene.sandbox.rbq;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -38,11 +42,6 @@ import org.apache.lucene.util.PrintStreamInfoStream;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.concurrent.TimeUnit;
-
 /** Class for testing binary quantization */
 @SuppressForbidden(reason = "Used for testing")
 public class Index {
@@ -63,7 +62,7 @@ public class Index {
     if (!indexPath.toFile().exists()) {
       indexPath.toFile().mkdirs();
     } else {
-      for(Path fp : Files.walk(indexPath, 1).toList()) {
+      for (Path fp : Files.walk(indexPath, 1).toList()) {
         fp.toFile().delete();
       }
     }
@@ -101,7 +100,7 @@ public class Index {
           doc.add(new KnnFloatVectorField("knn", vectorValues.vectorValue(i), fieldType));
           doc.add(new StoredField("id", i));
           iw.addDocument(doc);
-          if((i+1) % flushFrequency == 0) {
+          if ((i + 1) % flushFrequency == 0) {
             iw.flush();
             iw.commit();
           }
