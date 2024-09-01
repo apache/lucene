@@ -414,7 +414,7 @@ public class TestKnnGraph extends LuceneTestCase {
         int nextDocWithVectors = 0;
         StoredFields storedFields = reader.storedFields();
         for (int i = 0; i < reader.maxDoc(); i++) {
-          nextDocWithVectors = vectorValues.advance(i);
+          nextDocWithVectors = vectorValues.iterator().advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
             int id = Integer.parseInt(storedFields.document(i).get("id"));
             assertNull("document " + id + " has no vector, but was expected to", values[id]);
@@ -425,7 +425,7 @@ public class TestKnnGraph extends LuceneTestCase {
           }
           int id = Integer.parseInt(storedFields.document(i).get("id"));
           // documents with KnnGraphValues have the expected vectors
-          float[] scratch = vectorValues.vectorValue();
+          float[] scratch = vectorValues.vectorValue(vectorValues.iterator().index());
           assertArrayEquals(
               "vector did not match for doc " + i + ", id=" + id + ": " + Arrays.toString(scratch),
               values[id],
@@ -435,9 +435,9 @@ public class TestKnnGraph extends LuceneTestCase {
         }
         // if IndexDisi.doc == NO_MORE_DOCS, we should not call IndexDisi.nextDoc()
         if (nextDocWithVectors != NO_MORE_DOCS) {
-          assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+          assertEquals(NO_MORE_DOCS, vectorValues.iterator().nextDoc());
         } else {
-          assertEquals(NO_MORE_DOCS, vectorValues.docID());
+          assertEquals(NO_MORE_DOCS, vectorValues.iterator().docID());
         }
 
         // assert graph values:

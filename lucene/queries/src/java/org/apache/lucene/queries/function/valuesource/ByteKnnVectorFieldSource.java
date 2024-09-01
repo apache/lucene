@@ -67,7 +67,7 @@ public class ByteKnnVectorFieldSource extends ValueSource {
       @Override
       public byte[] byteVectorVal(int doc) throws IOException {
         if (exists(doc)) {
-          return vectorValues.vectorValue();
+          return vectorValues.vectorValue(vectorValues.docToOrd(vectorValues.iterator().docID()));
         } else {
           return null;
         }
@@ -75,7 +75,7 @@ public class ByteKnnVectorFieldSource extends ValueSource {
 
       @Override
       protected DocIdSetIterator getVectorIterator() {
-        return vectorValues;
+        return vectorValues.iterator();
       }
     };
   }

@@ -17,8 +17,6 @@
 
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -77,19 +75,17 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    for (int docV = floatVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = floatVectorValues.nextDoc()) {
-      writeFloatVectorValue(floatVectorValues);
-      docIds.add(docV);
+    for (int ord = 0; ord < floatVectorValues.size(); ord++) {
+      writeFloatVectorValue(floatVectorValues, ord);
+      docIds.add(floatVectorValues.ordToDoc(ord));
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeFloatVectorValue(FloatVectorValues vectors) throws IOException {
+  private void writeFloatVectorValue(FloatVectorValues vectors, int ord) throws IOException {
     // write vector value
-    float[] value = vectors.vectorValue();
+    float[] value = vectors.vectorValue(ord);
     assert value.length == vectors.dimension();
     write(vectorData, Arrays.toString(value));
     newline(vectorData);
@@ -100,19 +96,17 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    for (int docV = byteVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = byteVectorValues.nextDoc()) {
-      writeByteVectorValue(byteVectorValues);
-      docIds.add(docV);
+    for (int ord = 0; ord < byteVectorValues.size(); ord++) {
+      writeByteVectorValue(byteVectorValues, ord);
+      docIds.add(byteVectorValues.ordToDoc(ord));
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeByteVectorValue(ByteVectorValues vectors) throws IOException {
+  private void writeByteVectorValue(ByteVectorValues vectors, int ord) throws IOException {
     // write vector value
-    byte[] value = vectors.vectorValue();
+    byte[] value = vectors.vectorValue(ord);
     assert value.length == vectors.dimension();
     write(vectorData, Arrays.toString(value));
     newline(vectorData);

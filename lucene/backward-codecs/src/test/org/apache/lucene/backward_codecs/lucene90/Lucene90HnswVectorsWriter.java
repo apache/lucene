@@ -17,8 +17,6 @@
 
 package org.apache.lucene.backward_codecs.lucene90;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -35,7 +33,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -188,12 +185,13 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
     int count = 0;
     ByteBuffer binaryVector =
         ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
+    for (int ord = 0; ord < vectors.size(); ord++) {
+      int docV = vectors.ordToDoc(ord);
       // write vector
-      float[] vectorValue = vectors.vectorValue();
+      float[] vectorValue = vectors.vectorValue(ord);
       binaryVector.asFloatBuffer().put(vectorValue);
       output.writeBytes(binaryVector.array(), binaryVector.limit());
-      docIds[count] = docV;
+      docIds[ord] = docV;
     }
 
     if (docIds.length > count) {
@@ -234,7 +232,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValues.Floats vectorValues,
+      FloatVectorValues vectorValues,
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,

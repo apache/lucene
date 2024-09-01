@@ -832,10 +832,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-      List<DocValuesSub<FloatVectorValues>> subs = new ArrayList<>();
+      List<FloatVectorValues> subs = new ArrayList<>();
       int i = 0;
       int dimension = -1;
       int size = 0;
+      int[] ends = new int[codecReaders.length];
       for (CodecReader reader : codecReaders) {
         FloatVectorValues values = reader.getFloatVectorValues(field);
         if (values != null) {
@@ -844,12 +845,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           }
           size += values.size();
         }
-        subs.add(new DocValuesSub<>(values, docStarts[i], docStarts[i + 1]));
-        i++;
+        ends[i++] = size;
+        subs.add(values);
       }
       final int finalDimension = dimension;
       final int finalSize = size;
-      MergedDocIdSetIterator<FloatVectorValues> mergedIterator = new MergedDocIdSetIterator<>(subs);
       return new FloatVectorValues() {
 
         @Override
@@ -863,27 +863,32 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         }
 
         @Override
-        public float[] vectorValue() throws IOException {
-          return mergedIterator.current.sub.vectorValue();
+        public float[] vectorValue(int ord) throws IOException {
+          int iSub = Arrays.binarySearch(ends, ord);
+          if (iSub < 0) {
+            iSub = -(iSub + 1);
+          }
+          int subOrd;
+          if (iSub == 0) {
+            subOrd = ord;
+          } else {
+            subOrd = ord - ends[iSub - 1];
+          }
+          return subs.get(iSub).vectorValue(subOrd);
         }
 
         @Override
-        public int docID() {
-          return mergedIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return mergedIterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return mergedIterator.advance(target);
+        public int ordToDoc(int ord) {
+          throw new UnsupportedOperationException();
         }
 
         @Override
         public VectorScorer scorer(float[] target) {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public FloatVectorValues copy() {
           throw new UnsupportedOperationException();
         }
       };
@@ -891,10 +896,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
-      List<DocValuesSub<ByteVectorValues>> subs = new ArrayList<>();
+      List<ByteVectorValues> subs = new ArrayList<>();
       int i = 0;
       int dimension = -1;
       int size = 0;
+      int[] ends = new int[codecReaders.length];
       for (CodecReader reader : codecReaders) {
         ByteVectorValues values = reader.getByteVectorValues(field);
         if (values != null) {
@@ -903,12 +909,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           }
           size += values.size();
         }
-        subs.add(new DocValuesSub<>(values, docStarts[i], docStarts[i + 1]));
-        i++;
+        ends[i++] = size;
+        subs.add(values);
       }
       final int finalDimension = dimension;
       final int finalSize = size;
-      MergedDocIdSetIterator<ByteVectorValues> mergedIterator = new MergedDocIdSetIterator<>(subs);
       return new ByteVectorValues() {
 
         @Override
@@ -922,27 +927,32 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         }
 
         @Override
-        public byte[] vectorValue() throws IOException {
-          return mergedIterator.current.sub.vectorValue();
+        public byte[] vectorValue(int ord) throws IOException {
+          int iSub = Arrays.binarySearch(ends, ord);
+          if (iSub < 0) {
+            iSub = -(iSub + 1);
+          }
+          int subOrd;
+          if (iSub == 0) {
+            subOrd = ord;
+          } else {
+            subOrd = ord - ends[iSub - 1];
+          }
+          return subs.get(iSub).vectorValue(subOrd);
         }
 
         @Override
-        public int docID() {
-          return mergedIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return mergedIterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return mergedIterator.advance(target);
+        public int ordToDoc(int ord) {
+          throw new UnsupportedOperationException();
         }
 
         @Override
         public VectorScorer scorer(byte[] target) {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public ByteVectorValues copy() {
           throw new UnsupportedOperationException();
         }
       };

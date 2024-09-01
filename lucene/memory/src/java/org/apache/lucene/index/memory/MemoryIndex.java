@@ -2302,8 +2302,8 @@ public class MemoryIndex {
     }
 
     @Override
-    public float[] vectorValue() {
-      if (currentDoc == 0) {
+    public float[] vectorValue(int ord) {
+      if (ord == 0) {
         return info.floatVectorValues[0];
       } else {
         return null;
@@ -2325,39 +2325,16 @@ public class MemoryIndex {
         public float score() throws IOException {
           return info.fieldInfo
               .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(), query);
+              .compare(
+                  vectorValues.vectorValue(vectorValues.docToOrd(vectorValues.iterator().docID())),
+                  query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return vectorValues;
+          return vectorValues.iterator();
         }
       };
-    }
-
-    @Override
-    public int docID() {
-      return currentDoc;
-    }
-
-    @Override
-    public int nextDoc() {
-      int doc = ++currentDoc;
-      if (doc == 0) {
-        return doc;
-      } else {
-        return NO_MORE_DOCS;
-      }
-    }
-
-    @Override
-    public int advance(int target) {
-      if (target == 0) {
-        currentDoc = target;
-        return target;
-      } else {
-        return NO_MORE_DOCS;
-      }
     }
   }
 
@@ -2380,8 +2357,8 @@ public class MemoryIndex {
     }
 
     @Override
-    public byte[] vectorValue() {
-      if (currentDoc == 0) {
+    public byte[] vectorValue(int ord) {
+      if (ord == 0) {
         return info.byteVectorValues[0];
       } else {
         return null;
@@ -2403,39 +2380,16 @@ public class MemoryIndex {
         public float score() {
           return info.fieldInfo
               .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(), query);
+              .compare(
+                  vectorValues.vectorValue(vectorValues.docToOrd(vectorValues.iterator().docID())),
+                  query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return vectorValues;
+          return vectorValues.iterator();
         }
       };
-    }
-
-    @Override
-    public int docID() {
-      return currentDoc;
-    }
-
-    @Override
-    public int nextDoc() {
-      int doc = ++currentDoc;
-      if (doc == 0) {
-        return doc;
-      } else {
-        return NO_MORE_DOCS;
-      }
-    }
-
-    @Override
-    public int advance(int target) {
-      if (target == 0) {
-        currentDoc = target;
-        return target;
-      } else {
-        return NO_MORE_DOCS;
-      }
     }
   }
 }

@@ -17,9 +17,10 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.IndexInput;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -27,34 +28,23 @@ import org.apache.lucene.search.VectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class ByteVectorValues extends DocIdSetIterator {
+public abstract class ByteVectorValues extends KnnVectorValues {
 
   /** Sole constructor */
   protected ByteVectorValues() {}
 
-  /** Return the dimension of the vectors */
-  public abstract int dimension();
-
-  /**
-   * Return the number of vectors for this field.
-   *
-   * @return the number of vectors returned by this iterator
-   */
-  public abstract int size();
-
   @Override
-  public final long cost() {
-    return size();
+  public ByteVectorValues copy() throws IOException {
+    return this;
   }
 
   /**
-   * Return the vector value for the current document ID. It is illegal to call this method when the
-   * iterator is not positioned: before advancing, or after failing to advance. The returned array
-   * may be shared across calls, re-used, and modified as the iterator advances.
+   * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
+   * otherwise IndexOutOfBoundsException is thrown. The returned array may be shared across calls.
    *
    * @return the vector value
    */
-  public abstract byte[] vectorValue() throws IOException;
+  public abstract byte[] vectorValue(int ord) throws IOException;
 
   /**
    * Checks the Vector Encoding of a field
@@ -78,12 +68,57 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
   }
 
   /**
-   * Return a {@link VectorScorer} for the given query vector. The iterator for the scorer is not
-   * the same instance as the iterator for this {@link ByteVectorValues}. It is a copy, and
-   * iteration over the scorer will not affect the iteration of this {@link ByteVectorValues}.
+   * Return a {@link VectorScorer} for the given query vector.
    *
    * @param query the query vector
    * @return a {@link VectorScorer} instance or null
    */
-  public abstract VectorScorer scorer(byte[] query) throws IOException;
+  public VectorScorer scorer(byte[] query) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Returns the vector byte length, defaults to dimension multiplied by byte size */
+  @Override
+  public int getVectorByteLength() {
+    return dimension() * Byte.BYTES;
+  }
+
+  /**
+   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if
+   * available
+   */
+  public IndexInput getSlice() {
+    return null;
+  }
+
+  /**
+   * Creates a {@link ByteVectorValues} from a list of byte arrays.
+   *
+   * @param vectors the list of byte arrays
+   * @param dim the dimension of the vectors
+   * @return a {@link ByteVectorValues} instancec
+   */
+  public static ByteVectorValues fromBytes(List<byte[]> vectors, int dim) {
+    return new ByteVectorValues() {
+      @Override
+      public int size() {
+        return vectors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return dim;
+      }
+
+      @Override
+      public byte[] vectorValue(int targetOrd) {
+        return vectors.get(targetOrd);
+      }
+
+      @Override
+      public ByteVectorValues copy() {
+        return this;
+      }
+    };
+  }
 }

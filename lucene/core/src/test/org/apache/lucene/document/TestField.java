@@ -18,6 +18,7 @@ package org.apache.lucene.document;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import org.apache.lucene.codecs.Codec;
@@ -713,17 +714,19 @@ public class TestField extends LuceneTestCase {
       try (IndexReader r = DirectoryReader.open(w)) {
         ByteVectorValues binary = r.leaves().get(0).reader().getByteVectorValues("binary");
         assertEquals(1, binary.size());
-        assertNotEquals(NO_MORE_DOCS, binary.nextDoc());
-        assertNotNull(binary.vectorValue());
-        assertArrayEquals(b, binary.vectorValue());
-        assertEquals(NO_MORE_DOCS, binary.nextDoc());
+        assertNotEquals(NO_MORE_DOCS, binary.iterator().nextDoc());
+        assertNotNull(binary.vectorValue(0));
+        assertArrayEquals(b, binary.vectorValue(0));
+        assertEquals(NO_MORE_DOCS, binary.iterator().nextDoc());
+        expectThrows(IOException.class, () -> binary.vectorValue(1));
 
         FloatVectorValues floatValues = r.leaves().get(0).reader().getFloatVectorValues("float");
         assertEquals(1, floatValues.size());
-        assertNotEquals(NO_MORE_DOCS, floatValues.nextDoc());
-        assertEquals(vector.length, floatValues.vectorValue().length);
-        assertEquals(vector[0], floatValues.vectorValue()[0], 0);
-        assertEquals(NO_MORE_DOCS, floatValues.nextDoc());
+        assertNotEquals(NO_MORE_DOCS, floatValues.iterator().nextDoc());
+        assertEquals(vector.length, floatValues.vectorValue(0).length);
+        assertEquals(vector[0], floatValues.vectorValue(0)[0], 0);
+        assertEquals(NO_MORE_DOCS, floatValues.iterator().nextDoc());
+        expectThrows(IOException.class, () -> floatValues.vectorValue(1));
       }
     }
   }

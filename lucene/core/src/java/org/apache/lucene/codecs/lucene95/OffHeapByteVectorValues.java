@@ -132,9 +132,6 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
    * vector.
    */
   public static class DenseOffHeapVectorValues extends OffHeapByteVectorValues {
-
-    private int doc = -1;
-
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -146,27 +143,8 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
-      return vectorValue(doc);
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      if (target >= size) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
+    public byte[] vectorValue(int ord) throws IOException {
+      return vectorValue(ord);
     }
 
     @Override
@@ -188,12 +166,12 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return scorer.score(copy.doc);
+          return scorer.score(copy.iterator().docID());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy;
+          return copy.iterator();
         }
       };
     }
@@ -236,27 +214,6 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
               configuration.jumpTableEntryCount,
               configuration.denseRankPower,
               configuration.size);
-    }
-
-    @Override
-    public byte[] vectorValue() throws IOException {
-      return vectorValue(disi.index());
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      return disi.advance(target);
     }
 
     @Override
@@ -307,7 +264,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy;
+          return copy.disi;
         }
       };
     }
@@ -335,32 +292,12 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorValue(int ord) throws IOException {
       throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return doc = NO_MORE_DOCS;
     }
 
     @Override
     public EmptyOffHeapVectorValues copy() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public byte[] vectorValue(int targetOrd) throws IOException {
       throw new UnsupportedOperationException();
     }
 

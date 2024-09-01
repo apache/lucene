@@ -18,8 +18,8 @@ package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.IndexInput;
 
 /**
  * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
@@ -27,25 +27,13 @@ import org.apache.lucene.search.VectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class QuantizedByteVectorValues extends DocIdSetIterator {
-  public abstract float getScoreCorrectionConstant() throws IOException;
+public abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
-  public abstract byte[] vectorValue() throws IOException;
-
-  /** Return the dimension of the vectors */
-  public abstract int dimension();
-
-  /**
-   * Return the number of vectors for this field.
-   *
-   * @return the number of vectors returned by this iterator
-   */
-  public abstract int size();
-
-  @Override
-  public final long cost() {
-    return size();
+  public ScalarQuantizer getScalarQuantizer() {
+    throw new UnsupportedOperationException();
   }
+
+  public abstract float getScoreCorrectionConstant(int ord) throws IOException;
 
   /**
    * Return a {@link VectorScorer} for the given query vector.
@@ -53,5 +41,20 @@ public abstract class QuantizedByteVectorValues extends DocIdSetIterator {
    * @param query the query vector
    * @return a {@link VectorScorer} instance or null
    */
-  public abstract VectorScorer scorer(float[] query) throws IOException;
+  public VectorScorer scorer(float[] query) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public QuantizedByteVectorValues copy() throws IOException {
+    return this;
+  }
+
+  /**
+   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if
+   * available
+   */
+  public IndexInput getSlice() {
+    return null;
+  }
 }

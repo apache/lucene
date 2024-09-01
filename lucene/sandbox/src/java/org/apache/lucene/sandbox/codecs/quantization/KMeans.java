@@ -25,11 +25,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /** KMeans clustering algorithm for vectors */
 public class KMeans {
@@ -38,7 +38,7 @@ public class KMeans {
   public static final int DEFAULT_ITRS = 10;
   public static final int DEFAULT_SAMPLE_SIZE = 100_000;
 
-  private final RandomAccessVectorValues.Floats vectors;
+  private final FloatVectorValues vectors;
   private final int numVectors;
   private final int numCentroids;
   private final Random random;
@@ -57,9 +57,7 @@ public class KMeans {
    * @throws IOException when if there is an error accessing vectors
    */
   public static Results cluster(
-      RandomAccessVectorValues.Floats vectors,
-      VectorSimilarityFunction similarityFunction,
-      int numClusters)
+      FloatVectorValues vectors, VectorSimilarityFunction similarityFunction, int numClusters)
       throws IOException {
     return cluster(
         vectors,
@@ -93,7 +91,7 @@ public class KMeans {
    * @throws IOException if there is error accessing vectors
    */
   public static Results cluster(
-      RandomAccessVectorValues.Floats vectors,
+      FloatVectorValues vectors,
       int numClusters,
       boolean assignCentroidsToVectors,
       long seed,
@@ -124,7 +122,7 @@ public class KMeans {
     if (numClusters == 1) {
       centroids = new float[1][vectors.dimension()];
     } else {
-      RandomAccessVectorValues.Floats sampleVectors =
+      FloatVectorValues sampleVectors =
           vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
       KMeans kmeans =
           new KMeans(sampleVectors, numClusters, random, initializationMethod, restarts, iters);
@@ -142,7 +140,7 @@ public class KMeans {
   }
 
   private KMeans(
-      RandomAccessVectorValues.Floats vectors,
+      FloatVectorValues vectors,
       int numCentroids,
       Random random,
       KmeansInitializationMethod initializationMethod,
@@ -276,7 +274,7 @@ public class KMeans {
    * @throws IOException if there is an error accessing vector values
    */
   private static double runKMeansStep(
-      RandomAccessVectorValues.Floats vectors,
+      FloatVectorValues vectors,
       float[][] centroids,
       short[] docCentroids,
       boolean useKahanSummation,
@@ -348,9 +346,7 @@ public class KMeans {
    * descending distance to the current centroid set
    */
   static void assignCentroids(
-      RandomAccessVectorValues.Floats vectors,
-      float[][] centroids,
-      List<Integer> unassignedCentroidsIdxs)
+      FloatVectorValues vectors, float[][] centroids, List<Integer> unassignedCentroidsIdxs)
       throws IOException {
     int[] assignedCentroidsIdxs = new int[centroids.length - unassignedCentroidsIdxs.size()];
     int assignedIndex = 0;

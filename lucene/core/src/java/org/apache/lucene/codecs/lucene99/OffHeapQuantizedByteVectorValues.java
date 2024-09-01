@@ -27,10 +27,10 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
-import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -38,7 +38,7 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  * supports both iterated and random access.
  */
 public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
-    implements RandomAccessQuantizedByteVectorValues {
+    implements RandomAccessVectorValues.Bytes {
 
   protected final int dimension;
   protected final int size;
@@ -142,11 +142,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   }
 
   @Override
-  public float getScoreCorrectionConstant() {
-    return scoreCorrectionConstant[0];
-  }
-
-  @Override
   public float getScoreCorrectionConstant(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
       return scoreCorrectionConstant[0];
@@ -227,30 +222,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
-      return vectorValue(doc);
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      if (target >= size) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
-    }
-
-    @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
           dimension,
@@ -280,7 +251,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy;
+          return copy.iterator();
         }
       };
     }
@@ -312,24 +283,11 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
-      return vectorValue(disi.index());
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      return disi.advance(target);
+    public KnnValuesDocIterator iterator() {
+      if (iterator == null) {
+        iterator = fromIndexedDISI(disi);
+      }
+      return iterator;
     }
 
     @Override
@@ -382,7 +340,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy;
+          return copy.iterator();
         }
       };
     }
@@ -417,26 +375,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public byte[] vectorValue() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) {
-      return doc = NO_MORE_DOCS;
-    }
-
-    @Override
     public EmptyOffHeapVectorValues copy() {
       throw new UnsupportedOperationException();
     }
@@ -460,5 +398,34 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     public VectorScorer scorer(float[] target) {
       return null;
     }
+  }
+
+  static KnnValuesDocIterator fromIndexedDISI(IndexedDISI disi) {
+    return new KnnValuesDocIterator() {
+      @Override
+      public int docID() {
+        return disi.docID();
+      }
+
+      @Override
+      public int index() {
+        return disi.index();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        return disi.nextDoc();
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        return disi.advance(target);
+      }
+
+      @Override
+      public long cost() {
+        return disi.cost();
+      }
+    };
   }
 }

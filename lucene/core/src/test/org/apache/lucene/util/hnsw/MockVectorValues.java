@@ -20,8 +20,7 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 
-class MockVectorValues extends AbstractMockVectorValues<float[]>
-    implements RandomAccessVectorValues.Floats {
+class MockVectorValues extends AbstractMockVectorValues<float[]> {
   private final float[] scratch;
 
   static MockVectorValues fromValues(float[][] values) {
@@ -69,5 +68,10 @@ class MockVectorValues extends AbstractMockVectorValues<float[]>
   @Override
   public float[] vectorValue(int targetOrd) {
     return denseValues[targetOrd];
+  }
+
+  @Override
+  public int getVectorByteLength() {
+    throw new UnsupportedOperationException();
   }
 }

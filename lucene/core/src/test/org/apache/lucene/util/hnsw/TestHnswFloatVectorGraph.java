@@ -74,10 +74,9 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
       throws IOException {
     FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
     float[][] vectors = new float[reader.maxDoc()][];
-    while (vectorValues.nextDoc() != NO_MORE_DOCS) {
-      vectors[vectorValues.docID()] =
-          ArrayUtil.copyOfSubArray(
-              vectorValues.vectorValue(), 0, vectorValues.vectorValue().length);
+    for (int i = 0; i < vectorValues.size(); i++) {
+      vectors[vectorValues.ordToDoc(i)] =
+          ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());
     }
     return MockVectorValues.fromValues(vectors);
   }
@@ -129,7 +128,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   public void testSearchWithSkewedAcceptOrds() throws IOException {
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    RandomAccessVectorValues.Floats vectors = circularVectorValues(nDoc);
+    FloatVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());

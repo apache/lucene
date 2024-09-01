@@ -18,10 +18,10 @@
 package org.apache.lucene.analysis.synonym.word2vec;
 
 import java.io.IOException;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.TermAndVector;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Word2VecModel is a class representing the parsed Word2Vec model containing the vectors for each
@@ -29,7 +29,7 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  *
  * @lucene.experimental
  */
-public class Word2VecModel implements RandomAccessVectorValues.Floats {
+public class Word2VecModel extends FloatVectorValues {
 
   private final int dictionarySize;
   private final int vectorDimension;

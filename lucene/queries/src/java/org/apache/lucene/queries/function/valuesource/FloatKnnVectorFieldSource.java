@@ -66,7 +66,7 @@ public class FloatKnnVectorFieldSource extends ValueSource {
       @Override
       public float[] floatVectorVal(int doc) throws IOException {
         if (exists(doc)) {
-          return vectorValues.vectorValue();
+          return vectorValues.vectorValue(vectorValues.docToOrd(doc));
         } else {
           return null;
         }
@@ -74,7 +74,7 @@ public class FloatKnnVectorFieldSource extends ValueSource {
 
       @Override
       protected DocIdSetIterator getVectorIterator() {
-        return vectorValues;
+        return vectorValues.iterator();
       }
     };
   }

@@ -429,37 +429,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     private class ExitableFloatVectorValues extends FloatVectorValues {
-      private int docToCheck;
+      private int nextCheck;
       private final FloatVectorValues vectorValues;
 
       public ExitableFloatVectorValues(FloatVectorValues vectorValues) {
         this.vectorValues = vectorValues;
-        docToCheck = 0;
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        final int advance = vectorValues.advance(target);
-        if (advance >= docToCheck) {
-          checkAndThrow();
-          docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
-        }
-        return advance;
-      }
-
-      @Override
-      public int docID() {
-        return vectorValues.docID();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        final int nextDoc = vectorValues.nextDoc();
-        if (nextDoc >= docToCheck) {
-          checkAndThrow();
-          docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
-        }
-        return nextDoc;
       }
 
       @Override
@@ -468,8 +442,19 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public float[] vectorValue() throws IOException {
-        return vectorValues.vectorValue();
+      public float[] vectorValue(int ord) throws IOException {
+        if (nextCheck >= DOCS_BETWEEN_TIMEOUT_CHECK) {
+          checkAndThrow();
+          nextCheck = 0;
+        } else {
+          nextCheck++;
+        }
+        return vectorValues.vectorValue(ord);
+      }
+
+      @Override
+      public int ordToDoc(int ord) {
+        return vectorValues.ordToDoc(ord);
       }
 
       @Override
@@ -480,6 +465,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       @Override
       public VectorScorer scorer(float[] target) throws IOException {
         return vectorValues.scorer(target);
+      }
+
+      @Override
+      public FloatVectorValues copy() {
+        throw new UnsupportedOperationException();
       }
 
       /**
@@ -501,37 +491,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     private class ExitableByteVectorValues extends ByteVectorValues {
-      private int docToCheck;
+      private int nextCheck;
       private final ByteVectorValues vectorValues;
 
       public ExitableByteVectorValues(ByteVectorValues vectorValues) {
         this.vectorValues = vectorValues;
-        docToCheck = 0;
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        final int advance = vectorValues.advance(target);
-        if (advance >= docToCheck) {
-          checkAndThrow();
-          docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
-        }
-        return advance;
-      }
-
-      @Override
-      public int docID() {
-        return vectorValues.docID();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        final int nextDoc = vectorValues.nextDoc();
-        if (nextDoc >= docToCheck) {
-          checkAndThrow();
-          docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
-        }
-        return nextDoc;
       }
 
       @Override
@@ -545,13 +509,29 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public byte[] vectorValue() throws IOException {
-        return vectorValues.vectorValue();
+      public byte[] vectorValue(int ord) throws IOException {
+        if (nextCheck >= DOCS_BETWEEN_TIMEOUT_CHECK) {
+          checkAndThrow();
+          nextCheck = 0;
+        } else {
+          nextCheck++;
+        }
+        return vectorValues.vectorValue(ord);
+      }
+
+      @Override
+      public int ordToDoc(int ord) {
+        return vectorValues.ordToDoc(ord);
       }
 
       @Override
       public VectorScorer scorer(byte[] target) throws IOException {
         return vectorValues.scorer(target);
+      }
+
+      @Override
+      public ByteVectorValues copy() {
+        throw new UnsupportedOperationException();
       }
 
       /**

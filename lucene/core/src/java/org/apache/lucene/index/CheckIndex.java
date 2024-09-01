@@ -2760,16 +2760,16 @@ public final class CheckIndex implements Closeable {
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
       throws IOException {
-    int docCount = 0;
+    int count = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
-    while (values.nextDoc() != NO_MORE_DOCS) {
+    while (count < values.size()) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (values.docID() % everyNdoc == 0) {
+      if (values.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
           codecReader
               .getVectorReader()
-              .search(fieldInfo.name, values.vectorValue(), collector, null);
+              .search(fieldInfo.name, values.vectorValue(count), collector, null);
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -2777,7 +2777,7 @@ public final class CheckIndex implements Closeable {
           }
         }
       }
-      int valueLength = values.vectorValue().length;
+      int valueLength = values.vectorValue(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2787,19 +2787,19 @@ public final class CheckIndex implements Closeable {
                 + " not matching the field's dimension="
                 + fieldInfo.getVectorDimension());
       }
-      ++docCount;
+      ++count;
     }
-    if (docCount != values.size()) {
+    if (count != values.size()) {
       throw new CheckIndexException(
           "Field \""
               + fieldInfo.name
               + "\" has size="
               + values.size()
               + " but when iterated, returns "
-              + docCount
+              + count
               + " docs with values");
     }
-    status.totalVectorValues += docCount;
+    status.totalVectorValues += count;
   }
 
   private static void checkByteVectorValues(
@@ -2808,21 +2808,23 @@ public final class CheckIndex implements Closeable {
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
       throws IOException {
-    int docCount = 0;
+    int count = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
     boolean supportsSearch = vectorsReaderSupportsSearch(codecReader, fieldInfo.name);
-    while (values.nextDoc() != NO_MORE_DOCS) {
+    while (count < values.size()) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (supportsSearch && values.docID() % everyNdoc == 0) {
+      if (supportsSearch && values.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
+        codecReader
+            .getVectorReader()
+            .search(fieldInfo.name, values.vectorValue(count), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
         }
       }
-      int valueLength = values.vectorValue().length;
+      int valueLength = values.vectorValue(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2832,19 +2834,19 @@ public final class CheckIndex implements Closeable {
                 + " not matching the field's dimension="
                 + fieldInfo.getVectorDimension());
       }
-      ++docCount;
+      ++count;
     }
-    if (docCount != values.size()) {
+    if (count != values.size()) {
       throw new CheckIndexException(
           "Field \""
               + fieldInfo.name
               + "\" has size="
               + values.size()
               + " but when iterated, returns "
-              + docCount
+              + count
               + " docs with values");
     }
-    status.totalVectorValues += docCount;
+    status.totalVectorValues += count;
   }
 
   /**

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util.quantization;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.quantization.ScalarQuantizer.SCRATCH_SIZE;
 
 import java.io.IOException;
@@ -46,9 +47,8 @@ public class TestScalarQuantizer extends LuceneTestCase {
         }
         ScalarQuantizer scalarQuantizer =
             random().nextBoolean()
-                ? ScalarQuantizer.fromVectors(floatVectorValues, 0.9f, numVecs, bits)
-                : ScalarQuantizer.fromVectorsAutoInterval(
-                    floatVectorValues, function, numVecs, bits);
+                ? ScalarQuantizer.fromVectors(floatVectorValues, 0.9f, bits)
+                : ScalarQuantizer.fromVectorsAutoInterval(floatVectorValues, function, bits);
         // We simply assert that we created a scalar quantizer and didn't trip any assertions
         // the quality of the quantization might be poor, but this is expected as sampling size is
         // tiny
@@ -71,16 +71,14 @@ public class TestScalarQuantizer extends LuceneTestCase {
         FloatVectorValues floatVectorValues = fromFloats(floats);
         expectThrows(
             IllegalStateException.class,
-            () -> ScalarQuantizer.fromVectors(floatVectorValues, 0.9f, numVecs, bits));
+            () -> ScalarQuantizer.fromVectors(floatVectorValues, 0.9f, bits));
         VectorSimilarityFunction actualFunction =
             function == VectorSimilarityFunction.COSINE
                 ? VectorSimilarityFunction.DOT_PRODUCT
                 : function;
         expectThrows(
             IllegalStateException.class,
-            () ->
-                ScalarQuantizer.fromVectorsAutoInterval(
-                    floatVectorValues, actualFunction, numVecs, bits));
+            () -> ScalarQuantizer.fromVectorsAutoInterval(floatVectorValues, actualFunction, bits));
       }
     }
   }
@@ -92,8 +90,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
     float[][] floats = randomFloats(numVecs, dims);
     FloatVectorValues floatVectorValues = fromFloats(floats);
-    ScalarQuantizer scalarQuantizer =
-        ScalarQuantizer.fromVectors(floatVectorValues, 1, numVecs, (byte) 7);
+    ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, 1, (byte) 7);
     float[] dequantized = new float[dims];
     byte[] quantized = new byte[dims];
     byte[] requantized = new byte[dims];
@@ -156,7 +153,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
       ScalarQuantizer.fromVectors(
           floatVectorValues,
           0.99f,
-          floatVectorValues.numLiveVectors,
           (byte) 7,
           Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
@@ -166,7 +162,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
       ScalarQuantizer.fromVectors(
           floatVectorValues,
           0.99f,
-          floatVectorValues.numLiveVectors,
           (byte) 7,
           Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
@@ -176,7 +171,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
       ScalarQuantizer.fromVectors(
           floatVectorValues,
           0.99f,
-          floatVectorValues.numLiveVectors,
           (byte) 7,
           Math.max(floatVectorValues.numLiveVectors - 1, SCRATCH_SIZE + 1));
     }
@@ -186,7 +180,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
       ScalarQuantizer.fromVectors(
           floatVectorValues,
           0.99f,
-          floatVectorValues.numLiveVectors,
           (byte) 7,
           Math.max(random().nextInt(floatVectorValues.floats.length - 1) + 1, SCRATCH_SIZE + 1));
     }
@@ -203,8 +196,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
     FloatVectorValues floatVectorValues = fromFloats(floats);
     ScalarQuantizer scalarQuantizer =
-        ScalarQuantizer.fromVectorsAutoInterval(
-            floatVectorValues, similarityFunction, numVecs, (byte) 4);
+        ScalarQuantizer.fromVectorsAutoInterval(floatVectorValues, similarityFunction, (byte) 4);
     assertNotNull(scalarQuantizer);
     float[] dequantized = new float[dims];
     byte[] quantized = new byte[dims];
@@ -289,10 +281,15 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
     @Override
     public int size() {
+      // FIXME I don't get what this is up to
       return floats.length;
     }
 
     @Override
+    public float[] vectorValue(int ord) throws IOException {
+      return floats[ord];
+    }
+
     public float[] vectorValue() throws IOException {
       if (curDoc == -1 || curDoc >= floats.length) {
         throw new IOException("Current doc not set or too many iterations");
@@ -300,7 +297,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
       return floats[curDoc];
     }
 
-    @Override
     public int docID() {
       if (curDoc >= floats.length) {
         return NO_MORE_DOCS;
@@ -308,7 +304,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
       return curDoc;
     }
 
-    @Override
     public int nextDoc() throws IOException {
       while (++curDoc < floats.length) {
         if (deletedVectors == null || !deletedVectors.contains(curDoc)) {
@@ -318,7 +313,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
       return docID();
     }
 
-    @Override
     public int advance(int target) throws IOException {
       curDoc = target - 1;
       return nextDoc();

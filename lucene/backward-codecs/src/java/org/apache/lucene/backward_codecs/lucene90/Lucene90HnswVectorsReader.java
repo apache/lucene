@@ -20,7 +20,6 @@ package org.apache.lucene.backward_codecs.lucene90;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.SplittableRandom;
@@ -32,9 +31,9 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -395,42 +394,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      return vectorValue(ord);
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() {
-      if (++ord >= size()) {
-        doc = NO_MORE_DOCS;
-      } else {
-        doc = ordToDoc[ord];
-      }
-      return doc;
-    }
-
-    @Override
-    public int advance(int target) {
-      assert docID() < target;
-      ord = Arrays.binarySearch(ordToDoc, ord + 1, ordToDoc.length, target);
-      if (ord < 0) {
-        ord = -(ord + 1);
-      }
-      assert ord <= ordToDoc.length;
-      if (ord == ordToDoc.length) {
-        doc = NO_MORE_DOCS;
-      } else {
-        doc = ordToDoc[ord];
-      }
-      return doc;
-    }
-
-    @Override
     public OffHeapFloatVectorValues copy() {
       return new OffHeapFloatVectorValues(dimension, ordToDoc, similarityFunction, dataIn.clone());
     }
@@ -455,12 +418,12 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.similarityFunction.compare(values.vectorValue(), target);
+          return values.similarityFunction.compare(values.vectorValue(iterator().index()), target);
         }
 
         @Override
-        public DocIdSetIterator iterator() {
-          return values;
+        public KnnVectorValues.KnnValuesDocIterator iterator() {
+          return values.iterator();
         }
       };
     }

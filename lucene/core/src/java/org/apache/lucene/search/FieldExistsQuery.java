@@ -181,8 +181,8 @@ public class FieldExistsQuery extends Query {
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           iterator =
               switch (fieldInfo.getVectorEncoding()) {
-                case FLOAT32 -> context.reader().getFloatVectorValues(field);
-                case BYTE -> context.reader().getByteVectorValues(field);
+                case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
+                case BYTE -> context.reader().getByteVectorValues(field).iterator();
               };
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values

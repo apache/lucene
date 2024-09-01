@@ -206,121 +206,83 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
+  /** Sorting FloatVectorValues that maps ordinals using the provided sortMap */
   private static class SortingFloatVectorValues extends FloatVectorValues {
-    final int size;
-    final int dimension;
-    final FixedBitSet docsWithField;
-    final float[][] vectors;
-
-    private int docId = -1;
+    final FloatVectorValues delegate;
+    final Sorter.DocMap sortMap;
 
     SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.size = delegate.size();
-      this.dimension = delegate.dimension();
-      docsWithField = new FixedBitSet(sortMap.size());
-      vectors = new float[sortMap.size()][];
-      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
-        int newDocID = sortMap.oldToNew(doc);
-        docsWithField.set(newDocID);
-        vectors[newDocID] = delegate.vectorValue().clone();
-      }
+      this.delegate = delegate;
+      this.sortMap = sortMap;
     }
 
     @Override
-    public int docID() {
-      return docId;
+    public float[] vectorValue(int ord) throws IOException {
+      return delegate.vectorValue(sortMap.newToOld(ord));
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      return vectors[docId];
+    public int ordToDoc(int ord) {
+      return delegate.ordToDoc(sortMap.newToOld(ord));
     }
 
     @Override
     public int dimension() {
-      return dimension;
+      return delegate.dimension();
     }
 
     @Override
     public int size() {
-      return size;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= docsWithField.length()) {
-        return NO_MORE_DOCS;
-      }
-      return docId = docsWithField.nextSetBit(target);
+      return delegate.size();
     }
 
     @Override
     public VectorScorer scorer(float[] target) {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public FloatVectorValues copy() {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private static class SortingByteVectorValues extends ByteVectorValues {
-    final int size;
-    final int dimension;
-    final FixedBitSet docsWithField;
-    final byte[][] vectors;
-
-    private int docId = -1;
+    final ByteVectorValues delegate;
+    final Sorter.DocMap sortMap;
 
     SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.size = delegate.size();
-      this.dimension = delegate.dimension();
-      docsWithField = new FixedBitSet(sortMap.size());
-      vectors = new byte[sortMap.size()][];
-      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
-        int newDocID = sortMap.oldToNew(doc);
-        docsWithField.set(newDocID);
-        vectors[newDocID] = delegate.vectorValue().clone();
-      }
+      this.delegate = delegate;
+      this.sortMap = sortMap;
     }
 
     @Override
-    public int docID() {
-      return docId;
+    public byte[] vectorValue(int ord) throws IOException {
+      return delegate.vectorValue(sortMap.newToOld(ord));
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
-    }
-
-    @Override
-    public byte[] vectorValue() throws IOException {
-      return vectors[docId];
+    public int ordToDoc(int ord) {
+      return delegate.ordToDoc(sortMap.newToOld(ord));
     }
 
     @Override
     public int dimension() {
-      return dimension;
+      return delegate.dimension();
     }
 
     @Override
     public int size() {
-      return size;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= docsWithField.length()) {
-        return NO_MORE_DOCS;
-      }
-      return docId = docsWithField.nextSetBit(target);
+      return delegate.size();
     }
 
     @Override
     public VectorScorer scorer(byte[] target) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ByteVectorValues copy() {
       throw new UnsupportedOperationException();
     }
   }

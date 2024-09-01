@@ -125,7 +125,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
           && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
       FloatVectorValues floatValues = delegate.getFloatVectorValues(field);
       assert floatValues != null;
-      assert floatValues.docID() == -1;
+      assert floatValues.iterator().docID() == -1;
       assert floatValues.size() >= 0;
       assert floatValues.dimension() > 0;
       return floatValues;
@@ -139,7 +139,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
           && fi.getVectorEncoding() == VectorEncoding.BYTE;
       ByteVectorValues values = delegate.getByteVectorValues(field);
       assert values != null;
-      assert values.docID() == -1;
+      assert values.iterator().docID() == -1;
       assert values.size() >= 0;
       assert values.dimension() > 0;
       return values;

@@ -24,10 +24,9 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -80,9 +79,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
         case FLOAT32:
           BufferedFloatVectorValues bufferedFloatVectorValues =
               new BufferedFloatVectorValues(
-                  fieldData.docsWithField,
-                  (List<float[]>) fieldData.vectors,
-                  fieldData.fieldInfo.getVectorDimension());
+                  (List<float[]>) fieldData.vectors, fieldData.fieldInfo.getVectorDimension());
           FloatVectorValues floatVectorValues =
               sortMap != null
                   ? new SortingFloatVectorValues(bufferedFloatVectorValues, sortMap)
@@ -92,9 +89,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
         case BYTE:
           BufferedByteVectorValues bufferedByteVectorValues =
               new BufferedByteVectorValues(
-                  fieldData.docsWithField,
-                  (List<byte[]>) fieldData.vectors,
-                  fieldData.fieldInfo.getVectorDimension());
+                  (List<byte[]>) fieldData.vectors, fieldData.fieldInfo.getVectorDimension());
           ByteVectorValues byteVectorValues =
               sortMap != null
                   ? new SortingByteVectorValues(bufferedByteVectorValues, sortMap)
@@ -105,126 +100,88 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
+  /**
+   * Sorting FloatVectorValues that maps ordinals using the provided sortMap expressed in terms of
+   * docids
+   */
   private static class SortingFloatVectorValues extends FloatVectorValues {
-    private final BufferedFloatVectorValues randomAccess;
-    private final int[] docIdOffsets;
-    private int docId = -1;
+    private final BufferedFloatVectorValues delegate;
+    private final int[] newToOld;
 
     SortingFloatVectorValues(BufferedFloatVectorValues delegate, Sorter.DocMap sortMap)
         throws IOException {
-      this.randomAccess = delegate.copy();
-      this.docIdOffsets = new int[sortMap.size()];
-
-      int offset = 1; // 0 means no vector for this (field, document)
-      int docID;
-      while ((docID = delegate.nextDoc()) != NO_MORE_DOCS) {
-        int newDocID = sortMap.oldToNew(docID);
-        docIdOffsets[newDocID] = offset++;
-      }
+      this.delegate = delegate.copy();
+      newToOld = docMapToOrdMap(delegate, sortMap);
     }
 
     @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      while (docId < docIdOffsets.length - 1) {
-        ++docId;
-        if (docIdOffsets[docId] != 0) {
-          return docId;
-        }
-      }
-      docId = NO_MORE_DOCS;
-      return docId;
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      return randomAccess.vectorValue(docIdOffsets[docId] - 1);
+    public float[] vectorValue(int ord) throws IOException {
+      return delegate.vectorValue(newToOld[ord]);
     }
 
     @Override
     public int dimension() {
-      return randomAccess.dimension();
+      return delegate.dimension();
     }
 
     @Override
     public int size() {
-      return randomAccess.size();
+      return delegate.size();
     }
 
     @Override
-    public int advance(int target) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public VectorScorer scorer(float[] target) {
+    public SortingFloatVectorValues copy() {
       throw new UnsupportedOperationException();
     }
   }
 
-  /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
+  private static int[] docMapToOrdMap(KnnVectorValues values, Sorter.DocMap docMap) {
+    int[] newToOld = new int[docMap.size()];
+    int ord = 0;
+    for (int doc = 0; doc < newToOld.length; doc++) {
+      int oldDoc = docMap.newToOld(doc);
+      int oldOrd = values.docToOrd(oldDoc); // no value represented by -1
+      if (oldOrd >= 0) {
+        newToOld[ord++] = oldOrd;
+      }
+    }
+    if (ord < newToOld.length) {
+      newToOld = ArrayUtil.copyOfSubArray(newToOld, 0, ord);
+    }
+    return newToOld;
+  }
+
+  /**
+   * Sorting ByteVectorValues that maps ordinals using the provided sortMap expressed in terms of
+   * docids
+   */
   private static class SortingByteVectorValues extends ByteVectorValues {
-    private final BufferedByteVectorValues randomAccess;
-    private final int[] docIdOffsets;
-    private int docId = -1;
+    private final BufferedByteVectorValues delegate;
+    private final int[] newToOld;
 
     SortingByteVectorValues(BufferedByteVectorValues delegate, Sorter.DocMap sortMap)
         throws IOException {
-      this.randomAccess = delegate.copy();
-      this.docIdOffsets = new int[sortMap.size()];
-
-      int offset = 1; // 0 means no vector for this (field, document)
-      int docID;
-      while ((docID = delegate.nextDoc()) != NO_MORE_DOCS) {
-        int newDocID = sortMap.oldToNew(docID);
-        docIdOffsets[newDocID] = offset++;
-      }
+      this.delegate = delegate;
+      newToOld = docMapToOrdMap(delegate, sortMap);
     }
 
     @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      while (docId < docIdOffsets.length - 1) {
-        ++docId;
-        if (docIdOffsets[docId] != 0) {
-          return docId;
-        }
-      }
-      docId = NO_MORE_DOCS;
-      return docId;
-    }
-
-    @Override
-    public byte[] vectorValue() throws IOException {
-      return randomAccess.vectorValue(docIdOffsets[docId] - 1);
+    public byte[] vectorValue(int ord) throws IOException {
+      return delegate.vectorValue(newToOld[ord]);
     }
 
     @Override
     public int dimension() {
-      return randomAccess.dimension();
+      return delegate.dimension();
     }
 
     @Override
     public int size() {
-      return randomAccess.size();
+      return delegate.size();
     }
 
     @Override
-    public int advance(int target) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public VectorScorer scorer(byte[] target) {
+    public SortingByteVectorValues copy() {
       throw new UnsupportedOperationException();
     }
   }
@@ -296,7 +253,9 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public final long ramBytesUsed() {
-      if (vectors.size() == 0) return 0;
+      if (vectors.isEmpty()) {
+        return 0;
+      }
       return docsWithField.ramBytesUsed()
           + vectors.size()
               * (long)
@@ -307,25 +266,13 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   private static class BufferedFloatVectorValues extends FloatVectorValues {
-    final DocsWithFieldSet docsWithField;
-
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<float[]> vectors;
     final int dimension;
 
-    DocIdSetIterator docsWithFieldIter;
-    int ord = -1;
-
-    BufferedFloatVectorValues(
-        DocsWithFieldSet docsWithField, List<float[]> vectors, int dimension) {
-      this.docsWithField = docsWithField;
+    BufferedFloatVectorValues(List<float[]> vectors, int dimension) {
       this.vectors = vectors;
       this.dimension = dimension;
-      docsWithFieldIter = docsWithField.iterator();
-    }
-
-    public BufferedFloatVectorValues copy() {
-      return new BufferedFloatVectorValues(docsWithField, vectors, dimension);
     }
 
     @Override
@@ -339,58 +286,24 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public float[] vectorValue() {
-      return vectors.get(ord);
-    }
-
-    float[] vectorValue(int targetOrd) {
+    public float[] vectorValue(int targetOrd) {
       return vectors.get(targetOrd);
     }
 
     @Override
-    public int docID() {
-      return docsWithFieldIter.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      int docID = docsWithFieldIter.nextDoc();
-      if (docID != NO_MORE_DOCS) {
-        ++ord;
-      }
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public VectorScorer scorer(float[] target) {
-      throw new UnsupportedOperationException();
+    public BufferedFloatVectorValues copy() {
+      return this;
     }
   }
 
   private static class BufferedByteVectorValues extends ByteVectorValues {
-    final DocsWithFieldSet docsWithField;
-
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<byte[]> vectors;
     final int dimension;
 
-    DocIdSetIterator docsWithFieldIter;
-    int ord = -1;
-
-    BufferedByteVectorValues(DocsWithFieldSet docsWithField, List<byte[]> vectors, int dimension) {
-      this.docsWithField = docsWithField;
+    BufferedByteVectorValues(List<byte[]> vectors, int dimension) {
       this.vectors = vectors;
       this.dimension = dimension;
-      docsWithFieldIter = docsWithField.iterator();
-    }
-
-    public BufferedByteVectorValues copy() {
-      return new BufferedByteVectorValues(docsWithField, vectors, dimension);
     }
 
     @Override
@@ -404,36 +317,13 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public byte[] vectorValue() {
-      return vectors.get(ord);
-    }
-
-    byte[] vectorValue(int targetOrd) {
+    public byte[] vectorValue(int targetOrd) {
       return vectors.get(targetOrd);
     }
 
     @Override
-    public int docID() {
-      return docsWithFieldIter.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      int docID = docsWithFieldIter.nextDoc();
-      if (docID != NO_MORE_DOCS) {
-        ++ord;
-      }
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public VectorScorer scorer(byte[] target) {
-      throw new UnsupportedOperationException();
+    public BufferedByteVectorValues copy() {
+      return this;
     }
   }
 }

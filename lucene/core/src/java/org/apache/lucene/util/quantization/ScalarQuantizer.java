@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util.quantization;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -237,43 +235,33 @@ public class ScalarQuantizer {
    *
    * @param floatVectorValues the float vector values from which to calculate the quantiles
    * @param confidenceInterval the confidence interval used to calculate the quantiles
-   * @param totalVectorCount the total number of live float vectors in the index. This is vital for
-   *     accounting for deleted documents when calculating the quantiles.
    * @param bits the number of bits to use for quantization
    * @return A new {@link ScalarQuantizer} instance
    * @throws IOException if there is an error reading the float vector values
    */
   public static ScalarQuantizer fromVectors(
-      FloatVectorValues floatVectorValues,
-      float confidenceInterval,
-      int totalVectorCount,
-      byte bits)
-      throws IOException {
+      FloatVectorValues floatVectorValues, float confidenceInterval, byte bits) throws IOException {
     return fromVectors(
-        floatVectorValues,
-        confidenceInterval,
-        totalVectorCount,
-        bits,
-        SCALAR_QUANTIZATION_SAMPLE_SIZE);
+        floatVectorValues, confidenceInterval, bits, SCALAR_QUANTIZATION_SAMPLE_SIZE);
   }
 
   static ScalarQuantizer fromVectors(
       FloatVectorValues floatVectorValues,
       float confidenceInterval,
-      int totalVectorCount,
       byte bits,
       int quantizationSampleSize)
       throws IOException {
     assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
     assert quantizationSampleSize > SCRATCH_SIZE;
+    int totalVectorCount = floatVectorValues.size();
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
     if (confidenceInterval == 1f) {
       float min = Float.POSITIVE_INFINITY;
       float max = Float.NEGATIVE_INFINITY;
-      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        for (float v : floatVectorValues.vectorValue()) {
+      for (int ord = 0; ord < floatVectorValues.size(); ord++) {
+        for (float v : floatVectorValues.vectorValue(ord)) {
           min = Math.min(min, v);
           max = Math.max(max, v);
         }
@@ -289,8 +277,8 @@ public class ScalarQuantizer {
     if (totalVectorCount <= quantizationSampleSize) {
       int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
-      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        float[] vectorValue = floatVectorValues.vectorValue();
+      for (int ord = 0; ord < floatVectorValues.size(); ord++) {
+        float[] vectorValue = floatVectorValues.vectorValue(ord);
         System.arraycopy(
             vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
         i++;
@@ -309,13 +297,7 @@ public class ScalarQuantizer {
     int index = 0;
     int idx = 0;
     for (int i : vectorsToTake) {
-      while (index <= i) {
-        // We cannot use `advance(docId)` as MergedVectorValues does not support it
-        floatVectorValues.nextDoc();
-        index++;
-      }
-      assert floatVectorValues.docID() != NO_MORE_DOCS;
-      float[] vectorValue = floatVectorValues.vectorValue();
+      float[] vectorValue = floatVectorValues.vectorValue(i);
       System.arraycopy(
           vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
       idx++;
@@ -329,12 +311,10 @@ public class ScalarQuantizer {
   }
 
   public static ScalarQuantizer fromVectorsAutoInterval(
-      FloatVectorValues floatVectorValues,
-      VectorSimilarityFunction function,
-      int totalVectorCount,
-      byte bits)
+      FloatVectorValues floatVectorValues, VectorSimilarityFunction function, byte bits)
       throws IOException {
     assert function != VectorSimilarityFunction.COSINE;
+    int totalVectorCount = floatVectorValues.size();
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
@@ -356,8 +336,8 @@ public class ScalarQuantizer {
     if (totalVectorCount <= sampleSize) {
       int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
-      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        gatherSample(floatVectorValues, quantileGatheringScratch, sampledDocs, i);
+      for (int ord = 0; ord < floatVectorValues.size(); ord++) {
+        gatherSample(floatVectorValues.vectorValue(ord), quantileGatheringScratch, sampledDocs, i);
         i++;
         if (i == scratchSize) {
           extractQuantiles(confidenceIntervals, quantileGatheringScratch, upperSum, lowerSum);
@@ -372,13 +352,7 @@ public class ScalarQuantizer {
       int index = 0;
       int idx = 0;
       for (int i : vectorsToTake) {
-        while (index <= i) {
-          // We cannot use `advance(docId)` as MergedVectorValues does not support it
-          floatVectorValues.nextDoc();
-          index++;
-        }
-        assert floatVectorValues.docID() != NO_MORE_DOCS;
-        gatherSample(floatVectorValues, quantileGatheringScratch, sampledDocs, idx);
+        gatherSample(floatVectorValues.vectorValue(i), quantileGatheringScratch, sampledDocs, idx);
         idx++;
         if (idx == SCRATCH_SIZE) {
           extractQuantiles(confidenceIntervals, quantileGatheringScratch, upperSum, lowerSum);
@@ -437,12 +411,8 @@ public class ScalarQuantizer {
   }
 
   private static void gatherSample(
-      FloatVectorValues floatVectorValues,
-      float[] quantileGatheringScratch,
-      List<float[]> sampledDocs,
-      int i)
+      float[] vectorValue, float[] quantileGatheringScratch, List<float[]> sampledDocs, int i)
       throws IOException {
-    float[] vectorValue = floatVectorValues.vectorValue();
     float[] copy = new float[vectorValue.length];
     System.arraycopy(vectorValue, 0, copy, 0, vectorValue.length);
     sampledDocs.add(copy);

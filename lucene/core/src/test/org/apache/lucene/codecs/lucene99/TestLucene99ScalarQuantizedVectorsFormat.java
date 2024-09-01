@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static java.lang.String.format;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -116,7 +115,6 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     ScalarQuantizer scalarQuantizer =
         Lucene99ScalarQuantizedVectorsWriter.buildScalarQuantizer(
             new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors),
-            numVectors,
             similarityFunction,
             confidenceInterval,
             (byte) bits);
@@ -172,9 +170,9 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
             QuantizedByteVectorValues quantizedByteVectorValues =
                 quantizedReader.getQuantizedVectorValues("f");
             int docId = -1;
-            while ((docId = quantizedByteVectorValues.nextDoc()) != NO_MORE_DOCS) {
-              byte[] vector = quantizedByteVectorValues.vectorValue();
-              float offset = quantizedByteVectorValues.getScoreCorrectionConstant();
+            for (int ord = 0; ord < quantizedByteVectorValues.size(); ord++) {
+              byte[] vector = quantizedByteVectorValues.vectorValue(ord);
+              float offset = quantizedByteVectorValues.getScoreCorrectionConstant(ord);
               for (int i = 0; i < dim; i++) {
                 assertEquals(vector[i], expectedVectors[docId][i]);
               }

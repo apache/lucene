@@ -60,10 +60,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<byte[]>) addField(fieldInfo);
         ByteVectorValues mergedBytes =
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-        for (int doc = mergedBytes.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = mergedBytes.nextDoc()) {
-          byteWriter.addValue(doc, mergedBytes.vectorValue());
+        for (int ord = 0; ord < mergedBytes.size(); ord++) {
+          byteWriter.addValue(mergedBytes.ordToDoc(ord), mergedBytes.vectorValue(ord));
         }
         break;
       case FLOAT32:
@@ -71,10 +69,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
             MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-        for (int doc = mergedFloats.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = mergedFloats.nextDoc()) {
-          floatWriter.addValue(doc, mergedFloats.vectorValue());
+        for (int ord = 0; ord < mergedFloats.size(); ord++) {
+          floatWriter.addValue(mergedFloats.ordToDoc(ord), mergedFloats.vectorValue(ord));
         }
         break;
     }
@@ -118,15 +114,16 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
     final FloatVectorValues values;
 
+    int ord = -1;
+
     FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) {
       super(docMap);
       this.values = values;
-      assert values.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return values.nextDoc();
+      return values.ordToDoc(++ord);
     }
   }
 
@@ -134,15 +131,16 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
     final ByteVectorValues values;
 
+    int ord = -1;
+
     ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues values) {
       super(docMap);
       this.values = values;
-      assert values.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return values.nextDoc();
+      return values.ordToDoc(++ord);
     }
   }
 
@@ -287,44 +285,48 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private final List<FloatVectorValuesSub> subs;
       private final DocIDMerger<FloatVectorValuesSub> docIdMerger;
       private final int size;
-      private int docId;
-      FloatVectorValuesSub current;
+      private final int[] ends;
 
       private MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
         int totalSize = 0;
+        ends = new int[subs.size()];
+        int iSub = 0;
         for (FloatVectorValuesSub sub : subs) {
           totalSize += sub.values.size();
+          ends[iSub++] = totalSize;
         }
         size = totalSize;
-        docId = -1;
       }
 
       @Override
-      public int docID() {
-        return docId;
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        current = docIdMerger.next();
-        if (current == null) {
-          docId = NO_MORE_DOCS;
-        } else {
-          docId = current.mappedDocID;
+      public float[] vectorValue(int ord) throws IOException {
+        // TODO: if this is a bottleneck we could predict the last iSub
+        int iSub = Arrays.binarySearch(ends, ord);
+        if (iSub < 0) {
+          iSub = -(iSub + 1);
         }
-        return docId;
+        if (iSub == 0) {
+          return subs.get(iSub).values.vectorValue(ord);
+        } else {
+          return subs.get(iSub).values.vectorValue(ord - ends[iSub - 1]);
+        }
       }
 
       @Override
-      public float[] vectorValue() throws IOException {
-        return current.values.vectorValue();
+      public int ordToDoc(int ord) {
+        throw new UnsupportedOperationException();
+        /**
+         * TODO: is this needed? int iSub = Arrays.binarySearch(ends, ord); if (iSub < 0) { iSub =
+         * -(iSub + 1); } if (iSub == 0) { return subs.get(iSub).values.ordToDoc(ord); } else {
+         * return subs.get(iSub).values.ordToDoc(ord - ends[iSub - 1]); }
+         */
       }
 
       @Override
-      public int advance(int target) {
+      public int docToOrd(int ord) {
         throw new UnsupportedOperationException();
       }
 
@@ -342,12 +344,18 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       public VectorScorer scorer(float[] target) {
         throw new UnsupportedOperationException();
       }
+
+      @Override
+      public FloatVectorValues copy() {
+        throw new UnsupportedOperationException();
+      }
     }
 
     static class MergedByteVectorValues extends ByteVectorValues {
       private final List<ByteVectorValuesSub> subs;
       private final DocIDMerger<ByteVectorValuesSub> docIdMerger;
       private final int size;
+      private final int[] ends;
 
       private int docId;
       ByteVectorValuesSub current;
@@ -357,37 +365,36 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
         int totalSize = 0;
+        ends = new int[subs.size()];
+        int iSub = 0;
         for (ByteVectorValuesSub sub : subs) {
           totalSize += sub.values.size();
+          ends[iSub++] = totalSize;
         }
         size = totalSize;
-        docId = -1;
       }
 
       @Override
-      public byte[] vectorValue() throws IOException {
-        return current.values.vectorValue();
-      }
-
-      @Override
-      public int docID() {
-        return docId;
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        current = docIdMerger.next();
-        if (current == null) {
-          docId = NO_MORE_DOCS;
-        } else {
-          docId = current.mappedDocID;
+      public byte[] vectorValue(int ord) throws IOException {
+        int iSub = Arrays.binarySearch(ends, ord);
+        if (iSub < 0) {
+          iSub = -(iSub + 1);
         }
-        return docId;
+        if (iSub == 0) {
+          return subs.get(iSub).values.vectorValue(ord);
+        } else {
+          return subs.get(iSub).values.vectorValue(ord - ends[iSub - 1]);
+        }
       }
 
       @Override
-      public int advance(int target) {
+      public int ordToDoc(int ord) {
         throw new UnsupportedOperationException();
+        /**
+         * TODO: is this needed? int iSub = Arrays.binarySearch(ends, ord); if (iSub < 0) { iSub =
+         * -(iSub + 1); } if (iSub == 0) { return subs.get(iSub).values.ordToDoc(ord); } else {
+         * return subs.get(iSub).values.ordToDoc(ord - ends[iSub - 1]); }
+         */
       }
 
       @Override
@@ -402,6 +409,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public VectorScorer scorer(byte[] target) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public ByteVectorValues copy() {
         throw new UnsupportedOperationException();
       }
     }
