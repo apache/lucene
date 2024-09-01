@@ -57,6 +57,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedVectors) {
       BinaryQuantizer quantizer = binarizedVectors.getQuantizer();
       float[][] centroids = binarizedVectors.getCentroids();
+      // FIXME: precompute this once?
       int discretizedDimensions = BQVectorUtils.discretize(target.length, 64);
       byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
 
@@ -173,6 +174,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       this.targetVectors = targetVectors;
       this.similarityFunction = similarityFunction;
       this.discretizedDimensions = discretizedDimensions;
+      // FIXME: precompute this once?
       this.sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
       this.maxX1 = (float) (1.9 / Utils.constSqrt(discretizedDimensions - 1.0));
     }
@@ -222,8 +224,11 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               yield scoreMIP(
                   targetOrd, quantizedQuery, width, lower, quantizedSum, vmC, vDotC, cDotC);
           };
+
       // FIXME: this seems to only happen during randomized testing; never happened in PoC
-      return score > 0 ? score : 0f;
+      score = score > 0 ? score : 0f;
+
+      return 1 / (1f + score);
     }
 
     private float scoreMIP(

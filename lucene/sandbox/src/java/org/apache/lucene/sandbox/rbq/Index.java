@@ -17,13 +17,12 @@
 
 package org.apache.lucene.sandbox.rbq;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.lucene912.Lucene912HnswBinaryQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -38,6 +37,11 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
+
 public class Index {
   private static final double WRITER_BUFFER_MB = 64;
 
@@ -51,9 +55,14 @@ public class Index {
     int dim = 128;
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     int numDocs = 10000;
+    int flushFrequency = 1000;
 
     if (!indexPath.toFile().exists()) {
       indexPath.toFile().mkdirs();
+    } else {
+      for(Path fp : Files.walk(indexPath, 1).toList()) {
+        fp.toFile().delete();
+      }
     }
 
     Codec codec =
@@ -61,6 +70,11 @@ public class Index {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
             return new Lucene912HnswBinaryQuantizedVectorsFormat();
+          }
+
+          @Override
+          public PostingsFormat getPostingsFormatForField(String field) {
+            return new Lucene912PostingsFormat();
           }
         };
 
@@ -72,21 +86,24 @@ public class Index {
     FieldType fieldType = KnnFloatVectorField.createFieldType(dim, similarityFunction);
     iwc.setInfoStream(new PrintStreamInfoStream(System.out));
 
-    iwc.setMaxFullFlushMergeWaitMillis(10L);
-
     long start = System.nanoTime();
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter iw = new IndexWriter(dir, iwc)) {
       try (MMapDirectory directory = new MMapDirectory(docsPath);
           IndexInput vectorInput = directory.openInput(fvecPath.toString(), IOContext.DEFAULT)) {
         RandomAccessVectorValues.Floats vectorValues =
-            new VectorsReaderWithOffset(vectorInput, numDocs, dim, 0);
+            new VectorsReaderWithOffset(vectorInput, numDocs, dim, Integer.BYTES);
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
           doc.add(new KnnFloatVectorField("knn", vectorValues.vectorValue(i), fieldType));
           doc.add(new StoredField("id", i));
           iw.addDocument(doc);
+          if((i+1) % flushFrequency == 0) {
+            iw.flush();
+            iw.commit();
+          }
         }
+        iw.forceMerge(1);
         System.out.println("Done indexing " + numDocs + " documents; now flush");
       }
     }

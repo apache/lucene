@@ -38,6 +38,7 @@ public class BinaryQuantizer {
     if (dimensions <= 0) {
       throw new IllegalArgumentException("dimensions must be > 0 but was: " + dimensions);
     }
+    // FIXME: precompute this once?
     this.discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
     this.similarityFunction = similarityFunction;
     Random random = new Random(42);

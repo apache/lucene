@@ -37,7 +37,7 @@ public class Search {
     Path dataVecPath = Paths.get(basePath.toString(), dataset + "_base.fvecs");
     Path queryVecPath = Paths.get(basePath.toString(), dataset + "_query.fvecs");
     int numDataVectors = 10000;
-    int numDocs = 500;
+    int numDocs = 1500;
     int k = 100;
     int dim = 128;
     int totalQueryVectors = 100;
@@ -47,22 +47,22 @@ public class Search {
     Path indexPath = Paths.get(args[1]);
     Directory directory = FSDirectory.open(indexPath);
     DirectoryReader reader = DirectoryReader.open(directory);
-    IndexSearcher s = new IndexSearcher(reader, executorService);
-    s.setQueryCache(null); // don't bench the cache
-    s.setSimilarity(IndexSearcher.getDefaultSimilarity());
+    IndexSearcher searcher = new IndexSearcher(reader, executorService);
+    searcher.setQueryCache(null); // don't bench the cache
+    searcher.setSimilarity(IndexSearcher.getDefaultSimilarity());
 
     System.out.println(
         "Searcher: numDocs="
-            + s.getIndexReader().numDocs()
+            + searcher.getIndexReader().numDocs()
             + " maxDoc="
-            + s.getIndexReader().maxDoc());
+            + searcher.getIndexReader().maxDoc());
     IndexSearcher.LeafSlice[] slices =
-        IndexSearcher.slices(s.getIndexReader().leaves(), 250_000, 5);
+        IndexSearcher.slices(searcher.getIndexReader().leaves(), 250_000, 5);
     System.out.println(
         "Reader has "
             + slices.length
             + " slices, from "
-            + s.getIndexReader().leaves().size()
+            + searcher.getIndexReader().leaves().size()
             + " segments:");
 
     int correctCount = 0;
@@ -73,13 +73,13 @@ public class Search {
             queryDirectory.openInput(dataVecPath.toString(), IOContext.DEFAULT)) {
       int[][] G = readGroundTruth(groundTruthPath.toString(), queryDirectory, totalQueryVectors);
       RandomAccessVectorValues.Floats vectorValues =
-          new VectorsReaderWithOffset(queryVectorInput, totalQueryVectors, dim, 0);
+          new VectorsReaderWithOffset(queryVectorInput, totalQueryVectors, dim, Integer.BYTES);
       RandomAccessVectorValues.Floats dataVectors =
-          new VectorsReaderWithOffset(dataVectorInput, numDataVectors, dim, 0);
+          new VectorsReaderWithOffset(dataVectorInput, numDataVectors, dim, Integer.BYTES);
       for (int i = 0; i < totalQueryVectors; i++) {
         float[] queryVector = vectorValues.vectorValue(i);
         Query q = new KnnFloatVectorQuery("knn", queryVector, numDocs);
-        TopDocs collectedDocs = s.search(q, numDocs);
+        TopDocs collectedDocs = searcher.search(q, numDocs);
 
         HitQueue KNNs = new HitQueue(k, false);
         // rescore & get top k
