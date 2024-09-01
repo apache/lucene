@@ -35,6 +35,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.PrintStreamInfoStream;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 import java.nio.file.Files;
@@ -42,6 +43,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
+/** Class for testing binary quantization */
+@SuppressForbidden(reason = "Used for testing")
 public class Index {
   private static final double WRITER_BUFFER_MB = 64;
 

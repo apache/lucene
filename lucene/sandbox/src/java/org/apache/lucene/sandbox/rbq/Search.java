@@ -26,11 +26,14 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.*;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
+/** Class for testing binary quantization */
 public class Search {
 
   // FIXME: Temporary to help with debugging and iteration
+  @SuppressForbidden(reason = "Used for testing")
   public static void main(String[] args) throws Exception {
     String dataset = "siftsmall";
     Path basePath = Paths.get(args[0]);
