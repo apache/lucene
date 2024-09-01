@@ -247,7 +247,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
         new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
             queryVectors, targetVectors, similarityFunction, discretizedDimensions);
 
-    assertEquals(245482.47f, scorer.score(0), 0.1f);
+    assertEquals(1f / (1f + 245482.47f), scorer.score(0), 0.1f);
   }
 
   public void testScoreMIP() throws IOException {
@@ -502,6 +502,6 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
         new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
             queryVectors, targetVectors, similarityFunction, discretizedDimensions);
 
-    assertEquals(131.30249f, scorer.score(0), 0.0001f);
+    assertEquals(1 / (1f + 131.30249f), scorer.score(0), 0.0001f);
   }
 }
