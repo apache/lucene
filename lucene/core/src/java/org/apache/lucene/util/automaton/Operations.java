@@ -864,25 +864,22 @@ public final class Operations {
 
   /**
    * Returns true if the given automaton accepts all strings for the specified min/max range of the
-   * alphabet. The automaton must be deterministic with no transitions to dead states.
+   * alphabet. The automaton must be minimal.
    */
   public static boolean isTotal(Automaton a, int minAlphabet, int maxAlphabet) {
-    // minimal case
-    if (a.getNumStates() == 1 && a.isAccept(0) && a.getNumTransitions(0) == 1) {
+    // allows some "fuzziness" to detect non-minimal forms such as those from RegExp
+    if (a.isAccept(0) && a.getNumTransitions(0) == 1) {
       Transition t = new Transition();
       a.getTransition(0, 0, t);
-      return t.dest == 0 && t.min == minAlphabet && t.max == maxAlphabet;
+      int state = t.dest;
+      if (t.min == minAlphabet
+          && t.max == maxAlphabet
+          && a.isAccept(state)
+          && a.getNumTransitions(state) == 1) {
+        a.getTransition(state, 0, t);
+        return t.dest == state && t.min == minAlphabet && t.max == maxAlphabet;
+      }
     }
-    // deterministic case
-    if (a.isDeterministic() && hasDeadStatesFromInitial(a) == false) {
-      Automaton a2 = new Automaton();
-      int s = a2.createState();
-      a2.setAccept(s, true);
-      a2.addTransition(s, s, minAlphabet, maxAlphabet);
-      a2.finishState();
-      return subsetOf(a2, a);
-    }
-    // NFA, or has transitions to dead states, return false
     return false;
   }
 
