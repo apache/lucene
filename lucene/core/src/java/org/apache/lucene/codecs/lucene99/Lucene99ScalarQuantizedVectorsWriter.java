@@ -51,6 +51,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -651,8 +652,18 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         // TODO: this is very conservative, could we reuse information for even int4 quantization?
         || bits <= 4
         || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
+      int numVectors = 0;
+      DocIdSetIterator iter =
+          KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState).iterator();
+      // iterate vectorValues and increment numVectors
+      for (int doc = iter.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = iter.nextDoc()) {
+        numVectors++;
+      }
       return buildScalarQuantizer(
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
+          numVectors,
           fieldInfo.getVectorSimilarityFunction(),
           confidenceInterval,
           bits);
@@ -662,6 +673,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   static ScalarQuantizer buildScalarQuantizer(
       FloatVectorValues floatVectorValues,
+      int numVectors,
       VectorSimilarityFunction vectorSimilarityFunction,
       Float confidenceInterval,
       byte bits)
@@ -672,13 +684,14 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
     if (confidenceInterval != null && confidenceInterval == DYNAMIC_CONFIDENCE_INTERVAL) {
       return ScalarQuantizer.fromVectorsAutoInterval(
-          floatVectorValues, vectorSimilarityFunction, bits);
+          floatVectorValues, vectorSimilarityFunction, numVectors, bits);
     }
     return ScalarQuantizer.fromVectors(
         floatVectorValues,
         confidenceInterval == null
             ? calculateDefaultConfidenceInterval(floatVectorValues.dimension())
             : confidenceInterval,
+        numVectors,
         bits);
   }
 
@@ -791,6 +804,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       ScalarQuantizer quantizer =
           buildScalarQuantizer(
               new FloatVectorWrapper(floatVectors),
+              floatVectors.size(),
               fieldInfo.getVectorSimilarityFunction(),
               confidenceInterval,
               bits);

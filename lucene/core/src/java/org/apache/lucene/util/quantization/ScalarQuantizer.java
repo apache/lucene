@@ -240,20 +240,28 @@ public class ScalarQuantizer {
    * @throws IOException if there is an error reading the float vector values
    */
   public static ScalarQuantizer fromVectors(
-      FloatVectorValues floatVectorValues, float confidenceInterval, byte bits) throws IOException {
+      FloatVectorValues floatVectorValues,
+      float confidenceInterval,
+      int totalVectorCount,
+      byte bits)
+      throws IOException {
     return fromVectors(
-        floatVectorValues, confidenceInterval, bits, SCALAR_QUANTIZATION_SAMPLE_SIZE);
+        floatVectorValues,
+        confidenceInterval,
+        totalVectorCount,
+        bits,
+        SCALAR_QUANTIZATION_SAMPLE_SIZE);
   }
 
   static ScalarQuantizer fromVectors(
       FloatVectorValues floatVectorValues,
       float confidenceInterval,
+      int totalVectorCount,
       byte bits,
       int quantizationSampleSize)
       throws IOException {
     assert 0.9f <= confidenceInterval && confidenceInterval <= 1f;
     assert quantizationSampleSize > SCRATCH_SIZE;
-    int totalVectorCount = floatVectorValues.size();
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
@@ -311,10 +319,12 @@ public class ScalarQuantizer {
   }
 
   public static ScalarQuantizer fromVectorsAutoInterval(
-      FloatVectorValues floatVectorValues, VectorSimilarityFunction function, byte bits)
+      FloatVectorValues floatVectorValues,
+      VectorSimilarityFunction function,
+      int totalVectorCount,
+      byte bits)
       throws IOException {
     assert function != VectorSimilarityFunction.COSINE;
-    int totalVectorCount = floatVectorValues.size();
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
