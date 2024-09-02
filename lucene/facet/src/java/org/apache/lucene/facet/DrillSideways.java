@@ -350,7 +350,7 @@ public class DrillSideways {
       drillSidewaysCollectorManagers = null;
     }
     // Execute query
-    final Result<?, ?> result;
+    final Result<?, FacetsCollector> result;
     if (executor != null) {
       result = searchConcurrently(query, mainCollectorManager, drillSidewaysCollectorManagers);
     } else {
@@ -381,7 +381,7 @@ public class DrillSideways {
       assert drillSidewaysCollectorManagers.size() == numDims;
       drillSidewaysCollectors = new FacetsCollector[numDims];
       for (int dim = 0; dim < numDims; dim++) {
-        drillSidewaysCollectors[dim] = (FacetsCollector) result.drillSidewaysResults.get(dim);
+        drillSidewaysCollectors[dim] = result.drillSidewaysResults.get(dim);
       }
     } else {
       drillSidewaysDims = null;
@@ -406,7 +406,7 @@ public class DrillSideways {
    * CollectorManager} for drill-sideways dimensions.
    */
   public <C extends Collector, T, K extends Collector, R> Result<T, R> search(
-      final DrillDownQuery query,
+      DrillDownQuery query,
       CollectorManager<C, T> drillDownCollectorManager,
       List<CollectorManager<K, R>> drillSidewaysCollectorManagers)
       throws IOException {
@@ -485,8 +485,7 @@ public class DrillSideways {
   private <C extends Collector, T, K extends Collector, R> Result<T, R> searchConcurrently(
       final DrillDownQuery query,
       final CollectorManager<C, T> drillDownCollectorManager,
-      final List<CollectorManager<K, R>> drillSidewaysCollectorManagers)
-      throws IOException {
+      final List<CollectorManager<K, R>> drillSidewaysCollectorManagers) {
 
     final Map<String, Integer> drillDownDims = query.getDims();
     final CallableCollector<T> drillDownCallableCollector =

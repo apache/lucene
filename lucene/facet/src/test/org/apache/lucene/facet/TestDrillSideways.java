@@ -284,7 +284,6 @@ public class TestDrillSideways extends FacetTestCase {
         Weight dimWeight = searcher.createWeight(dimQ, ScoreMode.COMPLETE_NO_SCORES, 1f);
         Scorer dimScorer = dimWeight.scorer(ctx);
 
-        // FacetsCollector baseFC = new FacetsCollector();
         FacetsCollector dimFC = new FacetsCollector();
         DrillSidewaysScorer.DocsAndCost docsAndCost =
             new DrillSidewaysScorer.DocsAndCost(dimScorer, dimFC.getLeafCollector(ctx));
@@ -311,7 +310,6 @@ public class TestDrillSideways extends FacetTestCase {
             new DrillSidewaysScorer(
                 ctx,
                 baseScorer,
-                // baseFC.getLeafCollector(ctx),
                 new DrillSidewaysScorer.DocsAndCost[] {docsAndCost},
                 scoreSubDocsAtOnce);
         expectThrows(CollectionTerminatedException.class, () -> scorer.score(baseCollector, null));
@@ -321,7 +319,6 @@ public class TestDrillSideways extends FacetTestCase {
         // both our base and sideways dim facets collectors. What we really want to test here is
         // that the matching docs are still correctly present and populated after an early
         // termination occurs (i.e., #finish is properly called in that scenario):
-        // assertEquals(1, baseFC.getMatchingDocs().size());
         assertEquals(1, dimFC.getMatchingDocs().size());
       }
     }

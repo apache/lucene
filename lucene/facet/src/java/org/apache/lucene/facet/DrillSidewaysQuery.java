@@ -46,9 +46,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
 
   final Query baseQuery;
 
-  // final CollectorManager<C, T> drillDownCollectorManager;
   final List<CollectorManager<K, R>> drillSidewaysCollectorManagers;
-  // final List<C> managedDrillDownCollectors;
   final List<List<K>> managedDrillSidewaysCollectors;
 
   final Query[] drillDownQueries;
@@ -64,6 +62,9 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
       List<CollectorManager<K, R>> drillSidewaysCollectorManagers,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
+    // Note that the "managed" collector lists are synchronized here since bulkScorer()
+    // can be invoked concurrently and needs to remain thread-safe. We're OK with synchronizing
+    // on the whole list as contention is expected to remain very low:
     this(
         baseQuery,
         drillSidewaysCollectorManagers,
@@ -80,7 +81,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
   private DrillSidewaysQuery(
       Query baseQuery,
       List<CollectorManager<K, R>> drillSidewaysCollectorManagers,
-      final List<List<K>> managedDrillSidewaysCollectors,
+      List<List<K>> managedDrillSidewaysCollectors,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
     this.baseQuery = Objects.requireNonNull(baseQuery);
