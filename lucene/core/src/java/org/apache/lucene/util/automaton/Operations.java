@@ -869,6 +869,7 @@ public final class Operations {
   public static boolean isTotal(Automaton a, int minAlphabet, int maxAlphabet) {
     BitSet states = getLiveStates(a);
     Transition spare = new Transition();
+    int seenStates = 0;
     for (int state = states.nextSetBit(0); state >= 0; state = states.nextSetBit(state + 1)) {
       // all reachable states must be accept states
       if (a.isAccept(state) == false) return false;
@@ -884,9 +885,10 @@ public final class Operations {
       if (state == Integer.MAX_VALUE) {
         break; // or (state+1) would overflow
       }
+      seenStates++;
     }
-    // we've checked all the states, if its non-empty, its total
-    return a.getNumStates() > 0;
+    // we've checked all the states, automaton is either total or empty
+    return seenStates > 0;
   }
 
   /**
