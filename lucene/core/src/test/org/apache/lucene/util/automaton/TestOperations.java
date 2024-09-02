@@ -206,7 +206,7 @@ public class TestOperations extends LuceneTestCase {
             Operations.union(
                 Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
                 Automata.makeCharRange(101, Character.MAX_CODE_POINT - 1)));
-    assertFalse(Operations.isTotal(tricky3));
+    assertFalse(Operations.isTotal(tricky4));
   }
 
   /**
