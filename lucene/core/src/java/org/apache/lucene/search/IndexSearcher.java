@@ -524,7 +524,8 @@ public class IndexSearcher {
         return countTerm1 + countTerm2 - count(queries[2]);
       }
     }
-    //TODO Explicit call to getSlices to make sure that slices have been computed and the flag is populated.
+    // TODO Explicit call to getSlices to make sure that slices have been computed and the flag is
+    // populated.
     // This is super hacky, figure out another way?
     getSlices();
     return search(

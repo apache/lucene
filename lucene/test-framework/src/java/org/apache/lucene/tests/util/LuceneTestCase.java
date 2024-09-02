@@ -1929,22 +1929,18 @@ public abstract class LuceneTestCase extends Assert {
     return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.NONE);
   }
 
-  /**
-   * What level of concurrency is supported by the searcher being created
-   */
+  /** What level of concurrency is supported by the searcher being created */
   public enum Concurrency {
-    /**
-     * No concurrency, meaning an executor won't be provided to the searcher
-     */
+    /** No concurrency, meaning an executor won't be provided to the searcher */
     NONE,
     /**
-     * Inter-segment concurrency, meaning an executor will be provided to the searcher
-     * and slices will be randomly created to concurrently search entire segments
+     * Inter-segment concurrency, meaning an executor will be provided to the searcher and slices
+     * will be randomly created to concurrently search entire segments
      */
     INTER_SEGMENT,
     /**
-     * Intra-segment concurrency, meaning an executor will be provided to the searcher
-     * and slices will be randomly created to concurrently search segment partitions
+     * Intra-segment concurrency, meaning an executor will be provided to the searcher and slices
+     * will be randomly created to concurrently search segment partitions
      */
     INTRA_SEGMENT
   }

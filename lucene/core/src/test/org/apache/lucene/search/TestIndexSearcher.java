@@ -321,9 +321,7 @@ public class TestIndexSearcher extends LuceneTestCase {
         indexSearcher.leafContexts.stream().allMatch(ctx -> ctx.reader().maxDoc() > 1));
     IllegalStateException e = expectThrows(IllegalStateException.class, indexSearcher::getSlices);
     assertEquals(
-        "The same slice targets multiple partitions of the same leaf reader. "
-            + "A segment should rather get partitioned to be searched concurrently from as many slices as the "
-            + "number of partitions it is split into.",
+        "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.",
         e.getMessage());
   }
 }
