@@ -173,6 +173,17 @@ public class TestOperations extends LuceneTestCase {
     assertTrue(exc.getMessage().contains("input automaton is too large"));
   }
 
+  public void testIsTotal() {
+    // minimal
+    assertFalse(Operations.isTotal(Automata.makeEmpty()));
+    assertFalse(Operations.isTotal(Automata.makeEmptyString()));
+    assertTrue(Operations.isTotal(Automata.makeAnyString()));
+    assertTrue(Operations.isTotal(Automata.makeAnyBinary(), 0, 255));
+    assertFalse(Operations.isTotal(Automata.makeNonEmptyBinary(), 0, 255));
+    // deterministic, but not minimal
+    assertTrue(Operations.isTotal(Operations.repeat(Automata.makeAnyChar())));
+  }
+
   /**
    * Returns the set of all accepted strings.
    *
