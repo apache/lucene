@@ -143,11 +143,6 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public byte[] vectorValue(int ord) throws IOException {
-      return vectorValue(ord);
-    }
-
-    @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
           dimension, size, slice.clone(), byteSize, flatVectorsScorer, similarityFunction);

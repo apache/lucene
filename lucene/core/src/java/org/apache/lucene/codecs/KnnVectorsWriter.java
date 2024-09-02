@@ -317,12 +317,15 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public int ordToDoc(int ord) {
-        throw new UnsupportedOperationException();
-        /**
-         * TODO: is this needed? int iSub = Arrays.binarySearch(ends, ord); if (iSub < 0) { iSub =
-         * -(iSub + 1); } if (iSub == 0) { return subs.get(iSub).values.ordToDoc(ord); } else {
-         * return subs.get(iSub).values.ordToDoc(ord - ends[iSub - 1]); }
-         */
+        int iSub = Arrays.binarySearch(ends, ord);
+        if (iSub < 0) {
+          iSub = -(iSub + 1);
+        }
+        if (iSub == 0) {
+          return subs.get(iSub).values.ordToDoc(ord);
+        } else {
+          return subs.get(iSub).values.ordToDoc(ord - ends[iSub - 1]);
+        }
       }
 
       @Override
@@ -389,12 +392,15 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public int ordToDoc(int ord) {
-        throw new UnsupportedOperationException();
-        /**
-         * TODO: is this needed? int iSub = Arrays.binarySearch(ends, ord); if (iSub < 0) { iSub =
-         * -(iSub + 1); } if (iSub == 0) { return subs.get(iSub).values.ordToDoc(ord); } else {
-         * return subs.get(iSub).values.ordToDoc(ord - ends[iSub - 1]); }
-         */
+        int iSub = Arrays.binarySearch(ends, ord);
+        if (iSub < 0) {
+          iSub = -(iSub + 1);
+        }
+        if (iSub == 0) {
+          return subs.get(iSub).values.ordToDoc(ord);
+        } else {
+          return subs.get(iSub).values.ordToDoc(ord - ends[iSub - 1]);
+        }
       }
 
       @Override

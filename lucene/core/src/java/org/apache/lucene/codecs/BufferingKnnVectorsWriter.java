@@ -286,6 +286,16 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
+    public int ordToDoc(int ord) {
+      return ord;
+    }
+
+    @Override
+    public int docToOrd(int doc) {
+      return doc;
+    }
+
+    @Override
     public float[] vectorValue(int targetOrd) {
       return vectors.get(targetOrd);
     }

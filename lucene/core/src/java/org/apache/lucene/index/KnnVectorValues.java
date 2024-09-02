@@ -45,12 +45,12 @@ public abstract class KnnVectorValues {
 
   /** Return the docid of the document indexed with the given vector ordingl */
   public int ordToDoc(int ord) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("by class " + getClass().getName());
   }
 
   /** Return the vector ordinal indexed for the given document or -1 if there is none */
   public int docToOrd(int ord) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("by class " + getClass().getName());
   }
 
   /**
@@ -58,7 +58,7 @@ public abstract class KnnVectorValues {
    * different values at once, to avoid overwriting the underlying vector returned.
    */
   public KnnVectorValues copy() throws IOException {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("by class " + getClass().getName());
   }
 
   /** Returns the byte length of the vector values. */

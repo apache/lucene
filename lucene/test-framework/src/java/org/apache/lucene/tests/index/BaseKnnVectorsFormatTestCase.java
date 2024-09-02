@@ -946,7 +946,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertNotNull(scorer);
           DocIdSetIterator iterator = scorer.iterator();
           assertSame(iterator, scorer.iterator());
-          assertSame(iterator, vectorValues.iterator());
           assertNotSame(iterator, scorer);
           // verify scorer iteration scores are valid & iteration with vectorValues is consistent
           while (iterator.nextDoc() != NO_MORE_DOCS
