@@ -793,3 +793,37 @@ Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderCont
 Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on 
 Scorer.
 
+### BulkScorer#score(LeafCollector collector, Bits acceptDocs) removed
+
+Use `BulkScorer#score(LeafCollector collector, Bits acceptDocs, int min, int max)` instead. In order to score the 
+entire leaf, provide `0` as min and `DocIdSetIterator.NO_MORE_DOCS` as max. `BulkScorer` subclasses that override 
+such method need to instead override the method variant that takes the range of doc ids as well as arguments.
+
+### CollectorManager#newCollector and Collector#getLeafCollector contract
+
+With the introduction of intra-segment query concurrency support, a `LeafCollector` for a given `LeafReaderContext` 
+instance may be requested multiple times as part of a single search call. This may only happen across separate 
+`Collector` instances returned by `CollectorManager#newCollector`, and never for the same `Collector` instance, given 
+that a slice can only ever hold a single partition of a given segment. Any logic or computation that needs to happen
+once per segment requires specific handling in the collector manager implementation.
+See `TotalHitCountCollectorManager` as an example.
+
+### Weight#scorer, Weight#bulkScorer and Weight#scorerSupplier contract
+
+With the introduction of intra-segment query concurrency support, a `Scorer`, `ScorerSupplier` or `BulkScorer` may 
+be requested multiple times for the same `LeafReaderContext` instance as part of a single search call. 
+`Weight` implementations that rely on the assumption that a scorer, bulk scorer or scorer supplier for a given 
+`LeafReaderContext` is requested once per search need updating.
+
+### Signature of IndexSearcher#searchLeaf changed
+
+With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext, Weight, Collector)` 
+method accepts now two additional int arguments to identify the min and max doc id of the range that the leaf partition 
+being searched targets: `IndexSearcher#searchLeaf(LeafReaderContext, int, int, Weight, Collector)`.
+Subclasses of `IndexSearcher` that override the `searchLeaf` method need to be updated accordingly.
+
+### TotalHitCountCollectorManager creation
+
+`TotalHitCountCollectorManager` requires now a `boolean` flag upon creation, to indicate whether leaf partitions 
+are being searched or not. This is to remove needless overhead for the default case where slices don't target 
+segment partitions, which is a scenario that requires additional synchronization at the `Collector` level

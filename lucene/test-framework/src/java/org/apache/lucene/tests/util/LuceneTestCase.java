@@ -21,6 +21,7 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.search.IndexSearcher.LeafSlice;
 
 import com.carrotsearch.randomizedtesting.JUnit4MethodProvider;
 import com.carrotsearch.randomizedtesting.LifecycleScope;
@@ -1922,8 +1923,22 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static IndexSearcher newSearcher(
       IndexReader r, boolean maybeWrap, boolean wrapWithAssertions, boolean useThreads) {
+    if (useThreads) {
+      return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.INTRA_SEGMENT);
+    }
+    return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.NONE);
+  }
+
+  public enum Concurrency {
+    NONE,
+    INTER_SEGMENT,
+    INTRA_SEGMENT
+  }
+
+  public static IndexSearcher newSearcher(
+      IndexReader r, boolean maybeWrap, boolean wrapWithAssertions, Concurrency concurrency) {
     Random random = random();
-    if (useThreads == false) {
+    if (concurrency == Concurrency.NONE) {
       if (maybeWrap) {
         try {
           r = maybeWrapReader(r);
@@ -1973,7 +1988,8 @@ public abstract class LuceneTestCase extends Assert {
               new AssertingIndexSearcher(random, r, ex) {
                 @Override
                 protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                  return LuceneTestCase.slices(
+                      leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
                 }
               };
         } else {
@@ -1981,7 +1997,8 @@ public abstract class LuceneTestCase extends Assert {
               new AssertingIndexSearcher(random, r.getContext(), ex) {
                 @Override
                 protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                  return LuceneTestCase.slices(
+                      leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
                 }
               };
         }
@@ -1990,7 +2007,8 @@ public abstract class LuceneTestCase extends Assert {
             new IndexSearcher(r, ex) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                return LuceneTestCase.slices(
+                    leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
               }
             };
       }
@@ -2001,6 +2019,26 @@ public abstract class LuceneTestCase extends Assert {
       }
       return ret;
     }
+  }
+
+  /**
+   * Creates leaf slices according to the concurrency argument, that optionally leverage
+   * intra-segment concurrency by splitting segments into multiple partitions according to the
+   * maxDocsPerSlice argument.
+   */
+  private static LeafSlice[] slices(
+      List<LeafReaderContext> leaves,
+      int maxDocsPerSlice,
+      int maxSegmentsPerSlice,
+      Concurrency concurrency) {
+    if (concurrency == Concurrency.INTER_SEGMENT) {
+      return IndexSearcher.slices(leaves, maxDocsPerSlice, maxSegmentsPerSlice);
+    }
+    if (rarely()) {
+      // Rarely test slices without partitions even though intra-segment concurrency is supported
+      return IndexSearcher.slices(leaves, maxDocsPerSlice, maxSegmentsPerSlice);
+    }
+    return IndexSearcher.slicesWithPartitions(leaves, maxDocsPerSlice, maxSegmentsPerSlice);
   }
 
   /**

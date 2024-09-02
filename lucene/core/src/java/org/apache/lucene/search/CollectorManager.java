@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
+import org.apache.lucene.index.LeafReaderContext;
 
 /**
  * A manager of collectors. This class is useful to parallelize execution of search requests and has
@@ -30,6 +31,12 @@ import java.util.Collection;
  *       collections into a meaningful result. This method is only called after all leaves have been
  *       fully collected.
  * </ul>
+ *
+ * <p><strong>Note:</strong> Separate {@link Collector} instances returned by {@link
+ * #newCollector()} may be requested a {@link LeafCollector} via {@link
+ * Collector#getLeafCollector(LeafReaderContext)} for the same {@link
+ * org.apache.lucene.index.LeafReaderContext} instance. Any computation or logic that needs to
+ * happen once per segment requires specific handling in the collector manager implementation.
  *
  * @see IndexSearcher#search(Query, CollectorManager)
  * @lucene.experimental

@@ -526,7 +526,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
             bitSet.set(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     return new CacheAndCount(new BitDocIdSet(bitSet, count[0]), count[0]);
   }
 
@@ -544,7 +546,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
             builder.add(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     RoaringDocIdSet cache = builder.build();
     return new CacheAndCount(cache, cache.cardinality());
   }

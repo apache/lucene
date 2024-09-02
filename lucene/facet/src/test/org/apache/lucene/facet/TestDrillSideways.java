@@ -142,7 +142,7 @@ public class TestDrillSideways extends FacetTestCase {
   private IndexSearcher getNewSearcher(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
-    IndexSearcher searcher = newSearcher(reader, true, false, random().nextBoolean());
+    IndexSearcher searcher = newSearcher(reader, true, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     searcher.setTimeout(null);
@@ -314,7 +314,9 @@ public class TestDrillSideways extends FacetTestCase {
                 baseFC.getLeafCollector(ctx),
                 new DrillSidewaysScorer.DocsAndCost[] {docsAndCost},
                 scoreSubDocsAtOnce);
-        expectThrows(CollectionTerminatedException.class, () -> scorer.score(baseCollector, null));
+        expectThrows(
+            CollectionTerminatedException.class,
+            () -> scorer.score(baseCollector, null, 0, DocIdSetIterator.NO_MORE_DOCS));
 
         // We've set things up so that our base collector with throw CollectionTerminatedException
         // after collecting the first doc. This means we'll only collect the first indexed doc for

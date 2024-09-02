@@ -18,7 +18,6 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.List;
 import org.apache.lucene.search.CollectorManager;
 
 /**
@@ -49,9 +48,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
   private static class ReducedFacetsCollector extends FacetsCollector {
 
     public ReducedFacetsCollector(final Collection<FacetsCollector> facetsCollectors) {
-      final List<MatchingDocs> matchingDocs = this.getMatchingDocs();
-      facetsCollectors.forEach(
-          facetsCollector -> matchingDocs.addAll(facetsCollector.getMatchingDocs()));
+      this.getMatchingDocs().addAll(reduceMatchingDocs(facetsCollectors));
     }
   }
 }
