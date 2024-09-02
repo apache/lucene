@@ -410,6 +410,9 @@ Bug Fixes
 
 * GITHUB#13691: Fix incorrect exponent value in explain of SigmoidFunction. (Owais Kazi)
 
+* GITHUB#13703: Fix bug in LatLonPoint queries where narrow polygons close to latitude 90 don't
+  match any points due to an Integer overflow. (Ignacio Vera)
+
 Build
 ---------------------
 
