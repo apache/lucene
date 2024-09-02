@@ -117,6 +117,7 @@ public class DrillSideways {
    *
    * <p>Use this constructor to use the concurrent implementation
    */
+  @Deprecated
   public DrillSideways(
       IndexSearcher searcher,
       FacetsConfig config,
@@ -134,6 +135,7 @@ public class DrillSideways {
    * Subclass can override to customize drill down facets collector. Returning {@code null} is valid
    * if no drill down facet collection is needed.
    */
+  @Deprecated
   protected FacetsCollectorManager createDrillDownFacetsCollectorManager() {
     return new FacetsCollectorManager();
   }
@@ -142,11 +144,13 @@ public class DrillSideways {
    * Subclass can override to customize drill sideways facets collector. This should not return
    * {@code null} as we assume drill sideways is being used to collect "sideways" hits:
    */
+  @Deprecated
   protected FacetsCollectorManager createDrillSidewaysFacetsCollectorManager() {
     return new FacetsCollectorManager();
   }
 
   /** Subclass can override to customize per-dim Facets impl. */
+  @Deprecated
   protected Facets buildFacetsResult(
       FacetsCollector drillDowns, FacetsCollector[] drillSideways, String[] drillSidewaysDims)
       throws IOException {
@@ -185,6 +189,7 @@ public class DrillSideways {
   }
 
   /** Search, sorting by {@link Sort}, and computing drill down and sideways counts. */
+  @Deprecated
   public DrillSidewaysResult search(
       DrillDownQuery query, Query filter, FieldDoc after, int topN, Sort sort, boolean doDocScores)
       throws IOException {
@@ -218,11 +223,13 @@ public class DrillSideways {
   }
 
   /** Search, sorting by score, and computing drill down and sideways counts. */
+  @Deprecated
   public DrillSidewaysResult search(DrillDownQuery query, int topN) throws IOException {
     return search(null, query, topN);
   }
 
   /** Search, sorting by score, and computing drill down and sideways counts. */
+  @Deprecated
   public DrillSidewaysResult search(ScoreDoc after, DrillDownQuery query, int topN)
       throws IOException {
     int limit = searcher.getIndexReader().maxDoc();
@@ -256,6 +263,7 @@ public class DrillSideways {
    * FacetsCollector}s for the drill down and drill sideways dimensions are also exposed for
    * advanced use-cases that need access to them as an alternative to accessing the {@code Facets}.
    */
+  @Deprecated
   public static class DrillSidewaysResult {
     /** Combined drill down and sideways results. */
     public final Facets facets;
@@ -311,6 +319,7 @@ public class DrillSideways {
     }
   }
 
+  @Deprecated
   private DrillDownQuery getDrillDownQuery(
       final DrillDownQuery query, Query[] queries, final String excludedDimension) {
     final DrillDownQuery ddl = new DrillDownQuery(config, query.getBaseQuery());
@@ -325,6 +334,7 @@ public class DrillSideways {
 
   /** Runs a search, using a {@link CollectorManager} to gather and merge search results */
   @SuppressWarnings("unchecked")
+  @Deprecated
   public <R> ConcurrentDrillSidewaysResult<R> search(
       final DrillDownQuery query, final CollectorManager<?, R> hitCollectorManager)
       throws IOException {
@@ -482,6 +492,7 @@ public class DrillSideways {
     return new Result<>(collectorResult, drillSidewaysResults);
   }
 
+  @Deprecated
   private <C extends Collector, T, K extends Collector, R> Result<T, R> searchConcurrently(
       final DrillDownQuery query,
       final CollectorManager<C, T> drillDownCollectorManager,
@@ -526,6 +537,7 @@ public class DrillSideways {
   /**
    * Result of a concurrent drill sideways search, including the {@link Facets} and {@link TopDocs}.
    */
+  @Deprecated
   public static class ConcurrentDrillSidewaysResult<R> extends DrillSidewaysResult {
 
     /** The merged search results */
