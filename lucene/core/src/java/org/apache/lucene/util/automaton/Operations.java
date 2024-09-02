@@ -857,30 +857,36 @@ public final class Operations {
     return true;
   }
 
-  /** Returns true if the given automaton accepts all strings. The automaton must be minimized. */
+  /** Returns true if the given automaton accepts all strings. */
   public static boolean isTotal(Automaton a) {
     return isTotal(a, Character.MIN_CODE_POINT, Character.MAX_CODE_POINT);
   }
 
   /**
    * Returns true if the given automaton accepts all strings for the specified min/max range of the
-   * alphabet. The automaton must be minimal.
+   * alphabet.
    */
   public static boolean isTotal(Automaton a, int minAlphabet, int maxAlphabet) {
-    // allows some "fuzziness" to detect non-minimal forms such as those from RegExp
-    if (a.isAccept(0) && a.getNumTransitions(0) == 1) {
-      Transition t = new Transition();
-      a.getTransition(0, 0, t);
-      int state = t.dest;
-      if (t.min == minAlphabet
-          && t.max == maxAlphabet
-          && a.isAccept(state)
-          && a.getNumTransitions(state) == 1) {
-        a.getTransition(state, 0, t);
-        return t.dest == state && t.min == minAlphabet && t.max == maxAlphabet;
+    BitSet states = getLiveStates(a);
+    Transition spare = new Transition();
+    for (int state = states.nextSetBit(0); state >= 0; state = states.nextSetBit(state + 1)) {
+      // all reachable states must be accept states
+      if (a.isAccept(state) == false) return false;
+      // all reachable states must contain transitions covering minAlphabet-maxAlphabet
+      int previousLabel = minAlphabet - 1;
+      for (int transition = 0; transition < a.getNumTransitions(state); transition++) {
+        a.getTransition(state, transition, spare);
+        // no gaps are allowed
+        if (spare.min > previousLabel + 1) return false;
+        previousLabel = spare.max;
+      }
+      if (previousLabel < maxAlphabet) return false;
+      if (state == Integer.MAX_VALUE) {
+        break; // or (state+1) would overflow
       }
     }
-    return false;
+    // we've checked all the states, if its non-empty, its total
+    return a.getNumStates() > 0;
   }
 
   /**
