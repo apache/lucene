@@ -826,9 +826,3 @@ With the introduction of intra-segment query concurrency support, the `IndexSear
 method accepts now two additional int arguments to identify the min and max doc id of the range that the leaf partition 
 being searched targets: `IndexSearcher#searchLeaf(LeafReaderContext, int, int, Weight, Collector)`.
 Subclasses of `IndexSearcher` that override the `searchLeaf` method need to be updated accordingly.
-
-### TotalHitCountCollectorManager creation
-
-`TotalHitCountCollectorManager` requires now a `boolean` flag upon creation, to indicate whether leaf partitions 
-are being searched or not. This is to remove needless overhead for the default case where slices don't target 
-segment partitions, which is a scenario that requires additional synchronization at the `Collector` level

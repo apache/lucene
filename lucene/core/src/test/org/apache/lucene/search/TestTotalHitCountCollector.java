@@ -41,7 +41,7 @@ public class TestTotalHitCountCollector extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(reader, true, true, random().nextBoolean());
-    TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager(true);
+    TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager();
     int totalHits = searcher.search(new MatchAllDocsQuery(), collectorManager);
     assertEquals(5, totalHits);
 

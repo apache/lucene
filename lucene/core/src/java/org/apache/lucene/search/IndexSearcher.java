@@ -121,7 +121,7 @@ public class IndexSearcher {
    * method from constructor, which is a bad practice. Always non-null, regardless of whether an
    * executor is provided or not.
    */
-  private final CachingLeafSlicesSupplier leafSlicesSupplier;
+  private final Supplier<LeafSlice[]> leafSlicesSupplier;
 
   // Used internally for load balancing threads executing for the query
   private final TaskExecutor taskExecutor;
@@ -524,9 +524,7 @@ public class IndexSearcher {
         return countTerm1 + countTerm2 - count(queries[2]);
       }
     }
-    return search(
-        new ConstantScoreQuery(query),
-        new TotalHitCountCollectorManager(leafSlicesSupplier.hasSegmentPartitions()));
+    return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager());
   }
 
   /**
@@ -1262,7 +1260,6 @@ public class IndexSearcher {
    */
   private static class CachingLeafSlicesSupplier implements Supplier<LeafSlice[]> {
     private volatile LeafSlice[] leafSlices;
-    private volatile boolean hasSegmentPartitions;
 
     private final Function<List<LeafReaderContext>, LeafSlice[]> sliceProvider;
 
@@ -1274,49 +1271,35 @@ public class IndexSearcher {
       this.leaves = Objects.requireNonNull(leaves, "list of LeafReaderContext cannot be null");
     }
 
-    private boolean hasSegmentPartitions() {
-      computeSlices();
-      return hasSegmentPartitions;
-    }
-
     @Override
     public LeafSlice[] get() {
       if (leafSlices == null) {
-        computeSlices();
-      }
-      return leafSlices;
-    }
-
-    private void computeSlices() {
-      synchronized (this) {
-        if (leafSlices == null) {
-          leafSlices =
-              Objects.requireNonNull(
-                  sliceProvider.apply(leaves), "slices computed by the provider is null");
-          /*
-           * Enforce that there aren't multiple leaf partitions within the same leaf slice pointing to the
-           * same leaf context. It is a requirement that {@link Collector#getLeafCollector(LeafReaderContext)}
-           * gets called once per leaf context. Also, it does not make sense to partition a segment to then search
-           * those partitions as part of the same slice, because the goal of partitioning is parallel searching
-           * which happens at the slice level.
-           */
-          boolean hasPartitions = false;
-          for (LeafSlice leafSlice : leafSlices) {
-            Set<LeafReaderContext> distinctLeaves = new HashSet<>();
-            for (LeafReaderContextPartition leafPartition : leafSlice.partitions) {
-              if (leafPartition.minDocId > 0) {
-                hasPartitions = true;
+        synchronized (this) {
+          if (leafSlices == null) {
+            leafSlices =
+                Objects.requireNonNull(
+                    sliceProvider.apply(leaves), "slices computed by the provider is null");
+            /*
+             * Enforce that there aren't multiple leaf partitions within the same leaf slice pointing to the
+             * same leaf context. It is a requirement that {@link Collector#getLeafCollector(LeafReaderContext)}
+             * gets called once per leaf context. Also, it does not make sense to partition a segment to then search
+             * those partitions as part of the same slice, because the goal of partitioning is parallel searching
+             * which happens at the slice level.
+             */
+            for (LeafSlice leafSlice : leafSlices) {
+              Set<LeafReaderContext> distinctLeaves = new HashSet<>();
+              for (LeafReaderContextPartition leafPartition : leafSlice.partitions) {
+                distinctLeaves.add(leafPartition.ctx);
               }
-              distinctLeaves.add(leafPartition.ctx);
-            }
-            if (leafSlice.partitions.length != distinctLeaves.size()) {
-              throw new IllegalStateException(
-                  "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.");
+              if (leafSlice.partitions.length != distinctLeaves.size()) {
+                throw new IllegalStateException(
+                    "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.");
+              }
             }
           }
-          this.hasSegmentPartitions = hasPartitions;
         }
       }
+      return leafSlices;
     }
   }
 }
