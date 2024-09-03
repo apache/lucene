@@ -799,6 +799,11 @@ Use `BulkScorer#score(LeafCollector collector, Bits acceptDocs, int min, int max
 entire leaf, provide `0` as min and `DocIdSetIterator.NO_MORE_DOCS` as max. `BulkScorer` subclasses that override 
 such method need to instead override the method variant that takes the range of doc ids as well as arguments.
 
+### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter
+
+`collector.class` used to allow users to load a custom collector implementation. `collector.manager.class`
+replaces it by allowing users to load a custom collector manager instead. (Luca Cavanna)
+
 ### CollectorManager#newCollector and Collector#getLeafCollector contract
 
 With the introduction of intra-segment query concurrency support, a `LeafCollector` for a given `LeafReaderContext` 
