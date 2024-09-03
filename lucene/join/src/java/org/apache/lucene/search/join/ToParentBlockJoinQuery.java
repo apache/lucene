@@ -293,22 +293,24 @@ public class ToParentBlockJoinQuery extends Query {
 
     public Score(ScoreMode scoreMode) {
       this.scoreMode = scoreMode;
-      reset();
+      this.score = 0;
+      this.freq = 0;
     }
 
-    public void reset() {
-      score = 0;
-      freq = 0;
+    public void reset(float firstChildScore) {
+      score = firstChildScore;
+      freq = 1;
     }
 
     public void addChildScore(float childScore) {
+      freq++;
       switch (scoreMode) {
         case Total:
         case Avg:
           score += childScore;
           break;
         case Min:
-          score = freq == 0 ? childScore : Math.min(score, childScore);
+          score = Math.min(score, childScore);
           break;
         case Max:
           score = Math.max(score, childScore);
@@ -318,14 +320,13 @@ public class ToParentBlockJoinQuery extends Query {
         default:
           throw new AssertionError();
       }
-
-      freq++;
     }
 
     @Override
     public float score() {
+      assert freq > 0;
       double score = this.score;
-      if (scoreMode == ScoreMode.Avg && freq > 0) {
+      if (scoreMode == ScoreMode.Avg) {
         score /= freq;
       }
       return (float) score;
@@ -561,13 +562,13 @@ public class ToParentBlockJoinQuery extends Query {
         @Override
         public void collect(int doc) throws IOException {
           if (doc > currentParent) {
+            // Emit the current parent and setup scoring for the next parent
             if (currentParent >= 0) {
-              in.collect(currentParent); // Emit the current parent
+              in.collect(currentParent);
             }
 
-            // Get the next parent and reset the score
             currentParent = parents.nextSetBit(doc);
-            currentParentScore.reset();
+            currentParentScore.reset(scoreMode == ScoreMode.None ? 0 : scorer.score());
           } else if (doc == currentParent) {
             throw new IllegalStateException(
                 "Child query must not match same docs with parent filter. "
@@ -576,10 +577,8 @@ public class ToParentBlockJoinQuery extends Query {
                     + doc
                     + ", "
                     + childBulkScorer.getClass());
-          }
-
-          if (scoreMode != ScoreMode.None) {
-            currentParentScore.addChildScore(scorer.score());
+          } else {
+            currentParentScore.addChildScore(scoreMode == ScoreMode.None ? 0 : scorer.score());
           }
         }
 
