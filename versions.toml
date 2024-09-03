@@ -9,7 +9,7 @@ errorprone = "2.18.0"
 flexmark = "0.61.24"
 # @keep This is GJF version for spotless/ tidy.
 googleJavaFormat = "1.23.0"
-groovy = "3.0.21"
+groovy = "4.0.22"
 hamcrest = "2.2"
 icu4j = "74.2"
 javacc = "7.0.12"
@@ -19,7 +19,7 @@ jmh = "1.37"
 jts = "1.17.0"
 junit = "4.13.1"
 # @keep Minimum gradle version to run the build
-minGradle = "8.8"
+minGradle = "8.10"
 # @keep This is the minimum required Java version.
 minJava = "21"
 morfologik = "2.1.9"
@@ -49,7 +49,7 @@ flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbrev
 flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attributes", version.ref = "flexmark" }
 flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
-groovy = { module = "org.codehaus.groovy:groovy-all", version.ref = "groovy" }
+groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }

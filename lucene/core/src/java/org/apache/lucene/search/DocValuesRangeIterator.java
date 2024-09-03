@@ -14,18 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.document;
+package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.DocValuesSkipper;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.TwoPhaseIterator;
 
 /**
  * Wrapper around a {@link TwoPhaseIterator} for a doc-values range query that speeds things up by
  * taking advantage of a {@link DocValuesSkipper}.
+ *
+ * @lucene.experimental
  */
-final class DocValuesRangeIterator extends TwoPhaseIterator {
+public final class DocValuesRangeIterator extends TwoPhaseIterator {
 
   enum Match {
     /** None of the documents in the range match */
@@ -41,19 +41,29 @@ final class DocValuesRangeIterator extends TwoPhaseIterator {
   private final Approximation approximation;
   private final TwoPhaseIterator innerTwoPhase;
 
-  DocValuesRangeIterator(
-      TwoPhaseIterator twoPhase, DocValuesSkipper skipper, long lowerValue, long upperValue) {
-    super(new Approximation(twoPhase.approximation(), skipper, lowerValue, upperValue));
+  public DocValuesRangeIterator(
+      TwoPhaseIterator twoPhase,
+      DocValuesSkipper skipper,
+      long lowerValue,
+      long upperValue,
+      boolean queryRangeHasGaps) {
+    super(
+        queryRangeHasGaps
+            ? new RangeWithGapsApproximation(
+                twoPhase.approximation(), skipper, lowerValue, upperValue)
+            : new RangeNoGapsApproximation(
+                twoPhase.approximation(), skipper, lowerValue, upperValue));
     this.approximation = (Approximation) approximation();
     this.innerTwoPhase = twoPhase;
   }
 
-  static class Approximation extends DocIdSetIterator {
+  abstract static class Approximation extends DocIdSetIterator {
 
     private final DocIdSetIterator innerApproximation;
-    private final DocValuesSkipper skipper;
-    private final long lowerValue;
-    private final long upperValue;
+
+    protected final DocValuesSkipper skipper;
+    protected final long lowerValue;
+    protected final long upperValue;
 
     private int doc = -1;
 
@@ -137,7 +147,21 @@ final class DocValuesRangeIterator extends TwoPhaseIterator {
       return innerApproximation.cost();
     }
 
-    private Match match(int level) {
+    protected abstract Match match(int level);
+  }
+
+  private static final class RangeNoGapsApproximation extends Approximation {
+
+    RangeNoGapsApproximation(
+        DocIdSetIterator innerApproximation,
+        DocValuesSkipper skipper,
+        long lowerValue,
+        long upperValue) {
+      super(innerApproximation, skipper, lowerValue, upperValue);
+    }
+
+    @Override
+    protected Match match(int level) {
       long minValue = skipper.minValue(level);
       long maxValue = skipper.maxValue(level);
       if (minValue > upperValue || maxValue < lowerValue) {
@@ -148,6 +172,28 @@ final class DocValuesRangeIterator extends TwoPhaseIterator {
         } else {
           return Match.IF_DOC_HAS_VALUE;
         }
+      } else {
+        return Match.MAYBE;
+      }
+    }
+  }
+
+  private static final class RangeWithGapsApproximation extends Approximation {
+
+    RangeWithGapsApproximation(
+        DocIdSetIterator innerApproximation,
+        DocValuesSkipper skipper,
+        long lowerValue,
+        long upperValue) {
+      super(innerApproximation, skipper, lowerValue, upperValue);
+    }
+
+    @Override
+    protected Match match(int level) {
+      long minValue = skipper.minValue(level);
+      long maxValue = skipper.maxValue(level);
+      if (minValue > upperValue || maxValue < lowerValue) {
+        return Match.NO;
       } else {
         return Match.MAYBE;
       }
