@@ -1143,7 +1143,7 @@ public class IndexSearcher {
      */
     public static LeafReaderContextPartition createFrom(LeafReaderContext ctx, int minDocId) {
       return new LeafReaderContextPartition(
-          ctx, minDocId, DocIdSetIterator.NO_MORE_DOCS, ctx.reader().maxDoc() - minDocId);
+          ctx, minDocId, ctx.reader().maxDoc(), ctx.reader().maxDoc() - minDocId);
     }
 
     public static LeafReaderContextPartition createFromAndTo(
