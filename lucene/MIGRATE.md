@@ -816,7 +816,8 @@ See `TotalHitCountCollectorManager` as an example.
 ### Weight#scorer, Weight#bulkScorer and Weight#scorerSupplier contract
 
 With the introduction of intra-segment query concurrency support, a `Scorer`, `ScorerSupplier` or `BulkScorer` may 
-be requested multiple times for the same `LeafReaderContext` instance as part of a single search call. 
+be requested multiple times for the same `LeafReaderContext` instance as part of a single search call. That 
+may happen concurrently from separate threads each searching a specific doc id range of the segment. 
 `Weight` implementations that rely on the assumption that a scorer, bulk scorer or scorer supplier for a given 
 `LeafReaderContext` is requested once per search need updating.
 
