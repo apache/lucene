@@ -44,6 +44,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestBlockJoinBulkScorer extends LuceneTestCase {
   private static final String TYPE_FIELD_NAME = "type";
@@ -201,7 +202,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
   }
 
   public void testScoreRandomIndices() throws IOException {
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 200 * RANDOM_MULTIPLIER; i++) {
       try (Directory dir = newDirectory()) {
         Map<Integer, List<ChildDocMatch>> expectedMatches;
         try (RandomIndexWriter w =
@@ -213,7 +214,12 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                         // retain doc id order
                         newLogMergePolicy(random().nextBoolean())))) {
 
-          expectedMatches = populateIndex(w, 10, 5, 3);
+          expectedMatches =
+              populateIndex(
+                  w,
+                  TestUtil.nextInt(random(), 10 * RANDOM_MULTIPLIER, 30 * RANDOM_MULTIPLIER),
+                  20,
+                  3);
           w.forceMerge(1);
         }
 
