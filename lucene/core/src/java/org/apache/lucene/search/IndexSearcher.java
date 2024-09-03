@@ -408,9 +408,9 @@ public class IndexSearcher {
     for (LeafReaderContext ctx : sortedLeaves) {
       if (ctx.reader().maxDoc() > maxDocsPerSlice) {
         assert group == null;
-        // if the segment does not fit in a single slice, we split it in multiple partitions of
+        // if the segment does not fit in a single slice, we split it into maximum 5 partitions of
         // equal size
-        int numSlices = Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice);
+        int numSlices = Math.min(5, Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice));
         int numDocs = ctx.reader().maxDoc() / numSlices;
         int maxDocId = numDocs;
         int minDocId = 0;

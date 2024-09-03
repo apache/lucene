@@ -363,9 +363,14 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     IndexSearcher.LeafSlice[] resultSlices =
         IndexSearcher.slicesWithPartitions(leafReaderContexts, 1, 1);
 
-    assertEquals(17, resultSlices.length);
+    assertEquals(12, resultSlices.length);
+    int i = 0;
     for (IndexSearcher.LeafSlice leafSlice : resultSlices) {
-      assertEquals(1, leafSlice.getMaxDocs());
+      if (i++ > 4) {
+        assertEquals(1, leafSlice.getMaxDocs());
+      } else {
+        assertEquals(2, leafSlice.getMaxDocs());
+      }
       assertEquals(1, leafSlice.partitions.length);
     }
   }
