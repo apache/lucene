@@ -24,8 +24,7 @@ import org.apache.lucene.util.Bits;
 
 /**
  * This class abstracts addressing of document vector values indexed as {@link KnnFloatVectorField}
- * or {@link KnnByteVectorField}. Hmm, we also need docToOrd(s)? We need to be able to retrieve a
- * vector value for a document.
+ * or {@link KnnByteVectorField}.
  *
  * @lucene.experimental
  */
@@ -45,11 +44,6 @@ public abstract class KnnVectorValues {
 
   /** Return the docid of the document indexed with the given vector ordingl */
   public int ordToDoc(int ord) {
-    throw new UnsupportedOperationException("by class " + getClass().getName());
-  }
-
-  /** Return the vector ordinal indexed for the given document or -1 if there is none */
-  public int docToOrd(int ord) {
     throw new UnsupportedOperationException("by class " + getClass().getName());
   }
 
@@ -112,7 +106,7 @@ public abstract class KnnVectorValues {
               if (ord >= size() - 1) {
                 return NO_MORE_DOCS;
               } else {
-                doc = docToOrd(++ord);
+                doc = ordToDoc(++ord);
                 return doc;
               }
             }

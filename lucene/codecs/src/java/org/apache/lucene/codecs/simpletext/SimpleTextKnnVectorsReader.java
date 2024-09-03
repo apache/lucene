@@ -341,8 +341,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          int docId = simpleTextFloatVectorValues.iterator().docID();
-          int ord = simpleTextFloatVectorValues.docToOrd(docId);
+          int ord = simpleTextFloatVectorValues.iterator().index();
           return entry
               .similarityFunction()
               .compare(simpleTextFloatVectorValues.vectorValue(ord), target);
@@ -428,8 +427,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          int docId = simpleTextByteVectorValues.iterator().docID();
-          int ord = simpleTextByteVectorValues.docToOrd(docId);
+          int ord = simpleTextByteVectorValues.iterator().index();
           return entry
               .similarityFunction()
               .compare(simpleTextByteVectorValues.vectorValue(ord), target);

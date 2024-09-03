@@ -137,7 +137,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
         @Override
         public float score() throws IOException {
           return vectorSimilarityFunction.compare(
-              copy.vectorValue(copy.docToOrd(copy.iterator().docID())), query);
+              copy.vectorValue(copy.iterator().docID()), query);
         }
 
         @Override

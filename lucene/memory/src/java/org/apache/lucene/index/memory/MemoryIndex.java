@@ -2323,10 +2323,11 @@ public class MemoryIndex {
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
+          assert iterator().docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
               .compare(
-                  vectorValues.vectorValue(vectorValues.docToOrd(vectorValues.iterator().docID())),
+                  vectorValues.vectorValue(0),
                   query);
         }
 
@@ -2378,10 +2379,11 @@ public class MemoryIndex {
       return new VectorScorer() {
         @Override
         public float score() {
+          assert iterator().docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
               .compare(
-                  vectorValues.vectorValue(vectorValues.docToOrd(vectorValues.iterator().docID())),
+                  vectorValues.vectorValue(0),
                   query);
         }
 

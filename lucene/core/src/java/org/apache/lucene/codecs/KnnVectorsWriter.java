@@ -329,11 +329,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public int docToOrd(int ord) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
       public int size() {
         return size;
       }

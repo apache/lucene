@@ -135,18 +135,27 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
   }
 
+  // create a map from new ord to old ord assuming ords are sorted by doc but
+  // may be sparse
   private static int[] docMapToOrdMap(KnnVectorValues values, Sorter.DocMap docMap) {
-    int[] newToOld = new int[docMap.size()];
-    int ord = 0;
-    for (int doc = 0; doc < newToOld.length; doc++) {
-      int oldDoc = docMap.newToOld(doc);
-      int oldOrd = values.docToOrd(oldDoc); // no value represented by -1
-      if (oldOrd >= 0) {
-        newToOld[ord++] = oldOrd;
+    // fill with -1?
+    int[] newDocToOldOrd = new int[docMap.size()];
+    int count = 0;
+    for (int ord = 0; ord < values.size(); ord++) {
+      int oldDoc = values.ordToDoc(ord);
+      int newDoc = docMap.oldToNew(oldDoc);
+      // no value will be represented by 0
+      if (newDoc >= 0) {
+        newDocToOldOrd[newDoc] = ord + 1;
+        ++count;
       }
     }
-    if (ord < newToOld.length) {
-      newToOld = ArrayUtil.copyOfSubArray(newToOld, 0, ord);
+    int [] newToOld = new int[count];
+    count = 0;
+    for (int ord = 0; ord < newDocToOldOrd.length; ord++) {
+      if (newDocToOldOrd[ord] > 0) {
+        newToOld[count++] = newDocToOldOrd[ord] - 1;
+      }
     }
     return newToOld;
   }
@@ -288,11 +297,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public int ordToDoc(int ord) {
       return ord;
-    }
-
-    @Override
-    public int docToOrd(int doc) {
-      return doc;
     }
 
     @Override
