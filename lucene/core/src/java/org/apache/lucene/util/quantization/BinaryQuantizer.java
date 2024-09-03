@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util.quantization;
 
-import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
@@ -38,16 +37,16 @@ public class BinaryQuantizer {
     if (dimensions <= 0) {
       throw new IllegalArgumentException("dimensions must be > 0 but was: " + dimensions);
     }
-    // FIXME: precompute this once?
-    this.discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
+    assert dimensions % 64 == 0 : "dimensions must be a multiple of 64 but was: " + dimensions;
+    this.discretizedDimensions = dimensions;
     this.similarityFunction = similarityFunction;
-    Random random = new Random(42);
     uniformDistribution = new float[discretizedDimensions];
     for (int i = 0; i < discretizedDimensions; i++) {
       if (fixedUniformDistribution) {
         uniformDistribution[i] = 0.5f;
       } else {
-        uniformDistribution[i] = (float) random.nextDouble();
+        // literally, just another random value
+        uniformDistribution[i] = 0.7275637f;
       }
     }
     this.sqrtDimensions = (float) Math.sqrt(discretizedDimensions);

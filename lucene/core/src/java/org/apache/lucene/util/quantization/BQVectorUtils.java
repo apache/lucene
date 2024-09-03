@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.util.quantization;
 
-import java.util.BitSet;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.VectorUtil;
 
 /** Utility class for vector quantization calculations */
@@ -58,8 +58,17 @@ public class BQVectorUtils {
     return paddedVector;
   }
 
-  public static int popcount(byte[] d, int dimensions) {
-    return BitSet.valueOf(d).cardinality();
+  public static int popcount(byte[] d) {
+    // TODO: can this be vectorized even better?
+    int r = 0;
+    int cnt = 0;
+    for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
+      cnt += Integer.bitCount((int) BitUtil.VH_NATIVE_INT.get(d, r));
+    }
+    for (; r < d.length; r++) {
+      cnt += Integer.bitCount(d[r] & 0xFF);
+    }
+    return cnt;
   }
 
   // FIXME: divide by the norm is a pretty common operation may be able to provide a combination
@@ -91,53 +100,6 @@ public class BQVectorUtils {
 
   public static float norm(float[] vector) {
     float magnitude = VectorUtil.dotProduct(vector, vector);
-    magnitude = (float) Math.sqrt(magnitude);
-
-    // FIXME: FUTURE - not good; sometimes this needs to be 0
-    //            if (magnitude == 0) {
-    //                throw new IllegalArgumentException("Cannot normalize a vector of length
-    // zero.");
-    //            }
-
-    return magnitude;
+    return (float) Math.sqrt(magnitude);
   }
-
-  // FIXME: move this out to vector utils
-  //  public static float norm(float[] vector) {
-  //    float normalized = 0f;
-  //    // Calculate magnitude/length of the vector
-  //    double magnitude = 0;
-  //
-  //    int size = vector.length / FLOAT_SPECIES.length();
-  //    for (int r = 0; r < size; r++) {
-  //      int offset = FLOAT_SPECIES.length() * r;
-  //      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, vector, offset);
-  //      magnitude += va.mul(va).reduceLanes(VectorOperators.ADD);
-  //    }
-  //
-  //    // tail
-  //    int remainder = vector.length % FLOAT_SPECIES.length();
-  //    if (remainder != 0) {
-  //      for (int i = vector.length - remainder; i < vector.length; i++) {
-  //        magnitude = Math.fma(vector[i], vector[i], magnitude);
-  //      }
-  //    }
-  //
-  //    // FIXME: evaluate for small dimensions whether this is faster
-  //    //            for (int i = 0; i < vector.length; i++) {
-  //    //                magnitude = Math.fma(vector[i], vector[i], magnitude);
-  //    //            }
-  //
-  //    magnitude = Math.sqrt(magnitude);
-  //
-  //    // FIXME: FUTURE - not good; sometimes this needs to be 0
-  //    //            if (magnitude == 0) {
-  //    //                throw new IllegalArgumentException("Cannot normalize a vector of length
-  //    // zero.");
-  //    //            }
-  //
-  //    normalized = (float) magnitude;
-  //
-  //    return normalized;
-  //  }
 }
