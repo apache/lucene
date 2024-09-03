@@ -34,13 +34,16 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
@@ -219,6 +222,23 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return rawVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      throws IOException {
+    if (knnCollector.k() == 0) return;
+    final RandomVectorScorer scorer = getRandomVectorScorer(field, target);
+    if (scorer == null) return;
+    OrdinalTranslatedKnnCollector collector =
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
+    for (int i = 0; i < scorer.maxOrd(); i++) {
+      if (acceptedOrds == null || acceptedOrds.get(i)) {
+        collector.collect(i, scorer.score(i));
+        collector.incVisitedCount(1);
+      }
+    }
   }
 
   @Override
