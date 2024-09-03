@@ -793,3 +793,7 @@ Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderCont
 Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on 
 Scorer.
 
+### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter 
+
+`collector.class` used to allow users to load a custom collector implementation. `collector.manager.class` 
+replaces it by allowing users to load a custom collector manager instead. (Luca Cavanna)
