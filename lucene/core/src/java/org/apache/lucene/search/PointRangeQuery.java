@@ -240,6 +240,9 @@ public abstract class PointRangeQuery extends Query {
     }
   }
 
+  /**
+   * Weight implementation used by Point Range Query
+   */
   public static class PRQWeightImpl extends ConstantScoreWeight {
     private final PRQConfig config;
     private final ScoreMode scoreMode;
