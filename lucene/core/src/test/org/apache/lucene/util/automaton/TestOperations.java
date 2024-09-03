@@ -254,4 +254,77 @@ public class TestOperations extends LuceneTestCase {
     a.finishState();
     return a;
   }
+
+  public void testRepeat() {
+    Automaton emptyLanguage = Automata.makeEmpty();
+    assertSame(emptyLanguage, Operations.repeat(emptyLanguage));
+
+    Automaton emptyString = Automata.makeEmptyString();
+    assertSame(emptyString, Operations.repeat(emptyString));
+
+    Automaton a = Automata.makeChar('a');
+    Automaton as = new Automaton();
+    as.createState();
+    as.setAccept(0, true);
+    as.addTransition(0, 0, 'a');
+    as.finishState();
+    assertTrue(Operations.sameLanguage(as, Operations.repeat(a)));
+    assertSame(as, Operations.repeat(as));
+
+    Automaton aOrEmpty = new Automaton();
+    aOrEmpty.createState();
+    aOrEmpty.setAccept(0, true);
+    aOrEmpty.createState();
+    aOrEmpty.setAccept(1, true);
+    aOrEmpty.addTransition(0, 1, 'a');
+    assertTrue(Operations.sameLanguage(as, Operations.repeat(aOrEmpty)));
+
+    Automaton ab = Automata.makeString("ab");
+    Automaton abs = new Automaton();
+    abs.createState();
+    abs.createState();
+    abs.setAccept(0, true);
+    abs.addTransition(0, 1, 'a');
+    abs.finishState();
+    abs.addTransition(1, 0, 'b');
+    abs.finishState();
+    assertTrue(Operations.sameLanguage(abs, Operations.removeDeadStates(Operations.repeat(ab))));
+    assertSame(abs, Operations.repeat(abs));
+
+    Automaton absThenC = Operations.concatenate(abs, Automata.makeChar('c'));
+    Automaton absThenCs = new Automaton();
+    absThenCs.createState();
+    absThenCs.createState();
+    absThenCs.createState();
+    absThenCs.setAccept(0, true);
+    absThenCs.addTransition(0, 1, 'a');
+    absThenCs.addTransition(0, 0, 'c');
+    absThenCs.finishState();
+    absThenCs.addTransition(1, 2, 'b');
+    absThenCs.finishState();
+    absThenCs.addTransition(2, 1, 'a');
+    absThenCs.addTransition(2, 0, 'c');
+    absThenCs.finishState();
+    assertTrue(
+        Operations.sameLanguage(
+            absThenCs, Operations.removeDeadStates(Operations.repeat(absThenC))));
+    assertSame(absThenCs, Operations.repeat(absThenCs));
+
+    Automaton aThenBs = new Automaton(); // (ab)*a?
+    aThenBs.createState();
+    aThenBs.createState();
+    aThenBs.setAccept(0, true);
+    aThenBs.setAccept(1, true);
+    aThenBs.addTransition(0, 1, 'a');
+    aThenBs.addTransition(1, 0, 'b');
+
+    Automaton aOrBs = new Automaton(); // [ab]*
+    aOrBs.createState();
+    aOrBs.setAccept(0, true);
+    aOrBs.addTransition(0, 0, 'a');
+    aOrBs.addTransition(0, 0, 'b');
+
+    assertTrue(
+        Operations.sameLanguage(aOrBs, Operations.removeDeadStates(Operations.repeat(aThenBs))));
+  }
 }

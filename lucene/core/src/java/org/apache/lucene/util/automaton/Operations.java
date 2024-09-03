@@ -182,26 +182,44 @@ public final class Operations {
       // Repeating the empty automata will still only accept the empty automata.
       return a;
     }
+
+    if (a.isAccept(0) && a.getAcceptStates().nextSetBit(1) == -1) {
+      // If the only accept state is 0, then this automaton already repeats itself. Automata
+      // returned by this function only accept state 0, so this makes this function idempotent.
+      return a;
+    }
+
+    // Create N+1 states where 0 is the only accepted state.
     Automaton.Builder builder = new Automaton.Builder();
     builder.createState();
     builder.setAccept(0, true);
-    builder.copy(a);
-
-    Transition t = new Transition();
-    int count = a.initTransition(0, t);
-    for (int i = 0; i < count; i++) {
-      a.getNextTransition(t);
-      builder.addTransition(0, t.dest + 1, t.min, t.max);
+    for (int i = 0; i < a.getNumStates(); ++i) {
+      builder.createState();
     }
 
-    int numStates = a.getNumStates();
-    for (int s = 0; s < numStates; s++) {
-      if (a.isAccept(s)) {
-        count = a.initTransition(0, t);
-        for (int i = 0; i < count; i++) {
-          a.getNextTransition(t);
-          builder.addTransition(s + 1, t.dest + 1, t.min, t.max);
-        }
+    // Copy the automaton while:
+    //  - renumbering final states to 0
+    //  - renumbering other states to `state + 1`
+    Transition t = new Transition();
+    for (int state = 0; state < a.getNumStates(); ++state) {
+      // Any final state is equivalent to the initial state in the repeat automaton.
+      int src = a.isAccept(state) ? 0 : state + 1;
+      int count = a.initTransition(state, t);
+      for (int i = 0; i < count; i++) {
+        a.getNextTransition(t);
+        int dest = a.isAccept(t.dest) ? 0 : t.dest + 1;
+        builder.addTransition(src, dest, t.min, t.max);
+      }
+    }
+
+    // Now copy outgoing transitions of state 0 (they have already been copied above if state 0 is
+    // final).
+    if (a.isAccept(0) == false) {
+      int count = a.initTransition(0, t);
+      for (int i = 0; i < count; i++) {
+        a.getNextTransition(t);
+        int dest = a.isAccept(t.dest) ? 0 : t.dest + 1;
+        builder.addTransition(0, dest, t.min, t.max);
       }
     }
 
