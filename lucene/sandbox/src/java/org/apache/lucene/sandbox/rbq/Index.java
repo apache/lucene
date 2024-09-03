@@ -73,11 +73,6 @@ public class Index {
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
             return new Lucene912HnswBinaryQuantizedVectorsFormat();
           }
-
-          @Override
-          public PostingsFormat getPostingsFormatForField(String field) {
-            return new Lucene912PostingsFormat();
-          }
         };
 
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
