@@ -190,7 +190,7 @@ public abstract class PointRangeQuery extends Query {
   public record PRQConfig(String field, byte[] lowerPoint, byte[] upperPoint, int numDims) {
     /**
      * @throws IllegalArgumentException if {@code field} is null, or if {@code lowerValue.length !=
-     * upperValue.length}
+     *     upperValue.length}
      */
     public PRQConfig {
       checkArgs(field, lowerPoint, upperPoint);
