@@ -341,13 +341,14 @@ public class ToParentBlockJoinQuery extends Query {
     private final TwoPhaseIterator childTwoPhase;
     private final ParentApproximation parentApproximation;
     private final ParentTwoPhase parentTwoPhase;
-    private float score;
+    private final Score parentScore;
 
     public BlockJoinScorer(Scorer childScorer, BitSet parentBits, ScoreMode scoreMode) {
       // System.out.println("Q.init firstChildDoc=" + firstChildDoc);
       this.parentBits = parentBits;
       this.childScorer = childScorer;
       this.scoreMode = scoreMode;
+      this.parentScore = new Score(scoreMode);
       childTwoPhase = childScorer.twoPhaseIterator();
       if (childTwoPhase == null) {
         childApproximation = childScorer.iterator();
@@ -388,7 +389,7 @@ public class ToParentBlockJoinQuery extends Query {
     @Override
     public float score() throws IOException {
       setScoreAndFreq();
-      return score;
+      return parentScore.score();
     }
 
     @Override
@@ -410,29 +411,10 @@ public class ToParentBlockJoinQuery extends Query {
       if (childApproximation.docID() >= parentApproximation.docID()) {
         return;
       }
-      double score = scoreMode == ScoreMode.None ? 0 : childScorer.score();
-      int freq = 1;
+      parentScore.reset(scoreMode == ScoreMode.None ? 0 : childScorer.score());
       while (childApproximation.nextDoc() < parentApproximation.docID()) {
         if (childTwoPhase == null || childTwoPhase.matches()) {
-          final float childScore = scoreMode == ScoreMode.None ? 0 : childScorer.score();
-          // TODO: Refactor
-          freq += 1;
-          switch (scoreMode) {
-            case Total:
-            case Avg:
-              score += childScore;
-              break;
-            case Min:
-              score = Math.min(score, childScore);
-              break;
-            case Max:
-              score = Math.max(score, childScore);
-              break;
-            case None:
-              break;
-            default:
-              throw new AssertionError();
-          }
+          parentScore.addChildScore(scoreMode == ScoreMode.None ? 0 : childScorer.score());
         }
       }
       if (childApproximation.docID() == parentApproximation.docID()
@@ -445,10 +427,6 @@ public class ToParentBlockJoinQuery extends Query {
                 + ", "
                 + childScorer.getClass());
       }
-      if (scoreMode == ScoreMode.Avg) {
-        score /= freq;
-      }
-      this.score = (float) score;
     }
 
     /*
