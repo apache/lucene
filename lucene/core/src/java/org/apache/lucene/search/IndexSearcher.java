@@ -423,7 +423,8 @@ public class IndexSearcher {
         }
         // the last slice gets all the remaining docs
         groupedLeafPartitions.add(
-            Collections.singletonList(LeafReaderContextPartition.createFrom(ctx, minDocId)));
+            Collections.singletonList(
+                LeafReaderContextPartition.createFromAndTo(ctx, minDocId, ctx.reader().maxDoc())));
       } else {
         if (group == null) {
           group = new ArrayList<>();
@@ -1039,9 +1040,8 @@ public class IndexSearcher {
    *
    * <p>A partition instance can be created via {@link #createForEntireSegment(LeafReaderContext)},
    * in which case it will target the entire provided {@link LeafReaderContext}. A true partition of
-   * a segment can be created via {@link #createFrom(LeafReaderContext, int)}, providing the minimum
-   * doc id to search from, or {@link #createFromAndTo(LeafReaderContext, int, int)} providing both
-   * bounds of the id range.
+   * a segment can be created via {@link #createFromAndTo(LeafReaderContext, int, int)} providing
+   * the minimum doc id (including) to search as well as the max doc id (not including).
    *
    * @lucene.experimental
    */
@@ -1092,13 +1092,9 @@ public class IndexSearcher {
 
     /**
      * Creates a partition of the provided leaf context that targets a subset of the entire segment,
-     * starting from the min doc id provided, until the end of the segment
+     * starting from and including the min doc id provided, until and not including the provided max
+     * doc id
      */
-    public static LeafReaderContextPartition createFrom(LeafReaderContext ctx, int minDocId) {
-      return new LeafReaderContextPartition(
-          ctx, minDocId, ctx.reader().maxDoc(), ctx.reader().maxDoc() - minDocId);
-    }
-
     public static LeafReaderContextPartition createFromAndTo(
         LeafReaderContext ctx, int minDocId, int maxDocId) {
       assert maxDocId != DocIdSetIterator.NO_MORE_DOCS;

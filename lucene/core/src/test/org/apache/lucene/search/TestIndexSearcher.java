@@ -310,7 +310,8 @@ public class TestIndexSearcher extends LuceneTestCase {
                       new ArrayList<>(
                           List.of(
                               LeafReaderContextPartition.createFromAndTo(ctx, 0, 1),
-                              LeafReaderContextPartition.createFrom(ctx, 1)))));
+                              LeafReaderContextPartition.createFromAndTo(
+                                  ctx, 1, ctx.reader().maxDoc())))));
             }
             return slices.toArray(new LeafSlice[0]);
           }
