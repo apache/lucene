@@ -207,24 +207,17 @@ public final class Operations {
     // Copy the automaton while renumbering states.
     Transition t = new Transition();
     for (int state = 0; state < a.getNumStates(); ++state) {
-      // Any final state is equivalent to the initial state in the repeat automaton.
       int src = stateMap[state];
       int count = a.initTransition(state, t);
       for (int i = 0; i < count; i++) {
         a.getNextTransition(t);
         int dest = stateMap[t.dest];
         builder.addTransition(src, dest, t.min, t.max);
-      }
-    }
-
-    // Now copy outgoing transitions of state 0 (they have already been copied above if state 0 is
-    // final).
-    if (a.isAccept(0) == false) {
-      int count = a.initTransition(0, t);
-      for (int i = 0; i < count; i++) {
-        a.getNextTransition(t);
-        int dest = stateMap[t.dest];
-        builder.addTransition(0, dest, t.min, t.max);
+        if (state == 0 && src != 0) {
+          // We also need to copy outgoing transitions of the initial state of the original
+          // automaton to the new initial state that we created.
+          builder.addTransition(0, dest, t.min, t.max);
+        }
       }
     }
 
