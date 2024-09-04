@@ -89,12 +89,11 @@ public class TestTopDocsCollector extends LuceneTestCase {
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       final int base = context.docBase;
       return new LeafCollector() {
-        private int idx = 0;
 
         @Override
         public void collect(int doc) {
           ++totalHits;
-          pq.insertWithOverflow(new ScoreDoc(doc + base, scores[context.docBase + idx++]));
+          pq.insertWithOverflow(new ScoreDoc(doc + base, scores[context.docBase + doc]));
         }
 
         @Override
