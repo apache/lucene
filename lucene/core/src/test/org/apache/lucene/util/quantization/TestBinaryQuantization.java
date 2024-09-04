@@ -30,7 +30,8 @@ public class TestBinaryQuantization extends LuceneTestCase {
     int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
 
-    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, similarityFunction, true);
+    BinaryQuantizer quantizer =
+        new BinaryQuantizer(discretizedDimensions, similarityFunction, true);
 
     float[] centroid = new float[dimensions];
     for (int i = 0; i < dimensions; i++) {
@@ -67,7 +68,8 @@ public class TestBinaryQuantization extends LuceneTestCase {
     int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
 
-    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, similarityFunction, true);
+    BinaryQuantizer quantizer =
+        new BinaryQuantizer(discretizedDimensions, similarityFunction, true);
 
     float[] centroid = new float[dimensions];
     for (int i = 0; i < dimensions; i++) {

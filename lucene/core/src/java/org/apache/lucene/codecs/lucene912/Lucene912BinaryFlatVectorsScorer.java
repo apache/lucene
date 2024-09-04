@@ -243,7 +243,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       // FIXME: pre-compute these only once for each target vector
       //  ... pull this out or use a similar cache mechanism as do in score
-      float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
+      float xbSum = (float) BQVectorUtils.popcount(binaryCode);
 
       float estimatedDot =
           (2 * width / sqrtDimensions * qcDist
@@ -279,7 +279,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       double xX0 = targetDistToC / x0;
       float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
       float error = 2.0f * maxX1 * projectionDist;
-      float xbSum = (float) BQVectorUtils.popcount(binaryCode, discretizedDimensions);
+      float xbSum = (float) BQVectorUtils.popcount(binaryCode);
       float factorPPC =
           (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - discretizedDimensions));
       float factorIP = (float) (-2.0 / sqrtDimensions * xX0);

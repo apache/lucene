@@ -168,9 +168,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           clusterCenters[0][i] = field.dimensionSums[i] / vectorCount;
         }
       }
+      int descritizedDimension = BQVectorUtils.discretize(field.fieldInfo.getVectorDimension(), 64);
       BinaryQuantizer quantizer =
-          new BinaryQuantizer(
-              field.fieldInfo.getVectorDimension(), field.fieldInfo.getVectorSimilarityFunction());
+          new BinaryQuantizer(descritizedDimension, field.fieldInfo.getVectorSimilarityFunction());
       if (sortMap == null) {
         writeField(field, clusterCenters, vectorClusters, maxDoc, quantizer);
       } else {
@@ -414,11 +414,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
         centroids = new float[][] {mergedCentroid};
       }
+      int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(
               KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-              new BinaryQuantizer(
-                  fieldInfo.getVectorDimension(), fieldInfo.getVectorSimilarityFunction()),
+              new BinaryQuantizer(descritizedDimension, fieldInfo.getVectorSimilarityFunction()),
               centroids);
       long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
       DocsWithFieldSet docsWithField =
@@ -561,9 +561,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     IndexInput binarizedDataInput = null;
     IndexInput binarizedScoreDataInput = null;
     boolean success = false;
+    int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
     BinaryQuantizer quantizer =
-        new BinaryQuantizer(
-            fieldInfo.getVectorDimension(), fieldInfo.getVectorSimilarityFunction());
+        new BinaryQuantizer(descritizedDimension, fieldInfo.getVectorSimilarityFunction());
     try {
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(

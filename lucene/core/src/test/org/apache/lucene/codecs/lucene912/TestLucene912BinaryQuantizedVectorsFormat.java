@@ -26,10 +26,8 @@ import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -38,6 +36,11 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.util.quantization.BQVectorUtils;
@@ -56,22 +59,31 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testSearch() throws Exception {
-    try (Directory dir = newDirectory();
-        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
-      Document doc = new Document();
-      doc.add(
-          new KnnFloatVectorField("f", new float[] {0, 1}, VectorSimilarityFunction.DOT_PRODUCT));
-      w.addDocument(doc);
-      w.commit();
-      try (IndexReader reader = DirectoryReader.open(w)) {
-        LeafReader r = getOnlyLeafReader(reader);
-        if (r instanceof CodecReader codecReader) {
-          KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          // if this search found any results it would raise NPE attempting to collect them in our
-          // null collector
-          knnVectorsReader.search("f", new float[] {1, 0}, null, null);
-        } else {
-          fail("reader is not CodecReader");
+    String fieldName = "field";
+    int numVectors = random().nextInt(99, 500);
+    int dims = random().nextInt(4, 65);
+    float[] vector = randomVector(dims);
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    KnnFloatVectorField knnField = new KnnFloatVectorField(fieldName, vector, similarityFunction);
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          knnField.setVectorValue(randomVector(dims));
+          doc.add(knnField);
+          w.addDocument(doc);
+        }
+        w.commit();
+
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          IndexSearcher searcher = new IndexSearcher(reader);
+          final int k = random().nextInt(5, 50);
+          float[] queryVector = randomVector(dims);
+          Query q = new KnnFloatVectorQuery(fieldName, queryVector, k);
+          TopDocs collectedDocs = searcher.search(q, k);
+          assertEquals(k, collectedDocs.totalHits.value);
+          assertEquals(TotalHits.Relation.EQUAL_TO, collectedDocs.totalHits.relation);
         }
       }
     }
@@ -105,7 +117,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
 
   @Override
   public void testSearchWithVisitedLimit() {
-    // search not supported
+    // visited limit is not respected, as it is brute force search
   }
 
   public void testQuantizedVectorsWriteAndRead() throws IOException {
@@ -151,8 +163,9 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           assert centroids[0].length == dims;
           int expectedNumCentroids = Math.max(1, numVectors / numberOfVectorsPerCluster);
           assert centroids.length == expectedNumCentroids;
+          int descritizedDimension = BQVectorUtils.discretize(dims, 64);
 
-          BinaryQuantizer quantizer = new BinaryQuantizer(dims, similarityFunction);
+          BinaryQuantizer quantizer = new BinaryQuantizer(descritizedDimension, similarityFunction);
           byte[] expectedVector = new byte[BQVectorUtils.discretize(dims, 64) / 8];
           while (vectorValues.nextDoc() != NO_MORE_DOCS) {
             float[] centroid = centroids[qvectorValues.clusterId()];
