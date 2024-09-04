@@ -392,6 +392,8 @@ public class IndexSearcher {
    * partitions according to the provided max number of documents per slice and maximum number of
    * segments per slice. If a segment holds more documents than the provided max per slice, it gets
    * split into equal size partitions that each gets its own slice assigned.
+   *
+   * @lucene.experimental
    */
   public static LeafSlice[] slicesWithPartitions(
       List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice) {
