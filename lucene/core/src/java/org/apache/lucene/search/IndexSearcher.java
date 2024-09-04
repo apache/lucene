@@ -239,10 +239,7 @@ public class IndexSearcher {
                       new LeafSlice(
                           new ArrayList<>(
                               leaves.stream()
-                                  .map(
-                                      ctx ->
-                                          new LeafReaderContextPartition(
-                                              ctx, 0, ctx.reader().maxDoc()))
+                                  .map(LeafReaderContextPartition::createForEntireSegment)
                                   .toList()))
                     }
             : this::slices;
@@ -382,7 +379,7 @@ public class IndexSearcher {
           new LeafSlice(
               new ArrayList<>(
                   currentLeaf.stream()
-                      .map(ctx -> new LeafReaderContextPartition(ctx, 0, ctx.reader().maxDoc()))
+                      .map(LeafReaderContextPartition::createForEntireSegment)
                       .toList()));
       ++upto;
     }
@@ -419,20 +416,21 @@ public class IndexSearcher {
         int minDocId = 0;
         for (int i = 0; i < numSlices - 1; i++) {
           groupedLeafPartitions.add(
-              Collections.singletonList(new LeafReaderContextPartition(ctx, minDocId, maxDocId)));
+              Collections.singletonList(
+                  LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId)));
           minDocId = maxDocId;
           maxDocId += numDocs;
         }
         // the last slice gets all the remaining docs
         groupedLeafPartitions.add(
             Collections.singletonList(
-                new LeafReaderContextPartition(ctx, minDocId, ctx.reader().maxDoc())));
+                LeafReaderContextPartition.createFromAndTo(ctx, minDocId, ctx.reader().maxDoc())));
       } else {
         if (group == null) {
           group = new ArrayList<>();
           groupedLeafPartitions.add(group);
         }
-        group.add(new LeafReaderContextPartition(ctx, 0, ctx.reader().maxDoc()));
+        group.add(LeafReaderContextPartition.createForEntireSegment(ctx));
 
         currentSliceNumDocs += ctx.reader().maxDoc();
         // We only split a segment when it does not fit entirely in a slice. We don't partition the
@@ -1040,6 +1038,11 @@ public class IndexSearcher {
    * Holds information about a specific leaf context and the corresponding range of doc ids to
    * search within. Used to optionally search across partitions of the same segment concurrently.
    *
+   * <p>A partition instance can be created via {@link #createForEntireSegment(LeafReaderContext)},
+   * in which case it will target the entire provided {@link LeafReaderContext}. A true partition of
+   * a segment can be created via {@link #createFromAndTo(LeafReaderContext, int, int)} providing
+   * the minimum doc id (including) to search as well as the max doc id (not including).
+   *
    * @lucene.experimental
    */
   public static final class LeafReaderContextPartition {
@@ -1048,13 +1051,8 @@ public class IndexSearcher {
     private final int maxDocs;
     public final LeafReaderContext ctx;
 
-    /**
-     * Creates a partition of the provided leaf context that targets a subset of the entire segment,
-     * starting from and including the min doc id provided, up to and not including the provided max
-     * doc id
-     */
-    public LeafReaderContextPartition(
-        LeafReaderContext leafReaderContext, int minDocId, int maxDocId) {
+    private LeafReaderContextPartition(
+        LeafReaderContext leafReaderContext, int minDocId, int maxDocId, int maxDocs) {
       if (minDocId >= maxDocId) {
         throw new IllegalArgumentException(
             "minDocId is greater than or equal to maxDocId: ["
@@ -1078,12 +1076,29 @@ public class IndexSearcher {
       this.ctx = leafReaderContext;
       this.minDocId = minDocId;
       this.maxDocId = maxDocId;
-      this.maxDocs = maxDocId - minDocId;
+      this.maxDocs = maxDocs;
     }
 
     /** Returns The number of docs that the doc id range of this partition targets */
     public int getMaxDocs() {
       return maxDocs;
+    }
+
+    /** Creates a partition of the provided leaf context that targets the entire segment */
+    public static LeafReaderContextPartition createForEntireSegment(LeafReaderContext ctx) {
+      return new LeafReaderContextPartition(
+          ctx, 0, DocIdSetIterator.NO_MORE_DOCS, ctx.reader().maxDoc());
+    }
+
+    /**
+     * Creates a partition of the provided leaf context that targets a subset of the entire segment,
+     * starting from and including the min doc id provided, until and not including the provided max
+     * doc id
+     */
+    public static LeafReaderContextPartition createFromAndTo(
+        LeafReaderContext ctx, int minDocId, int maxDocId) {
+      assert maxDocId != DocIdSetIterator.NO_MORE_DOCS;
+      return new LeafReaderContextPartition(ctx, minDocId, maxDocId, maxDocId - minDocId);
     }
   }
 

@@ -92,8 +92,8 @@ class DrillSidewaysScorer extends BulkScorer {
     if (min != 0) {
       throw new IllegalArgumentException("min must be 0, got " + min);
     }
-    if (maxDoc < context.reader().maxDoc()) {
-      throw new IllegalArgumentException("all docs must be scored in one pass");
+    if (maxDoc != Integer.MAX_VALUE) {
+      throw new IllegalArgumentException("maxDoc must be Integer.MAX_VALUE");
     }
 
     // some scorers, eg ReqExlScorer, can hit NPE if cost is called after nextDoc
