@@ -857,7 +857,13 @@ public final class Operations {
     return true;
   }
 
-  /** Returns true if the given automaton accepts all strings. */
+  /**
+   * Returns true if the given automaton accepts all strings.
+   *
+   * <p>The automaton must be deterministic, or this method may return false.
+   *
+   * <p>Complexity: linear in number of states and transitions.
+   */
   public static boolean isTotal(Automaton a) {
     return isTotal(a, Character.MIN_CODE_POINT, Character.MAX_CODE_POINT);
   }
@@ -865,6 +871,10 @@ public final class Operations {
   /**
    * Returns true if the given automaton accepts all strings for the specified min/max range of the
    * alphabet.
+   *
+   * <p>The automaton must be deterministic, or this method may return false.
+   *
+   * <p>Complexity: linear in number of states and transitions.
    */
   public static boolean isTotal(Automaton a, int minAlphabet, int maxAlphabet) {
     BitSet states = getLiveStates(a);
