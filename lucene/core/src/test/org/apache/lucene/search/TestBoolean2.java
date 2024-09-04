@@ -404,10 +404,10 @@ public class TestBoolean2 extends LuceneTestCase {
 
         // test diff (randomized) scorers produce the same results on bigSearcher as well
         hits1 =
-            bigSearcher.search(q1, new TopFieldCollectorManager(sort, 1000 * mulFactor, 1))
+            bigSearcher.search(q1, new TopFieldCollectorManager(sort, mulFactor, 1))
                 .scoreDocs;
         hits2 =
-            bigSearcher.search(q1, new TopFieldCollectorManager(sort, 1000 * mulFactor, 1))
+            bigSearcher.search(q1, new TopFieldCollectorManager(sort, mulFactor, 1))
                 .scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
       }
