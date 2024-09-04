@@ -284,7 +284,7 @@ public class TestIndexSearcher extends LuceneTestCase {
               slices.add(
                   new LeafSlice(
                       Collections.singletonList(
-                          LeafReaderContextPartition.createForEntireSegment(ctx))));
+                          new LeafReaderContextPartition(ctx, 0, ctx.reader().maxDoc()))));
             }
             return slices.toArray(new LeafSlice[0]);
           }
@@ -309,9 +309,8 @@ public class TestIndexSearcher extends LuceneTestCase {
                   new LeafSlice(
                       new ArrayList<>(
                           List.of(
-                              LeafReaderContextPartition.createFromAndTo(ctx, 0, 1),
-                              LeafReaderContextPartition.createFromAndTo(
-                                  ctx, 1, ctx.reader().maxDoc())))));
+                              new LeafReaderContextPartition(ctx, 0, 1),
+                              new LeafReaderContextPartition(ctx, 1, ctx.reader().maxDoc())))));
             }
             return slices.toArray(new LeafSlice[0]);
           }
