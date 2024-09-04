@@ -28,8 +28,6 @@ import org.apache.lucene.search.VectorScorer;
  * @lucene.experimental
  */
 public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
-  public abstract float getDistanceToCentroid() throws IOException;
-
   /** Returns the cluster ID for the vector in the range [0, 255] */
   public abstract short clusterId() throws IOException;
 
@@ -42,6 +40,8 @@ public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
     short clusterId = bClusterId >= 0 ? (short) bClusterId : (short) (bClusterId + 256);
     return clusterId;
   }
+
+  public abstract float getDistanceToCentroid() throws IOException;
 
   public abstract float getMagnitude() throws IOException;
 

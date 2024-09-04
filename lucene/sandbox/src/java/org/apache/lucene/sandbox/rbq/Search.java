@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -73,6 +74,8 @@ public class Search {
             + searcher.getIndexReader().leaves().size()
             + " segments:");
 
+    int expandedVectorSize = 0;
+    long totalTime = 0;
     int correctCount = 0;
     try (MMapDirectory queryDirectory = new MMapDirectory(basePath);
         IndexInput queryVectorInput =
@@ -84,17 +87,36 @@ public class Search {
           new VectorsReaderWithOffset(queryVectorInput, totalQueryVectors, dim, Integer.BYTES);
       RandomAccessVectorValues.Floats dataVectors =
           new VectorsReaderWithOffset(dataVectorInput, numDataVectors, dim, Integer.BYTES);
+      long startTime = System.nanoTime();
       for (int i = 0; i < totalQueryVectors; i++) {
         float[] queryVector = vectorValues.vectorValue(i);
+        if (expandedVectorSize > 0) {
+          float[] expansion = new float[expandedVectorSize];
+          Arrays.fill(expansion, 0.9f);
+          int vectorSize = queryVector.length;
+          queryVector = Arrays.copyOf(queryVector, vectorSize + expansion.length);
+          System.arraycopy(expansion, 0, queryVector, vectorSize, expansion.length);
+        }
         Query q = new KnnFloatVectorQuery("knn", queryVector, numDocs);
         TopDocs collectedDocs = searcher.search(q, numDocs);
+        long nextTime = System.nanoTime();
+        totalTime += nextTime - startTime;
+        startTime = nextTime;
 
         HitQueue KNNs = new HitQueue(k, false);
         // rescore & get top k
         for (int j = 0; j < collectedDocs.scoreDocs.length; j++) {
           Document doc = searcher.storedFields().document(collectedDocs.scoreDocs[j].doc);
           int id = Integer.parseInt(doc.get("id"));
-          float rawScore = vectorSimilarity.compare(dataVectors.vectorValue(id), queryVector);
+          float[] dataVector = dataVectors.vectorValue(id);
+          if (expandedVectorSize > 0) {
+            float[] expansion = new float[expandedVectorSize];
+            Arrays.fill(expansion, 0.9f);
+            int dataVectorSize = dataVector.length;
+            dataVector = Arrays.copyOf(dataVector, dataVectorSize + expansion.length);
+            System.arraycopy(expansion, 0, dataVector, dataVectorSize, expansion.length);
+          }
+          float rawScore = vectorSimilarity.compare(dataVector, queryVector);
           KNNs.insertWithOverflow(new ScoreDoc(id, rawScore));
         }
 
@@ -109,10 +131,10 @@ public class Search {
         }
         correctCount += correct;
       }
+      System.out.println("Total Time (ms): " + (totalTime / 1000000));
     }
 
     float recall = (float) correctCount / (totalQueryVectors * k);
-
     System.out.println("Recall: " + recall);
   }
 

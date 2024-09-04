@@ -215,8 +215,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
+    int correctionsCount = scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * 3).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
     if (clusterCenters.length > 1) {
       int cnt = 0;
@@ -237,7 +238,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         } else {
           correctionsBuffer.putFloat(corrections[0]);
           correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(0f);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -255,7 +255,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         } else {
           correctionsBuffer.putFloat(corrections[0]);
           correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(0f);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -299,8 +298,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
+    int correctionsCount = scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * 3).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
 
     if (clusterCenters.length > 1) {
@@ -322,7 +322,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         } else {
           correctionsBuffer.putFloat(corrections[0]);
           correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(0f);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -341,7 +340,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         } else {
           correctionsBuffer.putFloat(corrections[0]);
           correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(0f);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -461,8 +459,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         new byte
             [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
+    int correctionsCount = quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 6 : 3;
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * 6 + Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = floatVectorValues.nextDoc();
         docV != NO_MORE_DOCS;
         docV = floatVectorValues.nextDoc()) {
@@ -481,10 +480,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           correctionsBuffer.putFloat(factors.normVmC());
           correctionsBuffer.putFloat(factors.vDotC());
           correctionsBuffer.putFloat(factors.cDotC());
-        } else {
-          correctionsBuffer.putFloat(0f);
-          correctionsBuffer.putFloat(0f);
-          correctionsBuffer.putFloat(0f);
         }
         // ensure we are positive and fit within an unsigned short value.
         assert factors.quantizedSum() >= 0 && factors.quantizedSum() <= 0xffff;
@@ -522,7 +517,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       } else {
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getDistanceToCentroid()));
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getMagnitude()));
-        output.writeInt(0);
       }
       docsWithField.add(docV);
     }
@@ -638,7 +632,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               new OffHeapBinarizedQueryVectorValues(
                   finalBinarizedScoreDataInput,
                   fieldInfo.getVectorDimension(),
-                  docsWithField.cardinality()),
+                  docsWithField.cardinality(),
+                  fieldInfo.getVectorSimilarityFunction()),
               vectorValues);
       return new BinarizedCloseableRandomVectorScorerSupplier(
           scorerSupplier,
@@ -861,11 +856,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     // 3 normVmc
     // 4 vDotC
     // 5 cDotC
-    protected final float[] correctiveValues = new float[6];
+    protected final float[] correctiveValues;
     private int sumQuantizationValues;
     private int lastOrd = -1;
+    private final int correctiveValuesSize;
+    private final VectorSimilarityFunction vectorSimilarityFunction;
 
-    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size) {
+    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size, VectorSimilarityFunction vectorSimilarityFunction) {
       this.slice = data;
       this.dimension = dimension;
       this.size = size;
@@ -873,7 +870,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
       this.binaryValue = byteBuffer.array();
-      this.byteSize = binaryDimensions + Float.BYTES * 6 + Short.BYTES;
+      this.vectorSimilarityFunction = vectorSimilarityFunction;
+      this.correctiveValuesSize = vectorSimilarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
+      this.byteSize = binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES;
+      this.correctiveValues = new float[this.correctiveValuesSize];
     }
 
     @Override
@@ -939,7 +939,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private void readCorrectiveValues(int targetOrd, int centroidOrd) throws IOException {
       lastOrd = -1;
       slice.seek(((long) targetOrd * byteSize) + binaryValue.length);
-      slice.readFloats(correctiveValues, 0, 6);
+      slice.readFloats(correctiveValues, 0, correctiveValuesSize);
     }
 
     @Override
@@ -949,7 +949,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         return sumQuantizationValues;
       }
       lastOrd = -1;
-      slice.seek(((long) targetOrd * byteSize) + binaryValue.length + Float.BYTES * 6);
+      slice.seek(((long) targetOrd * byteSize) + binaryValue.length + Float.BYTES * correctiveValuesSize);
       sumQuantizationValues = Short.toUnsignedInt(slice.readShort());
       return sumQuantizationValues;
     }
@@ -966,7 +966,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public OffHeapBinarizedQueryVectorValues copy() throws IOException {
-      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size);
+      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size, vectorSimilarityFunction);
     }
 
     @Override
@@ -981,7 +981,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       slice.seek((long) targetOrd * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), binaryValue.length);
-      slice.readFloats(correctiveValues, 0, 6);
+      slice.readFloats(correctiveValues, 0, correctiveValuesSize);
       sumQuantizationValues = Short.toUnsignedInt(slice.readShort());
       lastOrd = targetOrd;
       return binaryValue;
@@ -994,7 +994,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   static class BinarizedFloatVectorValues extends BinarizedByteVectorValues {
-    private float[] corrections = new float[3];
+    private float[] corrections;
     private final byte[] binarized;
     private final float[][] centroids;
     private final FloatVectorValues values;
