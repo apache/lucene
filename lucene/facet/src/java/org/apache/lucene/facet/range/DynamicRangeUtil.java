@@ -30,7 +30,11 @@ import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 
-/** Methods to create dynamic ranges for numeric fields. */
+/**
+ * Methods to create dynamic ranges for numeric fields.
+ *
+ * @lucene.experimental
+ */
 public final class DynamicRangeUtil {
 
   private DynamicRangeUtil() {}
