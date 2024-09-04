@@ -59,11 +59,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float[][] centroids = binarizedVectors.getCentroids();
       // FIXME: precompute this once?
       int discretizedDimensions = BQVectorUtils.discretize(target.length, 64);
-      byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
-
       BinaryQueryVector[] queryVectors = new BinaryQueryVector[centroids.length];
       for (int i = 0; i < centroids.length; i++) {
         // TODO: if there are many clusters, do quantizing of query lazily
+        byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
         BinaryQuantizer.QueryFactors factors =
             quantizer.quantizeForQuery(target, quantized, centroids[i]);
         queryVectors[i] = new BinaryQueryVector(quantized, factors);
