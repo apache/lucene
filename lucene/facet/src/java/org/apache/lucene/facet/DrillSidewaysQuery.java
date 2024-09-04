@@ -201,33 +201,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
         Arrays.sort(dims, Comparator.comparingLong(o -> o.approximation.cost()));
 
         return new DrillSidewaysScorer(
-            context,
-            baseScorerSupplier.get(Long.MAX_VALUE),
-            dims,
-            scoreSubDocsAtOnce);
-
-        return new ScorerSupplier() {
-          @Override
-          public Scorer get(long leadCost) throws IOException {
-            // We can only run as a top scorer:
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public BulkScorer bulkScorer() throws IOException {
-            return new DrillSidewaysScorer(
-                context,
-                baseScorerSupplier.get(Long.MAX_VALUE),
-                drillDownLeafCollector,
-                dims,
-                scoreSubDocsAtOnce);
-          }
-
-          @Override
-          public long cost() {
-            throw new UnsupportedOperationException();
-          }
-        };
+            context, baseScorerSupplier.get(Long.MAX_VALUE), dims, scoreSubDocsAtOnce);
       }
     };
   }

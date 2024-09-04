@@ -215,16 +215,18 @@ public class DrillSideways {
 
     Map<String, Integer> drillDownDims = query.getDims();
 
+    FacetsCollector drillDownCollector = createDrillDownFacetsCollector();
+    Collector mainCollector;
+    if (drillDownCollector != null) {
+      mainCollector = MultiCollector.wrap(hitCollector, drillDownCollector);
+    } else {
+      mainCollector = hitCollector;
+    }
+
     if (drillDownDims.isEmpty()) {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
-      FacetsCollector drillDownCollector = createDrillDownFacetsCollector();
-      if (drillDownCollector != null) {
-        // Make sure we still populate a facet collector for the base query if desired:
-        searcher.search(query, MultiCollector.wrap(hitCollector, drillDownCollector));
-      } else {
-        searcher.search(query, hitCollector);
-      }
+      searcher.search(query, mainCollector);
       return new DrillSidewaysResult(
           buildFacetsResult(drillDownCollector, null, null), null, drillDownCollector, null, null);
     }
@@ -239,43 +241,33 @@ public class DrillSideways {
 
     int numDims = drillDownDims.size();
 
-    FacetsCollectorManager drillDownCollectorManager = createDrillDownFacetsCollectorManager();
-    final CollectorOwner<FacetsCollector, FacetsCollector> drillDownCollectorOwner;
-    if (drillDownCollectorManager != null) {
-      drillDownCollectorOwner = new CollectorOwner<>(drillDownCollectorManager);
-    } else {
-      drillDownCollectorOwner = null;
-    }
-
-    final List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners = new ArrayList<>(numDims);
+    final List<CollectorManager<FacetsCollector, FacetsCollector>> drillSidewaysCollectorManagers =
+        new ArrayList<>(numDims);
     for (int i = 0; i < numDims; i++) {
-      drillSidewaysCollectorOwners.add(
-          new CollectorOwner<>(createDrillSidewaysFacetsCollectorManager()));
+      drillSidewaysCollectorManagers.add(createDrillSidewaysFacetsCollectorManager());
     }
 
-    DrillSidewaysQuery dsq =
-        new DrillSidewaysQuery(
-            baseQuery,
-            drillDownCollectorOwner,
-            drillSidewaysCollectorOwners,
-            drillDownQueries,
-            scoreSubDocsAtOnce());
+    DrillSidewaysQuery<FacetsCollector, ?> dsq =
+        new DrillSidewaysQuery<>(
+            baseQuery, drillSidewaysCollectorManagers, drillDownQueries, scoreSubDocsAtOnce());
 
-    searcher.search(dsq, hitCollector);
+    searcher.search(dsq, mainCollector);
 
-    FacetsCollector drillDownCollector;
-    if (drillDownCollectorOwner != null) {
-      drillDownCollector = drillDownCollectorOwner.getResult();
-    } else {
-      drillDownCollector = null;
-    }
+    FacetsCollector[] drillSidewaysCollectors = new FacetsCollector[numDims];
+    int numSlices = dsq.managedDrillSidewaysCollectors.size();
 
-    final String[] drillSidewaysDims = query.getDims().keySet().toArray(new String[0]);
-    final FacetsCollector[] drillSidewaysCollectors = new FacetsCollector[numDims];
     for (int dim = 0; dim < numDims; dim++) {
+      List<FacetsCollector> facetsCollectorsForDim = new ArrayList<>(numSlices);
+
+      for (int slice = 0; slice < numSlices; slice++) {
+        facetsCollectorsForDim.add(dsq.managedDrillSidewaysCollectors.get(slice).get(dim));
+      }
+
       drillSidewaysCollectors[dim] =
-          (FacetsCollector) drillSidewaysCollectorOwners.get(dim).getResult();
+          drillSidewaysCollectorManagers.get(dim).reduce(facetsCollectorsForDim);
     }
+
+    String[] drillSidewaysDims = query.getDims().keySet().toArray(new String[0]);
 
     return new DrillSidewaysResult(
         buildFacetsResult(drillDownCollector, drillSidewaysCollectors, drillSidewaysDims),
