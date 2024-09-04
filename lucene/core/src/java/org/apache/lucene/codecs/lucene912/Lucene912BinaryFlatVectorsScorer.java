@@ -203,32 +203,25 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float width = queryVector.factors().width();
       float distanceToCentroid = queryVector.factors().distToC();
 
-      float score =
-          switch (similarityFunction) {
-            case VectorSimilarityFunction.EUCLIDEAN:
-            case VectorSimilarityFunction.COSINE:
-            case VectorSimilarityFunction.DOT_PRODUCT:
-              yield score(
-                  targetOrd,
-                  maxX1,
-                  sqrtDimensions,
-                  quantizedQuery,
-                  distanceToCentroid,
-                  lower,
-                  quantizedSum,
-                  width);
-            case MAXIMUM_INNER_PRODUCT:
-              float vmC = queryVector.factors().normVmC();
-              float vDotC = queryVector.factors().vDotC();
-              float cDotC = queryVector.factors().cDotC();
-              yield scoreMIP(
-                  targetOrd, quantizedQuery, width, lower, quantizedSum, vmC, vDotC, cDotC);
-          };
-
-      // FIXME: this seems to only happen during randomized testing; never happened in PoC
-      score = score > 0 ? score : 0f;
-
-      return 1 / (1f + score);
+      return switch (similarityFunction) {
+        case VectorSimilarityFunction.EUCLIDEAN:
+        case VectorSimilarityFunction.COSINE:
+        case VectorSimilarityFunction.DOT_PRODUCT:
+          yield score(
+              targetOrd,
+              maxX1,
+              sqrtDimensions,
+              quantizedQuery,
+              distanceToCentroid,
+              lower,
+              quantizedSum,
+              width);
+        case MAXIMUM_INNER_PRODUCT:
+          float vmC = queryVector.factors().normVmC();
+          float vDotC = queryVector.factors().vDotC();
+          float cDotC = queryVector.factors().cDotC();
+          yield scoreMIP(targetOrd, quantizedQuery, width, lower, quantizedSum, vmC, vDotC, cDotC);
+      };
     }
 
     private float scoreMIP(
@@ -262,7 +255,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float dist = normVmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
       // FIXME: need a true error computation here; don't know what that is for MIP
       float errorBound = 0.0f; // FIXME: prior error bound computation: y * error;
-      return dist + errorBound;
+      float score = dist + errorBound;
+      return score > 0 ? score : 0f;
     }
 
     private float score(
@@ -298,7 +292,9 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
       float errorBound = y * error;
-      return dist - errorBound;
+      float score = dist - errorBound;
+      score = score > 0 ? score : 0f;
+      return 1 / (1f + score);
     }
   }
 }

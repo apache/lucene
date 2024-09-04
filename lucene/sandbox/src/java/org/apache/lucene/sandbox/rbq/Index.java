@@ -17,12 +17,17 @@
 
 package org.apache.lucene.sandbox.rbq;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.*;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.lucene912.Lucene912HnswBinaryQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
@@ -36,6 +41,7 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -48,14 +54,18 @@ public class Index {
   // FIXME: Temporary to help with debugging and iteration
   public static void main(String[] args) throws Exception {
 
-    String dataset = "siftsmall";
+    // /Users/jwagster/workspace/RaBitQ/data/wiki_cohere/ wiki 1 768 10 25 false
+    String dataset = args[2];
     Path docsPath = Paths.get(args[0]);
     Path indexPath = Paths.get(args[1]);
     Path fvecPath = Paths.get(docsPath.toString(), dataset + "_base.fvecs");
-    int dim = 128;
-    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    int numDocs = 10000;
-    int flushFrequency = 1000;
+    int dim = Integer.parseInt(args[4]);
+    int numDocs = Integer.parseInt(args[5]);
+    VectorSimilarityFunction similarityFunction =
+        "eucl".equals(args[6])
+            ? VectorSimilarityFunction.EUCLIDEAN
+            : VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
+    int flushFrequency = 50000;
 
     if (!indexPath.toFile().exists()) {
       indexPath.toFile().mkdirs();
@@ -65,11 +75,20 @@ public class Index {
       }
     }
 
+    ExecutorService hnswMergeExec =
+        Executors.newFixedThreadPool(12, new NamedThreadFactory("hnsw-merge"));
     Codec codec =
         new Lucene912Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene912HnswBinaryQuantizedVectorsFormat();
+            //            return new Lucene912HnswBinaryQuantizedVectorsFormat();
+            //          }
+            return new Lucene912HnswBinaryQuantizedVectorsFormat(
+                DEFAULT_MAX_CONN,
+                DEFAULT_BEAM_WIDTH,
+                12,
+                Lucene912BinaryQuantizedVectorsFormat.DEFAULT_NUM_VECTORS_PER_CLUSTER,
+                hnswMergeExec);
           }
         };
 
@@ -98,11 +117,12 @@ public class Index {
             iw.commit();
           }
         }
-        iw.forceMerge(1);
+        //        iw.forceMerge(1);
         System.out.println("Done indexing " + numDocs + " documents; now flush");
       }
     }
 
+    hnswMergeExec.shutdown();
     long elapsed = System.nanoTime() - start;
     System.out.println(
         "Indexed " + numDocs + " documents in " + TimeUnit.NANOSECONDS.toSeconds(elapsed) + "s");

@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.*;
@@ -35,15 +36,19 @@ public class Search {
   // FIXME: Temporary to help with debugging and iteration
   @SuppressForbidden(reason = "Used for testing")
   public static void main(String[] args) throws Exception {
-    String dataset = "siftsmall";
+    String dataset = args[2];
     Path basePath = Paths.get(args[0]);
     Path dataVecPath = Paths.get(basePath.toString(), dataset + "_base.fvecs");
     Path queryVecPath = Paths.get(basePath.toString(), dataset + "_query.fvecs");
-    int numDataVectors = 10000;
-    int numDocs = 1500;
-    int k = 100;
-    int dim = 128;
-    int totalQueryVectors = 100;
+    int numDocs = 500;
+    int dim = Integer.parseInt(args[4]);
+    int k = Integer.parseInt(args[5]);
+    int totalQueryVectors = Integer.parseInt(args[6]);
+    int numDataVectors = Integer.parseInt(args[7]);
+    VectorSimilarityFunction vectorSimilarity =
+        "eucl".equals(args[8])
+            ? VectorSimilarityFunction.EUCLIDEAN
+            : VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
     Path groundTruthPath = Paths.get(basePath.toString(), dataset + "_groundtruth.ivecs");
 
     ExecutorService executorService = null;
@@ -87,10 +92,10 @@ public class Search {
         HitQueue KNNs = new HitQueue(k, false);
         // rescore & get top k
         for (int j = 0; j < collectedDocs.scoreDocs.length; j++) {
-          float rawScore =
-              VectorSimilarityFunction.EUCLIDEAN.compare(
-                  dataVectors.vectorValue(collectedDocs.scoreDocs[j].doc), queryVector);
-          KNNs.insertWithOverflow(new ScoreDoc(collectedDocs.scoreDocs[j].doc, rawScore));
+          Document doc = searcher.storedFields().document(collectedDocs.scoreDocs[j].doc);
+          int id = Integer.parseInt(doc.get("id"));
+          float rawScore = vectorSimilarity.compare(dataVectors.vectorValue(id), queryVector);
+          KNNs.insertWithOverflow(new ScoreDoc(id, rawScore));
         }
 
         int correct = 0;
