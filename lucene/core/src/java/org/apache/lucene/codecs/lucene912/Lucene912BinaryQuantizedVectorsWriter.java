@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene912;
 
+import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.BINARIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
@@ -167,6 +168,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         for (int i = 0; i < field.dimensionSums.length; i++) {
           clusterCenters[0][i] = field.dimensionSums[i] / vectorCount;
         }
+      }
+      if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
+        segmentWriteState.infoStream.message(
+            BINARIZED_VECTOR_COMPONENT,
+            "Vectors' count:" + vectorCount + "; clusters' count:" + clusterCenters.length);
       }
       int descritizedDimension = BQVectorUtils.discretize(field.fieldInfo.getVectorDimension(), 64);
       BinaryQuantizer quantizer =
@@ -414,6 +420,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
         centroids = new float[][] {mergedCentroid};
       }
+      if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
+        segmentWriteState.infoStream.message(
+            BINARIZED_VECTOR_COMPONENT,
+            "Vectors' count:" + vectorCount + "; clusters' count:" + centroids.length);
+      }
       int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(
@@ -541,6 +552,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         // Don't need access to the random vectors, we can just use the merged
         rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
         centroids = new float[][] {mergedCentroid};
+      }
+      if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
+        segmentWriteState.infoStream.message(
+            BINARIZED_VECTOR_COMPONENT,
+            "Vectors' count:" + vectorCount + "; clusters' count:" + centroids.length);
       }
       return mergeOneFieldToIndex(segmentWriteState, fieldInfo, mergeState, centroids);
     }
