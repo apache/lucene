@@ -58,7 +58,7 @@ public class ScorerIndexSearcher extends IndexSearcher {
     // the default slices method does not create segment partitions, and we don't provide an
     // executor to this searcher in our codebase, so we should not run into this problem. This class
     // can though be used externally, hence it is better to provide a clear and hard error.
-    if (minDocId != 0 || maxDocId != DocIdSetIterator.NO_MORE_DOCS) {
+    if (minDocId != 0 || maxDocId < ctx.reader().maxDoc()) {
       throw new IllegalStateException(
           "intra-segment concurrency is not supported by this searcher");
     }
