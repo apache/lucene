@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util.quantization;
 
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.VectorUtil;
 
@@ -32,30 +33,14 @@ public class BQVectorUtils {
     if (vector.length >= dimensions) {
       return vector;
     }
-    float[] paddedVector = new float[dimensions];
-    for (int i = 0; i < dimensions; i++) {
-      if (i < vector.length) {
-        paddedVector[i] = vector[i];
-      } else {
-        paddedVector[i] = 0;
-      }
-    }
-    return paddedVector;
+    return ArrayUtil.growExact(vector, dimensions);
   }
 
   public static byte[] pad(byte[] vector, int dimensions) {
     if (vector.length >= dimensions) {
       return vector;
     }
-    byte[] paddedVector = new byte[dimensions];
-    for (int i = 0; i < dimensions; i++) {
-      if (i < vector.length) {
-        paddedVector[i] = vector[i];
-      } else {
-        paddedVector[i] = 0;
-      }
-    }
-    return paddedVector;
+    return ArrayUtil.growExact(vector, dimensions);
   }
 
   public static int popcount(byte[] d) {

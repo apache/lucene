@@ -475,7 +475,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           correctionsBuffer.putFloat(0f);
           correctionsBuffer.putFloat(0f);
         }
-        correctionsBuffer.putShort(factors.quantizedSum());
+        // ensure we are positive and fit within an unsigned short value.
+        assert factors.quantizedSum() >= 0 && factors.quantizedSum() <= 0xffff;
+        correctionsBuffer.putShort((short) factors.quantizedSum());
 
         output.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -844,7 +846,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     // 4 vDotC
     // 5 cDotC
     protected final float[] correctiveValues = new float[6];
-    private short sumQuantizationValues;
+    private int sumQuantizationValues;
     private int lastOrd = -1;
 
     OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size) {
@@ -925,14 +927,14 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public short sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException {
+    public int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException {
       assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
         return sumQuantizationValues;
       }
       lastOrd = -1;
       slice.seek(((long) targetOrd * byteSize) + binaryValue.length + Float.BYTES * 6);
-      sumQuantizationValues = slice.readShort();
+      sumQuantizationValues = Short.toUnsignedInt(slice.readShort());
       return sumQuantizationValues;
     }
 
@@ -964,7 +966,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       slice.seek((long) targetOrd * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), binaryValue.length);
       slice.readFloats(correctiveValues, 0, 6);
-      sumQuantizationValues = slice.readShort();
+      sumQuantizationValues = Short.toUnsignedInt(slice.readShort());
       lastOrd = targetOrd;
       return binaryValue;
     }

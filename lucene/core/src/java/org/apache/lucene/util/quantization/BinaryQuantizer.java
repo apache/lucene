@@ -24,43 +24,17 @@ import org.apache.lucene.util.VectorUtil;
 public class BinaryQuantizer {
   private final int discretizedDimensions;
 
-  // dim floats random numbers sampled from the uniform distribution [0,1]
-  private final float[] uniformDistribution;
-
   private final VectorSimilarityFunction similarityFunction;
   private final float sqrtDimensions;
 
-  BinaryQuantizer(
-      int dimensions,
-      VectorSimilarityFunction similarityFunction,
-      boolean fixedUniformDistribution) {
+  public BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction) {
     if (dimensions <= 0) {
       throw new IllegalArgumentException("dimensions must be > 0 but was: " + dimensions);
     }
     assert dimensions % 64 == 0 : "dimensions must be a multiple of 64 but was: " + dimensions;
     this.discretizedDimensions = dimensions;
     this.similarityFunction = similarityFunction;
-    uniformDistribution = new float[discretizedDimensions];
-    for (int i = 0; i < discretizedDimensions; i++) {
-      if (fixedUniformDistribution) {
-        uniformDistribution[i] = 0.5f;
-      } else {
-        // literally, just another random value
-        uniformDistribution[i] = 0.7275637f;
-      }
-    }
     this.sqrtDimensions = (float) Math.sqrt(discretizedDimensions);
-  }
-
-  public BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction) {
-    this(dimensions, similarityFunction, false);
-  }
-
-  private static float[] subset(float[] a, int lastColumn) {
-    if (a.length == lastColumn) {
-      return a;
-    }
-    return ArrayUtil.copyOfSubArray(a, 0, lastColumn);
   }
 
   private static void removeSignAndDivide(float[] a, float divisor) {
@@ -117,7 +91,6 @@ public class BinaryQuantizer {
 
     packAsBinary(paddedVector, quantizedVector);
 
-    paddedVector = subset(paddedVector, discretizedDimensions); // typically no-op if dimensions/64
     removeSignAndDivide(paddedVector, (float) Math.sqrt(discretizedDimensions));
     float projection = sumAndNormalize(paddedVector, norm);
 
@@ -230,16 +203,15 @@ public class BinaryQuantizer {
     return corrections;
   }
 
-  private record QuantResult(byte[] result, short quantizedSum) {}
+  private record QuantResult(byte[] result, int quantizedSum) {}
 
-  private static QuantResult quantize(
-      float[] vector, float[] uniformRand, float lower, float width) {
+  private static QuantResult quantize(float[] vector, float lower, float width) {
     // FIXME: speed up with panama? and/or use existing scalar quantization utils in Lucene?
     byte[] result = new byte[vector.length];
     float oneOverWidth = 1.0f / width;
-    short sumQ = 0;
+    int sumQ = 0;
     for (int i = 0; i < vector.length; i++) {
-      byte res = (byte) ((vector[i] - lower) * oneOverWidth + uniformRand[i]);
+      byte res = (byte) ((vector[i] - lower) * oneOverWidth);
       result[i] = res;
       sumQ += res;
     }
@@ -249,7 +221,7 @@ public class BinaryQuantizer {
 
   /** Factors for quantizing query */
   public record QueryFactors(
-      short quantizedSum,
+      int quantizedSum,
       float distToC,
       float lower,
       float width,
@@ -263,7 +235,7 @@ public class BinaryQuantizer {
     if (this.discretizedDimensions != (destination.length * 8) / BQSpaceUtils.B_QUERY) {
       throw new IllegalArgumentException(
           "vector and quantized vector destination must be compatible dimensions: "
-              + BQVectorUtils.discretize(vector.length, 64)
+              + vector.length
               + " [ "
               + this.discretizedDimensions
               + " ]"
@@ -299,7 +271,7 @@ public class BinaryQuantizer {
     // Δ := (𝑣𝑟 − 𝑣𝑙)/(2𝐵𝑞 − 1)
     float width = (upper - lower) / ((1 << BQSpaceUtils.B_QUERY) - 1);
 
-    QuantResult quantResult = quantize(vmC, uniformDistribution, lower, width);
+    QuantResult quantResult = quantize(vmC, lower, width);
     byte[] byteQuery = quantResult.result();
 
     // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
@@ -311,6 +283,7 @@ public class BinaryQuantizer {
     QueryFactors factors;
     if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
       float vDotC = VectorUtil.dotProduct(vector, centroid);
+      // TODO we should just store this value in the metadata
       float cDotC = VectorUtil.dotProduct(centroid, centroid);
       // FIXME: quantize the corrections as well so we store less
       factors =

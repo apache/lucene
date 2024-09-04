@@ -121,7 +121,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     public RandomVectorScorer scorer(int ord) throws IOException {
       byte[] queryVector = queryVectors.vectorValue(ord);
 
-      short quantizedSum = queryVectors.sumQuantizedValues(ord, 0);
+      int quantizedSum = queryVectors.sumQuantizedValues(ord, 0);
 
       float distanceToCentroid = queryVectors.getCentroidDistance(ord, 0);
       float lower = queryVectors.getLower(ord, 0);
@@ -198,7 +198,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       BinaryQueryVector queryVector = queryVectors[clusterId];
 
       byte[] quantizedQuery = queryVector.vector();
-      short quantizedSum = queryVector.factors().quantizedSum();
+      int quantizedSum = queryVector.factors().quantizedSum();
       float lower = queryVector.factors().lower();
       float width = queryVector.factors().width();
       float distanceToCentroid = queryVector.factors().distToC();
@@ -229,7 +229,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         byte[] quantizedQuery,
         float width,
         float lower,
-        short sumQ,
+        int sumQ,
         float normVmC,
         float vDotC,
         float cDotC)
@@ -266,7 +266,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         byte[] quantizedQuery,
         float distanceToCentroid,
         float lower,
-        short quantizedSum,
+        int quantizedSum,
         float width)
         throws IOException {
       byte[] binaryCode = targetVectors.vectorValue(targetOrd);

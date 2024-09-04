@@ -37,7 +37,7 @@ public interface RandomAccessBinarizedQueryByteVectorValues extends RandomAccess
 
   float getCDotC(int targetOrd, int centroidOrd) throws IOException;
 
-  short sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
+  int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
 
   @Override
   RandomAccessBinarizedQueryByteVectorValues copy() throws IOException;
