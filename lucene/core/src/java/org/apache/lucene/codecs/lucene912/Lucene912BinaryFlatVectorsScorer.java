@@ -119,28 +119,27 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      byte[] queryVector = queryVectors.vectorValue(ord);
-
-      int quantizedSum = queryVectors.sumQuantizedValues(ord, 0);
-
-      float distanceToCentroid = queryVectors.getCentroidDistance(ord, 0);
-      float lower = queryVectors.getLower(ord, 0);
-      float width = queryVectors.getWidth(ord, 0);
-
-      float normVmC = queryVectors.getNormVmC(ord, 0);
-      float vDotC = queryVectors.getVDotC(ord, 0);
-      float cDotC = queryVectors.getCDotC(ord, 0);
+      int numCentroids = targetVectors.getCentroids().length;
+      assert numCentroids == queryVectors.getNumCentroids();
+      BinaryQueryVector[] binaryQueryVectors = new BinaryQueryVector[numCentroids];
+      for (int i = 0; i < numCentroids; i++) {
+        byte[] vector = queryVectors.vectorValue(ord, i);
+        int quantizedSum = queryVectors.sumQuantizedValues(ord, i);
+        float distanceToCentroid = queryVectors.getCentroidDistance(ord, i);
+        float lower = queryVectors.getLower(ord, i);
+        float width = queryVectors.getWidth(ord, i);
+        float normVmC = queryVectors.getNormVmC(ord, i);
+        float vDotC = queryVectors.getVDotC(ord, i);
+        float cDotC = queryVectors.getCDotC(ord, i);
+        binaryQueryVectors[i] =
+            new BinaryQueryVector(
+                vector,
+                new BinaryQuantizer.QueryFactors(
+                    quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC, cDotC));
+      }
 
       return new BinarizedRandomVectorScorer(
-          new BinaryQueryVector[] {
-            new BinaryQueryVector(
-                queryVector,
-                new BinaryQuantizer.QueryFactors(
-                    quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC, cDotC))
-          },
-          targetVectors,
-          similarityFunction,
-          discretizedDimensions);
+          binaryQueryVectors, targetVectors, similarityFunction, discretizedDimensions);
     }
 
     @Override

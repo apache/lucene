@@ -622,7 +622,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               new OffHeapBinarizedQueryVectorValues(
                   finalBinarizedScoreDataInput,
                   fieldInfo.getVectorDimension(),
-                  docsWithField.cardinality()),
+                  docsWithField.cardinality(),
+                  centroids.length),
               vectorValues);
       return new BinarizedCloseableRandomVectorScorerSupplier(
           scorerSupplier,
@@ -836,7 +837,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private final IndexInput slice;
     private final int dimension;
     private final int size;
-    protected final byte[] binaryValue;
+    private final int numCentroids;
+    protected final byte[][] binaryValue;
     protected final ByteBuffer byteBuffer;
     private final int byteSize;
     // 0 centroid distance
@@ -845,102 +847,106 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     // 3 normVmc
     // 4 vDotC
     // 5 cDotC
-    protected final float[] correctiveValues = new float[6];
-    private int sumQuantizationValues;
+    protected final float[][] correctiveValues;
+    private int[] sumQuantizationValues;
     private int lastOrd = -1;
 
-    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size) {
+    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size, int numCentroids) {
       this.slice = data;
       this.dimension = dimension;
       this.size = size;
+      this.numCentroids = numCentroids;
       // 4x the quantized binary dimensions
       int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
-      this.binaryValue = byteBuffer.array();
-      this.byteSize = binaryDimensions + Float.BYTES * 6 + Short.BYTES;
+      if (numCentroids == 1) {
+        this.binaryValue = new byte[][] {byteBuffer.array()};
+      } else {
+        this.binaryValue = new byte[numCentroids][binaryDimensions];
+      }
+      this.sumQuantizationValues = new int[numCentroids];
+      this.correctiveValues = new float[numCentroids][6];
+      this.byteSize = (binaryDimensions + Float.BYTES * 6 + Short.BYTES) * numCentroids;
     }
 
     @Override
     public float getCentroidDistance(int targetOrd, int centroidOrd) throws IOException {
-      assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[0];
+        return correctiveValues[centroidOrd][0];
       }
-      readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[0];
+      readCorrectiveValues(targetOrd);
+      return correctiveValues[centroidOrd][0];
     }
 
     @Override
     public float getLower(int targetOrd, int centroidOrd) throws IOException {
-      assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[1];
+        return correctiveValues[centroidOrd][1];
       }
-      readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[1];
+      readCorrectiveValues(targetOrd);
+      return correctiveValues[centroidOrd][1];
     }
 
     @Override
     public float getWidth(int targetOrd, int centroidOrd) throws IOException {
-      assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[2];
+        return correctiveValues[centroidOrd][2];
       }
-      readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[2];
+      readCorrectiveValues(targetOrd);
+      return correctiveValues[centroidOrd][2];
     }
 
     @Override
     public float getNormVmC(int targetOrd, int centroidOrd) throws IOException {
-      assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[3];
+        return correctiveValues[centroidOrd][3];
       }
-      readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[3];
+      readCorrectiveValues(targetOrd);
+      return correctiveValues[centroidOrd][3];
     }
 
     @Override
     public float getVDotC(int targetOrd, int centroidOrd) throws IOException {
-      assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[4];
+        return correctiveValues[centroidOrd][4];
       }
-      readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[4];
+      readCorrectiveValues(targetOrd);
+      return correctiveValues[centroidOrd][4];
     }
 
     @Override
     public float getCDotC(int targetOrd, int centroidOrd) throws IOException {
-      assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return correctiveValues[5];
+        return correctiveValues[centroidOrd][5];
       }
-      readCorrectiveValues(targetOrd, centroidOrd);
-      return correctiveValues[5];
+      readCorrectiveValues(targetOrd);
+      return correctiveValues[centroidOrd][5];
     }
 
-    private void readCorrectiveValues(int targetOrd, int centroidOrd) throws IOException {
-      lastOrd = -1;
-      slice.seek(((long) targetOrd * byteSize) + binaryValue.length);
-      slice.readFloats(correctiveValues, 0, 6);
+    private void readCorrectiveValues(int targetOrd) throws IOException {
+      // load values
+      vectorValue(targetOrd, 0);
     }
 
     @Override
     public int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException {
-      assert centroidOrd == 0;
       if (lastOrd == targetOrd) {
-        return sumQuantizationValues;
+        return sumQuantizationValues[centroidOrd];
       }
-      lastOrd = -1;
-      slice.seek(((long) targetOrd * byteSize) + binaryValue.length + Float.BYTES * 6);
-      sumQuantizationValues = Short.toUnsignedInt(slice.readShort());
-      return sumQuantizationValues;
+      // load values
+      // todo improve
+      vectorValue(targetOrd, centroidOrd);
+      return sumQuantizationValues[centroidOrd];
     }
 
     @Override
     public int size() {
       return size;
+    }
+
+    @Override
+    public int getNumCentroids() {
+      return numCentroids;
     }
 
     @Override
@@ -950,30 +956,26 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public OffHeapBinarizedQueryVectorValues copy() throws IOException {
-      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size);
+      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size, numCentroids);
     }
 
-    @Override
     public IndexInput getSlice() {
       return slice;
     }
 
     @Override
-    public byte[] vectorValue(int targetOrd) throws IOException {
+    public byte[] vectorValue(int targetOrd, int centroid) throws IOException {
       if (lastOrd == targetOrd) {
-        return binaryValue;
+        return binaryValue[centroid];
       }
       slice.seek((long) targetOrd * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), binaryValue.length);
-      slice.readFloats(correctiveValues, 0, 6);
-      sumQuantizationValues = Short.toUnsignedInt(slice.readShort());
+      for (int i = 0; i < numCentroids; i++) {
+        slice.readBytes(binaryValue[i], 0, binaryValue[i].length);
+        slice.readFloats(correctiveValues[i], 0, 6);
+        sumQuantizationValues[i] = Short.toUnsignedInt(slice.readShort());
+      }
       lastOrd = targetOrd;
-      return binaryValue;
-    }
-
-    @Override
-    public int getVectorByteLength() {
-      return binaryValue.length;
+      return binaryValue[centroid];
     }
   }
 

@@ -17,14 +17,13 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Gets access to the query vector values stored in a binary format
  *
  * @lucene.experimental
  */
-public interface RandomAccessBinarizedQueryByteVectorValues extends RandomAccessVectorValues.Bytes {
+public interface RandomAccessBinarizedQueryByteVectorValues {
   float getCentroidDistance(int targetOrd, int centroidOrd) throws IOException;
 
   float getLower(int targetOrd, int centroidOrd) throws IOException;
@@ -39,6 +38,13 @@ public interface RandomAccessBinarizedQueryByteVectorValues extends RandomAccess
 
   int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
 
-  @Override
+  byte[] vectorValue(int targetOrd, int centroidOrd) throws IOException;
+
+  int size() throws IOException;
+
+  int getNumCentroids() throws IOException;
+
+  int dimension();
+
   RandomAccessBinarizedQueryByteVectorValues copy() throws IOException;
 }
