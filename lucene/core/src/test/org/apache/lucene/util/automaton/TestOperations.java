@@ -288,7 +288,7 @@ public class TestOperations extends LuceneTestCase {
     abs.finishState();
     abs.addTransition(1, 0, 'b');
     abs.finishState();
-    assertTrue(Operations.sameLanguage(abs, Operations.removeDeadStates(Operations.repeat(ab))));
+    assertTrue(Operations.sameLanguage(abs, Operations.repeat(ab)));
     assertSame(abs, Operations.repeat(abs));
 
     Automaton absThenC = Operations.concatenate(abs, Automata.makeChar('c'));
@@ -305,9 +305,7 @@ public class TestOperations extends LuceneTestCase {
     absThenCs.addTransition(2, 1, 'a');
     absThenCs.addTransition(2, 0, 'c');
     absThenCs.finishState();
-    assertTrue(
-        Operations.sameLanguage(
-            absThenCs, Operations.removeDeadStates(Operations.repeat(absThenC))));
+    assertTrue(Operations.sameLanguage(absThenCs, Operations.repeat(absThenC)));
     assertSame(absThenCs, Operations.repeat(absThenCs));
 
     Automaton aThenBs = new Automaton(); // (ab)*a?
@@ -324,7 +322,6 @@ public class TestOperations extends LuceneTestCase {
     aOrBs.addTransition(0, 0, 'a');
     aOrBs.addTransition(0, 0, 'b');
 
-    assertTrue(
-        Operations.sameLanguage(aOrBs, Operations.removeDeadStates(Operations.repeat(aThenBs))));
+    assertTrue(Operations.sameLanguage(aOrBs, Operations.repeat(aThenBs)));
   }
 }

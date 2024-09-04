@@ -189,25 +189,30 @@ public final class Operations {
       return a;
     }
 
-    // Create N+1 states where 0 is the only accepted state.
     Automaton.Builder builder = new Automaton.Builder();
+    // Create the initial state, this is the only accepted state.
     builder.createState();
     builder.setAccept(0, true);
-    for (int i = 0; i < a.getNumStates(); ++i) {
-      builder.createState();
+
+    int[] stateMap = new int[a.getNumStates()];
+    for (int state = 0; state < a.getNumStates(); ++state) {
+      if (a.isAccept(state)) {
+        // Final states get merged into the initial state.
+        stateMap[state] = 0;
+      } else {
+        stateMap[state] = builder.createState();
+      }
     }
 
-    // Copy the automaton while:
-    //  - renumbering final states to 0
-    //  - renumbering other states to `state + 1`
+    // Copy the automaton while renumbering states.
     Transition t = new Transition();
     for (int state = 0; state < a.getNumStates(); ++state) {
       // Any final state is equivalent to the initial state in the repeat automaton.
-      int src = a.isAccept(state) ? 0 : state + 1;
+      int src = stateMap[state];
       int count = a.initTransition(state, t);
       for (int i = 0; i < count; i++) {
         a.getNextTransition(t);
-        int dest = a.isAccept(t.dest) ? 0 : t.dest + 1;
+        int dest = stateMap[t.dest];
         builder.addTransition(src, dest, t.min, t.max);
       }
     }
@@ -218,7 +223,7 @@ public final class Operations {
       int count = a.initTransition(0, t);
       for (int i = 0; i < count; i++) {
         a.getNextTransition(t);
-        int dest = a.isAccept(t.dest) ? 0 : t.dest + 1;
+        int dest = stateMap[t.dest];
         builder.addTransition(0, dest, t.min, t.max);
       }
     }
