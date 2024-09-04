@@ -18,7 +18,6 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +32,6 @@ import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
-import org.apache.lucene.search.CollectorOwner;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -404,25 +402,13 @@ public class DrillSideways {
     }
   }
 
-  private static class CallableCollector implements Callable<Void> {
-    private final IndexSearcher searcher;
-    private final Query query;
-    private final CollectorOwner<?, ?> collectorOwner;
-
-    private CallableCollector(
-        IndexSearcher searcher, Query query, CollectorOwner<?, ?> collectorOwner) {
-      this.searcher = searcher;
-      this.query = query;
-      this.collectorOwner = collectorOwner;
-    }
+  private record CallableCollector<R>(
+      IndexSearcher searcher, Query query, CollectorManager<?, R> collectorManager)
+      implements Callable<R> {
 
     @Override
-    public Void call() throws Exception {
-      searcher.search(query, collectorOwner);
-      // Call getResult to trigger reduce, we don't need to return results because users can access
-      // them directly from collectorOwner
-      collectorOwner.getResult();
-      return null;
+    public R call() throws Exception {
+      return searcher.search(query, collectorManager);
     }
   }
 
@@ -446,31 +432,30 @@ public class DrillSideways {
     // Main query
     FacetsCollectorManager drillDownFacetsCollectorManager =
         createDrillDownFacetsCollectorManager();
-    final CollectorOwner<?, ?> mainCollectorOwner;
+    final CollectorManager<?, ?> mainCollectorManager;
     if (drillDownFacetsCollectorManager != null) {
       // Make sure we populate a facet collector corresponding to the base query if desired:
-      mainCollectorOwner =
-          new CollectorOwner<>(
-              new MultiCollectorManager(drillDownFacetsCollectorManager, hitCollectorManager));
+      mainCollectorManager =
+          new MultiCollectorManager(drillDownFacetsCollectorManager, hitCollectorManager);
     } else {
-      mainCollectorOwner = new CollectorOwner<>(hitCollectorManager);
+      mainCollectorManager = hitCollectorManager;
     }
     // Drill sideways dimensions
-    final List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners;
+    final List<CollectorManager<FacetsCollector, FacetsCollector>> drillSidewaysCollectorManagers;
     if (query.getDims().isEmpty() == false) {
-      drillSidewaysCollectorOwners = new ArrayList<>(query.getDims().size());
+      drillSidewaysCollectorManagers = new ArrayList<>(query.getDims().size());
       for (int i = 0; i < query.getDims().size(); i++) {
-        drillSidewaysCollectorOwners.add(
-            new CollectorOwner<>(createDrillSidewaysFacetsCollectorManager()));
+        drillSidewaysCollectorManagers.add(createDrillSidewaysFacetsCollectorManager());
       }
     } else {
-      drillSidewaysCollectorOwners = null;
+      drillSidewaysCollectorManagers = null;
     }
     // Execute query
+    final Result<?, FacetsCollector> result;
     if (executor != null) {
-      searchConcurrently(query, mainCollectorOwner, drillSidewaysCollectorOwners);
+      result = searchConcurrently(query, mainCollectorManager, drillSidewaysCollectorManagers);
     } else {
-      searchSequentially(query, mainCollectorOwner, drillSidewaysCollectorOwners);
+      result = searchSequentially(query, mainCollectorManager, drillSidewaysCollectorManagers);
     }
 
     // Collect results
@@ -479,12 +464,12 @@ public class DrillSideways {
     if (drillDownFacetsCollectorManager != null) {
       // drill down collected using MultiCollector
       // Extract the results:
-      Object[] drillDownResult = (Object[]) mainCollectorOwner.getResult();
+      Object[] drillDownResult = (Object[]) result.drillDownResult;
       facetsCollectorResult = (FacetsCollector) drillDownResult[0];
       hitCollectorResult = (R) drillDownResult[1];
     } else {
       facetsCollectorResult = null;
-      hitCollectorResult = (R) mainCollectorOwner.getResult();
+      hitCollectorResult = (R) result.drillDownResult;
     }
 
     // Getting results for drill sideways dimensions (if any)
@@ -493,12 +478,11 @@ public class DrillSideways {
     if (query.getDims().isEmpty() == false) {
       drillSidewaysDims = query.getDims().keySet().toArray(new String[0]);
       int numDims = query.getDims().size();
-      assert drillSidewaysCollectorOwners != null;
-      assert drillSidewaysCollectorOwners.size() == numDims;
+      assert drillSidewaysCollectorManagers != null;
+      assert drillSidewaysCollectorManagers.size() == numDims;
       drillSidewaysCollectors = new FacetsCollector[numDims];
       for (int dim = 0; dim < numDims; dim++) {
-        drillSidewaysCollectors[dim] =
-            (FacetsCollector) drillSidewaysCollectorOwners.get(dim).getResult();
+        drillSidewaysCollectors[dim] = result.drillSidewaysResults.get(dim);
       }
     } else {
       drillSidewaysDims = null;
@@ -516,52 +500,51 @@ public class DrillSideways {
 
   /**
    * Search using DrillDownQuery with custom collectors. This method can be used with any {@link
-   * CollectorOwner}s. It doesn't return anything because it is expected that you read results from
-   * provided {@link CollectorOwner}s.
+   * CollectorManager}s.
    *
-   * <p>To read the results, run {@link CollectorOwner#getResult()} for drill down and all drill
-   * sideways dimensions.
-   *
-   * <p>Note: use {@link Collections#unmodifiableList(List)} to wrap {@code
-   * drillSidewaysCollectorOwners} to convince compiler that it is safe to use List here.
-   *
-   * <p>Use {@link MultiCollectorManager} wrapped by {@link CollectorOwner} to collect both hits and
-   * facets for the entire query and/or for drill-sideways dimensions.
-   *
-   * <p>TODO: Class CollectorOwner was created so that we can ignore CollectorManager type C,
-   * because we want each dimensions to be able to use their own types. Alternatively, we can use
-   * typesafe heterogeneous container and provide CollectorManager type for each dimension to this
-   * method? I do like CollectorOwner approach as it seems more intuitive?
+   * <p>Note: Use {@link MultiCollectorManager} to collect both hits and facets for the entire query
+   * and/or for drill-sideways dimensions. You can also use it to wrap different types of {@link
+   * CollectorManager} for drill-sideways dimensions.
    */
-  public void search(
-      final DrillDownQuery query,
-      CollectorOwner<?, ?> drillDownCollectorOwner,
-      List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners)
+  public <C extends Collector, T, K extends Collector, R> Result<T, R> search(
+      DrillDownQuery query,
+      CollectorManager<C, T> drillDownCollectorManager,
+      List<CollectorManager<K, R>> drillSidewaysCollectorManagers)
       throws IOException {
-    if (drillDownCollectorOwner == null) {
+    if (drillDownCollectorManager == null) {
       throw new IllegalArgumentException(
           "This search method requires client to provide drill down collector manager");
     }
-    if (drillSidewaysCollectorOwners == null) {
+    if (drillSidewaysCollectorManagers == null) {
       if (query.getDims().isEmpty() == false) {
         throw new IllegalArgumentException(
-            "The query requires not null drillSidewaysCollectorOwners");
+            "The query requires not null drillSidewaysCollectorManagers");
       }
-    } else if (drillSidewaysCollectorOwners.size() != query.getDims().size()) {
+    } else if (drillSidewaysCollectorManagers.size() != query.getDims().size()) {
       throw new IllegalArgumentException(
-          "drillSidewaysCollectorOwners size must be equal to number of dimensions in the query.");
+          "drillSidewaysCollectorManagers size must be equal to number of dimensions in the query.");
     }
     if (executor != null) {
-      searchConcurrently(query, drillDownCollectorOwner, drillSidewaysCollectorOwners);
+      return searchConcurrently(query, drillDownCollectorManager, drillSidewaysCollectorManagers);
     } else {
-      searchSequentially(query, drillDownCollectorOwner, drillSidewaysCollectorOwners);
+      return searchSequentially(query, drillDownCollectorManager, drillSidewaysCollectorManagers);
     }
   }
 
-  private void searchSequentially(
+  /**
+   * {@link #search(DrillDownQuery, CollectorManager, List)} result. It doesn't depend on {@link
+   * Facets} to allow users to use any type of {@link CollectorManager} for drill-down or
+   * drill-sideways dimension.
+   *
+   * @param drillDownResult result from drill down (main) {@link CollectorManager}
+   * @param drillSidewaysResults results from drill sideways {@link CollectorManager}s
+   */
+  public record Result<T, R>(T drillDownResult, List<R> drillSidewaysResults) {}
+
+  private <C extends Collector, T, K extends Collector, R> Result<T, R> searchSequentially(
       final DrillDownQuery query,
-      final CollectorOwner<?, ?> drillDownCollectorOwner,
-      final List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners)
+      final CollectorManager<C, T> drillDownCollectorManager,
+      final List<CollectorManager<K, R>> drillSidewaysCollectorManagers)
       throws IOException {
 
     Map<String, Integer> drillDownDims = query.getDims();
@@ -569,9 +552,7 @@ public class DrillSideways {
     if (drillDownDims.isEmpty()) {
       // There are no drill-down dims, so there is no
       // drill-sideways to compute:
-      searcher.search(query, drillDownCollectorOwner);
-      drillDownCollectorOwner.getResult();
-      return;
+      return new Result<>(searcher.search(query, drillDownCollectorManager), null);
     }
 
     Query baseQuery = query.getBaseQuery();
@@ -582,59 +563,60 @@ public class DrillSideways {
     }
     Query[] drillDownQueries = query.getDrillDownQueries();
 
-    DrillSidewaysQuery dsq =
-        new DrillSidewaysQuery(
-            baseQuery,
-            // drillDownCollectorOwner,
-            // Don't pass drill down collector because drill down is collected by IndexSearcher
-            // itself.
-            // TODO: deprecate drillDown collection in DrillSidewaysQuery?
-            null,
-            drillSidewaysCollectorOwners,
-            drillDownQueries,
-            scoreSubDocsAtOnce());
+    DrillSidewaysQuery<K, R> dsq =
+        new DrillSidewaysQuery<>(
+            baseQuery, drillSidewaysCollectorManagers, drillDownQueries, scoreSubDocsAtOnce());
 
-    searcher.search(dsq, drillDownCollectorOwner);
-    // This method doesn't return results as each dimension might have its own result type.
-    // But we call getResult to trigger results reducing, so that users don't have to worry about
-    // it.
-    drillDownCollectorOwner.getResult();
-    if (drillSidewaysCollectorOwners != null) {
-      for (CollectorOwner<?, ?> sidewaysOwner : drillSidewaysCollectorOwners) {
-        sidewaysOwner.getResult();
+    T collectorResult = searcher.search(dsq, drillDownCollectorManager);
+    List<R> drillSidewaysResults = new ArrayList<>(drillDownDims.size());
+    assert drillSidewaysCollectorManagers != null
+        : "Case without drill sideways dimensions is handled above";
+    int numSlices = dsq.managedDrillSidewaysCollectors.size();
+    for (int dim = 0; dim < drillDownDims.size(); dim++) {
+      List<K> collectorsForDim = new ArrayList<>(numSlices);
+      for (int slice = 0; slice < numSlices; slice++) {
+        collectorsForDim.add(dsq.managedDrillSidewaysCollectors.get(slice).get(dim));
       }
+      drillSidewaysResults.add(
+          dim, drillSidewaysCollectorManagers.get(dim).reduce(collectorsForDim));
     }
+    return new Result<>(collectorResult, drillSidewaysResults);
   }
 
-  private void searchConcurrently(
+  private <C extends Collector, T, K extends Collector, R> Result<T, R> searchConcurrently(
       final DrillDownQuery query,
-      final CollectorOwner<?, ?> drillDownCollectorOwner,
-      final List<CollectorOwner<?, ?>> drillSidewaysCollectorOwners)
-      throws IOException {
+      final CollectorManager<C, T> drillDownCollectorManager,
+      final List<CollectorManager<K, R>> drillSidewaysCollectorManagers) {
 
     final Map<String, Integer> drillDownDims = query.getDims();
-    final List<CallableCollector> callableCollectors = new ArrayList<>(drillDownDims.size() + 1);
+    final CallableCollector<T> drillDownCallableCollector =
+        new CallableCollector<>(searcher, query, drillDownCollectorManager);
+    final List<CallableCollector<R>> drillSidewaysCallableCollectors =
+        new ArrayList<>(drillDownDims.size());
 
-    callableCollectors.add(new CallableCollector(searcher, query, drillDownCollectorOwner));
     int i = 0;
     final Query[] filters = query.getDrillDownQueries();
     for (String dim : drillDownDims.keySet()) {
-      callableCollectors.add(
-          new CallableCollector(
+      drillSidewaysCallableCollectors.add(
+          new CallableCollector<>(
               searcher,
               getDrillDownQuery(query, filters, dim),
-              drillSidewaysCollectorOwners.get(i)));
+              drillSidewaysCollectorManagers.get(i)));
       i++;
     }
 
     try {
-      // Run the query pool
-      final List<Future<Void>> futures = executor.invokeAll(callableCollectors);
+      final Future<T> drillDownFuture = executor.submit(drillDownCallableCollector);
+      final List<Future<R>> drillSidewaysFutures =
+          executor.invokeAll(drillSidewaysCallableCollectors);
 
-      // Wait for results. We don't read the results as they are collected by CollectorOwners
-      for (i = 0; i < futures.size(); i++) {
-        futures.get(i).get();
+      T collectorResult = drillDownFuture.get();
+      List<R> drillSidewaysResults = new ArrayList<>(drillDownDims.size());
+
+      for (i = 0; i < drillSidewaysFutures.size(); i++) {
+        drillSidewaysResults.add(i, drillSidewaysFutures.get(i).get());
       }
+      return new Result<>(collectorResult, drillSidewaysResults);
     } catch (InterruptedException e) {
       throw new ThreadInterruptedException(e);
     } catch (ExecutionException e) {
