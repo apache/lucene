@@ -394,9 +394,17 @@ public class DrillSideways {
     }
   }
 
-  private record CallableCollector<R>(
-      IndexSearcher searcher, Query query, CollectorManager<?, R> collectorManager)
-      implements Callable<R> {
+  private static class CallableCollector<R> implements Callable<R> {
+    private final IndexSearcher searcher;
+    private final Query query;
+    private final CollectorManager<?, R> collectorManager;
+
+    private CallableCollector(
+        IndexSearcher searcher, Query query, CollectorManager<?, R> collectorManager) {
+      this.searcher = searcher;
+      this.query = query;
+      this.collectorManager = collectorManager;
+    }
 
     @Override
     public R call() throws Exception {
@@ -527,11 +535,27 @@ public class DrillSideways {
    * {@link #search(DrillDownQuery, CollectorManager, List)} result. It doesn't depend on {@link
    * Facets} to allow users to use any type of {@link CollectorManager} for drill-down or
    * drill-sideways dimension.
-   *
-   * @param drillDownResult result from drill down (main) {@link CollectorManager}
-   * @param drillSidewaysResults results from drill sideways {@link CollectorManager}s
    */
-  public record Result<T, R>(T drillDownResult, List<R> drillSidewaysResults) {}
+  public static final class Result<T, R> {
+    private final T drillDownResult;
+    private final List<R> drillSidewaysResults;
+
+    /** sole ctor */
+    public Result(T drillDownResult, List<R> drillSidewaysResults) {
+      this.drillDownResult = drillDownResult;
+      this.drillSidewaysResults = drillSidewaysResults;
+    }
+
+    /** result from drill down (main) {@link CollectorManager} */
+    public T drillDownResult() {
+      return drillDownResult;
+    }
+
+    /** results from drill sideways {@link CollectorManager}s */
+    public List<R> drillSidewaysResults() {
+      return drillSidewaysResults;
+    }
+  }
 
   private <C extends Collector, T, K extends Collector, R> Result<T, R> searchSequentially(
       final DrillDownQuery query,
