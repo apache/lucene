@@ -139,7 +139,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors);
     ScalarQuantizer scalarQuantizer =
         Lucene99ScalarQuantizedVectorsWriter.buildScalarQuantizer(
-            toQuantize, similarityFunction, confidenceInterval, (byte) bits);
+            toQuantize, numVectors, similarityFunction, confidenceInterval, (byte) bits);
     float[] expectedCorrections = new float[numVectors];
     byte[][] expectedVectors = new byte[numVectors][];
     for (int i = 0; i < numVectors; i++) {

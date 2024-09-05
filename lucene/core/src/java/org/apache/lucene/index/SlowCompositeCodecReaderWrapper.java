@@ -832,11 +832,9 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-      List<FloatVectorValues> subs = new ArrayList<>();
-      int i = 0;
+      List<KnnVectorValues> subs = new ArrayList<>();
       int dimension = -1;
       int size = 0;
-      int[] ends = new int[codecReaders.length];
       for (CodecReader reader : codecReaders) {
         FloatVectorValues values = reader.getFloatVectorValues(field);
         if (values != null) {
@@ -845,7 +843,6 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           }
           size += values.size();
         }
-        ends[i++] = size;
         subs.add(values);
       }
       final int finalDimension = dimension;
@@ -864,17 +861,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
         @Override
         public float[] vectorValue(int ord) throws IOException {
-          int iSub = Arrays.binarySearch(ends, ord);
-          if (iSub < 0) {
-            iSub = -(iSub + 1);
-          }
-          int subOrd;
-          if (iSub == 0) {
-            subOrd = ord;
-          } else {
-            subOrd = ord - ends[iSub - 1];
-          }
-          return subs.get(iSub).vectorValue(subOrd);
+          FloatVectorValues sub =
+              (FloatVectorValues) subs.get(((CompositeIterator) iterator()).iSub);
+          return sub.vectorValue(sub.iterator().index());
+        }
+
+        @Override
+        protected DocIterator createIterator() {
+          return new CompositeIterator(subs);
         }
 
         @Override
@@ -896,11 +890,9 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
-      List<ByteVectorValues> subs = new ArrayList<>();
-      int i = 0;
+      List<KnnVectorValues> subs = new ArrayList<>();
       int dimension = -1;
       int size = 0;
-      int[] ends = new int[codecReaders.length];
       for (CodecReader reader : codecReaders) {
         ByteVectorValues values = reader.getByteVectorValues(field);
         if (values != null) {
@@ -909,7 +901,6 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           }
           size += values.size();
         }
-        ends[i++] = size;
         subs.add(values);
       }
       final int finalDimension = dimension;
@@ -928,17 +919,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
         @Override
         public byte[] vectorValue(int ord) throws IOException {
-          int iSub = Arrays.binarySearch(ends, ord);
-          if (iSub < 0) {
-            iSub = -(iSub + 1);
-          }
-          int subOrd;
-          if (iSub == 0) {
-            subOrd = ord;
-          } else {
-            subOrd = ord - ends[iSub - 1];
-          }
-          return subs.get(iSub).vectorValue(subOrd);
+          ByteVectorValues sub = (ByteVectorValues) subs.get(((CompositeIterator) iterator()).iSub);
+          return sub.vectorValue(sub.iterator().index());
         }
 
         @Override
@@ -955,6 +937,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         public ByteVectorValues copy() {
           throw new UnsupportedOperationException();
         }
+
+        @Override
+        protected DocIterator createIterator() {
+          return new CompositeIterator(subs);
+        }
       };
     }
 
@@ -968,6 +955,51 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
       throw new UnsupportedOperationException();
+    }
+
+    static class CompositeIterator extends KnnVectorValues.DocIterator {
+      private final List<KnnVectorValues> subs;
+      int iSub;
+      int docId;
+
+      public CompositeIterator(List<KnnVectorValues> subs) {
+        this.subs = subs;
+        iSub = 0;
+        docId = -1;
+      }
+
+      @Override
+      public int index() {
+        if (iSub == subs.size()) {
+          return NO_MORE_DOCS;
+        }
+        return subs.get(iSub).iterator().index();
+      }
+
+      @Override
+      public int docID() {
+        if (iSub == subs.size()) {
+          return NO_MORE_DOCS;
+        }
+        return subs.get(iSub).iterator().docID();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        while (iSub < subs.size()) {
+          int doc = subs.get(iSub).iterator().nextDoc();
+          if (doc != NO_MORE_DOCS) {
+            return doc;
+          }
+          ++iSub;
+        }
+        return NO_MORE_DOCS;
+      }
+
+      @Override
+      public long cost() {
+        return 0;
+      }
     }
   }
 

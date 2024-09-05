@@ -425,8 +425,18 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
 
     @Override
+    public int ordToDoc(int ord) {
+      return rawVectorValues.ordToDoc(ord);
+    }
+
+    @Override
     public VectorScorer scorer(float[] query) throws IOException {
       return quantizedVectorValues.scorer(query);
+    }
+
+    @Override
+    public DocIterator iterator() {
+      return rawVectorValues.iterator();
     }
   }
 }

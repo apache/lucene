@@ -332,6 +332,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
+    }
+
+    @Override
     public VectorScorer scorer(float[] target) {
       if (size() == 0) {
         return null;
@@ -416,6 +421,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     public byte[] vectorValue(int ord) {
       binaryValue.bytes = values[ord];
       return binaryValue.bytes;
+    }
+
+    @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
     }
 
     @Override

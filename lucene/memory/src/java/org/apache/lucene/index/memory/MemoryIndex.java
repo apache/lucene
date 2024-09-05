@@ -2326,9 +2326,7 @@ public class MemoryIndex {
           assert iterator().docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
-              .compare(
-                  vectorValues.vectorValue(0),
-                  query);
+              .compare(vectorValues.vectorValue(0), query);
         }
 
         @Override
@@ -2382,9 +2380,7 @@ public class MemoryIndex {
           assert iterator().docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
-              .compare(
-                  vectorValues.vectorValue(0),
-                  query);
+              .compare(vectorValues.vectorValue(0), query);
         }
 
         @Override

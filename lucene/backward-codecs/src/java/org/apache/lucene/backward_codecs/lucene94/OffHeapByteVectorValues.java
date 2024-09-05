@@ -108,8 +108,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
   static class DenseOffHeapVectorValues extends OffHeapByteVectorValues {
 
-    private int doc = -1;
-
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -136,8 +134,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorSimilarityFunction.compare(
-              copy.vectorValue(copy.iterator().docID()), query);
+          return vectorSimilarityFunction.compare(copy.vectorValue(copy.iterator().docID()), query);
         }
 
         @Override
@@ -230,8 +227,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     public EmptyOffHeapVectorValues(int dimension) {
       super(dimension, 0, null, VectorSimilarityFunction.COSINE, 0);
     }
-
-    private int doc = -1;
 
     @Override
     public int dimension() {

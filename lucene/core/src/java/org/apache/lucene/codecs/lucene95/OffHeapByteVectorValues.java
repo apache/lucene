@@ -149,6 +149,11 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
+    public DocIterator createIterator() {
+      return createDenseIterator(this);
+    }
+
+    @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
@@ -229,6 +234,11 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
+    protected DocIterator createIterator() {
+      return DocIterator.fromIndexedDISI(disi);
+    }
+
+    @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       if (acceptDocs == null) {
         return null;
@@ -289,6 +299,11 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
     @Override
     public byte[] vectorValue(int ord) throws IOException {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
     }
 
     @Override

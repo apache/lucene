@@ -565,9 +565,10 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
   }
 
   private static void scanAndRetrieve(LeafReader leaf, KnnVectorValues values) throws IOException {
-    KnnVectorValues.KnnValuesDocIterator iter = values.iterator();
-    for (int ord = 0; ord < values.size(); ord++) {
-      int docId = values.ordToDoc(ord);
+    KnnVectorValues.DocIterator iter = values.iterator();
+    for (iter.nextDoc();
+        iter.docID() != DocIdSetIterator.NO_MORE_DOCS && iter.docID() < leaf.maxDoc(); ) {
+      int docId = iter.docID();
       if (docId >= leaf.maxDoc()) {
         break;
       }
@@ -577,11 +578,10 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       } else {
         iter.nextDoc();
       }
-      ord = iter.index();
       if (random().nextBoolean()
           && iter.docID() != DocIdSetIterator.NO_MORE_DOCS
           && values instanceof FloatVectorValues) {
-        ((FloatVectorValues) values).vectorValue(ord);
+        ((FloatVectorValues) values).vectorValue(iter.index());
       }
     }
   }

@@ -255,6 +255,11 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         }
       };
     }
+
+    @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
+    }
   }
 
   private static class SparseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
@@ -283,11 +288,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public KnnValuesDocIterator iterator() {
-      if (iterator == null) {
-        iterator = fromIndexedDISI(disi);
-      }
-      return iterator;
+    public DocIterator createIterator() {
+      return DocIterator.fromIndexedDISI(disi);
     }
 
     @Override
@@ -375,6 +377,11 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
+    }
+
+    @Override
     public EmptyOffHeapVectorValues copy() {
       throw new UnsupportedOperationException();
     }
@@ -398,34 +405,5 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     public VectorScorer scorer(float[] target) {
       return null;
     }
-  }
-
-  static KnnValuesDocIterator fromIndexedDISI(IndexedDISI disi) {
-    return new KnnValuesDocIterator() {
-      @Override
-      public int docID() {
-        return disi.docID();
-      }
-
-      @Override
-      public int index() {
-        return disi.index();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        return disi.nextDoc();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        return disi.advance(target);
-      }
-
-      @Override
-      public long cost() {
-        return disi.cost();
-      }
-    };
   }
 }

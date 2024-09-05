@@ -104,8 +104,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   static class DenseOffHeapVectorValues extends OffHeapFloatVectorValues {
 
-    private int doc = -1;
-
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -227,8 +225,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     public EmptyOffHeapVectorValues(int dimension) {
       super(dimension, 0, null, VectorSimilarityFunction.COSINE, 0);
     }
-
-    private int doc = -1;
 
     @Override
     public int dimension() {

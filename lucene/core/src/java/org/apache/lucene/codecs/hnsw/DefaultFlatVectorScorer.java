@@ -38,13 +38,17 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    if (vectorValues instanceof FloatVectorValues floatVectorValues) {
-      return new FloatScoringSupplier(floatVectorValues, similarityFunction);
-    } else if (vectorValues instanceof ByteVectorValues byteVectorValues) {
-      return new ByteScoringSupplier(byteVectorValues, similarityFunction);
+    switch (vectorValues.getEncoding()) {
+      case FLOAT32 -> {
+        return new FloatScoringSupplier((FloatVectorValues) vectorValues, similarityFunction);
+      }
+      case BYTE -> {
+        return new ByteScoringSupplier((ByteVectorValues) vectorValues, similarityFunction);
+      }
     }
     throw new IllegalArgumentException(
-        "vectorValues must be an instance of FloatVectorValues or ByteVectorValues");
+        "vectorValues must be an instance of FloatVectorValues or ByteVectorValues, got a "
+            + vectorValues.getClass().getName());
   }
 
   @Override

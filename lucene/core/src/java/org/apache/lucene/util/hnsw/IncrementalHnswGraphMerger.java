@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.hnsw;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
@@ -152,29 +154,35 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    */
   protected final int[] getNewOrdMapping(
       KnnVectorValues mergedVectorValues, BitSet initializedNodes) throws IOException {
-    KnnVectorValues initializerValues = null;
+    KnnVectorValues.DocIterator initializerIterator = null;
 
     switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> initializerValues = initReader.getByteVectorValues(fieldInfo.name);
-      case FLOAT32 -> initializerValues = initReader.getFloatVectorValues(fieldInfo.name);
+      case BYTE -> initializerIterator = initReader.getByteVectorValues(fieldInfo.name).iterator();
+      case FLOAT32 ->
+          initializerIterator = initReader.getFloatVectorValues(fieldInfo.name).iterator();
     }
 
     IntIntHashMap newIdToOldOrdinal = new IntIntHashMap(initGraphSize);
     int maxNewDocID = -1;
-    for (int oldOrd = 0; oldOrd < initializerValues.size(); oldOrd++) {
-      int newId = initDocMap.get(initializerValues.ordToDoc(oldOrd));
+    for (int docId = initializerIterator.nextDoc();
+        docId != NO_MORE_DOCS;
+        docId = initializerIterator.nextDoc()) {
+      int newId = initDocMap.get(docId);
       maxNewDocID = Math.max(newId, maxNewDocID);
-      newIdToOldOrdinal.put(newId, oldOrd);
+      newIdToOldOrdinal.put(newId, initializerIterator.index());
     }
 
     if (maxNewDocID == -1) {
       return new int[0];
     }
     final int[] oldToNewOrdinalMap = new int[initGraphSize];
-    for (int newOrd = 0; newOrd < mergedVectorValues.size(); newOrd++) {
-      int newDocId = mergedVectorValues.ordToDoc(newOrd);
+    KnnVectorValues.DocIterator mergedVectorIterator = mergedVectorValues.iterator();
+    for (int newDocId = mergedVectorIterator.nextDoc();
+        newDocId <= maxNewDocID;
+        newDocId = mergedVectorIterator.nextDoc()) {
       int hashDocIndex = newIdToOldOrdinal.indexOf(newDocId);
       if (newIdToOldOrdinal.indexExists(hashDocIndex)) {
+        int newOrd = mergedVectorIterator.index();
         initializedNodes.set(newOrd);
         oldToNewOrdinalMap[newIdToOldOrdinal.indexGet(hashDocIndex)] = newOrd;
       }

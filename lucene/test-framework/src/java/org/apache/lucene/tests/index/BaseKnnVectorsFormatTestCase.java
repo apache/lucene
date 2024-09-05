@@ -54,6 +54,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MergePolicy;
@@ -1006,7 +1007,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertNotNull(scorer);
           DocIdSetIterator iterator = scorer.iterator();
           assertSame(iterator, scorer.iterator());
-          assertSame(iterator, vectorValues.iterator());
           assertNotSame(iterator, scorer);
           // verify scorer iteration scores are valid & iteration with vectorValues is consistent
           while (iterator.nextDoc() != NO_MORE_DOCS
@@ -1777,6 +1777,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         double checksum = 0;
         int docCount = 0;
         long sumDocIds = 0;
+        long sumOrdToDocIds = 0;
         switch (vectorEncoding) {
           case BYTE -> {
             for (LeafReaderContext ctx : r.leaves()) {
@@ -1784,11 +1785,17 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               if (byteVectorValues != null) {
                 docCount += byteVectorValues.size();
                 StoredFields storedFields = ctx.reader().storedFields();
-                for (int ord = 0; ord < byteVectorValues.size(); ord++) {
+                KnnVectorValues.DocIterator iter = byteVectorValues.iterator();
+                for (iter.nextDoc(); iter.docID() != NO_MORE_DOCS; iter.nextDoc()) {
+                  int ord = iter.index();
                   checksum += byteVectorValues.vectorValue(ord)[0];
+                  Document doc = storedFields.document(iter.docID(), Set.of("id"));
+                  sumDocIds += Integer.parseInt(doc.get("id"));
+                }
+                for (int ord = 0; ord < byteVectorValues.size(); ord++) {
                   Document doc =
                       storedFields.document(byteVectorValues.ordToDoc(ord), Set.of("id"));
-                  sumDocIds += Integer.parseInt(doc.get("id"));
+                  sumOrdToDocIds += Integer.parseInt(doc.get("id"));
                 }
               }
             }
@@ -1799,10 +1806,16 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               if (vectorValues != null) {
                 docCount += vectorValues.size();
                 StoredFields storedFields = ctx.reader().storedFields();
-                for (int ord = 0; ord < vectorValues.size(); ord++) {
+                KnnVectorValues.DocIterator iter = vectorValues.iterator();
+                for (iter.nextDoc(); iter.docID() != NO_MORE_DOCS; iter.nextDoc()) {
+                  int ord = iter.index();
                   checksum += vectorValues.vectorValue(ord)[0];
-                  Document doc = storedFields.document(vectorValues.ordToDoc(ord), Set.of("id"));
+                  Document doc = storedFields.document(iter.docID(), Set.of("id"));
                   sumDocIds += Integer.parseInt(doc.get("id"));
+                }
+                for (int ord = 0; ord < vectorValues.size(); ord++) {
+                  Document doc = storedFields.document(vectorValues.ordToDoc(ord), Set.of("id"));
+                  sumOrdToDocIds += Integer.parseInt(doc.get("id"));
                 }
               }
             }
@@ -1815,6 +1828,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             vectorEncoding == VectorEncoding.BYTE ? numDocs * 0.2 : 1e-5);
         assertEquals(fieldDocCount, docCount);
         assertEquals(fieldSumDocIDs, sumDocIds);
+        assertEquals(fieldSumDocIDs, sumOrdToDocIds);
       }
     }
   }

@@ -150,7 +150,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
         ++count;
       }
     }
-    int [] newToOld = new int[count];
+    int[] newToOld = new int[count];
     count = 0;
     for (int ord = 0; ord < newDocToOldOrd.length; ord++) {
       if (newDocToOldOrd[ord] > 0) {
@@ -302,6 +302,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public float[] vectorValue(int targetOrd) {
       return vectors.get(targetOrd);
+    }
+
+    @Override
+    public DocIterator createIterator() {
+      return createDenseIterator(this);
     }
 
     @Override

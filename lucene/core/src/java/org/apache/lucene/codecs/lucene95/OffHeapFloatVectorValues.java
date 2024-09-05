@@ -154,6 +154,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
+    public DocIterator createIterator() {
+      return createDenseIterator(this);
+    }
+
+    @Override
     public VectorScorer scorer(float[] query) throws IOException {
       DenseOffHeapVectorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
@@ -241,6 +246,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
+    protected DocIterator createIterator() {
+      return DocIterator.fromIndexedDISI(disi);
+    }
+
+    @Override
     public VectorScorer scorer(float[] query) throws IOException {
       SparseOffHeapVectorValues copy = copy();
       RandomVectorScorer randomVectorScorer =
@@ -286,6 +296,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public float[] vectorValue(int targetOrd) {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
     }
 
     @Override

@@ -398,8 +398,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues.Floats {
+  static class OffHeapFloatVectorValues extends FloatVectorValues {
 
     private final int dimension;
     private final int size;
@@ -409,9 +408,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     private final int byteSize;
     private final float[] value;
     private final VectorSimilarityFunction similarityFunction;
-
-    private int ord = -1;
-    private int doc = -1;
 
     OffHeapFloatVectorValues(
         int dimension,
@@ -450,6 +446,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek((long) targetOrd * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ordToDocOperator.applyAsInt(ord);
     }
 
     @Override

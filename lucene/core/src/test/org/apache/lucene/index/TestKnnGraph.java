@@ -417,7 +417,8 @@ public class TestKnnGraph extends LuceneTestCase {
           nextDocWithVectors = vectorValues.iterator().advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
             int id = Integer.parseInt(storedFields.document(i).get("id"));
-            assertNull("document " + id + " has no vector, but was expected to", values[id]);
+            assertNull(
+                "document " + id + ", expected to have no vector, does have one", values[id]);
             ++i;
           }
           if (nextDocWithVectors == NO_MORE_DOCS) {

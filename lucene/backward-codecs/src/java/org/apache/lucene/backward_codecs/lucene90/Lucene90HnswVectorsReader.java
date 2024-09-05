@@ -31,7 +31,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
@@ -422,7 +421,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         }
 
         @Override
-        public KnnVectorValues.KnnValuesDocIterator iterator() {
+        public DocIterator iterator() {
           return values.iterator();
         }
       };

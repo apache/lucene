@@ -77,18 +77,17 @@ public abstract class ByteVectorValues extends KnnVectorValues {
     throw new UnsupportedOperationException();
   }
 
-  /** Returns the vector byte length, defaults to dimension multiplied by byte size */
-  @Override
-  public int getVectorByteLength() {
-    return dimension() * Byte.BYTES;
-  }
-
   /**
    * Returns a slice of the underlying {@link IndexInput} that contains the vector values if
    * available
    */
   public IndexInput getSlice() {
     return null;
+  }
+
+  @Override
+  public VectorEncoding getEncoding() {
+    return VectorEncoding.BYTE;
   }
 
   /**
@@ -118,6 +117,11 @@ public abstract class ByteVectorValues extends KnnVectorValues {
       @Override
       public ByteVectorValues copy() {
         return this;
+      }
+
+      @Override
+      protected DocIterator createIterator() {
+        return createDenseIterator(this);
       }
     };
   }

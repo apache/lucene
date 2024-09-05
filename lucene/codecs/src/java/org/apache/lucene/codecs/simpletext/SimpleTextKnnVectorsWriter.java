@@ -17,6 +17,8 @@
 
 package org.apache.lucene.codecs.simpletext;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +28,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
@@ -75,9 +78,10 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    for (int ord = 0; ord < floatVectorValues.size(); ord++) {
-      writeFloatVectorValue(floatVectorValues, ord);
-      docIds.add(floatVectorValues.ordToDoc(ord));
+    KnnVectorValues.DocIterator iter = floatVectorValues.iterator();
+    for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+      writeFloatVectorValue(floatVectorValues, iter.index());
+      docIds.add(docId);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);

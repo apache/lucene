@@ -17,11 +17,18 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 
-class MockVectorValues extends AbstractMockVectorValues<float[]> {
+class MockVectorValues extends FloatVectorValues {
+  private final int dimension;
+  private final float[][] denseValues;
+  protected final float[][] values;
+  private final int numVectors;
   private final float[] scratch;
+
+  private int pos = -1;
 
   static MockVectorValues fromValues(float[][] values) {
     float[] firstNonNull = null;
@@ -42,8 +49,21 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
   }
 
   MockVectorValues(float[][] values, int dimension, float[][] denseValues, int numVectors) {
-    super(values, dimension, denseValues, numVectors);
+    this.dimension = dimension;
+    this.values = values;
+    this.denseValues = denseValues;
+    this.numVectors = numVectors;
     this.scratch = new float[dimension];
+  }
+
+  @Override
+  public int size() {
+    return values.length;
+  }
+
+  @Override
+  public int dimension() {
+    return dimension;
   }
 
   @Override
@@ -53,25 +73,20 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
   }
 
   @Override
-  public float[] vectorValue() {
+  public float[] vectorValue(int ord) {
     if (LuceneTestCase.random().nextBoolean()) {
-      return values[pos];
+      return values[ord];
     } else {
       // Sometimes use the same scratch array repeatedly, mimicing what the codec will do.
       // This should help us catch cases of aliasing where the same vector values source is used
       // twice in a single computation.
-      System.arraycopy(values[pos], 0, scratch, 0, dimension);
+      System.arraycopy(values[ord], 0, scratch, 0, dimension);
       return scratch;
     }
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) {
-    return denseValues[targetOrd];
-  }
-
-  @Override
-  public int getVectorByteLength() {
-    throw new UnsupportedOperationException();
+  protected DocIterator createIterator() {
+    return createDenseIterator(this);
   }
 }

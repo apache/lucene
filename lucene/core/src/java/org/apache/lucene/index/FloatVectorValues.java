@@ -86,10 +86,9 @@ public abstract class FloatVectorValues extends KnnVectorValues {
     throw new UnsupportedOperationException();
   }
 
-  /** Returns the vector byte length, defaults to dimension multiplied by float byte size */
   @Override
-  public int getVectorByteLength() {
-    return dimension() * Float.BYTES;
+  public VectorEncoding getEncoding() {
+    return VectorEncoding.FLOAT32;
   }
 
   /**
@@ -119,6 +118,11 @@ public abstract class FloatVectorValues extends KnnVectorValues {
       @Override
       public FloatVectorValues copy() {
         return this;
+      }
+
+      @Override
+      protected DocIterator createIterator() {
+        return createDenseIterator(this);
       }
     };
   }

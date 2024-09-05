@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static java.lang.String.format;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -36,6 +37,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -115,6 +117,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     ScalarQuantizer scalarQuantizer =
         Lucene99ScalarQuantizedVectorsWriter.buildScalarQuantizer(
             new Lucene99ScalarQuantizedVectorsWriter.FloatVectorWrapper(vectors),
+            numVectors,
             similarityFunction,
             confidenceInterval,
             (byte) bits);
@@ -170,9 +173,10 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
             QuantizedByteVectorValues quantizedByteVectorValues =
                 quantizedReader.getQuantizedVectorValues("f");
             int docId = -1;
-            for (int ord = 0; ord < quantizedByteVectorValues.size(); ord++) {
-              byte[] vector = quantizedByteVectorValues.vectorValue(ord);
-              float offset = quantizedByteVectorValues.getScoreCorrectionConstant(ord);
+            KnnVectorValues.DocIterator iter = quantizedByteVectorValues.iterator();
+            for (docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+              byte[] vector = quantizedByteVectorValues.vectorValue(iter.index());
+              float offset = quantizedByteVectorValues.getScoreCorrectionConstant(iter.index());
               for (int i = 0; i < dim; i++) {
                 assertEquals(vector[i], expectedVectors[docId][i]);
               }

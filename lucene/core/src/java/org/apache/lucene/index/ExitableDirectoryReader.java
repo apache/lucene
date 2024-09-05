@@ -429,7 +429,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     private class ExitableFloatVectorValues extends FloatVectorValues {
-      private int nextCheck;
       private final FloatVectorValues vectorValues;
 
       public ExitableFloatVectorValues(FloatVectorValues vectorValues) {
@@ -443,12 +442,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
       @Override
       public float[] vectorValue(int ord) throws IOException {
-        if (nextCheck >= DOCS_BETWEEN_TIMEOUT_CHECK) {
-          checkAndThrow();
-          nextCheck = 0;
-        } else {
-          nextCheck++;
-        }
         return vectorValues.vectorValue(ord);
       }
 
@@ -463,6 +456,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      protected DocIterator createIterator() {
+        return createExitableIterator(vectorValues.iterator(), queryTimeout);
+      }
+
+      @Override
       public VectorScorer scorer(float[] target) throws IOException {
         return vectorValues.scorer(target);
       }
@@ -471,27 +469,9 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       public FloatVectorValues copy() {
         throw new UnsupportedOperationException();
       }
-
-      /**
-       * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
-       * if {@link Thread#interrupted()} returns true.
-       */
-      private void checkAndThrow() {
-        if (queryTimeout.shouldExit()) {
-          throw new ExitingReaderException(
-              "The request took too long to iterate over vector values. Timeout: "
-                  + queryTimeout.toString()
-                  + ", FloatVectorValues="
-                  + in);
-        } else if (Thread.interrupted()) {
-          throw new ExitingReaderException(
-              "Interrupted while iterating over vector values. FloatVectorValues=" + in);
-        }
-      }
     }
 
     private class ExitableByteVectorValues extends ByteVectorValues {
-      private int nextCheck;
       private final ByteVectorValues vectorValues;
 
       public ExitableByteVectorValues(ByteVectorValues vectorValues) {
@@ -510,18 +490,17 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
       @Override
       public byte[] vectorValue(int ord) throws IOException {
-        if (nextCheck >= DOCS_BETWEEN_TIMEOUT_CHECK) {
-          checkAndThrow();
-          nextCheck = 0;
-        } else {
-          nextCheck++;
-        }
         return vectorValues.vectorValue(ord);
       }
 
       @Override
       public int ordToDoc(int ord) {
         return vectorValues.ordToDoc(ord);
+      }
+
+      @Override
+      protected DocIterator createIterator() {
+        return createExitableIterator(vectorValues.iterator(), queryTimeout);
       }
 
       @Override
@@ -533,24 +512,47 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       public ByteVectorValues copy() {
         throw new UnsupportedOperationException();
       }
+    }
+  }
 
-      /**
-       * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
-       * if {@link Thread#interrupted()} returns true.
-       */
+  private static KnnVectorValues.DocIterator createExitableIterator(
+      KnnVectorValues.DocIterator delegate, QueryTimeout queryTimeout) {
+    return new KnnVectorValues.DocIterator() {
+      private int nextCheck;
+
+      @Override
+      public int index() {
+        return delegate.index();
+      }
+
+      @Override
+      public int docID() {
+        return delegate.docID();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        int doc = delegate.nextDoc();
+        if (doc >= nextCheck) {
+          checkAndThrow();
+          nextCheck = doc + ExitableFilterAtomicReader.DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return doc;
+      }
+
       private void checkAndThrow() {
         if (queryTimeout.shouldExit()) {
           throw new ExitingReaderException(
-              "The request took too long to iterate over vector values. Timeout: "
+              "The request took too long to iterate over knn vector values. Timeout: "
                   + queryTimeout.toString()
-                  + ", ByteVectorValues="
-                  + in);
+                  + ", KnnVectorValues="
+                  + delegate);
         } else if (Thread.interrupted()) {
           throw new ExitingReaderException(
-              "Interrupted while iterating over vector values. ByteVectorValues=" + in);
+              "Interrupted while iterating over knn vector values. KnnVectorValues=" + delegate);
         }
       }
-    }
+    };
   }
 
   /** Wrapper class for another PointValues implementation that is used by ExitableFields. */
@@ -663,7 +665,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (queryTimeout.shouldExit()) {
         throw new ExitingReaderException(
             "The request took too long to intersect point values. Timeout: "
-                + queryTimeout.toString()
+                + queryTimeout
                 + ", PointValues="
                 + pointValues);
       } else if (Thread.interrupted()) {
@@ -795,7 +797,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
   /** Wrapper class for another Terms implementation that is used by ExitableFields. */
   public static class ExitableTerms extends FilterTerms {
 
-    private QueryTimeout queryTimeout;
+    private final QueryTimeout queryTimeout;
 
     /** Constructor * */
     public ExitableTerms(Terms terms, QueryTimeout queryTimeout) {

@@ -35,7 +35,7 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -206,24 +206,67 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
+  private static class SortingValuesIterator extends KnnVectorValues.DocIterator {
+    private final BitSet docsWithValues;
+    private final int[] docToOrd;
+    private final int size;
+
+    int doc = -1;
+
+    SortingValuesIterator(KnnVectorValues value, Sorter.DocMap docMap) throws IOException {
+      docToOrd = new int[docMap.size()];
+      docsWithValues = new FixedBitSet(docMap.size());
+      KnnVectorValues.DocIterator iter = value.createIterator();
+      int count = 0;
+      for (int doc = iter.nextDoc(); doc != NO_MORE_DOCS; doc = iter.nextDoc()) {
+        int newDocId = docMap.oldToNew(doc);
+        if (newDocId != -1) {
+          docToOrd[newDocId] = iter.index();
+          docsWithValues.set(newDocId);
+          ++count;
+        }
+      }
+      size = count;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public int index() {
+      return docToOrd[doc];
+    }
+
+    @Override
+    public int nextDoc() {
+      if (doc >= docsWithValues.length() - 1) {
+        doc = NO_MORE_DOCS;
+      } else {
+        doc = docsWithValues.nextSetBit(doc + 1);
+      }
+      return doc;
+    }
+
+    @Override
+    public long cost() {
+      return size;
+    }
+  }
+
   /** Sorting FloatVectorValues that maps ordinals using the provided sortMap */
   private static class SortingFloatVectorValues extends FloatVectorValues {
     final FloatVectorValues delegate;
-    final Sorter.DocMap sortMap;
 
     SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
-      this.sortMap = sortMap;
+      iterator = new SortingValuesIterator(delegate, sortMap);
     }
 
     @Override
     public float[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(sortMap.newToOld(ord));
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return delegate.ordToDoc(sortMap.newToOld(ord));
+      return delegate.vectorValue(iterator.index());
     }
 
     @Override
@@ -233,37 +276,36 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public int size() {
-      return delegate.size();
-    }
-
-    @Override
-    public VectorScorer scorer(float[] target) {
-      throw new UnsupportedOperationException();
+      return (int) iterator.cost();
     }
 
     @Override
     public FloatVectorValues copy() {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    protected DocIterator createIterator() {
+      throw new IllegalStateException();
+    }
   }
 
   private static class SortingByteVectorValues extends ByteVectorValues {
     final ByteVectorValues delegate;
-    final Sorter.DocMap sortMap;
 
     SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
-      this.sortMap = sortMap;
+      iterator = new SortingValuesIterator(delegate, sortMap);
     }
 
     @Override
     public byte[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(sortMap.newToOld(ord));
+      return delegate.vectorValue(iterator().index());
     }
 
     @Override
-    public int ordToDoc(int ord) {
-      return delegate.ordToDoc(sortMap.newToOld(ord));
+    protected DocIterator createIterator() {
+      throw new IllegalStateException();
     }
 
     @Override
@@ -273,12 +315,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public int size() {
-      return delegate.size();
-    }
-
-    @Override
-    public VectorScorer scorer(byte[] target) {
-      throw new UnsupportedOperationException();
+      return (int) iterator().cost();
     }
 
     @Override

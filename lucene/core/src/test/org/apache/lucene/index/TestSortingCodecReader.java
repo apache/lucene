@@ -262,7 +262,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertTrue(sorted_numeric_dv.advanceExact(idNext));
               assertTrue(sorted_set_dv.advanceExact(idNext));
               assertTrue(binary_sorted_dv.advanceExact(idNext));
-              assertEquals(idNext, vectorValues.ordToDoc(i));
+              assertEquals(idNext, vectorValues.iterator().advance(idNext));
               assertEquals(new BytesRef(ids.longValue() + ""), binary_dv.binaryValue());
               assertEquals(
                   new BytesRef(ids.longValue() + ""),
@@ -274,7 +274,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertEquals(1, sorted_numeric_dv.docValueCount());
               assertEquals(ids.longValue(), sorted_numeric_dv.nextValue());
 
-              float[] vectorValue = vectorValues.vectorValue(i);
+              float[] vectorValue = vectorValues.vectorValue(vectorValues.iterator().index());
               assertEquals(1, vectorValue.length);
               assertEquals((float) ids.longValue(), vectorValue[0], 0.001f);
 
