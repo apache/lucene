@@ -19,7 +19,6 @@ package org.apache.lucene.replicator.http;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.concurrent.Callable;
@@ -36,7 +35,6 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Base class for Http clients.
@@ -123,26 +121,8 @@ public abstract class HttpClientBase implements Closeable {
     }
   }
 
-  @SuppressForbidden(reason = "XXX: security hole")
   protected void throwKnownError(HttpResponse response, StatusLine statusLine) throws IOException {
-    ObjectInputStream in = null;
-    try {
-      in = new ObjectInputStream(response.getEntity().getContent());
-    } catch (Throwable t) {
-      // the response stream is not an exception - could be an error in servlet.init().
-      throw new RuntimeException("Unknown error: " + statusLine, t);
-    }
-
-    Throwable t;
-    try {
-      t = (Throwable) in.readObject();
-      assert t != null;
-    } catch (Throwable th) {
-      throw new RuntimeException("Failed to read exception object: " + statusLine, th);
-    } finally {
-      in.close();
-    }
-    throw IOUtils.rethrowAlways(t);
+    throw new RuntimeException(statusLine.toString());
   }
 
   /**

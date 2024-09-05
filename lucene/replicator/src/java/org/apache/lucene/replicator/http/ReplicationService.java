@@ -19,7 +19,6 @@ package org.apache.lucene.replicator.http;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Locale;
@@ -32,7 +31,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.http.HttpStatus;
 import org.apache.lucene.replicator.Replicator;
 import org.apache.lucene.replicator.SessionToken;
-import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * A server-side service for handling replication requests. The service assumes requests are sent in
@@ -133,7 +131,6 @@ public class ReplicationService {
   }
 
   /** Executes the replication task. */
-  @SuppressForbidden(reason = "XXX: security hole")
   public void perform(HttpServletRequest req, HttpServletResponse resp)
       throws ServletException, IOException {
     String[] pathElements = getPathElements(req);
@@ -184,19 +181,10 @@ public class ReplicationService {
           }
           break;
       }
-    } catch (Exception e) {
+    } catch (
+        @SuppressWarnings("unused")
+        Exception e) {
       resp.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR); // propagate the failure
-      try {
-        /*
-         * Note: it is assumed that "identified exceptions" are thrown before
-         * anything was written to the stream.
-         */
-        ObjectOutputStream oos = new ObjectOutputStream(resOut);
-        oos.writeObject(e);
-        oos.flush();
-      } catch (Exception e2) {
-        throw new IOException("Could not serialize", e2);
-      }
     } finally {
       resp.flushBuffer();
     }
