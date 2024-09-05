@@ -98,7 +98,7 @@ configurations {
 
 dependencies {
   // Use a newer groovy that doesn't have illegal reflective accesses.
-  groovy "org.codehaus.groovy:groovy-all:4.0.22"
+  groovy "org.apache.groovy:groovy-all:4.0.22"
 }
 
 apply from: file('buildSrc/scriptDepVersions.gradle')
