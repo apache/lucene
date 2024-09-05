@@ -112,6 +112,8 @@ API Changes
 
 * GITHUB#13632: CandidateMatcher public matching functions (Bryan Jacobowitz)
 
+* GITHUB#13708: Move Operations.sameLanguage/subsetOf to test-framework. (Robert Muir)
+
 
 New Features
 ---------------------
@@ -173,6 +175,8 @@ Improvements
 * GITHUB#13209: Upgrade snowball to 26db1ab9. (Robert Muir)
 
 * GITHUB#12172: Update Romanian stopwords list to include the modern unicode forms.  (Trey Jones)
+
+* GITHUB#13707: Improve Operations.isTotal() to work with non-minimal automata. (Dawid Weiss, Robert Muir)
 
 Optimizations
 ---------------------
