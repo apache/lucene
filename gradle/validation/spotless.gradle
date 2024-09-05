@@ -36,7 +36,6 @@ configure(allprojects) { prj ->
 
         lineEndings 'UNIX'
         endWithNewline()
-        toggleOffOn()
         googleJavaFormat(deps.versions.googleJavaFormat.get())
 
         // Apply to all Java sources
