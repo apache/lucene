@@ -778,22 +778,48 @@ public final class Operations {
     return true;
   }
 
-  /** Returns true if the given automaton accepts all strings. The automaton must be minimized. */
+  /**
+   * Returns true if the given automaton accepts all strings.
+   *
+   * <p>The automaton must be deterministic, or this method may return false.
+   *
+   * <p>Complexity: linear in number of states and transitions.
+   */
   public static boolean isTotal(Automaton a) {
     return isTotal(a, Character.MIN_CODE_POINT, Character.MAX_CODE_POINT);
   }
 
   /**
    * Returns true if the given automaton accepts all strings for the specified min/max range of the
-   * alphabet. The automaton must be minimized.
+   * alphabet.
+   *
+   * <p>The automaton must be deterministic, or this method may return false.
+   *
+   * <p>Complexity: linear in number of states and transitions.
    */
   public static boolean isTotal(Automaton a, int minAlphabet, int maxAlphabet) {
-    if (a.isAccept(0) && a.getNumTransitions(0) == 1) {
-      Transition t = new Transition();
-      a.getTransition(0, 0, t);
-      return t.dest == 0 && t.min == minAlphabet && t.max == maxAlphabet;
+    BitSet states = getLiveStates(a);
+    Transition spare = new Transition();
+    int seenStates = 0;
+    for (int state = states.nextSetBit(0); state >= 0; state = states.nextSetBit(state + 1)) {
+      // all reachable states must be accept states
+      if (a.isAccept(state) == false) return false;
+      // all reachable states must contain transitions covering minAlphabet-maxAlphabet
+      int previousLabel = minAlphabet - 1;
+      for (int transition = 0; transition < a.getNumTransitions(state); transition++) {
+        a.getTransition(state, transition, spare);
+        // no gaps are allowed
+        if (spare.min > previousLabel + 1) return false;
+        previousLabel = spare.max;
+      }
+      if (previousLabel < maxAlphabet) return false;
+      if (state == Integer.MAX_VALUE) {
+        break; // or (state+1) would overflow
+      }
+      seenStates++;
     }
-    return false;
+    // we've checked all the states, automaton is either total or empty
+    return seenStates > 0;
   }
 
   /**
