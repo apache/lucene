@@ -177,8 +177,10 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
             assertEquals(corrections[1], qvectorValues.getNormOC(), 0.00001f);
             if (corrections.length == 3) {
               assertEquals(corrections[2], qvectorValues.getODotC(), 0.00001f);
+              assertEquals(VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, similarityFunction);
+            } else {
+              assertEquals(2, corrections.length);
             }
-            assertEquals(2, corrections.length);
           }
         }
       }
