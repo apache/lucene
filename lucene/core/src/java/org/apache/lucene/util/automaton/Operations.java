@@ -181,30 +181,65 @@ public final class Operations {
       // Repeating the empty automata will still only accept the empty automata.
       return a;
     }
+
+    if (a.isAccept(0) && a.getAcceptStates().cardinality() == 1) {
+      // If state 0 is the only accept state, then this automaton already repeats itself.
+      return a;
+    }
+
     Automaton.Builder builder = new Automaton.Builder();
+    // Create the initial state, which is accepted
     builder.createState();
     builder.setAccept(0, true);
-    builder.copy(a);
-
     Transition t = new Transition();
+
+    int[] stateMap = new int[a.getNumStates()];
+    for (int state = 0; state < a.getNumStates(); ++state) {
+      if (a.isAccept(state) == false) {
+        stateMap[state] = builder.createState();
+      } else if (a.getNumTransitions(state) == 0) {
+        // Accept states that have no transitions get merged into state 0.
+        stateMap[state] = 0;
+      } else {
+        int newState = builder.createState();
+        stateMap[state] = newState;
+        builder.setAccept(newState, true);
+      }
+    }
+
+    // Now copy the automaton while renumbering states.
+    for (int state = 0; state < a.getNumStates(); ++state) {
+      int src = stateMap[state];
+      int count = a.initTransition(state, t);
+      for (int i = 0; i < count; i++) {
+        a.getNextTransition(t);
+        int dest = stateMap[t.dest];
+        builder.addTransition(src, dest, t.min, t.max);
+      }
+    }
+
+    // Now copy transitions of the initial state to our new initial state.
     int count = a.initTransition(0, t);
     for (int i = 0; i < count; i++) {
       a.getNextTransition(t);
-      builder.addTransition(0, t.dest + 1, t.min, t.max);
+      builder.addTransition(0, stateMap[t.dest], t.min, t.max);
     }
 
-    int numStates = a.getNumStates();
-    for (int s = 0; s < numStates; s++) {
-      if (a.isAccept(s)) {
+    // Now copy transitions of the initial state to final states to make the automaton repeat
+    // itself.
+    for (int s = a.getAcceptStates().nextSetBit(0);
+        s != -1;
+        s = a.getAcceptStates().nextSetBit(s + 1)) {
+      if (stateMap[s] != 0) {
         count = a.initTransition(0, t);
         for (int i = 0; i < count; i++) {
           a.getNextTransition(t);
-          builder.addTransition(s + 1, t.dest + 1, t.min, t.max);
+          builder.addTransition(stateMap[s], stateMap[t.dest], t.min, t.max);
         }
       }
     }
 
-    return builder.finish();
+    return removeDeadStates(builder.finish());
   }
 
   /**
