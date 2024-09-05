@@ -58,6 +58,8 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.packed.DirectReader;
+import org.apache.lucene.util.packed.DirectWriter;
 import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
@@ -160,24 +162,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         RandomAccessVectorValues.Floats vectorValues =
             RandomAccessVectorValues.fromFloats(
                 field.flatFieldVectorsWriter.getVectors(), field.fieldInfo.getVectorDimension());
-        // TODO When assign vectors is true, it seems to adjust the centroids again, then the actual
-        // nearest centroid later
-        // isn't the same?
-        KMeans.Results kmeansResult = cluster(vectorValues, false);
+        KMeans.Results kmeansResult = cluster(vectorValues, true);
         if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
           segmentWriteState.infoStream.message(
               BINARIZED_VECTOR_COMPONENT, "clustered: " + kmeansResult);
         }
         clusterCenters = kmeansResult.centroids();
-        vectorClusters = new short[vectorCount];
-        int vidx = 0;
-        for (float[] v : field.flatFieldVectorsWriter.getVectors()) {
-          vectorClusters[vidx++] = (short) kmeansResult.nearestCentroid(v);
-        }
-        if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
-          segmentWriteState.infoStream.message(
-              BINARIZED_VECTOR_COMPONENT, "centroids: " + Arrays.toString(vectorClusters));
-        }
+        vectorClusters = kmeansResult.vectorCentroids();
       } else {
         clusterCenters = new float[1][field.dimensionSums.length];
         for (int i = 0; i < field.dimensionSums.length; i++) {
@@ -212,6 +203,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
     writeBinarizedVectors(fieldData, clusterCenters, vectorClusters, quantizer);
     long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
+    long clusterCentersOffset = -1;
+    long clusterCentersLength = -1;
+    if (clusterCenters.length > 1) {
+      clusterCentersOffset = binarizedVectorData.getFilePointer();
+      writeVectorCentroids(clusterCenters.length, vectorClusters, null);
+      clusterCentersLength = binarizedVectorData.getFilePointer() - clusterCentersOffset;
+    }
 
     writeMeta(
         fieldData.fieldInfo,
@@ -219,7 +217,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         vectorDataOffset,
         vectorDataLength,
         clusterCenters,
-        fieldData.getDocsWithFieldSet());
+        fieldData.getDocsWithFieldSet(),
+        clusterCentersOffset,
+        clusterCentersLength);
   }
 
   private void writeBinarizedVectors(
@@ -238,14 +238,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     if (clusterCenters.length > 1) {
       int cnt = 0;
       short clusterId;
-      byte bClusterId;
       for (float[] v : fieldData.getVectors()) {
         clusterId = vectorClusters[cnt++];
         float[] corrections =
             scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
         binarizedVectorData.writeBytes(vector, vector.length);
-        bClusterId = BinarizedByteVectorValues.encodeClusterIdToByte(clusterId);
-        binarizedVectorData.writeByte(bClusterId);
         // FIXME: handle of sim types like MIP such as COSINE?
         if (scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
           correctionsBuffer.putFloat(corrections[0]);
@@ -296,13 +293,23 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
     writeSortedBinarizedVectors(fieldData, clusterCenters, vectorClusters, ordMap, scalarQuantizer);
     long quantizedVectorLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
+    long clusterCentersOffset = -1;
+    long clusterCentersLength = -1;
+    if (clusterCenters.length > 1) {
+      clusterCentersOffset = binarizedVectorData.getFilePointer();
+      writeVectorCentroids(clusterCenters.length, vectorClusters, ordMap);
+      clusterCentersLength = binarizedVectorData.getFilePointer() - clusterCentersOffset;
+    }
+
     writeMeta(
         fieldData.fieldInfo,
         maxDoc,
         vectorDataOffset,
         quantizedVectorLength,
         clusterCenters,
-        newDocsWithField);
+        newDocsWithField,
+        clusterCentersOffset,
+        clusterCentersLength);
   }
 
   private void writeSortedBinarizedVectors(
@@ -322,15 +329,12 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     if (clusterCenters.length > 1) {
       short clusterId;
-      byte bClusterId;
       for (int ordinal : ordMap) {
         float[] v = fieldData.getVectors().get(ordinal);
         clusterId = vectorClusters[ordinal];
         float[] corrections =
             scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
         binarizedVectorData.writeBytes(vector, vector.length);
-        bClusterId = BinarizedByteVectorValues.encodeClusterIdToByte(clusterId);
-        binarizedVectorData.writeByte(bClusterId);
         // FIXME: handle of sim types like MIP such as COSINE?
         if (scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
           correctionsBuffer.putFloat(corrections[0]);
@@ -364,14 +368,35 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  // TODO do we want to use `LongValues` to store vectorOrd -> centroidOrd mapping?
+  private void writeVectorCentroids(int numClusters, short[] vectorOrdToCentroid, int[] ordMap)
+      throws IOException {
+    assert numClusters > 1;
+    DirectWriter directWriter =
+        DirectWriter.getInstance(
+            binarizedVectorData,
+            vectorOrdToCentroid.length,
+            DirectWriter.unsignedBitsRequired(numClusters));
+    if (ordMap != null) {
+      for (int ordinal : ordMap) {
+        directWriter.add(vectorOrdToCentroid[ordinal]);
+      }
+    } else {
+      for (short cluster : vectorOrdToCentroid) {
+        directWriter.add(cluster);
+      }
+    }
+    directWriter.finish();
+  }
+
   private void writeMeta(
       FieldInfo field,
       int maxDoc,
       long vectorDataOffset,
       long vectorDataLength,
       float[][] clusterCenters,
-      DocsWithFieldSet docsWithField)
+      DocsWithFieldSet docsWithField,
+      long clustersOffset,
+      long clustersLength)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
@@ -389,6 +414,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       for (float[] clusterCenter : clusterCenters) {
         buffer.asFloatBuffer().put(clusterCenter);
         meta.writeBytes(buffer.array(), buffer.array().length);
+      }
+      if (clusterCenters.length > 1) {
+        assert clustersOffset >= 0 && clustersLength > 0;
+        meta.writeVLong(clustersOffset);
+        meta.writeVLong(clustersLength);
       }
     }
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
@@ -419,48 +449,100 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
       // If we have more vectors than allowed for a single cluster, we will use KMeans to cluster
-      if (vectorCount > numberOfVectorsPerCluster) {
-        try (CloseableRandomVectorScorerSupplier vectorScorerSupplier =
-            rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState)) {
-          assert vectorScorerSupplier.vectors() instanceof RandomAccessVectorValues.Floats;
-          // we assume floats here as that is what KMeans currently requires
-          RandomAccessVectorValues.Floats vectorValues =
-              (RandomAccessVectorValues.Floats) vectorScorerSupplier.vectors();
-          KMeans.Results kmeansResult = cluster(vectorValues, false);
-          assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
-          centroids = kmeansResult.centroids();
+      // we do an early check here to avoid the overhead of `mergeOneFieldToIndex` which might
+      // not be as efficient as mergeOneField
+      final IndexOutput tempVectorCentroidMapData =
+          segmentWriteState.directory.createTempOutput(
+              binarizedVectorData.getName(), "centroid_map_temp", segmentWriteState.context);
+      IndexInput centroidMapTempInput = null;
+      boolean success = false;
+      try {
+        if (vectorCount > numberOfVectorsPerCluster) {
+          try (CloseableRandomVectorScorerSupplier vectorScorerSupplier =
+              rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState)) {
+            assert vectorScorerSupplier.vectors() instanceof RandomAccessVectorValues.Floats;
+            // we assume floats here as that is what KMeans currently requires
+            RandomAccessVectorValues.Floats vectorValues =
+                (RandomAccessVectorValues.Floats) vectorScorerSupplier.vectors();
+            // get an accurate vector count now,
+            // previously, the count was based off of possibly deleted docs
+            // if we indeed need to cluster, continue, if  not, simply used merged centroid
+            vectorCount = vectorValues.size();
+            if (vectorCount > numberOfVectorsPerCluster) {
+              KMeans.Results kmeansResult = cluster(vectorValues, false);
+              assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
+              centroids = kmeansResult.centroids();
+            } else {
+              centroids = new float[][] {mergedCentroid};
+            }
+          }
+        } else {
+          // Don't need access to the random vectors, we can just use the merged
+          rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+          centroids = new float[][] {mergedCentroid};
         }
-      } else {
-        // Don't need access to the random vectors, we can just use the merged
-        rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
-        centroids = new float[][] {mergedCentroid};
+        if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
+          segmentWriteState.infoStream.message(
+              BINARIZED_VECTOR_COMPONENT,
+              "Vectors' count:" + vectorCount + "; clusters' count:" + centroids.length);
+        }
+        int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
+        BinarizedFloatVectorValues binarizedVectorValues =
+            new BinarizedFloatVectorValues(
+                KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
+                new BinaryQuantizer(descritizedDimension, fieldInfo.getVectorSimilarityFunction()),
+                centroids);
+        DirectWriter vectorOrdToCentroidWriter = null;
+        long centroidMapOffset = -1;
+        long centroidMapLength = -1;
+        if (centroids.length > 1) {
+          vectorOrdToCentroidWriter =
+              DirectWriter.getInstance(
+                  tempVectorCentroidMapData,
+                  vectorCount,
+                  DirectWriter.unsignedBitsRequired(centroids.length));
+        }
+        long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
+        DocsWithFieldSet docsWithField =
+            writeBinarizedVectorData(
+                binarizedVectorData,
+                vectorOrdToCentroidWriter,
+                binarizedVectorValues,
+                fieldInfo.getVectorSimilarityFunction());
+        long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
+        if (vectorOrdToCentroidWriter != null) {
+          vectorOrdToCentroidWriter.finish();
+          CodecUtil.writeFooter(tempVectorCentroidMapData);
+          IOUtils.close(tempVectorCentroidMapData);
+          centroidMapTempInput =
+              segmentWriteState.directory.openInput(
+                  tempVectorCentroidMapData.getName(), segmentWriteState.context);
+          CodecUtil.retrieveChecksum(centroidMapTempInput);
+          centroidMapOffset = binarizedVectorData.getFilePointer();
+          binarizedVectorData.copyBytes(
+              centroidMapTempInput, centroidMapTempInput.length() - CodecUtil.footerLength());
+          centroidMapLength = binarizedVectorData.getFilePointer() - centroidMapOffset;
+          IOUtils.close(centroidMapTempInput);
+          IOUtils.deleteFilesIgnoringExceptions(
+              segmentWriteState.directory, tempVectorCentroidMapData.getName());
+        }
+        writeMeta(
+            fieldInfo,
+            segmentWriteState.segmentInfo.maxDoc(),
+            vectorDataOffset,
+            vectorDataLength,
+            centroids,
+            docsWithField,
+            centroidMapOffset,
+            centroidMapLength);
+        success = true;
+      } finally {
+        if (success == false) {
+          IOUtils.closeWhileHandlingException(tempVectorCentroidMapData, centroidMapTempInput);
+          IOUtils.deleteFilesIgnoringExceptions(
+              segmentWriteState.directory, tempVectorCentroidMapData.getName());
+        }
       }
-      if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
-        segmentWriteState.infoStream.message(
-            BINARIZED_VECTOR_COMPONENT,
-            "Vectors' count:" + vectorCount + "; clusters' count:" + centroids.length);
-      }
-      int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
-      BinarizedFloatVectorValues binarizedVectorValues =
-          new BinarizedFloatVectorValues(
-              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
-              new BinaryQuantizer(descritizedDimension, fieldInfo.getVectorSimilarityFunction()),
-              centroids);
-      long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
-      DocsWithFieldSet docsWithField =
-          writeBinarizedVectorData(
-              binarizedVectorData,
-              binarizedVectorValues,
-              centroids.length > 1,
-              fieldInfo.getVectorSimilarityFunction());
-      long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
-      writeMeta(
-          fieldInfo,
-          segmentWriteState.segmentInfo.maxDoc(),
-          vectorDataOffset,
-          vectorDataLength,
-          centroids,
-          docsWithField);
     } else {
       rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
     }
@@ -512,8 +594,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
   static DocsWithFieldSet writeBinarizedVectorData(
       IndexOutput output,
+      DirectWriter vectorOrdToClusterOrdWriter,
       BinarizedByteVectorValues binarizedByteVectorValues,
-      boolean moreThanOneCluster,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
@@ -523,9 +605,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       // write vector
       byte[] binaryValue = binarizedByteVectorValues.vectorValue();
       output.writeBytes(binaryValue, binaryValue.length);
-      if (moreThanOneCluster) {
-        output.writeByte(
-            BinarizedByteVectorValues.encodeClusterIdToByte(binarizedByteVectorValues.clusterId()));
+      if (vectorOrdToClusterOrdWriter != null) {
+        vectorOrdToClusterOrdWriter.add(binarizedByteVectorValues.clusterId());
       }
       // FIXME: handle other similarity functions the same as MIP such as COSINE
       // TODO handle quantization output correctly
@@ -550,6 +631,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
       // If we have more vectors than allowed for a single cluster, we will use KMeans to cluster
+      // we do an early check here to avoid the overhead of `mergeOneFieldToIndex` which might
+      // not be as efficient as mergeOneField
       if (vectorCount > numberOfVectorsPerCluster) {
         try (CloseableRandomVectorScorerSupplier vectorScorerSupplier =
             rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState)) {
@@ -557,9 +640,17 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           // we assume floats here as that is what KMeans currently requires
           RandomAccessVectorValues.Floats vectorValues =
               (RandomAccessVectorValues.Floats) vectorScorerSupplier.vectors();
-          KMeans.Results kmeansResult = cluster(vectorValues, false);
-          assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
-          centroids = kmeansResult.centroids();
+          // get an accurate vector count now,
+          // previously, the count was based off of possibly deleted docs
+          // if we indeed need to cluster, continue, if  not, simply used merged centroid
+          vectorCount = vectorValues.size();
+          if (vectorCount > numberOfVectorsPerCluster) {
+            KMeans.Results kmeansResult = cluster(vectorValues, false);
+            assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
+            centroids = kmeansResult.centroids();
+          } else {
+            centroids = new float[][] {mergedCentroid};
+          }
         }
       } else {
         // Don't need access to the random vectors, we can just use the merged
@@ -571,7 +662,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
             BINARIZED_VECTOR_COMPONENT,
             "Vectors' count:" + vectorCount + "; clusters' count:" + centroids.length);
       }
-      return mergeOneFieldToIndex(segmentWriteState, fieldInfo, mergeState, centroids);
+      return mergeOneFieldToIndex(segmentWriteState, fieldInfo, mergeState, vectorCount, centroids);
     }
     return rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
   }
@@ -580,22 +671,38 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       SegmentWriteState segmentWriteState,
       FieldInfo fieldInfo,
       MergeState mergeState,
+      int vectorCount,
       float[][] centroids)
       throws IOException {
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
-    IndexOutput tempQuantizedVectorData =
+    final IndexOutput tempQuantizedVectorData =
         segmentWriteState.directory.createTempOutput(
             binarizedVectorData.getName(), "temp", segmentWriteState.context);
-    IndexOutput tempScoreQuantizedVectorData =
+    final IndexOutput tempScoreQuantizedVectorData =
         segmentWriteState.directory.createTempOutput(
             binarizedVectorData.getName(), "score_temp", segmentWriteState.context);
+    final IndexOutput tempVectorCentroidMapData =
+        segmentWriteState.directory.createTempOutput(
+            binarizedVectorData.getName(), "centroid_map_temp", segmentWriteState.context);
+    ;
     IndexInput binarizedDataInput = null;
     IndexInput binarizedScoreDataInput = null;
+    IndexInput centroidMapTempInput = null;
     boolean success = false;
     int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
     BinaryQuantizer quantizer =
         new BinaryQuantizer(descritizedDimension, fieldInfo.getVectorSimilarityFunction());
     try {
+      long centroidMapOffset = -1;
+      long centroidMapLength = -1;
+      DirectWriter vectorOrdToCentroidWriter = null;
+      if (centroids.length > 1) {
+        vectorOrdToCentroidWriter =
+            DirectWriter.getInstance(
+                tempVectorCentroidMapData,
+                vectorCount,
+                DirectWriter.unsignedBitsRequired(centroids.length));
+      }
       BinarizedFloatVectorValues binarizedVectorValues =
           new BinarizedFloatVectorValues(
               KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState),
@@ -604,8 +711,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       DocsWithFieldSet docsWithField =
           writeBinarizedVectorData(
               tempQuantizedVectorData,
+              vectorOrdToCentroidWriter,
               binarizedVectorValues,
-              centroids.length > 1,
               fieldInfo.getVectorSimilarityFunction());
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
@@ -616,6 +723,19 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           binarizedDataInput, binarizedDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(binarizedDataInput);
+      if (vectorOrdToCentroidWriter != null) {
+        vectorOrdToCentroidWriter.finish();
+        CodecUtil.writeFooter(tempVectorCentroidMapData);
+        IOUtils.close(tempVectorCentroidMapData);
+        centroidMapTempInput =
+            segmentWriteState.directory.openInput(
+                tempVectorCentroidMapData.getName(), segmentWriteState.context);
+        CodecUtil.retrieveChecksum(centroidMapTempInput);
+        centroidMapOffset = binarizedVectorData.getFilePointer();
+        binarizedVectorData.copyBytes(
+            centroidMapTempInput, centroidMapTempInput.length() - CodecUtil.footerLength());
+        centroidMapLength = binarizedVectorData.getFilePointer() - centroidMapOffset;
+      }
       writeQueryBinarizedVectorData(
           tempScoreQuantizedVectorData,
           quantizer,
@@ -632,16 +752,24 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           vectorDataOffset,
           vectorDataLength,
           centroids,
-          docsWithField);
+          docsWithField,
+          centroidMapOffset,
+          centroidMapLength);
       success = true;
       final IndexInput finalBinarizedDataInput = binarizedDataInput;
       final IndexInput finalBinarizedScoreDataInput = binarizedScoreDataInput;
+      final IndexInput finalCentroidMapTempInput = centroidMapTempInput;
       OffHeapBinarizedVectorValues vectorValues =
           new OffHeapBinarizedVectorValues.DenseOffHeapVectorValues(
               fieldInfo.getVectorDimension(),
               docsWithField.cardinality(),
               centroids,
               quantizer,
+              finalCentroidMapTempInput != null
+                  ? DirectReader.getInstance(
+                      finalCentroidMapTempInput.randomAccessSlice(0, centroidMapTempInput.length()),
+                      centroids.length)
+                  : null,
               fieldInfo.getVectorSimilarityFunction(),
               vectorsScorer,
               finalBinarizedDataInput);
@@ -659,23 +787,28 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           scorerSupplier,
           vectorValues,
           () -> {
-            IOUtils.close(finalBinarizedDataInput, finalBinarizedScoreDataInput);
+            IOUtils.close(
+                finalBinarizedDataInput, finalBinarizedScoreDataInput, finalCentroidMapTempInput);
             IOUtils.deleteFilesIgnoringExceptions(
                 segmentWriteState.directory,
                 tempQuantizedVectorData.getName(),
-                tempScoreQuantizedVectorData.getName());
+                tempScoreQuantizedVectorData.getName(),
+                tempVectorCentroidMapData.getName());
           });
     } finally {
       if (success == false) {
         IOUtils.closeWhileHandlingException(
             tempQuantizedVectorData,
             tempScoreQuantizedVectorData,
+            tempVectorCentroidMapData,
             binarizedDataInput,
-            binarizedScoreDataInput);
+            binarizedScoreDataInput,
+            centroidMapTempInput);
         IOUtils.deleteFilesIgnoringExceptions(
             segmentWriteState.directory,
             tempQuantizedVectorData.getName(),
-            tempScoreQuantizedVectorData.getName());
+            tempScoreQuantizedVectorData.getName(),
+            tempVectorCentroidMapData.getName());
       }
     }
   }
