@@ -39,6 +39,8 @@ public interface RandomAccessBinarizedQueryByteVectorValues extends RandomAccess
 
   int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
 
+  int centroidsCount();
+
   @Override
   RandomAccessBinarizedQueryByteVectorValues copy() throws IOException;
 }

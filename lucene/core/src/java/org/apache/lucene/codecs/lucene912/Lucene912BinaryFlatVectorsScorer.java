@@ -118,28 +118,27 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      byte[] queryVector = queryVectors.vectorValue(ord);
+      BinaryQueryVector[] bQueryVectors = new BinaryQueryVector[queryVectors.centroidsCount()];
+      for (int i = 0; i < queryVectors.centroidsCount(); i++) {
+        int adjOrd = ord * queryVectors.centroidsCount() + i;
+        byte[] queryVector = queryVectors.vectorValue(adjOrd);
+        int quantizedSum = queryVectors.sumQuantizedValues(adjOrd, 0);
+        float distanceToCentroid = queryVectors.getCentroidDistance(adjOrd, 0);
+        float lower = queryVectors.getLower(adjOrd, 0);
+        float width = queryVectors.getWidth(adjOrd, 0);
+        float normVmC = queryVectors.getNormVmC(adjOrd, 0);
+        float vDotC = queryVectors.getVDotC(adjOrd, 0);
+        float cDotC = queryVectors.getCDotC(adjOrd, 0);
 
-      int quantizedSum = queryVectors.sumQuantizedValues(ord, 0);
-
-      float distanceToCentroid = queryVectors.getCentroidDistance(ord, 0);
-      float lower = queryVectors.getLower(ord, 0);
-      float width = queryVectors.getWidth(ord, 0);
-
-      float normVmC = queryVectors.getNormVmC(ord, 0);
-      float vDotC = queryVectors.getVDotC(ord, 0);
-      float cDotC = queryVectors.getCDotC(ord, 0);
-
-      return new BinarizedRandomVectorScorer(
-          new BinaryQueryVector[] {
+        bQueryVectors[i] =
             new BinaryQueryVector(
                 queryVector,
                 new BinaryQuantizer.QueryFactors(
-                    quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC, cDotC))
-          },
-          targetVectors,
-          similarityFunction,
-          discretizedDimensions);
+                    quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC, cDotC));
+      }
+
+      return new BinarizedRandomVectorScorer(
+          bQueryVectors, targetVectors, similarityFunction, discretizedDimensions);
     }
 
     @Override
