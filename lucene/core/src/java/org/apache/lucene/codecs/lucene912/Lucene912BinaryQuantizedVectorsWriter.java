@@ -637,7 +637,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
                   finalBinarizedScoreDataInput,
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality(),
-                  fieldInfo.getVectorSimilarityFunction()),
+                  fieldInfo.getVectorSimilarityFunction(),
+                  centroids.length),
               vectorValues);
       return new BinarizedCloseableRandomVectorScorerSupplier(
           scorerSupplier,
@@ -841,11 +842,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  // TODO this assumes a single centroid, we will need to adjust so that we can get the appropriate
-  // query vector for each centroid, this means there will be num_centroid * num_docs quantized
-  // values
-  // but we will only need to access the quantized value for the centroid where the other vector
-  // belongs
+  // When accessing vectorValue method, targerOrd here means a row ordinal.
+  // Thus, if there are multiple centroids, callers of this call needs to adjust targetOrd for each
+  // centroid: ord * queryVectors.centroidsCount() + centroidID
   static class OffHeapBinarizedQueryVectorValues
       implements RandomAccessBinarizedQueryByteVectorValues {
     private final IndexInput slice;
@@ -865,15 +864,18 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private int lastOrd = -1;
     private final int correctiveValuesSize;
     private final VectorSimilarityFunction vectorSimilarityFunction;
+    private final int centroidsCount;
 
     OffHeapBinarizedQueryVectorValues(
         IndexInput data,
         int dimension,
         int size,
-        VectorSimilarityFunction vectorSimilarityFunction) {
+        VectorSimilarityFunction vectorSimilarityFunction,
+        int centroidsCount) {
       this.slice = data;
       this.dimension = dimension;
       this.size = size;
+      this.centroidsCount = centroidsCount;
       // 4x the quantized binary dimensions
       int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
@@ -883,6 +885,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           vectorSimilarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
       this.byteSize = binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES;
       this.correctiveValues = new float[this.correctiveValuesSize];
+    }
+
+    @Override
+    public int centroidsCount() {
+      return centroidsCount;
     }
 
     @Override
@@ -977,7 +984,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public OffHeapBinarizedQueryVectorValues copy() throws IOException {
       return new OffHeapBinarizedQueryVectorValues(
-          slice.clone(), dimension, size, vectorSimilarityFunction);
+          slice.clone(), dimension, size, vectorSimilarityFunction, centroidsCount);
     }
 
     @Override

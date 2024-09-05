@@ -61,10 +61,11 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
 
   public Lucene912BinaryQuantizedVectorsFormat(int numVectorsPerCluster) {
     super(NAME);
-    if (numVectorsPerCluster < MIN_NUM_VECTORS_PER_CLUSTER) {
-      throw new IllegalArgumentException(
-          "numVectorsPerCluster must be at least " + MIN_NUM_VECTORS_PER_CLUSTER);
-    }
+    // TODO: uncomment this test we decide on the number of vectors in a cluster
+    //    if (numVectorsPerCluster < MIN_NUM_VECTORS_PER_CLUSTER) {
+    //      throw new IllegalArgumentException(
+    //          "numVectorsPerCluster must be at least " + MIN_NUM_VECTORS_PER_CLUSTER);
+    //    }
     this.numVectorsPerCluster = numVectorsPerCluster;
   }
 
