@@ -865,6 +865,46 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
+   * Tests if the arguments are equal, or are within the range of allowed error (inclusive). The
+   * arguments must not be NaN.
+   *
+   * <p>Two double numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
+   * floating point numbers between them, i.e. two adjacent floating point numbers are considered
+   * equal.
+   *
+   * <p>Adapted from org.apache.commons.numbers.core.Precision
+   *
+   * <p>github: https://github.com/apache/commons-numbers release 1.2
+   *
+   * @param x first value
+   * @param y second value
+   * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
+   *     and {@code y}.
+   */
+  public static void assertUlpEquals(final float x, final float y, final int maxUlps) {
+    assertFalse(Float.isNaN(x));
+    assertFalse(Float.isNaN(y));
+
+    final int xInt = Float.floatToRawIntBits(x);
+    final int yInt = Float.floatToRawIntBits(y);
+
+    final boolean isEqual;
+    if ((xInt ^ yInt) < 0) {
+      // Numbers have opposite signs, take care of overflow.
+      // Remove the sign bit to obtain the absolute ULP above zero.
+      final int deltaPlus = xInt & Integer.MAX_VALUE;
+      final int deltaMinus = yInt & Integer.MAX_VALUE;
+
+      // Avoid possible overflow from adding the deltas by using a long.
+      isEqual = (long) deltaPlus + deltaMinus <= maxUlps;
+    } else {
+      // Numbers have same sign, there is no risk of overflow.
+      isEqual = Math.abs(xInt - yInt) <= maxUlps;
+    }
+    assertTrue(isEqual);
+  }
+
+  /**
    * Return <code>args</code> as a {@link Set} instance. The order of elements is not preserved in
    * iterators.
    */
