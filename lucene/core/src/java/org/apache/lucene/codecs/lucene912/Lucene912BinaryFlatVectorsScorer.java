@@ -126,9 +126,15 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         float distanceToCentroid = queryVectors.getCentroidDistance(adjOrd, 0);
         float lower = queryVectors.getLower(adjOrd, 0);
         float width = queryVectors.getWidth(adjOrd, 0);
-        float normVmC = queryVectors.getNormVmC(adjOrd, 0);
-        float vDotC = queryVectors.getVDotC(adjOrd, 0);
-        float cDotC = queryVectors.getCDotC(adjOrd, 0);
+
+        float normVmC = 0f;
+        float vDotC = 0f;
+        float cDotC = 0f;
+        if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+          normVmC = queryVectors.getNormVmC(adjOrd, 0);
+          vDotC = queryVectors.getVDotC(adjOrd, 0);
+          cDotC = queryVectors.getCDotC(adjOrd, 0);
+        }
 
         bQueryVectors[i] =
             new BinaryQueryVector(
@@ -252,7 +258,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       float dist = normVmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
 
-      float ooqSqr = (float) Math.pow(ooq,2);
+      float ooqSqr = (float) Math.pow(ooq, 2);
       float errorBound = (float) (normVmC * normOC * (maxX1 * Math.sqrt((1 - ooqSqr) / ooqSqr)));
       float score = dist - errorBound;
       return score > 0 ? score : 0f;
