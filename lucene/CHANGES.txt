@@ -144,13 +144,12 @@ New Features
 * GITHUB#13592: Take advantage of the doc value skipper when it is primary sort in SortedNumericDocValuesRangeQuery
   and SortedSetDocValuesRangeQuery. (Ignacio Vera)
 
-* GITHUB#13542: Add initial support for intra-segment concurrency. IndexSearcher can now optionally create slices
-  that include leaf reader partitions, which allow to parallelize searches within a single segment. This is useful
-  especially with force merged indices. Segments are not partitioned by default, but IndexSearcher#slices can be
-  overridden to optionally call IndexSearcher#slicesWithPartitions to enable intra-segment concurrency.
-  `LuceneTestCase` leverages intra-segment concurrency when the searcher is created via its `newSearcher` method.
-  Follow-up work is required to remove overhead caused by duplicated work across partitions of the same segment.
-  (Luca Cavanna)
+* GITHUB#13542: Add initial support for intra-segment concurrency. IndexSearcher supports now searching across leaf
+  reader partitions concurrently. This is useful to max out available resource usage especially with force merged
+  indices or big segments. Follow-up work is required to share segment-level computation across partitions of the
+  same segment. That's why intra-segment slicing is not enabled by default, but leveraged in tests when the searcher
+  is created via LuceneTestCase#newSearcher. Users may override IndexSearcher#slices(List) at their own to optionally
+  create slices that target segment partitions. (Luca Cavanna)
 
 Improvements
 ---------------------
