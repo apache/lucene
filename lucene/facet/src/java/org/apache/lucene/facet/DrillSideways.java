@@ -215,20 +215,32 @@ public class DrillSideways {
 
     Map<String, Integer> drillDownDims = query.getDims();
 
-    FacetsCollector drillDownCollector = createDrillDownFacetsCollector();
+    if (drillDownDims.isEmpty()) {
+      // There are no drill-down dims, so there is no
+      // drill-sideways to compute:
+      FacetsCollector drillDownCollector = createDrillDownFacetsCollector();
+      Collector mainCollector;
+      if (drillDownCollector != null) {
+        mainCollector = MultiCollector.wrap(hitCollector, drillDownCollector);
+      } else {
+        mainCollector = hitCollector;
+      }
+      searcher.search(query, mainCollector);
+      return new DrillSidewaysResult(
+          buildFacetsResult(drillDownCollector, null, null), null, drillDownCollector, null, null);
+    }
+
+    // Note: it's strange that we delegate to createDrillDownFacetsCollectorManager here instead of
+    // createDrillDownFacetsCollector. We should probably be using createDrillDownFacetsCollector
+    // here instead, but this is pre-existing behavior in a deprecated method, so we're choosing to
+    // keep it as-is. See conversation in
+    // https://github.com/apache/lucene/pull/13716#discussion_r1744486418.
+    FacetsCollector drillDownCollector = createDrillDownFacetsCollectorManager().newCollector();
     Collector mainCollector;
     if (drillDownCollector != null) {
       mainCollector = MultiCollector.wrap(hitCollector, drillDownCollector);
     } else {
       mainCollector = hitCollector;
-    }
-
-    if (drillDownDims.isEmpty()) {
-      // There are no drill-down dims, so there is no
-      // drill-sideways to compute:
-      searcher.search(query, mainCollector);
-      return new DrillSidewaysResult(
-          buildFacetsResult(drillDownCollector, null, null), null, drillDownCollector, null, null);
     }
 
     Query baseQuery = query.getBaseQuery();
