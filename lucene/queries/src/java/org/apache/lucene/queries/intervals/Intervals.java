@@ -238,6 +238,7 @@ public final class Intervals {
    */
   public static IntervalsSource regexp(BytesRef regexp, int maxExpansions) {
     Automaton automaton = new RegExp(new Term("", regexp).text()).toAutomaton();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true, false);
     return new MultiTermIntervalsSource(ca, maxExpansions, regexp.utf8ToString());
   }
