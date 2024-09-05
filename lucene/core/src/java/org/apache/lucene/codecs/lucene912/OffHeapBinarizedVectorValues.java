@@ -246,7 +246,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
               .slice("vector-centroid-data", centroidOffset, centroidLength)
               .randomAccessSlice(0, centroidLength);
       vectorOrdToCentroidOrd =
-          DirectReader.getInstance(centroidSlice, DirectWriter.bitsRequired(centroids.length));
+          DirectReader.getInstance(
+              centroidSlice, DirectWriter.unsignedBitsRequired(centroids.length));
     }
     IndexInput bytesSlice =
         vectorData.slice(

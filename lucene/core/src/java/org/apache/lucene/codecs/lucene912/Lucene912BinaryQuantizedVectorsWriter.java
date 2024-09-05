@@ -510,10 +510,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
                 binarizedVectorValues,
                 fieldInfo.getVectorSimilarityFunction());
         long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
+        CodecUtil.writeFooter(tempVectorCentroidMapData);
+        IOUtils.close(tempVectorCentroidMapData);
         if (vectorOrdToCentroidWriter != null) {
-          vectorOrdToCentroidWriter.finish();
-          CodecUtil.writeFooter(tempVectorCentroidMapData);
-          IOUtils.close(tempVectorCentroidMapData);
           centroidMapTempInput =
               segmentWriteState.directory.openInput(
                   tempVectorCentroidMapData.getName(), segmentWriteState.context);
@@ -523,9 +522,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               centroidMapTempInput, centroidMapTempInput.length() - CodecUtil.footerLength());
           centroidMapLength = binarizedVectorData.getFilePointer() - centroidMapOffset;
           IOUtils.close(centroidMapTempInput);
-          IOUtils.deleteFilesIgnoringExceptions(
-              segmentWriteState.directory, tempVectorCentroidMapData.getName());
         }
+        IOUtils.deleteFilesIgnoringExceptions(
+            segmentWriteState.directory, tempVectorCentroidMapData.getName());
         writeMeta(
             fieldInfo,
             segmentWriteState.segmentInfo.maxDoc(),
@@ -619,6 +618,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getMagnitude()));
       }
       docsWithField.add(docV);
+    }
+    if (vectorOrdToClusterOrdWriter != null) {
+      vectorOrdToClusterOrdWriter.finish();
     }
     return docsWithField;
   }
@@ -716,6 +718,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               fieldInfo.getVectorSimilarityFunction());
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
+      CodecUtil.writeFooter(tempVectorCentroidMapData);
+      IOUtils.close(tempVectorCentroidMapData);
       binarizedDataInput =
           segmentWriteState.directory.openInput(
               tempQuantizedVectorData.getName(), segmentWriteState.context);
@@ -724,17 +728,14 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(binarizedDataInput);
       if (vectorOrdToCentroidWriter != null) {
-        vectorOrdToCentroidWriter.finish();
-        CodecUtil.writeFooter(tempVectorCentroidMapData);
-        IOUtils.close(tempVectorCentroidMapData);
         centroidMapTempInput =
             segmentWriteState.directory.openInput(
                 tempVectorCentroidMapData.getName(), segmentWriteState.context);
-        CodecUtil.retrieveChecksum(centroidMapTempInput);
         centroidMapOffset = binarizedVectorData.getFilePointer();
         binarizedVectorData.copyBytes(
             centroidMapTempInput, centroidMapTempInput.length() - CodecUtil.footerLength());
         centroidMapLength = binarizedVectorData.getFilePointer() - centroidMapOffset;
+        CodecUtil.retrieveChecksum(centroidMapTempInput);
       }
       writeQueryBinarizedVectorData(
           tempScoreQuantizedVectorData,
@@ -767,8 +768,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               quantizer,
               finalCentroidMapTempInput != null
                   ? DirectReader.getInstance(
-                      finalCentroidMapTempInput.randomAccessSlice(0, centroidMapTempInput.length()),
-                      centroids.length)
+                      finalCentroidMapTempInput.randomAccessSlice(0, centroidMapLength),
+                      DirectWriter.unsignedBitsRequired(centroids.length))
                   : null,
               fieldInfo.getVectorSimilarityFunction(),
               vectorsScorer,

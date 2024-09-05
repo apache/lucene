@@ -42,7 +42,7 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veb";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
-  public static final int DEFAULT_NUM_VECTORS_PER_CLUSTER = 1_000;
+  public static final int DEFAULT_NUM_VECTORS_PER_CLUSTER = 10_000;
   // we set minimum here as we store the cluster ID in a byte, and we need to ensure that we can
   // cluster the max number of docs supported in a segment
   static final int MIN_NUM_VECTORS_PER_CLUSTER = 500;
