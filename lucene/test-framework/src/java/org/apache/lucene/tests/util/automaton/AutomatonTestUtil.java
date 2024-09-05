@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.util.automaton;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -33,6 +34,7 @@ import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
+import org.apache.lucene.util.automaton.StatePair;
 import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 import org.apache.lucene.util.automaton.Transition;
 
@@ -531,6 +533,84 @@ public class AutomatonTestUtil {
     }
 
     assert a.isDeterministic() == true;
+    return true;
+  }
+
+  /**
+   * Returns true if these two automata accept exactly the same language. This is a costly
+   * computation! Both automata must be determinized and have no dead states!
+   */
+  public static boolean sameLanguage(Automaton a1, Automaton a2) {
+    if (a1 == a2) {
+      return true;
+    }
+    return subsetOf(a2, a1) && subsetOf(a1, a2);
+  }
+
+  /**
+   * Returns true if the language of <code>a1</code> is a subset of the language of <code>a2</code>.
+   * Both automata must be determinized and must have no dead states.
+   *
+   * <p>Complexity: quadratic in number of states.
+   */
+  public static boolean subsetOf(Automaton a1, Automaton a2) {
+    if (a1.isDeterministic() == false) {
+      throw new IllegalArgumentException("a1 must be deterministic");
+    }
+    if (a2.isDeterministic() == false) {
+      throw new IllegalArgumentException("a2 must be deterministic");
+    }
+    assert Operations.hasDeadStatesFromInitial(a1) == false;
+    assert Operations.hasDeadStatesFromInitial(a2) == false;
+    if (a1.getNumStates() == 0) {
+      // Empty language is alwyas a subset of any other language
+      return true;
+    } else if (a2.getNumStates() == 0) {
+      return Operations.isEmpty(a1);
+    }
+
+    // TODO: cutover to iterators instead
+    Transition[][] transitions1 = a1.getSortedTransitions();
+    Transition[][] transitions2 = a2.getSortedTransitions();
+    ArrayDeque<StatePair> worklist = new ArrayDeque<>();
+    HashSet<StatePair> visited = new HashSet<>();
+    StatePair p = new StatePair(0, 0);
+    worklist.add(p);
+    visited.add(p);
+    while (worklist.size() > 0) {
+      p = worklist.removeFirst();
+      if (a1.isAccept(p.s1) && a2.isAccept(p.s2) == false) {
+        return false;
+      }
+      Transition[] t1 = transitions1[p.s1];
+      Transition[] t2 = transitions2[p.s2];
+      for (int n1 = 0, b2 = 0; n1 < t1.length; n1++) {
+        while (b2 < t2.length && t2[b2].max < t1[n1].min) {
+          b2++;
+        }
+        int min1 = t1[n1].min, max1 = t1[n1].max;
+
+        for (int n2 = b2; n2 < t2.length && t1[n1].max >= t2[n2].min; n2++) {
+          if (t2[n2].min > min1) {
+            return false;
+          }
+          if (t2[n2].max < Character.MAX_CODE_POINT) {
+            min1 = t2[n2].max + 1;
+          } else {
+            min1 = Character.MAX_CODE_POINT;
+            max1 = Character.MIN_CODE_POINT;
+          }
+          StatePair q = new StatePair(t1[n1].dest, t2[n2].dest);
+          if (!visited.contains(q)) {
+            worklist.add(q);
+            visited.add(q);
+          }
+        }
+        if (min1 <= max1) {
+          return false;
+        }
+      }
+    }
     return true;
   }
 }

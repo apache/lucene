@@ -81,44 +81,46 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
       // check that the dfa for n-1 accepts a subset of the dfa for n
       if (n > 0) {
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(automata[n - 1]),
                 Operations.removeDeadStates(automata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(automata[n - 1]),
                 Operations.removeDeadStates(tautomata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(tautomata[n - 1]),
                 Operations.removeDeadStates(automata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(tautomata[n - 1]),
                 Operations.removeDeadStates(tautomata[n])));
         assertNotSame(automata[n - 1], automata[n]);
       }
       // check that Lev(N) is a subset of LevT(N)
       assertTrue(
-          Operations.subsetOf(
+          AutomatonTestUtil.subsetOf(
               Operations.removeDeadStates(automata[n]), Operations.removeDeadStates(tautomata[n])));
       // special checks for specific n
       switch (n) {
         case 0:
           // easy, matches the string itself
           assertTrue(
-              Operations.sameLanguage(
+              AutomatonTestUtil.sameLanguage(
                   Automata.makeString(s), Operations.removeDeadStates(automata[0])));
           assertTrue(
-              Operations.sameLanguage(
+              AutomatonTestUtil.sameLanguage(
                   Automata.makeString(s), Operations.removeDeadStates(tautomata[0])));
           break;
         case 1:
           // generate a lev1 naively, and check the accepted lang is the same.
           assertTrue(
-              Operations.sameLanguage(naiveLev1(s), Operations.removeDeadStates(automata[1])));
+              AutomatonTestUtil.sameLanguage(
+                  naiveLev1(s), Operations.removeDeadStates(automata[1])));
           assertTrue(
-              Operations.sameLanguage(naiveLev1T(s), Operations.removeDeadStates(tautomata[1])));
+              AutomatonTestUtil.sameLanguage(
+                  naiveLev1T(s), Operations.removeDeadStates(tautomata[1])));
           break;
         default:
           assertBruteForce(s, automata[n], n);
