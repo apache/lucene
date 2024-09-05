@@ -881,27 +881,30 @@ public abstract class LuceneTestCase extends Assert {
    * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
    *     and {@code y}.
    */
-  public static void assertUlpEquals(final float x, final float y, final int maxUlps) {
-    assertFalse(Float.isNaN(x));
-    assertFalse(Float.isNaN(y));
-
+  public static void assertUlpEquals(final float x, final float y, final short maxUlps) {
     final int xInt = Float.floatToRawIntBits(x);
     final int yInt = Float.floatToRawIntBits(y);
 
-    final boolean isEqual;
     if ((xInt ^ yInt) < 0) {
       // Numbers have opposite signs, take care of overflow.
       // Remove the sign bit to obtain the absolute ULP above zero.
       final int deltaPlus = xInt & Integer.MAX_VALUE;
       final int deltaMinus = yInt & Integer.MAX_VALUE;
 
-      // Avoid possible overflow from adding the deltas by using a long.
-      isEqual = (long) deltaPlus + deltaMinus <= maxUlps;
-    } else {
-      // Numbers have same sign, there is no risk of overflow.
-      isEqual = Math.abs(xInt - yInt) <= maxUlps;
+      // Note:
+      // If either value is NaN, the exponent bits are set to (255 << 23) and the
+      // distance above 0.0 is always above a short ULP error. So omit the test
+      // for NaN and return directly.
+
+      // Avoid possible overflow from adding the deltas by splitting the comparison
+      assertTrue(deltaPlus <= maxUlps);
+      assertTrue(deltaMinus <= (maxUlps - deltaPlus));
     }
-    assertTrue(isEqual);
+
+    // Numbers have same sign, there is no risk of overflow.
+    assertTrue(Math.abs(xInt - yInt) <= maxUlps);
+    assertFalse(Float.isNaN(x));
+    assertFalse(Float.isNaN(y));
   }
 
   /**
