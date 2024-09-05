@@ -72,7 +72,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.isMoreThanOneCluster = centroids != null && centroids.length > 1;
     this.numBytes = BQVectorUtils.discretize(dimension, 64) / 8;
     this.centroidByteSize = isMoreThanOneCluster ? 1 : 0;
-    this.correctionsCount = similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
+    this.correctionsCount =
+        similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
     this.correctiveValues = new float[this.correctionsCount];
     this.byteSize = numBytes + (Float.BYTES * correctionsCount) + centroidByteSize;
     this.byteBuffer = ByteBuffer.allocate(numBytes);

@@ -100,7 +100,8 @@ public class Index {
 
     int expandedVectorSize = 0;
 
-    FieldType fieldType = KnnFloatVectorField.createFieldType(dim + expandedVectorSize, similarityFunction);
+    FieldType fieldType =
+        KnnFloatVectorField.createFieldType(dim + expandedVectorSize, similarityFunction);
     iwc.setInfoStream(new PrintStreamInfoStream(System.out));
 
     long start = System.nanoTime();

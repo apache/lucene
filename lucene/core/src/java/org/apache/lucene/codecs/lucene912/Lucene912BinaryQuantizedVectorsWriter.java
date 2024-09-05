@@ -215,7 +215,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
-    int correctionsCount = scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
+    int correctionsCount =
+        scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -298,7 +299,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
-    int correctionsCount = scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
+    int correctionsCount =
+        scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -459,9 +461,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         new byte
             [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
-    int correctionsCount = quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 6 : 3;
+    int correctionsCount =
+        quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES)
+            .order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = floatVectorValues.nextDoc();
         docV != NO_MORE_DOCS;
         docV = floatVectorValues.nextDoc()) {
@@ -862,7 +866,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private final int correctiveValuesSize;
     private final VectorSimilarityFunction vectorSimilarityFunction;
 
-    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size, VectorSimilarityFunction vectorSimilarityFunction) {
+    OffHeapBinarizedQueryVectorValues(
+        IndexInput data,
+        int dimension,
+        int size,
+        VectorSimilarityFunction vectorSimilarityFunction) {
       this.slice = data;
       this.dimension = dimension;
       this.size = size;
@@ -871,7 +879,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
       this.binaryValue = byteBuffer.array();
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      this.correctiveValuesSize = vectorSimilarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
+      this.correctiveValuesSize =
+          vectorSimilarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
       this.byteSize = binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES;
       this.correctiveValues = new float[this.correctiveValuesSize];
     }
@@ -949,7 +958,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         return sumQuantizationValues;
       }
       lastOrd = -1;
-      slice.seek(((long) targetOrd * byteSize) + binaryValue.length + Float.BYTES * correctiveValuesSize);
+      slice.seek(
+          ((long) targetOrd * byteSize) + binaryValue.length + Float.BYTES * correctiveValuesSize);
       sumQuantizationValues = Short.toUnsignedInt(slice.readShort());
       return sumQuantizationValues;
     }
@@ -966,7 +976,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public OffHeapBinarizedQueryVectorValues copy() throws IOException {
-      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size, vectorSimilarityFunction);
+      return new OffHeapBinarizedQueryVectorValues(
+          slice.clone(), dimension, size, vectorSimilarityFunction);
     }
 
     @Override
