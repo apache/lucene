@@ -91,8 +91,9 @@ public class HnswGraphSearcher {
       Bits acceptOrds,
       DocIdSetIterator entryPointOrds)
       throws IOException {
-    ArrayList<Integer> entryPointOrdInts = new ArrayList<Integer>();
+    ArrayList<Integer> entryPointOrdInts = null;
     if (entryPointOrds != null) {
+      entryPointOrdInts = new ArrayList<Integer>();
       int entryPointOrdInt;
       while ((entryPointOrdInt = entryPointOrds.nextDoc()) != NO_MORE_DOCS) {
         entryPointOrdInts.add(entryPointOrdInt);
