@@ -505,8 +505,10 @@ public class ToParentBlockJoinQuery extends Query {
       int lastParent = parents.prevSetBit(Math.min(parentsLength, max) - 1);
       int prevParent = min == 0 ? -1 : parents.prevSetBit(min - 1);
       if (lastParent == prevParent) {
-        // No parent docs in this range
-        return max;
+        // No parent docs in this range.
+        // If we've scored the last parent in the bit set, return NO_MORE_DOCS to indicate we are
+        // done scoring.
+        return max >= parentsLength ? NO_MORE_DOCS : max;
       }
 
       BatchAwareLeafCollector wrappedCollector = wrapCollector(collector);
