@@ -112,6 +112,8 @@ API Changes
 
 * GITHUB#13632: CandidateMatcher public matching functions (Bryan Jacobowitz)
 
+* GITHUB#13708: Move Operations.sameLanguage/subsetOf to test-framework. (Robert Muir)
+
 
 New Features
 ---------------------
