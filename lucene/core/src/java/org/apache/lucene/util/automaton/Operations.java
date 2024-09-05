@@ -1004,6 +1004,9 @@ public final class Operations {
   public static Automaton removeDeadStates(Automaton a) {
     int numStates = a.getNumStates();
     BitSet liveSet = getLiveStates(a);
+    if (liveSet.cardinality() == numStates) {
+      return a;
+    }
 
     int[] map = new int[numStates];
 
