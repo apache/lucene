@@ -183,40 +183,73 @@ public final class Operations {
       return a;
     }
 
-    if (a.isAccept(0) && a.getAcceptStates().nextSetBit(1) == -1) {
-      // If the only accept state is 0, then this automaton already repeats itself. Automata
-      // returned by this function only accept state 0, so this makes this function idempotent.
+    if (a.isAccept(0) && a.getAcceptStates().cardinality() == 1) {
+      // If state 0 is the only accept state, then this automaton already repeats itself.
       return a;
     }
 
-    Automaton.Builder builder = new Automaton.Builder();
-    // Create the initial state, this is the only accepted state.
-    builder.createState();
-    builder.setAccept(0, true);
-
-    int[] stateMap = new int[a.getNumStates()];
-    for (int state = 0; state < a.getNumStates(); ++state) {
-      if (a.isAccept(state)) {
-        // Final states get merged into the initial state.
-        stateMap[state] = 0;
-      } else {
-        stateMap[state] = builder.createState();
+    boolean acceptStatesHaveNoTransitions = true;
+    for (int acceptState = a.getAcceptStates().nextSetBit(0);
+        acceptState != -1;
+        acceptState = a.getAcceptStates().nextSetBit(acceptState + 1)) {
+      if (a.getNumTransitions(acceptState) != 0) {
+        acceptStatesHaveNoTransitions = false;
+        break;
       }
     }
 
-    // Copy the automaton while renumbering states.
+    Automaton.Builder builder = new Automaton.Builder();
+    // Create the initial state, which is accepted
+    builder.createState();
+    builder.setAccept(0, true);
     Transition t = new Transition();
-    for (int state = 0; state < a.getNumStates(); ++state) {
-      int src = stateMap[state];
-      int count = a.initTransition(state, t);
+
+    if (acceptStatesHaveNoTransitions) {
+      // In the common case when accept states have no transitions, we can create a simpler repeat
+      // automaton by merging final states into the initial state. The produced automaton has no
+      // dead states if the input automaton doesn't have dead states either. Plus state 0 is the
+      // only accept state, which makes this function idempotent in this case when accept states
+      // have no transitions.
+      int[] stateMap = new int[a.getNumStates()];
+      for (int state = 0; state < a.getNumStates(); ++state) {
+        if (a.isAccept(state)) {
+          // Final states get merged into the initial state.
+          stateMap[state] = 0;
+        } else {
+          stateMap[state] = builder.createState();
+        }
+      }
+      // Now copy the automaton while renumbering states.
+      for (int state = 0; state < a.getNumStates(); ++state) {
+        int src = stateMap[state];
+        int count = a.initTransition(state, t);
+        for (int i = 0; i < count; i++) {
+          a.getNextTransition(t);
+          int dest = stateMap[t.dest];
+          builder.addTransition(src, dest, t.min, t.max);
+          if (state == 0 && src != 0) {
+            // We also need to copy outgoing transitions of the initial state of the original
+            // automaton to the new initial state that we created.
+            builder.addTransition(0, dest, t.min, t.max);
+          }
+        }
+      }
+    } else {
+      builder.copy(a);
+
+      int count = a.initTransition(0, t);
       for (int i = 0; i < count; i++) {
         a.getNextTransition(t);
-        int dest = stateMap[t.dest];
-        builder.addTransition(src, dest, t.min, t.max);
-        if (state == 0 && src != 0) {
-          // We also need to copy outgoing transitions of the initial state of the original
-          // automaton to the new initial state that we created.
-          builder.addTransition(0, dest, t.min, t.max);
+        builder.addTransition(0, t.dest + 1, t.min, t.max);
+      }
+
+      for (int s = a.getAcceptStates().nextSetBit(0);
+          s != -1;
+          s = a.getAcceptStates().nextSetBit(s + 1)) {
+        count = a.initTransition(0, t);
+        for (int i = 0; i < count; i++) {
+          a.getNextTransition(t);
+          builder.addTransition(s + 1, t.dest + 1, t.min, t.max);
         }
       }
     }

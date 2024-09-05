@@ -308,20 +308,71 @@ public class TestOperations extends LuceneTestCase {
     assertTrue(Operations.sameLanguage(absThenCs, Operations.repeat(absThenC)));
     assertSame(absThenCs, Operations.repeat(absThenCs));
 
-    Automaton aThenBs = new Automaton(); // (ab)*a?
-    aThenBs.createState();
-    aThenBs.createState();
-    aThenBs.setAccept(0, true);
-    aThenBs.setAccept(1, true);
-    aThenBs.addTransition(0, 1, 'a');
-    aThenBs.addTransition(1, 0, 'b');
+    Automaton aOrAb = new Automaton();
+    aOrAb.createState();
+    aOrAb.createState();
+    aOrAb.createState();
+    aOrAb.setAccept(1, true);
+    aOrAb.setAccept(2, true);
+    aOrAb.addTransition(0, 1, 'a');
+    aOrAb.finishState();
+    aOrAb.addTransition(1, 2, 'b');
+    aOrAb.finishState();
+    Automaton aOrAbs = new Automaton();
+    aOrAbs.createState();
+    aOrAbs.createState();
+    aOrAbs.setAccept(0, true);
+    aOrAbs.addTransition(0, 0, 'a');
+    aOrAbs.addTransition(0, 1, 'a');
+    aOrAbs.finishState();
+    aOrAbs.addTransition(1, 0, 'b');
+    aOrAbs.finishState();
+    assertTrue(
+        Operations.sameLanguage(
+            Operations.determinize(aOrAbs, Integer.MAX_VALUE), Operations.repeat(aOrAb)));
+  }
 
-    Automaton aOrBs = new Automaton(); // [ab]*
-    aOrBs.createState();
-    aOrBs.setAccept(0, true);
-    aOrBs.addTransition(0, 0, 'a');
-    aOrBs.addTransition(0, 0, 'b');
+  public void testDuelRepeat() {
+    final int iters = atLeast(1000);
+    for (int iter = 0; iter < iters; ++iter) {
+      Automaton a = AutomatonTestUtil.randomAutomaton(random());
+      Automaton repeat1 = Operations.determinize(Operations.repeat(a), Integer.MAX_VALUE);
+      Automaton repeat2 = Operations.determinize(naiveRepeat(a), Integer.MAX_VALUE);
+      assertTrue(Operations.sameLanguage(repeat1, repeat2));
+    }
+  }
 
-    assertTrue(Operations.sameLanguage(aOrBs, Operations.repeat(aThenBs)));
+  // This is the original implementation of Operations#repeat, before we improved it to generate
+  // simpler automata in some common cases.
+  private static Automaton naiveRepeat(Automaton a) {
+    if (a.getNumStates() == 0) {
+      return a;
+    }
+
+    Automaton.Builder builder = new Automaton.Builder();
+    // Create the initial state, which is accepted
+    builder.createState();
+    builder.setAccept(0, true);
+    builder.copy(a);
+
+    Transition t = new Transition();
+    int count = a.initTransition(0, t);
+    for (int i = 0; i < count; i++) {
+      a.getNextTransition(t);
+      builder.addTransition(0, t.dest + 1, t.min, t.max);
+    }
+
+    int numStates = a.getNumStates();
+    for (int s = 0; s < numStates; s++) {
+      if (a.isAccept(s)) {
+        count = a.initTransition(0, t);
+        for (int i = 0; i < count; i++) {
+          a.getNextTransition(t);
+          builder.addTransition(s + 1, t.dest + 1, t.min, t.max);
+        }
+      }
+    }
+
+    return builder.finish();
   }
 }
