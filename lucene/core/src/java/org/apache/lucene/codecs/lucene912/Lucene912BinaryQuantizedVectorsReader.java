@@ -138,8 +138,9 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
     int binaryDims = BQVectorUtils.discretize(dimension, 64) / 8;
     int centroidByte = fieldEntry.numCentroids > 1 ? 1 : 0;
+    int correctionsCount = fieldEntry.similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
     long numQuantizedVectorBytes =
-        Math.multiplyExact(binaryDims + (Float.BYTES * 3) + centroidByte, fieldEntry.size);
+        Math.multiplyExact(binaryDims + (Float.BYTES * correctionsCount) + centroidByte, fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
       String centroidStr = centroidByte == 1 ? " + centroidByte=1" : "";
       throw new IllegalStateException(

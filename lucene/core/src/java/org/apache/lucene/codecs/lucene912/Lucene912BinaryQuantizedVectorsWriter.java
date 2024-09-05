@@ -229,8 +229,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
+    int correctionsCount = scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * 3).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
     if (clusterCenters.length > 1) {
       int cnt = 0;
@@ -251,7 +252,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         } else {
           correctionsBuffer.putFloat(corrections[0]);
           correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(0f);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -269,7 +269,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         } else {
           correctionsBuffer.putFloat(corrections[0]);
           correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(0f);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -313,8 +312,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
+    int correctionsCount = scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * 3).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
 
     if (clusterCenters.length > 1) {
@@ -336,7 +336,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         } else {
           correctionsBuffer.putFloat(corrections[0]);
           correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(0f);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -355,7 +354,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         } else {
           correctionsBuffer.putFloat(corrections[0]);
           correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(0f);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -475,8 +473,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         new byte
             [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
+    int correctionsCount = quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 6 : 3;
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * 6 + Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = floatVectorValues.nextDoc();
         docV != NO_MORE_DOCS;
         docV = floatVectorValues.nextDoc()) {
@@ -495,10 +494,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           correctionsBuffer.putFloat(factors.normVmC());
           correctionsBuffer.putFloat(factors.vDotC());
           correctionsBuffer.putFloat(factors.cDotC());
-        } else {
-          correctionsBuffer.putFloat(0f);
-          correctionsBuffer.putFloat(0f);
-          correctionsBuffer.putFloat(0f);
         }
         // ensure we are positive and fit within an unsigned short value.
         assert factors.quantizedSum() >= 0 && factors.quantizedSum() <= 0xffff;
@@ -536,7 +531,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       } else {
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getDistanceToCentroid()));
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getMagnitude()));
-        output.writeInt(0);
       }
       docsWithField.add(docV);
     }
@@ -653,7 +647,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
                   finalBinarizedScoreDataInput,
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality(),
-                  centroids.length),
+                  centroids.length,
+                  fieldInfo.getVectorSimilarityFunction()),
               vectorValues);
       return new BinarizedCloseableRandomVectorScorerSupplier(
           scorerSupplier,
@@ -879,12 +874,15 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     protected final float[][] correctiveValues;
     private int[] sumQuantizationValues;
     private int lastOrd = -1;
-
-    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size, int numCentroids) {
+    private final int correctiveValuesSize;
+    private final VectorSimilarityFunction vectorSimilarityFunction;
+    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size, int numCentroids, VectorSimilarityFunction vectorSimilarityFunction) {
       this.slice = data;
       this.dimension = dimension;
       this.size = size;
       this.numCentroids = numCentroids;
+      this.vectorSimilarityFunction = vectorSimilarityFunction;
+        this.correctiveValuesSize = vectorSimilarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
       // 4x the quantized binary dimensions
       int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
@@ -894,8 +892,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         this.binaryValue = new byte[numCentroids][binaryDimensions];
       }
       this.sumQuantizationValues = new int[numCentroids];
-      this.correctiveValues = new float[numCentroids][6];
-      this.byteSize = (binaryDimensions + Float.BYTES * 6 + Short.BYTES) * numCentroids;
+      this.correctiveValues = new float[numCentroids][correctiveValuesSize];
+      this.byteSize = (binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES) * numCentroids;
     }
 
     @Override
@@ -985,7 +983,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public OffHeapBinarizedQueryVectorValues copy() throws IOException {
-      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size, numCentroids);
+      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size, numCentroids, vectorSimilarityFunction);
     }
 
     public IndexInput getSlice() {
@@ -1000,7 +998,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       slice.seek((long) targetOrd * byteSize);
       for (int i = 0; i < numCentroids; i++) {
         slice.readBytes(binaryValue[i], 0, binaryValue[i].length);
-        slice.readFloats(correctiveValues[i], 0, 6);
+        slice.readFloats(correctiveValues[i], 0, correctiveValuesSize);
         sumQuantizationValues[i] = Short.toUnsignedInt(slice.readShort());
       }
       lastOrd = targetOrd;
@@ -1009,7 +1007,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   static class BinarizedFloatVectorValues extends BinarizedByteVectorValues {
-    private float[] corrections = new float[3];
+    private float[] corrections;
     private final byte[] binarized;
     private final float[][] centroids;
     private final FloatVectorValues values;

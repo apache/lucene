@@ -22,6 +22,7 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -97,7 +98,9 @@ public class Index {
     iwc.setRAMBufferSizeMB(WRITER_BUFFER_MB);
     iwc.setUseCompoundFile(false);
 
-    FieldType fieldType = KnnFloatVectorField.createFieldType(dim, similarityFunction);
+    int expandedVectorSize = 0;
+
+    FieldType fieldType = KnnFloatVectorField.createFieldType(dim + expandedVectorSize, similarityFunction);
     iwc.setInfoStream(new PrintStreamInfoStream(System.out));
 
     long start = System.nanoTime();
@@ -109,7 +112,15 @@ public class Index {
             new VectorsReaderWithOffset(vectorInput, numDocs, dim, Integer.BYTES);
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
-          doc.add(new KnnFloatVectorField("knn", vectorValues.vectorValue(i), fieldType));
+          float[] vector = vectorValues.vectorValue(i);
+          if (expandedVectorSize > 0) {
+            float[] expansion = new float[expandedVectorSize];
+            Arrays.fill(expansion, 0.9f);
+            int vectorSize = vector.length;
+            vector = Arrays.copyOf(vector, vectorSize + expansion.length);
+            System.arraycopy(expansion, 0, vector, vectorSize, expansion.length);
+          }
+          doc.add(new KnnFloatVectorField("knn", vector, fieldType));
           doc.add(new StoredField("id", i));
           iw.addDocument(doc);
           if ((i + 1) % flushFrequency == 0) {
