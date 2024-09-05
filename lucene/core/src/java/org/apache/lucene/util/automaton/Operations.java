@@ -216,19 +216,26 @@ public final class Operations {
         a.getNextTransition(t);
         int dest = stateMap[t.dest];
         builder.addTransition(src, dest, t.min, t.max);
-        if (state == 0 && src != 0) {
-          // Transitions from the initial state need to get copied to our new initial state.
-          builder.addTransition(0, dest, t.min, t.max);
-        }
-        if (dest != 0 && a.isAccept(t.dest)) {
-          // Transitions to an accept state need to be copied as transitions to the initial
-          // state.
-          // Note: this makes the automaton non deterministic.
-          builder.addTransition(src, 0, t.min, t.max);
-        }
-        if (state == 0 && src != 0 && dest != 0 && a.isAccept(t.dest)) {
-          // Combination of the two above conditions.
-          builder.addTransition(0, 0, t.min, t.max);
+      }
+    }
+
+    // Now copy transitions of the initial state to our new initial state.
+    int count = a.initTransition(0, t);
+    for (int i = 0; i < count; i++) {
+      a.getNextTransition(t);
+      builder.addTransition(0, stateMap[t.dest], t.min, t.max);
+    }
+
+    // Now copy transitions of the initial state to final states to make the automaton repeat
+    // itself.
+    for (int s = a.getAcceptStates().nextSetBit(0);
+        s != -1;
+        s = a.getAcceptStates().nextSetBit(s + 1)) {
+      if (stateMap[s] != 0) {
+        count = a.initTransition(0, t);
+        for (int i = 0; i < count; i++) {
+          a.getNextTransition(t);
+          builder.addTransition(stateMap[s], stateMap[t.dest], t.min, t.max);
         }
       }
     }
