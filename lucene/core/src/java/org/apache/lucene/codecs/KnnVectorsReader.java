@@ -83,7 +83,7 @@ public abstract class KnnVectorsReader implements Closeable {
    * @param knnCollector a KnnResults collector and relevant settings for gathering vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @param seedDocs {@link Bits} that represents the documents used to seed the search, or {@code
+   * @param seedDocs {@link DocIdSetIterator} that represents the documents used to seed the search, or {@code
    *     null} to perform a search without seeds.
    */
   public abstract void search(
