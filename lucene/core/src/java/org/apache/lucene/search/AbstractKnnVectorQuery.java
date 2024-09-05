@@ -201,7 +201,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (seedWeight != null) {
       // Execute the seed query
       TopScoreDocCollector seedCollector =
-          new TopScoreDocCollectorManager(k, Integer.MAX_VALUE).newCollector();
+          new TopScoreDocCollectorManager(k /* numHits */, null /* after */, Integer.MAX_VALUE /* totalHitsThreshold */, false /* supportsConcurrency */).newCollector();
       LeafCollector leafCollector;
       try {
         leafCollector = seedCollector.getLeafCollector(ctx);
