@@ -329,11 +329,12 @@ public class TestOperations extends LuceneTestCase {
     aOrAbs.finishState();
     assertTrue(
         Operations.sameLanguage(
-            Operations.determinize(aOrAbs, Integer.MAX_VALUE), Operations.repeat(aOrAb)));
+            Operations.determinize(aOrAbs, Integer.MAX_VALUE),
+            Operations.determinize(Operations.repeat(aOrAb), Integer.MAX_VALUE)));
   }
 
   public void testDuelRepeat() {
-    final int iters = atLeast(1000);
+    final int iters = atLeast(1_000);
     for (int iter = 0; iter < iters; ++iter) {
       Automaton a = AutomatonTestUtil.randomAutomaton(random());
       Automaton repeat1 = Operations.determinize(Operations.repeat(a), Integer.MAX_VALUE);
