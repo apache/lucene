@@ -178,6 +178,14 @@ public class FacetLabel implements Comparable<FacetLabel> {
     }
   }
 
+  /** Get the last component. */
+  public String lastComponent() {
+    if (components.length == 0) {
+      throw new UnsupportedOperationException("components is empty");
+    }
+    return components[components.length - 1];
+  }
+
   /** Returns a string representation of the path. */
   @Override
   public String toString() {

@@ -99,8 +99,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
       case BYTE -> doc.add(new KnnByteVectorField("v2", randomVector8(30), similarityFunction));
-      case FLOAT32 -> doc.add(
-          new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
+      case FLOAT32 ->
+          doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
     }
   }
 

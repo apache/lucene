@@ -23,6 +23,7 @@ import java.util.Objects;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -106,10 +107,13 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
   @Override
   @SuppressWarnings("resource")
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      Bits acceptDocs,
+      int visitLimit,
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector collector =
-        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitLimit);
+    KnnCollector collector = knnCollectorManager.newCollector(visitLimit, context);
     context.reader().searchNearestVectors(field, target, collector, acceptDocs, null);
     return collector.topDocs();
   }

@@ -35,7 +35,7 @@ abstract class CollectingMatcher<T extends QueryMatch> extends CandidateMatcher<
   }
 
   @Override
-  protected void matchQuery(final String queryId, Query matchQuery, Map<String, String> metadata)
+  public void matchQuery(final String queryId, Query matchQuery, Map<String, String> metadata)
       throws IOException {
     searcher.search(matchQuery, new MatchCollector(queryId, scoreMode));
   }

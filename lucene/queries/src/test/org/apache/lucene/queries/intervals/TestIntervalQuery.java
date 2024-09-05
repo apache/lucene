@@ -447,4 +447,24 @@ public class TestIntervalQuery extends LuceneTestCase {
             field, or(term("XXX"), containing(extend(term("message"), 0, 10), term("intend"))));
     checkHits(q, new int[] {});
   }
+
+  public void testEquality() {
+    assertEquals(
+        new IntervalQuery("f", Intervals.regexp(new BytesRef(".*foo"))),
+        new IntervalQuery("f", Intervals.regexp(new BytesRef(".*foo"))));
+    assertEquals(
+        new IntervalQuery("f", Intervals.prefix(new BytesRef("p"), 1)),
+        new IntervalQuery("f", Intervals.prefix(new BytesRef("p"), 1)));
+    assertEquals(
+        new IntervalQuery("f", Intervals.fuzzyTerm("kot", 1)),
+        new IntervalQuery("f", Intervals.fuzzyTerm("kot", 1)));
+    assertEquals(
+        new IntervalQuery("f", Intervals.wildcard(new BytesRef("*.txt"))),
+        new IntervalQuery("f", Intervals.wildcard(new BytesRef("*.txt"))));
+    assertEquals(
+        new IntervalQuery(
+            "f", Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true)),
+        new IntervalQuery(
+            "f", Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true)));
+  }
 }

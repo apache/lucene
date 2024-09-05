@@ -170,5 +170,12 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       return new ScalarQuantizedRandomVectorScorerSupplier(
           similarity, vectorSimilarityFunction, values.copy());
     }
+
+    @Override
+    public String toString() {
+      return "ScalarQuantizedRandomVectorScorerSupplier(vectorSimilarityFunction="
+          + vectorSimilarityFunction
+          + ")";
+    }
   }
 }

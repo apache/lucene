@@ -79,7 +79,7 @@ public class PartitionMatcher<T extends QueryMatch> extends CandidateMatcher<T> 
   }
 
   @Override
-  protected void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata) {
+  public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata) {
     tasks.add(new MatchTask(queryId, matchQuery, metadata));
   }
 

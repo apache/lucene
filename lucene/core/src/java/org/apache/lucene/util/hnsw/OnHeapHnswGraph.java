@@ -90,7 +90,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * @param node the node whose neighbors are returned, represented as an ordinal on the level 0.
    */
   public NeighborArray getNeighbors(int level, int node) {
-    assert graph[node][level] != null;
+    assert node < graph.length;
+    assert level < graph[node].length
+        : "level=" + level + ", node has only " + graph[node].length + " levels";
+    assert graph[node][level] != null : "node=" + node + ", level=" + level;
     return graph[node][level];
   }
 

@@ -47,18 +47,18 @@ class HindiNormalizer {
 
     for (int i = 0; i < len; i++) {
       switch (s[i]) {
-          // dead n -> bindu
+        // dead n -> bindu
         case '\u0928':
           if (i + 1 < len && s[i + 1] == '\u094D') {
             s[i] = '\u0902';
             len = delete(s, i + 1, len);
           }
           break;
-          // candrabindu -> bindu
+        // candrabindu -> bindu
         case '\u0901':
           s[i] = '\u0902';
           break;
-          // nukta deletions
+        // nukta deletions
         case '\u093C':
           len = delete(s, i, len);
           i--;
@@ -96,18 +96,18 @@ class HindiNormalizer {
         case '\u095F':
           s[i] = '\u092F';
           break;
-          // zwj/zwnj -> delete
+        // zwj/zwnj -> delete
         case '\u200D':
         case '\u200C':
           len = delete(s, i, len);
           i--;
           break;
-          // virama -> delete
+        // virama -> delete
         case '\u094D':
           len = delete(s, i, len);
           i--;
           break;
-          // chandra/short -> replace
+        // chandra/short -> replace
         case '\u0945':
         case '\u0946':
           s[i] = '\u0947';
@@ -127,7 +127,7 @@ class HindiNormalizer {
         case '\u0972':
           s[i] = '\u0905';
           break;
-          // long -> short ind. vowels
+        // long -> short ind. vowels
         case '\u0906':
           s[i] = '\u0905';
           break;
@@ -149,7 +149,7 @@ class HindiNormalizer {
         case '\u0914':
           s[i] = '\u0913';
           break;
-          // long -> short dep. vowels
+        // long -> short dep. vowels
         case '\u0940':
           s[i] = '\u093F';
           break;
