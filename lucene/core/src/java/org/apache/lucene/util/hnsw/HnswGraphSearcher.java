@@ -99,7 +99,7 @@ public class HnswGraphSearcher {
         entryPointOrdInts.add(entryPointOrdInt);
       }
     }
-    if (entryPointOrdInts.size() == 0) {
+    if (entryPointOrdInts == null || entryPointOrdInts.isEmpty()) {
       search(scorer, knnCollector, graph, acceptOrds);
     } else {
       HnswGraphSearcher graphSearcher =
