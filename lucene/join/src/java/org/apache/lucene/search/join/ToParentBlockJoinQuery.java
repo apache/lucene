@@ -537,7 +537,21 @@ public class ToParentBlockJoinQuery extends Query {
         public void setScorer(Scorable scorer) throws IOException {
           assert scorer != null;
           this.scorer = scorer;
-          super.setScorer(currentParentScore);
+
+          super.setScorer(
+              new Scorable() {
+                @Override
+                public float score() {
+                  return currentParentScore.score();
+                }
+
+                @Override
+                public void setMinCompetitiveScore(float minScore) throws IOException {
+                  if (scoreMode == ScoreMode.None || scoreMode == ScoreMode.Max) {
+                    scorer.setMinCompetitiveScore(minScore);
+                  }
+                }
+              });
         }
 
         @Override
