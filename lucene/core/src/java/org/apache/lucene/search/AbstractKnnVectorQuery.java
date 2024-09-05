@@ -586,7 +586,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     List<Integer> sortedDocIdList;
 
     public TopDocsDISI(TopDocs topDocs) {
-      sortedDocIdList = new ArrayList<Integer>();
+      sortedDocIdList = new ArrayList<Integer>(topDocs.scoreDocs.length);
       for (int i = 0; i < topDocs.scoreDocs.length; i++) {
         sortedDocIdList.add(topDocs.scoreDocs[i].doc);
       }
