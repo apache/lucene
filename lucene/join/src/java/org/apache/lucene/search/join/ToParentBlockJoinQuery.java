@@ -526,7 +526,6 @@ public class ToParentBlockJoinQuery extends Query {
       return childBulkScorer.cost();
     }
 
-    // TODO: Need to resolve parent doc IDs in multi-reader space?
     private BatchAwareLeafCollector wrapCollector(LeafCollector collector) {
       return new BatchAwareLeafCollector(collector) {
         private final Score currentParentScore = new Score(scoreMode);
