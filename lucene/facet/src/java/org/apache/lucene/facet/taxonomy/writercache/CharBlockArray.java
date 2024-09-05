@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.facet.taxonomy.writercache;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,15 +25,11 @@ import java.util.List;
  *
  * @lucene.experimental
  */
-class CharBlockArray implements Appendable, Serializable, CharSequence {
-
-  private static final long serialVersionUID = 1L;
+class CharBlockArray implements Appendable, CharSequence {
 
   private static final int DefaultBlockSize = 32 * 1024; // 32 KB default size
 
-  static final class Block implements Serializable, Cloneable {
-    private static final long serialVersionUID = 1L;
-
+  static final class Block implements Cloneable {
     final char[] chars;
     int length;
 
