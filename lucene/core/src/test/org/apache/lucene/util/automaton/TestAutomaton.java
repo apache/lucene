@@ -87,7 +87,7 @@ public class TestAutomaton extends LuceneTestCase {
     Automaton a2 =
         Operations.removeDeadStates(
             Operations.concatenate(Automata.makeString("foo"), Automata.makeString("bar")));
-    assertTrue(Operations.sameLanguage(a1, a2));
+    assertTrue(AutomatonTestUtil.sameLanguage(a1, a2));
   }
 
   public void testCommonPrefixString() throws Exception {
@@ -257,7 +257,7 @@ public class TestAutomaton extends LuceneTestCase {
     Automaton a = Automata.makeString("foobar");
     Automaton aMin = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
 
-    assertTrue(Operations.sameLanguage(a, aMin));
+    assertTrue(AutomatonTestUtil.sameLanguage(a, aMin));
   }
 
   public void testMinimize2() throws Exception {
@@ -266,7 +266,7 @@ public class TestAutomaton extends LuceneTestCase {
             Arrays.asList(Automata.makeString("foobar"), Automata.makeString("boobar")));
     Automaton aMin = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(
-        Operations.sameLanguage(
+        AutomatonTestUtil.sameLanguage(
             Operations.determinize(Operations.removeDeadStates(a), DEFAULT_DETERMINIZE_WORK_LIMIT),
             aMin));
   }
@@ -276,7 +276,7 @@ public class TestAutomaton extends LuceneTestCase {
     Automaton ra = Operations.reverse(a);
     Automaton a2 = Operations.determinize(Operations.reverse(ra), DEFAULT_DETERMINIZE_WORK_LIMIT);
 
-    assertTrue(Operations.sameLanguage(a, a2));
+    assertTrue(AutomatonTestUtil.sameLanguage(a, a2));
   }
 
   public void testOptional() throws Exception {
@@ -401,7 +401,7 @@ public class TestAutomaton extends LuceneTestCase {
       Automaton ra = Operations.reverse(a);
       Automaton rra = Operations.reverse(ra);
       assertTrue(
-          Operations.sameLanguage(
+          AutomatonTestUtil.sameLanguage(
               Operations.determinize(Operations.removeDeadStates(a), Integer.MAX_VALUE),
               Operations.determinize(Operations.removeDeadStates(rra), Integer.MAX_VALUE)));
     }
@@ -502,7 +502,7 @@ public class TestAutomaton extends LuceneTestCase {
       }
 
       assertTrue(
-          Operations.sameLanguage(
+          AutomatonTestUtil.sameLanguage(
               Operations.determinize(Operations.removeDeadStates(a), Integer.MAX_VALUE),
               Operations.determinize(
                   Operations.removeDeadStates(builder.finish()), Integer.MAX_VALUE)));
@@ -735,7 +735,8 @@ public class TestAutomaton extends LuceneTestCase {
     a2.addTransition(0, state, 'a');
     a2.finishState();
     assertTrue(
-        Operations.sameLanguage(Operations.removeDeadStates(a), Operations.removeDeadStates(a2)));
+        AutomatonTestUtil.sameLanguage(
+            Operations.removeDeadStates(a), Operations.removeDeadStates(a2)));
   }
 
   private Automaton randomNoOp(Automaton a) {
@@ -1288,7 +1289,7 @@ public class TestAutomaton extends LuceneTestCase {
       Automaton a2 =
           Operations.removeDeadStates(Operations.determinize(unionTerms(terms), Integer.MAX_VALUE));
       assertTrue(
-          Operations.sameLanguage(
+          AutomatonTestUtil.sameLanguage(
               a2, Operations.removeDeadStates(Operations.determinize(a, Integer.MAX_VALUE))));
 
       // Do same check, in UTF8 space
@@ -1613,7 +1614,7 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testAcceptAllEmptyStringMin() throws Exception {
     Automaton a = Automata.makeBinaryInterval(newBytesRef(), true, null, true);
-    assertTrue(Operations.sameLanguage(Automata.makeAnyBinary(), a));
+    assertTrue(AutomatonTestUtil.sameLanguage(Automata.makeAnyBinary(), a));
   }
 
   private static IntsRef toIntsRef(String s) {

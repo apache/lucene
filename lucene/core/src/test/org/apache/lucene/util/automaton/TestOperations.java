@@ -50,7 +50,7 @@ public class TestOperations extends LuceneTestCase {
     assertTrue(naiveUnion.isDeterministic());
     assertFalse(Operations.hasDeadStatesFromInitial(naiveUnion));
 
-    assertTrue(Operations.sameLanguage(union, naiveUnion));
+    assertTrue(AutomatonTestUtil.sameLanguage(union, naiveUnion));
   }
 
   private static Automaton naiveUnion(List<BytesRef> strings) {
@@ -116,13 +116,13 @@ public class TestOperations extends LuceneTestCase {
     Automaton concat2 = Operations.concatenate(singleton, nfa);
     assertFalse(concat2.isDeterministic());
     assertTrue(
-        Operations.sameLanguage(
+        AutomatonTestUtil.sameLanguage(
             Operations.determinize(concat1, 100), Operations.determinize(concat2, 100)));
     assertTrue(
-        Operations.sameLanguage(
+        AutomatonTestUtil.sameLanguage(
             Operations.determinize(nfa, 100), Operations.determinize(concat1, 100)));
     assertTrue(
-        Operations.sameLanguage(
+        AutomatonTestUtil.sameLanguage(
             Operations.determinize(nfa, 100), Operations.determinize(concat2, 100)));
   }
 
