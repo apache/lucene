@@ -42,7 +42,7 @@ public interface RandomAccessBinarizedQueryByteVectorValues {
 
   int size() throws IOException;
 
-  int getNumCentroids() throws IOException;
+  int centroidsCount();
 
   int dimension();
 

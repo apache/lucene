@@ -41,7 +41,7 @@ public class Search {
     Path basePath = Paths.get(args[0]);
     Path dataVecPath = Paths.get(basePath.toString(), dataset + "_base.fvecs");
     Path queryVecPath = Paths.get(basePath.toString(), dataset + "_query.fvecs");
-    int numDocs = 500;
+    int numDocs = 100;
     int dim = Integer.parseInt(args[4]);
     int k = Integer.parseInt(args[5]);
     int totalQueryVectors = Integer.parseInt(args[6]);

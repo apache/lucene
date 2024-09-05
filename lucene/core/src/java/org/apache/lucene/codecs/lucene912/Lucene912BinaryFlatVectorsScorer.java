@@ -119,7 +119,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
       int numCentroids = targetVectors.getCentroids().length;
-      assert numCentroids == queryVectors.getNumCentroids();
+      assert numCentroids == queryVectors.centroidsCount();
       BinaryQueryVector[] binaryQueryVectors = new BinaryQueryVector[numCentroids];
       for (int i = 0; i < numCentroids; i++) {
         byte[] vector = queryVectors.vectorValue(ord, i);
@@ -127,9 +127,14 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         float distanceToCentroid = queryVectors.getCentroidDistance(ord, i);
         float lower = queryVectors.getLower(ord, i);
         float width = queryVectors.getWidth(ord, i);
-        float normVmC = queryVectors.getNormVmC(ord, i);
-        float vDotC = queryVectors.getVDotC(ord, i);
-        float cDotC = queryVectors.getCDotC(ord, i);
+        float normVmC = 0f;
+        float vDotC = 0f;
+        float cDotC = 0f;
+        if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+          normVmC = queryVectors.getNormVmC(ord, i);
+          vDotC = queryVectors.getVDotC(ord, i);
+          cDotC = queryVectors.getCDotC(ord, i);
+        }
         binaryQueryVectors[i] =
             new BinaryQueryVector(
                 vector,
@@ -251,9 +256,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               / ooq;
 
       float dist = normVmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
-      // FIXME: need a true error computation here; don't know what that is for MIP
-      float errorBound = 0.0f; // FIXME: prior error bound computation: y * error;
-      float score = dist + errorBound;
+
+      float ooqSqr = (float) Math.pow(ooq, 2);
+      float errorBound = (float) (normVmC * normOC * (maxX1 * Math.sqrt((1 - ooqSqr) / ooqSqr)));
+      float score = dist - errorBound;
       return score > 0 ? score : 0f;
     }
 
@@ -290,7 +296,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
       float errorBound = y * error;
-      float score = dist - errorBound;
+      float score = dist + errorBound;
       score = score > 0 ? score : 0f;
       return 1 / (1f + score);
     }

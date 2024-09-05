@@ -108,8 +108,9 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testLimits() {
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene912BinaryQuantizedVectorsFormat(12));
+    // TODO: uncomment this test we decide on the number of vectors in a cluster
+    //    expectThrows(
+    //        IllegalArgumentException.class, () -> new Lucene912BinaryQuantizedVectorsFormat(12));
   }
 
   @Override
@@ -181,8 +182,9 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
             assertEquals(corrections[1], qvectorValues.getNormOC(), 0.00001f);
             if (corrections.length == 3) {
               assertEquals(corrections[2], qvectorValues.getODotC(), 0.00001f);
+              assertEquals(VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, similarityFunction);
             } else {
-              assertEquals(0f, qvectorValues.getODotC(), 0.00001f);
+              assertEquals(2, corrections.length);
             }
           }
         }

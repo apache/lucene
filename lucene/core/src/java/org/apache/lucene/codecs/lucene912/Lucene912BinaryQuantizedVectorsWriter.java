@@ -989,11 +989,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  // TODO this assumes a single centroid, we will need to adjust so that we can get the appropriate
-  // query vector for each centroid, this means there will be num_centroid * num_docs quantized
-  // values
-  // but we will only need to access the quantized value for the centroid where the other vector
-  // belongs
+  // When accessing vectorValue method, targerOrd here means a row ordinal.
+  // Thus, if there are multiple centroids, callers of this call needs to adjust targetOrd for each
+  // centroid: ord * queryVectors.centroidsCount() + centroidID
   static class OffHeapBinarizedQueryVectorValues
       implements RandomAccessBinarizedQueryByteVectorValues {
     private final IndexInput slice;
@@ -1040,6 +1038,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       this.correctiveValues = new float[numCentroids][correctiveValuesSize];
       this.byteSize =
           (binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES) * numCentroids;
+    }
+
+    @Override
+    public int centroidsCount() {
+      return numCentroids;
     }
 
     @Override
@@ -1115,11 +1118,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public int size() {
       return size;
-    }
-
-    @Override
-    public int getNumCentroids() {
-      return numCentroids;
     }
 
     @Override
