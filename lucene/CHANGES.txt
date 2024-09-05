@@ -169,6 +169,8 @@ Improvements
 
 * GITHUB#12172: Update Romanian stopwords list to include the modern unicode forms.  (Trey Jones)
 
+* GITHUB#13707: Improve Operations.isTotal() to work with non-minimal automata. (Dawid Weiss, Robert Muir)
+
 Optimizations
 ---------------------
 
