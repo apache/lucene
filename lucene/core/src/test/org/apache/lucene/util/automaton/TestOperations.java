@@ -304,7 +304,7 @@ public class TestOperations extends LuceneTestCase {
     as.setAccept(0, true);
     as.addTransition(0, 0, 'a');
     as.finishState();
-    assertTrue(Operations.sameLanguage(as, Operations.repeat(a)));
+    assertTrue(AutomatonTestUtil.sameLanguage(as, Operations.repeat(a)));
     assertSame(as, Operations.repeat(as));
 
     Automaton aOrEmpty = new Automaton();
@@ -313,7 +313,7 @@ public class TestOperations extends LuceneTestCase {
     aOrEmpty.createState();
     aOrEmpty.setAccept(1, true);
     aOrEmpty.addTransition(0, 1, 'a');
-    assertTrue(Operations.sameLanguage(as, Operations.repeat(aOrEmpty)));
+    assertTrue(AutomatonTestUtil.sameLanguage(as, Operations.repeat(aOrEmpty)));
 
     Automaton ab = Automata.makeString("ab");
     Automaton abs = new Automaton();
@@ -324,7 +324,7 @@ public class TestOperations extends LuceneTestCase {
     abs.finishState();
     abs.addTransition(1, 0, 'b');
     abs.finishState();
-    assertTrue(Operations.sameLanguage(abs, Operations.repeat(ab)));
+    assertTrue(AutomatonTestUtil.sameLanguage(abs, Operations.repeat(ab)));
     assertSame(abs, Operations.repeat(abs));
 
     Automaton absThenC = Operations.concatenate(abs, Automata.makeChar('c'));
@@ -341,7 +341,7 @@ public class TestOperations extends LuceneTestCase {
     absThenCs.addTransition(2, 1, 'a');
     absThenCs.addTransition(2, 0, 'c');
     absThenCs.finishState();
-    assertTrue(Operations.sameLanguage(absThenCs, Operations.repeat(absThenC)));
+    assertTrue(AutomatonTestUtil.sameLanguage(absThenCs, Operations.repeat(absThenC)));
     assertSame(absThenCs, Operations.repeat(absThenCs));
 
     Automaton aOrAb = new Automaton();
@@ -364,7 +364,7 @@ public class TestOperations extends LuceneTestCase {
     aOrAbs.addTransition(1, 0, 'b');
     aOrAbs.finishState();
     assertTrue(
-        Operations.sameLanguage(
+        AutomatonTestUtil.sameLanguage(
             Operations.determinize(aOrAbs, Integer.MAX_VALUE),
             Operations.determinize(Operations.repeat(aOrAb), Integer.MAX_VALUE)));
   }
@@ -375,7 +375,7 @@ public class TestOperations extends LuceneTestCase {
       Automaton a = AutomatonTestUtil.randomAutomaton(random());
       Automaton repeat1 = Operations.determinize(Operations.repeat(a), Integer.MAX_VALUE);
       Automaton repeat2 = Operations.determinize(naiveRepeat(a), Integer.MAX_VALUE);
-      assertTrue(Operations.sameLanguage(repeat1, repeat2));
+      assertTrue(AutomatonTestUtil.sameLanguage(repeat1, repeat2));
     }
   }
 
