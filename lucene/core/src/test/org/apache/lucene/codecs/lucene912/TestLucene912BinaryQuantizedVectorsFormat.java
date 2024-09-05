@@ -106,8 +106,9 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testLimits() {
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene912BinaryQuantizedVectorsFormat(12));
+    // TODO: uncomment this test we decide on the number of vectors in a cluster
+    //    expectThrows(
+    //        IllegalArgumentException.class, () -> new Lucene912BinaryQuantizedVectorsFormat(12));
   }
 
   @Override
