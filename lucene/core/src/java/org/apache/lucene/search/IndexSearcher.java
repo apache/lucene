@@ -393,6 +393,13 @@ public class IndexSearcher {
    * segments per slice. If a segment holds more documents than the provided max per slice, it gets
    * split into equal size partitions that each gets its own slice assigned.
    *
+   * <p>Note: this method is not yet called by the default slicing implementation {@link
+   * #slices(List)}. Certain queries that require segment-level computation ahead of time duplicate
+   * this effort across segment partitions. Once that can be shared across partitions we can safely
+   * create partitions by default and perhaps refine the slicing approach implemented in this
+   * method. For this reason segment partitions are currently only created in tests. Users can call
+   * this method at their own risk.
+   *
    * @lucene.experimental
    */
   public static LeafSlice[] slicesWithPartitions(
