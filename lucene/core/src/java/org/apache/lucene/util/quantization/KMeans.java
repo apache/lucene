@@ -390,5 +390,33 @@ public class KMeans {
    *     expect less than {@code MAX_NUM_CENTROIDS} which is equal to 32767 centroids. Can be {@code
    *     null} if they were not computed.
    */
-  public record Results(float[][] centroids, short[] vectorCentroids) {}
+  public record Results(float[][] centroids, short[] vectorCentroids) {
+    @Override
+    public String toString() {
+      // print to string, note that centroids is an array of float arrays
+      return "Results{"
+          + "centroids="
+        // map arrays to string over the float arrays
+          + Arrays.stream(centroids).map(Arrays::toString).collect(java.util.stream.Collectors.joining("\n"))
+          + ", vectorCentroids="
+          + Arrays.toString(vectorCentroids)
+          + '}';
+    }
+
+    public int nearestCentroid(float[] vector) {
+      if (centroids.length == 1) {
+        return 0;
+      }
+      float minDist = Float.MAX_VALUE;
+      int nearest = -1;
+      for (int i = 0; i < centroids.length; i++) {
+        float dist = VectorUtil.squareDistance(centroids[i], vector);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = i;
+        }
+      }
+      return nearest;
+    }
+  }
 }

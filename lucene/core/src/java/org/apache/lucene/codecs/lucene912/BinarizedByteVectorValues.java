@@ -34,13 +34,11 @@ public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
   public abstract short clusterId() throws IOException;
 
   public static byte encodeClusterIdToByte(short clusterId) {
-    byte bClusterId = clusterId <= 127 ? (byte) clusterId : (byte) (clusterId - 256);
-    return bClusterId;
+    return (byte) clusterId;
   }
 
   public static short decodeClusterIdFromByte(byte bClusterId) {
-    short clusterId = bClusterId >= 0 ? (short) bClusterId : (short) (bClusterId + 256);
-    return clusterId;
+    return (short) Byte.toUnsignedInt(bClusterId);
   }
 
   public abstract float getMagnitude() throws IOException;

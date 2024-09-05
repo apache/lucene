@@ -160,9 +160,23 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         RandomAccessVectorValues.Floats vectorValues =
             RandomAccessVectorValues.fromFloats(
                 field.flatFieldVectorsWriter.getVectors(), field.fieldInfo.getVectorDimension());
-        KMeans.Results kmeansResult = cluster(vectorValues, true);
+        // TODO When assign vectors is true, it seems to adjust the centroids again, then the actual nearest centroid later
+        // isn't the same?
+        KMeans.Results kmeansResult = cluster(vectorValues, false);
+        if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
+          segmentWriteState.infoStream.message(
+              BINARIZED_VECTOR_COMPONENT, "clustered: " + kmeansResult);
+        }
         clusterCenters = kmeansResult.centroids();
-        vectorClusters = kmeansResult.vectorCentroids();
+        vectorClusters = new short[vectorCount];
+        int vidx = 0;
+        for (float[] v : field.flatFieldVectorsWriter.getVectors()) {
+          vectorClusters[vidx++] = (short) kmeansResult.nearestCentroid(v);
+        }
+        if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
+          segmentWriteState.infoStream.message(
+            BINARIZED_VECTOR_COMPONENT, "centroids: " + Arrays.toString(vectorClusters));
+        }
       } else {
         clusterCenters = new float[1][field.dimensionSums.length];
         for (int i = 0; i < field.dimensionSums.length; i++) {
@@ -750,12 +764,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   private KMeans.Results cluster(
-      RandomAccessVectorValues.Floats vectorValues, boolean assignCentroidsToVectors)
-      throws IOException {
+      RandomAccessVectorValues.Floats vectorValues, boolean assignVectors) throws IOException {
     return KMeans.cluster(
         vectorValues,
         Math.max(1, vectorValues.size() / numberOfVectorsPerCluster),
-        assignCentroidsToVectors,
+        assignVectors,
         42,
         KMeans.KmeansInitializationMethod.FORGY,
         false,

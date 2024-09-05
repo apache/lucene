@@ -192,8 +192,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     @Override
     public float score(int targetOrd) throws IOException {
       // FIXME: implement fastscan in the future?
-
       short clusterId = targetVectors.getClusterId(targetOrd);
+
       BinaryQueryVector queryVector = queryVectors[clusterId];
 
       byte[] quantizedQuery = queryVector.vector();

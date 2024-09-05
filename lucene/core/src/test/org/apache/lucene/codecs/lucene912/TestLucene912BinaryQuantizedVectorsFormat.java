@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene912;
 
 import static java.lang.String.format;
+import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.NAME;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
@@ -43,6 +44,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
@@ -121,7 +123,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testQuantizedVectorsWriteAndRead() throws IOException {
-    int numberOfVectorsPerCluster = 100;
+    int numberOfVectorsPerCluster = 50;
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
     int dims = random().nextInt(4, 65);
@@ -132,7 +134,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
                   @Override
                   public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                     return new Lucene912BinaryQuantizedVectorsFormat(
-                        Lucene912BinaryQuantizedVectorsFormat.NAME, numberOfVectorsPerCluster);
+                        NAME, numberOfVectorsPerCluster);
                   }
                 })
             .setMaxBufferedDocs(numVectors + 1)
@@ -155,20 +157,23 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
         try (IndexReader reader = DirectoryReader.open(w)) {
           LeafReader r = getOnlyLeafReader(reader);
           FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
-          assert (vectorValues.size() == numVectors);
+          assertEquals(vectorValues.size(), numVectors);
           OffHeapBinarizedVectorValues qvectorValues =
               ((Lucene912BinaryQuantizedVectorsReader.BinarizedVectorValues) vectorValues)
                   .getQuantizedVectorValues();
           float[][] centroids = qvectorValues.getCentroids();
-          assert centroids[0].length == dims;
+          assertEquals(centroids[0].length, dims);
           int expectedNumCentroids = Math.max(1, numVectors / numberOfVectorsPerCluster);
-          assert centroids.length == expectedNumCentroids;
+          int maxNumClusters = Math.max(1, numVectors / 100);
+          assertEquals(centroids.length, Math.min(expectedNumCentroids, maxNumClusters));
           int descritizedDimension = BQVectorUtils.discretize(dims, 64);
 
           BinaryQuantizer quantizer = new BinaryQuantizer(descritizedDimension, similarityFunction);
           byte[] expectedVector = new byte[BQVectorUtils.discretize(dims, 64) / 8];
           while (vectorValues.nextDoc() != NO_MORE_DOCS) {
             float[] centroid = centroids[qvectorValues.clusterId()];
+            int nearest = nearestCentroid(vectorValues.vectorValue(), centroids);
+            assertEquals(nearest, qvectorValues.clusterId());
             float[] corrections =
                 quantizer.quantizeForIndex(vectorValues.vectorValue(), expectedVector, centroid);
             assertArrayEquals(expectedVector, qvectorValues.vectorValue());
@@ -183,5 +188,18 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
         }
       }
     }
+  }
+
+  static int nearestCentroid(float[] vector, float[][] centroids) {
+    int nearest = 0;
+    float minDistance = Float.POSITIVE_INFINITY;
+    for (int i = 0; i < centroids.length; i++) {
+      float distance = VectorUtil.squareDistance(vector, centroids[i]);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = i;
+      }
+    }
+    return nearest;
   }
 }
