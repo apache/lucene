@@ -297,12 +297,13 @@ public class ToParentBlockJoinQuery extends Query {
       this.freq = 0;
     }
 
-    public void reset(float firstChildScore) {
-      score = firstChildScore;
+    public void reset(Scorable firstChildScorer) throws IOException {
+      score = scoreMode == ScoreMode.None ? 0 : firstChildScorer.score();
       freq = 1;
     }
 
-    public void addChildScore(float childScore) {
+    public void addChildScore(Scorable childScorer) throws IOException {
+      final float childScore = scoreMode == ScoreMode.None ? 0 : childScorer.score();
       freq++;
       switch (scoreMode) {
         case Total:
@@ -411,10 +412,10 @@ public class ToParentBlockJoinQuery extends Query {
       if (childApproximation.docID() >= parentApproximation.docID()) {
         return;
       }
-      parentScore.reset(scoreMode == ScoreMode.None ? 0 : childScorer.score());
+      parentScore.reset(childScorer);
       while (childApproximation.nextDoc() < parentApproximation.docID()) {
         if (childTwoPhase == null || childTwoPhase.matches()) {
-          parentScore.addChildScore(scoreMode == ScoreMode.None ? 0 : childScorer.score());
+          parentScore.addChildScore(childScorer);
         }
       }
       if (childApproximation.docID() == parentApproximation.docID()
@@ -548,7 +549,7 @@ public class ToParentBlockJoinQuery extends Query {
             }
 
             currentParent = parents.nextSetBit(doc);
-            currentParentScore.reset(scoreMode == ScoreMode.None ? 0 : scorer.score());
+            currentParentScore.reset(scorer);
           } else if (doc == currentParent) {
             throw new IllegalStateException(
                 "Child query must not match same docs with parent filter. "
@@ -558,7 +559,7 @@ public class ToParentBlockJoinQuery extends Query {
                     + ", "
                     + childBulkScorer.getClass());
           } else {
-            currentParentScore.addChildScore(scoreMode == ScoreMode.None ? 0 : scorer.score());
+            currentParentScore.addChildScore(scorer);
           }
         }
 
