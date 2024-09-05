@@ -396,8 +396,10 @@ public class KMeans {
       // print to string, note that centroids is an array of float arrays
       return "Results{"
           + "centroids="
-        // map arrays to string over the float arrays
-          + Arrays.stream(centroids).map(Arrays::toString).collect(java.util.stream.Collectors.joining("\n"))
+          // map arrays to string over the float arrays
+          + Arrays.stream(centroids)
+              .map(Arrays::toString)
+              .collect(java.util.stream.Collectors.joining("\n"))
           + ", vectorCentroids="
           + Arrays.toString(vectorCentroids)
           + '}';

@@ -160,7 +160,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         RandomAccessVectorValues.Floats vectorValues =
             RandomAccessVectorValues.fromFloats(
                 field.flatFieldVectorsWriter.getVectors(), field.fieldInfo.getVectorDimension());
-        // TODO When assign vectors is true, it seems to adjust the centroids again, then the actual nearest centroid later
+        // TODO When assign vectors is true, it seems to adjust the centroids again, then the actual
+        // nearest centroid later
         // isn't the same?
         KMeans.Results kmeansResult = cluster(vectorValues, false);
         if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
@@ -175,7 +176,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         }
         if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
           segmentWriteState.infoStream.message(
-            BINARIZED_VECTOR_COMPONENT, "centroids: " + Arrays.toString(vectorClusters));
+              BINARIZED_VECTOR_COMPONENT, "centroids: " + Arrays.toString(vectorClusters));
         }
       } else {
         clusterCenters = new float[1][field.dimensionSums.length];
@@ -229,7 +230,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
-    int correctionsCount = scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
+    int correctionsCount =
+        scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -312,7 +314,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
-    int correctionsCount = scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 3 : 2;
+    int correctionsCount =
+        scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -473,9 +476,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         new byte
             [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
-    int correctionsCount = quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT? 6 : 3;
+    int correctionsCount =
+        quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
     final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES)
+            .order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = floatVectorValues.nextDoc();
         docV != NO_MORE_DOCS;
         docV = floatVectorValues.nextDoc()) {
@@ -876,13 +881,20 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private int lastOrd = -1;
     private final int correctiveValuesSize;
     private final VectorSimilarityFunction vectorSimilarityFunction;
-    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size, int numCentroids, VectorSimilarityFunction vectorSimilarityFunction) {
+
+    OffHeapBinarizedQueryVectorValues(
+        IndexInput data,
+        int dimension,
+        int size,
+        int numCentroids,
+        VectorSimilarityFunction vectorSimilarityFunction) {
       this.slice = data;
       this.dimension = dimension;
       this.size = size;
       this.numCentroids = numCentroids;
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-        this.correctiveValuesSize = vectorSimilarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
+      this.correctiveValuesSize =
+          vectorSimilarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
       // 4x the quantized binary dimensions
       int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
@@ -893,7 +905,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       this.sumQuantizationValues = new int[numCentroids];
       this.correctiveValues = new float[numCentroids][correctiveValuesSize];
-      this.byteSize = (binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES) * numCentroids;
+      this.byteSize =
+          (binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES) * numCentroids;
     }
 
     @Override
@@ -983,7 +996,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public OffHeapBinarizedQueryVectorValues copy() throws IOException {
-      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size, numCentroids, vectorSimilarityFunction);
+      return new OffHeapBinarizedQueryVectorValues(
+          slice.clone(), dimension, size, numCentroids, vectorSimilarityFunction);
     }
 
     public IndexInput getSlice() {
