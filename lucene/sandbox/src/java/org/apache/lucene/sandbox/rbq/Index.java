@@ -55,7 +55,6 @@ public class Index {
   // FIXME: Temporary to help with debugging and iteration
   public static void main(String[] args) throws Exception {
 
-    // /Users/jwagster/workspace/RaBitQ/data/wiki_cohere/ wiki 1 768 10 25 false
     String dataset = args[2];
     Path docsPath = Paths.get(args[0]);
     Path indexPath = Paths.get(args[1]);

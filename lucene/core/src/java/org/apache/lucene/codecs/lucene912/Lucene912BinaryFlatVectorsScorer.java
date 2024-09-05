@@ -252,9 +252,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               / ooq;
 
       float dist = normVmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
-      // FIXME: need a true error computation here; don't know what that is for MIP
-      float errorBound = 0.0f; // FIXME: prior error bound computation: y * error;
-      float score = dist + errorBound;
+
+      float ooqSqr = (float) Math.pow(ooq,2);
+      float errorBound = (float) (normVmC * normOC * (maxX1 * Math.sqrt((1 - ooqSqr) / ooqSqr)));
+      float score = dist - errorBound;
       return score > 0 ? score : 0f;
     }
 
@@ -291,7 +292,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
       float errorBound = y * error;
-      float score = dist - errorBound;
+      float score = dist + errorBound;
       score = score > 0 ? score : 0f;
       return 1 / (1f + score);
     }
