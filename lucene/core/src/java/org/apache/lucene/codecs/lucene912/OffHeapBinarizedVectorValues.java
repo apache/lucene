@@ -113,28 +113,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   @Override
-  public float getDistanceToCentroid() {
-    return correctiveValues[0];
-  }
-
-  @Override
-  public float getMagnitude() {
-    return correctiveValues[1];
-  }
-
-  @Override
-  public float getOOQ() {
-    return correctiveValues[0];
-  }
-
-  @Override
-  public float getNormOC() {
-    return correctiveValues[1];
-  }
-
-  @Override
-  public float getODotC() {
-    return correctiveValues[2];
+  public float[] getCorrectiveTerms() {
+    return correctiveValues;
   }
 
   @Override

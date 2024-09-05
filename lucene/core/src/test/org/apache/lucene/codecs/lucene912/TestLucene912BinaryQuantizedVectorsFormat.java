@@ -178,13 +178,9 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
             float[] corrections =
                 quantizer.quantizeForIndex(vectorValues.vectorValue(), expectedVector, centroid);
             assertArrayEquals(expectedVector, qvectorValues.vectorValue());
-            assertEquals(corrections[0], qvectorValues.getOOQ(), 0.00001f);
-            assertEquals(corrections[1], qvectorValues.getNormOC(), 0.00001f);
-            if (corrections.length == 3) {
-              assertEquals(corrections[2], qvectorValues.getODotC(), 0.00001f);
-              assertEquals(VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, similarityFunction);
-            } else {
-              assertEquals(2, corrections.length);
+            assertEquals(corrections.length, qvectorValues.getCorrectiveTerms().length);
+            for (int i = 0; i < corrections.length; i++) {
+              assertEquals(corrections[i], qvectorValues.getCorrectiveTerms()[i], 0.00001f);
             }
           }
         }
