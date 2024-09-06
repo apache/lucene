@@ -386,4 +386,65 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       }
     }
   }
+
+  public void testSetMinCompetitiveScoreWithScoreModeNone() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (RandomIndexWriter w =
+          new RandomIndexWriter(
+              random(),
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(
+                      // retain doc id order
+                      newLogMergePolicy(random().nextBoolean())))) {
+
+        populateStaticIndex(w);
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        final IndexSearcher searcher = newSearcher(reader);
+        final ToParentBlockJoinQuery query = buildQuery(ScoreMode.None);
+        final org.apache.lucene.search.ScoreMode scoreMode =
+            org.apache.lucene.search.ScoreMode.TOP_SCORES;
+        final Weight weight = searcher.createWeight(searcher.rewrite(query), scoreMode, 1);
+
+        {
+          Map<Integer, Float> expectedScores =
+              Map.of(
+                  2, 0.0f,
+                  5, 0.0f,
+                  10, 0.0f,
+                  12, 0.0f,
+                  16, 0.0f);
+
+          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+          ss.setTopLevelScoringClause();
+          assertScores(ss.bulkScorer(), scoreMode, null, expectedScores);
+        }
+
+        {
+          Map<Integer, Float> expectedScores =
+              Map.of(
+                  2, 0.0f,
+                  5, 0.0f,
+                  10, 0.0f,
+                  12, 0.0f,
+                  16, 0.0f);
+
+          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+          ss.setTopLevelScoringClause();
+          assertScores(ss.bulkScorer(), scoreMode, 0.0f, expectedScores);
+        }
+
+        {
+          Map<Integer, Float> expectedScores = Map.of();
+
+          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+          ss.setTopLevelScoringClause();
+          assertScores(ss.bulkScorer(), scoreMode, Math.nextUp(0f), expectedScores);
+        }
+      }
+    }
+  }
 }
