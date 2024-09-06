@@ -189,8 +189,10 @@ public class TestDrillDownQuery extends FacetTestCase {
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("b", "1");
     int limit = 0;
-    FacetsCollector facetCollector = new FacetsCollector();
-    FacetsCollector.search(searcher, q, limit, facetCollector);
+
+    FacetsCollector facetCollector =
+        FacetsCollectorManager.search(searcher, q, limit, new FacetsCollectorManager())
+            .facetsCollector();
     Facets facets =
         getTaxonomyFacetCounts(
             taxo, config, facetCollector, config.getDimConfig("b").indexFieldName);

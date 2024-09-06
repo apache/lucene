@@ -331,9 +331,9 @@ public class TestMultipleIndexFields extends FacetTestCase {
   }
 
   private FacetsCollector performSearch(IndexSearcher searcher) throws IOException {
-    FacetsCollector fc = new FacetsCollector();
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
-    return fc;
+    return FacetsCollectorManager.search(
+            searcher, new MatchAllDocsQuery(), 10, new FacetsCollectorManager())
+        .facetsCollector();
   }
 
   private void seedIndex(TaxonomyWriter tw, RandomIndexWriter iw, FacetsConfig config)
