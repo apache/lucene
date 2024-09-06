@@ -389,8 +389,7 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public float score() throws IOException {
-      setScoreAndFreq();
-      return parentScore.score();
+      return scoreChildDocs();
     }
 
     @Override
@@ -408,16 +407,25 @@ public class ToParentBlockJoinQuery extends Query {
       }
     }
 
-    private void setScoreAndFreq() throws IOException {
+    private float scoreChildDocs() throws IOException {
       if (childApproximation.docID() >= parentApproximation.docID()) {
-        return;
+        return parentScore.score();
       }
-      parentScore.reset(childScorer);
-      while (childApproximation.nextDoc() < parentApproximation.docID()) {
-        if (childTwoPhase == null || childTwoPhase.matches()) {
-          parentScore.addChildScore(childScorer);
+
+      float score = 0;
+      if (scoreMode == ScoreMode.None) {
+        childApproximation.advance(parentApproximation.docID());
+      } else {
+        parentScore.reset(childScorer);
+        while (childApproximation.nextDoc() < parentApproximation.docID()) {
+          if (childTwoPhase == null || childTwoPhase.matches()) {
+            parentScore.addChildScore(childScorer);
+          }
         }
+
+        score = parentScore.score();
       }
+
       if (childApproximation.docID() == parentApproximation.docID()
           && (childTwoPhase == null || childTwoPhase.matches())) {
         throw new IllegalStateException(
@@ -428,6 +436,8 @@ public class ToParentBlockJoinQuery extends Query {
                 + ", "
                 + childScorer.getClass());
       }
+
+      return score;
     }
 
     /*
