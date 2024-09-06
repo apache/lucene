@@ -327,8 +327,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   }
 
   public void testFloatAssociationRandom() throws Exception {
-
-    IndexSearcher searcher = newSearcher(reader);
+    // disabling search concurrency because validateFloats relies on ordering which requires
+    // sequential execution
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
     FacetsCollector fc =
         searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
 
@@ -641,7 +642,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       float value = e.getValue();
       // We can expect the floats to be exactly equal here since we're ensuring that we sum them
       // in the same order when determining expected values and when computing facets. See
-      // LUCENE-10530:
+      // LUCENE-10530. This though requires sequential execution.
       assertEquals(value, facets.getSpecificValue(dim, e.getKey()).floatValue(), 0f);
       aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
     }
