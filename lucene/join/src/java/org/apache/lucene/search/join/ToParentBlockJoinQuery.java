@@ -512,23 +512,29 @@ public class ToParentBlockJoinQuery extends Query {
     @Override
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
+      if (min == max) {
+        return scoringCompleteCheck(max, max);
+      }
+
       // Subtract one because max is exclusive w.r.t. score but inclusive w.r.t prevSetBit
       int lastParent = parents.prevSetBit(Math.min(parentsLength, max) - 1);
       int prevParent = min == 0 ? -1 : parents.prevSetBit(min - 1);
       if (lastParent == prevParent) {
         // No parent docs in this range.
-        // If we've scored the last parent in the bit set, return NO_MORE_DOCS to indicate we are
-        // done scoring.
-        return max >= parentsLength ? NO_MORE_DOCS : max;
+        return scoringCompleteCheck(max, max);
       }
 
       BatchAwareLeafCollector wrappedCollector = wrapCollector(collector);
       childBulkScorer.score(wrappedCollector, acceptDocs, prevParent + 1, lastParent + 1);
       wrappedCollector.endBatch();
 
+      return scoringCompleteCheck(lastParent + 1, max);
+    }
+
+    private int scoringCompleteCheck(int innerMax, int returnedMax) {
       // If we've scored the last parent in the bit set, return NO_MORE_DOCS to indicate we are done
       // scoring
-      return lastParent + 1 >= parentsLength ? NO_MORE_DOCS : max;
+      return innerMax >= parentsLength ? NO_MORE_DOCS : returnedMax;
     }
 
     @Override
