@@ -899,12 +899,12 @@ public abstract class LuceneTestCase extends Assert {
       // Avoid possible overflow from adding the deltas by splitting the comparison
       assertTrue(deltaPlus <= maxUlps);
       assertTrue(deltaMinus <= (maxUlps - deltaPlus));
+    } else {
+      // Numbers have same sign, there is no risk of overflow.
+      assertTrue(Math.abs(xInt - yInt) <= maxUlps);
+      assertFalse(Float.isNaN(x));
+      assertFalse(Float.isNaN(y));
     }
-
-    // Numbers have same sign, there is no risk of overflow.
-    assertTrue(Math.abs(xInt - yInt) <= maxUlps);
-    assertFalse(Float.isNaN(x));
-    assertFalse(Float.isNaN(y));
   }
 
   /**
