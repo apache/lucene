@@ -18,7 +18,9 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
@@ -37,7 +39,19 @@ abstract class CollectingMatcher<T extends QueryMatch> extends CandidateMatcher<
   @Override
   public void matchQuery(final String queryId, Query matchQuery, Map<String, String> metadata)
       throws IOException {
-    searcher.search(matchQuery, new MatchCollector(queryId, scoreMode));
+    CollectorManager<MatchCollector, T> collectorManager =
+        new CollectorManager<>() {
+          @Override
+          public MatchCollector newCollector() {
+            return new MatchCollector(queryId, scoreMode);
+          }
+
+          @Override
+          public T reduce(Collection<MatchCollector> collectors) {
+            return null; // no-op since MatchCollector directly updates CandidateMatcher#matches
+          }
+        };
+    searcher.search(matchQuery, collectorManager);
   }
 
   /**
