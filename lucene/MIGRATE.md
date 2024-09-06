@@ -81,7 +81,8 @@ behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by us
 
 These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to to call
-`Operations.determinize()` for DFA execution.
+`Operations.determinize()` for DFA execution. The `RegExp` class no longer supports
+the optional complement syntax, previously supported by the `~` character.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
