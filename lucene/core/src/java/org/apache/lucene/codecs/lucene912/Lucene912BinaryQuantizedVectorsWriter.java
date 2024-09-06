@@ -1146,6 +1146,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       return clusterId;
     }
 
+    @Override
     public float[] getCorrectiveTerms() {
       return corrections;
     }
