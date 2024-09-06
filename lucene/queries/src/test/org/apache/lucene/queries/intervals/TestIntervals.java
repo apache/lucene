@@ -1187,4 +1187,27 @@ public class TestIntervals extends LuceneTestCase {
 
     checkVisits(source, 1);
   }
+
+  // basic test for equality and inequality of instances created by the factories
+  public void testEquality() {
+    assertEquals(Intervals.term("wibble"), Intervals.term("wibble"));
+    assertEquals(Intervals.prefix(new BytesRef("p"), 1), Intervals.prefix(new BytesRef("p"), 1));
+    assertEquals(Intervals.fuzzyTerm("kot", 1), Intervals.fuzzyTerm("kot", 1));
+    assertEquals(Intervals.regexp(new BytesRef(".*ot")), Intervals.regexp(new BytesRef(".*ot")));
+    assertEquals(
+        Intervals.wildcard(new BytesRef("*.txt")), Intervals.wildcard(new BytesRef("*.txt")));
+    assertEquals(
+        Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true),
+        Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true));
+
+    assertNotEquals(Intervals.term("wibble"), Intervals.term("wobble"));
+    assertNotEquals(Intervals.prefix(new BytesRef("p"), 1), Intervals.prefix(new BytesRef("b"), 1));
+    assertNotEquals(Intervals.fuzzyTerm("kot", 1), Intervals.fuzzyTerm("kof", 1));
+    assertNotEquals(Intervals.regexp(new BytesRef(".*ot")), Intervals.regexp(new BytesRef(".*at")));
+    assertNotEquals(
+        Intervals.wildcard(new BytesRef("*.txt")), Intervals.wildcard(new BytesRef("*.tat")));
+    assertNotEquals(
+        Intervals.range(new BytesRef("warm"), new BytesRef("hot"), true, true),
+        Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true));
+  }
 }

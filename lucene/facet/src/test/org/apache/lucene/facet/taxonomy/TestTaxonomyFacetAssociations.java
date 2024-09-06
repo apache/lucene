@@ -242,10 +242,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
   public void testIntAssociationRandom() throws Exception {
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new TermQuery(new Term("match", "yes")), fc);
+    FacetsCollector fc =
+        searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
 
     Map<String, Integer> expected;
     Facets facets;
@@ -332,10 +331,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
   public void testFloatAssociationRandom() throws Exception {
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new TermQuery(new Term("match", "yes")), fc);
+    FacetsCollector fc =
+        searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
 
     Map<String, Float> expected;
     Facets facets;

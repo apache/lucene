@@ -62,7 +62,7 @@ allprojects {
 // Configure test property defaults and their descriptions.
 allprojects {
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
       String randomVectorSize = RandomPicks.randomFrom(new Random(projectSeedLong), ["default", "128", "256", "512"])
       testOptions += [
           // seed, repetition and amplification.
@@ -135,14 +135,14 @@ allprojects {
     }
 
     afterEvaluate {
-      ext.testOptionsResolved = testOptions.findAll { opt ->
+      project.ext.testOptionsResolved = testOptions.findAll { opt ->
         propertyOrDefault(opt.propName, opt.value) != null
       }.collectEntries { opt ->
         [(opt.propName): Objects.toString(resolvedTestOption(opt.propName))]
       }
 
       // Compute the "reproduce with" string.
-      ext.testOptionsForReproduceLine = testOptions.findAll { opt ->
+      project.ext.testOptionsForReproduceLine = testOptions.findAll { opt ->
         if (opt["includeInReproLine"] == false) {
           return false
         }
