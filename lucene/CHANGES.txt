@@ -376,6 +376,8 @@ Optimizations
 
 * GITHUB#13587: Use Max WAND optimizations with ToParentBlockJoinQuery when using ScoreMode.Max (Mike Pellegrini)
 
+* GITHUB#13697: Add Bulk Scorer For ToParentBlockJoinQuery (Mike Pellegrini)
+
 Changes in runtime behavior
 ---------------------
 
