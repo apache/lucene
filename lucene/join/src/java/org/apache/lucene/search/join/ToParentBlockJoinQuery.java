@@ -164,7 +164,7 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public BulkScorer bulkScorer() throws IOException {
-          return new BlockJoinBulkScorer(childScorerSupplier.bulkScorer(), scoreMode, parents);
+          return new BlockJoinBulkScorer(childScorerSupplier.bulkScorer(), parents, scoreMode);
         }
 
         @Override
@@ -502,7 +502,7 @@ public class ToParentBlockJoinQuery extends Query {
     private final BitSet parents;
     private final int parentsLength;
 
-    public BlockJoinBulkScorer(BulkScorer childBulkScorer, ScoreMode scoreMode, BitSet parents) {
+    public BlockJoinBulkScorer(BulkScorer childBulkScorer, BitSet parents, ScoreMode scoreMode) {
       this.childBulkScorer = childBulkScorer;
       this.scoreMode = scoreMode;
       this.parents = parents;
