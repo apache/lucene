@@ -57,7 +57,8 @@ public class TotalHitCountCollectorManager
    *
    * @see IndexSearcher#slices(List)
    * @see org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition
-   * @param hasSegmentPartitions
+   * @param hasSegmentPartitions whether the collector manager needs to create collectors that
+   *     support searching segment partitions in parallel (via intra-segment search concurrency)
    */
   public TotalHitCountCollectorManager(boolean hasSegmentPartitions) {
     this.hasSegmentPartitions = hasSegmentPartitions;
