@@ -80,9 +80,14 @@ behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by us
 ### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
 
 These classes no longer take a `determinizeWorkLimit` and no longer determinize
-behind the scenes. It is the responsibility of the caller to to call
-`Operations.determinize()` for DFA execution. The `RegExp` class no longer supports
-the optional complement syntax, previously supported by the `~` character.
+behind the scenes. It is the responsibility of the caller to call
+`Operations.determinize()` for DFA execution.
+
+### RegExp no longer supports the optional complement syntax
+
+The `RegExp` class no longer supports the optional complement syntax, previously
+supported by the `~` character. In many cases complement-of-range may be a
+suitable replacement, e.g. `[^a-z]`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
