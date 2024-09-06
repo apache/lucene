@@ -86,9 +86,14 @@ behind the scenes. It is the responsibility of the caller to call
 ### RegExp no longer supports the optional complement syntax
 
 The `RegExp` class no longer supports the optional complement syntax, previously
-supported by the `~` character. In many cases a _complemented bracket expression_,
-`[^...]`, may be a suitable replacement, For example, `[^awk]` matches any
-character that is not an `a`, `w`, or `k`.
+supported by the `~` character. When working with automata retrieved from regexp,
+equivalent functionality can be achieved by using `Operations.complement`. For
+example, `new RegExp("~(foo)").toAutomaton()` that matches input that is not
+"foo", can be rewritten as `Operations.complement(new RegExp("(foo)").toAutomaton(), ...)`.
+
+Alternatively, and quite commonly, a more simple _complement bracket expression_,
+`[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
+character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
