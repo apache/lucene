@@ -24,6 +24,9 @@ API Changes
 * GITHUB#13568: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
 
+* GITHUB#13737: Deprecate the FacetsCollector#search utility methods and add new corresponding method to
+  FacetsCollectorManager that accept a FacetsCollectorManager as last argument in place of a Collector. (Luca Cavanna)
+
 New Features
 ---------------------
 
