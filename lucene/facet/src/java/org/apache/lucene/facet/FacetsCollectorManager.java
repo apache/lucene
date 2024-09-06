@@ -208,6 +208,8 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
   /**
    * Holds results of a search run via static utility methods exposed by this class. Those include
    * {@link TopDocs} as well as facets result included in the returned {@link FacetsCollector}
+   * @param topDocs the top docs 
+   * @param facetsCollector the facets result included in a {@link FacetsCollector} instance
    */
   public record FacetsResult(TopDocs topDocs, FacetsCollector facetsCollector) {}
 }
