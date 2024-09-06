@@ -19,7 +19,6 @@ package org.apache.lucene.facet;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
@@ -80,13 +79,21 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
     }
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also populate a {@code FacetsCollector} with hits. The provided
+   * {@code FacetsCollectorManager} will be used for creating/reducing {@code FacetsCollector}
+   * instances.
+   */
   public static FacetsResult search(
       IndexSearcher searcher, Query q, int n, FacetsCollectorManager fcm) throws IOException {
     return doSearch(searcher, null, q, n, null, false, fcm);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also populate a {@code FacetsCollector} with hits. The provided
+   * {@code FacetsCollectorManager} will be used for creating/reducing {@code FacetsCollector}
+   * instances.
+   */
   public static FacetsResult search(
       IndexSearcher searcher, Query q, int n, Sort sort, FacetsCollectorManager fcm)
       throws IOException {
@@ -96,7 +103,11 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
     return doSearch(searcher, null, q, n, sort, false, fcm);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also populate a {@code FacetsCollector} with hits. The provided
+   * {@code FacetsCollectorManager} will be used for creating/reducing {@code FacetsCollector}
+   * instances.
+   */
   public static FacetsResult search(
       IndexSearcher searcher,
       Query q,
@@ -111,14 +122,22 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
     return doSearch(searcher, null, q, n, sort, doDocScores, fcm);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also populate a {@code FacetsCollector} with hits. The provided
+   * {@code FacetsCollectorManager} will be used for creating/reducing {@code FacetsCollector}
+   * instances.
+   */
   public static FacetsResult searchAfter(
       IndexSearcher searcher, ScoreDoc after, Query q, int n, FacetsCollectorManager fcm)
       throws IOException {
     return doSearch(searcher, after, q, n, null, false, fcm);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also populate a {@code FacetsCollector} with hits. The provided
+   * {@code FacetsCollectorManager} will be used for creating/reducing {@code FacetsCollector}
+   * instances.
+   */
   public static FacetsResult searchAfter(
       IndexSearcher searcher, ScoreDoc after, Query q, int n, Sort sort, FacetsCollectorManager fcm)
       throws IOException {
@@ -128,7 +147,11 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
     return doSearch(searcher, after, q, n, sort, false, fcm);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also populate a {@code FacetsCollector} with hits. The provided
+   * {@code FacetsCollectorManager} will be used for creating/reducing {@code FacetsCollector}
+   * instances.
+   */
   public static FacetsResult searchAfter(
       IndexSearcher searcher,
       ScoreDoc after,
