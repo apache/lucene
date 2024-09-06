@@ -22,23 +22,9 @@ import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MultiCollector;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.search.TopFieldCollectorManager;
-import org.apache.lucene.search.TopFieldDocs;
-import org.apache.lucene.search.TopScoreDocCollectorManager;
-import org.apache.lucene.search.TotalHitCountCollector;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocIdSetBuilder;
 
@@ -154,119 +140,5 @@ public class FacetsCollector extends SimpleCollector {
     matchingDocs.add(new MatchingDocs(this.context, bits, totalHits, scores));
     scores = null;
     context = null;
-  }
-
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
-  public static TopDocs search(IndexSearcher searcher, Query q, int n, Collector fc)
-      throws IOException {
-    return doSearch(searcher, null, q, n, null, false, fc);
-  }
-
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
-  public static TopFieldDocs search(IndexSearcher searcher, Query q, int n, Sort sort, Collector fc)
-      throws IOException {
-    if (sort == null) {
-      throw new IllegalArgumentException("sort must not be null");
-    }
-    return (TopFieldDocs) doSearch(searcher, null, q, n, sort, false, fc);
-  }
-
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
-  public static TopFieldDocs search(
-      IndexSearcher searcher, Query q, int n, Sort sort, boolean doDocScores, Collector fc)
-      throws IOException {
-    if (sort == null) {
-      throw new IllegalArgumentException("sort must not be null");
-    }
-    return (TopFieldDocs) doSearch(searcher, null, q, n, sort, doDocScores, fc);
-  }
-
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
-  public static TopDocs searchAfter(
-      IndexSearcher searcher, ScoreDoc after, Query q, int n, Collector fc) throws IOException {
-    return doSearch(searcher, after, q, n, null, false, fc);
-  }
-
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
-  public static TopDocs searchAfter(
-      IndexSearcher searcher, ScoreDoc after, Query q, int n, Sort sort, Collector fc)
-      throws IOException {
-    if (sort == null) {
-      throw new IllegalArgumentException("sort must not be null");
-    }
-    return doSearch(searcher, after, q, n, sort, false, fc);
-  }
-
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
-  public static TopDocs searchAfter(
-      IndexSearcher searcher,
-      ScoreDoc after,
-      Query q,
-      int n,
-      Sort sort,
-      boolean doDocScores,
-      Collector fc)
-      throws IOException {
-    if (sort == null) {
-      throw new IllegalArgumentException("sort must not be null");
-    }
-    return doSearch(searcher, after, q, n, sort, doDocScores, fc);
-  }
-
-  private static TopDocs doSearch(
-      IndexSearcher searcher,
-      ScoreDoc after,
-      Query q,
-      int n,
-      Sort sort,
-      boolean doDocScores,
-      Collector fc)
-      throws IOException {
-
-    int limit = searcher.getIndexReader().maxDoc();
-    if (limit == 0) {
-      limit = 1;
-    }
-    n = Math.min(n, limit);
-
-    if (after != null && after.doc >= limit) {
-      throw new IllegalArgumentException(
-          "after.doc exceeds the number of documents in the reader: after.doc="
-              + after.doc
-              + " limit="
-              + limit);
-    }
-
-    TopDocs topDocs = null;
-    if (n == 0) {
-      TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
-      searcher.search(q, MultiCollector.wrap(totalHitCountCollector, fc));
-      topDocs =
-          new TopDocs(
-              new TotalHits(totalHitCountCollector.getTotalHits(), TotalHits.Relation.EQUAL_TO),
-              new ScoreDoc[0]);
-    } else {
-      TopDocsCollector<?> hitsCollector;
-      if (sort != null) {
-        if (after != null && !(after instanceof FieldDoc)) {
-          // TODO: if we fix type safety of TopFieldDocs we can
-          // remove this
-          throw new IllegalArgumentException("after must be a FieldDoc; got " + after);
-        }
-        hitsCollector =
-            new TopFieldCollectorManager(sort, n, (FieldDoc) after, Integer.MAX_VALUE, false)
-                .newCollector(); // TODO: can we disable exact hit counts
-      } else {
-        hitsCollector =
-            new TopScoreDocCollectorManager(n, after, Integer.MAX_VALUE, false).newCollector();
-      }
-      searcher.search(q, MultiCollector.wrap(hitsCollector, fc));
-
-      topDocs = hitsCollector.topDocs();
-      if (doDocScores) {
-        TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, q);
-      }
-    }
-    return topDocs;
   }
 }
