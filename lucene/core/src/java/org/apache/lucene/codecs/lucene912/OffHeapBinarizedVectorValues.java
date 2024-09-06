@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene912;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -78,8 +80,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       assert vectorOrdToCentroidOrd != null;
     }
     this.numBytes = BQVectorUtils.discretize(dimension, 64) / 8;
-    this.correctionsCount =
-        similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
+    this.correctionsCount = similarityFunction != EUCLIDEAN ? 3 : 2;
     this.correctiveValues = new float[this.correctionsCount];
     this.byteSize = numBytes + (Float.BYTES * correctionsCount);
     this.byteBuffer = ByteBuffer.allocate(numBytes);

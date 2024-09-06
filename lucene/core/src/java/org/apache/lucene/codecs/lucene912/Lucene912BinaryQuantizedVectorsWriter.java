@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene912;
 
 import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.BINARIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.lucene.util.quantization.KMeans.DEFAULT_ITRS;
@@ -230,8 +231,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
-    int correctionsCount =
-        scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
+    int correctionsCount = scalarQuantizer.getSimilarity() != EUCLIDEAN ? 3 : 2;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -243,14 +243,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         float[] corrections =
             scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
         binarizedVectorData.writeBytes(vector, vector.length);
-        // FIXME: handle of sim types like MIP such as COSINE?
-        if (scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
-          correctionsBuffer.putFloat(corrections[0]);
-          correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(corrections[2]);
-        } else {
-          correctionsBuffer.putFloat(corrections[0]);
-          correctionsBuffer.putFloat(corrections[1]);
+        for (float c : corrections) {
+          correctionsBuffer.putFloat(c);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -260,14 +254,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       for (float[] v : fieldData.getVectors()) {
         float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusterCenter);
         binarizedVectorData.writeBytes(vector, vector.length);
-        // FIXME: handle of sim types like MIP such as COSINE?
-        if (scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
-          correctionsBuffer.putFloat(corrections[0]);
-          correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(corrections[2]);
-        } else {
-          correctionsBuffer.putFloat(corrections[0]);
-          correctionsBuffer.putFloat(corrections[1]);
+        for (float c : corrections) {
+          correctionsBuffer.putFloat(c);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -321,8 +309,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
-    int correctionsCount =
-        scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
+    int correctionsCount = scalarQuantizer.getSimilarity() != EUCLIDEAN ? 3 : 2;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
     // TODO do we need to normalize for cosine?
@@ -335,14 +322,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         float[] corrections =
             scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
         binarizedVectorData.writeBytes(vector, vector.length);
-        // FIXME: handle of sim types like MIP such as COSINE?
-        if (scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
-          correctionsBuffer.putFloat(corrections[0]);
-          correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(corrections[2]);
-        } else {
-          correctionsBuffer.putFloat(corrections[0]);
-          correctionsBuffer.putFloat(corrections[1]);
+        for (float c : corrections) {
+          correctionsBuffer.putFloat(c);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -353,14 +334,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         float[] v = fieldData.getVectors().get(ordinal);
         float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusterCenter);
         binarizedVectorData.writeBytes(vector, vector.length);
-        // FIXME: handle of sim types like MIP such as COSINE?
-        if (scalarQuantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
-          correctionsBuffer.putFloat(corrections[0]);
-          correctionsBuffer.putFloat(corrections[1]);
-          correctionsBuffer.putFloat(corrections[2]);
-        } else {
-          correctionsBuffer.putFloat(corrections[0]);
-          correctionsBuffer.putFloat(corrections[1]);
+        for (float c : corrections) {
+          correctionsBuffer.putFloat(c);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -557,8 +532,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         new byte
             [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
-    int correctionsCount =
-        quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
+    int correctionsCount = quantizer.getSimilarity() != EUCLIDEAN ? 6 : 3;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES)
             .order(ByteOrder.LITTLE_ENDIAN);
@@ -576,7 +550,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         correctionsBuffer.putFloat(factors.width());
 
         // FIXME: handle other similarity types here like COSINE
-        if (quantizer.getSimilarity() == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+        if (quantizer.getSimilarity() != EUCLIDEAN) {
           correctionsBuffer.putFloat(factors.normVmC());
           correctionsBuffer.putFloat(factors.vDotC());
           correctionsBuffer.putFloat(factors.cDotC());
@@ -609,7 +583,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       // FIXME: handle other similarity functions the same as MIP such as COSINE
       // TODO handle quantization output correctly
-      if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+      if (similarityFunction != EUCLIDEAN) {
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getOOQ()));
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getNormOC()));
         output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getODotC()));
@@ -1025,8 +999,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       this.size = size;
       this.numCentroids = numCentroids;
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      this.correctiveValuesSize =
-          vectorSimilarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 6 : 3;
+      this.correctiveValuesSize = vectorSimilarityFunction != EUCLIDEAN ? 6 : 3;
       // 4x the quantized binary dimensions
       int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
