@@ -17,12 +17,10 @@
 
 package org.apache.lucene.util.quantization;
 
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.tests.util.LuceneTestCase;
-
 import java.util.Arrays;
 import java.util.Random;
-
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestBinaryQuantization extends LuceneTestCase {
 
@@ -120,11 +118,11 @@ public class TestBinaryQuantization extends LuceneTestCase {
     int dimensions = 128;
 
     VectorSimilarityFunction[] similarityFunctionsActingLikeEucllidean =
-      new VectorSimilarityFunction[] {
-        VectorSimilarityFunction.EUCLIDEAN,
-        VectorSimilarityFunction.COSINE,
-        VectorSimilarityFunction.DOT_PRODUCT
-    };
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.EUCLIDEAN,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.DOT_PRODUCT
+        };
     int randIdx = random().nextInt(similarityFunctionsActingLikeEucllidean.length);
     VectorSimilarityFunction similarityFunction = similarityFunctionsActingLikeEucllidean[randIdx];
 
@@ -182,11 +180,11 @@ public class TestBinaryQuantization extends LuceneTestCase {
     int dimensions = 128;
 
     VectorSimilarityFunction[] similarityFunctionsActingLikeEucllidean =
-      new VectorSimilarityFunction[] {
-        VectorSimilarityFunction.EUCLIDEAN,
-        VectorSimilarityFunction.COSINE,
-        VectorSimilarityFunction.DOT_PRODUCT
-      };
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.EUCLIDEAN,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.DOT_PRODUCT
+        };
     int randIdx = random().nextInt(similarityFunctionsActingLikeEucllidean.length);
     VectorSimilarityFunction similarityFunction = similarityFunctionsActingLikeEucllidean[randIdx];
 
@@ -241,10 +239,10 @@ public class TestBinaryQuantization extends LuceneTestCase {
         destination);
   }
 
-
-  private float[] generateRandomFloatArray(Random random, int dimensions, float lowerBoundInclusive, float upperBoundExclusive) {
+  private float[] generateRandomFloatArray(
+      Random random, int dimensions, float lowerBoundInclusive, float upperBoundExclusive) {
     float[] data = new float[dimensions];
-    for(int i = 0; i < dimensions; i++) {
+    for (int i = 0; i < dimensions; i++) {
       data[i] = random.nextFloat(lowerBoundInclusive, upperBoundExclusive);
     }
     return data;
@@ -253,7 +251,8 @@ public class TestBinaryQuantization extends LuceneTestCase {
   public void testQuantizeForIndexMIP() {
     int dimensions = 768;
 
-    // we want fixed values for these arrays so define our own random generation here to track quantization changes
+    // we want fixed values for these arrays so define our own random generation here to track
+    // quantization changes
     Random random = new Random(42);
 
     float[] mipVectorToIndex = generateRandomFloatArray(random, dimensions, -1f, 1f);
@@ -276,7 +275,12 @@ public class TestBinaryQuantization extends LuceneTestCase {
     assertEquals(6.4300356f, oDotC, 0.0001f);
     assertArrayEquals(
         new byte[] {
-          -83, -91, -71, 97, 32, -96, 89, -80, -19, -108, 3, 113, -111, 12, -86, 32, -43, 76, 122, -106, -83, -37, -122, 118, 84, -72, 34, 20, 57, -29, 119, -8, -10, -100, -109, 62, -54, 53, -44, 8, -16, 80, 58, 50, 105, -25, 47, 115, -106, -92, -122, -44, 8, 18, -23, 24, -15, 62, 58, 111, 99, -116, -111, -5, 101, -69, -32, -74, -105, 113, -89, 44, 100, -93, -80, 82, -64, 91, -87, -95, 115, 6, 76, 110, 101, 39, 108, 72, 2, 112, -63, -43, 105, -42, 9, -128
+          -83, -91, -71, 97, 32, -96, 89, -80, -19, -108, 3, 113, -111, 12, -86, 32, -43, 76, 122,
+          -106, -83, -37, -122, 118, 84, -72, 34, 20, 57, -29, 119, -8, -10, -100, -109, 62, -54,
+          53, -44, 8, -16, 80, 58, 50, 105, -25, 47, 115, -106, -92, -122, -44, 8, 18, -23, 24, -15,
+          62, 58, 111, 99, -116, -111, -5, 101, -69, -32, -74, -105, 113, -89, 44, 100, -93, -80,
+          82, -64, 91, -87, -95, 115, 6, 76, 110, 101, 39, 108, 72, 2, 112, -63, -43, 105, -42, 9,
+          -128
         },
         destination);
   }
@@ -284,7 +288,8 @@ public class TestBinaryQuantization extends LuceneTestCase {
   public void testQuantizeForQueryMIP() {
     int dimensions = 768;
 
-    // we want fixed values for these arrays so define our own random generation here to track quantization changes
+    // we want fixed values for these arrays so define our own random generation here to track
+    // quantization changes
     Random random = new Random(42);
 
     float[] mipVectorToQuery = generateRandomFloatArray(random, dimensions, -1f, 1f);
@@ -314,7 +319,26 @@ public class TestBinaryQuantization extends LuceneTestCase {
     assertEquals(252.37146f, cDotC, 0.0001f);
     assertArrayEquals(
         new byte[] {
-          -81, 19, 67, 33, 112, 8, 40, -5, -19, 115, -87, -63, -59, 12, -2, -127, -23, 43, 24, 16, -69, 112, -22, 75, -81, -50, 100, -41, 3, -120, -93, -4, 4, 125, 34, -57, -109, 89, -63, -35, -116, 4, 35, 93, -26, -88, -55, -86, 63, -46, -122, -96, -26, 124, -64, 21, 96, 46, 98, 97, 88, -98, -83, 121, 16, -14, -89, -118, 65, -39, -111, -35, 113, 108, 111, 86, 17, -69, -47, 72, 1, 36, 17, 113, -87, -5, -46, -37, -2, 93, -123, 118, 4, -12, -33, 95, 32, -63, -97, -109, 27, 111, 42, -57, -87, -41, -73, -106, 27, -31, 32, -1, 9, -88, -35, -11, -103, 5, 27, -127, 108, 127, -119, 58, 38, 18, -103, -27, -63, 56, 77, -13, 3, -40, -127, 37, 82, -87, -26, -45, -14, 18, -50, 76, 25, 37, -12, 106, 17, 115, 0, 23, -109, 26, -110, 17, -35, 111, 4, 60, 58, -64, -104, -125, 23, -58, 89, -117, 104, -71, 3, -89, -26, 46, 15, 82, -83, -75, -72, -69, 20, -38, -47, 109, -66, -66, -89, 108, -122, -3, -69, -85, 18, 59, 85, -97, -114, 95, 2, -84, -77, 121, -6, 10, 110, -13, -123, -34, 106, -71, -107, 123, 67, -111, 58, 52, -53, 87, -113, -21, -44, 26, 10, -62, 56, 111, 36, -126, 26, 94, -88, -13, -113, -50, -9, -115, 84, 8, -32, -102, -4, 89, 29, 75, -73, -19, 22, -90, 76, -61, 4, -48, -100, -11, 107, 20, -39, -98, 123, 77, 104, 9, 9, 91, -105, -40, -106, -87, 38, 48, 60, 29, -68, 124, -78, -63, -101, -115, 67, -17, 101, -53, 121, 44, -78, -12, 110, 91, -83, -92, -72, 96, 32, -96, 89, 48, 76, -124, 3, 113, -111, 12, -86, 32, -43, 68, 106, -122, -84, -37, -124, 118, 84, -72, 34, 20, 57, -29, 119, 56, -10, -108, -109, 60, -56, 37, 84, 8, -16, 80, 24, 50, 41, -25, 47, 115, -122, -92, -126, -44, 8, 18, -23, 24, -15, 60, 58, 111, 99, -120, -111, -21, 101, 59, -32, -74, -105, 113, -90, 36, 100, -93, -80, 82, -64, 91, -87, -95, 115, 6, 76, 110, 101, 39, 44, 0, 2, 112, -64, -47, 105, 2, 1, -128
+          -81, 19, 67, 33, 112, 8, 40, -5, -19, 115, -87, -63, -59, 12, -2, -127, -23, 43, 24, 16,
+          -69, 112, -22, 75, -81, -50, 100, -41, 3, -120, -93, -4, 4, 125, 34, -57, -109, 89, -63,
+          -35, -116, 4, 35, 93, -26, -88, -55, -86, 63, -46, -122, -96, -26, 124, -64, 21, 96, 46,
+          98, 97, 88, -98, -83, 121, 16, -14, -89, -118, 65, -39, -111, -35, 113, 108, 111, 86, 17,
+          -69, -47, 72, 1, 36, 17, 113, -87, -5, -46, -37, -2, 93, -123, 118, 4, -12, -33, 95, 32,
+          -63, -97, -109, 27, 111, 42, -57, -87, -41, -73, -106, 27, -31, 32, -1, 9, -88, -35, -11,
+          -103, 5, 27, -127, 108, 127, -119, 58, 38, 18, -103, -27, -63, 56, 77, -13, 3, -40, -127,
+          37, 82, -87, -26, -45, -14, 18, -50, 76, 25, 37, -12, 106, 17, 115, 0, 23, -109, 26, -110,
+          17, -35, 111, 4, 60, 58, -64, -104, -125, 23, -58, 89, -117, 104, -71, 3, -89, -26, 46,
+          15, 82, -83, -75, -72, -69, 20, -38, -47, 109, -66, -66, -89, 108, -122, -3, -69, -85, 18,
+          59, 85, -97, -114, 95, 2, -84, -77, 121, -6, 10, 110, -13, -123, -34, 106, -71, -107, 123,
+          67, -111, 58, 52, -53, 87, -113, -21, -44, 26, 10, -62, 56, 111, 36, -126, 26, 94, -88,
+          -13, -113, -50, -9, -115, 84, 8, -32, -102, -4, 89, 29, 75, -73, -19, 22, -90, 76, -61, 4,
+          -48, -100, -11, 107, 20, -39, -98, 123, 77, 104, 9, 9, 91, -105, -40, -106, -87, 38, 48,
+          60, 29, -68, 124, -78, -63, -101, -115, 67, -17, 101, -53, 121, 44, -78, -12, 110, 91,
+          -83, -92, -72, 96, 32, -96, 89, 48, 76, -124, 3, 113, -111, 12, -86, 32, -43, 68, 106,
+          -122, -84, -37, -124, 118, 84, -72, 34, 20, 57, -29, 119, 56, -10, -108, -109, 60, -56,
+          37, 84, 8, -16, 80, 24, 50, 41, -25, 47, 115, -122, -92, -126, -44, 8, 18, -23, 24, -15,
+          60, 58, 111, 99, -120, -111, -21, 101, 59, -32, -74, -105, 113, -90, 36, 100, -93, -80,
+          82, -64, 91, -87, -95, 115, 6, 76, 110, 101, 39, 44, 0, 2, 112, -64, -47, 105, 2, 1, -128
         },
         destination);
   }
