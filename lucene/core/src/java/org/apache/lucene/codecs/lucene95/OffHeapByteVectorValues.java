@@ -35,7 +35,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 public abstract class OffHeapByteVectorValues extends ByteVectorValues
-    implements RandomAccessVectorValues.Bytes {
+    implements HasIndexSlice {
 
   protected final int dimension;
   protected final int size;
@@ -283,8 +283,6 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
         VectorSimilarityFunction vectorSimilarityFunction) {
       super(dimension, 0, null, 0, flatVectorsScorer, vectorSimilarityFunction);
     }
-
-    private int doc = -1;
 
     @Override
     public int dimension() {

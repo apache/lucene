@@ -1040,6 +1040,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
       @Override
       public int nextDoc() throws IOException {
+        // FIXME: this is incorrect for a sorted index.
+        // We need to use DocIDMerger while also tracking ordinals
         while (iSub < subs.size()) {
           int doc = subs.get(iSub).nextMappedDoc();
           if (doc != NO_MORE_DOCS) {

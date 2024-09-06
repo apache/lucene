@@ -295,6 +295,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
   private record DocValuesSub<T extends DocIdSetIterator>(T sub, int docStart, int docEnd) {}
 
+  // TODO: use this instead of the CompositeIterator we created here?
   private static class MergedDocIdSetIterator<T extends DocIdSetIterator> extends DocIdSetIterator {
 
     final Iterator<DocValuesSub<T>> it;

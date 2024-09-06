@@ -19,7 +19,6 @@ package org.apache.lucene.util.quantization;
 import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.VectorScorer;
-import org.apache.lucene.store.IndexInput;
 
 /**
  * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
@@ -48,13 +47,5 @@ public abstract class QuantizedByteVectorValues extends ByteVectorValues {
   @Override
   public QuantizedByteVectorValues copy() throws IOException {
     return this;
-  }
-
-  /**
-   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if
-   * available
-   */
-  public IndexInput getSlice() {
-    return null;
   }
 }

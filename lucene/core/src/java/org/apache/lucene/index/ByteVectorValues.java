@@ -77,14 +77,6 @@ public abstract class ByteVectorValues extends KnnVectorValues {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if
-   * available
-   */
-  public IndexInput getSlice() {
-    return null;
-  }
-
   @Override
   public VectorEncoding getEncoding() {
     return VectorEncoding.BYTE;

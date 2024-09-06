@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.VectorScorer;
-import org.apache.lucene.store.IndexInput;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -45,14 +44,6 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    * @return the vector value
    */
   public abstract float[] vectorValue(int ord) throws IOException;
-
-  /**
-   * Returns a slice of the underlying {@link IndexInput} that contains the vector values if
-   * available
-   */
-  public IndexInput getSlice() {
-    return null;
-  }
 
   /**
    * Checks the Vector Encoding of a field

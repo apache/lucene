@@ -21,6 +21,7 @@ import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -46,7 +47,7 @@ public abstract class KnnVectorValues {
   /**
    * Return the docid of the document indexed with the given vector ordinal. This default
    * implementation returns the argument and is appropriate for dense values implementations where
-   * every doc has a value.
+   * every doc has a single value.
    */
   public int ordToDoc(int ord) {
     return ord;
@@ -56,9 +57,7 @@ public abstract class KnnVectorValues {
    * Creates a new copy of this {@link KnnVectorValues}. This is helpful when you need to access
    * different values at once, to avoid overwriting the underlying vector returned.
    */
-  public KnnVectorValues copy() throws IOException {
-    throw new UnsupportedOperationException("by class " + getClass().getName());
-  }
+  public abstract KnnVectorValues copy() throws IOException;
 
   /** Returns the vector byte length, defaults to dimension multiplied by float byte size */
   public int getVectorByteLength() {

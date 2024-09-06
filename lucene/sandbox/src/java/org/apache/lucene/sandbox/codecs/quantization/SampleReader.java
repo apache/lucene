@@ -20,12 +20,14 @@ package org.apache.lucene.sandbox.codecs.quantization;
 import java.io.IOException;
 import java.util.Random;
 import java.util.function.IntUnaryOperator;
+
+import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
 /** A reader of vector values that samples a subset of the vectors. */
-public class SampleReader extends FloatVectorValues {
+public class SampleReader extends FloatVectorValues implements HasIndexSlice {
   private final FloatVectorValues origin;
   private final int sampleSize;
   private final IntUnaryOperator sampleFunction;
@@ -53,7 +55,7 @@ public class SampleReader extends FloatVectorValues {
 
   @Override
   public IndexInput getSlice() {
-    return origin.getSlice();
+    return ((HasIndexSlice) origin).getSlice();
   }
 
   @Override
