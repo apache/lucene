@@ -86,8 +86,9 @@ behind the scenes. It is the responsibility of the caller to call
 ### RegExp no longer supports the optional complement syntax
 
 The `RegExp` class no longer supports the optional complement syntax, previously
-supported by the `~` character. In many cases complement-of-range may be a
-suitable replacement, e.g. `[^a-z]`.
+supported by the `~` character. In many cases a _complemented bracket expression_,
+`[^...]`, may be a suitable replacement, For example, `[^awk]` matches any
+character that is not an `a`, `w`, or `k`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
