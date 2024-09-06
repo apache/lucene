@@ -114,6 +114,9 @@ API Changes
 
 * GITHUB#13708: Move Operations.sameLanguage/subsetOf to test-framework. (Robert Muir)
 
+* GITHUB#13733: Move FacetsCollector#search utility methods to `FacetsCollectorManager`, replace the `Collector`
+  argument with a `FacetsCollectorManager` and update the return type to include both `TopDocs` results as well as
+  facets results. (Luca Cavanna)
 
 New Features
 ---------------------

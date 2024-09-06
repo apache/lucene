@@ -18,7 +18,20 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.Collection;
+import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MultiCollectorManager;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
+import org.apache.lucene.search.TotalHits;
 
 /**
  * A {@link CollectorManager} implementation which produces FacetsCollector and produces a merged
@@ -26,12 +39,24 @@ import org.apache.lucene.search.CollectorManager;
  */
 public class FacetsCollectorManager implements CollectorManager<FacetsCollector, FacetsCollector> {
 
+  private final boolean keepScores;
+
   /** Sole constructor. */
-  public FacetsCollectorManager() {}
+  public FacetsCollectorManager() {
+    this(false);
+  }
+
+  /**
+   * Creates a new collector manager that in turn creates {@link FacetsCollector} using the provided
+   * {@code keepScores} flag. hits.
+   */
+  public FacetsCollectorManager(boolean keepScores) {
+    this.keepScores = keepScores;
+  }
 
   @Override
   public FacetsCollector newCollector() throws IOException {
-    return new FacetsCollector();
+    return new FacetsCollector(keepScores);
   }
 
   @Override
@@ -51,4 +76,138 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
       this.getMatchingDocs().addAll(reduceMatchingDocs(facetsCollectors));
     }
   }
+
+  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  public static FacetsResult search(
+      IndexSearcher searcher, Query q, int n, FacetsCollectorManager fcm) throws IOException {
+    return doSearch(searcher, null, q, n, null, false, fcm);
+  }
+
+  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  public static FacetsResult search(
+      IndexSearcher searcher, Query q, int n, Sort sort, FacetsCollectorManager fcm)
+      throws IOException {
+    if (sort == null) {
+      throw new IllegalArgumentException("sort must not be null");
+    }
+    return doSearch(searcher, null, q, n, sort, false, fcm);
+  }
+
+  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  public static FacetsResult search(
+      IndexSearcher searcher,
+      Query q,
+      int n,
+      Sort sort,
+      boolean doDocScores,
+      FacetsCollectorManager fcm)
+      throws IOException {
+    if (sort == null) {
+      throw new IllegalArgumentException("sort must not be null");
+    }
+    return doSearch(searcher, null, q, n, sort, doDocScores, fcm);
+  }
+
+  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  public static FacetsResult searchAfter(
+      IndexSearcher searcher, ScoreDoc after, Query q, int n, FacetsCollectorManager fcm)
+      throws IOException {
+    return doSearch(searcher, after, q, n, null, false, fcm);
+  }
+
+  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  public static FacetsResult searchAfter(
+      IndexSearcher searcher, ScoreDoc after, Query q, int n, Sort sort, FacetsCollectorManager fcm)
+      throws IOException {
+    if (sort == null) {
+      throw new IllegalArgumentException("sort must not be null");
+    }
+    return doSearch(searcher, after, q, n, sort, false, fcm);
+  }
+
+  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  public static FacetsResult searchAfter(
+      IndexSearcher searcher,
+      ScoreDoc after,
+      Query q,
+      int n,
+      Sort sort,
+      boolean doDocScores,
+      FacetsCollectorManager fcm)
+      throws IOException {
+    if (sort == null) {
+      throw new IllegalArgumentException("sort must not be null");
+    }
+    return doSearch(searcher, after, q, n, sort, doDocScores, fcm);
+  }
+
+  private static FacetsResult doSearch(
+      IndexSearcher searcher,
+      ScoreDoc after,
+      Query q,
+      int n,
+      Sort sort,
+      boolean doDocScores,
+      FacetsCollectorManager fcm)
+      throws IOException {
+
+    int limit = searcher.getIndexReader().maxDoc();
+    if (limit == 0) {
+      limit = 1;
+    }
+    n = Math.min(n, limit);
+
+    if (after != null && after.doc >= limit) {
+      throw new IllegalArgumentException(
+          "after.doc exceeds the number of documents in the reader: after.doc="
+              + after.doc
+              + " limit="
+              + limit);
+    }
+
+    final TopDocs topDocs;
+    final FacetsCollector facetsCollector;
+    if (n == 0) {
+      TotalHitCountCollectorManager hitCountCollectorManager = new TotalHitCountCollectorManager();
+      MultiCollectorManager multiCollectorManager =
+          new MultiCollectorManager(hitCountCollectorManager, fcm);
+      Object[] result = searcher.search(q, multiCollectorManager);
+      topDocs =
+          new TopDocs(
+              new TotalHits((Integer) result[0], TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+      facetsCollector = (FacetsCollector) result[1];
+    } else {
+      final MultiCollectorManager multiCollectorManager;
+      if (sort != null) {
+        if (after != null && !(after instanceof FieldDoc)) {
+          // TODO: if we fix type safety of TopFieldDocs we can
+          // remove this
+          throw new IllegalArgumentException("after must be a FieldDoc; got " + after);
+        }
+        TopFieldCollectorManager topFieldCollectorManager =
+            new TopFieldCollectorManager(sort, n, (FieldDoc) after, Integer.MAX_VALUE, true);
+        multiCollectorManager = new MultiCollectorManager(topFieldCollectorManager, fcm);
+      } else {
+        TopScoreDocCollectorManager topScoreDocCollectorManager =
+            new TopScoreDocCollectorManager(n, after, Integer.MAX_VALUE, true);
+        multiCollectorManager = new MultiCollectorManager(topScoreDocCollectorManager, fcm);
+      }
+      Object[] result = searcher.search(q, multiCollectorManager);
+      topDocs = (TopDocs) result[0];
+      if (doDocScores) {
+        TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, q);
+      }
+      facetsCollector = (FacetsCollector) result[1];
+    }
+    return new FacetsResult(topDocs, facetsCollector);
+  }
+
+  /**
+   * Holds results of a search run via static utility methods exposed by this class. Those include
+   * {@link TopDocs} as well as facets result included in the returned {@link FacetsCollector}
+   *
+   * @param topDocs the top docs
+   * @param facetsCollector the facets result included in a {@link FacetsCollector} instance
+   */
+  public record FacetsResult(TopDocs topDocs, FacetsCollector facetsCollector) {}
 }
