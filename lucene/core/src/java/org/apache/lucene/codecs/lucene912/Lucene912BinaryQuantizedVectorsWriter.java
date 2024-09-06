@@ -243,8 +243,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         float[] corrections =
             scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
         binarizedVectorData.writeBytes(vector, vector.length);
-        for (float c : corrections) {
-          correctionsBuffer.putFloat(c);
+        for (int i = 0; i < corrections.length; i++) {
+          correctionsBuffer.putFloat(corrections[i]);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -254,8 +254,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       for (float[] v : fieldData.getVectors()) {
         float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusterCenter);
         binarizedVectorData.writeBytes(vector, vector.length);
-        for (float c : corrections) {
-          correctionsBuffer.putFloat(c);
+        for (int i = 0; i < corrections.length; i++) {
+          correctionsBuffer.putFloat(corrections[i]);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -322,8 +322,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         float[] corrections =
             scalarQuantizer.quantizeForIndex(v, vector, clusterCenters[clusterId]);
         binarizedVectorData.writeBytes(vector, vector.length);
-        for (float c : corrections) {
-          correctionsBuffer.putFloat(c);
+        for (int i = 0; i < corrections.length; i++) {
+          correctionsBuffer.putFloat(corrections[i]);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -334,8 +334,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         float[] v = fieldData.getVectors().get(ordinal);
         float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusterCenter);
         binarizedVectorData.writeBytes(vector, vector.length);
-        for (float c : corrections) {
-          correctionsBuffer.putFloat(c);
+        for (int i = 0; i < corrections.length; i++) {
+          correctionsBuffer.putFloat(corrections[i]);
         }
         binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
         correctionsBuffer.rewind();
@@ -581,15 +581,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       if (vectorOrdToClusterOrdWriter != null) {
         vectorOrdToClusterOrdWriter.add(binarizedByteVectorValues.clusterId());
       }
-      // FIXME: handle other similarity functions the same as MIP such as COSINE
       // TODO handle quantization output correctly
-      if (similarityFunction != EUCLIDEAN) {
-        output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getOOQ()));
-        output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getNormOC()));
-        output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getODotC()));
-      } else {
-        output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getDistanceToCentroid()));
-        output.writeInt(Float.floatToIntBits(binarizedByteVectorValues.getMagnitude()));
+      float[] corrections = binarizedByteVectorValues.getCorrectiveTerms();
+      for (int i = 0; i < corrections.length; i++) {
+        output.writeInt(Float.floatToIntBits(corrections[i]));
       }
       docsWithField.add(docV);
     }
@@ -1149,28 +1144,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public float getDistanceToCentroid() {
-      return corrections[0];
-    }
-
-    @Override
-    public float getMagnitude() {
-      return corrections[1];
-    }
-
-    @Override
-    public float getOOQ() {
-      return corrections[0];
-    }
-
-    @Override
-    public float getNormOC() {
-      return corrections[1];
-    }
-
-    @Override
-    public float getODotC() {
-      return corrections[2];
+    public float[] getCorrectiveTerms() {
+      return corrections;
     }
 
     @Override

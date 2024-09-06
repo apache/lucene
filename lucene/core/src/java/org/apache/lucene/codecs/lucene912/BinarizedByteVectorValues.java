@@ -39,15 +39,7 @@ public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
     return (short) Byte.toUnsignedInt(bClusterId);
   }
 
-  public abstract float getDistanceToCentroid() throws IOException;
-
-  public abstract float getMagnitude() throws IOException;
-
-  public abstract float getOOQ() throws IOException;
-
-  public abstract float getNormOC() throws IOException;
-
-  public abstract float getODotC() throws IOException;
+  public abstract float[] getCorrectiveTerms();
 
   public abstract byte[] vectorValue() throws IOException;
 
