@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +37,32 @@ import org.apache.lucene.util.ThreadInterruptedException;
 public class TotalHitCountCollectorManager
     implements CollectorManager<TotalHitCountCollector, Integer> {
 
+  private final boolean hasSegmentPartitions;
+
+  /**
+   * Creates a new total hit count collector manager. The collectors returned by {@link
+   * #newCollector()} don't support intra-segment concurrency. Use the other constructor if segments
+   * partitions are being searched.
+   */
+  public TotalHitCountCollectorManager() {
+    this(false);
+  }
+
+  /**
+   * Creates a new total hit count collector manager, providing a flag that signals whether segment
+   * partitions are being searched, in which case the different collector need to share state to
+   * ensure consistent behaviour across partitions of the same segment. There are segment partitions
+   * when the {@link IndexSearcher#slices(List)} methods returns leaf slices that target leaf reader
+   * partitions.
+   *
+   * @see IndexSearcher#slices(List)
+   * @see org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition
+   * @param hasSegmentPartitions
+   */
+  public TotalHitCountCollectorManager(boolean hasSegmentPartitions) {
+    this.hasSegmentPartitions = hasSegmentPartitions;
+  }
+
   /**
    * Internal state shared across the different collectors that this collector manager creates. This
    * is necessary to support intra-segment concurrency. We track leaves seen as an argument of
@@ -51,7 +78,10 @@ public class TotalHitCountCollectorManager
 
   @Override
   public TotalHitCountCollector newCollector() throws IOException {
-    return new LeafPartitionAwareTotalHitCountCollector(earlyTerminatedMap);
+    if (hasSegmentPartitions) {
+      return new LeafPartitionAwareTotalHitCountCollector(earlyTerminatedMap);
+    }
+    return new TotalHitCountCollector();
   }
 
   @Override
@@ -59,7 +89,10 @@ public class TotalHitCountCollectorManager
     // Make the same collector manager instance reusable across multiple searches. It isn't a strict
     // requirement but it is generally supported as collector managers normally don't hold state, as
     // opposed to collectors.
-    earlyTerminatedMap.clear();
+    assert hasSegmentPartitions || earlyTerminatedMap.isEmpty();
+    if (hasSegmentPartitions) {
+      earlyTerminatedMap.clear();
+    }
     int totalHits = 0;
     for (TotalHitCountCollector collector : collectors) {
       totalHits += collector.getTotalHits();

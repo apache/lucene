@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -40,8 +41,17 @@ public class TestTotalHitCountCollector extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     writer.close();
 
-    IndexSearcher searcher = newSearcher(reader, true, true, random().nextBoolean());
-    TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager();
+    Concurrency concurrency = RandomizedTest.randomFrom(Concurrency.values());
+    IndexSearcher searcher = newSearcher(reader, true, true, concurrency);
+    final TotalHitCountCollectorManager collectorManager;
+    if (concurrency == Concurrency.INTRA_SEGMENT) {
+      collectorManager = new TotalHitCountCollectorManager(true);
+    } else {
+      collectorManager =
+          random().nextBoolean()
+              ? new TotalHitCountCollectorManager(random().nextBoolean())
+              : new TotalHitCountCollectorManager();
+    }
     int totalHits = searcher.search(new MatchAllDocsQuery(), collectorManager);
     assertEquals(5, totalHits);
 
