@@ -24,21 +24,10 @@ public final class LabelAndValue {
   /** Value associated with this label. */
   public final Number value;
 
-  /** Number of occurrences for this label. */
-  public final int count;
-
   /** Constructor with unspecified count, we assume the value is a count. */
   public LabelAndValue(String label, Number value) {
     this.label = label;
     this.value = value;
-    this.count = value.intValue();
-  }
-
-  /** Constructor with value and count. */
-  public LabelAndValue(String label, Number value, int count) {
-    this.label = label;
-    this.value = value;
-    this.count = count;
   }
 
   @Override
@@ -52,11 +41,81 @@ public final class LabelAndValue {
       return false;
     }
     LabelAndValue other = (LabelAndValue) _other;
-    return label.equals(other.label) && value.equals(other.value);
+    if (label.equals(other.label) == false) {
+      return false;
+    }
+    // value and other.value could be Number and ValueAndCount.
+    // We need the equals in ValueAndCount to be called.
+    if (value instanceof ValueAndCount) {
+      return value.equals(other.value);
+    }
+    return other.value.equals(value);
   }
 
   @Override
   public int hashCode() {
     return label.hashCode() + 1439 * value.hashCode();
+  }
+
+  /**
+   * Is a {@link Number} while holding a {@link Number} and a count. Meant as a value for {@link
+   * LabelAndValue}.
+   */
+  public static class ValueAndCount extends Number {
+    Number value;
+    int count;
+
+    /** All args constructor. */
+    public ValueAndCount(Number value, int count) {
+      this.value = value;
+      this.count = count;
+    }
+
+    /** Get the count. */
+    public int getCount() {
+      return count;
+    }
+
+    @Override
+    public int intValue() {
+      return value.intValue();
+    }
+
+    @Override
+    public long longValue() {
+      return value.longValue();
+    }
+
+    @Override
+    public float floatValue() {
+      return value.floatValue();
+    }
+
+    @Override
+    public double doubleValue() {
+      return value.doubleValue();
+    }
+
+    @Override
+    public boolean equals(Object _other) {
+      if (_other instanceof ValueAndCount) {
+        return value.equals(((ValueAndCount) _other).value)
+            && count == ((ValueAndCount) _other).count;
+      }
+      if (_other instanceof Number) {
+        return value.equals(_other);
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode() {
+      return value.hashCode();
+    }
+
+    @Override
+    public String toString() {
+      return value.toString();
+    }
   }
 }

@@ -254,7 +254,6 @@ public abstract class FacetTestCase extends LuceneTestCase {
   }
 
   protected void assertNumericValuesEquals(Number a, Number b) {
-    assertTrue(a.getClass().isInstance(b));
     if (a instanceof Float) {
       assertEquals(a.floatValue(), b.floatValue(), a.floatValue() / 1e5);
     } else if (a instanceof Double) {
@@ -292,7 +291,8 @@ public abstract class FacetTestCase extends LuceneTestCase {
         result, expectedDim, expectedPath, expectedChildCount, expectedValue, expectedChildren);
     assertEquals(result.labelValues.length, countPerLabel.size());
     for (LabelAndValue lv : result.labelValues) {
-      assertEquals(lv.count, (int) countPerLabel.get(lv.label));
+      assertEquals(
+          ((LabelAndValue.ValueAndCount) lv.value).getCount(), (int) countPerLabel.get(lv.label));
     }
   }
 }

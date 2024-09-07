@@ -277,12 +277,14 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     FacetResult result = facets.getTopChildren(NUM_CHILDREN_CP_A, CP_A);
     assertEquals(-1, result.value.intValue());
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(termExpectedCounts.get(CP_A + "/" + labelValue.label), labelValue.value);
+      assertEquals(
+          (int) termExpectedCounts.get(CP_A + "/" + labelValue.label), labelValue.value.intValue());
     }
     result = facets.getTopChildren(NUM_CHILDREN_CP_B, CP_B);
     assertEquals(termExpectedCounts.get(CP_B), result.value);
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(termExpectedCounts.get(CP_B + "/" + labelValue.label), labelValue.value);
+      assertEquals(
+          (int) termExpectedCounts.get(CP_B + "/" + labelValue.label), labelValue.value.intValue());
     }
 
     IOUtils.close(indexReader, taxoReader);
@@ -302,7 +304,8 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     assertEquals(-1, result.value.intValue());
     int prevValue = Integer.MAX_VALUE;
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(allExpectedCounts.get(CP_A + "/" + labelValue.label), labelValue.value);
+      assertEquals(
+          (int) allExpectedCounts.get(CP_A + "/" + labelValue.label), labelValue.value.intValue());
       assertTrue(
           "wrong sort order of sub results: labelValue.value="
               + labelValue.value
@@ -316,7 +319,8 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     assertEquals(allExpectedCounts.get(CP_B), result.value);
     prevValue = Integer.MAX_VALUE;
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(allExpectedCounts.get(CP_B + "/" + labelValue.label), labelValue.value);
+      assertEquals(
+          (int) allExpectedCounts.get(CP_B + "/" + labelValue.label), labelValue.value.intValue());
       assertTrue(
           "wrong sort order of sub results: labelValue.value="
               + labelValue.value
@@ -342,12 +346,14 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     FacetResult result = facets.getTopChildren(Integer.MAX_VALUE, CP_A);
     assertEquals(-1, result.value.intValue());
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(allExpectedCounts.get(CP_A + "/" + labelValue.label), labelValue.value);
+      assertEquals(
+          (int) allExpectedCounts.get(CP_A + "/" + labelValue.label), labelValue.value.intValue());
     }
     result = facets.getTopChildren(Integer.MAX_VALUE, CP_B);
     assertEquals(allExpectedCounts.get(CP_B), result.value);
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(allExpectedCounts.get(CP_B + "/" + labelValue.label), labelValue.value);
+      assertEquals(
+          (int) allExpectedCounts.get(CP_B + "/" + labelValue.label), labelValue.value.intValue());
     }
 
     IOUtils.close(indexReader, taxoReader);
@@ -366,12 +372,14 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     FacetResult result = facets.getTopChildren(NUM_CHILDREN_CP_C, CP_C);
     assertEquals(allExpectedCounts.get(CP_C), result.value);
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(allExpectedCounts.get(CP_C + "/" + labelValue.label), labelValue.value);
+      assertEquals(
+          (int) allExpectedCounts.get(CP_C + "/" + labelValue.label), labelValue.value.intValue());
     }
     result = facets.getTopChildren(NUM_CHILDREN_CP_D, CP_D);
     assertEquals(allExpectedCounts.get(CP_C), result.value);
     for (LabelAndValue labelValue : result.labelValues) {
-      assertEquals(allExpectedCounts.get(CP_D + "/" + labelValue.label), labelValue.value);
+      assertEquals(
+          (int) allExpectedCounts.get(CP_D + "/" + labelValue.label), labelValue.value.intValue());
     }
 
     IOUtils.close(indexReader, taxoReader);

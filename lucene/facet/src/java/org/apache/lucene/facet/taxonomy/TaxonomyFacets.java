@@ -334,7 +334,8 @@ abstract class TaxonomyFacets extends Facets {
       TopOrdAndNumberQueue.OrdAndValue ordAndValue = q.pop();
       assert ordAndValue != null;
       ordinals[i] = ordAndValue.ord;
-      values[i] = ordAndValue.getValue();
+      values[i] =
+          new LabelAndValue.ValueAndCount(ordAndValue.getValue(), getCount(ordAndValue.ord));
     }
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
@@ -342,9 +343,7 @@ abstract class TaxonomyFacets extends Facets {
     // add 1 here to also account for the dim:
     int childComponentIdx = path.length + 1;
     for (int i = 0; i < labelValues.length; i++) {
-      labelValues[i] =
-          new LabelAndValue(
-              bulkPath[i].components[childComponentIdx], values[i], getCount(ordinals[i]));
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[childComponentIdx], values[i]);
     }
 
     return new FacetResult(
@@ -379,7 +378,7 @@ abstract class TaxonomyFacets extends Facets {
           aggregatedCount += count;
           aggregatedValue = aggregate(aggregatedValue, value);
           ordinals.add(ord);
-          ordValues.add(value);
+          ordValues.add(new LabelAndValue.ValueAndCount(value, count));
         }
       }
     } else {
@@ -393,7 +392,7 @@ abstract class TaxonomyFacets extends Facets {
           aggregatedCount += count;
           aggregatedValue = aggregate(aggregatedValue, value);
           ordinals.add(ord);
-          ordValues.add(value);
+          ordValues.add(new LabelAndValue.ValueAndCount(value, count));
         }
         ord = siblings.get(ord);
       }
@@ -420,9 +419,7 @@ abstract class TaxonomyFacets extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[ordValues.size()];
     for (int i = 0; i < ordValues.size(); i++) {
-      labelValues[i] =
-          new LabelAndValue(
-              bulkPath[i].components[cp.length], ordValues.get(i), getCount(ordinals.get(i)));
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
     }
     return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
