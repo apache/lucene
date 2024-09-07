@@ -202,9 +202,10 @@ public final class DynamicRangeUtil {
    */
   public static List<DynamicRangeInfo> computeDynamicNumericRanges(
       long[] values, long[] weights, int len, long totalWeight, int topN) {
-    assert values.length == weights.length && len <= values.length;
+    assert values.length == weights.length && len <= values.length && len >= 0;
+    assert topN >= 0;
     List<DynamicRangeInfo> dynamicRangeResult = new ArrayList<>();
-    if (len == 0) {
+    if (len == 0 || topN == 0) {
       return dynamicRangeResult;
     }
 
