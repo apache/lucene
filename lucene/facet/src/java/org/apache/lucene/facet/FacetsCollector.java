@@ -179,8 +179,10 @@ public class FacetsCollector extends SimpleCollector {
   private static FacetsCollector.MatchingDocs merge(
       FacetsCollector.MatchingDocs matchingDocs1, FacetsCollector.MatchingDocs matchingDocs2) {
     assert matchingDocs1.context == matchingDocs2.context;
-    // TODO need to merge scores as well
-    assert matchingDocs1.scores == null && matchingDocs2.scores == null;
+    if (matchingDocs1.scores != null | matchingDocs2.scores != null) {
+      throw new IllegalStateException(
+          "intra-segment concurrency not supported by FacetsCollectorManager when scores are collected");
+    }
     DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(matchingDocs1.context.reader().maxDoc());
     try {
       docIdSetBuilder.add(matchingDocs1.bits.iterator());
