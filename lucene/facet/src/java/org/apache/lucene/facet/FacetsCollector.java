@@ -155,13 +155,25 @@ public class FacetsCollector extends SimpleCollector {
     context = null;
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated use {@link FacetsCollectorManager#search(IndexSearcher, Query, int,
+   *     FacetsCollectorManager)} instead.
+   */
+  @Deprecated
   public static TopDocs search(IndexSearcher searcher, Query q, int n, Collector fc)
       throws IOException {
     return doSearch(searcher, null, q, n, null, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated use {@link FacetsCollectorManager#search(IndexSearcher, Query, int, Sort,
+   *     FacetsCollectorManager)} instead.
+   */
+  @Deprecated
   public static TopFieldDocs search(IndexSearcher searcher, Query q, int n, Sort sort, Collector fc)
       throws IOException {
     if (sort == null) {
@@ -170,7 +182,13 @@ public class FacetsCollector extends SimpleCollector {
     return (TopFieldDocs) doSearch(searcher, null, q, n, sort, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated use {@link FacetsCollectorManager#search(IndexSearcher, Query, int, Sort, boolean,
+   *     FacetsCollectorManager)} instead.
+   */
+  @Deprecated
   public static TopFieldDocs search(
       IndexSearcher searcher, Query q, int n, Sort sort, boolean doDocScores, Collector fc)
       throws IOException {
@@ -180,13 +198,25 @@ public class FacetsCollector extends SimpleCollector {
     return (TopFieldDocs) doSearch(searcher, null, q, n, sort, doDocScores, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated use {@link FacetsCollectorManager#searchAfter(IndexSearcher, ScoreDoc, Query, int,
+   *     FacetsCollectorManager)} instead.
+   */
+  @Deprecated
   public static TopDocs searchAfter(
       IndexSearcher searcher, ScoreDoc after, Query q, int n, Collector fc) throws IOException {
     return doSearch(searcher, after, q, n, null, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated use {@link FacetsCollectorManager#searchAfter(IndexSearcher, ScoreDoc, Query, int,
+   *     Sort, FacetsCollectorManager)} instead.
+   */
+  @Deprecated
   public static TopDocs searchAfter(
       IndexSearcher searcher, ScoreDoc after, Query q, int n, Sort sort, Collector fc)
       throws IOException {
@@ -196,7 +226,13 @@ public class FacetsCollector extends SimpleCollector {
     return doSearch(searcher, after, q, n, sort, false, fc);
   }
 
-  /** Utility method, to search and also collect all hits into the provided {@link Collector}. */
+  /**
+   * Utility method, to search and also collect all hits into the provided {@link Collector}.
+   *
+   * @deprecated use {@link FacetsCollectorManager#searchAfter(IndexSearcher, ScoreDoc, Query, int,
+   *     Sort, boolean, FacetsCollectorManager)} instead.
+   */
+  @Deprecated
   public static TopDocs searchAfter(
       IndexSearcher searcher,
       ScoreDoc after,

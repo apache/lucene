@@ -325,10 +325,12 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector fc = new FacetsCollector(true);
     BoostQuery csq = new BoostQuery(new ConstantScoreQuery(new MatchAllDocsQuery()), 2f);
 
-    TopDocs td = FacetsCollector.search(newSearcher(r), csq, 10, fc);
+    FacetsCollectorManager.FacetsResult facetsResult =
+        FacetsCollectorManager.search(newSearcher(r), csq, 10, new FacetsCollectorManager(true));
+    TopDocs td = facetsResult.topDocs();
+    FacetsCollector fc = facetsResult.facetsCollector();
 
     // Test SUM:
     Facets facets =
@@ -435,11 +437,12 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector fc = new FacetsCollector(true);
     // score documents by their 'price' field - makes asserting the correct counts for the
     // categories easier
     Query q = new FunctionQuery(new LongFieldSource("price"));
-    FacetsCollector.search(newSearcher(r), q, 10, fc);
+    FacetsCollector fc =
+        FacetsCollectorManager.search(newSearcher(r), q, 10, new FacetsCollectorManager(true))
+            .facetsCollector();
 
     // Test SUM:
     Facets facets =
@@ -588,8 +591,10 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector fc = new FacetsCollector(true);
-    FacetsCollector.search(newSearcher(r), new MatchAllDocsQuery(), 10, fc);
+    FacetsCollector fc =
+        FacetsCollectorManager.search(
+                newSearcher(r), new MatchAllDocsQuery(), 10, new FacetsCollectorManager(true))
+            .facetsCollector();
 
     Facets facets1 = getTaxonomyFacetCounts(taxoReader, config, fc);
     Facets facets2;
@@ -657,8 +662,13 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
       if (VERBOSE) {
         System.out.println("\nTEST: iter content=" + searchToken);
       }
-      FacetsCollector fc = new FacetsCollector();
-      FacetsCollector.search(searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+      FacetsCollector fc =
+          FacetsCollectorManager.search(
+                  searcher,
+                  new TermQuery(new Term("content", searchToken)),
+                  10,
+                  new FacetsCollectorManager())
+              .facetsCollector();
 
       checkResults(
           numDims,

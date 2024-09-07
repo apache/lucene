@@ -1068,8 +1068,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       if (VERBOSE) {
         System.out.println("\nTEST: iter content=" + searchToken);
       }
-      FacetsCollector fc = new FacetsCollector();
-      FacetsCollector.search(searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+      FacetsCollector fc =
+          FacetsCollectorManager.search(
+                  searcher,
+                  new TermQuery(new Term("content", searchToken)),
+                  10,
+                  new FacetsCollectorManager())
+              .facetsCollector();
       Facets facets = getTaxonomyFacetCounts(tr, config, fc);
 
       // Slow, yet hopefully bug-free, faceting:

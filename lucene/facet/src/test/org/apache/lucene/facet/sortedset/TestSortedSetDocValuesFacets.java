@@ -1398,9 +1398,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               if (VERBOSE) {
                 System.out.println("\nTEST: iter content=" + searchToken);
               }
-              FacetsCollector fc = new FacetsCollector();
-              FacetsCollector.search(
-                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+              FacetsCollector fc =
+                  FacetsCollectorManager.search(
+                          searcher,
+                          new TermQuery(new Term("content", searchToken)),
+                          10,
+                          new FacetsCollectorManager())
+                      .facetsCollector();
               Facets facets;
               if (exec != null) {
                 facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);
@@ -1546,9 +1550,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               if (VERBOSE) {
                 System.out.println("\nTEST: iter content=" + searchToken);
               }
-              FacetsCollector fc = new FacetsCollector();
-              FacetsCollector.search(
-                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+              FacetsCollector fc =
+                  FacetsCollectorManager.search(
+                          searcher,
+                          new TermQuery(new Term("content", searchToken)),
+                          10,
+                          new FacetsCollectorManager())
+                      .facetsCollector();
               Facets facets;
               if (exec != null) {
                 facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);

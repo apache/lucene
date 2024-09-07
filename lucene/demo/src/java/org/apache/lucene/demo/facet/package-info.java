@@ -198,9 +198,9 @@
  * org.apache.lucene.search.Collector}, and as such can be passed to the search() method of Lucene's
  * {@link org.apache.lucene.search.IndexSearcher}. In case the application also needs to collect
  * documents (in addition to accumulating/collecting facets), you can use one of {@link
- * org.apache.lucene.facet.FacetsCollector#search(org.apache.lucene.search.IndexSearcher,
- * org.apache.lucene.search.Query, int, org.apache.lucene.search.Collector)
- * FacetsCollector.search(...)} utility methods.
+ * org.apache.lucene.facet.FacetsCollectorManager#search(org.apache.lucene.search.IndexSearcher,
+ * org.apache.lucene.search.Query, int, org.apache.lucene.facet.FacetsCollectorManager)
+ * FacetsCollectorManager.search(...)} utility methods.
  *
  * <p>There is a facets collecting code example in {@link
  * org.apache.lucene.demo.facet.SimpleFacetsExample#facetsWithSearch()}, see <a
