@@ -46,7 +46,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**

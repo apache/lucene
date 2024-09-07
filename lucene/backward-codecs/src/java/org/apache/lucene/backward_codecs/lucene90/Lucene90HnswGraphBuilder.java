@@ -26,7 +26,6 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Builder for HNSW graph. See {@link Lucene90OnHeapHnswGraph} for a gloss on the algorithm and the
@@ -98,7 +97,7 @@ public final class Lucene90HnswGraphBuilder {
   }
 
   /**
-   * Reads all the vectors from two copies of a {@link RandomAccessVectorValues}. Providing two
+   * Reads all the vectors from two copies of a {@link FloatVectorValues}. Providing two
    * copies enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *

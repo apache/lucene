@@ -17,8 +17,11 @@
 package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
+
+import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.IndexInput;
 
 /**
  * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
@@ -26,7 +29,7 @@ import org.apache.lucene.search.VectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class QuantizedByteVectorValues extends ByteVectorValues {
+public abstract class QuantizedByteVectorValues extends ByteVectorValues implements HasIndexSlice {
 
   public ScalarQuantizer getScalarQuantizer() {
     throw new UnsupportedOperationException();
@@ -47,5 +50,10 @@ public abstract class QuantizedByteVectorValues extends ByteVectorValues {
   @Override
   public QuantizedByteVectorValues copy() throws IOException {
     return this;
+  }
+
+  @Override
+  public IndexInput getSlice() {
+    return null;
   }
 }

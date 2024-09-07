@@ -27,7 +27,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
@@ -37,8 +36,7 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  * Read the quantized vector values and their score correction values from the index input. This
  * supports both iterated and random access.
  */
-public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
-    implements RandomAccessVectorValues.Bytes {
+public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues {
 
   protected final int dimension;
   protected final int size;

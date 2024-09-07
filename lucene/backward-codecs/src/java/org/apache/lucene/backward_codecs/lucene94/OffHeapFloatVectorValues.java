@@ -26,12 +26,10 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-abstract class OffHeapFloatVectorValues extends FloatVectorValues
-    implements RandomAccessVectorValues.Floats {
+abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
   protected final int dimension;
   protected final int size;

@@ -42,7 +42,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -353,8 +352,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues.Floats {
+  static class OffHeapFloatVectorValues extends FloatVectorValues {
 
     final int dimension;
     final int[] ordToDoc;
