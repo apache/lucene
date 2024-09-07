@@ -27,6 +27,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.range.DynamicRangeUtil;
 import org.apache.lucene.index.DirectoryReader;
@@ -115,12 +116,13 @@ public class DynamicRangeFacetsExample {
     LongValuesSource weightsSource = LongValuesSource.fromLongField("Books");
 
     // Aggregates the facet counts
-    FacetsCollector fc = new FacetsCollector();
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
 
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollector fc =
+        FacetsCollectorManager.search(searcher, new MatchAllDocsQuery(), 10, fcm).facetsCollector();
 
     try (ExecutorService executor =
         Executors.newFixedThreadPool(2, new NamedThreadFactory("dynamic-ranges"))) {
