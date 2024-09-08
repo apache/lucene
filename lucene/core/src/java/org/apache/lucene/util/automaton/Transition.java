@@ -26,6 +26,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public class Transition implements Accountable {
 
+  /** static estimation of bytes used */
   public static final long BYTES_USED = RamUsageEstimator.shallowSizeOfInstance(Transition.class);
 
   /** Sole constructor. */

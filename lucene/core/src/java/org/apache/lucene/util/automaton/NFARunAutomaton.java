@@ -449,7 +449,7 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
                   + 1
                   + Transition.BYTES_USED * 2
                   + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-                  + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 4)
+                  + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 4L)
           + RamUsageEstimator.sizeOfObject(nfaStates)
           + RamUsageEstimator.sizeOfObject(transitions);
     }
