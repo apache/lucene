@@ -144,6 +144,8 @@ New Features
 * GITHUB#13592: Take advantage of the doc value skipper when it is primary sort in SortedNumericDocValuesRangeQuery
   and SortedSetDocValuesRangeQuery. (Ignacio Vera)
 
+* GITHUB#13741: Implement Accountable for NFARunAutomaton, fix hashCode implementation of CompiledAutomaton. (Patrick Zhai)
+
 Improvements
 ---------------------
 
