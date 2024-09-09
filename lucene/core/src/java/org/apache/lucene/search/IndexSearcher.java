@@ -325,9 +325,8 @@ public class IndexSearcher {
   }
 
   /**
-   * Expert: Creates an array of leaf slices each holding a subset of the given leaves. Each leaf
-   * may optionally be partitioned and split across multiple slices based on a specific range of doc
-   * ids. Each {@link LeafSlice} is executed in a single thread. By default, segments with more than
+   * Expert: Creates an array of leaf slices each holding a subset of the given leaves. Each {@link
+   * LeafSlice} is executed in a single thread. By default, segments with more than
    * MAX_DOCS_PER_SLICE will get their own thread
    */
   protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
@@ -1059,6 +1058,8 @@ public class IndexSearcher {
   public static final class LeafReaderContextPartition {
     private final int minDocId;
     private final int maxDocId;
+    // we keep track of maxDocs separately because we use NO_MORE_DOCS as upper bound when targeting
+    // the entire segment
     private final int maxDocs;
     public final LeafReaderContext ctx;
 
@@ -1233,6 +1234,7 @@ public class IndexSearcher {
     }
 
     public boolean hasSegmentPartitions() {
+      // trigger the assignment of slices so the flag gets a meaningful value
       get();
       return hasSegmentPartitions;
     }
