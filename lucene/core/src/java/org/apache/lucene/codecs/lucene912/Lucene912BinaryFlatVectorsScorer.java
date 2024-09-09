@@ -294,7 +294,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
       float errorBound = y * error;
-      float score = dist + errorBound;
+      float score = dist;
+      if (Float.isFinite(errorBound)) {
+        score = dist + errorBound;
+      }
       return Math.max(1 / (1f + score), 0);
     }
   }
