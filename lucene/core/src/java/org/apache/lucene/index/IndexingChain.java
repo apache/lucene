@@ -680,6 +680,7 @@ final class IndexingChain implements Accountable {
                 false,
                 s.indexOptions,
                 s.docValuesType,
+                s.hasDocValuesSkipIndex,
                 -1,
                 s.attributes,
                 s.pointDimensionCount,
@@ -831,7 +832,12 @@ final class IndexingChain implements Accountable {
       verifyUnIndexedFieldType(fieldName, fieldType);
     }
     if (fieldType.docValuesType() != DocValuesType.NONE) {
-      schema.setDocValues(fieldType.docValuesType());
+      schema.setDocValues(fieldType.docValuesType(), fieldType.hasDocValuesSkipIndex());
+    } else if (fieldType.hasDocValuesSkipIndex()) {
+      throw new IllegalArgumentException(
+          "field '"
+              + schema.name
+              + "' cannot have docValuesSkipIndex set to true without doc values");
     }
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
@@ -1028,10 +1034,12 @@ final class IndexingChain implements Accountable {
       int docID, PerField pf, VectorEncoding vectorEncoding, IndexableField field)
       throws IOException {
     switch (vectorEncoding) {
-      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
-      case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+      case BYTE ->
+          ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 ->
+          ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }
   }
 
@@ -1432,6 +1440,7 @@ final class IndexingChain implements Accountable {
     private boolean storeTermVector = false;
     private IndexOptions indexOptions = IndexOptions.NONE;
     private DocValuesType docValuesType = DocValuesType.NONE;
+    private boolean hasDocValuesSkipIndex = false;
     private int pointDimensionCount = 0;
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
@@ -1497,11 +1506,13 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setDocValues(DocValuesType newDocValuesType) {
+    void setDocValues(DocValuesType newDocValuesType, boolean newHasDocValuesSkipIndex) {
       if (docValuesType == DocValuesType.NONE) {
         this.docValuesType = newDocValuesType;
+        this.hasDocValuesSkipIndex = newHasDocValuesSkipIndex;
       } else {
         assertSame("doc values type", docValuesType, newDocValuesType);
+        assertSame("doc values skip index", hasDocValuesSkipIndex, newHasDocValuesSkipIndex);
       }
     }
 
@@ -1549,6 +1560,7 @@ final class IndexingChain implements Accountable {
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
       assertSame("store term vector", fi.hasVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
+      assertSame("doc values skip index", fi.hasDocValuesSkipIndex(), hasDocValuesSkipIndex);
       assertSame(
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);

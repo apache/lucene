@@ -626,6 +626,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
+
+      @Override
+      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+        // We can hardly return information about min/max values if doc IDs have been reordered.
+        return null;
+      }
     };
   }
 

@@ -163,14 +163,23 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           boolean isSoftDeletesField = (bits & SOFT_DELETES_FIELD) != 0;
           boolean isParentField =
               format >= FORMAT_PARENT_FIELD ? (bits & PARENT_FIELD_FIELD) != 0 : false;
+          boolean hasDocValuesSkipIndex =
+              format >= FORMAT_DOCVALUE_SKIPPER ? (bits & DOCVALUES_SKIPPER) != 0 : false;
 
-          if ((bits & 0xE0) != 0) {
+          if ((bits & 0xC0) != 0) {
             throw new CorruptIndexException(
                 "unused bits are set \"" + Integer.toBinaryString(bits) + "\"", input);
           }
           if (format < FORMAT_PARENT_FIELD && (bits & 0xF0) != 0) {
             throw new CorruptIndexException(
                 "parent field bit is set but shouldn't \"" + Integer.toBinaryString(bits) + "\"",
+                input);
+          }
+          if (format < FORMAT_DOCVALUE_SKIPPER && (bits & DOCVALUES_SKIPPER) != 0) {
+            throw new CorruptIndexException(
+                "doc values skipper bit is set but shouldn't \""
+                    + Integer.toBinaryString(bits)
+                    + "\"",
                 input);
           }
 
@@ -208,6 +217,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     storePayloads,
                     indexOptions,
                     docValuesType,
+                    hasDocValuesSkipIndex,
                     dvGen,
                     attributes,
                     pointDataDimensionCount,
@@ -394,6 +404,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;
         if (fi.isParentField()) bits |= PARENT_FIELD_FIELD;
+        if (fi.hasDocValuesSkipIndex()) bits |= DOCVALUES_SKIPPER;
         output.writeByte(bits);
 
         output.writeByte(indexOptionsByte(fi.getIndexOptions()));
@@ -423,7 +434,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final int FORMAT_START = 0;
   // this doesn't actually change the file format but uses up one more bit an existing bit pattern
   static final int FORMAT_PARENT_FIELD = 1;
-  static final int FORMAT_CURRENT = FORMAT_PARENT_FIELD;
+  static final int FORMAT_DOCVALUE_SKIPPER = 2;
+  static final int FORMAT_CURRENT = FORMAT_DOCVALUE_SKIPPER;
 
   // Field flags
   static final byte STORE_TERMVECTOR = 0x1;
@@ -431,4 +443,5 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final byte STORE_PAYLOADS = 0x4;
   static final byte SOFT_DELETES_FIELD = 0x8;
   static final byte PARENT_FIELD_FIELD = 0x10;
+  static final byte DOCVALUES_SKIPPER = 0x20;
 }

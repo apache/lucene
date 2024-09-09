@@ -27,7 +27,6 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -44,7 +43,6 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -112,9 +110,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public FlatFieldVectorsWriter<?> addField(
-      FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException {
-    FieldWriter<?> newField = FieldWriter.create(fieldInfo, indexWriter);
+  public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+    FieldWriter<?> newField = FieldWriter.create(fieldInfo);
     fields.add(newField);
     return newField;
   }
@@ -127,6 +124,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       } else {
         writeSortingField(field, maxDoc, sortMap);
       }
+      field.finish();
     }
   }
 
@@ -186,27 +184,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   private void writeSortingField(FieldWriter<?> fieldData, int maxDoc, Sorter.DocMap sortMap)
       throws IOException {
-    final int[] docIdOffsets = new int[sortMap.size()];
-    int offset = 1; // 0 means no vector for this (field, document)
-    DocIdSetIterator iterator = fieldData.docsWithField.iterator();
-    for (int docID = iterator.nextDoc();
-        docID != DocIdSetIterator.NO_MORE_DOCS;
-        docID = iterator.nextDoc()) {
-      int newDocID = sortMap.oldToNew(docID);
-      docIdOffsets[newDocID] = offset++;
-    }
+    final int[] ordMap = new int[fieldData.docsWithField.cardinality()]; // new ord to old ord
+
     DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
-    final int[] ordMap = new int[offset - 1]; // new ord to old ord
-    int ord = 0;
-    int doc = 0;
-    for (int docIdOffset : docIdOffsets) {
-      if (docIdOffset != 0) {
-        ordMap[ord] = docIdOffset - 1;
-        newDocsWithField.add(doc);
-        ord++;
-      }
-      doc++;
-    }
+    mapOldOrdToNewOrd(fieldData.docsWithField, sortMap, null, ordMap, newDocsWithField);
 
     // write vector values
     long vectorDataOffset =
@@ -249,12 +230,15 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     // No need to use temporary file as we don't have to re-open for reading
     DocsWithFieldSet docsWithField =
         switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> writeByteVectorData(
-              vectorData,
-              KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-          case FLOAT32 -> writeVectorData(
-              vectorData,
-              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+          case BYTE ->
+              writeByteVectorData(
+                  vectorData,
+                  KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+          case FLOAT32 ->
+              writeVectorData(
+                  vectorData,
+                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
+                      fieldInfo, mergeState));
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(
@@ -278,12 +262,16 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       // write the vector data to a temporary file
       DocsWithFieldSet docsWithField =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> writeByteVectorData(
-                tempVectorData,
-                KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-            case FLOAT32 -> writeVectorData(
-                tempVectorData,
-                KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+            case BYTE ->
+                writeByteVectorData(
+                    tempVectorData,
+                    KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(
+                        fieldInfo, mergeState));
+            case FLOAT32 ->
+                writeVectorData(
+                    tempVectorData,
+                    KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
+                        fieldInfo, mergeState));
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -308,24 +296,26 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       final IndexInput finalVectorDataInput = vectorDataInput;
       final RandomVectorScorerSupplier randomVectorScorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> vectorsScorer.getRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(),
-                new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                    fieldInfo.getVectorDimension(),
-                    docsWithField.cardinality(),
-                    finalVectorDataInput,
-                    fieldInfo.getVectorDimension() * Byte.BYTES,
-                    vectorsScorer,
-                    fieldInfo.getVectorSimilarityFunction()));
-            case FLOAT32 -> vectorsScorer.getRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(),
-                new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-                    fieldInfo.getVectorDimension(),
-                    docsWithField.cardinality(),
-                    finalVectorDataInput,
-                    fieldInfo.getVectorDimension() * Float.BYTES,
-                    vectorsScorer,
-                    fieldInfo.getVectorSimilarityFunction()));
+            case BYTE ->
+                vectorsScorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    new OffHeapByteVectorValues.DenseOffHeapVectorValues(
+                        fieldInfo.getVectorDimension(),
+                        docsWithField.cardinality(),
+                        finalVectorDataInput,
+                        fieldInfo.getVectorDimension() * Byte.BYTES,
+                        vectorsScorer,
+                        fieldInfo.getVectorSimilarityFunction()));
+            case FLOAT32 ->
+                vectorsScorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+                        fieldInfo.getVectorDimension(),
+                        docsWithField.cardinality(),
+                        finalVectorDataInput,
+                        fieldInfo.getVectorDimension() * Float.BYTES,
+                        vectorsScorer,
+                        fieldInfo.getVectorSimilarityFunction()));
           };
       return new FlatCloseableRandomVectorScorerSupplier(
           () -> {
@@ -416,32 +406,32 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
+    private boolean finished;
 
     private int lastDocID = -1;
 
-    @SuppressWarnings("unchecked")
-    static FieldWriter<?> create(FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) {
+    static FieldWriter<?> create(FieldInfo fieldInfo) {
       int dim = fieldInfo.getVectorDimension();
       return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> new Lucene99FlatVectorsWriter.FieldWriter<>(
-            fieldInfo, (KnnFieldVectorsWriter<byte[]>) indexWriter) {
-          @Override
-          public byte[] copyValue(byte[] value) {
-            return ArrayUtil.copyOfSubArray(value, 0, dim);
-          }
-        };
-        case FLOAT32 -> new Lucene99FlatVectorsWriter.FieldWriter<>(
-            fieldInfo, (KnnFieldVectorsWriter<float[]>) indexWriter) {
-          @Override
-          public float[] copyValue(float[] value) {
-            return ArrayUtil.copyOfSubArray(value, 0, dim);
-          }
-        };
+        case BYTE ->
+            new Lucene99FlatVectorsWriter.FieldWriter<byte[]>(fieldInfo) {
+              @Override
+              public byte[] copyValue(byte[] value) {
+                return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+            };
+        case FLOAT32 ->
+            new Lucene99FlatVectorsWriter.FieldWriter<float[]>(fieldInfo) {
+              @Override
+              public float[] copyValue(float[] value) {
+                return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+            };
       };
     }
 
-    FieldWriter(FieldInfo fieldInfo, KnnFieldVectorsWriter<T> indexWriter) {
-      super(indexWriter);
+    FieldWriter(FieldInfo fieldInfo) {
+      super();
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
@@ -450,6 +440,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public void addValue(int docID, T vectorValue) throws IOException {
+      if (finished) {
+        throw new IllegalStateException("already finished, cannot add more values");
+      }
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
@@ -461,17 +454,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       docsWithField.add(docID);
       vectors.add(copy);
       lastDocID = docID;
-      if (indexingDelegate != null) {
-        indexingDelegate.addValue(docID, copy);
-      }
     }
 
     @Override
     public long ramBytesUsed() {
       long size = SHALLOW_RAM_BYTES_USED;
-      if (indexingDelegate != null) {
-        size += indexingDelegate.ramBytesUsed();
-      }
       if (vectors.size() == 0) return size;
       return size
           + docsWithField.ramBytesUsed()
@@ -480,6 +467,29 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           + (long) vectors.size()
               * fieldInfo.getVectorDimension()
               * fieldInfo.getVectorEncoding().byteSize;
+    }
+
+    @Override
+    public List<T> getVectors() {
+      return vectors;
+    }
+
+    @Override
+    public DocsWithFieldSet getDocsWithFieldSet() {
+      return docsWithField;
+    }
+
+    @Override
+    public void finish() throws IOException {
+      if (finished) {
+        return;
+      }
+      this.finished = true;
+    }
+
+    @Override
+    public boolean isFinished() {
+      return finished;
     }
   }
 

@@ -1,7 +1,5 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
-import org.apache.commons.codec.digest.DigestUtils
-
 import java.util.function.Function
 
 /*
@@ -58,7 +56,7 @@ def computeChecksummedEntries = { Task sourceTask ->
   allFiles.files.forEach { file ->
     allEntries.put(
         sourceTask.project.rootDir.relativePath(file),
-        file.exists() ? new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() : "--")
+        file.exists() ? buildinfra.sha1Digest().digestAsHex(file).trim() : "--")
   }
 
   return allEntries

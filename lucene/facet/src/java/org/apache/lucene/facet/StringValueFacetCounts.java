@@ -154,7 +154,7 @@ public class StringValueFacetCounts extends Facets {
         final BytesRef term = docValues.lookupOrd(sparseCount.key);
         labelValues.add(new LabelAndValue(term.utf8ToString(), count));
       }
-    } else {
+    } else if (denseCounts != null) {
       for (int i = 0; i < denseCounts.length; i++) {
         int count = denseCounts[i];
         if (count != 0) {
@@ -180,8 +180,6 @@ public class StringValueFacetCounts extends Facets {
     topN = Math.min(topN, cardinality);
     TopOrdAndIntQueue q = null;
     TopOrdAndIntQueue.OrdAndInt reuse = null;
-    int bottomCount = 0;
-    int bottomOrd = Integer.MAX_VALUE;
     int childCount = 0; // total number of labels with non-zero count
 
     if (sparseCounts != null) {
@@ -189,7 +187,22 @@ public class StringValueFacetCounts extends Facets {
         childCount++; // every count in sparseValues should be non-zero
         int ord = sparseCount.key;
         int count = sparseCount.value;
-        if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
+        if (q == null) {
+          // Lazy init for sparse case:
+          q = new TopOrdAndIntQueue(topN);
+        }
+        if (reuse == null) {
+          reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+        }
+        reuse.ord = ord;
+        reuse.value = count;
+        reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
+      }
+    } else if (denseCounts != null) {
+      for (int i = 0; i < denseCounts.length; i++) {
+        int count = denseCounts[i];
+        if (count != 0) {
+          childCount++;
           if (q == null) {
             // Lazy init for sparse case:
             q = new TopOrdAndIntQueue(topN);
@@ -197,36 +210,9 @@ public class StringValueFacetCounts extends Facets {
           if (reuse == null) {
             reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
           }
-          reuse.ord = ord;
+          reuse.ord = i;
           reuse.value = count;
           reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
-          if (q.size() == topN) {
-            bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
-            bottomOrd = q.top().ord;
-          }
-        }
-      }
-    } else {
-      for (int i = 0; i < denseCounts.length; i++) {
-        int count = denseCounts[i];
-        if (count != 0) {
-          childCount++;
-          if (count > bottomCount || (count == bottomCount && i < bottomOrd)) {
-            if (q == null) {
-              // Lazy init for sparse case:
-              q = new TopOrdAndIntQueue(topN);
-            }
-            if (reuse == null) {
-              reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
-            }
-            reuse.ord = i;
-            reuse.value = count;
-            reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
-            if (q.size() == topN) {
-              bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
-              bottomOrd = q.top().ord;
-            }
-          }
         }
       }
     }
@@ -256,7 +242,13 @@ public class StringValueFacetCounts extends Facets {
       return -1;
     }
 
-    return sparseCounts != null ? sparseCounts.get(ord) : denseCounts[ord];
+    if (sparseCounts != null) {
+      return sparseCounts.get(ord);
+    }
+    if (denseCounts != null) {
+      return denseCounts[ord];
+    }
+    return 0;
   }
 
   @Override

@@ -237,7 +237,7 @@ public class TestSortOptimization extends LuceneTestCase {
       sortField2.setMissingValue(0L); // set a competitive missing value
       final Sort sort = new Sort(sortField1, sortField2);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+          new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold, true);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertEquals(
@@ -264,7 +264,7 @@ public class TestSortOptimization extends LuceneTestCase {
       sortField.setMissingValue(Long.MAX_VALUE); // set a competitive missing value
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-          TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
+          new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, true);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
@@ -279,10 +279,34 @@ public class TestSortOptimization extends LuceneTestCase {
       sortField.setMissingValue(Long.MAX_VALUE); // set a competitive missing value
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-          TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
+          new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, true);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    {
+      // test that optimization is run when missing value setting of SortField is NOT competitive
+      // with after on asc order
+      long afterValue = 3L;
+      FieldDoc after = new FieldDoc(3, Float.NaN, new Long[] {afterValue});
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG);
+      sortField.setMissingValue(2L);
+      final Sort sort = new Sort(sortField);
+      final TopFieldCollectorManager collectorManager =
+          new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), collectorManager);
+      assertEquals(topDocs.scoreDocs.length, numHits);
+      for (int i = 0; i < numHits; i++) {
+        FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
+        assertEquals(afterValue + 1 + i, fieldDoc.fields[0]);
+      }
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      // expect to skip all but the first leaf in the BKD tree in the first segment as well as the
+      // second segment
+      // doc-0 has no target field, so we need to minus 1
+      final int expectedSkipped = (7001 - 512 - 1) + (numDocs - 7001);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs - expectedSkipped + 1);
     }
 
     reader.close();
@@ -323,7 +347,7 @@ public class TestSortOptimization extends LuceneTestCase {
       sortField.setMissingValue(0L); // missing value is not competitive
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+          new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold, true);
       topDocs1 = searcher.search(new MatchAllDocsQuery(), manager);
       assertNonCompetitiveHitsAreSkipped(topDocs1.totalHits.value, numDocs);
     }
@@ -334,7 +358,7 @@ public class TestSortOptimization extends LuceneTestCase {
       final Sort sort = new Sort(sortField);
       sortField.setOptimizeSortWithPoints(false);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+          new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold, true);
       topDocs2 = searcher.search(new MatchAllDocsQuery(), manager);
       // assert that the resulting hits are the same
       assertEquals(topDocs1.scoreDocs.length, topDocs2.scoreDocs.length);
@@ -357,7 +381,7 @@ public class TestSortOptimization extends LuceneTestCase {
       sortField2.setMissingValue(0L); // missing value is not competitive
       final Sort multiSorts = new Sort(new SortField[] {sortField1, sortField2});
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-          TopFieldCollector.createSharedManager(multiSorts, numHits, null, totalHitsThreshold);
+          new TopFieldCollectorManager(multiSorts, numHits, null, totalHitsThreshold, true);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       // can't optimization with NumericDocValues when there are multiple comparators
       assertEquals(topDocs.totalHits.value, numDocs);
@@ -935,7 +959,7 @@ public class TestSortOptimization extends LuceneTestCase {
     // test search
     int numHits = 1 + random().nextInt(100);
     CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-        TopFieldCollector.createSharedManager(new Sort(sortField), numHits, null, numHits);
+        new TopFieldCollectorManager(new Sort(sortField), numHits, null, numHits, true);
     TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
       long expectedSeqNo = seqNos.get(i);
@@ -986,12 +1010,12 @@ public class TestSortOptimization extends LuceneTestCase {
       int expectedHits = Math.min(numDocs - visitedHits, batch);
 
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-          TopFieldCollector.createSharedManager(sort, batch, (FieldDoc) after, totalHitsThreshold);
+          new TopFieldCollectorManager(sort, batch, (FieldDoc) after, totalHitsThreshold, true);
       TopDocs topDocs = searcher.search(query, manager);
       ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
       CollectorManager<TopFieldCollector, TopFieldDocs> manager2 =
-          TopFieldCollector.createSharedManager(sort2, batch, (FieldDoc) after, totalHitsThreshold);
+          new TopFieldCollectorManager(sort2, batch, (FieldDoc) after, totalHitsThreshold, true);
       TopDocs topDocs2 = searcher.search(query, manager2);
       ScoreDoc[] scoreDocs2 = topDocs2.scoreDocs;
 
@@ -1186,7 +1210,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final int totalHitsThreshold = 5;
 
     CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-        TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+        new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold, true);
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
@@ -1216,7 +1240,7 @@ public class TestSortOptimization extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader, true, true, false);
     Query query = new MatchAllDocsQuery();
     CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-        TopFieldCollector.createSharedManager(sort, n, after, n);
+        new TopFieldCollectorManager(sort, n, after, n, true);
     TopDocs topDocs = searcher.search(query, manager);
     IndexSearcher unoptimizedSearcher =
         newSearcher(new NoIndexDirectoryReader(reader), true, true, false);
@@ -1289,6 +1313,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 fi.getDocValuesType(),
+                fi.hasDocValuesSkipIndex(),
                 fi.getDocValuesGen(),
                 fi.attributes(),
                 0,

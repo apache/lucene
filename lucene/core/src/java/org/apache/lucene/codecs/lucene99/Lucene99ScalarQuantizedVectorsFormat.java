@@ -89,6 +89,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    */
   public Lucene99ScalarQuantizedVectorsFormat(
       Float confidenceInterval, int bits, boolean compress) {
+    super(NAME);
     if (confidenceInterval != null
         && confidenceInterval != DYNAMIC_CONFIDENCE_INTERVAL
         && (confidenceInterval < MINIMUM_CONFIDENCE_INTERVAL

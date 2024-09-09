@@ -45,11 +45,14 @@ import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
@@ -76,6 +79,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -364,6 +368,9 @@ public final class CheckIndex implements Closeable {
 
       /** Total number of sortedset fields */
       public long totalSortedSetFields;
+
+      /** Total number of skipping index tested. */
+      public long totalSkippingIndex;
 
       /** Exception thrown during doc values test (null on success) */
       public Throwable error;
@@ -2739,6 +2746,14 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  private static boolean vectorsReaderSupportsSearch(CodecReader codecReader, String fieldName) {
+    KnnVectorsReader vectorsReader = codecReader.getVectorReader();
+    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader) {
+      vectorsReader = perFieldReader.getFieldReader(fieldName);
+    }
+    return (vectorsReader instanceof FlatVectorsReader) == false;
+  }
+
   private static void checkFloatVectorValues(
       FloatVectorValues values,
       FieldInfo fieldInfo,
@@ -2751,11 +2766,15 @@ public final class CheckIndex implements Closeable {
       // search the first maxNumSearches vectors to exercise the graph
       if (values.docID() % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
-        TopDocs docs = collector.topDocs();
-        if (docs.scoreDocs.length == 0) {
-          throw new CheckIndexException(
-              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+        if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
+          codecReader
+              .getVectorReader()
+              .search(fieldInfo.name, values.vectorValue(), collector, null);
+          TopDocs docs = collector.topDocs();
+          if (docs.scoreDocs.length == 0) {
+            throw new CheckIndexException(
+                "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+          }
         }
       }
       int valueLength = values.vectorValue().length;
@@ -2791,9 +2810,10 @@ public final class CheckIndex implements Closeable {
       throws IOException {
     int docCount = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
+    boolean supportsSearch = vectorsReaderSupportsSearch(codecReader, fieldInfo.name);
     while (values.nextDoc() != NO_MORE_DOCS) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (values.docID() % everyNdoc == 0) {
+      if (supportsSearch && values.docID() % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
         TopDocs docs = collector.topDocs();
@@ -3223,13 +3243,14 @@ public final class CheckIndex implements Closeable {
           infoStream,
           String.format(
               Locale.ROOT,
-              "OK [%d docvalues fields; %d BINARY; %d NUMERIC; %d SORTED; %d SORTED_NUMERIC; %d SORTED_SET] [took %.3f sec]",
+              "OK [%d docvalues fields; %d BINARY; %d NUMERIC; %d SORTED; %d SORTED_NUMERIC; %d SORTED_SET; %d SKIPPING INDEX] [took %.3f sec]",
               status.totalValueFields,
               status.totalBinaryFields,
               status.totalNumericFields,
               status.totalSortedFields,
               status.totalSortedNumericFields,
               status.totalSortedSetFields,
+              status.totalSkippingIndex,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
       if (failFast) {
@@ -3247,6 +3268,94 @@ public final class CheckIndex implements Closeable {
   @FunctionalInterface
   private interface DocValuesIteratorSupplier {
     DocValuesIterator get(FieldInfo fi) throws IOException;
+  }
+
+  private static void checkDocValueSkipper(FieldInfo fi, DocValuesSkipper skipper)
+      throws IOException {
+    String fieldName = fi.name;
+    if (skipper.maxDocID(0) != -1) {
+      throw new CheckIndexException(
+          "binary dv iterator for field: "
+              + fieldName
+              + " should start at docID=-1, but got "
+              + skipper.maxDocID(0));
+    }
+    if (skipper.docCount() > 0 && skipper.minValue() > skipper.maxValue()) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " reports wrong global value range, got  "
+              + skipper.minValue()
+              + " > "
+              + skipper.maxValue());
+    }
+    int docCount = 0;
+    int doc;
+    while (true) {
+      doc = skipper.maxDocID(0) + 1;
+      skipper.advance(doc);
+      if (skipper.maxDocID(0) == NO_MORE_DOCS) {
+        break;
+      }
+      if (skipper.minDocID(0) < doc) {
+        throw new CheckIndexException(
+            "skipper dv iterator for field: "
+                + fieldName
+                + " reports wrong minDocID, got "
+                + skipper.minDocID(0)
+                + " < "
+                + doc);
+      }
+      int levels = skipper.numLevels();
+      for (int level = 0; level < levels; level++) {
+        if (skipper.minDocID(level) > skipper.maxDocID(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " reports wrong doc range, got "
+                  + skipper.minDocID(level)
+                  + " > "
+                  + skipper.maxDocID(level));
+        }
+        if (skipper.minValue() > skipper.minValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " : global minValue  "
+                  + skipper.minValue()
+                  + " , got  "
+                  + skipper.minValue(level));
+        }
+        if (skipper.maxValue() < skipper.maxValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " : global maxValue  "
+                  + skipper.maxValue()
+                  + " , got  "
+                  + skipper.maxValue(level));
+        }
+        if (skipper.minValue(level) > skipper.maxValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " reports wrong value range, got  "
+                  + skipper.minValue(level)
+                  + " > "
+                  + skipper.maxValue(level));
+        }
+      }
+      docCount += skipper.docCount(0);
+    }
+    if (skipper.docCount() != docCount) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " inconsistent docCount, got "
+              + skipper.docCount()
+              + " != "
+              + docCount);
+    }
   }
 
   private static void checkDVIterator(FieldInfo fi, DocValuesIteratorSupplier producer)
@@ -3622,6 +3731,10 @@ public final class CheckIndex implements Closeable {
 
   private static void checkDocValues(
       FieldInfo fi, DocValuesProducer dvReader, DocValuesStatus status) throws Exception {
+    if (fi.hasDocValuesSkipIndex()) {
+      status.totalSkippingIndex++;
+      checkDocValueSkipper(fi, dvReader.getSkipper(fi));
+    }
     switch (fi.getDocValuesType()) {
       case SORTED:
         status.totalSortedFields++;
@@ -3752,6 +3865,7 @@ public final class CheckIndex implements Closeable {
                 TermsEnum postingsTermsEnum = postingsTerms.iterator();
 
                 final boolean hasProx = terms.hasOffsets() || terms.hasPositions();
+                int seekExactCounter = 0;
                 BytesRef term;
                 while ((term = termsEnum.next()) != null) {
 
@@ -3759,7 +3873,14 @@ public final class CheckIndex implements Closeable {
                   postings = termsEnum.postings(postings, PostingsEnum.ALL);
                   assert postings != null;
 
-                  if (postingsTermsEnum.seekExact(term) == false) {
+                  boolean termExists;
+                  if ((seekExactCounter++ & 0x01) == 0) {
+                    termExists = postingsTermsEnum.seekExact(term);
+                  } else {
+                    IOBooleanSupplier termExistsSupplier = postingsTermsEnum.prepareSeekExact(term);
+                    termExists = termExistsSupplier != null && termExistsSupplier.get();
+                  }
+                  if (termExists == false) {
                     throw new CheckIndexException(
                         "vector term="
                             + term

@@ -74,7 +74,7 @@ public class ParallelMatcher<T extends QueryMatch> extends CandidateMatcher<T> {
   }
 
   @Override
-  protected void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
+  public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
       throws IOException {
     try {
       queue.put(new MatcherTask(queryId, matchQuery, metadata));

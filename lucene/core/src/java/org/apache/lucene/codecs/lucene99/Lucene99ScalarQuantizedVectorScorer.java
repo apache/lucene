@@ -99,14 +99,20 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       RandomAccessQuantizedByteVectorValues values) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(values, constMultiplier, targetBytes);
-      case COSINE, DOT_PRODUCT -> dotProductFactory(
-          targetBytes, offsetCorrection, constMultiplier, values, f -> Math.max((1 + f) / 2, 0));
-      case MAXIMUM_INNER_PRODUCT -> dotProductFactory(
-          targetBytes,
-          offsetCorrection,
-          constMultiplier,
-          values,
-          VectorUtil::scaleMaxInnerProductScore);
+      case COSINE, DOT_PRODUCT ->
+          dotProductFactory(
+              targetBytes,
+              offsetCorrection,
+              constMultiplier,
+              values,
+              f -> Math.max((1 + f) / 2, 0));
+      case MAXIMUM_INNER_PRODUCT ->
+          dotProductFactory(
+              targetBytes,
+              offsetCorrection,
+              constMultiplier,
+              values,
+              VectorUtil::scaleMaxInnerProductScore);
     };
   }
 
@@ -294,6 +300,13 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     @Override
     public ScalarQuantizedRandomVectorScorerSupplier copy() throws IOException {
       return new ScalarQuantizedRandomVectorScorerSupplier(values.copy(), vectorSimilarityFunction);
+    }
+
+    @Override
+    public String toString() {
+      return "ScalarQuantizedRandomVectorScorerSupplier(vectorSimilarityFunction="
+          + vectorSimilarityFunction
+          + ")";
     }
   }
 }

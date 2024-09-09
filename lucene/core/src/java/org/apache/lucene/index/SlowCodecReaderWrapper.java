@@ -241,6 +241,11 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
+      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+        return reader.getDocValuesSkipper(field.name);
+      }
+
+      @Override
       public void checkIntegrity() throws IOException {
         // We already checkIntegrity the entire reader up front
       }

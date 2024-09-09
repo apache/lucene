@@ -940,7 +940,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
               }
               return builder.toString();
             }
-            // NOTE: fall through to delete:
+          // NOTE: fall through to delete:
           case 2:
             // Delete input[i]
             for (int j = i + 1; j < input.length; j++) {
