@@ -17,12 +17,8 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSet;
@@ -144,54 +140,5 @@ public class FacetsCollector extends SimpleCollector {
     matchingDocs.add(new MatchingDocs(this.context, bits, totalHits, scores));
     scores = null;
     context = null;
-  }
-
-  /**
-   * Reduces matching docs held by the provided facets collectors, merging matching docs for the
-   * same leaf into a single matching docs instance
-   *
-   * @param facetsCollectors the facets collectors
-   * @return the reduced matching docs, with one instance per leaf reader context
-   */
-  protected static Collection<MatchingDocs> reduceMatchingDocs(
-      final Collection<? extends FacetsCollector> facetsCollectors) {
-    // When a segment is split into partitions, each partition gets its own FacetsCollector that
-    // pulls doc_values independently, and builds a bitset of the size of the entire segment. When
-    // segments are partitioned, each partition will collect only the docs in its docid range, hence
-    // there will be multiple MatchingDocs pointing to the same LeafReaderContext. As part of the
-    // reduction we merge back partitions into a single MatchingDocs per segment.
-    Map<LeafReaderContext, MatchingDocs> matchingDocsMap = new HashMap<>();
-    for (FacetsCollector facetsCollector : facetsCollectors) {
-      for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
-        matchingDocsMap.compute(
-            matchingDocs.context,
-            (leafReaderContext, existing) -> {
-              if (existing == null) {
-                return matchingDocs;
-              }
-              return merge(existing, matchingDocs);
-            });
-      }
-    }
-    return matchingDocsMap.values();
-  }
-
-  private static FacetsCollector.MatchingDocs merge(
-      FacetsCollector.MatchingDocs matchingDocs1, FacetsCollector.MatchingDocs matchingDocs2) {
-    assert matchingDocs1.context == matchingDocs2.context;
-    if (matchingDocs1.scores != null | matchingDocs2.scores != null) {
-      throw new IllegalStateException(
-          "intra-segment concurrency not supported by FacetsCollectorManager when scores are collected");
-    }
-    DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(matchingDocs1.context.reader().maxDoc());
-    try {
-      docIdSetBuilder.add(matchingDocs1.bits.iterator());
-      docIdSetBuilder.add(matchingDocs2.bits.iterator());
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-    int totalHits = matchingDocs1.totalHits + matchingDocs2.totalHits;
-    return new FacetsCollector.MatchingDocs(
-        matchingDocs1.context, docIdSetBuilder.build(), totalHits, null);
   }
 }
