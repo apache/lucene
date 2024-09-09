@@ -839,7 +839,7 @@ Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need
 
 The static `IndexSearcher#sslices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
 method now supports an additional 4th and last argument to optionally enable creating segment partitions:
-`IndexSearcher#sslices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice, boolean allowSegmentPartitions)`
+`IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice, boolean allowSegmentPartitions)`
 
 ### TotalHitCountCollectorManager constructor
 
