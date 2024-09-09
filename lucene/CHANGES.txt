@@ -331,6 +331,8 @@ Improvements
 
 * GITHUB#13201: Better cost estimation on MultiTermQuery over few terms. (Michael Froh)
 
+* GITHUB#13746: Introduce ProfilerCollectorManager to parallelize search when using ProfilerCollector. (Luca Cavanna)
+
 Optimizations
 ---------------------
 
