@@ -266,7 +266,8 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
     final TopDocs topDocs;
     final FacetsCollector facetsCollector;
     if (n == 0) {
-      TotalHitCountCollectorManager hitCountCollectorManager = new TotalHitCountCollectorManager();
+      TotalHitCountCollectorManager hitCountCollectorManager =
+          new TotalHitCountCollectorManager(searcher.getSlices());
       MultiCollectorManager multiCollectorManager =
           new MultiCollectorManager(hitCountCollectorManager, fcm);
       Object[] result = searcher.search(q, multiCollectorManager);
