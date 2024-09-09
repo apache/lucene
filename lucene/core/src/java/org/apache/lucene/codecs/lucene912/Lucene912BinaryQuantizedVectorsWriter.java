@@ -385,6 +385,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       for (float[] clusterCenter : clusterCenters) {
         buffer.asFloatBuffer().put(clusterCenter);
         meta.writeBytes(buffer.array(), buffer.array().length);
+        meta.writeInt(Float.floatToIntBits(VectorUtil.dotProduct(clusterCenter, clusterCenter)));
       }
       if (clusterCenters.length > 1) {
         assert clustersOffset >= 0 && clustersLength > 0;
@@ -525,7 +526,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       IndexOutput output,
       BinaryQuantizer quantizer,
       FloatVectorValues floatVectorValues,
-      float[][] centroids)
+      float[][] centroids,
+      float[] cDotC)
       throws IOException {
     byte[] vector =
         new byte
@@ -541,7 +543,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] floatVector = floatVectorValues.vectorValue();
       for (int i = 0; i < centroids.length; i++) {
         BinaryQuantizer.QueryFactors factors =
-            quantizer.quantizeForQuery(floatVector, vector, centroids[i]);
+            quantizer.quantizeForQuery(floatVector, vector, centroids[i], cDotC[i]);
         output.writeBytes(vector, vector.length);
 
         correctionsBuffer.putFloat(factors.distToC());
@@ -597,6 +599,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       final float[][] centroids;
+      final float[] cDotC;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
       // If we have more vectors than allowed for a single cluster, we will use KMeans to cluster
@@ -618,21 +621,30 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
                 cluster(vectorValues, false, fieldInfo.getVectorSimilarityFunction());
             assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
             centroids = kmeansResult.centroids();
+            cDotC = new float[centroids.length];
+            int i = 0;
+            for (float[] centroid : centroids) {
+              cDotC[i] = VectorUtil.dotProduct(centroid, centroid);
+              i++;
+            }
           } else {
             centroids = new float[][] {mergedCentroid};
+            cDotC = new float[] {VectorUtil.dotProduct(mergedCentroid, mergedCentroid)};
           }
         }
       } else {
         // Don't need access to the random vectors, we can just use the merged
         rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
         centroids = new float[][] {mergedCentroid};
+        cDotC = new float[] {VectorUtil.dotProduct(mergedCentroid, mergedCentroid)};
       }
       if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
         segmentWriteState.infoStream.message(
             BINARIZED_VECTOR_COMPONENT,
             "Vectors' count:" + vectorCount + "; clusters' count:" + centroids.length);
       }
-      return mergeOneFieldToIndex(segmentWriteState, fieldInfo, mergeState, vectorCount, centroids);
+      return mergeOneFieldToIndex(
+          segmentWriteState, fieldInfo, mergeState, vectorCount, centroids, cDotC);
     }
     return rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
   }
@@ -642,7 +654,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldInfo fieldInfo,
       MergeState mergeState,
       int vectorCount,
-      float[][] centroids)
+      float[][] centroids,
+      float[] cDotC)
       throws IOException {
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
     final IndexOutput tempQuantizedVectorData =
@@ -710,7 +723,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         fvvForQuery = new NormalizedFloatVectorValues(fvvForQuery);
       }
       writeQueryBinarizedVectorData(
-          tempScoreQuantizedVectorData, quantizer, fvvForQuery, centroids);
+          tempScoreQuantizedVectorData, quantizer, fvvForQuery, centroids, cDotC);
       CodecUtil.writeFooter(tempScoreQuantizedVectorData);
       IOUtils.close(tempScoreQuantizedVectorData);
       binarizedScoreDataInput =
