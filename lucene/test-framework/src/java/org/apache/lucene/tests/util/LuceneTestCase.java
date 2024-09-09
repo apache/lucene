@@ -17,6 +17,7 @@
 
 package org.apache.lucene.tests.util;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
@@ -2041,14 +2042,13 @@ public abstract class LuceneTestCase extends Assert {
       int maxDocsPerSlice,
       int maxSegmentsPerSlice,
       Concurrency concurrency) {
-    if (concurrency == Concurrency.INTER_SEGMENT) {
-      return IndexSearcher.slices(leaves, maxDocsPerSlice, maxSegmentsPerSlice);
-    }
-    if (rarely()) {
-      // Rarely test slices without partitions even though intra-segment concurrency is supported
-      return IndexSearcher.slices(leaves, maxDocsPerSlice, maxSegmentsPerSlice);
-    }
-    return IndexSearcher.slicesWithPartitions(leaves, maxDocsPerSlice, maxSegmentsPerSlice);
+    assert concurrency != Concurrency.NONE;
+    // Rarely test slices without partitions even though intra-segment concurrency is supported
+    return IndexSearcher.slices(
+        leaves,
+        maxDocsPerSlice,
+        maxSegmentsPerSlice,
+        concurrency == Concurrency.INTRA_SEGMENT && frequently());
   }
 
   /**

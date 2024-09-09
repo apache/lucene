@@ -830,7 +830,13 @@ may happen concurrently from separate threads each searching a specific doc id r
 
 ### Signature of IndexSearcher#searchLeaf changed
 
-With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext, Weight, Collector)` 
-method accepts now two additional int arguments to identify the min and max doc id of the range that the leaf partition 
-being searched targets: `IndexSearcher#searchLeaf(LeafReaderContext, int, int, Weight, Collector)`.
+With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)` 
+method now accepts two additional int arguments to identify the min/max range of docids that will be searched in this 
+leaf partition`: IndexSearcher#searchLeaf(LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)`.
 Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need to be updated accordingly.
+
+### Signature of static IndexSearch#slices method changed
+
+The static `IndexSearcher#sslices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
+method now supports an additional 4th and last argument to optionally enable creating segment partitions:
+`IndexSearcher#sslices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice, boolean allowSegmentPartitions)`

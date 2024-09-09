@@ -255,7 +255,7 @@ public class TestIndexSearcher extends LuceneTestCase {
           new IndexSearcher(r, Runnable::run) {
             @Override
             protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-              return slices(leaves, 1, 1);
+              return slices(leaves, 1, 1, false);
             }
           };
       IndexSearcher.LeafSlice[] slices = searcher.getSlices();

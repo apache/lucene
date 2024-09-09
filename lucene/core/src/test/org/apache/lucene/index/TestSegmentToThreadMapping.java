@@ -168,7 +168,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     List<LeafReaderContext> leafReaderContexts =
         createLeafReaderContexts(50_000, 30_000, 30_000, 30_000);
     IndexSearcher.LeafSlice[] resultSlices =
-        IndexSearcher.slices(leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(4, 10));
+        IndexSearcher.slices(
+            leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(4, 10), false);
     assertEquals(1, resultSlices.length);
     assertEquals(4, resultSlices[0].partitions.length);
   }
@@ -177,8 +178,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     List<LeafReaderContext> leafReaderContexts =
         createLeafReaderContexts(50_000, 30_000, 30_000, 30_000);
     IndexSearcher.LeafSlice[] resultSlices =
-        IndexSearcher.slicesWithPartitions(
-            leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(4, 10));
+        IndexSearcher.slices(
+            leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(4, 10), true);
     assertEquals(1, resultSlices.length);
     assertEquals(4, resultSlices[0].partitions.length);
   }
@@ -187,7 +188,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     List<LeafReaderContext> leafReaderContexts =
         createLeafReaderContexts(50_000, 30_000, 30_000, 30_000);
     {
-      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 3);
+      IndexSearcher.LeafSlice[] resultSlices =
+          IndexSearcher.slices(leafReaderContexts, 250_000, 3, false);
       assertEquals(2, resultSlices.length);
       assertEquals(3, resultSlices[0].partitions.length);
       assertEquals(110_000, resultSlices[0].getMaxDocs());
@@ -195,7 +197,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       assertEquals(30_000, resultSlices[1].getMaxDocs());
     }
     {
-      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 2);
+      IndexSearcher.LeafSlice[] resultSlices =
+          IndexSearcher.slices(leafReaderContexts, 250_000, 2, false);
       assertEquals(2, resultSlices.length);
       assertEquals(2, resultSlices[0].partitions.length);
       assertEquals(80_000, resultSlices[0].getMaxDocs());
@@ -203,7 +206,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       assertEquals(60_000, resultSlices[1].getMaxDocs());
     }
     {
-      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 1);
+      IndexSearcher.LeafSlice[] resultSlices =
+          IndexSearcher.slices(leafReaderContexts, 250_000, 1, false);
       assertEquals(4, resultSlices.length);
       assertEquals(1, resultSlices[0].partitions.length);
       assertEquals(50_000, resultSlices[0].getMaxDocs());
@@ -221,7 +225,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
         createLeafReaderContexts(50_000, 30_000, 30_000, 30_000);
     {
       IndexSearcher.LeafSlice[] resultSlices =
-          IndexSearcher.slicesWithPartitions(leafReaderContexts, 250_000, 3);
+          IndexSearcher.slices(leafReaderContexts, 250_000, 3, true);
       assertEquals(2, resultSlices.length);
       assertEquals(3, resultSlices[0].partitions.length);
       assertEquals(110_000, resultSlices[0].getMaxDocs());
@@ -230,7 +234,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     }
     {
       IndexSearcher.LeafSlice[] resultSlices =
-          IndexSearcher.slicesWithPartitions(leafReaderContexts, 250_000, 2);
+          IndexSearcher.slices(leafReaderContexts, 250_000, 2, true);
       assertEquals(2, resultSlices.length);
       assertEquals(2, resultSlices[0].partitions.length);
       assertEquals(80_000, resultSlices[0].getMaxDocs());
@@ -239,7 +243,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     }
     {
       IndexSearcher.LeafSlice[] resultSlices =
-          IndexSearcher.slicesWithPartitions(leafReaderContexts, 250_000, 1);
+          IndexSearcher.slices(leafReaderContexts, 250_000, 1, true);
       assertEquals(4, resultSlices.length);
       assertEquals(1, resultSlices[0].partitions.length);
       assertEquals(50_000, resultSlices[0].getMaxDocs());
@@ -257,7 +261,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
         createLeafReaderContexts(10_000, 10_000, 10_000, 10_000, 10_000, 10_000, 130_000, 130_000);
 
     {
-      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+      IndexSearcher.LeafSlice[] resultSlices =
+          IndexSearcher.slices(leafReaderContexts, 250_000, 5, false);
       assertEquals(3, resultSlices.length);
 
       assertEquals(2, resultSlices[0].partitions.length);
@@ -268,7 +273,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       assertEquals(10_000, resultSlices[2].getMaxDocs());
     }
     {
-      IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 130_000, 5);
+      IndexSearcher.LeafSlice[] resultSlices =
+          IndexSearcher.slices(leafReaderContexts, 130_000, 5, false);
       assertEquals(3, resultSlices.length);
       // this is odd, because we allow two segments in the same slice with both size ==
       // maxDocsPerSlice
@@ -287,7 +293,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
 
     {
       IndexSearcher.LeafSlice[] resultSlices =
-          IndexSearcher.slicesWithPartitions(leafReaderContexts, 250_000, 5);
+          IndexSearcher.slices(leafReaderContexts, 250_000, 5, true);
       assertEquals(3, resultSlices.length);
 
       assertEquals(2, resultSlices[0].partitions.length);
@@ -299,7 +305,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     }
     {
       IndexSearcher.LeafSlice[] resultSlices =
-          IndexSearcher.slicesWithPartitions(leafReaderContexts, 130_000, 5);
+          IndexSearcher.slices(leafReaderContexts, 130_000, 5, true);
       assertEquals(3, resultSlices.length);
       // this is odd, because we allow two segments in the same slice with both size ==
       // maxDocsPerSlice
@@ -315,7 +321,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
   public void testLargeSlices() {
     List<LeafReaderContext> leafReaderContexts =
         createLeafReaderContexts(290_900, 170_000, 170_000, 170_000);
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    IndexSearcher.LeafSlice[] resultSlices =
+        IndexSearcher.slices(leafReaderContexts, 250_000, 5, false);
 
     assertEquals(3, resultSlices.length);
     assertEquals(1, resultSlices[0].partitions.length);
@@ -327,8 +334,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     List<LeafReaderContext> leafReaderContexts =
         createLeafReaderContexts(290_900, 170_000, 170_000, 170_000);
     IndexSearcher.LeafSlice[] resultSlices =
-        IndexSearcher.slicesWithPartitions(
-            leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(5, 10));
+        IndexSearcher.slices(
+            leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(5, 10), true);
 
     assertEquals(4, resultSlices.length);
     assertEquals(1, resultSlices[0].partitions.length);
@@ -344,8 +351,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
   public void testSingleSegmentPartitions() {
     List<LeafReaderContext> leafReaderContexts = createLeafReaderContexts(750_001);
     IndexSearcher.LeafSlice[] resultSlices =
-        IndexSearcher.slicesWithPartitions(
-            leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(1, 10));
+        IndexSearcher.slices(
+            leafReaderContexts, 250_000, RandomizedTest.randomIntBetween(1, 10), true);
 
     assertEquals(4, resultSlices.length);
     assertEquals(1, resultSlices[0].partitions.length);
@@ -360,8 +367,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
 
   public void testExtremeSegmentsPartitioning() {
     List<LeafReaderContext> leafReaderContexts = createLeafReaderContexts(2, 5, 10);
-    IndexSearcher.LeafSlice[] resultSlices =
-        IndexSearcher.slicesWithPartitions(leafReaderContexts, 1, 1);
+    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 1, 1, true);
 
     assertEquals(12, resultSlices.length);
     int i = 0;
@@ -420,7 +426,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
           @Override
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
             // force partitioning of segment with max docs per slice set to 1: 1 doc per partition.
-            return slicesWithPartitions(leaves, 1, 1);
+            return slices(leaves, 1, 1, true);
           }
         };
     IndexSearcher.LeafSlice[] slices = s.getSlices();
@@ -448,13 +454,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       leafReaderContexts.add(
           new LeafReaderContext(dummyIndexReader(random().nextInt((max - min) + 1) + min)));
     }
-    final IndexSearcher.LeafSlice[] resultSlices;
-    if (random().nextBoolean()) {
-      resultSlices = IndexSearcher.slicesWithPartitions(leafReaderContexts, 250_000, 5);
-    } else {
-      resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
-    }
-
+    final IndexSearcher.LeafSlice[] resultSlices =
+        IndexSearcher.slices(leafReaderContexts, 250_000, 5, random().nextBoolean());
     assertTrue(resultSlices.length > 0);
   }
 }

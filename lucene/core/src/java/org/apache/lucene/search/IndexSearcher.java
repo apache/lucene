@@ -327,24 +327,96 @@ public class IndexSearcher {
   /**
    * Expert: Creates an array of leaf slices each holding a subset of the given leaves. Each {@link
    * LeafSlice} is executed in a single thread. By default, segments with more than
-   * MAX_DOCS_PER_SLICE will get their own thread
+   * MAX_DOCS_PER_SLICE will get their own thread.
+   *
+   * <p>It is possible to leverage intra-segment concurrency by splitting segments into multiple
+   * partitions. Such behaviour is not enabled by default as there is still a performance penalty
+   * for queries that require segment-level computation ahead of time, such as points/range queries.
+   * This is an implementation limitation that we expect to improve in future releases.
    */
   protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-    return slices(leaves, MAX_DOCS_PER_SLICE, MAX_SEGMENTS_PER_SLICE);
+    return slices(leaves, MAX_DOCS_PER_SLICE, MAX_SEGMENTS_PER_SLICE, false);
   }
 
   /**
-   * Static method to segregate LeafReaderContexts amongst multiple slices. Creates slices that
-   * contain entire segments, according to the provided max number of documents per slice and max
-   * number of segments per slice.
+   * Static method to segregate LeafReaderContexts amongst multiple slices. Creates slices according
+   * to the provided max number of documents per slice and max number of segments per slice. Splits
+   * segments into partitions when the last argument is true.
+   *
+   * @param leaves the leaves to slice
+   * @param maxDocsPerSlice the maximum number of documents in a single slice
+   * @param maxSegmentsPerSlice the maximum number of segments in a single slice
+   * @param allowSegmentPartitions whether segments may be split into partitions according to the
+   *     provided maxDocsPerSlice argument. When <code>true</code>, if a segment holds more
+   *     documents than the provided max docs per slice, it is split into equal size partitions that
+   *     each gets its own slice assigned.
+   * @return the array of slices
    */
   public static LeafSlice[] slices(
-      List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice) {
+      List<LeafReaderContext> leaves,
+      int maxDocsPerSlice,
+      int maxSegmentsPerSlice,
+      boolean allowSegmentPartitions) {
+
     // Make a copy so we can sort:
     List<LeafReaderContext> sortedLeaves = new ArrayList<>(leaves);
 
     // Sort by maxDoc, descending:
     sortedLeaves.sort(Collections.reverseOrder(Comparator.comparingInt(l -> l.reader().maxDoc())));
+
+    if (allowSegmentPartitions) {
+      final List<List<LeafReaderContextPartition>> groupedLeafPartitions = new ArrayList<>();
+      int currentSliceNumDocs = 0;
+      List<LeafReaderContextPartition> group = null;
+      for (LeafReaderContext ctx : sortedLeaves) {
+        if (ctx.reader().maxDoc() > maxDocsPerSlice) {
+          assert group == null;
+          // if the segment does not fit in a single slice, we split it into maximum 5 partitions of
+          // equal size
+          int numSlices = Math.min(5, Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice));
+          int numDocs = ctx.reader().maxDoc() / numSlices;
+          int maxDocId = numDocs;
+          int minDocId = 0;
+          for (int i = 0; i < numSlices - 1; i++) {
+            groupedLeafPartitions.add(
+                Collections.singletonList(
+                    LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId)));
+            minDocId = maxDocId;
+            maxDocId += numDocs;
+          }
+          // the last slice gets all the remaining docs
+          groupedLeafPartitions.add(
+              Collections.singletonList(
+                  LeafReaderContextPartition.createFromAndTo(
+                      ctx, minDocId, ctx.reader().maxDoc())));
+        } else {
+          if (group == null) {
+            group = new ArrayList<>();
+            groupedLeafPartitions.add(group);
+          }
+          group.add(LeafReaderContextPartition.createForEntireSegment(ctx));
+
+          currentSliceNumDocs += ctx.reader().maxDoc();
+          // We only split a segment when it does not fit entirely in a slice. We don't partition
+          // the
+          // segment that makes the current slice (which holds multiple segments) go over
+          // maxDocsPerSlice. This means that a slice either contains multiple entire segments, or a
+          // single partition of a segment.
+          if (group.size() >= maxSegmentsPerSlice || currentSliceNumDocs > maxDocsPerSlice) {
+            group = null;
+            currentSliceNumDocs = 0;
+          }
+        }
+      }
+
+      LeafSlice[] slices = new LeafSlice[groupedLeafPartitions.size()];
+      int upto = 0;
+      for (List<LeafReaderContextPartition> currentGroup : groupedLeafPartitions) {
+        slices[upto] = new LeafSlice(currentGroup);
+        ++upto;
+      }
+      return slices;
+    }
 
     final List<List<LeafReaderContext>> groupedLeaves = new ArrayList<>();
     long docSum = 0;
@@ -380,82 +452,6 @@ public class IndexSearcher {
                   currentLeaf.stream()
                       .map(LeafReaderContextPartition::createForEntireSegment)
                       .toList()));
-      ++upto;
-    }
-
-    return slices;
-  }
-
-  /**
-   * Creates leaf slices that leverage intra-segment concurrency by splitting segments into multiple
-   * partitions according to the provided max number of documents per slice and maximum number of
-   * segments per slice. If a segment holds more documents than the provided max per slice, it gets
-   * split into equal size partitions that each gets its own slice assigned.
-   *
-   * <p>Note: this method is not yet called by the default slicing implementation {@link
-   * #slices(List)}. Certain queries that require segment-level computation ahead of time duplicate
-   * this effort across segment partitions. Once that can be shared across partitions we can safely
-   * create partitions by default and perhaps refine the slicing approach implemented in this
-   * method. For this reason segment partitions are currently only created in tests. Users can call
-   * this method at their own risk.
-   *
-   * @lucene.experimental
-   */
-  public static LeafSlice[] slicesWithPartitions(
-      List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice) {
-
-    // Make a copy so we can sort:
-    List<LeafReaderContext> sortedLeaves = new ArrayList<>(leaves);
-
-    // Sort by maxDoc, descending:
-    sortedLeaves.sort(Collections.reverseOrder(Comparator.comparingInt(l -> l.reader().maxDoc())));
-
-    final List<List<LeafReaderContextPartition>> groupedLeafPartitions = new ArrayList<>();
-    int currentSliceNumDocs = 0;
-    List<LeafReaderContextPartition> group = null;
-    for (LeafReaderContext ctx : sortedLeaves) {
-      if (ctx.reader().maxDoc() > maxDocsPerSlice) {
-        assert group == null;
-        // if the segment does not fit in a single slice, we split it into maximum 5 partitions of
-        // equal size
-        int numSlices = Math.min(5, Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice));
-        int numDocs = ctx.reader().maxDoc() / numSlices;
-        int maxDocId = numDocs;
-        int minDocId = 0;
-        for (int i = 0; i < numSlices - 1; i++) {
-          groupedLeafPartitions.add(
-              Collections.singletonList(
-                  LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId)));
-          minDocId = maxDocId;
-          maxDocId += numDocs;
-        }
-        // the last slice gets all the remaining docs
-        groupedLeafPartitions.add(
-            Collections.singletonList(
-                LeafReaderContextPartition.createFromAndTo(ctx, minDocId, ctx.reader().maxDoc())));
-      } else {
-        if (group == null) {
-          group = new ArrayList<>();
-          groupedLeafPartitions.add(group);
-        }
-        group.add(LeafReaderContextPartition.createForEntireSegment(ctx));
-
-        currentSliceNumDocs += ctx.reader().maxDoc();
-        // We only split a segment when it does not fit entirely in a slice. We don't partition the
-        // segment that makes the current slice (which holds multiple segments) go over
-        // maxDocsPerSlice. This means that a slice either contains multiple entire segments, or a
-        // single partition of a segment.
-        if (group.size() >= maxSegmentsPerSlice || currentSliceNumDocs > maxDocsPerSlice) {
-          group = null;
-          currentSliceNumDocs = 0;
-        }
-      }
-    }
-
-    LeafSlice[] slices = new LeafSlice[groupedLeafPartitions.size()];
-    int upto = 0;
-    for (List<LeafReaderContextPartition> currentGroup : groupedLeafPartitions) {
-      slices[upto] = new LeafSlice(currentGroup);
       ++upto;
     }
 
@@ -1051,7 +1047,7 @@ public class IndexSearcher {
    * <p>A partition instance can be created via {@link #createForEntireSegment(LeafReaderContext)},
    * in which case it will target the entire provided {@link LeafReaderContext}. A true partition of
    * a segment can be created via {@link #createFromAndTo(LeafReaderContext, int, int)} providing
-   * the minimum doc id (including) to search as well as the max doc id (not including).
+   * the minimum doc id (including) to search as well as the max doc id (excluding).
    *
    * @lucene.experimental
    */

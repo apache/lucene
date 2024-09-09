@@ -32,10 +32,9 @@ import org.apache.lucene.index.LeafReaderContext;
  *       fully collected.
  * </ul>
  *
- * <p><strong>Note:</strong> Separate {@link Collector} instances returned by {@link
- * #newCollector()} may be requested a {@link LeafCollector} via {@link
- * Collector#getLeafCollector(LeafReaderContext)} for the same {@link
- * org.apache.lucene.index.LeafReaderContext} instance. Any computation or logic that needs to
+ * <p><strong>Note:</strong> Multiple {@link LeafCollector}s may be requested for the same {@link
+ * LeafReaderContext} via {@link Collector#getLeafCollector(LeafReaderContext)} across the different
+ * {@link Collector}s returned by {@link #newCollector()}. Any computation or logic that needs to
  * happen once per segment requires specific handling in the collector manager implementation,
  * because the collection of an entire segment may be split across threads.
  *
