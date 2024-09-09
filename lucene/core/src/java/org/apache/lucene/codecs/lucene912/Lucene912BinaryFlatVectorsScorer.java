@@ -174,7 +174,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
     private final int discretizedDimensions;
     private final float sqrtDimensions;
-    private final float maxX1;
 
     public BinarizedRandomVectorScorer(
         BinaryQueryVector[] queryVectors,
@@ -188,7 +187,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       this.discretizedDimensions = discretizedDimensions;
       // FIXME: precompute this once?
       this.sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
-      this.maxX1 = (float) (1.9 / Utils.constSqrt(discretizedDimensions - 1.0));
     }
 
     // FIXME: utils class; pull this out
@@ -217,7 +215,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       if (similarityFunction == EUCLIDEAN) {
         return euclideanScore(
             targetOrd,
-            maxX1,
             sqrtDimensions,
             quantizedQuery,
             distanceToCentroid,
@@ -259,6 +256,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       // TODO: this is useful for mandatory rescoring by accounting for bias
       //   However, for just oversampling & rescoring, it isn't strictly useful.
+      //   We should consider utilizing this bias in the future to determine which vectors need to
+      // be rescored
       // float ooqSqr = (float) Math.pow(ooq, 2);
       // float errorBound = (float) (normVmC * normOC * (maxX1 * Math.sqrt((1 - ooqSqr) / ooqSqr)));
       // float score = dist - errorBound;
@@ -270,7 +269,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
     private float euclideanScore(
         int targetOrd,
-        float maxX1,
         float sqrtDimensions,
         byte[] quantizedQuery,
         float distanceToCentroid,
@@ -286,8 +284,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float x0 = targetVectors.getVectorMagnitude(targetOrd);
       float sqrX = targetDistToC * targetDistToC;
       double xX0 = targetDistToC / x0;
-      float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
-      float error = 2.0f * maxX1 * projectionDist;
+
       // TODO maybe store?
       float xbSum = (float) BQVectorUtils.popcount(binaryCode);
       float factorPPC =
@@ -295,17 +292,23 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float factorIP = (float) (-2.0 / sqrtDimensions * xX0);
 
       long qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
-      float y = (float) Math.sqrt(distanceToCentroid);
       float dist =
           sqrX
               + distanceToCentroid
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
-      float errorBound = y * error;
       float score = dist;
-      if (Float.isFinite(errorBound)) {
-        score = dist + errorBound;
-      }
+      // TODO: this is useful for mandatory rescoring by accounting for bias
+      //   However, for just oversampling & rescoring, it isn't strictly useful.
+      //   We should consider utilizing this bias in the future to determine which vectors need to
+      // be rescored
+      // float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
+      // float error = 2.0f * maxX1 * projectionDist;
+      // float y = (float) Math.sqrt(distanceToCentroid);
+      // float errorBound = y * error;
+      // if (Float.isFinite(errorBound)) {
+      //  score = dist + errorBound;
+      // }
       return Math.max(1 / (1f + score), 0);
     }
   }
