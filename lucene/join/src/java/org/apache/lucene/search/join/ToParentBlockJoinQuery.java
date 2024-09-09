@@ -164,6 +164,9 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public BulkScorer bulkScorer() throws IOException {
+          if (scoreMode == ScoreMode.None) {
+            return super.bulkScorer();
+          }
           return new BlockJoinBulkScorer(childScorerSupplier.bulkScorer(), parents, scoreMode);
         }
 
@@ -413,9 +416,7 @@ public class ToParentBlockJoinQuery extends Query {
       }
 
       float score = 0;
-      if (scoreMode == ScoreMode.None) {
-        childApproximation.advance(parentApproximation.docID());
-      } else {
+      if (scoreMode != ScoreMode.None) {
         parentScore.reset(childScorer);
         while (childApproximation.nextDoc() < parentApproximation.docID()) {
           if (childTwoPhase == null || childTwoPhase.matches()) {
