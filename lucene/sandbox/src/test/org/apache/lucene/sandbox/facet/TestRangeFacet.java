@@ -1555,7 +1555,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     IndexReader r = writer.getReader();
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
