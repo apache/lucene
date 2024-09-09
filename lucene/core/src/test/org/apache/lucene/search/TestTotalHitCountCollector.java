@@ -43,15 +43,8 @@ public class TestTotalHitCountCollector extends LuceneTestCase {
 
     Concurrency concurrency = RandomizedTest.randomFrom(Concurrency.values());
     IndexSearcher searcher = newSearcher(reader, true, true, concurrency);
-    final TotalHitCountCollectorManager collectorManager;
-    if (concurrency == Concurrency.INTRA_SEGMENT) {
-      collectorManager = new TotalHitCountCollectorManager(true);
-    } else {
-      collectorManager =
-          random().nextBoolean()
-              ? new TotalHitCountCollectorManager(random().nextBoolean())
-              : new TotalHitCountCollectorManager();
-    }
+    final TotalHitCountCollectorManager collectorManager =
+        new TotalHitCountCollectorManager(searcher.getSlices());
     int totalHits = searcher.search(new MatchAllDocsQuery(), collectorManager);
     assertEquals(5, totalHits);
 

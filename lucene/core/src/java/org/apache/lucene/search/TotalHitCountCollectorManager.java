@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,28 +39,26 @@ public class TotalHitCountCollectorManager
   private final boolean hasSegmentPartitions;
 
   /**
-   * Creates a new total hit count collector manager. The collectors returned by {@link
-   * #newCollector()} don't support intra-segment concurrency. Use the other constructor if segments
-   * partitions are being searched.
+   * Creates a new total hit count collector manager, providing the array of leaf slices that search
+   * targets, which can be retrieved via {@link IndexSearcher#getSlices()} for the searcher.
+   *
+   * @param leafSlices the slices that the searcher targets. Used to optimize the collection
+   *     depending on whether segments have been partitioned into partitions or not.
    */
-  public TotalHitCountCollectorManager() {
-    this(false);
+  public TotalHitCountCollectorManager(IndexSearcher.LeafSlice[] leafSlices) {
+    this.hasSegmentPartitions = hasSegmentPartitions(leafSlices);
   }
 
-  /**
-   * Creates a new total hit count collector manager, providing a flag that signals whether segment
-   * partitions are being searched, in which case the different collector need to share state to
-   * ensure consistent behaviour across partitions of the same segment. There are segment partitions
-   * when the {@link IndexSearcher#slices(List)} methods returns leaf slices that target leaf reader
-   * partitions.
-   *
-   * @see IndexSearcher#slices(List)
-   * @see org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition
-   * @param hasSegmentPartitions whether the collector manager needs to create collectors that
-   *     support searching segment partitions in parallel (via intra-segment search concurrency)
-   */
-  public TotalHitCountCollectorManager(boolean hasSegmentPartitions) {
-    this.hasSegmentPartitions = hasSegmentPartitions;
+  private static boolean hasSegmentPartitions(IndexSearcher.LeafSlice[] leafSlices) {
+    for (IndexSearcher.LeafSlice leafSlice : leafSlices) {
+      for (IndexSearcher.LeafReaderContextPartition leafPartition : leafSlice.partitions) {
+        if (leafPartition.minDocId > 0
+            || leafPartition.maxDocId < leafPartition.ctx.reader().maxDoc()) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**
