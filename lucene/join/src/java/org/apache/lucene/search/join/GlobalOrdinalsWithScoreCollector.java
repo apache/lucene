@@ -84,6 +84,42 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
 
   protected abstract float unset();
 
+  /**
+   * Accumulates scores, occurrences, and collected ordinals from another collector of the same
+   * type.
+   *
+   * @param other the other
+   */
+  void combine(GlobalOrdinalsWithScoreCollector other) {
+    assert other.getClass() == this.getClass();
+    if (occurrences != null) {
+      for (int i = 0; i < occurrences.blocks.length; i++) {
+        if (other.occurrences.blocks[i] != null) {
+          if (occurrences.blocks[i] == null) {
+            occurrences.blocks[i] = other.occurrences.blocks[i];
+          } else {
+            for (int j = 0; j < occurrences.blocks[i].length; j++) {
+              occurrences.blocks[i][j] += other.occurrences.blocks[i][j];
+            }
+          }
+        }
+      }
+    }
+    if (scores != null) {
+      for (int i = 0; i < scores.blocks.length; i++) {
+        if (other.scores.blocks[i] != null) {
+          for (int j = 0; j < other.scores.blocks[i].length; j++) {
+            if (other.scores.blocks[i][j] != other.scores.unset) {
+              int globalOrd = arraySize * i + j;
+              doScore(globalOrd, scores.getScore(globalOrd), other.scores.blocks[i][j]);
+            }
+          }
+        }
+      }
+    }
+    collectedOrds.or(other.collectedOrds);
+  }
+
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
     SortedDocValues docTermOrds = DocValues.getSorted(context.reader(), field);

@@ -18,8 +18,10 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Locale;
+import java.util.function.Supplier;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
@@ -39,6 +41,7 @@ import org.apache.lucene.internal.hppc.LongFloatHashMap;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.PointInSetQuery;
@@ -47,6 +50,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.join.DocValuesTermsCollector.Function;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.LongBitSet;
 
 /**
  * Utility for query time joining.
@@ -289,7 +293,7 @@ public final class JoinUtil {
             }
           };
     }
-    fromSearcher.search(fromQuery, collector);
+    fromSearcher.search(fromQuery, CollectorManager.wrapSingleThreaded(collector));
 
     LongArrayList joinValuesList = new LongArrayList(joinValues.size());
     joinValuesList.addAll(joinValues);
@@ -409,32 +413,26 @@ public final class JoinUtil {
       final GenericTermsCollector collector)
       throws IOException {
 
-    fromSearcher.search(fromQuery, collector);
-    switch (scoreMode) {
-      case None:
-        return new TermsQuery(
-            toField,
-            collector.getCollectedTerms(),
-            fromField,
-            fromQuery,
-            fromSearcher.getTopReaderContext().id());
-      case Total:
-      case Max:
-      case Min:
-      case Avg:
-        return new TermsIncludingScoreQuery(
-            scoreMode,
-            toField,
-            multipleValuesPerDocument,
-            collector.getCollectedTerms(),
-            collector.getScoresPerTerm(),
-            fromField,
-            fromQuery,
-            fromSearcher.getTopReaderContext().id());
-      default:
-        throw new IllegalArgumentException(
-            String.format(Locale.ROOT, "Score mode %s isn't supported.", scoreMode));
-    }
+    fromSearcher.search(fromQuery, CollectorManager.wrapSingleThreaded(collector));
+    return switch (scoreMode) {
+      case None ->
+          new TermsQuery(
+              toField,
+              collector.getCollectedTerms(),
+              fromField,
+              fromQuery,
+              fromSearcher.getTopReaderContext().id());
+      case Total, Max, Min, Avg ->
+          new TermsIncludingScoreQuery(
+              scoreMode,
+              toField,
+              multipleValuesPerDocument,
+              collector.getCollectedTerms(),
+              collector.getScoresPerTerm(),
+              fromField,
+              fromQuery,
+              fromSearcher.getTopReaderContext().id());
+    };
   }
 
   /**
@@ -513,7 +511,7 @@ public final class JoinUtil {
     } else if (numSegments == 1) {
       // No need to use the ordinal map, because there is just one segment.
       ordinalMap = null;
-      LeafReader leafReader = searcher.getIndexReader().leaves().get(0).reader();
+      LeafReader leafReader = searcher.getIndexReader().leaves().getFirst().reader();
       SortedDocValues joinSortedDocValues = leafReader.getSortedDocValues(joinField);
       if (joinSortedDocValues != null) {
         valueCount = joinSortedDocValues.getValueCount();
@@ -530,31 +528,61 @@ public final class JoinUtil {
 
     final Query rewrittenFromQuery = searcher.rewrite(fromQuery);
     final Query rewrittenToQuery = searcher.rewrite(toQuery);
-    GlobalOrdinalsWithScoreCollector globalOrdinalsWithScoreCollector;
+    Supplier<GlobalOrdinalsWithScoreCollector> globalOrdinalsWithScoreCollector;
+    final OrdinalMap finalOrdinalMap = ordinalMap;
     switch (scoreMode) {
       case Total:
         globalOrdinalsWithScoreCollector =
-            new GlobalOrdinalsWithScoreCollector.Sum(joinField, ordinalMap, valueCount, min, max);
+            () ->
+                new GlobalOrdinalsWithScoreCollector.Sum(
+                    joinField, finalOrdinalMap, valueCount, min, max);
         break;
       case Min:
         globalOrdinalsWithScoreCollector =
-            new GlobalOrdinalsWithScoreCollector.Min(joinField, ordinalMap, valueCount, min, max);
+            () ->
+                new GlobalOrdinalsWithScoreCollector.Min(
+                    joinField, finalOrdinalMap, valueCount, min, max);
         break;
       case Max:
         globalOrdinalsWithScoreCollector =
-            new GlobalOrdinalsWithScoreCollector.Max(joinField, ordinalMap, valueCount, min, max);
+            () ->
+                new GlobalOrdinalsWithScoreCollector.Max(
+                    joinField, finalOrdinalMap, valueCount, min, max);
         break;
       case Avg:
         globalOrdinalsWithScoreCollector =
-            new GlobalOrdinalsWithScoreCollector.Avg(joinField, ordinalMap, valueCount, min, max);
+            () ->
+                new GlobalOrdinalsWithScoreCollector.Avg(
+                    joinField, finalOrdinalMap, valueCount, min, max);
         break;
       case None:
         if (min <= 1 && max == Integer.MAX_VALUE) {
-          GlobalOrdinalsCollector globalOrdinalsCollector =
-              new GlobalOrdinalsCollector(joinField, ordinalMap, valueCount);
-          searcher.search(rewrittenFromQuery, globalOrdinalsCollector);
+          LongBitSet collectedOrdinals =
+              searcher.search(
+                  rewrittenFromQuery,
+                  new CollectorManager<GlobalOrdinalsCollector, LongBitSet>() {
+                    @Override
+                    public GlobalOrdinalsCollector newCollector() throws IOException {
+                      return new GlobalOrdinalsCollector(joinField, finalOrdinalMap, valueCount);
+                    }
+
+                    @Override
+                    public LongBitSet reduce(Collection<GlobalOrdinalsCollector> collectors)
+                        throws IOException {
+                      LongBitSet collectedOrds = null;
+                      Iterator<GlobalOrdinalsCollector> iterator = collectors.iterator();
+                      while (iterator.hasNext()) {
+                        if (collectedOrds == null) {
+                          collectedOrds = iterator.next().getCollectorOrdinals();
+                        } else {
+                          collectedOrds.or(iterator.next().getCollectorOrdinals());
+                        }
+                      }
+                      return collectedOrds;
+                    }
+                  });
           return new GlobalOrdinalsQuery(
-              globalOrdinalsCollector.getCollectorOrdinals(),
+              collectedOrdinals,
               joinField,
               ordinalMap,
               rewrittenToQuery,
@@ -562,17 +590,42 @@ public final class JoinUtil {
               searcher.getTopReaderContext().id());
         } else {
           globalOrdinalsWithScoreCollector =
-              new GlobalOrdinalsWithScoreCollector.NoScore(
-                  joinField, ordinalMap, valueCount, min, max);
+              () ->
+                  new GlobalOrdinalsWithScoreCollector.NoScore(
+                      joinField, finalOrdinalMap, valueCount, min, max);
           break;
         }
       default:
         throw new IllegalArgumentException(
             String.format(Locale.ROOT, "Score mode %s isn't supported.", scoreMode));
     }
-    searcher.search(rewrittenFromQuery, globalOrdinalsWithScoreCollector);
+    GlobalOrdinalsWithScoreCollector reducedCollector =
+        searcher.search(
+            rewrittenFromQuery,
+            new CollectorManager<
+                GlobalOrdinalsWithScoreCollector, GlobalOrdinalsWithScoreCollector>() {
+              @Override
+              public GlobalOrdinalsWithScoreCollector newCollector() throws IOException {
+                return globalOrdinalsWithScoreCollector.get();
+              }
+
+              @Override
+              public GlobalOrdinalsWithScoreCollector reduce(
+                  Collection<GlobalOrdinalsWithScoreCollector> collectors) {
+                GlobalOrdinalsWithScoreCollector firstCollector = null;
+                Iterator<GlobalOrdinalsWithScoreCollector> iterator = collectors.iterator();
+                while (iterator.hasNext()) {
+                  if (firstCollector == null) {
+                    firstCollector = iterator.next();
+                  } else {
+                    firstCollector.combine(iterator.next());
+                  }
+                }
+                return firstCollector;
+              }
+            });
     return new GlobalOrdinalsWithScoreQuery(
-        globalOrdinalsWithScoreCollector,
+        reducedCollector,
         scoreMode,
         joinField,
         ordinalMap,
