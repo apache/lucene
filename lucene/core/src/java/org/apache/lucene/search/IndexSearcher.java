@@ -332,7 +332,8 @@ public class IndexSearcher {
    * <p>It is possible to leverage intra-segment concurrency by splitting segments into multiple
    * partitions. Such behaviour is not enabled by default as there is still a performance penalty
    * for queries that require segment-level computation ahead of time, such as points/range queries.
-   * This is an implementation limitation that we expect to improve in future releases.
+   * This is an implementation limitation that we expect to improve in future releases, see <a
+   * href="https://github.com/apache/lucene/issues/13745">the corresponding github issue</a>.
    */
   protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
     return slices(leaves, MAX_DOCS_PER_SLICE, MAX_SEGMENTS_PER_SLICE, false);
