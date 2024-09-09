@@ -116,9 +116,28 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
   private static FacetsCollector.MatchingDocs merge(
       FacetsCollector.MatchingDocs matchingDocs1, FacetsCollector.MatchingDocs matchingDocs2) {
     assert matchingDocs1.context == matchingDocs2.context;
-    if (matchingDocs1.scores != null || matchingDocs2.scores != null) {
-      throw new IllegalStateException(
-          "intra-segment concurrency not supported by FacetsCollectorManager when scores are collected");
+    final float[] scores;
+
+    // scores array is null when keepScores is true, and may be null when there are no matches for a
+    // segment partition, despite keepScores is true.
+    if (matchingDocs1.scores == null && matchingDocs2.scores == null) {
+      scores = new float[0];
+    } else {
+      if (matchingDocs2.scores == null) {
+        scores = matchingDocs1.scores;
+      } else if (matchingDocs1.scores == null) {
+        scores = matchingDocs2.scores;
+      } else {
+        int length = Math.max(matchingDocs1.scores.length, matchingDocs2.scores.length);
+        // merge the arrays if both have values, their size is bound to the highest collected docid
+        scores = new float[length];
+        for (int i = 0; i < length; i++) {
+          float firstScore = i < matchingDocs1.scores.length ? matchingDocs1.scores[i] : 0;
+          float secondScore = i < matchingDocs2.scores.length ? matchingDocs2.scores[i] : 0;
+          assert (firstScore > 0 && secondScore > 0) == false;
+          scores[i] = Math.max(firstScore, secondScore);
+        }
+      }
     }
     DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(matchingDocs1.context.reader().maxDoc());
     try {
@@ -129,7 +148,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
     }
     int totalHits = matchingDocs1.totalHits + matchingDocs2.totalHits;
     return new FacetsCollector.MatchingDocs(
-        matchingDocs1.context, docIdSetBuilder.build(), totalHits, null);
+        matchingDocs1.context, docIdSetBuilder.build(), totalHits, scores);
   }
 
   /**

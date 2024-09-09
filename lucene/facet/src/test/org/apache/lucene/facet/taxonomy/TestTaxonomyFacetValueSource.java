@@ -311,9 +311,8 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     BoostQuery csq = new BoostQuery(new ConstantScoreQuery(new MatchAllDocsQuery()), 2f);
 
-    IndexSearcher searcher = newSearcher(r, true, true, Concurrency.INTRA_SEGMENT);
     FacetsCollectorManager.FacetsResult facetsResult =
-        FacetsCollectorManager.search(searcher, csq, 10, new FacetsCollectorManager(true));
+        FacetsCollectorManager.search(newSearcher(r), csq, 10, new FacetsCollectorManager(true));
     TopDocs td = facetsResult.topDocs();
     FacetsCollector fc = facetsResult.facetsCollector();
     assertTrue(fc.getKeepScores());
