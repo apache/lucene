@@ -803,4 +803,4 @@ both `TopDocs` as well as facets results included in a reduced `FacetsCollector`
 ### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter 
 
 `collector.class` used to allow users to load a custom collector implementation. `collector.manager.class` 
-replaces it by allowing users to load a custom collector manager instead. (Luca Cavanna)
+replaces it by allowing users to load a custom collector manager instead.
