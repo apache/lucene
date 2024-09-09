@@ -316,6 +316,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
         FacetsCollectorManager.search(searcher, csq, 10, new FacetsCollectorManager(true));
     TopDocs td = facetsResult.topDocs();
     FacetsCollector fc = facetsResult.facetsCollector();
+    assertTrue(fc.getKeepScores());
 
     // Test SUM:
     Facets facets =
@@ -412,6 +413,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     FacetsCollector fc =
         FacetsCollectorManager.search(newSearcher(r), q, 10, new FacetsCollectorManager(true))
             .facetsCollector();
+    assertTrue(fc.getKeepScores());
 
     // Test SUM:
     Facets facets =
@@ -548,6 +550,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
         FacetsCollectorManager.search(
                 newSearcher(r), new MatchAllDocsQuery(), 10, new FacetsCollectorManager(true))
             .facetsCollector();
+    assertTrue(fc.getKeepScores());
 
     Facets facets1 = getTaxonomyFacetCounts(taxoReader, config, fc);
     Facets facets2 =

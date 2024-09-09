@@ -71,12 +71,14 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
     if (collectors.size() == 1) {
       return collectors.iterator().next();
     }
-    return new ReducedFacetsCollector(collectors);
+    assert collectors.stream().allMatch(fc -> fc.getKeepScores() == keepScores);
+    return new ReducedFacetsCollector(collectors, keepScores);
   }
 
   private static class ReducedFacetsCollector extends FacetsCollector {
 
-    public ReducedFacetsCollector(final Collection<FacetsCollector> facetsCollectors) {
+    ReducedFacetsCollector(final Collection<FacetsCollector> facetsCollectors, boolean keepScores) {
+      super(keepScores);
       this.getMatchingDocs().addAll(reduceMatchingDocs(facetsCollectors));
     }
   }
