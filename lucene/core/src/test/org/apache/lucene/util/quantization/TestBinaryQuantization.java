@@ -17,10 +17,10 @@
 
 package org.apache.lucene.util.quantization;
 
-import java.util.Arrays;
-import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+
+import java.util.Random;
 
 public class TestBinaryQuantization extends LuceneTestCase {
 
@@ -310,7 +310,6 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float vDotC = corrections.vDotC();
     float cDotC = corrections.cDotC();
 
-    System.out.println(Arrays.toString(destination));
     assertEquals(5272, sumQ);
     assertEquals(-0.08603752f, lower, 0.00000001f);
     assertEquals(0.011431276f, width, 0.00000001f);
