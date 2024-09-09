@@ -56,14 +56,11 @@ public class BQVectorUtils {
     return cnt;
   }
 
-  // FIXME: divide by the norm is a pretty common operation may be able to provide a combination
-  // function that's faster
-  public static float[] divide(float[] a, float b) {
-    float[] c = new float[a.length];
+  // TODO: move to VectorUtil & vectorize?
+  public static void divideInPlace(float[] a, float b) {
     for (int j = 0; j < a.length; j++) {
-      c[j] = a[j] / b;
+      a[j] /= b;
     }
-    return c;
   }
 
   public static float[] subtract(float[] a, float[] b) {

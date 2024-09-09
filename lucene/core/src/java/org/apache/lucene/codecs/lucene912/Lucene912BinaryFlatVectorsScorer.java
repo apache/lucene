@@ -16,9 +16,14 @@
  */
 package org.apache.lucene.codecs.lucene912;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
+
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -39,11 +44,9 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
       throws IOException {
-    // FIXME: write me ... presumably we can create a supplier here without a set of query vectors;
-    // need to do that and figure out what that instantiation looks like for the Supplier
-    if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedQueryVectors) {
-      return new BinarizedRandomVectorScorerSupplier(
-          null, binarizedQueryVectors.copy(), similarityFunction);
+    if (vectorValues instanceof RandomAccessBinarizedByteVectorValues) {
+      throw new UnsupportedOperationException(
+          "getRandomVectorScorerSupplier(VectorSimilarityFunction,RandomAccessVectorValues) not implemented for binarized format");
     }
     return nonQuantizedDelegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
@@ -57,14 +60,20 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedVectors) {
       BinaryQuantizer quantizer = binarizedVectors.getQuantizer();
       float[][] centroids = binarizedVectors.getCentroids();
+      float[] cDotCs = binarizedVectors.getCentroidsDPs();
       // FIXME: precompute this once?
       int discretizedDimensions = BQVectorUtils.discretize(target.length, 64);
+      if (similarityFunction == COSINE) {
+        float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
+        VectorUtil.l2normalize(copy);
+        target = copy;
+      }
       BinaryQueryVector[] queryVectors = new BinaryQueryVector[centroids.length];
       for (int i = 0; i < centroids.length; i++) {
         // TODO: if there are many clusters, do quantizing of query lazily
         byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
         BinaryQuantizer.QueryFactors factors =
-            quantizer.quantizeForQuery(target, quantized, centroids[i]);
+            quantizer.quantizeForQuery(target, quantized, centroids[i], cDotCs[i]);
         queryVectors[i] = new BinaryQueryVector(quantized, factors);
       }
       return new BinarizedRandomVectorScorer(
@@ -130,7 +139,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         float normVmC = 0f;
         float vDotC = 0f;
         float cDotC = 0f;
-        if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+        if (similarityFunction != EUCLIDEAN) {
           normVmC = queryVectors.getNormVmC(ord, i);
           vDotC = queryVectors.getVDotC(ord, i);
           cDotC = queryVectors.getCDotC(ord, i);
@@ -205,38 +214,21 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float lower = queryVector.factors().lower();
       float width = queryVector.factors().width();
       float distanceToCentroid = queryVector.factors().distToC();
+      if (similarityFunction == EUCLIDEAN) {
+        return euclideanScore(
+            targetOrd,
+            maxX1,
+            sqrtDimensions,
+            quantizedQuery,
+            distanceToCentroid,
+            lower,
+            quantizedSum,
+            width);
+      }
 
-      return switch (similarityFunction) {
-        case VectorSimilarityFunction.EUCLIDEAN:
-        case VectorSimilarityFunction.COSINE:
-        case VectorSimilarityFunction.DOT_PRODUCT:
-          yield score(
-              targetOrd,
-              maxX1,
-              sqrtDimensions,
-              quantizedQuery,
-              distanceToCentroid,
-              lower,
-              quantizedSum,
-              width);
-        case MAXIMUM_INNER_PRODUCT:
-          float vmC = queryVector.factors().normVmC();
-          float vDotC = queryVector.factors().vDotC();
-          float cDotC = queryVector.factors().cDotC();
-          yield scoreMIP(targetOrd, quantizedQuery, width, lower, quantizedSum, vmC, vDotC, cDotC);
-      };
-    }
-
-    private float scoreMIP(
-        int targetOrd,
-        byte[] quantizedQuery,
-        float width,
-        float lower,
-        int sumQ,
-        float normVmC,
-        float vDotC,
-        float cDotC)
-        throws IOException {
+      float vmC = queryVector.factors().normVmC();
+      float vDotC = queryVector.factors().vDotC();
+      float cDotC = queryVector.factors().cDotC();
       byte[] binaryCode = targetVectors.vectorValue(targetOrd);
       float ooq = targetVectors.getOOQ(targetOrd);
       float normOC = targetVectors.getNormOC(targetOrd);
@@ -251,19 +243,24 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float estimatedDot =
           (2 * width / sqrtDimensions * qcDist
                   + 2 * lower / sqrtDimensions * xbSum
-                  - width / sqrtDimensions * sumQ
+                  - width / sqrtDimensions * quantizedSum
                   - sqrtDimensions * lower)
               / ooq;
 
-      float dist = normVmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
+      float dist = vmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
 
-      float ooqSqr = (float) Math.pow(ooq, 2);
-      float errorBound = (float) (normVmC * normOC * (maxX1 * Math.sqrt((1 - ooqSqr) / ooqSqr)));
-      float score = dist - errorBound;
-      return score > 0 ? score : 0f;
+      // TODO: this is useful for mandatory rescoring by accounting for bias
+      //   However, for just oversampling & rescoring, it isn't strictly useful.
+      // float ooqSqr = (float) Math.pow(ooq, 2);
+      // float errorBound = (float) (normVmC * normOC * (maxX1 * Math.sqrt((1 - ooqSqr) / ooqSqr)));
+      // float score = dist - errorBound;
+      if (similarityFunction == MAXIMUM_INNER_PRODUCT) {
+        return VectorUtil.scaleMaxInnerProductScore(dist);
+      }
+      return Math.max((1f + dist) / 2f, 0);
     }
 
-    private float score(
+    private float euclideanScore(
         int targetOrd,
         float maxX1,
         float sqrtDimensions,
@@ -283,6 +280,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       double xX0 = targetDistToC / x0;
       float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
       float error = 2.0f * maxX1 * projectionDist;
+      // TODO maybe store?
       float xbSum = (float) BQVectorUtils.popcount(binaryCode);
       float factorPPC =
           (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - discretizedDimensions));
@@ -296,9 +294,11 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
       float errorBound = y * error;
-      float score = dist + errorBound;
-      score = score > 0 ? score : 0f;
-      return 1 / (1f + score);
+      float score = dist;
+      if (Float.isFinite(errorBound)) {
+        score = dist + errorBound;
+      }
+      return Math.max(1 / (1f + score), 0);
     }
   }
 }

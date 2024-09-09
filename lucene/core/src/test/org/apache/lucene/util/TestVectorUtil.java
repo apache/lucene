@@ -470,7 +470,7 @@ public class TestVectorUtil extends LuceneTestCase {
     return res;
   }
 
-  static int popcount(byte[] a, int aOffset, byte[] b, int length) {
+  public static int popcount(byte[] a, int aOffset, byte[] b, int length) {
     int res = 0;
     for (int j = 0; j < length; j++) {
       int value = (a[aOffset + j] & b[j]) & 0xFF;

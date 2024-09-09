@@ -138,7 +138,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
     int binaryDims = BQVectorUtils.discretize(dimension, 64) / 8;
     int correctionsCount =
-        fieldEntry.similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT ? 3 : 2;
+        fieldEntry.similarityFunction != VectorSimilarityFunction.EUCLIDEAN ? 3 : 2;
     long numQuantizedVectorBytes =
         Math.multiplyExact(binaryDims + (Float.BYTES * correctionsCount), fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
@@ -171,6 +171,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
             fi.similarityFunction,
             vectorScorer,
             fi.centroids,
+            fi.centroidDPs,
             fi.vectorDataOffset,
             fi.vectorDataLength,
             fi.clusterOffset,
@@ -214,6 +215,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
             fi.similarityFunction,
             vectorScorer,
             fi.centroids,
+            fi.centroidDPs,
             fi.vectorDataOffset,
             fi.vectorDataLength,
             fi.clusterOffset,
@@ -334,6 +336,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
       int size,
       int numCentroids,
       float[][] centroids,
+      float[] centroidDPs,
       OrdToDocDISIReaderConfiguration ordToDocDISIReaderConfiguration) {
 
     static FieldEntry create(
@@ -349,12 +352,15 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
       int size = input.readVInt();
       final int numCentroids;
       final float[][] centroids;
+      final float[] centroidDPs;
       if (size > 0) {
         numCentroids = input.readVInt();
         centroids = new float[numCentroids][dimension];
+        centroidDPs = new float[numCentroids];
         for (int i = 0; i < numCentroids; i++) {
           float[] centroid = centroids[i];
           input.readFloats(centroid, 0, dimension);
+          centroidDPs[i] = Float.intBitsToFloat(input.readInt());
         }
         if (numCentroids > 1) {
           clusterOffset = input.readVLong();
@@ -364,6 +370,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
       } else {
         numCentroids = 0;
         centroids = null;
+        centroidDPs = null;
       }
       OrdToDocDISIReaderConfiguration conf =
           OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
@@ -379,6 +386,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
           size,
           numCentroids,
           centroids,
+          centroidDPs,
           conf);
     }
   }

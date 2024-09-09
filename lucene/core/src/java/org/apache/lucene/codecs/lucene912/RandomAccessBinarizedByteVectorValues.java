@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene912;
 
 import java.io.IOException;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
@@ -62,4 +63,16 @@ public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVecto
 
   @Override
   RandomAccessBinarizedByteVectorValues copy() throws IOException;
+
+  default float[] getCentroidsDPs() throws IOException {
+    // this only gets executed on-merge
+    float[][] centroids = getCentroids();
+    float[] cDotC = new float[centroids.length];
+    int i = 0;
+    for (float[] centroid : centroids) {
+      cDotC[i] = VectorUtil.dotProduct(centroid, centroid);
+      i++;
+    }
+    return cDotC;
+  }
 }

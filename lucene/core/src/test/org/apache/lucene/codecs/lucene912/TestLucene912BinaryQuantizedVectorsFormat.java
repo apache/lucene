@@ -171,6 +171,10 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           int descritizedDimension = BQVectorUtils.discretize(dims, 64);
           BinaryQuantizer quantizer = new BinaryQuantizer(descritizedDimension, similarityFunction);
           byte[] expectedVector = new byte[BQVectorUtils.discretize(dims, 64) / 8];
+          if (similarityFunction == VectorSimilarityFunction.COSINE) {
+            vectorValues =
+                new Lucene912BinaryQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
+          }
 
           int correctCentroidAssigns = 0;
           while (vectorValues.nextDoc() != NO_MORE_DOCS) {

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util.quantization;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
@@ -110,18 +113,17 @@ public class BinaryQuantizer {
     BQVectorUtils.subtractInPlace(paddedVector, paddedCentroid);
 
     float normOC = BQVectorUtils.norm(paddedVector);
-    float[] normOMinusC = BQVectorUtils.divide(paddedVector, normOC); // OmC / norm(OmC)
-
     packAsBinary(paddedVector, quantizedVector);
+    BQVectorUtils.divideInPlace(paddedVector, normOC); // OmC / norm(OmC)
 
-    float OOQ = computerOOQ(vector, normOMinusC, quantizedVector);
+    float OOQ = computerOOQ(vector.length, paddedVector, quantizedVector);
 
     return new SubspaceOutputMIP(OOQ, normOC, oDotC);
   }
 
-  private float computerOOQ(float[] vector, float[] normOMinusC, byte[] packedBinaryVector) {
+  private float computerOOQ(int originalLength, float[] normOMinusC, byte[] packedBinaryVector) {
     float OOQ = 0f;
-    for (int j = 0; j < vector.length / 8; j++) {
+    for (int j = 0; j < originalLength / 8; j++) {
       for (int r = 0; r < 8; r++) {
         int sign = ((packedBinaryVector[j] >> (7 - r)) & 0b00000001);
         OOQ += (normOMinusC[j * 8 + r] * (2 * sign - 1));
@@ -147,6 +149,8 @@ public class BinaryQuantizer {
   }
 
   public float[] quantizeForIndex(float[] vector, byte[] destination, float[] centroid) {
+    assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
+    assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
     assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
 
     if (this.discretizedDimensions != destination.length * 8) {
@@ -176,9 +180,7 @@ public class BinaryQuantizer {
     vector = ArrayUtil.copyArray(vector);
 
     switch (similarityFunction) {
-      case VectorSimilarityFunction.EUCLIDEAN:
-      case VectorSimilarityFunction.COSINE:
-      case VectorSimilarityFunction.DOT_PRODUCT:
+      case EUCLIDEAN:
         float distToCentroid = (float) Math.sqrt(VectorUtil.squareDistance(vector, centroid));
 
         SubspaceOutput subspaceOutput = generateSubSpace(vector, centroid, destination);
@@ -187,7 +189,9 @@ public class BinaryQuantizer {
         corrections[0] = distToCentroid;
         corrections[1] = subspaceOutput.projection();
         break;
-      case VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT:
+      case MAXIMUM_INNER_PRODUCT:
+      case COSINE:
+      case DOT_PRODUCT:
         SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid, destination);
         corrections = new float[3];
         // FIXME: quantize these values so we are passing back 1 byte values for all three of these
@@ -229,7 +233,10 @@ public class BinaryQuantizer {
       float vDotC,
       float cDotC) {}
 
-  public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
+  public QueryFactors quantizeForQuery(
+      float[] vector, byte[] destination, float[] centroid, float cDotC) {
+    assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
+    assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
     assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
 
     if (this.discretizedDimensions != (destination.length * 8) / BQSpaceUtils.B_QUERY) {
@@ -256,14 +263,14 @@ public class BinaryQuantizer {
     float distToC = VectorUtil.squareDistance(vector, centroid);
 
     // FIXME: make a copy of vector so we don't overwrite it here?
-    //  ... (could subtractInPlace but the passed vector is modified)
+    //  ... (could subtractInPlace but the passed vector is modified) <<---
     float[] vmC = BQVectorUtils.subtract(vector, centroid);
 
     // FIXME: should other similarity functions behave like MIP on query like COSINE
     float normVmC = 0f;
-    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+    if (similarityFunction != EUCLIDEAN) {
       normVmC = BQVectorUtils.norm(vmC);
-      vmC = BQVectorUtils.divide(vmC, normVmC);
+      BQVectorUtils.divideInPlace(vmC, normVmC);
     }
     float[] range = range(vmC);
     float lower = range[0];
@@ -281,10 +288,8 @@ public class BinaryQuantizer {
     BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
 
     QueryFactors factors;
-    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+    if (similarityFunction != EUCLIDEAN) {
       float vDotC = VectorUtil.dotProduct(vector, centroid);
-      // TODO we should just store this value in the metadata
-      float cDotC = VectorUtil.dotProduct(centroid, centroid);
       // FIXME: quantize the corrections as well so we store less
       factors =
           new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC, cDotC);
