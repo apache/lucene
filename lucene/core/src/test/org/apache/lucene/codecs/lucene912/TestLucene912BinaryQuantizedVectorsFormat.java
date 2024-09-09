@@ -167,14 +167,18 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           int expectedNumCentroids = Math.max(1, numVectors / numberOfVectorsPerCluster);
           int maxNumClusters = Math.max(1, numVectors / 100);
           assertEquals(centroids.length, Math.min(expectedNumCentroids, maxNumClusters));
-          int descritizedDimension = BQVectorUtils.discretize(dims, 64);
 
+          int descritizedDimension = BQVectorUtils.discretize(dims, 64);
           BinaryQuantizer quantizer = new BinaryQuantizer(descritizedDimension, similarityFunction);
           byte[] expectedVector = new byte[BQVectorUtils.discretize(dims, 64) / 8];
+
+          int correctCentroidAssigns = 0;
           while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+            int nearestCentroid = nearestCentroid(vectorValues.vectorValue(), centroids);
+            if (nearestCentroid == qvectorValues.clusterId()) {
+              correctCentroidAssigns++;
+            }
             float[] centroid = centroids[qvectorValues.clusterId()];
-            int nearest = nearestCentroid(vectorValues.vectorValue(), centroids);
-            assertEquals(nearest, qvectorValues.clusterId());
             float[] corrections =
                 quantizer.quantizeForIndex(vectorValues.vectorValue(), expectedVector, centroid);
             assertArrayEquals(expectedVector, qvectorValues.vectorValue());
@@ -182,6 +186,11 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
             for (int i = 0; i < corrections.length; i++) {
               assertEquals(corrections[i], qvectorValues.getCorrectiveTerms()[i], 0.00001f);
             }
+          }
+          // Because we recalculate centroids as the last step,
+          // it could happen that some vectors have slightly wrong centroids assigned
+          if (correctCentroidAssigns < numVectors * 0.9) {
+            fail("Centroids were not assigned correctly");
           }
         }
       }
