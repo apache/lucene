@@ -366,10 +366,14 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         }
 
         {
+          // Doc 16 is returned because MaxScoreBulkScorer scores assuming A will match in doc 13,
+          // leading to a potential max score of 6. By the time it determines that A doesn't match,
+          // scoring is complete and thus there is no advantage to not collecting the doc.
           Map<Integer, Float> expectedScores =
               Map.of(
                   2, 6.0f,
-                  10, 10.0f);
+                  10, 10.0f,
+                  16, 5.0f);
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
