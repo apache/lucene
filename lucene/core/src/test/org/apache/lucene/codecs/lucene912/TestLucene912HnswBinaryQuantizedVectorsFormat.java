@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene912;
 import static java.lang.String.format;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -32,9 +33,11 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -74,6 +77,31 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
     var memSegScorer =
         format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
     assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
+  }
+
+  public void testSingleVectorCase() throws Exception {
+    float[] vector = randomVector(random().nextInt(12, 500));
+    for (VectorSimilarityFunction similarityFunction : VectorSimilarityFunction.values()) {
+      try (Directory dir = newDirectory();
+          IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField("f", vector, similarityFunction));
+        w.addDocument(doc);
+        w.commit();
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          LeafReader r = getOnlyLeafReader(reader);
+          FloatVectorValues vectorValues = r.getFloatVectorValues("f");
+          assert (vectorValues.size() == 1);
+          while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+            assertArrayEquals(vector, vectorValues.vectorValue(), 0.00001f);
+          }
+          TopDocs td =
+              r.searchNearestVectors("f", randomVector(vector.length), 1, null, Integer.MAX_VALUE);
+          assertEquals(1, td.totalHits.value);
+          assertTrue(td.scoreDocs[0].score >= 0);
+        }
+      }
+    }
   }
 
   public void testLimits() {

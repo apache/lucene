@@ -239,15 +239,23 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       // FIXME: pre-compute these only once for each target vector
       //  ... pull this out or use a similar cache mechanism as do in score
       float xbSum = (float) BQVectorUtils.popcount(binaryCode);
-
-      float estimatedDot =
-          (2 * width / sqrtDimensions * qcDist
-                  + 2 * lower / sqrtDimensions * xbSum
-                  - width / sqrtDimensions * quantizedSum
-                  - sqrtDimensions * lower)
-              / ooq;
-
-      float dist = vmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
+      final float dist;
+      // If ||o-c|| == 0, so, it's ok to throw the rest of the equation away
+      // and simply use `oDotC + vDotC - cDotC` as centroid == doc vector
+      if (normOC == 0 || ooq == 0) {
+        dist = oDotC + vDotC - cDotC;
+      } else {
+        // If ||o-c|| != 0, we should assume that `ooq` is finite
+        assert Float.isFinite(ooq);
+        float estimatedDot =
+            (2 * width / sqrtDimensions * qcDist
+                    + 2 * lower / sqrtDimensions * xbSum
+                    - width / sqrtDimensions * quantizedSum
+                    - sqrtDimensions * lower)
+                / ooq;
+        dist = vmC * normOC * estimatedDot + oDotC + vDotC - cDotC;
+      }
+      assert Float.isFinite(dist);
 
       // TODO: this is useful for mandatory rescoring by accounting for bias
       //   However, for just oversampling & rescoring, it isn't strictly useful.
