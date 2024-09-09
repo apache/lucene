@@ -20,6 +20,7 @@ package org.apache.lucene.util.quantization;
 import java.util.Arrays;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 
 public class TestBinaryQuantization extends LuceneTestCase {
 
@@ -61,56 +62,57 @@ public class TestBinaryQuantization extends LuceneTestCase {
   }
 
   public void testQuantizeForQuery() {
-    int dimensions = random().nextInt(1, 4097);
-    int discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
+      int dimensions = random().nextInt(1, 4097);
+      int discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
 
-    int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
-    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
+      int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
+      VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
 
-    BinaryQuantizer quantizer = new BinaryQuantizer(discretizedDimensions, similarityFunction);
+      BinaryQuantizer quantizer = new BinaryQuantizer(discretizedDimensions, similarityFunction);
 
-    float[] centroid = new float[dimensions];
-    for (int i = 0; i < dimensions; i++) {
-      centroid[i] = random().nextFloat(-50f, 50f);
-    }
+      float[] centroid = new float[dimensions];
+      for (int i = 0; i < dimensions; i++) {
+          centroid[i] = random().nextFloat(-50f, 50f);
+      }
 
-    float[] vector = new float[dimensions];
-    for (int i = 0; i < dimensions; i++) {
-      vector[i] = random().nextFloat(-50f, 50f);
-    }
+      float[] vector = new float[dimensions];
+      for (int i = 0; i < dimensions; i++) {
+          vector[i] = random().nextFloat(-50f, 50f);
+      }
 
-    byte[] destination = new byte[discretizedDimensions / 8 * BQSpaceUtils.B_QUERY];
-    BinaryQuantizer.QueryFactors corrections =
-        quantizer.quantizeForQuery(vector, destination, centroid);
+      byte[] destination = new byte[discretizedDimensions / 8 * BQSpaceUtils.B_QUERY];
+      float cDotC = 0;
+      BinaryQuantizer.QueryFactors corrections =
+              quantizer.quantizeForQuery(vector, destination, centroid, cDotC);
 
-    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
-      int sumQ = corrections.quantizedSum();
-      float distToC = corrections.distToC();
-      float lower = corrections.lower();
-      float width = corrections.width();
-      float normVmC = corrections.normVmC();
-      float vDotC = corrections.vDotC();
-      float cDotC = corrections.cDotC();
-      assertTrue(sumQ >= 0);
-      assertTrue(distToC >= 0);
-      assertFalse(Float.isNaN(lower));
-      assertTrue(width >= 0);
-      assertTrue(normVmC >= 0);
-      assertFalse(Float.isNaN(vDotC));
-      assertTrue(cDotC >= 0);
-    } else {
-      int sumQ = corrections.quantizedSum();
-      float distToC = corrections.distToC();
-      float lower = corrections.lower();
-      float width = corrections.width();
-      assertTrue(sumQ >= 0);
-      assertTrue(distToC >= 0);
-      assertFalse(Float.isNaN(lower));
-      assertTrue(width >= 0);
-      assertEquals(corrections.normVmC(), 0.0f, 0.01f);
-      assertEquals(corrections.vDotC(), 0.0f, 0.01f);
-      assertEquals(corrections.cDotC(), 0.0f, 0.01f);
-    }
+      if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+          int sumQ = corrections.quantizedSum();
+          float distToC = corrections.distToC();
+          float lower = corrections.lower();
+          float width = corrections.width();
+          float normVmC = corrections.normVmC();
+          float vDotC = corrections.vDotC();
+          cDotC = corrections.cDotC();
+          assertTrue(sumQ >= 0);
+          assertTrue(distToC >= 0);
+          assertFalse(Float.isNaN(lower));
+          assertTrue(width >= 0);
+          assertTrue(normVmC >= 0);
+          assertFalse(Float.isNaN(vDotC));
+          assertTrue(cDotC >= 0);
+      } else {
+          int sumQ = corrections.quantizedSum();
+          float distToC = corrections.distToC();
+          float lower = corrections.lower();
+          float width = corrections.width();
+          assertTrue(sumQ >= 0);
+          assertTrue(distToC >= 0);
+          assertFalse(Float.isNaN(lower));
+          assertTrue(width >= 0);
+          assertEquals(corrections.normVmC(), 0.0f, 0.01f);
+          assertEquals(corrections.vDotC(), 0.0f, 0.01f);
+          assertEquals(corrections.cDotC(), 0.0f, 0.01f);
+      }
   }
 
   public void testQuantizeForIndexEuclidean() {
@@ -200,8 +202,9 @@ public class TestBinaryQuantization extends LuceneTestCase {
           33.582f, 35.997f, 33.528f, 30.369f, 36.955f, 21.23f, 15.2f, 30.252f, 34.56f, 22.295f,
           29.413f, 16.576f, 11.226f, 10.754f, 12.936f, 15.525f, 15.868f, 16.43f
         };
+    float cDotC = VectorUtil.dotProduct(centroid, centroid);
     BinaryQuantizer.QueryFactors corrections =
-        quantizer.quantizeForQuery(vector, destination, centroid);
+        quantizer.quantizeForQuery(vector, destination, centroid, cDotC);
 
     int sumQ = corrections.quantizedSum();
     float lower = corrections.lower();
@@ -600,53 +603,54 @@ public class TestBinaryQuantization extends LuceneTestCase {
   }
 
   public void testQuantizeForQueryMIP() {
-    int dimensions = 768;
+      int dimensions = 768;
 
-    BinaryQuantizer quantizer =
-        new BinaryQuantizer(dimensions, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
-    float[] vector = mipVectorToQuery;
-    byte[] destination = new byte[dimensions / 8 * BQSpaceUtils.B_QUERY];
-    float[] centroid = mipCentroid;
-    BinaryQuantizer.QueryFactors corrections =
-        quantizer.quantizeForQuery(vector, destination, centroid);
+      BinaryQuantizer quantizer =
+              new BinaryQuantizer(dimensions, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+      float[] vector = mipVectorToQuery;
+      byte[] destination = new byte[dimensions / 8 * BQSpaceUtils.B_QUERY];
+      float[] centroid = mipCentroid;
+      float cDotC = 0;
+      BinaryQuantizer.QueryFactors corrections =
+              quantizer.quantizeForQuery(vector, destination, centroid, cDotC);
 
-    int sumQ = corrections.quantizedSum();
-    float lower = corrections.lower();
-    float width = corrections.width();
-    float normVmC = corrections.normVmC();
-    float vDotC = corrections.vDotC();
-    float cDotC = corrections.cDotC();
+      int sumQ = corrections.quantizedSum();
+      float lower = corrections.lower();
+      float width = corrections.width();
+      float normVmC = corrections.normVmC();
+      float vDotC = corrections.vDotC();
+      cDotC = corrections.cDotC();
 
-    System.out.println(Arrays.toString(destination));
-    assertEquals(4910, sumQ);
-    assertEquals(-0.10079563f, lower, 0.00000001f);
-    assertEquals(0.014609014f, width, 0.00000001f);
-    assertEquals(9.766798f, normVmC, 0.000001f);
-    assertEquals(133.56123f, vDotC, 0.0001f);
-    assertEquals(132.20227f, cDotC, 0.0001f);
-    assertArrayEquals(
-        new byte[] {
-          63, -43, -39, -113, -106, -127, 77, -27, 86, -111, -89, -39, -17, -74, 42, -122, -24, -5,
-          88, 26, 89, 91, -103, -107, -58, -4, 69, -55, -99, -14, -104, 83, -90, -46, -92, 22, 28,
-          -85, 49, -54, -9, -97, 38, -81, 60, 110, 66, -42, 46, -107, -95, -72, -38, -115, 67, -74,
-          -67, -37, -99, 114, 35, -68, 64, 118, -50, 46, 53, -46, -90, 50, 46, 20, 121, -107, -44,
-          -54, -94, 6, 116, -84, 28, -18, -109, -124, -108, -103, -124, -106, 13, -76, -75, 4, -70,
-          -119, 123, -84, -77, -26, -34, 80, -102, 10, -43, 121, -13, 80, -36, -26, -6, 65, -126,
-          106, 116, -75, 77, 106, -19, 6, 38, -75, 2, -17, 119, 101, 7, -81, -28, -94, -71, 54, -43,
-          -88, -111, -95, -102, -57, 78, -66, -12, -20, 75, -104, -127, -116, 49, -72, 56, -99, 114,
-          38, 7, -2, -74, -43, 10, -78, -68, 72, 27, -88, -47, -107, 82, 78, 52, -2, -106, -112, 67,
-          24, 3, -30, -120, -48, -36, 60, -72, 42, -89, -86, -17, -100, 50, 84, 49, 117, 58, -109,
-          63, -45, -12, 8, -71, -8, 52, -100, -72, -20, 8, 109, 19, -103, -17, -5, -34, -26, 31, 42,
-          -123, -59, -20, 60, -33, 60, -24, -44, -81, 52, 122, 127, 63, -34, 123, -9, 59, -34, 74,
-          -29, -100, 2, -56, -97, -18, 11, -10, 127, 29, -38, 59, -52, 61, -86, 112, -28, -108, -90,
-          68, -2, 61, -97, 106, 114, -9, -8, 50, -18, -5, -40, 90, -37, 53, 32, 50, 112, 121, 23,
-          81, -16, 96, -102, -68, -67, -2, 45, -22, -34, -36, 84, -71, -47, 47, -1, -47, -10, -78,
-          -15, -91, -51, 70, 15, 67, 99, 71, 21, -93, -110, -20, 38, -112, 4, 1, 25, -32, -47, 26,
-          26, 18, -63, 0, -63, 18, 10, 80, 74, -123, 0, -64, 0, -128, 8, -60, 33, -71, 28, 98, -4,
-          53, 8, 17, -96, 9, 0, -30, 5, -108, 33, 66, 69, -106, 2, 73, 72, -72, 1, -64, 32, -107,
-          13, 8, 7, -19, 17, 0, 33, -91, 32, -54, -47, 73, 11, -124, -32, -82, 13, 21, 37, 3, 66, 1,
-          -47, 16, 1, 35, -94, 64, 99, -46, 1, 12, 65, 77, 14, 10, 18
-        },
-        destination);
+      System.out.println(Arrays.toString(destination));
+      assertEquals(4910, sumQ);
+      assertEquals(-0.10079563f, lower, 0.00000001f);
+      assertEquals(0.014609014f, width, 0.00000001f);
+      assertEquals(9.766798f, normVmC, 0.000001f);
+      assertEquals(133.56123f, vDotC, 0.0001f);
+      assertEquals(132.20227f, cDotC, 0.0001f);
+      assertArrayEquals(
+              new byte[]{
+                      63, -43, -39, -113, -106, -127, 77, -27, 86, -111, -89, -39, -17, -74, 42, -122, -24, -5,
+                      88, 26, 89, 91, -103, -107, -58, -4, 69, -55, -99, -14, -104, 83, -90, -46, -92, 22, 28,
+                      -85, 49, -54, -9, -97, 38, -81, 60, 110, 66, -42, 46, -107, -95, -72, -38, -115, 67, -74,
+                      -67, -37, -99, 114, 35, -68, 64, 118, -50, 46, 53, -46, -90, 50, 46, 20, 121, -107, -44,
+                      -54, -94, 6, 116, -84, 28, -18, -109, -124, -108, -103, -124, -106, 13, -76, -75, 4, -70,
+                      -119, 123, -84, -77, -26, -34, 80, -102, 10, -43, 121, -13, 80, -36, -26, -6, 65, -126,
+                      106, 116, -75, 77, 106, -19, 6, 38, -75, 2, -17, 119, 101, 7, -81, -28, -94, -71, 54, -43,
+                      -88, -111, -95, -102, -57, 78, -66, -12, -20, 75, -104, -127, -116, 49, -72, 56, -99, 114,
+                      38, 7, -2, -74, -43, 10, -78, -68, 72, 27, -88, -47, -107, 82, 78, 52, -2, -106, -112, 67,
+                      24, 3, -30, -120, -48, -36, 60, -72, 42, -89, -86, -17, -100, 50, 84, 49, 117, 58, -109,
+                      63, -45, -12, 8, -71, -8, 52, -100, -72, -20, 8, 109, 19, -103, -17, -5, -34, -26, 31, 42,
+                      -123, -59, -20, 60, -33, 60, -24, -44, -81, 52, 122, 127, 63, -34, 123, -9, 59, -34, 74,
+                      -29, -100, 2, -56, -97, -18, 11, -10, 127, 29, -38, 59, -52, 61, -86, 112, -28, -108, -90,
+                      68, -2, 61, -97, 106, 114, -9, -8, 50, -18, -5, -40, 90, -37, 53, 32, 50, 112, 121, 23,
+                      81, -16, 96, -102, -68, -67, -2, 45, -22, -34, -36, 84, -71, -47, 47, -1, -47, -10, -78,
+                      -15, -91, -51, 70, 15, 67, 99, 71, 21, -93, -110, -20, 38, -112, 4, 1, 25, -32, -47, 26,
+                      26, 18, -63, 0, -63, 18, 10, 80, 74, -123, 0, -64, 0, -128, 8, -60, 33, -71, 28, 98, -4,
+                      53, 8, 17, -96, 9, 0, -30, 5, -108, 33, 66, 69, -106, 2, 73, 72, -72, 1, -64, 32, -107,
+                      13, 8, 7, -19, 17, 0, 33, -91, 32, -54, -47, 73, 11, -124, -32, -82, 13, 21, 37, 3, 66, 1,
+                      -47, 16, 1, 35, -94, 64, 99, -46, 1, 12, 65, 77, 14, 10, 18
+              },
+              destination);
   }
 }

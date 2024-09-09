@@ -229,7 +229,7 @@ public class BinaryQuantizer {
       float vDotC,
       float cDotC) {}
 
-  public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
+  public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid, float cDotC) {
     assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
 
     if (this.discretizedDimensions != (destination.length * 8) / BQSpaceUtils.B_QUERY) {
@@ -256,7 +256,7 @@ public class BinaryQuantizer {
     float distToC = VectorUtil.squareDistance(vector, centroid);
 
     // FIXME: make a copy of vector so we don't overwrite it here?
-    //  ... (could subtractInPlace but the passed vector is modified)
+    //  ... (could subtractInPlace but the passed vector is modified) <<---
     float[] vmC = BQVectorUtils.subtract(vector, centroid);
 
     // FIXME: should other similarity functions behave like MIP on query like COSINE
@@ -283,8 +283,6 @@ public class BinaryQuantizer {
     QueryFactors factors;
     if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
       float vDotC = VectorUtil.dotProduct(vector, centroid);
-      // TODO we should just store this value in the metadata
-      float cDotC = VectorUtil.dotProduct(centroid, centroid);
       // FIXME: quantize the corrections as well so we store less
       factors =
           new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC, cDotC);

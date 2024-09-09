@@ -57,6 +57,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedVectors) {
       BinaryQuantizer quantizer = binarizedVectors.getQuantizer();
       float[][] centroids = binarizedVectors.getCentroids();
+      float[] cDotCs = binarizedVectors.getCentroidsDPs();
       // FIXME: precompute this once?
       int discretizedDimensions = BQVectorUtils.discretize(target.length, 64);
       BinaryQueryVector[] queryVectors = new BinaryQueryVector[centroids.length];
@@ -64,7 +65,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         // TODO: if there are many clusters, do quantizing of query lazily
         byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
         BinaryQuantizer.QueryFactors factors =
-            quantizer.quantizeForQuery(target, quantized, centroids[i]);
+            quantizer.quantizeForQuery(target, quantized, centroids[i], binarizedVectors.getCentroidsDPs()[i]);
         queryVectors[i] = new BinaryQueryVector(quantized, factors);
       }
       return new BinarizedRandomVectorScorer(
