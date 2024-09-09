@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.concurrent.Executor;
+import org.apache.lucene.index.IndexReader;
 
 /**
  * A manager of collectors. This class is useful to parallelize execution of search requests and has
@@ -46,4 +48,28 @@ public interface CollectorManager<C extends Collector, T> {
    * called after collection is finished on all provided collectors.
    */
   T reduce(Collection<C> collectors) throws IOException;
+
+  /**
+   * Wrap a provided {@link Collector} with a thin {@code CollectorManager} wrapper for use with
+   * {@link IndexSearcher#search(Query, CollectorManager)}. The wrapping {@code CollectorManager}
+   * provides no {@link CollectorManager#reduce(Collection)} implementation, so the wrapped {@code
+   * Collector} needs to do all relevant work while collecting.
+   *
+   * <p>Note: This is only safe to use when {@code IndexSearcher} is created with no executor (see:
+   * {@link IndexSearcher#IndexSearcher(IndexReader, Executor)}), or the provided collector is
+   * threadsafe.
+   */
+  static <C extends Collector> CollectorManager<C, ?> wrap(C in) {
+    return new CollectorManager<C, Void>() {
+      @Override
+      public C newCollector() {
+        return in;
+      }
+
+      @Override
+      public Void reduce(Collection<C> collectors) {
+        return null;
+      }
+    };
+  }
 }
