@@ -376,6 +376,8 @@ Optimizations
 
 * GITHUB#13587: Use Max WAND optimizations with ToParentBlockJoinQuery when using ScoreMode.Max (Mike Pellegrini)
 
+* GITHUB#13686: Replace Map<String,Object> with IntObjectHashMap for DV producer (Pan Guixin)
+
 Changes in runtime behavior
 ---------------------
 
