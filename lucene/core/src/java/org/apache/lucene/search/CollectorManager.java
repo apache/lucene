@@ -36,7 +36,8 @@ import org.apache.lucene.index.LeafReaderContext;
  * #newCollector()} may be requested a {@link LeafCollector} via {@link
  * Collector#getLeafCollector(LeafReaderContext)} for the same {@link
  * org.apache.lucene.index.LeafReaderContext} instance. Any computation or logic that needs to
- * happen once per segment requires specific handling in the collector manager implementation.
+ * happen once per segment requires specific handling in the collector manager implementation,
+ * because the collection of an entire segment may be split across threads.
  *
  * @see IndexSearcher#search(Query, CollectorManager)
  * @lucene.experimental
