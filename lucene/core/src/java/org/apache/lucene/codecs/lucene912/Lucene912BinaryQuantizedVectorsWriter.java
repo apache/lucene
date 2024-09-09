@@ -432,6 +432,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       final float[][] centroids;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+        VectorUtil.l2normalize(mergedCentroid);
+      }
       // If we have more vectors than allowed for a single cluster, we will use KMeans to cluster
       // we do an early check here to avoid the overhead of `mergeOneFieldToIndex` which might
       // not be as efficient as mergeOneField
