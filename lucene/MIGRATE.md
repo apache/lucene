@@ -83,13 +83,14 @@ These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to call
 `Operations.determinize()` for DFA execution.
 
-### RegExp no longer supports the optional complement syntax
+### RegExp optional complement syntax has been deprecated
 
-The `RegExp` class no longer supports the optional complement syntax, previously
-supported by the `~` character. When working with automata retrieved from regexp,
-equivalent functionality can be achieved by using `Operations.complement`. For
-example, `new RegExp("~(foo)").toAutomaton()` that matches input that is not
-"foo", can be rewritten as `Operations.complement(new RegExp("(foo)").toAutomaton(), ...)`.
+Support for the optional complement syntax (`~`) has been deprecated.
+The `COMPLEMENT` syntax flag has been removed and replaced by the
+`DEPRECATED_COMPLEMENT` flag. Users wanting to enable the deprecated
+complement support can do so by explicitly passing a syntax flags that
+has `DEPRECATED_COMPLEMENT` when creating a `RegExp`. For example:
+`new RegExp("~(foo)", RegExp.DEPRECATED_COMPLEMENT)`.
 
 Alternatively, and quite commonly, a more simple _complement bracket expression_,
 `[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
