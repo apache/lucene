@@ -20,6 +20,7 @@ package org.apache.lucene.util.quantization;
 import java.util.Arrays;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 
 public class TestBinaryQuantization extends LuceneTestCase {
 
@@ -41,6 +42,10 @@ public class TestBinaryQuantization extends LuceneTestCase {
     for (int i = 0; i < dimensions; i++) {
       vector[i] = random().nextFloat(-50f, 50f);
     }
+    if (similarityFunction == VectorSimilarityFunction.COSINE) {
+      VectorUtil.l2normalize(vector);
+      VectorUtil.l2normalize(centroid);
+    }
 
     byte[] destination = new byte[discretizedDimensions / 8];
     float[] corrections = quantizer.quantizeForIndex(vector, destination, centroid);
@@ -49,7 +54,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
       assertFalse(Float.isNaN(correction));
     }
 
-    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+    if (similarityFunction != VectorSimilarityFunction.EUCLIDEAN) {
       assertEquals(3, corrections.length);
       assertTrue(corrections[0] >= 0);
       assertTrue(corrections[1] > 0);
@@ -77,6 +82,10 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float[] vector = new float[dimensions];
     for (int i = 0; i < dimensions; i++) {
       vector[i] = random().nextFloat(-50f, 50f);
+    }
+    if (similarityFunction == VectorSimilarityFunction.COSINE) {
+      VectorUtil.l2normalize(vector);
+      VectorUtil.l2normalize(centroid);
     }
 
     byte[] destination = new byte[discretizedDimensions / 8 * BQSpaceUtils.B_QUERY];

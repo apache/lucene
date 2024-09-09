@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util.quantization;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -148,6 +149,7 @@ public class BinaryQuantizer {
   }
 
   public float[] quantizeForIndex(float[] vector, byte[] destination, float[] centroid) {
+    assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
 
     if (this.discretizedDimensions != destination.length * 8) {
@@ -189,8 +191,6 @@ public class BinaryQuantizer {
       case MAXIMUM_INNER_PRODUCT:
       case COSINE:
       case DOT_PRODUCT:
-        // TODO: If we are using cosine similarity, the vector must be normalized
-        // assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
         SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid, destination);
         corrections = new float[3];
         // FIXME: quantize these values so we are passing back 1 byte values for all three of these
@@ -233,6 +233,7 @@ public class BinaryQuantizer {
       float cDotC) {}
 
   public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
+    assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
 
     if (this.discretizedDimensions != (destination.length * 8) / BQSpaceUtils.B_QUERY) {
@@ -264,7 +265,7 @@ public class BinaryQuantizer {
 
     // FIXME: should other similarity functions behave like MIP on query like COSINE
     float normVmC = 0f;
-    if (similarityFunction == VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT) {
+    if (similarityFunction != EUCLIDEAN) {
       normVmC = BQVectorUtils.norm(vmC);
       BQVectorUtils.divideInPlace(vmC, normVmC);
     }
