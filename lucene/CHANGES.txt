@@ -153,8 +153,8 @@ New Features
   reader partitions concurrently. This is useful to max out available resource usage especially with force merged
   indices or big segments. Follow-up work is required to share segment-level computation across partitions of the
   same segment. That's why intra-segment slicing is not enabled by default, but leveraged in tests when the searcher
-  is created via LuceneTestCase#newSearcher. Users may override IndexSearcher#slices(List) at their own to optionally
-  create slices that target segment partitions. (Luca Cavanna)
+  is created via LuceneTestCase#newSearcher. Users may override IndexSearcher#slices(List) to optionally create slices
+  that target segment partitions. (Luca Cavanna)
 
 Improvements
 ---------------------
