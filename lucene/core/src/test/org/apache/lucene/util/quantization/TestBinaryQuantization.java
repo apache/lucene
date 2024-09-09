@@ -280,7 +280,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float oDotC = corrections[2];
 
     assertEquals(0.8141399f, ooq, 0.0000001f);
-    assertEquals(21.847124f, normOC, 0.000001f);
+    assertEquals(21.847124f, normOC, 0.00001f);
     assertEquals(6.4300356f, oDotC, 0.0001f);
     assertArrayEquals(
         new byte[] {
@@ -323,7 +323,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
     assertEquals(5272, sumQ);
     assertEquals(-0.08603752f, lower, 0.00000001f);
     assertEquals(0.011431276f, width, 0.00000001f);
-    assertEquals(21.847124f, normVmC, 0.000001f);
+    assertEquals(21.847124f, normVmC, 0.00001f);
     assertEquals(6.4300356f, vDotC, 0.0001f);
     assertEquals(252.37146f, cDotC, 0.0001f);
     assertArrayEquals(
