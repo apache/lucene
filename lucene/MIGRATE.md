@@ -833,4 +833,4 @@ may happen concurrently from separate threads each searching a specific doc id r
 With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext, Weight, Collector)` 
 method accepts now two additional int arguments to identify the min and max doc id of the range that the leaf partition 
 being searched targets: `IndexSearcher#searchLeaf(LeafReaderContext, int, int, Weight, Collector)`.
-Subclasses of `IndexSearcher` that override the `searchLeaf` method need to be updated accordingly.
+Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need to be updated accordingly.
