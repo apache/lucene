@@ -376,7 +376,9 @@ Optimizations
 
 * GITHUB#13587: Use Max WAND optimizations with ToParentBlockJoinQuery when using ScoreMode.Max (Mike Pellegrini)
 
-* GITHUB#13697: Add Bulk Scorer For ToParentBlockJoinQuery (Mike Pellegrini)
+* GITHUB#13697: Add a bulk scorer to ToParentBlockJoinQuery, which delegates to the bulk scorer of the child query.
+ This should speed up query evaluation when the child query has a specialized bulk scorer, such as disjunctive queries.
+ (Mike Pellegrini)
 
 Changes in runtime behavior
 ---------------------

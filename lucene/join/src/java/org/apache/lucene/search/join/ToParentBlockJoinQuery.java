@@ -165,6 +165,10 @@ public class ToParentBlockJoinQuery extends Query {
         @Override
         public BulkScorer bulkScorer() throws IOException {
           if (scoreMode == ScoreMode.None) {
+            // BlockJoinBulkScorer evaluates all child hits exhaustively, but when scoreMode is None
+            // we only need to evaluate a single child doc per parent. In this case, use the default
+            // bulk scorer instead, which uses BlockJoinScorer to iterate over child hits.
+            // BlockJoinScorer is optimized to skip child hit evaluation when scoreMode is None.
             return super.bulkScorer();
           }
           return new BlockJoinBulkScorer(childScorerSupplier.bulkScorer(), parents, scoreMode);
