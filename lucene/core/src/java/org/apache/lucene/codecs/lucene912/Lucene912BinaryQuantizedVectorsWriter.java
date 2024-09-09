@@ -217,6 +217,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       writeVectorCentroids(clusterCenters.length, vectorClusters, null);
       clusterCentersLength = binarizedVectorData.getFilePointer() - clusterCentersOffset;
     }
+    float[] centroidDps = new float[clusterCenters.length];
+    for (int i = 0; i < clusterCenters.length; i++) {
+      centroidDps[i] = VectorUtil.dotProduct(clusterCenters[i], clusterCenters[i]);
+    }
 
     writeMeta(
         fieldData.fieldInfo,
@@ -224,6 +228,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         vectorDataOffset,
         vectorDataLength,
         clusterCenters,
+        centroidDps,
         fieldData.getDocsWithFieldSet(),
         clusterCentersOffset,
         clusterCentersLength);
@@ -291,12 +296,17 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       clusterCentersLength = binarizedVectorData.getFilePointer() - clusterCentersOffset;
     }
 
+    float[] centroidDps = new float[clusterCenters.length];
+    for (int i = 0; i < clusterCenters.length; i++) {
+      centroidDps[i] = VectorUtil.dotProduct(clusterCenters[i], clusterCenters[i]);
+    }
     writeMeta(
         fieldData.fieldInfo,
         maxDoc,
         vectorDataOffset,
         quantizedVectorLength,
         clusterCenters,
+        centroidDps,
         newDocsWithField,
         clusterCentersOffset,
         clusterCentersLength);
@@ -365,6 +375,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       long vectorDataOffset,
       long vectorDataLength,
       float[][] clusterCenters,
+      float[] centroidDps,
       DocsWithFieldSet docsWithField,
       long clustersOffset,
       long clustersLength)
@@ -382,10 +393,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       final ByteBuffer buffer =
           ByteBuffer.allocate(field.getVectorDimension() * Float.BYTES)
               .order(ByteOrder.LITTLE_ENDIAN);
+      int i = 0;
       for (float[] clusterCenter : clusterCenters) {
         buffer.asFloatBuffer().put(clusterCenter);
         meta.writeBytes(buffer.array(), buffer.array().length);
-        meta.writeInt(Float.floatToIntBits(VectorUtil.dotProduct(clusterCenter, clusterCenter)));
+        meta.writeInt(Float.floatToIntBits(centroidDps[i++]));
       }
       if (clusterCenters.length > 1) {
         assert clustersOffset >= 0 && clustersLength > 0;
@@ -500,12 +512,17 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         }
         IOUtils.deleteFilesIgnoringExceptions(
             segmentWriteState.directory, tempVectorCentroidMapData.getName());
+        float[] centroidDps = new float[centroids.length];
+        for (int i = 0; i < centroids.length; i++) {
+          centroidDps[i] = VectorUtil.dotProduct(centroids[i], centroids[i]);
+        }
         writeMeta(
             fieldInfo,
             segmentWriteState.segmentInfo.maxDoc(),
             vectorDataOffset,
             vectorDataLength,
             centroids,
+            centroidDps,
             docsWithField,
             centroidMapOffset,
             centroidMapLength);
@@ -602,6 +619,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       final float[] cDotC;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+        VectorUtil.l2normalize(mergedCentroid);
+      }
       // If we have more vectors than allowed for a single cluster, we will use KMeans to cluster
       // we do an early check here to avoid the overhead of `mergeOneFieldToIndex` which might
       // not be as efficient as mergeOneField
@@ -729,12 +749,17 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       binarizedScoreDataInput =
           segmentWriteState.directory.openInput(
               tempScoreQuantizedVectorData.getName(), segmentWriteState.context);
+      float[] centroidDps = new float[centroids.length];
+      for (int i = 0; i < centroids.length; i++) {
+        centroidDps[i] = VectorUtil.dotProduct(centroids[i], centroids[i]);
+      }
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
           vectorDataOffset,
           vectorDataLength,
           centroids,
+          centroidDps,
           docsWithField,
           centroidMapOffset,
           centroidMapLength);
@@ -747,6 +772,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               fieldInfo.getVectorDimension(),
               docsWithField.cardinality(),
               centroids,
+              centroidDps,
               quantizer,
               finalCentroidMapTempInput != null
                   ? DirectReader.getInstance(

@@ -20,6 +20,7 @@ package org.apache.lucene.codecs.lucene912;
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
@@ -38,6 +39,9 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
       for (int j = 0; j < dimensions; j++) {
         centroids[i][j] = random().nextFloat(-50f, 50f);
       }
+      if (similarityFunction == VectorSimilarityFunction.COSINE) {
+        centroids[i] = VectorUtil.l2normalize(centroids[i]);
+      }
     }
 
     Lucene912BinaryFlatVectorsScorer.BinaryQueryVector[] queryVectors =
@@ -51,7 +55,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
       short quantizedSum = (short) random().nextInt(0, 4097);
       float normVmC = random().nextFloat(-1000f, 1000f);
       float vDotC = random().nextFloat(-1000f, 1000f);
-      float cDotC = random().nextFloat(-1000f, 1000f);
+      float cDotC = VectorUtil.dotProduct(centroids[i], centroids[i]);
       queryVectors[i] =
           new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
               vector,

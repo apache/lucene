@@ -73,8 +73,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         // TODO: if there are many clusters, do quantizing of query lazily
         byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
         BinaryQuantizer.QueryFactors factors =
-            quantizer.quantizeForQuery(
-                target, quantized, centroids[i], binarizedVectors.getCentroidsDPs()[i]);
+            quantizer.quantizeForQuery(target, quantized, centroids[i], cDotCs[i]);
         queryVectors[i] = new BinaryQueryVector(quantized, factors);
       }
       return new BinarizedRandomVectorScorer(

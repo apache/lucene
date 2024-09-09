@@ -56,6 +56,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   protected final float[] correctiveValues;
   protected final BinaryQuantizer binaryQuantizer;
   protected final float[][] centroids;
+  protected final float[] centroidDps;
   private final int correctionsCount;
   protected final LongValues vectorOrdToCentroidOrd;
 
@@ -64,6 +65,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       int dimension,
       int size,
       float[][] centroids,
+      float[] centroidDps,
       BinaryQuantizer quantizer,
       LongValues vectorOrdToCentroidOrd,
       VectorSimilarityFunction similarityFunction,
@@ -75,6 +77,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.vectorsScorer = vectorsScorer;
     this.slice = slice;
     this.centroids = centroids;
+    this.centroidDps = centroidDps;
     this.vectorOrdToCentroidOrd = vectorOrdToCentroidOrd;
     if (centroids != null && centroids.length > 1) {
       assert vectorOrdToCentroidOrd != null;
@@ -111,6 +114,11 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     slice.readFloats(correctiveValues, 0, correctionsCount);
     lastOrd = targetOrd;
     return binaryValue;
+  }
+
+  @Override
+  public float[] getCentroidsDPs() {
+    return centroidDps;
   }
 
   @Override
@@ -208,6 +216,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       float[][] centroids,
+      float[] centroidDps,
       long quantizedVectorDataOffset,
       long quantizedVectorDataLength,
       long centroidOffset,
@@ -238,6 +247,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           dimension,
           size,
           centroids,
+          centroidDps,
           binaryQuantizer,
           vectorOrdToCentroidOrd,
           similarityFunction,
@@ -249,6 +259,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           dimension,
           size,
           centroids,
+          centroidDps,
           binaryQuantizer,
           vectorOrdToCentroidOrd,
           vectorData,
@@ -266,6 +277,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         int dimension,
         int size,
         float[][] centroids,
+        float[] centroidDps,
         BinaryQuantizer binaryQuantizer,
         LongValues vectorOrdToCentroidOrd,
         VectorSimilarityFunction similarityFunction,
@@ -275,6 +287,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           dimension,
           size,
           centroids,
+          centroidDps,
           binaryQuantizer,
           vectorOrdToCentroidOrd,
           similarityFunction,
@@ -317,6 +330,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           dimension,
           size,
           centroids,
+          centroidDps,
           binaryQuantizer,
           vectorOrdToCentroidOrd,
           similarityFunction,
@@ -361,6 +375,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         int dimension,
         int size,
         float[][] centroids,
+        float[] centroidDps,
         BinaryQuantizer binaryQuantizer,
         LongValues vectorOrdToCentroidOrd,
         IndexInput dataIn,
@@ -372,6 +387,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           dimension,
           size,
           centroids,
+          centroidDps,
           binaryQuantizer,
           vectorOrdToCentroidOrd,
           similarityFunction,
@@ -416,6 +432,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           dimension,
           size,
           centroids,
+          centroidDps,
           binaryQuantizer,
           vectorOrdToCentroidOrd,
           dataIn,
@@ -473,7 +490,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         int dimension,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer) {
-      super(dimension, 0, null, null, null, similarityFunction, vectorsScorer, null);
+      super(dimension, 0, null, null, null, null, similarityFunction, vectorsScorer, null);
     }
 
     @Override

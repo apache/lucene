@@ -1969,7 +1969,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float[] vector = mipVectorToQuery;
     byte[] destination = new byte[dimensions / 8 * BQSpaceUtils.B_QUERY];
     float[] centroid = mipCentroid;
-    float cDotC = 0;
+    float cDotC = VectorUtil.dotProduct(centroid, centroid);
     BinaryQuantizer.QueryFactors corrections =
         quantizer.quantizeForQuery(vector, destination, centroid, cDotC);
 
