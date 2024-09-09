@@ -114,7 +114,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
   private static FacetsCollector.MatchingDocs merge(
       FacetsCollector.MatchingDocs matchingDocs1, FacetsCollector.MatchingDocs matchingDocs2) {
     assert matchingDocs1.context == matchingDocs2.context;
-    if (matchingDocs1.scores != null | matchingDocs2.scores != null) {
+    if (matchingDocs1.scores != null || matchingDocs2.scores != null) {
       throw new IllegalStateException(
           "intra-segment concurrency not supported by FacetsCollectorManager when scores are collected");
     }
