@@ -17,11 +17,10 @@
 
 package org.apache.lucene.util.quantization;
 
+import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
-
-import java.util.Random;
 
 public class TestBinaryQuantization extends LuceneTestCase {
 
@@ -125,16 +124,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
   public void testQuantizeForIndexEuclidean() {
     int dimensions = 128;
 
-    VectorSimilarityFunction[] similarityFunctionsActingLikeEucllidean =
-        new VectorSimilarityFunction[] {
-          VectorSimilarityFunction.EUCLIDEAN,
-          VectorSimilarityFunction.COSINE,
-          VectorSimilarityFunction.DOT_PRODUCT
-        };
-    int randIdx = random().nextInt(similarityFunctionsActingLikeEucllidean.length);
-    VectorSimilarityFunction similarityFunction = similarityFunctionsActingLikeEucllidean[randIdx];
-
-    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, similarityFunction);
+    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, VectorSimilarityFunction.EUCLIDEAN);
     float[] vector =
         new float[] {
           0f, 0.0f, 16.0f, 35.0f, 5.0f, 32.0f, 31.0f, 14.0f, 10.0f, 11.0f, 78.0f, 55.0f, 10.0f,
@@ -187,16 +177,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
   public void testQuantizeForQueryEuclidean() {
     int dimensions = 128;
 
-    VectorSimilarityFunction[] similarityFunctionsActingLikeEucllidean =
-        new VectorSimilarityFunction[] {
-          VectorSimilarityFunction.EUCLIDEAN,
-          VectorSimilarityFunction.COSINE,
-          VectorSimilarityFunction.DOT_PRODUCT
-        };
-    int randIdx = random().nextInt(similarityFunctionsActingLikeEucllidean.length);
-    VectorSimilarityFunction similarityFunction = similarityFunctionsActingLikeEucllidean[randIdx];
-
-    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, similarityFunction);
+    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, VectorSimilarityFunction.EUCLIDEAN);
     float[] vector =
         new float[] {
           0.0f, 8.0f, 69.0f, 45.0f, 2.0f, 0f, 16.0f, 52.0f, 32.0f, 13.0f, 2.0f, 6.0f, 34.0f, 49.0f,
@@ -267,8 +248,14 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float[] mipVectorToIndex = generateRandomFloatArray(random, dimensions, -1f, 1f);
     float[] mipCentroid = generateRandomFloatArray(random, dimensions, -1f, 1f);
 
-    BinaryQuantizer quantizer =
-        new BinaryQuantizer(dimensions, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+    VectorSimilarityFunction[] similarityFunctionsActingLikeEucllidean =
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, VectorSimilarityFunction.DOT_PRODUCT
+        };
+    int randIdx = random().nextInt(similarityFunctionsActingLikeEucllidean.length);
+    VectorSimilarityFunction similarityFunction = similarityFunctionsActingLikeEucllidean[randIdx];
+
+    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, similarityFunction);
     float[] vector = mipVectorToIndex;
     byte[] destination = new byte[dimensions / 8];
     float[] centroid = mipCentroid;
@@ -304,8 +291,14 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float[] mipVectorToQuery = generateRandomFloatArray(random, dimensions, -1f, 1f);
     float[] mipCentroid = generateRandomFloatArray(random, dimensions, -1f, 1f);
 
-    BinaryQuantizer quantizer =
-        new BinaryQuantizer(dimensions, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+    VectorSimilarityFunction[] similarityFunctionsActingLikeEucllidean =
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, VectorSimilarityFunction.DOT_PRODUCT
+        };
+    int randIdx = random().nextInt(similarityFunctionsActingLikeEucllidean.length);
+    VectorSimilarityFunction similarityFunction = similarityFunctionsActingLikeEucllidean[randIdx];
+
+    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, similarityFunction);
     float[] vector = mipVectorToQuery;
     byte[] destination = new byte[dimensions / 8 * BQSpaceUtils.B_QUERY];
     float[] centroid = mipCentroid;
@@ -348,6 +341,105 @@ public class TestBinaryQuantization extends LuceneTestCase {
           37, 84, 8, -16, 80, 24, 50, 41, -25, 47, 115, -122, -92, -126, -44, 8, 18, -23, 24, -15,
           60, 58, 111, 99, -120, -111, -21, 101, 59, -32, -74, -105, 113, -90, 36, 100, -93, -80,
           82, -64, 91, -87, -95, 115, 6, 76, 110, 101, 39, 44, 0, 2, 112, -64, -47, 105, 2, 1, -128
+        },
+        destination);
+  }
+
+  public void testQuantizeForIndexCosine() {
+    int dimensions = 768;
+
+    // we want fixed values for these arrays so define our own random generation here to track
+    // quantization changes
+    Random random = new Random(42);
+
+    float[] mipVectorToIndex = generateRandomFloatArray(random, dimensions, -1f, 1f);
+    float[] mipCentroid = generateRandomFloatArray(random, dimensions, -1f, 1f);
+
+    mipVectorToIndex = VectorUtil.l2normalize(mipVectorToIndex);
+    mipCentroid = VectorUtil.l2normalize(mipCentroid);
+
+    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, VectorSimilarityFunction.COSINE);
+    float[] vector = mipVectorToIndex;
+    byte[] destination = new byte[dimensions / 8];
+    float[] centroid = mipCentroid;
+    float[] corrections = quantizer.quantizeForIndex(vector, destination, centroid);
+
+    assertEquals(3, corrections.length);
+    float ooq = corrections[0];
+    float normOC = corrections[1];
+    float oDotC = corrections[2];
+
+    assertEquals(0.8145253f, ooq, 0.0000001f);
+    assertEquals(1.3955297f, normOC, 0.00001f);
+    assertEquals(0.026248248f, oDotC, 0.0001f);
+    assertArrayEquals(
+        new byte[] {
+          -83, -91, -71, 97, 32, -96, 89, -80, -20, -108, 3, 113, -111, 12, -86, 32, -43, 76, 122,
+          -106, -83, -37, -122, 118, 84, -72, 34, 20, 57, -29, 119, -72, -10, -100, -109, 62, -54,
+          117, -44, 8, -16, 80, 58, 50, 41, -25, 47, 115, -106, -92, -122, -44, 8, 18, -23, 24, -15,
+          62, 58, 111, 99, -116, -111, -21, 101, -69, -32, -74, -105, 113, -90, 44, 100, -93, -80,
+          82, -64, 91, -87, -95, 115, 6, 76, 110, 101, 39, 44, 72, 2, 112, -63, -43, 105, -42, 9,
+          -126
+        },
+        destination);
+  }
+
+  public void testQuantizeForQueryCosine() {
+    int dimensions = 768;
+
+    // we want fixed values for these arrays so define our own random generation here to track
+    // quantization changes
+    Random random = new Random(42);
+
+    float[] mipVectorToQuery = generateRandomFloatArray(random, dimensions, -1f, 1f);
+    float[] mipCentroid = generateRandomFloatArray(random, dimensions, -1f, 1f);
+
+    mipVectorToQuery = VectorUtil.l2normalize(mipVectorToQuery);
+    mipCentroid = VectorUtil.l2normalize(mipCentroid);
+
+    BinaryQuantizer quantizer = new BinaryQuantizer(dimensions, VectorSimilarityFunction.COSINE);
+    float[] vector = mipVectorToQuery;
+    byte[] destination = new byte[dimensions / 8 * BQSpaceUtils.B_QUERY];
+    float[] centroid = mipCentroid;
+    float cDotC = VectorUtil.dotProduct(centroid, centroid);
+    BinaryQuantizer.QueryFactors corrections =
+        quantizer.quantizeForQuery(vector, destination, centroid, cDotC);
+
+    int sumQ = corrections.quantizedSum();
+    float lower = corrections.lower();
+    float width = corrections.width();
+    float normVmC = corrections.normVmC();
+    float vDotC = corrections.vDotC();
+    cDotC = corrections.cDotC();
+
+    assertEquals(5277, sumQ);
+    assertEquals(-0.086002514f, lower, 0.00000001f);
+    assertEquals(0.011431345f, width, 0.00000001f);
+    assertEquals(1.3955297f, normVmC, 0.00001f);
+    assertEquals(0.026248248f, vDotC, 0.0001f);
+    assertEquals(1.0f, cDotC, 0.0001f);
+    assertArrayEquals(
+        new byte[] {
+          -83, 18, 67, 37, 80, 8, 40, -1, -19, 115, -87, -63, -59, 12, -2, -63, -19, 43, -104, 16,
+          -69, 80, -22, 75, -81, -50, 100, -41, 7, -88, -93, -4, 4, 117, 34, -57, -109, 89, -63,
+          -35, -116, 4, 35, 93, -26, -88, -56, -82, 63, -46, -122, -96, -26, 124, -64, 21, 96, 46,
+          114, 101, 92, -98, -83, 121, 48, -14, -89, -118, 65, -47, -79, -35, 113, 110, 111, 70, 17,
+          -69, -47, 64, 1, 102, 19, 113, -87, -5, -46, -34, -2, 93, -123, 102, 4, -12, 127, 95, 32,
+          -64, -97, -105, 59, 111, 42, -57, -87, -41, -73, -106, 27, -31, 32, -65, 9, -88, 93, -11,
+          -103, 37, 27, -127, 108, 127, -119, 58, 38, 18, -103, -27, -63, 48, 77, -13, 3, -40, -127,
+          37, 82, -87, -26, -45, -14, 18, -49, 76, 25, 37, -12, 106, 17, 115, 0, 23, -109, 26, -126,
+          21, -35, 111, 4, 60, 58, -64, -104, -125, 23, -58, 121, -117, 104, -69, 3, -89, -26, 46,
+          15, 90, -83, -73, -72, -69, 20, -38, -47, 109, -66, -66, -89, 108, -122, -3, 59, -85, 18,
+          58, 85, -101, -114, 95, 2, -84, -77, 121, -6, 10, 110, -13, -123, -34, 106, -71, -107,
+          123, 67, -111, 58, 52, -53, 87, -113, -21, -44, 26, 10, -62, 56, 103, 36, -126, 26, 94,
+          -88, -13, -113, -50, -9, -115, 84, 8, -32, -102, -4, 89, 29, 75, -73, -19, 22, -90, 76,
+          -61, 4, -44, -100, -11, 107, 20, -39, -98, 123, 77, 104, 9, 41, 91, -105, -38, -106, -87,
+          38, 48, 60, 29, -68, 126, -78, -63, -101, -115, 67, -17, 101, -53, 121, 44, -78, -12, -18,
+          91, -83, -91, -72, 96, 32, -96, 89, 48, 76, -124, 3, 113, -111, 12, -86, 32, -43, 68, 106,
+          -122, -84, -37, -124, 118, 84, -72, 34, 20, 57, -29, 119, 56, -10, -100, -109, 60, -56,
+          37, 84, 8, -16, 80, 24, 50, 41, -25, 47, 115, -122, -92, -126, -44, 8, 18, -23, 24, -15,
+          60, 58, 107, 99, -120, -111, -21, 101, 59, -32, -74, -105, 113, -122, 36, 100, -95, -80,
+          82, -64, 91, -87, -95, 115, 4, 76, 110, 101, 39, 44, 0, 2, 112, -64, -47, 105, 2, 1, -128
         },
         destination);
   }
