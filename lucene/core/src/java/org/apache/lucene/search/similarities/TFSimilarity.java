@@ -34,7 +34,7 @@ public class TFSimilarity extends Similarity {
     return new SimScorer() {
       @Override
       public float score(float freq, long norm) {
-        return freq;
+        return boost * freq;
       }
     };
   }
