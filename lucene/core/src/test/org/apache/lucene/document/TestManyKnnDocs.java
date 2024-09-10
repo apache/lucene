@@ -64,7 +64,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
         float[] vector = new float[128];
         Document doc = new Document();
         vector[0] = (i % 256);
-        vector[1] = (i / 256.);
+        vector[1] = (float)(i / 256.);
         doc.add(new KnnFloatVectorField("field", vector, similarityFunction));
         doc.add(new KeywordField("int", "" + i, org.apache.lucene.document.Field.Store.YES));
         doc.add(new StoredField("intValue", i));
