@@ -826,25 +826,26 @@ such method need to instead override the method variant that takes the range of 
 
 ### CollectorManager#newCollector and Collector#getLeafCollector contract
 
-With the introduction of intra-segment query concurrency support, a `LeafCollector` for a given `LeafReaderContext` 
-instance may be requested multiple times as part of a single search call. This may only happen across separate 
-`Collector` instances returned by `CollectorManager#newCollector`, and never for the same `Collector` instance, given 
-that a slice can only ever hold a single partition of a given segment. Any logic or computation that needs to happen
-once per segment requires specific handling in the collector manager implementation.
-See `TotalHitCountCollectorManager` as an example.
+With the introduction of intra-segment query concurrency support, multiple `LeafCollector`s may be requested for the 
+same `LeafReaderContext` via `Collector#getLeafCollector(LeafReaderContext)` across the different `Collector` instances 
+returned by multiple `CollectorManager#newCollector` calls. Any logic or computation that needs to happen
+once per segment requires specific handling in the collector manager implementation. See `TotalHitCountCollectorManager` 
+as an example. Individual collectors don't need to be adapted as a specific `Collector` instance will still see a given 
+`LeafReaderContext` once, given that it is not possible to add more than one partition of the same segment to the same 
+leaf slice.
 
 ### Weight#scorer, Weight#bulkScorer and Weight#scorerSupplier contract
 
-With the introduction of intra-segment query concurrency support, a `Scorer`, `ScorerSupplier` or `BulkScorer` may 
-be requested multiple times for the same `LeafReaderContext` instance as part of a single search call. That 
-may happen concurrently from separate threads each searching a specific doc id range of the segment. 
-`Weight` implementations that rely on the assumption that a scorer, bulk scorer or scorer supplier for a given 
-`LeafReaderContext` is requested once per search need updating.
+With the introduction of intra-segment query concurrency support, multiple `Scorer`s, `ScorerSupplier`s or `BulkScorer`s 
+may be requested for the same `LeafReaderContext` instance as part of a single search call. That may happen concurrently 
+from separate threads each searching a specific doc id range of the segment. `Weight` implementations that rely on the 
+assumption that a scorer, bulk scorer or scorer supplier for a given `LeafReaderContext` is requested once per search 
+need updating.
 
 ### Signature of IndexSearcher#searchLeaf changed
 
 With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)` 
-method now accepts two additional int arguments to identify the min/max range of docids that will be searched in this 
+method now accepts two additional int arguments to identify the min/max range of doc ids that will be searched in this 
 leaf partition`: IndexSearcher#searchLeaf(LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)`.
 Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need to be updated accordingly.
 
@@ -858,4 +859,4 @@ method now supports an additional 4th and last argument to optionally enable cre
 
 `TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`, 
 is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can 
-optimize the type of collectors it created and exposes via `newCollector`.
+optimize the type of collectors it creates and exposes via `newCollector`.
