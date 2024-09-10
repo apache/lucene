@@ -24,6 +24,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
@@ -89,5 +90,14 @@ public class TestTFSimilarity extends BaseSimilarityTestCase {
     assertEquals(1, topDocs.totalHits.value);
     assertEquals(1, topDocs.scoreDocs.length);
     assertEquals(expectedScore, topDocs.scoreDocs[0].score, 0.0);
+  }
+
+  public void testBoostQuery() throws IOException {
+    Query query = new TermQuery(new Term("test", "three"));
+    float boost = 14f;
+    TopDocs topDocs = indexSearcher.search(new BoostQuery(query, boost), 1);
+    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.scoreDocs.length);
+    assertEquals(42f, topDocs.scoreDocs[0].score, 0.0);
   }
 }
