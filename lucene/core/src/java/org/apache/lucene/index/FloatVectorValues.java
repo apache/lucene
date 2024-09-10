@@ -87,4 +87,16 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
    * @return a {@link VectorScorer} instance or null
    */
   public abstract VectorScorer scorer(float[] query) throws IOException;
+
+  /**
+   * Returns a new iterator that maps the provided docIds to the vector ordinals.
+   *
+   * <p>This method assumes that all docIds have corresponding orginals.
+   *
+   * @lucene.internal
+   * @lucene.experimental
+   */
+  public DocIdSetIterator convertDocIdsToVectorOrdinals(DocIdSetIterator docIds) {
+    return docIds;
+  }
 }

@@ -149,4 +149,18 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   public byte[] getTargetCopy() {
     return ArrayUtil.copyArray(target);
   }
+
+  /**
+   * Returns a new iterator that maps the provided docIds to the vector ordinals.
+   *
+   * <p>This method assumes that all docIds have corresponding orginals.
+   *
+   * @lucene.internal
+   * @lucene.experimental
+   */
+  @Override
+  protected DocIdSetIterator convertDocIdsToVectorOrdinals(
+      LeafReaderContext ctx, DocIdSetIterator docIds) throws IOException {
+    return ctx.reader().getByteVectorValues(field).convertDocIdsToVectorOrdinals(docIds);
+  }
 }

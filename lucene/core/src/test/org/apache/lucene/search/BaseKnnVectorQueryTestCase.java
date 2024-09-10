@@ -628,7 +628,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", randomVector(dimension)));
+        if (random()
+            .nextBoolean()) { // Randomly skip some vectors to test the mapping from docid to
+          // ordinals
+          doc.add(getKnnVectorField("field", randomVector(dimension)));
+        }
         doc.add(new NumericDocValuesField("tag", i));
         doc.add(new IntPoint("tag", i));
         w.addDocument(doc);

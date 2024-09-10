@@ -201,7 +201,12 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (seedWeight != null) {
       // Execute the seed query
       TopScoreDocCollector seedCollector =
-          new TopScoreDocCollectorManager(k /* numHits */, null /* after */, Integer.MAX_VALUE /* totalHitsThreshold */, false /* supportsConcurrency */).newCollector();
+          new TopScoreDocCollectorManager(
+                  k /* numHits */,
+                  null /* after */,
+                  Integer.MAX_VALUE /* totalHitsThreshold */,
+                  false /* supportsConcurrency */)
+              .newCollector();
       LeafCollector leafCollector;
       try {
         leafCollector = seedCollector.getLeafCollector(ctx);
@@ -228,11 +233,20 @@ abstract class AbstractKnnVectorQuery extends Query {
       }
 
       TopDocs seedTopDocs = seedCollector.topDocs();
-      return new TopDocsDISI(seedTopDocs);
+      return convertDocIdsToVectorOrdinals(ctx, new TopDocsDISI(seedTopDocs));
     } else {
       return null;
     }
   }
+
+  /**
+   * Returns a new iterator that maps the provided docIds to the vector ordinals.
+   *
+   * @lucene.internal
+   * @lucene.experimental
+   */
+  protected abstract DocIdSetIterator convertDocIdsToVectorOrdinals(
+      LeafReaderContext ctx, DocIdSetIterator docIds) throws IOException;
 
   private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
       throws IOException {
