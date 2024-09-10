@@ -336,9 +336,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         };
       }
 
-      // This really only needs to support iterative access as a first-class citizen (it is never
-      // used for searching) so simply ignore the supplied ordinal ... we'd like to assert that
-      // docId == ordToDoc(ord) but we didn't implement ordToDoc
       @Override
       public float[] vectorValue(int ord) throws IOException {
         return current.values.vectorValue(current.values.iterator().index());
@@ -356,7 +353,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public int ordToDoc(int ord) {
-        // FIXME support ordToDoc for backward-codecs?
         throw new UnsupportedOperationException();
       }
 

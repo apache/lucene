@@ -107,11 +107,8 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  /**
-   * Sorting FloatVectorValues that maps ordinals using the provided sortMap expressed in terms of
-   * docids
-   */
-  private static class SortingFloatVectorValues extends FloatVectorValues {
+  /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
+    private static class SortingFloatVectorValues extends FloatVectorValues {
     private final BufferedFloatVectorValues delegate;
     private final DocIndexIterator iterator;
 
@@ -148,10 +145,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  /**
-   * Sorting ByteVectorValues that maps ordinals using the provided sortMap expressed in terms of
-   * docids
-   */
+  /** Sorting ByteVectorValues that iterate over documents in the order of the provided sortMap */
   private static class SortingByteVectorValues extends ByteVectorValues {
     private final BufferedByteVectorValues delegate;
     private final DocIndexIterator iterator;
