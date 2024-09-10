@@ -118,6 +118,10 @@ API Changes
   argument with a `FacetsCollectorManager` and update the return type to include both `TopDocs` results as well as
   facets results. (Luca Cavanna)
 
+* GITHUB#11282: Remove `count` from `LabelAndValue` and introduce `ValueAndCount` which can be used as the `value` in
+  `LabelAndValue`. `TaxonomyFacets` will always have `ValueAndCount` in the results, while other faceting
+  implementations will return a simple `Number`, as before GITHUB#13414. (Stefan Vodita)
+
 New Features
 ---------------------
 

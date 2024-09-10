@@ -78,7 +78,7 @@ public class TestFacetsConfig extends FacetTestCase {
     Facets facets = getTaxonomyFacetCounts(taxoReader, facetsConfig, fc);
     FacetResult res = facets.getTopChildren(10, "a");
     assertEquals(1, res.labelValues.length);
-    assertEquals(2, res.labelValues[0].value);
+    assertEquals(2, res.labelValues[0].value.intValue());
     IOUtils.close(indexReader, taxoReader);
 
     IOUtils.close(indexDir, taxoDir);

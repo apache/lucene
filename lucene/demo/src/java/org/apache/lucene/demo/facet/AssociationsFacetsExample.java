@@ -172,7 +172,8 @@ public class AssociationsFacetsExample {
     System.out.println("Counts per label are also available:");
     for (FacetResult facetResult : results) {
       for (LabelAndValue lv : facetResult.labelValues) {
-        System.out.println("\t" + lv.label + ": " + lv.count);
+        System.out.println(
+            "\t" + lv.label + ": " + ((LabelAndValue.ValueAndCount) lv.value).getCount());
       }
     }
   }
