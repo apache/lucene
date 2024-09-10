@@ -47,7 +47,7 @@ public class TestScorerPerf extends LuceneTestCase {
     return sets;
   }
 
-  private static final class CountingHitCollectorManager
+  private record CountingHitCollectorManager()
       implements CollectorManager<CountingHitCollector, CountingHitCollector> {
 
     @Override

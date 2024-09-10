@@ -1124,16 +1124,16 @@ final class SimpleTextBKDWriter implements Closeable {
       // least number of unique bytes at commonPrefixLengths[dim], which makes compression more
       // efficient
       HeapPointWriter heapSource;
-      if (points.writer instanceof HeapPointWriter == false) {
+      if (points.writer() instanceof HeapPointWriter == false) {
         // Adversarial cases can cause this, e.g. merging big segments with most of the points
         // deleted
-        heapSource = switchToHeap(points.writer);
+        heapSource = switchToHeap(points.writer());
       } else {
-        heapSource = (HeapPointWriter) points.writer;
+        heapSource = (HeapPointWriter) points.writer();
       }
 
-      int from = Math.toIntExact(points.start);
-      int to = Math.toIntExact(points.start + points.count);
+      int from = Math.toIntExact(points.start());
+      int to = Math.toIntExact(points.start() + points.count());
 
       // we store common prefix on scratch1
       computeCommonPrefixLength(heapSource, scratch1);
@@ -1220,8 +1220,8 @@ final class SimpleTextBKDWriter implements Closeable {
           : "nodeID=" + nodeID + " splitValues.length=" + splitPackedValues.length;
 
       // How many points will be in the left tree:
-      long rightCount = points.count / 2;
-      long leftCount = points.count - rightCount;
+      long rightCount = points.count() / 2;
+      long leftCount = points.count() - rightCount;
 
       int commonPrefixLen =
           Arrays.mismatch(
@@ -1241,9 +1241,9 @@ final class SimpleTextBKDWriter implements Closeable {
           radixSelector.select(
               points,
               pathSlices,
-              points.start,
-              points.start + points.count,
-              points.start + leftCount,
+              points.start(),
+              points.start() + points.count(),
+              points.start() + leftCount,
               splitDim,
               commonPrefixLen);
 

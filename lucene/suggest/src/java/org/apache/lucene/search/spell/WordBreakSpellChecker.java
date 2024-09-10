@@ -130,7 +130,7 @@ public class WordBreakSpellChecker {
    * returned {@link CombineSuggestion} contains both a {@link SuggestWord} and also an array
    * detailing which passed-in terms were involved in creating this combination. The scores returned
    * are equal to the number of word combinations needed, also one less than the length of the array
-   * {@link CombineSuggestion#originalTermIndexes}. Generally, a suggestion with a lower score is
+   * {@link CombineSuggestion#originalTermIndexes()}. Generally, a suggestion with a lower score is
    * preferred over a higher score.
    *
    * <p>To prevent two adjacent terms from being combined (for instance, if one is mandatory and the
@@ -491,8 +491,8 @@ public class WordBreakSpellChecker {
       if (o1.numCombinations != o2.numCombinations) {
         return o2.numCombinations - o1.numCombinations;
       }
-      if (o1.combineSuggestion.suggestion.freq != o2.combineSuggestion.suggestion.freq) {
-        return o1.combineSuggestion.suggestion.freq - o2.combineSuggestion.suggestion.freq;
+      if (o1.combineSuggestion.suggestion().freq != o2.combineSuggestion.suggestion().freq) {
+        return o1.combineSuggestion.suggestion().freq - o2.combineSuggestion.suggestion().freq;
       }
       return 0;
     }
@@ -516,13 +516,6 @@ public class WordBreakSpellChecker {
     }
   }
 
-  private static class CombineSuggestionWrapper {
-    final CombineSuggestion combineSuggestion;
-    final int numCombinations;
-
-    CombineSuggestionWrapper(CombineSuggestion combineSuggestion, int numCombinations) {
-      this.combineSuggestion = combineSuggestion;
-      this.numCombinations = numCombinations;
-    }
-  }
+  private record CombineSuggestionWrapper(
+      CombineSuggestion combineSuggestion, int numCombinations) {}
 }

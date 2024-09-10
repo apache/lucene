@@ -203,23 +203,7 @@ public class TestUnifiedHighlighterRanking extends UnifiedHighlighterTestBase {
     }
   }
 
-  static class Pair {
-    final int start;
-    final int end;
-
-    Pair(int start, int end) {
-      this.start = start;
-      this.end = end;
-    }
-
-    @Override
-    public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + end;
-      result = prime * result + start;
-      return result;
-    }
+  record Pair(int start, int end) {
 
     @Override
     public boolean equals(Object obj) {

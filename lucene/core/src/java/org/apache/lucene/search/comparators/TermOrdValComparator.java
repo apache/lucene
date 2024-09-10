@@ -464,15 +464,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
   }
 
-  private static class PostingsEnumAndOrd {
-    private final PostingsEnum postings;
-    private final int ord;
-
-    PostingsEnumAndOrd(PostingsEnum postings, int ord) {
-      this.postings = postings;
-      this.ord = ord;
-    }
-  }
+  private record PostingsEnumAndOrd(PostingsEnum postings, int ord) {}
 
   private class CompetitiveIterator extends DocIdSetIterator {
 
