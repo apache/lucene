@@ -68,8 +68,6 @@ class HnswLock {
   }
 
   static int hash(int v1, int v2) {
-    int result = 31 + v1;
-    result = 31 * result + v2;
-    return result;
+    return v1 * 31 + v2;
   }
 }
