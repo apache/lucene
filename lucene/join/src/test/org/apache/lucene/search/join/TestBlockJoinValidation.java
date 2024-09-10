@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.join;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.document.Document;
@@ -83,7 +84,10 @@ public class TestBlockJoinValidation extends LuceneTestCase {
   public void testNextDocValidationForToParentBjq() throws Exception {
     Query parentQueryWithRandomChild = createChildrenQueryWithOneParent(getRandomChildNumber(0));
     ToParentBlockJoinQuery blockJoinQuery =
-        new ToParentBlockJoinQuery(parentQueryWithRandomChild, parentsFilter, ScoreMode.None);
+        new ToParentBlockJoinQuery(
+            parentQueryWithRandomChild,
+            parentsFilter,
+            RandomPicks.randomFrom(LuceneTestCase.random(), ScoreMode.values()));
     IllegalStateException expected =
         expectThrows(
             IllegalStateException.class,
