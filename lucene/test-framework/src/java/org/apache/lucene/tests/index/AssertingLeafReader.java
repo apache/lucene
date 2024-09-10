@@ -1357,8 +1357,15 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
   }
 
-  record AssertingPointTree(PointValues pointValues, PointValues.PointTree in)
-      implements PointValues.PointTree {
+  static class AssertingPointTree implements PointValues.PointTree {
+
+    final PointValues pointValues;
+    final PointValues.PointTree in;
+
+    AssertingPointTree(PointValues pointValues, PointValues.PointTree in) {
+      this.pointValues = pointValues;
+      this.in = in;
+    }
 
     @Override
     public PointValues.PointTree clone() {

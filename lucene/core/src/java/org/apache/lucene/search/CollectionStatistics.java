@@ -18,9 +18,6 @@ package org.apache.lucene.search;
 
 import java.util.Objects;
 
-// javadocs
-// javadocs
-
 /**
  * Contains statistics for a collection (field).
  *

@@ -623,7 +623,7 @@ public final class FixedBitSet extends BitSet {
     if (bits instanceof FixedBits) {
       // restore the original FixedBitSet
       FixedBits fixedBits = (FixedBits) bits;
-      bits = new FixedBitSet(fixedBits.bits(), fixedBits.length());
+      bits = new FixedBitSet(fixedBits.bits, fixedBits.length);
     }
 
     if (bits instanceof FixedBitSet) {

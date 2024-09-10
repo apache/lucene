@@ -185,7 +185,7 @@ public class HighlightsMatch extends QueryMatch {
    *
    * @param startPosition The start position
    * @param startOffset The start offset
-   * @param endPosition The end positions
+   * @param endPosition The end position
    * @param endOffset The end offset
    */
   public record Hit(int startPosition, int startOffset, int endPosition, int endOffset)

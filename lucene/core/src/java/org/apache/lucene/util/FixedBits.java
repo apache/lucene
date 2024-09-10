@@ -17,7 +17,15 @@
 package org.apache.lucene.util;
 
 /** Immutable twin of FixedBitSet. */
-record FixedBits(long[] bits, int length) implements Bits {
+final class FixedBits implements Bits {
+
+  final long[] bits;
+  final int length;
+
+  FixedBits(long[] bits, int length) {
+    this.bits = bits;
+    this.length = length;
+  }
 
   @Override
   public boolean get(int index) {
@@ -27,5 +35,10 @@ record FixedBits(long[] bits, int length) implements Bits {
     // array-index-out-of-bounds-exception, removing the need for an explicit check.
     long bitmask = 1L << index;
     return (bits[i] & bitmask) != 0;
+  }
+
+  @Override
+  public int length() {
+    return length;
   }
 }

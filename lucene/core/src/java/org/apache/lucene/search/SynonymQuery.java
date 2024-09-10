@@ -686,14 +686,5 @@ public final class SynonymQuery extends Query {
     }
   }
 
-  private record TermAndBoost(BytesRef term, float boost) {
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      TermAndBoost that = (TermAndBoost) o;
-      return Float.compare(that.boost, boost) == 0 && Objects.equals(term, that.term);
-    }
-  }
+  private record TermAndBoost(BytesRef term, float boost) {}
 }
