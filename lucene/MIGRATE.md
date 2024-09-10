@@ -193,6 +193,7 @@ access the members using method calls instead of field accesses. Affected classe
 
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 - `BooleanClause` (GITHUB#13261)
+- `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
 ### Boolean flags on IOContext replaced with a new ReadAdvice enum.
 

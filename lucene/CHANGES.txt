@@ -118,6 +118,8 @@ API Changes
   argument with a `FacetsCollectorManager` and update the return type to include both `TopDocs` results as well as
   facets results. (Luca Cavanna)
 
+* GITHUB#13328: Convert CollectionStatistics, TermStatistics and LeafMetadata etc. to record classes. (Shubham Chaudhary)
+
 New Features
 ---------------------
 
