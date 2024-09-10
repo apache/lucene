@@ -59,7 +59,7 @@ public interface CollectorManager<C extends Collector, T> {
    * <p>Note: This is only safe to use when {@code IndexSearcher} is created with no executor (see:
    * {@link IndexSearcher#IndexSearcher(IndexReader, Executor)}).
    */
-  static <C extends Collector> CollectorManager<C, ?> wrapForSingleThreadedSearch(C in) {
+  static <C extends Collector> CollectorManager<C, ?> forSequentialExecution(C in) {
     return new CollectorManager<C, Void>() {
       private boolean newCollectorInvoked;
 

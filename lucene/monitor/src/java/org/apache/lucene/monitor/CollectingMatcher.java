@@ -40,7 +40,7 @@ abstract class CollectingMatcher<T extends QueryMatch> extends CandidateMatcher<
       throws IOException {
     searcher.search(
         matchQuery,
-        CollectorManager.wrapForSingleThreadedSearch(new MatchCollector(queryId, scoreMode)));
+        CollectorManager.forSequentialExecution(new MatchCollector(queryId, scoreMode)));
   }
 
   /**
