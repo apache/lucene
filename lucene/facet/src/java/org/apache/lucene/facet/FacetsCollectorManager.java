@@ -101,7 +101,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
     for (FacetsCollector facetsCollector : facetsCollectors) {
       for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
         matchingDocsMap.compute(
-            matchingDocs.context,
+            matchingDocs.context(),
             (leafReaderContext, existing) -> {
               if (existing == null) {
                 return matchingDocs;
@@ -115,40 +115,41 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
 
   private static FacetsCollector.MatchingDocs merge(
       FacetsCollector.MatchingDocs matchingDocs1, FacetsCollector.MatchingDocs matchingDocs2) {
-    assert matchingDocs1.context == matchingDocs2.context;
+    assert matchingDocs1.context() == matchingDocs2.context();
     final float[] scores;
 
     // scores array is null when keepScores is true, and may be null when there are no matches for a
     // segment partition, despite keepScores is true.
-    if (matchingDocs1.scores == null && matchingDocs2.scores == null) {
+    if (matchingDocs1.scores() == null && matchingDocs2.scores() == null) {
       scores = new float[0];
     } else {
-      if (matchingDocs2.scores == null) {
-        scores = matchingDocs1.scores;
-      } else if (matchingDocs1.scores == null) {
-        scores = matchingDocs2.scores;
+      if (matchingDocs2.scores() == null) {
+        scores = matchingDocs1.scores();
+      } else if (matchingDocs1.scores() == null) {
+        scores = matchingDocs2.scores();
       } else {
-        int length = Math.max(matchingDocs1.scores.length, matchingDocs2.scores.length);
+        int length = Math.max(matchingDocs1.scores().length, matchingDocs2.scores().length);
         // merge the arrays if both have values, their size is bound to the highest collected docid
         scores = new float[length];
         for (int i = 0; i < length; i++) {
-          float firstScore = i < matchingDocs1.scores.length ? matchingDocs1.scores[i] : 0;
-          float secondScore = i < matchingDocs2.scores.length ? matchingDocs2.scores[i] : 0;
+          float firstScore = i < matchingDocs1.scores().length ? matchingDocs1.scores()[i] : 0;
+          float secondScore = i < matchingDocs2.scores().length ? matchingDocs2.scores()[i] : 0;
           assert (firstScore > 0 && secondScore > 0) == false;
           scores[i] = Math.max(firstScore, secondScore);
         }
       }
     }
-    DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(matchingDocs1.context.reader().maxDoc());
+    DocIdSetBuilder docIdSetBuilder =
+        new DocIdSetBuilder(matchingDocs1.context().reader().maxDoc());
     try {
-      docIdSetBuilder.add(matchingDocs1.bits.iterator());
-      docIdSetBuilder.add(matchingDocs2.bits.iterator());
+      docIdSetBuilder.add(matchingDocs1.bits().iterator());
+      docIdSetBuilder.add(matchingDocs2.bits().iterator());
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
-    int totalHits = matchingDocs1.totalHits + matchingDocs2.totalHits;
+    int totalHits = matchingDocs1.totalHits() + matchingDocs2.totalHits();
     return new FacetsCollector.MatchingDocs(
-        matchingDocs1.context, docIdSetBuilder.build(), totalHits, scores);
+        matchingDocs1.context(), docIdSetBuilder.build(), totalHits, scores);
   }
 
   /**

@@ -62,7 +62,8 @@ public final class DynamicRangeUtil {
       throws IOException {
 
     List<FacetsCollector.MatchingDocs> matchingDocsList = facetsCollector.getMatchingDocs();
-    int totalDoc = matchingDocsList.stream().mapToInt(matchingDoc -> matchingDoc.totalHits).sum();
+    int totalDoc =
+        matchingDocsList.stream().mapToInt(FacetsCollector.MatchingDocs::totalHits).sum();
     long[] values = new long[totalDoc];
     long[] weights = new long[totalDoc];
     long totalWeight = 0;
@@ -71,8 +72,8 @@ public final class DynamicRangeUtil {
     List<Future<?>> futures = new ArrayList<>();
     List<SegmentTask> tasks = new ArrayList<>();
     for (FacetsCollector.MatchingDocs matchingDocs : matchingDocsList) {
-      if (matchingDocs.totalHits > 0) {
-        SegmentOutput segmentOutput = new SegmentOutput(matchingDocs.totalHits);
+      if (matchingDocs.totalHits() > 0) {
+        SegmentOutput segmentOutput = new SegmentOutput(matchingDocs.totalHits());
 
         // [1] retrieve values and associated weights concurrently
         SegmentTask task =
@@ -134,7 +135,7 @@ public final class DynamicRangeUtil {
         SegmentOutput segmentOutput)
         throws IOException {
       this.matchingDocs = matchingDocs;
-      this.matchingParentDocsItr = matchingDocs.bits.iterator();
+      this.matchingParentDocsItr = matchingDocs.bits().iterator();
       this.fieldValueSource = fieldValueSource;
       this.weightValueSource = weightValueSource;
       this.segmentOutput = segmentOutput;
@@ -142,8 +143,8 @@ public final class DynamicRangeUtil {
 
     @Override
     public Void call() throws Exception {
-      LongValues fieldValue = fieldValueSource.getValues(matchingDocs.context, null);
-      LongValues weightValue = weightValueSource.getValues(matchingDocs.context, null);
+      LongValues fieldValue = fieldValueSource.getValues(matchingDocs.context(), null);
+      LongValues weightValue = weightValueSource.getValues(matchingDocs.context(), null);
       for (int doc = matchingParentDocsItr.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = matchingParentDocsItr.nextDoc()) {
