@@ -44,31 +44,16 @@ public class FacetsCollector extends SimpleCollector {
   private DocIdSetBuilder docsBuilder;
 
   /**
-   * Holds the documents that were matched in the {@link org.apache.lucene.index.LeafReaderContext}.
-   * If scores were required, then {@code scores} is not null.
+   * Holds the documents that were matched in the {@link LeafReaderContext}. If scores were
+   * required, then {@code scores} is not null.
+   *
+   * @param context Context for this segment.
+   * @param bits Which documents were seen.
+   * @param scores Non-sparse scores array.
+   * @param totalHits Total number of hits
    */
-  public static final class MatchingDocs {
-
-    /** Context for this segment. */
-    public final LeafReaderContext context;
-
-    /** Which documents were seen. */
-    public final DocIdSet bits;
-
-    /** Non-sparse scores array. */
-    public final float[] scores;
-
-    /** Total number of hits */
-    public final int totalHits;
-
-    /** Sole constructor. */
-    public MatchingDocs(LeafReaderContext context, DocIdSet bits, int totalHits, float[] scores) {
-      this.context = context;
-      this.bits = bits;
-      this.scores = scores;
-      this.totalHits = totalHits;
-    }
-  }
+  public record MatchingDocs(
+      LeafReaderContext context, DocIdSet bits, int totalHits, float[] scores) {}
 
   /** Default constructor */
   public FacetsCollector() {

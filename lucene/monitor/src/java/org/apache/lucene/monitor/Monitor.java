@@ -116,24 +116,14 @@ public class Monitor implements Closeable {
         queryIndex.numDocs(), queryIndex.cacheSize(), queryIndex.getLastPurged());
   }
 
-  /** Statistics for the query cache and query index */
-  public static class QueryCacheStats {
-
-    /** Total number of queries in the query index */
-    public final int queries;
-
-    /** Total number of queries int the query cache */
-    public final int cachedQueries;
-
-    /** Time the query cache was last purged */
-    public final long lastPurged;
-
-    public QueryCacheStats(int queries, int cachedQueries, long lastPurged) {
-      this.queries = queries;
-      this.cachedQueries = cachedQueries;
-      this.lastPurged = lastPurged;
-    }
-  }
+  /**
+   * Statistics for the query cache and query index
+   *
+   * @param queries Total number of queries in the query index
+   * @param cachedQueries Total number of queries int the query cache
+   * @param lastPurged Time the query cache was last purged
+   */
+  public record QueryCacheStats(int queries, int cachedQueries, long lastPurged) {}
 
   /**
    * Remove unused queries from the query cache.

@@ -167,20 +167,5 @@ public class Extensions {
    * @param <Cur> the pairs first element
    * @param <Cud> the pairs last element of the pair.
    */
-  public static class Pair<Cur, Cud> {
-
-    public final Cur cur;
-    public final Cud cud;
-
-    /**
-     * Creates a new Pair
-     *
-     * @param cur the pairs first element
-     * @param cud the pairs last element
-     */
-    public Pair(Cur cur, Cud cud) {
-      this.cur = cur;
-      this.cud = cud;
-    }
-  }
+  public record Pair<Cur, Cud>(Cur cur, Cud cud) {}
 }

@@ -54,7 +54,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       // as all segments are sorted in the same way, enough to check only the 1st segment for
       // indexSort
       if (searchSortPartOfIndexSort == null) {
-        final Sort indexSort = context.reader().getMetaData().getSort();
+        final Sort indexSort = context.reader().getMetaData().sort();
         searchSortPartOfIndexSort = canEarlyTerminate(sort, indexSort);
         if (searchSortPartOfIndexSort) {
           firstComparator.disableSkipping();
@@ -367,9 +367,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       // if the local queue is not full because the threshold
       // is reached.
       DocAndScore maxMinScore = minScoreAcc.get();
-      if (maxMinScore != null && maxMinScore.score > minCompetitiveScore) {
-        scorer.setMinCompetitiveScore(maxMinScore.score);
-        minCompetitiveScore = maxMinScore.score;
+      if (maxMinScore != null && maxMinScore.score() > minCompetitiveScore) {
+        scorer.setMinCompetitiveScore(maxMinScore.score());
+        minCompetitiveScore = maxMinScore.score();
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
       }
     }

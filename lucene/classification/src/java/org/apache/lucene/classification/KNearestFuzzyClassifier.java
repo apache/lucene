@@ -108,9 +108,9 @@ public class KNearestFuzzyClassifier implements Classifier<BytesRef> {
     ClassificationResult<BytesRef> assignedClass = null;
     double maxscore = -Double.MAX_VALUE;
     for (ClassificationResult<BytesRef> cl : assignedClasses) {
-      if (cl.getScore() > maxscore) {
+      if (cl.score() > maxscore) {
         assignedClass = cl;
-        maxscore = cl.getScore();
+        maxscore = cl.score();
       }
     }
     return assignedClass;
@@ -193,7 +193,7 @@ public class KNearestFuzzyClassifier implements Classifier<BytesRef> {
     if (sumdoc < k) {
       for (ClassificationResult<BytesRef> cr : temporaryList) {
         returnList.add(
-            new ClassificationResult<>(cr.getAssignedClass(), cr.getScore() * k / (double) sumdoc));
+            new ClassificationResult<>(cr.assignedClass(), cr.score() * k / (double) sumdoc));
       }
     } else {
       returnList = temporaryList;

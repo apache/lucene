@@ -1188,10 +1188,10 @@ public final class CheckIndex implements Closeable {
         FieldInfos fieldInfos = reader.getFieldInfos();
         if (metaData.hasBlocks()
             && fieldInfos.getParentField() == null
-            && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
+            && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
           throw new IllegalStateException(
               "parent field is not set but the index has document blocks and was created with version: "
-                  + metaData.getCreatedVersionMajor());
+                  + metaData.createdVersionMajor());
         }
         final DocIdSetIterator iter;
         if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
@@ -3143,12 +3143,7 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static class ConstantRelationIntersectVisitor implements IntersectVisitor {
-    private final Relation relation;
-
-    ConstantRelationIntersectVisitor(Relation relation) {
-      this.relation = relation;
-    }
+  private record ConstantRelationIntersectVisitor(Relation relation) implements IntersectVisitor {
 
     @Override
     public void visit(int docID) throws IOException {
