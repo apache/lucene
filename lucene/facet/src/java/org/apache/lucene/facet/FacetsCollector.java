@@ -82,12 +82,12 @@ public class FacetsCollector extends SimpleCollector {
   public void collect(int doc) throws IOException {
     docsBuilder.grow(1).add(doc);
     if (keepScores) {
-      if (totalHits >= scores.length) {
-        float[] newScores = new float[ArrayUtil.oversize(totalHits + 1, 4)];
-        System.arraycopy(scores, 0, newScores, 0, totalHits);
+      if (doc >= scores.length) {
+        float[] newScores = new float[ArrayUtil.oversize(doc + 1, 4)];
+        System.arraycopy(scores, 0, newScores, 0, doc);
         scores = newScores;
       }
-      scores[totalHits] = scorer.score();
+      scores[doc] = scorer.score();
     }
     totalHits++;
   }
