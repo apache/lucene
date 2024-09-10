@@ -123,7 +123,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
 
     @Override
     public DocIterator createIterator() {
-      return createDenseIterator(this);
+      return createDenseIterator();
     }
 
     @Override

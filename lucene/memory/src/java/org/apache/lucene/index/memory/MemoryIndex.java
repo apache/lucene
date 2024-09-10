@@ -2311,7 +2311,7 @@ public class MemoryIndex {
 
     @Override
     protected DocIterator createIterator() {
-      return createDenseIterator(this);
+      return createDenseIterator();
     }
 
     @Override
@@ -2369,7 +2369,7 @@ public class MemoryIndex {
 
     @Override
     protected DocIterator createIterator() {
-      return createDenseIterator(this);
+      return createDenseIterator();
     }
 
     @Override

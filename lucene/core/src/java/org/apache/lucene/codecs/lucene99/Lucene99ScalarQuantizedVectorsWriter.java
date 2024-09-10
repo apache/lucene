@@ -881,7 +881,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public DocIterator createIterator() {
-      return createDenseIterator(this);
+      return createDenseIterator();
     }
   }
 

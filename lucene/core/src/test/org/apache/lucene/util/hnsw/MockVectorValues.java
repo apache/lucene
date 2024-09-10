@@ -85,6 +85,6 @@ class MockVectorValues extends FloatVectorValues {
 
   @Override
   protected DocIterator createIterator() {
-    return createDenseIterator(this);
+    return createDenseIterator();
   }
 }

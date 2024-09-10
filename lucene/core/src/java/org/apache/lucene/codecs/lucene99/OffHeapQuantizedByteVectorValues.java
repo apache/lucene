@@ -256,7 +256,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     @Override
     protected DocIterator createIterator() {
-      return createDenseIterator(this);
+      return createDenseIterator();
     }
   }
 
@@ -374,7 +374,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     @Override
     protected DocIterator createIterator() {
-      return createDenseIterator(this);
+      return createDenseIterator();
     }
 
     @Override
