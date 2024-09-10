@@ -32,7 +32,7 @@ import org.apache.lucene.util.Bits;
 public abstract class KnnVectorValues {
 
   /** The iterator associated with these values. */
-  protected DocIterator iterator;
+  protected DocIndexIterator iterator;
 
   /** Return the dimension of the vectors */
   public abstract int dimension();
@@ -91,7 +91,7 @@ public abstract class KnnVectorValues {
    * Return the iterator for this instance. If you need multiple iterators, call <code>
    * this.copy().iterator()</code>.
    */
-  public DocIterator iterator() {
+  public DocIndexIterator iterator() {
     if (iterator == null) {
       iterator = createIterator();
     }
@@ -102,7 +102,7 @@ public abstract class KnnVectorValues {
    * Create an iterator for this instance; typically called once by <code>iterator()</code>. Wrapper
    * value classes delegate to their inner instance's iterator and shouldn't implement this.
    */
-  protected DocIterator createIterator() {
+  protected DocIndexIterator createIterator() {
     throw new UnsupportedOperationException();
   }
 
@@ -110,7 +110,7 @@ public abstract class KnnVectorValues {
    * A DocIdSetIterator that also provides an index() method tracking a distinct ordinal for a
    * vector associated with each doc.
    */
-  public abstract static class DocIterator extends DocIdSetIterator {
+  public abstract static class DocIndexIterator extends DocIdSetIterator {
 
     /** return the value index (aka "ordinal" or "ord") corresponding to the current doc */
     public abstract int index();
@@ -129,9 +129,9 @@ public abstract class KnnVectorValues {
      * Returns an iterator that delegates to the IndexedDISI. Advancing this iterator will advance
      * the underlying IndexedDISI, and vice-versa.
      */
-    public static DocIterator fromIndexedDISI(IndexedDISI disi) {
+    public static DocIndexIterator fromIndexedDISI(IndexedDISI disi) {
       // can we replace with fromDISI?
-      return new DocIterator() {
+      return new DocIndexIterator() {
         @Override
         public int docID() {
           return disi.docID();
@@ -164,8 +164,8 @@ public abstract class KnnVectorValues {
    * Creates an iterator for instances where every doc has a value, and the value ordinals are equal
    * to the docids.
    */
-  protected DocIterator createDenseIterator() {
-    return new DocIterator() {
+  protected DocIndexIterator createDenseIterator() {
+    return new DocIndexIterator() {
 
       int doc = -1;
 
@@ -207,8 +207,8 @@ public abstract class KnnVectorValues {
    * Creates an iterator from a DocIdSetIterator indicating which docs have values, and for which
    * ordinals increase monotonically with docid.
    */
-  protected static DocIterator fromDISI(DocIdSetIterator docsWithField) {
-    return new DocIterator() {
+  protected static DocIndexIterator fromDISI(DocIdSetIterator docsWithField) {
+    return new DocIndexIterator() {
 
       int ord = -1;
 
@@ -242,8 +242,8 @@ public abstract class KnnVectorValues {
    * Creates an iterator from this instance's ordinal-to-docid mapping which must be monotonic
    * (docid increases when ordinal does).
    */
-  protected DocIterator fromOrdToDoc() {
-    return new DocIterator() {
+  protected DocIndexIterator fromOrdToDoc() {
+    return new DocIndexIterator() {
       private int ord = -1;
 
       @Override

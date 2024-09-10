@@ -90,7 +90,7 @@ class MockByteVectorValues extends ByteVectorValues {
   }
 
   @Override
-  protected DocIterator createIterator() {
+  protected DocIndexIterator createIterator() {
     return createDenseIterator();
   }
 }

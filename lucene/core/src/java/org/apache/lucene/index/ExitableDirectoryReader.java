@@ -456,7 +456,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      protected DocIterator createIterator() {
+      protected DocIndexIterator createIterator() {
         return createExitableIterator(vectorValues.iterator(), queryTimeout);
       }
 
@@ -499,7 +499,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      protected DocIterator createIterator() {
+      protected DocIndexIterator createIterator() {
         return createExitableIterator(vectorValues.iterator(), queryTimeout);
       }
 
@@ -515,9 +515,9 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
   }
 
-  private static KnnVectorValues.DocIterator createExitableIterator(
-      KnnVectorValues.DocIterator delegate, QueryTimeout queryTimeout) {
-    return new KnnVectorValues.DocIterator() {
+  private static KnnVectorValues.DocIndexIterator createExitableIterator(
+      KnnVectorValues.DocIndexIterator delegate, QueryTimeout queryTimeout) {
+    return new KnnVectorValues.DocIndexIterator() {
       private int nextCheck;
 
       @Override

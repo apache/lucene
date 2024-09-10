@@ -78,7 +78,7 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    KnnVectorValues.DocIterator iter = floatVectorValues.iterator();
+    KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
     for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
       writeFloatVectorValue(floatVectorValues, iter.index());
       docIds.add(docId);
@@ -100,7 +100,7 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    KnnVectorValues.DocIterator it = byteVectorValues.iterator();
+    KnnVectorValues.DocIndexIterator it = byteVectorValues.iterator();
     for (int docV = it.nextDoc(); docV != NO_MORE_DOCS; docV = it.nextDoc()) {
       writeByteVectorValue(byteVectorValues, it.index());
       docIds.add(docV);

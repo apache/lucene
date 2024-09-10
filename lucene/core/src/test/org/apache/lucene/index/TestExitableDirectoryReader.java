@@ -565,7 +565,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
   }
 
   private static void scanAndRetrieve(LeafReader leaf, KnnVectorValues values) throws IOException {
-    KnnVectorValues.DocIterator iter = values.iterator();
+    KnnVectorValues.DocIndexIterator iter = values.iterator();
     for (iter.nextDoc();
         iter.docID() != DocIdSetIterator.NO_MORE_DOCS && iter.docID() < leaf.maxDoc(); ) {
       int docId = iter.docID();

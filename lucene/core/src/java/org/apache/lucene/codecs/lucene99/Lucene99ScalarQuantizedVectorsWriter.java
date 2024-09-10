@@ -730,7 +730,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             ? OffHeapQuantizedByteVectorValues.compressedArray(
                 quantizedByteVectorValues.dimension(), bits)
             : null;
-    KnnVectorValues.DocIterator iter = quantizedByteVectorValues.iterator();
+    KnnVectorValues.DocIndexIterator iter = quantizedByteVectorValues.iterator();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
       byte[] binaryValue = quantizedByteVectorValues.vectorValue(iter.index());
@@ -880,7 +880,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public DocIterator createIterator() {
+    public DocIndexIterator createIterator() {
       return createDenseIterator();
     }
   }
@@ -972,7 +972,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       return new CompositeIterator();
     }
 
@@ -991,7 +991,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       return current.values.getScoreCorrectionConstant(current.values.iterator().index());
     }
 
-    private class CompositeIterator extends KnnVectorValues.DocIterator {
+    private class CompositeIterator extends DocIndexIterator {
       private int docId;
       private int ord;
 
@@ -1090,7 +1090,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public DocIterator iterator() {
+    public DocIndexIterator iterator() {
       return values.iterator();
     }
   }
@@ -1174,7 +1174,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public DocIterator iterator() {
+    public DocIndexIterator iterator() {
       return in.iterator();
     }
   }
@@ -1212,7 +1212,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public DocIterator iterator() {
+    public DocIndexIterator iterator() {
       return values.iterator();
     }
   }

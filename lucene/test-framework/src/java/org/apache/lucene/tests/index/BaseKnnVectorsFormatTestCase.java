@@ -1785,7 +1785,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               if (byteVectorValues != null) {
                 docCount += byteVectorValues.size();
                 StoredFields storedFields = ctx.reader().storedFields();
-                KnnVectorValues.DocIterator iter = byteVectorValues.iterator();
+                KnnVectorValues.DocIndexIterator iter = byteVectorValues.iterator();
                 for (iter.nextDoc(); iter.docID() != NO_MORE_DOCS; iter.nextDoc()) {
                   int ord = iter.index();
                   checksum += byteVectorValues.vectorValue(ord)[0];
@@ -1806,7 +1806,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               if (vectorValues != null) {
                 docCount += vectorValues.size();
                 StoredFields storedFields = ctx.reader().storedFields();
-                KnnVectorValues.DocIterator iter = vectorValues.iterator();
+                KnnVectorValues.DocIndexIterator iter = vectorValues.iterator();
                 for (iter.nextDoc(); iter.docID() != NO_MORE_DOCS; iter.nextDoc()) {
                   int ord = iter.index();
                   checksum += vectorValues.vectorValue(ord)[0];

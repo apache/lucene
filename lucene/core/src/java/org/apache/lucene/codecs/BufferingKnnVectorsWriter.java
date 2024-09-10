@@ -113,7 +113,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
    */
   private static class SortingFloatVectorValues extends FloatVectorValues {
     private final BufferedFloatVectorValues delegate;
-    private final DocIterator iterator;
+    private final DocIndexIterator iterator;
 
     SortingFloatVectorValues(
         BufferedFloatVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
@@ -143,7 +143,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public DocIterator iterator() {
+    public DocIndexIterator iterator() {
       return iterator;
     }
   }
@@ -154,7 +154,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
    */
   private static class SortingByteVectorValues extends ByteVectorValues {
     private final BufferedByteVectorValues delegate;
-    private final DocIterator iterator;
+    private final DocIndexIterator iterator;
 
     SortingByteVectorValues(
         BufferedByteVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
@@ -184,7 +184,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public DocIterator iterator() {
+    public DocIndexIterator iterator() {
       return iterator;
     }
   }
@@ -273,7 +273,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     final List<float[]> vectors;
     final int dimension;
     private final DocIdSet docsWithField;
-    private final DocIterator iterator;
+    private final DocIndexIterator iterator;
 
     BufferedFloatVectorValues(List<float[]> vectors, int dimension, DocIdSet docsWithField)
         throws IOException {
@@ -304,7 +304,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public DocIterator iterator() {
+    public DocIndexIterator iterator() {
       return iterator;
     }
 
@@ -319,7 +319,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     final List<byte[]> vectors;
     final int dimension;
     private final DocIdSet docsWithField;
-    private final DocIterator iterator;
+    private final DocIndexIterator iterator;
 
     BufferedByteVectorValues(List<byte[]> vectors, int dimension, DocIdSet docsWithField)
         throws IOException {
@@ -345,7 +345,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public DocIterator iterator() {
+    public DocIndexIterator iterator() {
       return iterator;
     }
 

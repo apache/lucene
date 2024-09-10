@@ -61,7 +61,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<byte[]>) addField(fieldInfo);
         ByteVectorValues mergedBytes =
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-        KnnVectorValues.DocIterator iter = mergedBytes.iterator();
+        KnnVectorValues.DocIndexIterator iter = mergedBytes.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
           byteWriter.addValue(doc, mergedBytes.vectorValue(iter.index()));
         }
@@ -71,7 +71,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
             MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-        KnnVectorValues.DocIterator iter = mergedFloats.iterator();
+        KnnVectorValues.DocIndexIterator iter = mergedFloats.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
           floatWriter.addValue(doc, mergedFloats.vectorValue(iter.index()));
         }
@@ -302,8 +302,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      protected DocIterator createIterator() {
-        return new DocIterator() {
+      protected DocIndexIterator createIterator() {
+        return new DocIndexIterator() {
           private int index = -1;
 
           @Override
@@ -396,8 +396,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      protected DocIterator createIterator() {
-        return new DocIterator() {
+      protected DocIndexIterator createIterator() {
+        return new DocIndexIterator() {
           private int index = -1;
 
           @Override

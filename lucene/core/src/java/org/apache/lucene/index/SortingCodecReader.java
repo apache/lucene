@@ -211,7 +211,7 @@ public final class SortingCodecReader extends FilterCodecReader {
    * Iterator over KnnVectorValues accepting a mapping to differently-sorted docs. Consequently
    * index() may skip around, not increasing monotonically as iteration proceeds.
    */
-  public static class SortingValuesIterator extends KnnVectorValues.DocIterator {
+  public static class SortingValuesIterator extends KnnVectorValues.DocIndexIterator {
     private final DocIdSetIterator docsWithValues;
     private final int[] docToOrd;
     private final int size;
@@ -219,7 +219,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     int doc = -1;
 
     /** Creates an iterator accepting a mapping to differently-sorted docs. */
-    public SortingValuesIterator(KnnVectorValues.DocIterator iter, Sorter.DocMap docMap)
+    public SortingValuesIterator(KnnVectorValues.DocIndexIterator iter, Sorter.DocMap docMap)
         throws IOException {
       docToOrd = new int[docMap.size()];
       FixedBitSet docBits = new FixedBitSet(docMap.size());
@@ -290,7 +290,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       throw new IllegalStateException();
     }
   }
@@ -309,7 +309,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       throw new IllegalStateException();
     }
 

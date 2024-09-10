@@ -118,7 +118,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    public DocIterator createIterator() {
+    public DocIndexIterator createIterator() {
       return createDenseIterator();
     }
 
@@ -183,8 +183,8 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    protected DocIterator createIterator() {
-      return DocIterator.fromIndexedDISI(disi);
+    protected DocIndexIterator createIterator() {
+      return DocIndexIterator.fromIndexedDISI(disi);
     }
 
     @Override

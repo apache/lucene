@@ -112,7 +112,7 @@ public abstract class FloatVectorValues extends KnnVectorValues {
       }
 
       @Override
-      protected DocIterator createIterator() {
+      protected DocIndexIterator createIterator() {
         return createDenseIterator();
       }
     };

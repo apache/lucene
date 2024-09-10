@@ -337,7 +337,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       return fromOrdToDoc();
     }
 
@@ -429,7 +429,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       return fromOrdToDoc();
     }
 

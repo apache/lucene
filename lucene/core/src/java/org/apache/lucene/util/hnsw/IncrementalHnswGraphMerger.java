@@ -154,7 +154,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    */
   protected final int[] getNewOrdMapping(
       KnnVectorValues mergedVectorValues, BitSet initializedNodes) throws IOException {
-    KnnVectorValues.DocIterator initializerIterator = null;
+    KnnVectorValues.DocIndexIterator initializerIterator = null;
 
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> initializerIterator = initReader.getByteVectorValues(fieldInfo.name).iterator();
@@ -176,7 +176,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       return new int[0];
     }
     final int[] oldToNewOrdinalMap = new int[initGraphSize];
-    KnnVectorValues.DocIterator mergedVectorIterator = mergedVectorValues.iterator();
+    KnnVectorValues.DocIndexIterator mergedVectorIterator = mergedVectorValues.iterator();
     for (int newDocId = mergedVectorIterator.nextDoc();
         newDocId <= maxNewDocID;
         newDocId = mergedVectorIterator.nextDoc()) {

@@ -255,7 +255,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       return createDenseIterator();
     }
   }
@@ -286,8 +286,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public DocIterator createIterator() {
-      return DocIterator.fromIndexedDISI(disi);
+    public DocIndexIterator createIterator() {
+      return DocIndexIterator.fromIndexedDISI(disi);
     }
 
     @Override
@@ -373,7 +373,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       return createDenseIterator();
     }
 

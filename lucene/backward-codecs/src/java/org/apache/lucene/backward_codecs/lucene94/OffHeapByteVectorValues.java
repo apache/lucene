@@ -122,7 +122,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
-    public DocIterator createIterator() {
+    public DocIndexIterator createIterator() {
       return createDenseIterator();
     }
 
@@ -191,7 +191,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       return fromDISI(disi);
     }
 

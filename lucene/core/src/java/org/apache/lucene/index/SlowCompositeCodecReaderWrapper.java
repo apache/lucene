@@ -294,7 +294,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
   private record DocValuesSub<T extends KnnVectorValues>(T sub, int docStart) {}
 
   private static class MergedDocIterator<T extends KnnVectorValues>
-      extends KnnVectorValues.DocIterator {
+      extends KnnVectorValues.DocIndexIterator {
 
     final Iterator<DocValuesSub<T>> it;
     final long cost;
@@ -898,7 +898,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         }
 
         @Override
-        protected DocIterator createIterator() {
+        protected DocIndexIterator createIterator() {
           return new MergedDocIterator<ByteVectorValues>(subs);
         }
       };

@@ -409,7 +409,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    protected DocIterator createIterator() {
+    protected DocIndexIterator createIterator() {
       return fromOrdToDoc();
     }
 
@@ -426,7 +426,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         }
 
         @Override
-        public DocIterator iterator() {
+        public DocIndexIterator iterator() {
           return values.iterator();
         }
       };
