@@ -293,6 +293,9 @@ API Changes
 * GITHUB#13568: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
 
+* GITHUB#13735: Add CollectorManager#forSequentialExecution to make CollectorManager creation more convenient
+  for users of the deprecated IndexSearcher#search(Query, Collector). (Greg Miller)
+
 New Features
 ---------------------
 
@@ -327,6 +330,9 @@ Improvements
 * GITHUB#12627: patch HNSW graphs to improve reachability of all nodes from entry points
 
 * GITHUB#13201: Better cost estimation on MultiTermQuery over few terms. (Michael Froh)
+
+* GITHUB#13735: Migrate monitor package usage of deprecated IndexSearcher#search(Query, Collector)
+  to IndexSearcher#search(Query, CollectorManager). (Greg Miller)
 
 Optimizations
 ---------------------
