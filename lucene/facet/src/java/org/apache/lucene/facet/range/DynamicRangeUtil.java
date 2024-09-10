@@ -179,8 +179,8 @@ public final class DynamicRangeUtil {
   private static final class SegmentOutput {
     private final long[] values;
     private final long[] weights;
-    private long segmentTotalWeight = 0;
-    private int segmentIdx = 0;
+    private long segmentTotalWeight;
+    private int segmentIdx;
 
     public SegmentOutput(int hitsLength) {
       this.values = new long[hitsLength];
