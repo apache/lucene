@@ -512,7 +512,7 @@ public class QueryUtils {
 
                     @Override
                     public LeafReader getLastReader() {
-                      return null;
+                      return lastReader;
                     }
                   };
                 }
@@ -522,7 +522,9 @@ public class QueryUtils {
                     Collection<SimpleCollectorWithLastReader> collectors) {
                   List<LeafReader> lastReaders = new ArrayList<>();
                   for (SimpleCollectorWithLastReader collector : collectors) {
-                    lastReaders.add(collector.getLastReader());
+                    if (collector.getLastReader() != null) {
+                      lastReaders.add(collector.getLastReader());
+                    }
                   }
                   return lastReaders;
                 }
@@ -692,7 +694,9 @@ public class QueryUtils {
               public List<LeafReader> reduce(Collection<SimpleCollectorWithLastReader> collectors) {
                 List<LeafReader> lastReaders = new ArrayList<>();
                 for (SimpleCollectorWithLastReader collector : collectors) {
-                  lastReaders.add(collector.getLastReader());
+                  if (collector.getLastReader() != null) {
+                    lastReaders.add(collector.getLastReader());
+                  }
                 }
                 return lastReaders;
               }
