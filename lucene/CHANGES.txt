@@ -319,6 +319,13 @@ New Features
 
 * GITHUB#13678: Add support JDK 23 to the Panama Vectorization Provider. (Chris Hegarty)
 
+* GITHUB#13689: Add a new faceting feature, dynamic range facets, which automatically picks a balanced set of numeric
+  ranges based on the distribution of values that occur across all hits.  For use cases that have a highly variable
+  numeric doc values field, such as "price" in an e-commerce application, this facet method is powerful as it allows the
+  presented ranges to adapt depending on what hits the query actually matches.  This is in contrast to existing range
+  faceting that requires the application to provide the specific fixed ranges up front. (Yuting Gan, Greg Miller,
+  Stefan Vodita)
+
 Improvements
 ---------------------
 
