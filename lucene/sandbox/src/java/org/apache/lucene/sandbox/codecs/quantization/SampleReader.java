@@ -20,7 +20,6 @@ package org.apache.lucene.sandbox.codecs.quantization;
 import java.io.IOException;
 import java.util.Random;
 import java.util.function.IntUnaryOperator;
-
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.store.IndexInput;

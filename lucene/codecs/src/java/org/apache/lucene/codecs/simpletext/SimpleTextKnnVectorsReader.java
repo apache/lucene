@@ -332,8 +332,13 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int ordToDoc(int ord) {
+      return entry.ordToDoc[ord];
+    }
+
+    @Override
     protected DocIterator createIterator() {
-      return createDenseIterator(this);
+      return fromOrdToDoc(this);
     }
 
     @Override
@@ -425,7 +430,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     @Override
     protected DocIterator createIterator() {
-      return createDenseIterator(this);
+      return fromOrdToDoc(this);
     }
 
     @Override

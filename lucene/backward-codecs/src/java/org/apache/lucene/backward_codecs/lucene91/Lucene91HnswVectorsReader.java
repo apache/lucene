@@ -453,6 +453,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    protected DocIterator createIterator() {
+      return fromOrdToDoc(this);
+    }
+
+    @Override
     public VectorScorer scorer(float[] target) {
       if (size == 0) {
         return null;

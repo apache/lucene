@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util.quantization;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.quantization.ScalarQuantizer.SCRATCH_SIZE;
 
 import java.io.IOException;

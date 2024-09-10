@@ -362,8 +362,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
           null);
     }
 
-    private int doc = -1;
-
     @Override
     public int dimension() {
       return super.dimension();

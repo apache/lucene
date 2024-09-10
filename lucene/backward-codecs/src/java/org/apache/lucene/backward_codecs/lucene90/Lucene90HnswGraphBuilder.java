@@ -97,8 +97,8 @@ public final class Lucene90HnswGraphBuilder {
   }
 
   /**
-   * Reads all the vectors from two copies of a {@link FloatVectorValues}. Providing two
-   * copies enables efficient retrieval without extra data copying, while avoiding collision of the
+   * Reads all the vectors from two copies of a {@link FloatVectorValues}. Providing two copies
+   * enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet

@@ -30,8 +30,6 @@ class MockByteVectorValues extends ByteVectorValues {
   private final BytesRef binaryValue;
   private final byte[] scratch;
 
-  private int pos = -1;
-
   static MockByteVectorValues fromValues(byte[][] values) {
     byte[] firstNonNull = null;
     int j = 0;

@@ -122,6 +122,11 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
+    public DocIterator createIterator() {
+      return createDenseIterator(this);
+    }
+
+    @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
@@ -183,6 +188,11 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     @Override
     public int ordToDoc(int ord) {
       return (int) ordToDoc.get(ord);
+    }
+
+    @Override
+    protected DocIterator createIterator() {
+      return fromDISI(disi);
     }
 
     @Override

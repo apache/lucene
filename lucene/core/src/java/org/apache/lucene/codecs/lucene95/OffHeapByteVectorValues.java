@@ -33,8 +33,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-public abstract class OffHeapByteVectorValues extends ByteVectorValues
-    implements HasIndexSlice {
+public abstract class OffHeapByteVectorValues extends ByteVectorValues implements HasIndexSlice {
 
   protected final int dimension;
   protected final int size;

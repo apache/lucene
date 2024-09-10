@@ -886,15 +886,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
-    private final int maxDoc;
     private final QuantizedByteVectorValues values;
 
-    int ord = -1;
-
-    QuantizedByteVectorValueSub(
-        int maxDoc, MergeState.DocMap docMap, QuantizedByteVectorValues values) {
+    QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values) {
       super(docMap);
-      this.maxDoc = maxDoc;
       this.values = values;
       assert values.iterator().docID() == -1;
     }
@@ -935,14 +930,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             }
             sub =
                 new QuantizedByteVectorValueSub(
-                    mergeState.maxDocs[i],
                     mergeState.docMaps[i],
                     new QuantizedFloatVectorValues(
                         toQuantize, fieldInfo.getVectorSimilarityFunction(), scalarQuantizer));
           } else {
             sub =
                 new QuantizedByteVectorValueSub(
-                    mergeState.maxDocs[i],
                     mergeState.docMaps[i],
                     new OffsetCorrectedQuantizedByteVectorValues(
                         reader.getQuantizedVectorValues(fieldInfo.name),
@@ -959,33 +952,28 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     private final List<QuantizedByteVectorValueSub> subs;
     private final DocIDMerger<QuantizedByteVectorValueSub> docIdMerger;
     private final int size;
-    private final int[] ends;
+
+    private QuantizedByteVectorValueSub current;
 
     private MergedQuantizedVectorValues(
         List<QuantizedByteVectorValueSub> subs, MergeState mergeState) throws IOException {
       this.subs = subs;
       docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
       int totalSize = 0;
-      ends = new int[subs.size()];
-      int iSub = 0;
       for (QuantizedByteVectorValueSub sub : subs) {
         totalSize += sub.values.size();
-        ends[iSub++] = totalSize;
       }
       size = totalSize;
     }
 
     @Override
     public byte[] vectorValue(int ord) throws IOException {
-      int iSub = ((CompositeIterator) iterator()).iSub;
-      QuantizedByteVectorValues values = subs.get(iSub).values;
-      assert ord == values.iterator().index() + (iSub == 0 ? 0 : ends[iSub - 1]);
-      return values.vectorValue(values.iterator().index());
+      return current.values.vectorValue(current.values.iterator().index());
     }
 
     @Override
     protected DocIterator createIterator() {
-      return new CompositeIterator(subs);
+      return new CompositeIterator();
     }
 
     @Override
@@ -1000,58 +988,39 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public float getScoreCorrectionConstant(int ord) throws IOException {
-      int iSub = ((CompositeIterator) iterator()).iSub;
-
-      QuantizedByteVectorValues current = subs.get(iSub).values;
-      return current.getScoreCorrectionConstant(current.iterator().index());
+      return current.values.getScoreCorrectionConstant(current.values.iterator().index());
     }
 
-    static class CompositeIterator extends KnnVectorValues.DocIterator {
-      private final List<QuantizedByteVectorValueSub> subs;
-      int iSub;
-      int docBase;
-      int ordBase;
-      int docId;
+    private class CompositeIterator extends KnnVectorValues.DocIterator {
+      private int docId;
+      private int ord;
 
-      public CompositeIterator(List<QuantizedByteVectorValueSub> subs) {
-        this.subs = subs;
-        iSub = 0;
-        docBase = 0;
-        ordBase = 0;
+      public CompositeIterator() {
         docId = -1;
+        ord = -1;
       }
 
       @Override
       public int index() {
-        if (iSub == subs.size()) {
-          return NO_MORE_DOCS;
-        }
-        return ordBase + subs.get(iSub).values.iterator().index();
+        return ord;
       }
 
       @Override
       public int docID() {
-        if (iSub == subs.size()) {
-          return NO_MORE_DOCS;
-        }
-        int subDocId = subs.get(iSub).values.iterator().docID();
-        return docBase + subDocId;
+        return docId;
       }
 
       @Override
       public int nextDoc() throws IOException {
-        // FIXME: this is incorrect for a sorted index.
-        // We need to use DocIDMerger while also tracking ordinals
-        while (iSub < subs.size()) {
-          int doc = subs.get(iSub).nextMappedDoc();
-          if (doc != NO_MORE_DOCS) {
-            return docBase + doc;
-          }
-          ordBase += subs.get(iSub).values.size();
-          docBase += subs.get(iSub).maxDoc;
-          ++iSub;
+        current = docIdMerger.next();
+        if (current == null) {
+          docId = NO_MORE_DOCS;
+          ord = NO_MORE_DOCS;
+        } else {
+          docId = current.mappedDocID;
+          ++ord;
         }
-        return NO_MORE_DOCS;
+        return docId;
       }
     }
   }

@@ -221,9 +221,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     final int[] docIdOffsets = new int[sortMap.size()];
     int offset = 1; // 0 means no vector for this (field, document)
     DocIdSetIterator iterator = fieldData.docsWithField.iterator();
-    for (int docID = iterator.nextDoc();
-        docID != NO_MORE_DOCS;
-        docID = iterator.nextDoc()) {
+    for (int docID = iterator.nextDoc(); docID != NO_MORE_DOCS; docID = iterator.nextDoc()) {
       int newDocID = sortMap.oldToNew(docID);
       docIdOffsets[newDocID] = offset++;
     }
@@ -636,13 +634,13 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   private static DocsWithFieldSet writeByteVectorData(
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    for (int ord = 0; ord < byteVectorValues.size(); ord++) {
-      int docV = byteVectorValues.ordToDoc(ord);
+    KnnVectorValues.DocIterator iter = byteVectorValues.iterator();
+    for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue(ord);
+      byte[] binaryValue = byteVectorValues.vectorValue(iter.index());
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
-      docsWithField.add(docV);
+      docsWithField.add(docId);
     }
     return docsWithField;
   }
@@ -656,10 +654,10 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     ByteBuffer buffer =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
-    for (int ord = 0; ord < floatVectorValues.size(); ord++) {
-      int docV = floatVectorValues.ordToDoc(ord);
+    KnnVectorValues.DocIterator iter = floatVectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] value = floatVectorValues.vectorValue(ord);
+      float[] value = floatVectorValues.vectorValue(iter.index());
       buffer.asFloatBuffer().put(value);
       output.writeBytes(buffer.array(), buffer.limit());
       docsWithField.add(docV);

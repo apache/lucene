@@ -220,7 +220,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   @SuppressWarnings("unchecked")
-  private <T> T vectorValue(KnnVectorValues vectors, int ord) throws IOException {
+  private T vectorValue(KnnVectorValues vectors, int ord) throws IOException {
     switch (vectors.getEncoding()) {
       case BYTE -> {
         return (T) ((ByteVectorValues) vectors).vectorValue(ord);
@@ -936,11 +936,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       for (int j = 0; j < size; j++) {
         if (vectorValue(vectors, j) != null && (acceptOrds == null || acceptOrds.get(j))) {
           if (getVectorEncoding() == VectorEncoding.BYTE) {
-            assert query instanceof byte[];
-            expected.add(j, similarityFunction.compare((byte[]) query, vectorValue(vectors, j)));
+            expected.add(
+                j, similarityFunction.compare((byte[]) query, (byte[]) vectorValue(vectors, j)));
           } else {
-            assert query instanceof float[];
-            expected.add(j, similarityFunction.compare((float[]) query, vectorValue(vectors, j)));
+            expected.add(
+                j, similarityFunction.compare((float[]) query, (float[]) vectorValue(vectors, j)));
           }
           if (expected.size() > topK) {
             expected.pop();
@@ -1253,12 +1253,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         case BYTE ->
             assertArrayEquals(
                 "vectors do not match for doc=" + uDoc,
-                vectorValue(u, ord),
+                (byte[]) vectorValue(u, ord),
                 (byte[]) vectorValue(v, ord));
         case FLOAT32 ->
             assertArrayEquals(
                 "vectors do not match for doc=" + uDoc,
-                vectorValue(u, ord),
+                (float[]) vectorValue(u, ord),
                 (float[]) vectorValue(v, ord),
                 1e-4f);
         default ->

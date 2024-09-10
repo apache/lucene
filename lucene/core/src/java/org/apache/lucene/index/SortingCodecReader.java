@@ -32,10 +32,11 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -206,27 +207,28 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  private static class SortingValuesIterator extends KnnVectorValues.DocIterator {
-    private final BitSet docsWithValues;
+  public static class SortingValuesIterator extends KnnVectorValues.DocIterator {
+    private final DocIdSetIterator docsWithValues;
     private final int[] docToOrd;
     private final int size;
 
     int doc = -1;
 
-    SortingValuesIterator(KnnVectorValues value, Sorter.DocMap docMap) throws IOException {
+    public SortingValuesIterator(KnnVectorValues.DocIterator iter, Sorter.DocMap docMap)
+        throws IOException {
       docToOrd = new int[docMap.size()];
-      docsWithValues = new FixedBitSet(docMap.size());
-      KnnVectorValues.DocIterator iter = value.createIterator();
+      FixedBitSet docBits = new FixedBitSet(docMap.size());
       int count = 0;
       for (int doc = iter.nextDoc(); doc != NO_MORE_DOCS; doc = iter.nextDoc()) {
         int newDocId = docMap.oldToNew(doc);
         if (newDocId != -1) {
           docToOrd[newDocId] = iter.index();
-          docsWithValues.set(newDocId);
+          docBits.set(newDocId);
           ++count;
         }
       }
       size = count;
+      docsWithValues = new BitSetIterator(docBits, count);
     }
 
     @Override
@@ -240,11 +242,9 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public int nextDoc() {
-      if (doc >= docsWithValues.length() - 1) {
-        doc = NO_MORE_DOCS;
-      } else {
-        doc = docsWithValues.nextSetBit(doc + 1);
+    public int nextDoc() throws IOException {
+      if (doc != NO_MORE_DOCS) {
+        doc = docsWithValues.nextDoc();
       }
       return doc;
     }
@@ -261,7 +261,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
-      iterator = new SortingValuesIterator(delegate, sortMap);
+      iterator = new SortingValuesIterator(delegate.iterator(), sortMap);
     }
 
     @Override
@@ -295,7 +295,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
-      iterator = new SortingValuesIterator(delegate, sortMap);
+      iterator = new SortingValuesIterator(delegate.iterator(), sortMap);
     }
 
     @Override

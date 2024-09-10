@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.search.VectorScorer;
-import org.apache.lucene.store.IndexInput;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link

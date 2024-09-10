@@ -17,6 +17,8 @@
 
 package org.apache.lucene.backward_codecs.lucene90;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -27,6 +29,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.IndexInput;
@@ -185,13 +188,13 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
     int count = 0;
     ByteBuffer binaryVector =
         ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    for (int ord = 0; ord < vectors.size(); ord++) {
-      int docV = vectors.ordToDoc(ord);
+    KnnVectorValues.DocIterator iter = vectors.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] vectorValue = vectors.vectorValue(ord);
+      float[] vectorValue = vectors.vectorValue(iter.index());
       binaryVector.asFloatBuffer().put(vectorValue);
       output.writeBytes(binaryVector.array(), binaryVector.limit());
-      docIds[ord] = docV;
+      docIds[count++] = docV;
     }
 
     if (docIds.length > count) {

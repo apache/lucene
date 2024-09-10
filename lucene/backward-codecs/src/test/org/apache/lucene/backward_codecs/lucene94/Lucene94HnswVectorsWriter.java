@@ -18,6 +18,7 @@
 package org.apache.lucene.backward_codecs.lucene94;
 
 import static org.apache.lucene.backward_codecs.lucene94.Lucene94RWHnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -35,6 +36,7 @@ import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
@@ -214,9 +216,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     final int[] docIdOffsets = new int[sortMap.size()];
     int offset = 1; // 0 means no vector for this (field, document)
     DocIdSetIterator iterator = fieldData.docsWithField.iterator();
-    for (int docID = iterator.nextDoc();
-        docID != DocIdSetIterator.NO_MORE_DOCS;
-        docID = iterator.nextDoc()) {
+    for (int docID = iterator.nextDoc(); docID != NO_MORE_DOCS; docID = iterator.nextDoc()) {
       int newDocID = sortMap.oldToNew(docID);
       docIdOffsets[newDocID] = offset++;
     }
@@ -554,9 +554,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       final DirectMonotonicWriter ordToDocWriter =
           DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
       DocIdSetIterator iterator = docsWithField.iterator();
-      for (int doc = iterator.nextDoc();
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = iterator.nextDoc()) {
+      for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
         ordToDocWriter.add(doc);
       }
       ordToDocWriter.finish();
@@ -588,10 +586,10 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   private static DocsWithFieldSet writeByteVectorData(
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    for (int ord = 0; ord < byteVectorValues.size(); ord++) {
-      int docV = byteVectorValues.ordToDoc(ord);
+    KnnVectorValues.DocIterator iter = byteVectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue(ord);
+      byte[] binaryValue = byteVectorValues.vectorValue(iter.index());
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);
@@ -605,13 +603,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   private static DocsWithFieldSet writeVectorData(
       IndexOutput output, FloatVectorValues floatVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    KnnVectorValues.DocIterator iter = floatVectorValues.iterator();
     ByteBuffer binaryVector =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
-    for (int ord = 0; ord < floatVectorValues.size(); ord++) {
-      int docV = floatVectorValues.ordToDoc(ord);
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] vectorValue = floatVectorValues.vectorValue(ord);
+      float[] vectorValue = floatVectorValues.vectorValue(iter.index());
       binaryVector.asFloatBuffer().put(vectorValue);
       output.writeBytes(binaryVector.array(), binaryVector.limit());
       docsWithField.add(docV);

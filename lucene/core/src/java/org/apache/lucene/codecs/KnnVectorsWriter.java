@@ -356,6 +356,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public int ordToDoc(int ord) {
+        // FIXME support ordToDoc for backward-codecs?
         throw new UnsupportedOperationException();
       }
 

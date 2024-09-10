@@ -24,9 +24,10 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.SortingCodecReader.SortingValuesIterator;
+import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -79,20 +80,26 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
         case FLOAT32:
           BufferedFloatVectorValues bufferedFloatVectorValues =
               new BufferedFloatVectorValues(
-                  (List<float[]>) fieldData.vectors, fieldData.fieldInfo.getVectorDimension());
+                  (List<float[]>) fieldData.vectors,
+                  fieldData.fieldInfo.getVectorDimension(),
+                  fieldData.docsWithField);
           FloatVectorValues floatVectorValues =
               sortMap != null
-                  ? new SortingFloatVectorValues(bufferedFloatVectorValues, sortMap)
+                  ? new SortingFloatVectorValues(
+                      bufferedFloatVectorValues, fieldData.docsWithField, sortMap)
                   : bufferedFloatVectorValues;
           writeField(fieldData.fieldInfo, floatVectorValues, maxDoc);
           break;
         case BYTE:
           BufferedByteVectorValues bufferedByteVectorValues =
               new BufferedByteVectorValues(
-                  (List<byte[]>) fieldData.vectors, fieldData.fieldInfo.getVectorDimension());
+                  (List<byte[]>) fieldData.vectors,
+                  fieldData.fieldInfo.getVectorDimension(),
+                  fieldData.docsWithField);
           ByteVectorValues byteVectorValues =
               sortMap != null
-                  ? new SortingByteVectorValues(bufferedByteVectorValues, sortMap)
+                  ? new SortingByteVectorValues(
+                      bufferedByteVectorValues, fieldData.docsWithField, sortMap)
                   : bufferedByteVectorValues;
           writeField(fieldData.fieldInfo, byteVectorValues, maxDoc);
           break;
@@ -106,17 +113,18 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
    */
   private static class SortingFloatVectorValues extends FloatVectorValues {
     private final BufferedFloatVectorValues delegate;
-    private final int[] newToOld;
+    private final DocIterator iterator;
 
-    SortingFloatVectorValues(BufferedFloatVectorValues delegate, Sorter.DocMap sortMap)
+    SortingFloatVectorValues(
+        BufferedFloatVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
         throws IOException {
       this.delegate = delegate.copy();
-      newToOld = docMapToOrdMap(delegate, sortMap);
+      iterator = new SortingValuesIterator(delegate.copy().iterator(), sortMap);
     }
 
     @Override
     public float[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(newToOld[ord]);
+      return delegate.vectorValue(ord);
     }
 
     @Override
@@ -133,31 +141,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     public SortingFloatVectorValues copy() {
       throw new UnsupportedOperationException();
     }
-  }
 
-  // create a map from new ord to old ord assuming ords are sorted by doc but
-  // may be sparse
-  private static int[] docMapToOrdMap(KnnVectorValues values, Sorter.DocMap docMap) {
-    // fill with -1?
-    int[] newDocToOldOrd = new int[docMap.size()];
-    int count = 0;
-    for (int ord = 0; ord < values.size(); ord++) {
-      int oldDoc = values.ordToDoc(ord);
-      int newDoc = docMap.oldToNew(oldDoc);
-      // no value will be represented by 0
-      if (newDoc >= 0) {
-        newDocToOldOrd[newDoc] = ord + 1;
-        ++count;
-      }
+    @Override
+    public DocIterator iterator() {
+      return iterator;
     }
-    int[] newToOld = new int[count];
-    count = 0;
-    for (int ord = 0; ord < newDocToOldOrd.length; ord++) {
-      if (newDocToOldOrd[ord] > 0) {
-        newToOld[count++] = newDocToOldOrd[ord] - 1;
-      }
-    }
-    return newToOld;
   }
 
   /**
@@ -166,17 +154,18 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
    */
   private static class SortingByteVectorValues extends ByteVectorValues {
     private final BufferedByteVectorValues delegate;
-    private final int[] newToOld;
+    private final DocIterator iterator;
 
-    SortingByteVectorValues(BufferedByteVectorValues delegate, Sorter.DocMap sortMap)
+    SortingByteVectorValues(
+        BufferedByteVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
         throws IOException {
       this.delegate = delegate;
-      newToOld = docMapToOrdMap(delegate, sortMap);
+      iterator = new SortingValuesIterator(delegate.copy().iterator(), sortMap);
     }
 
     @Override
     public byte[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(newToOld[ord]);
+      return delegate.vectorValue(ord);
     }
 
     @Override
@@ -192,6 +181,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public SortingByteVectorValues copy() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public DocIterator iterator() {
+      return iterator;
     }
   }
 
@@ -278,10 +272,15 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<float[]> vectors;
     final int dimension;
+    private final DocIdSet docsWithField;
+    private final DocIterator iterator;
 
-    BufferedFloatVectorValues(List<float[]> vectors, int dimension) {
+    BufferedFloatVectorValues(List<float[]> vectors, int dimension, DocIdSet docsWithField)
+        throws IOException {
       this.vectors = vectors;
       this.dimension = dimension;
+      this.docsWithField = docsWithField;
+      this.iterator = fromDISI(docsWithField.iterator());
     }
 
     @Override
@@ -305,13 +304,13 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public DocIterator createIterator() {
-      return createDenseIterator(this);
+    public DocIterator iterator() {
+      return iterator;
     }
 
     @Override
-    public BufferedFloatVectorValues copy() {
-      return this;
+    public BufferedFloatVectorValues copy() throws IOException {
+      return new BufferedFloatVectorValues(vectors, dimension, docsWithField);
     }
   }
 
@@ -319,10 +318,15 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<byte[]> vectors;
     final int dimension;
+    private final DocIdSet docsWithField;
+    private final DocIterator iterator;
 
-    BufferedByteVectorValues(List<byte[]> vectors, int dimension) {
+    BufferedByteVectorValues(List<byte[]> vectors, int dimension, DocIdSet docsWithField)
+        throws IOException {
       this.vectors = vectors;
       this.dimension = dimension;
+      this.docsWithField = docsWithField;
+      iterator = fromDISI(docsWithField.iterator());
     }
 
     @Override
@@ -341,8 +345,13 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public BufferedByteVectorValues copy() {
-      return this;
+    public DocIterator iterator() {
+      return iterator;
+    }
+
+    @Override
+    public BufferedByteVectorValues copy() throws IOException {
+      return new BufferedByteVectorValues(vectors, dimension, docsWithField);
     }
   }
 }

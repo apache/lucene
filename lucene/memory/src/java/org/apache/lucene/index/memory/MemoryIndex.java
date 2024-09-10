@@ -2285,7 +2285,6 @@ public class MemoryIndex {
 
   private static final class MemoryFloatVectorValues extends FloatVectorValues {
     private final Info info;
-    private int currentDoc = -1;
 
     MemoryFloatVectorValues(Info info) {
       this.info = info;
@@ -2308,6 +2307,11 @@ public class MemoryIndex {
       } else {
         return null;
       }
+    }
+
+    @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
     }
 
     @Override
@@ -2339,7 +2343,6 @@ public class MemoryIndex {
 
   private static final class MemoryByteVectorValues extends ByteVectorValues {
     private final Info info;
-    private int currentDoc = -1;
 
     MemoryByteVectorValues(Info info) {
       this.info = info;
@@ -2362,6 +2365,11 @@ public class MemoryIndex {
       } else {
         return null;
       }
+    }
+
+    @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
     }
 
     @Override

@@ -28,8 +28,6 @@ class MockVectorValues extends FloatVectorValues {
   private final int numVectors;
   private final float[] scratch;
 
-  private int pos = -1;
-
   static MockVectorValues fromValues(float[][] values) {
     float[] firstNonNull = null;
     int j = 0;

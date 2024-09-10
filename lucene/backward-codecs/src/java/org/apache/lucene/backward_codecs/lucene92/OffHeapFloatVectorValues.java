@@ -107,6 +107,11 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
+    protected DocIterator createIterator() {
+      return createDenseIterator(this);
+    }
+
+    @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
@@ -163,6 +168,11 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
           fieldEntry, dataIn, vectorSimilarityFunction, slice.clone());
+    }
+
+    @Override
+    protected DocIterator createIterator() {
+      return DocIterator.fromIndexedDISI(disi);
     }
 
     @Override

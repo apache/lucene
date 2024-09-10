@@ -17,7 +17,6 @@
 package org.apache.lucene.util.quantization;
 
 import java.io.IOException;
-
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.VectorScorer;

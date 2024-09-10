@@ -1305,7 +1305,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             String idString = storedFields.document(docId).getField("id").stringValue();
             int id = Integer.parseInt(idString);
             if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
-              assertArrayEquals(idString, values[id], v, 0);
+              assertArrayEquals(idString + " " + docId, values[id], v, 0);
               ++valueCount;
             } else {
               ++numDeletes;

@@ -21,7 +21,6 @@ import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -68,7 +67,7 @@ public abstract class KnnVectorValues {
 
   public Bits getAcceptOrds(Bits acceptDocs) {
     // FIXME: change default to return acceptDocs and provide this impl
-    // somewhere more specialized
+    // somewhere more specialized (in every non-dense impl).
     if (acceptDocs == null) {
       return null;
     }
@@ -101,6 +100,7 @@ public abstract class KnnVectorValues {
     }
 
     public static DocIterator fromIndexedDISI(IndexedDISI disi) {
+      // can we replace with fromDISI?
       return new DocIterator() {
         @Override
         public int docID() {
@@ -174,6 +174,74 @@ public abstract class KnnVectorValues {
           return doc = NO_MORE_DOCS;
         }
         return doc = target;
+      }
+
+      @Override
+      public long cost() {
+        return values.size();
+      }
+    };
+  }
+
+  protected static DocIterator fromDISI(DocIdSetIterator docsWithField) {
+    return new DocIterator() {
+
+      int ord = -1;
+
+      @Override
+      public int docID() {
+        return docsWithField.docID();
+      }
+
+      @Override
+      public int index() {
+        return ord;
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        if (docID() == NO_MORE_DOCS) {
+          return NO_MORE_DOCS;
+        }
+        ord++;
+        return docsWithField.nextDoc();
+      }
+
+      @Override
+      public long cost() {
+        return docsWithField.cost();
+      }
+    };
+  }
+
+  protected static DocIterator fromOrdToDoc(KnnVectorValues values) {
+    return new DocIterator() {
+      private int ord = -1;
+
+      @Override
+      public int docID() {
+        if (ord == -1) {
+          return -1;
+        }
+        if (ord == NO_MORE_DOCS) {
+          return NO_MORE_DOCS;
+        }
+        return values.ordToDoc(ord);
+      }
+
+      @Override
+      public int index() {
+        return ord;
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        if (ord >= values.size() - 1) {
+          ord = NO_MORE_DOCS;
+        } else {
+          ++ord;
+        }
+        return docID();
       }
 
       @Override

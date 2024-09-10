@@ -363,9 +363,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     final float[] value;
     final VectorSimilarityFunction similarityFunction;
 
-    int ord = -1;
-    int doc = -1;
-
     OffHeapFloatVectorValues(
         int dimension,
         int[] ordToDoc,
@@ -404,6 +401,16 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       dataIn.readFloats(value, 0, value.length);
       lastOrd = targetOrd;
       return value;
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ordToDoc[ord];
+    }
+
+    @Override
+    protected DocIterator createIterator() {
+      return fromOrdToDoc(this);
     }
 
     @Override
