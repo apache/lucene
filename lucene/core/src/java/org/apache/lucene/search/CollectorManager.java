@@ -58,30 +58,31 @@ public interface CollectorManager<C extends Collector, T> {
 
   /**
    * Wrap a provided {@link Collector} with a thin {@code CollectorManager} wrapper for use with
-   * {@link IndexSearcher#search(Query, CollectorManager)}. The wrapping {@code CollectorManager}
-   * provides no {@link CollectorManager#reduce(Collection)} implementation, so the wrapped {@code
-   * Collector} needs to do all relevant work while collecting.
+   * {@link IndexSearcher#search(Query, CollectorManager)} when doing single-threaded searching. The
+   * wrapping {@code CollectorManager} provides no {@link CollectorManager#reduce(Collection)}
+   * implementation, so the wrapped {@code Collector} needs to do all relevant work while
+   * collecting.
    *
    * <p>Note: This is only safe to use when {@code IndexSearcher} is created with no executor (see:
-   * {@link IndexSearcher#IndexSearcher(IndexReader, Executor)}), or the provided collector is
-   * threadsafe.
+   * {@link IndexSearcher#IndexSearcher(IndexReader, Executor)}).
    */
-  static <C extends Collector> CollectorManager<C, ?> wrapSingleThreaded(C in) {
+  static <C extends Collector> CollectorManager<C, ?> forSequentialExecution(C in) {
     return new CollectorManager<C, Void>() {
-      private boolean called = false;
+      private boolean newCollectorInvoked;
 
       @Override
       public C newCollector() {
-        if (called) {
+        if (newCollectorInvoked) {
           throw new IllegalStateException(
-              "newCollector() called twice on single-threaded collector");
+              "newCollector should be invoked at most once. Ensure your IndexSearcher has been created without an Executor.");
         }
-        called = true;
+        newCollectorInvoked = true;
         return in;
       }
 
       @Override
       public Void reduce(Collection<C> collectors) {
+        assert collectors.size() == 1 : "collectors should contain exactly one collector instance";
         return null;
       }
     };

@@ -472,7 +472,7 @@ public class TestJoinUtil extends LuceneTestCase {
       newSearcher(indexSearcher.getIndexReader(), true, true, false)
           .search(
               joinQuery,
-              CollectorManager.wrapSingleThreaded(
+              CollectorManager.forSequentialExecution(
                   MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector)));
       assertBitSet(expectedResult, actualResult, indexSearcher);
       TopDocs expectedTopDocs = createExpectedTopDocs(randomValue, from, scoreMode, context);
@@ -900,7 +900,7 @@ public class TestJoinUtil extends LuceneTestCase {
 
     indexSearcher.search(
         bq.build(),
-        CollectorManager.wrapSingleThreaded(
+        CollectorManager.forSequentialExecution(
             new SimpleCollector() {
               boolean sawFive;
 
@@ -1555,7 +1555,7 @@ public class TestJoinUtil extends LuceneTestCase {
             new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector();
         indexSearcher.search(
             joinQuery,
-            CollectorManager.wrapSingleThreaded(
+            CollectorManager.forSequentialExecution(
                 MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector)));
         // Asserting bit set...
         assertBitSet(expectedResult, actualResult, indexSearcher);
@@ -1778,7 +1778,7 @@ public class TestJoinUtil extends LuceneTestCase {
       if (multipleValuesPerDocument) {
         searcher.search(
             new TermQuery(new Term("value", uniqueRandomValue)),
-            CollectorManager.wrapSingleThreaded(
+            CollectorManager.forSequentialExecution(
                 new SimpleCollector() {
 
                   private Scorable scorer;
@@ -1822,7 +1822,7 @@ public class TestJoinUtil extends LuceneTestCase {
       } else {
         searcher.search(
             new TermQuery(new Term("value", uniqueRandomValue)),
-            CollectorManager.wrapSingleThreaded(
+            CollectorManager.forSequentialExecution(
                 new SimpleCollector() {
 
                   private Scorable scorer;
@@ -1897,7 +1897,7 @@ public class TestJoinUtil extends LuceneTestCase {
       } else {
         searcher.search(
             new MatchAllDocsQuery(),
-            CollectorManager.wrapSingleThreaded(
+            CollectorManager.forSequentialExecution(
                 new SimpleCollector() {
 
                   private SortedDocValues terms;

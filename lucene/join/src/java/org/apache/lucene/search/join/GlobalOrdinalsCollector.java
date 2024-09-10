@@ -21,7 +21,6 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.LongBitSet;
@@ -32,7 +31,7 @@ import org.apache.lucene.util.LongValues;
  *
  * @lucene.experimental
  */
-final class GlobalOrdinalsCollector implements Collector {
+final class GlobalOrdinalsCollector implements MergeableCollector<GlobalOrdinalsCollector> {
 
   final String field;
   final LongBitSet collectedOrds;
@@ -62,6 +61,11 @@ final class GlobalOrdinalsCollector implements Collector {
     } else {
       return new SegmentOrdinalCollector(docTermOrds);
     }
+  }
+
+  @Override
+  public void merge(GlobalOrdinalsCollector collector) throws IOException {
+    collectedOrds.or(collector.getCollectorOrdinals());
   }
 
   final class OrdinalMapCollector implements LeafCollector {

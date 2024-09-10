@@ -22,13 +22,13 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.LongValues;
 
-abstract class GlobalOrdinalsWithScoreCollector implements Collector {
+abstract class GlobalOrdinalsWithScoreCollector
+    implements MergeableCollector<GlobalOrdinalsWithScoreCollector> {
 
   final String field;
   final boolean doMinMax;
@@ -90,7 +90,8 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
    *
    * @param other the other
    */
-  void combine(GlobalOrdinalsWithScoreCollector other) {
+  @Override
+  public void merge(GlobalOrdinalsWithScoreCollector other) {
     assert other.getClass() == this.getClass();
     if (occurrences != null) {
       for (int i = 0; i < occurrences.blocks.length; i++) {

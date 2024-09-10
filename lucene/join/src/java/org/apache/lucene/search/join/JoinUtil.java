@@ -18,7 +18,6 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.function.Supplier;
@@ -293,7 +292,7 @@ public final class JoinUtil {
             }
           };
     }
-    fromSearcher.search(fromQuery, CollectorManager.wrapSingleThreaded(collector));
+    fromSearcher.search(fromQuery, CollectorManager.forSequentialExecution(collector));
 
     LongArrayList joinValuesList = new LongArrayList(joinValues.size());
     joinValuesList.addAll(joinValues);
@@ -413,7 +412,7 @@ public final class JoinUtil {
       final GenericTermsCollector collector)
       throws IOException {
 
-    fromSearcher.search(fromQuery, CollectorManager.wrapSingleThreaded(collector));
+    fromSearcher.search(fromQuery, CollectorManager.forSequentialExecution(collector));
     return switch (scoreMode) {
       case None ->
           new TermsQuery(
@@ -558,29 +557,13 @@ public final class JoinUtil {
       case None:
         if (min <= 1 && max == Integer.MAX_VALUE) {
           LongBitSet collectedOrdinals =
-              searcher.search(
-                  rewrittenFromQuery,
-                  new CollectorManager<GlobalOrdinalsCollector, LongBitSet>() {
-                    @Override
-                    public GlobalOrdinalsCollector newCollector() throws IOException {
-                      return new GlobalOrdinalsCollector(joinField, finalOrdinalMap, valueCount);
-                    }
-
-                    @Override
-                    public LongBitSet reduce(Collection<GlobalOrdinalsCollector> collectors)
-                        throws IOException {
-                      LongBitSet collectedOrds = null;
-                      Iterator<GlobalOrdinalsCollector> iterator = collectors.iterator();
-                      while (iterator.hasNext()) {
-                        if (collectedOrds == null) {
-                          collectedOrds = iterator.next().getCollectorOrdinals();
-                        } else {
-                          collectedOrds.or(iterator.next().getCollectorOrdinals());
-                        }
-                      }
-                      return collectedOrds;
-                    }
-                  });
+              searcher
+                  .search(
+                      rewrittenFromQuery,
+                      new MergeableCollectorManager<>(
+                          () ->
+                              new GlobalOrdinalsCollector(joinField, finalOrdinalMap, valueCount)))
+                  .getCollectorOrdinals();
           return new GlobalOrdinalsQuery(
               collectedOrdinals,
               joinField,
@@ -601,29 +584,7 @@ public final class JoinUtil {
     }
     GlobalOrdinalsWithScoreCollector reducedCollector =
         searcher.search(
-            rewrittenFromQuery,
-            new CollectorManager<
-                GlobalOrdinalsWithScoreCollector, GlobalOrdinalsWithScoreCollector>() {
-              @Override
-              public GlobalOrdinalsWithScoreCollector newCollector() throws IOException {
-                return globalOrdinalsWithScoreCollector.get();
-              }
-
-              @Override
-              public GlobalOrdinalsWithScoreCollector reduce(
-                  Collection<GlobalOrdinalsWithScoreCollector> collectors) {
-                GlobalOrdinalsWithScoreCollector firstCollector = null;
-                Iterator<GlobalOrdinalsWithScoreCollector> iterator = collectors.iterator();
-                while (iterator.hasNext()) {
-                  if (firstCollector == null) {
-                    firstCollector = iterator.next();
-                  } else {
-                    firstCollector.combine(iterator.next());
-                  }
-                }
-                return firstCollector;
-              }
-            });
+            rewrittenFromQuery, new MergeableCollectorManager<>(globalOrdinalsWithScoreCollector));
     return new GlobalOrdinalsWithScoreQuery(
         reducedCollector,
         scoreMode,
