@@ -80,8 +80,21 @@ behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by us
 ### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
 
 These classes no longer take a `determinizeWorkLimit` and no longer determinize
-behind the scenes. It is the responsibility of the caller to to call
+behind the scenes. It is the responsibility of the caller to call
 `Operations.determinize()` for DFA execution.
+
+### RegExp optional complement syntax has been deprecated
+
+Support for the optional complement syntax (`~`) has been deprecated.
+The `COMPLEMENT` syntax flag has been removed and replaced by the
+`DEPRECATED_COMPLEMENT` flag. Users wanting to enable the deprecated
+complement support can do so by explicitly passing a syntax flags that
+has `DEPRECATED_COMPLEMENT` when creating a `RegExp`. For example:
+`new RegExp("~(foo)", RegExp.DEPRECATED_COMPLEMENT)`.
+
+Alternatively, and quite commonly, a more simple _complement bracket expression_,
+`[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
+character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
@@ -793,3 +806,14 @@ Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderCont
 Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on 
 Scorer.
 
+### `FacetsCollector#search` utility methods moved and updated
+
+The static `search` methods exposed by `FacetsCollector` have been moved to `FacetsCollectorManager`. 
+Furthermore, they take a `FacetsCollectorManager` last argument in place of a `Collector` so that they support 
+intra query concurrency. The return type has also be updated to `FacetsCollectorManager.FacetsResult` which includes 
+both `TopDocs` as well as facets results included in a reduced `FacetsCollector` instance.
+
+### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter 
+
+`collector.class` used to allow users to load a custom collector implementation. `collector.manager.class` 
+replaces it by allowing users to load a custom collector manager instead.
