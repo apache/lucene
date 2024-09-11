@@ -177,7 +177,7 @@ public class SortedSetDocValuesRangeScorer extends Scorer {
     if (skipper.docCount() != reader.maxDoc()) {
       return null;
     }
-    final Sort indexSort = reader.getMetaData().getSort();
+    final Sort indexSort = reader.getMetaData().sort();
     if (indexSort == null
         || indexSort.getSort().length == 0
         || indexSort.getSort()[0].getField().equals(field) == false) {
