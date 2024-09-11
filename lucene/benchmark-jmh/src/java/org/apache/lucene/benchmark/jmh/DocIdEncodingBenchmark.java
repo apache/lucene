@@ -16,11 +16,11 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -56,46 +56,12 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(value = 1)
 public class DocIdEncodingBenchmark {
 
-  private static final List<int[]> docIdSequences = new ArrayList<>();
+  private static final List<int[]> DOC_ID_SEQUENCES = new ArrayList<>();
 
-  private static final int INPUT_SCALE_FACTOR;
+  private static int INPUT_SCALE_FACTOR;
 
   static {
-    String inputScaleFactor = System.getProperty("docIdEncoding.inputScaleFactor");
-
-    if (inputScaleFactor != null) {
-      INPUT_SCALE_FACTOR = Integer.parseInt(inputScaleFactor);
-    } else {
-      INPUT_SCALE_FACTOR = 2_00_000;
-    }
-
-    String inputFilePath = System.getProperty("docIdEncoding.inputFile");
-    Scanner fileReader = null;
-    try {
-      if (inputFilePath != null) {
-        fileReader = new Scanner(new File(inputFilePath), Charset.defaultCharset());
-      } else {
-        fileReader =
-            new Scanner(
-                Objects.requireNonNull(
-                    DocIdEncodingBenchmark.class.getResourceAsStream(
-                        "/org.apache.lucene.benchmark.jmh/docIds_bpv21.txt")),
-                Charset.defaultCharset());
-      }
-      while (fileReader.hasNextLine()) {
-        String sequence = fileReader.nextLine().trim();
-        if (!sequence.startsWith("#") && !sequence.isEmpty()) {
-          docIdSequences.add(
-              Arrays.stream(sequence.split(",")).mapToInt(Integer::parseInt).toArray());
-        }
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } finally {
-      if (fileReader != null) {
-        fileReader.close();
-      }
-    }
+    parseInput();
   }
 
   @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder", "Bit32Encoder"})
@@ -143,13 +109,13 @@ public class DocIdEncodingBenchmark {
 
   @Benchmark
   public void executeEncodeOrDecode() throws IOException {
-    String dataFile =
-        String.join(
-            "_",
-            "docIdJmhData",
-            docIdEncoder.getClass().getSimpleName(),
-            String.valueOf(System.nanoTime()));
     if (methodName.equalsIgnoreCase("encode")) {
+      String dataFile =
+          String.join(
+              "_",
+              "docIdJmhData",
+              docIdEncoder.getClass().getSimpleName(),
+              String.valueOf(System.nanoTime()));
       try (Directory dir = new NIOFSDirectory(tmpDir)) {
         out = dir.createOutput(dataFile, IOContext.DEFAULT);
         encode();
@@ -172,7 +138,7 @@ public class DocIdEncodingBenchmark {
   }
 
   public void encode() throws IOException {
-    for (int[] docIdSequence : docIdSequences) {
+    for (int[] docIdSequence : DOC_ID_SEQUENCES) {
       for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
         docIdEncoder.encode(out, 0, docIdSequence.length, docIdSequence);
       }
@@ -180,7 +146,7 @@ public class DocIdEncodingBenchmark {
   }
 
   public void decode() throws IOException {
-    for (int[] docIdSequence : docIdSequences) {
+    for (int[] docIdSequence : DOC_ID_SEQUENCES) {
       for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
         docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
         // Uncomment to test the output of Encoder
@@ -394,6 +360,45 @@ public class DocIdEncodingBenchmark {
     public void decode(IndexInput in, int start, int count, int[] docIds) throws IOException {
       for (int i = 0; i < count; i++) {
         docIds[i] = in.readInt();
+      }
+    }
+  }
+
+  private static void parseInput() {
+    String inputScaleFactor = System.getProperty("docIdEncoding.inputScaleFactor");
+
+    if (inputScaleFactor != null) {
+      INPUT_SCALE_FACTOR = Integer.parseInt(inputScaleFactor);
+    } else {
+      INPUT_SCALE_FACTOR = 2_00_000;
+    }
+
+    String inputFilePath = System.getProperty("docIdEncoding.inputFile");
+    Scanner fileReader = null;
+    try {
+      if (inputFilePath != null) {
+        fileReader = new Scanner(Paths.get(inputFilePath), Charset.defaultCharset());
+      } else {
+        fileReader =
+            new Scanner(
+                Objects.requireNonNull(
+                    DocIdEncodingBenchmark.class.getResourceAsStream(
+                        "/org.apache.lucene.benchmark.jmh/docIds_bpv21.txt")),
+                Charset.defaultCharset());
+      }
+      while (fileReader.hasNextLine()) {
+        String sequence = fileReader.nextLine().trim();
+        if (!sequence.startsWith("#") && !sequence.isEmpty()) {
+          DOC_ID_SEQUENCES.add(
+              Arrays.stream(sequence.split(",")).mapToInt(Integer::parseInt).toArray());
+        }
+      }
+      System.out.println(DOC_ID_SEQUENCES);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      if (fileReader != null) {
+        fileReader.close();
       }
     }
   }
