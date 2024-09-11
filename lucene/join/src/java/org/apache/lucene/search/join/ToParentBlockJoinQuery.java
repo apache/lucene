@@ -196,14 +196,10 @@ public class ToParentBlockJoinQuery extends Query {
         return super.bulkScorer(context);
       }
 
-      ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        // No docs match
-        return null;
-      }
-      scorerSupplier.setTopLevelScoringClause();
-      return new BlockJoinBulkScorer(
-          in.bulkScorer(context), parentsFilter.getBitSet(context), scoreMode);
+      BulkScorer childBulkScorer = in.bulkScorer(context);
+      return childBulkScorer != null
+          ? new BlockJoinBulkScorer(childBulkScorer, parentsFilter.getBitSet(context), scoreMode)
+          : null;
     }
 
     @Override
