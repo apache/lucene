@@ -135,7 +135,7 @@ public abstract class Similarity {
    */
   public long computeNorm(FieldInvertState state) {
     final int numTerms;
-    if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
+    if (state.getIndexOptions() == IndexOptions.DOCS) {
       numTerms = state.getUniqueTermCount();
     } else if (discountOverlaps) {
       numTerms = state.getLength() - state.getNumOverlap();
