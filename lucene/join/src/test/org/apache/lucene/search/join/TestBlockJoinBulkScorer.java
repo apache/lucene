@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -41,7 +42,6 @@ import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
-import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
@@ -89,10 +89,21 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     }
   }
 
-  private record ChildDocMatch(int docId, List<MatchValue> matches) {
+  private static class ChildDocMatch {
+    private final int docId;
+    private final List<MatchValue> matches;
+
     public ChildDocMatch(int docId, List<MatchValue> matches) {
       this.docId = docId;
       this.matches = Collections.unmodifiableList(matches);
+    }
+
+    public int docId() {
+      return docId;
+    }
+
+    public List<MatchValue> matches() {
+      return matches;
     }
   }
 
@@ -101,7 +112,8 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       throws IOException {
     Map<Integer, List<ChildDocMatch>> expectedMatches = new HashMap<>();
 
-    final int parentDocCount = random().nextInt(1, maxParentDocCount + 1);
+    // Generate a random value between 1 (inclusive) and maxParentDocCount (inclusive)
+    final int parentDocCount = random().nextInt(maxParentDocCount) + 1;
     int currentDocId = 0;
     for (int i = 0; i < parentDocCount; i++) {
       final int childDocCount = random().nextInt(maxChildDocCount + 1);
@@ -185,7 +197,9 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     for (var entry : expectedMatches.entrySet()) {
       // Filter out child docs with no matches since those will never contribute to the score
       List<ChildDocMatch> childDocMatches =
-          entry.getValue().stream().filter(m -> !m.matches().isEmpty()).toList();
+          entry.getValue().stream()
+              .filter(m -> !m.matches().isEmpty())
+              .collect(Collectors.toList());
       if (childDocMatches.isEmpty()) {
         continue;
       }
@@ -320,14 +334,14 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ToParentBlockJoinQuery query = buildQuery(joinScoreMode);
           Weight weight = searcher.createWeight(searcher.rewrite(query), searchScoreMode, 1);
-          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
-          if (ss == null) {
-            // Score supplier will be null when there are no matches
+          BulkScorer bulkScorer = weight.bulkScorer(searcher.getIndexReader().leaves().get(0));
+          if (bulkScorer == null) {
+            // Bulk scorer will be null when there are no matches
             assertTrue(expectedScores.isEmpty());
             continue;
           }
 
-          assertScores(ss.bulkScorer(), searchScoreMode, null, expectedScores);
+          assertScores(bulkScorer, searchScoreMode, null, expectedScores);
         }
       }
     }
@@ -364,9 +378,8 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                   12, 2.0f,
                   16, 5.0f);
 
-          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
-          ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, null, expectedScores);
+          BulkScorer bulkScorer = weight.bulkScorer(searcher.getIndexReader().leaves().get(0));
+          assertScores(bulkScorer, scoreMode, null, expectedScores);
         }
 
         {
@@ -379,17 +392,15 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                   10, 10.0f,
                   16, 5.0f);
 
-          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
-          ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, 6.0f, expectedScores);
+          BulkScorer bulkScorer = weight.bulkScorer(searcher.getIndexReader().leaves().get(0));
+          assertScores(bulkScorer, scoreMode, 6.0f, expectedScores);
         }
 
         {
           Map<Integer, Float> expectedScores = Map.of();
 
-          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
-          ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, 11.0f, expectedScores);
+          BulkScorer bulkScorer = weight.bulkScorer(searcher.getIndexReader().leaves().get(0));
+          assertScores(bulkScorer, scoreMode, 11.0f, expectedScores);
         }
       }
     }
@@ -426,9 +437,8 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                   12, 0.0f,
                   16, 0.0f);
 
-          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
-          ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, null, expectedScores);
+          BulkScorer bulkScorer = weight.bulkScorer(searcher.getIndexReader().leaves().get(0));
+          assertScores(bulkScorer, scoreMode, null, expectedScores);
         }
 
         {
@@ -440,17 +450,15 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                   12, 0.0f,
                   16, 0.0f);
 
-          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
-          ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, 0.0f, expectedScores);
+          BulkScorer bulkScorer = weight.bulkScorer(searcher.getIndexReader().leaves().get(0));
+          assertScores(bulkScorer, scoreMode, 0.0f, expectedScores);
         }
 
         {
           Map<Integer, Float> expectedScores = Map.of();
 
-          ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
-          ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, Math.nextUp(0f), expectedScores);
+          BulkScorer bulkScorer = weight.bulkScorer(searcher.getIndexReader().leaves().get(0));
+          assertScores(bulkScorer, scoreMode, Math.nextUp(0f), expectedScores);
         }
       }
     }

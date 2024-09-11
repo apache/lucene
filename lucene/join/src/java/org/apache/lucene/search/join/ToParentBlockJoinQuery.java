@@ -173,18 +173,6 @@ public class ToParentBlockJoinQuery extends Query {
         }
 
         @Override
-        public BulkScorer bulkScorer() throws IOException {
-          if (scoreMode == ScoreMode.None) {
-            // BlockJoinBulkScorer evaluates all child hits exhaustively, but when scoreMode is None
-            // we only need to evaluate a single child doc per parent. In this case, use the default
-            // bulk scorer instead, which uses BlockJoinScorer to iterate over child hits.
-            // BlockJoinScorer is optimized to skip child hit evaluation when scoreMode is None.
-            return super.bulkScorer();
-          }
-          return new BlockJoinBulkScorer(childScorerSupplier.bulkScorer(), parents, scoreMode);
-        }
-
-        @Override
         public long cost() {
           return childScorerSupplier.cost();
         }
@@ -196,6 +184,26 @@ public class ToParentBlockJoinQuery extends Query {
           }
         }
       };
+    }
+
+    @Override
+    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+      if (scoreMode == ScoreMode.None) {
+        // BlockJoinBulkScorer evaluates all child hits exhaustively, but when scoreMode is None
+        // we only need to evaluate a single child doc per parent. In this case, use the default
+        // bulk scorer instead, which uses BlockJoinScorer to iterate over child hits.
+        // BlockJoinScorer is optimized to skip child hit evaluation when scoreMode is None.
+        return super.bulkScorer(context);
+      }
+
+      ScorerSupplier scorerSupplier = scorerSupplier(context);
+      if (scorerSupplier == null) {
+        // No docs match
+        return null;
+      }
+      scorerSupplier.setTopLevelScoringClause();
+      return new BlockJoinBulkScorer(
+          in.bulkScorer(context), parentsFilter.getBitSet(context), scoreMode);
     }
 
     @Override
@@ -307,16 +315,19 @@ public class ToParentBlockJoinQuery extends Query {
     private final ScoreMode scoreMode;
     private double score;
     private int freq;
+    private int currentParent;
 
     public Score(ScoreMode scoreMode) {
       this.scoreMode = scoreMode;
       this.score = 0;
       this.freq = 0;
+      this.currentParent = -1;
     }
 
-    public void reset(Scorable firstChildScorer) throws IOException {
+    public void reset(Scorable firstChildScorer, int currentParent) throws IOException {
       score = scoreMode == ScoreMode.None ? 0 : firstChildScorer.score();
       freq = 1;
+      this.currentParent = currentParent;
     }
 
     public void addChildScore(Scorable childScorer) throws IOException {
@@ -348,6 +359,11 @@ public class ToParentBlockJoinQuery extends Query {
         score /= freq;
       }
       return (float) score;
+    }
+
+    @Override
+    public int docID() {
+      return currentParent;
     }
   }
 
@@ -433,7 +449,7 @@ public class ToParentBlockJoinQuery extends Query {
 
       float score = 0;
       if (scoreMode != ScoreMode.None) {
-        parentScore.reset(childScorer);
+        parentScore.reset(childScorer, parentApproximation.docID());
         while (childApproximation.nextDoc() < parentApproximation.docID()) {
           if (childTwoPhase == null || childTwoPhase.matches()) {
             parentScore.addChildScore(childScorer);
@@ -581,6 +597,11 @@ public class ToParentBlockJoinQuery extends Query {
                 }
 
                 @Override
+                public int docID() {
+                  return currentParent;
+                }
+
+                @Override
                 public void setMinCompetitiveScore(float minScore) throws IOException {
                   if (scoreMode == ScoreMode.None || scoreMode == ScoreMode.Max) {
                     scorer.setMinCompetitiveScore(minScore);
@@ -598,7 +619,7 @@ public class ToParentBlockJoinQuery extends Query {
             }
 
             currentParent = parents.nextSetBit(doc);
-            currentParentScore.reset(scorer);
+            currentParentScore.reset(scorer, currentParent);
           } else if (doc == currentParent) {
             throw new IllegalStateException(
                 "Child query must not match same docs with parent filter. "
