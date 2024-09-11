@@ -268,17 +268,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           writer.addDocument(doc);
         }
         writer.commit();
-        try {
-          writer.forceMerge(1);
-        } catch (IllegalStateException e) {
-          // do nothing, we expect this exception
-        }
-        assertNotNull(mergeScheduler.ex.get());
-        Exception ex = mergeScheduler.ex.get();
-        assertTrue(ex instanceof IllegalArgumentException);
-        assertTrue(
-            "unexpected exception msg: " + ex.getMessage(),
-            ex.getMessage().matches("field=\".*\" not found"));
+        writer.forceMerge(1);
+        assertNull(mergeScheduler.ex.get());
       }
     }
   }
@@ -318,17 +309,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           writer.addDocument(doc);
         }
         writer.commit();
-        try {
-          writer.forceMerge(1);
-        } catch (IllegalStateException e) {
-          // do nothing, we expect this exception
-        }
-        assertNotNull(mergeScheduler.ex.get());
-        Exception ex = mergeScheduler.ex.get();
-        assertTrue(ex instanceof IllegalArgumentException);
-        assertTrue(
-            "unexpected exception msg:[" + ex.getMessage() + "]",
-            ex.getMessage().matches("field=\".*\" not found"));
+        writer.forceMerge(1);
+        assertNull(mergeScheduler.ex.get());
       }
     }
   }

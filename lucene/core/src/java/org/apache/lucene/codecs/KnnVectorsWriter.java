@@ -28,6 +28,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
@@ -212,14 +213,34 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
+    /**
+     * Returns true if the fieldInfos has vector values for the field.
+     *
+     * @param fieldInfos fieldInfos for the segment
+     * @param fieldName field name
+     * @return true if the fieldInfos has vector values for the field.
+     */
+    public static boolean hasVectorValues(FieldInfos fieldInfos, String fieldName) {
+      return fieldInfos != null
+          && fieldInfos.hasVectorValues()
+          && fieldInfos.fieldInfo(fieldName) != null
+          && fieldInfos.fieldInfo(fieldName).hasVectorValues();
+    }
+
     private static <V, S> List<S> mergeVectorValues(
         KnnVectorsReader[] knnVectorsReaders,
         MergeState.DocMap[] docMaps,
+        FieldInfo mergingField,
+        FieldInfos[] sourceFieldInfos,
         IOFunction<KnnVectorsReader, V> valuesSupplier,
         BiFunction<MergeState.DocMap, V, S> newSub)
         throws IOException {
       List<S> subs = new ArrayList<>();
       for (int i = 0; i < knnVectorsReaders.length; i++) {
+        FieldInfos sourceFieldInfo = sourceFieldInfos[i];
+        if (hasVectorValues(sourceFieldInfo, mergingField.name) == false) {
+          continue;
+        }
         KnnVectorsReader knnVectorsReader = knnVectorsReaders[i];
         if (knnVectorsReader != null) {
           V values = valuesSupplier.apply(knnVectorsReader);
@@ -239,12 +260,10 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeVectorValues(
               mergeState.knnVectorsReaders,
               mergeState.docMaps,
-              knnVectorsReader -> {
-                return knnVectorsReader.getFloatVectorValues(fieldInfo.name);
-              },
-              (docMap, values) -> {
-                return new FloatVectorValuesSub(docMap, values);
-              }),
+              fieldInfo,
+              mergeState.fieldInfos,
+              knnVectorsReader -> knnVectorsReader.getFloatVectorValues(fieldInfo.name),
+              FloatVectorValuesSub::new),
           mergeState);
     }
 
@@ -256,12 +275,10 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeVectorValues(
               mergeState.knnVectorsReaders,
               mergeState.docMaps,
-              knnVectorsReader -> {
-                return knnVectorsReader.getByteVectorValues(fieldInfo.name);
-              },
-              (docMap, values) -> {
-                return new ByteVectorValuesSub(docMap, values);
-              }),
+              fieldInfo,
+              mergeState.fieldInfos,
+              knnVectorsReader -> knnVectorsReader.getByteVectorValues(fieldInfo.name),
+              ByteVectorValuesSub::new),
           mergeState);
     }
 
