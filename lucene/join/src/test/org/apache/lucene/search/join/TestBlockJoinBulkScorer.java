@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -278,7 +280,9 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
             actualScores.put(doc, scoreMode.needsScores() ? scorer.score() : 0);
           }
         },
-        null);
+        null,
+        0,
+        NO_MORE_DOCS);
     assertEquals(expectedScores, actualScores);
   }
 
