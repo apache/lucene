@@ -77,11 +77,18 @@ public class DocIdEncodingBenchmark {
   @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder", "Bit32Encoder"})
   String encoderName;
 
+  @Param({"encode", "decode"})
+  String methodName;
+
   private static final int INPUT_SCALE_FACTOR = 2_00_000;
 
   private DocIdEncoder docIdEncoder;
 
   private Path tmpDir;
+
+  private IndexInput in;
+
+  private IndexOutput out;
 
   private final int[] scratch = new int[512];
 
@@ -89,47 +96,83 @@ public class DocIdEncodingBenchmark {
   public void init() throws IOException {
     tmpDir = Files.createTempDirectory("docIdJmh");
     docIdEncoder = DocIdEncoder.SingletonFactory.fromName(encoderName);
+    // Create file once for decoders to read from in every iteration
+    if (methodName.equalsIgnoreCase("decode")) {
+      String dataFile =
+          String.join("_", "docIdJmhData", docIdEncoder.getClass().getSimpleName(), "DecoderInput");
+      try (Directory dir = new NIOFSDirectory(tmpDir)) {
+        out = dir.createOutput(dataFile, IOContext.DEFAULT);
+        encode();
+      } finally {
+        out.close();
+      }
+    }
   }
 
   @TearDown(Level.Trial)
   public void finish() throws IOException {
+    if (methodName.equalsIgnoreCase("decode")) {
+      String dataFile =
+          String.join("_", "docIdJmhData", docIdEncoder.getClass().getSimpleName(), "DecoderInput");
+      Files.delete(tmpDir.resolve(dataFile));
+    }
     Files.delete(tmpDir);
   }
 
   @Benchmark
-  public void performEncodeDecode() throws IOException {
+  public void executeEncodeOrDecode() throws IOException {
     String dataFile =
         String.join(
             "_",
-            "docIdJmhData_",
+            "docIdJmhData",
             docIdEncoder.getClass().getSimpleName(),
             String.valueOf(System.nanoTime()));
-    try (Directory dir = new NIOFSDirectory(tmpDir)) {
-      try (IndexOutput out = dir.createOutput(dataFile, IOContext.DEFAULT)) {
-        for (int[] docIdSequence : docIdSequences) {
-          for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
-            docIdEncoder.encode(out, 0, docIdSequence.length, docIdSequence);
-          }
-        }
-      }
-      try (IndexInput in = dir.openInput(dataFile, IOContext.DEFAULT)) {
-        for (int[] docIdSequence : docIdSequences) {
-          for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
-            docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
-            // Uncomment to test the output of Encoder
-            //            if (!Arrays.equals(
-            //                docIdSequence, Arrays.copyOfRange(scratch, 0, docIdSequence.length)))
-            // {
-            //              throw new RuntimeException(
-            //                  String.format(
-            //                      "Error for Encoder %s with sequence Expected %s Got %s",
-            //                      encoderName, Arrays.toString(docIdSequence),
-            // Arrays.toString(scratch)));
-            //            }
-          }
-        }
+    if (methodName.equalsIgnoreCase("encode")) {
+      try (Directory dir = new NIOFSDirectory(tmpDir)) {
+        out = dir.createOutput(dataFile, IOContext.DEFAULT);
+        encode();
       } finally {
         Files.delete(tmpDir.resolve(dataFile));
+        out.close();
+      }
+    } else if (methodName.equalsIgnoreCase("decode")) {
+      String inputFile =
+          String.join("_", "docIdJmhData", docIdEncoder.getClass().getSimpleName(), "DecoderInput");
+      try (Directory dir = new NIOFSDirectory(tmpDir)) {
+        in = dir.openInput(inputFile, IOContext.DEFAULT);
+        decode();
+      } finally {
+        in.close();
+      }
+    } else {
+      throw new IllegalArgumentException("Unknown method: " + methodName);
+    }
+  }
+
+  @Benchmark
+  public void encode() throws IOException {
+    for (int[] docIdSequence : docIdSequences) {
+      for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
+        docIdEncoder.encode(out, 0, docIdSequence.length, docIdSequence);
+      }
+    }
+  }
+
+  @Benchmark
+  public void decode() throws IOException {
+    for (int[] docIdSequence : docIdSequences) {
+      for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
+        docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
+        // Uncomment to test the output of Encoder
+        //            if (!Arrays.equals(
+        //                docIdSequence, Arrays.copyOfRange(scratch, 0, docIdSequence.length)))
+        // {
+        //              throw new RuntimeException(
+        //                  String.format(
+        //                      "Error for Encoder %s with sequence Expected %s Got %s",
+        //                      encoderName, Arrays.toString(docIdSequence),
+        // Arrays.toString(scratch)));
+        //            }
       }
     }
   }
