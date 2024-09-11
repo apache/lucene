@@ -242,6 +242,7 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public int advance(int target) throws IOException {
+      // Look backwards to see if the current child doc matches the previous parent
       final int prevParent =
           target == 0 ? -1 : parentBits.prevSetBit(Math.min(target, parentBits.length()) - 1);
 
@@ -265,6 +266,10 @@ public class ToParentBlockJoinQuery extends Query {
       if (childDoc >= parentBits.length()) {
         return doc = NO_MORE_DOCS;
       }
+
+      // Get the current parent, starting at the current child doc. We do this to handle the case
+      // where the current child doc is also the current parent. When advance is next called, this
+      // will be detected and an exception will be thrown.
       return doc = parentBits.nextSetBit(childDoc);
     }
 
