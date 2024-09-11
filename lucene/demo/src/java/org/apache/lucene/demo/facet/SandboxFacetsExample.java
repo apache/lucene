@@ -43,7 +43,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.sandbox.facet.ComparableUtils;
-import org.apache.lucene.sandbox.facet.FacetFieldCollector;
 import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
 import org.apache.lucene.sandbox.facet.cutters.TaxonomyFacetsCutter;
 import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
@@ -57,7 +56,6 @@ import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
 import org.apache.lucene.sandbox.facet.recorders.Reducer;
-import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
@@ -563,7 +561,7 @@ public class SandboxFacetsExample {
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
     FacetFieldCollectorManager<CountFacetRecorder> publishDayDimensionCollectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, publishDayDimensionRecorder);
-    List<CollectorManager<FacetFieldCollector, CountFacetRecorder>> drillSidewaysManagers =
+    List<FacetFieldCollectorManager<CountFacetRecorder>> drillSidewaysManagers =
         List.of(publishDayDimensionCollectorManager);
 
     //// (3) search
