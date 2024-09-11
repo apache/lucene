@@ -431,6 +431,7 @@ public class ToParentBlockJoinQuery extends Query {
         score = parentScore.score();
       }
 
+      // TODO: Fix this error check when score mode is None
       if (childApproximation.docID() == parentApproximation.docID()
           && (childTwoPhase == null || childTwoPhase.matches())) {
         throw new IllegalStateException(
