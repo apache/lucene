@@ -766,7 +766,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public long ipByteBinByte(byte[] q, byte[] d) {
-    if (d.length >= 128 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    // 128 / 8 == 16
+    if (d.length >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
       if (VECTOR_BITSIZE >= 256) {
         return ipByteBin256(q, d);
       } else if (VECTOR_BITSIZE == 128) {
