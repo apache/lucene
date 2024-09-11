@@ -159,6 +159,8 @@ New Features
   searcher is created via LuceneTestCase#newSearcher. Users may override IndexSearcher#slices(List) to optionally
   create slices that target segment partitions. (Luca Cavanna)
 
+* GITHUB#13741: Implement Accountable for NFARunAutomaton, fix hashCode implementation of CompiledAutomaton. (Patrick Zhai)
+
 Improvements
 ---------------------
 
