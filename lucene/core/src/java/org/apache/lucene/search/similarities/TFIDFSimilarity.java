@@ -324,8 +324,15 @@ import org.apache.lucene.util.SmallFloat;
  */
 public abstract class TFIDFSimilarity extends Similarity {
 
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  public TFIDFSimilarity() {}
+  /** Default constructor: parameter-free */
+  public TFIDFSimilarity() {
+    super();
+  }
+
+  /** Primary constructor. */
+  public TFIDFSimilarity(boolean discountOverlaps) {
+    super(discountOverlaps);
+  }
 
   /**
    * Computes a score factor based on a term or phrase's frequency in a document. This value is
@@ -410,7 +417,7 @@ public abstract class TFIDFSimilarity extends Similarity {
   /**
    * Compute an index-time normalization value for this field instance.
    *
-   * @param length the number of terms in the field, optionally {@link #setDiscountOverlaps(boolean)
+   * @param length the number of terms in the field, optionally {@link #getDiscountOverlaps()
    *     discounting overlaps}
    * @return a length normalization value
    */

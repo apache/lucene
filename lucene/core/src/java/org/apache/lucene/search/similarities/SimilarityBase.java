@@ -41,8 +41,15 @@ public abstract class SimilarityBase extends Similarity {
   /** For {@link #log2(double)}. Precomputed for efficiency reasons. */
   private static final double LOG_2 = Math.log(2);
 
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  public SimilarityBase() {}
+  /** Default constructor: parameter-free */
+  public SimilarityBase() {
+    super();
+  }
+
+  /** Primary constructor. */
+  public SimilarityBase(boolean discountOverlaps) {
+    super(discountOverlaps);
+  }
 
   @Override
   public final SimScorer scorer(

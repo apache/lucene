@@ -93,23 +93,12 @@ public abstract class Similarity {
    * True if overlap tokens (tokens with a position of increment of zero) are discounted from the
    * document's length.
    */
-  private boolean discountOverlaps = true;
-
-  /**
-   * Determines whether overlap tokens (Tokens with 0 position increment) are ignored when computing
-   * norm. By default this is true, meaning overlap tokens do not count when computing norms.
-   *
-   * @lucene.experimental
-   * @see #computeNorm
-   */
-  public final void setDiscountOverlaps(boolean v) {
-    discountOverlaps = v;
-  }
+  private final boolean discountOverlaps;
 
   /**
    * Returns true if overlap tokens are discounted from the document's length.
    *
-   * @see #setDiscountOverlaps
+   * @see #computeNorm
    */
   public final boolean getDiscountOverlaps() {
     return discountOverlaps;
