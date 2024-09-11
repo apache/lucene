@@ -41,14 +41,4 @@ public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase
   public void testSortedIndexBytes() throws Exception {
     // unimplemented
   }
-
-  @Override
-  public void testMergingWithDifferentKnnFields() {
-    // unimplemented
-  }
-
-  @Override
-  public void testMergingWithDifferentByteKnnFields() {
-    // unimplemented
-  }
 }

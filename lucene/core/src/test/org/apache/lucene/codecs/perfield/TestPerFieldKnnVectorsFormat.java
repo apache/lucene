@@ -71,16 +71,6 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     return codec;
   }
 
-  @Override
-  public void testMergingWithDifferentKnnFields() {
-    // do nothing
-  }
-
-  @Override
-  public void testMergingWithDifferentByteKnnFields() {
-    // do nothing
-  }
-
   public void testMissingFieldReturnsNoResults() throws IOException {
     try (Directory directory = newDirectory()) {
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));

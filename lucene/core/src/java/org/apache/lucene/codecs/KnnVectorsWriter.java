@@ -221,10 +221,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
      * @return true if the fieldInfos has vector values for the field.
      */
     public static boolean hasVectorValues(FieldInfos fieldInfos, String fieldName) {
-      return fieldInfos != null
-          && fieldInfos.hasVectorValues()
-          && fieldInfos.fieldInfo(fieldName) != null
-          && fieldInfos.fieldInfo(fieldName).hasVectorValues();
+      if (fieldInfos.hasVectorValues() == false) {
+        return false;
+      }
+      FieldInfo info = fieldInfos.fieldInfo(fieldName);
+      return info != null && info.hasVectorValues();
     }
 
     private static <V, S> List<S> mergeVectorValues(
