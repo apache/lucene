@@ -46,7 +46,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
 
   final Query baseQuery;
 
-  final List<CollectorManager<K, R>> drillSidewaysCollectorManagers;
+  final List<? extends CollectorManager<K, R>> drillSidewaysCollectorManagers;
   final List<List<K>> managedDrillSidewaysCollectors;
 
   final Query[] drillDownQueries;
@@ -59,7 +59,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
    */
   DrillSidewaysQuery(
       Query baseQuery,
-      List<CollectorManager<K, R>> drillSidewaysCollectorManagers,
+      List<? extends CollectorManager<K, R>> drillSidewaysCollectorManagers,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
     // Note that the "managed" collector lists are synchronized here since bulkScorer()
@@ -80,7 +80,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
    */
   private DrillSidewaysQuery(
       Query baseQuery,
-      List<CollectorManager<K, R>> drillSidewaysCollectorManagers,
+      List<? extends CollectorManager<K, R>> drillSidewaysCollectorManagers,
       List<List<K>> managedDrillSidewaysCollectors,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {

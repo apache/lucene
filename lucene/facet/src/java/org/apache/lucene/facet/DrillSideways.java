@@ -453,7 +453,7 @@ public class DrillSideways {
       mainCollectorManager = hitCollectorManager;
     }
     // Drill sideways dimensions
-    final List<CollectorManager<FacetsCollector, FacetsCollector>> drillSidewaysCollectorManagers;
+    final List<FacetsCollectorManager> drillSidewaysCollectorManagers;
     if (query.getDims().isEmpty() == false) {
       drillSidewaysCollectorManagers = new ArrayList<>(query.getDims().size());
       for (int i = 0; i < query.getDims().size(); i++) {
@@ -521,7 +521,7 @@ public class DrillSideways {
   public <C extends Collector, T, K extends Collector, R> Result<T, R> search(
       DrillDownQuery query,
       CollectorManager<C, T> drillDownCollectorManager,
-      List<CollectorManager<K, R>> drillSidewaysCollectorManagers)
+      List<? extends CollectorManager<K, R>> drillSidewaysCollectorManagers)
       throws IOException {
     if (drillDownCollectorManager == null) {
       throw new IllegalArgumentException(
@@ -572,7 +572,7 @@ public class DrillSideways {
   private <C extends Collector, T, K extends Collector, R> Result<T, R> searchSequentially(
       final DrillDownQuery query,
       final CollectorManager<C, T> drillDownCollectorManager,
-      final List<CollectorManager<K, R>> drillSidewaysCollectorManagers)
+      final List<? extends CollectorManager<K, R>> drillSidewaysCollectorManagers)
       throws IOException {
 
     Map<String, Integer> drillDownDims = query.getDims();
@@ -614,7 +614,7 @@ public class DrillSideways {
   private <C extends Collector, T, K extends Collector, R> Result<T, R> searchConcurrently(
       final DrillDownQuery query,
       final CollectorManager<C, T> drillDownCollectorManager,
-      final List<CollectorManager<K, R>> drillSidewaysCollectorManagers) {
+      final List<? extends CollectorManager<K, R>> drillSidewaysCollectorManagers) {
 
     final Map<String, Integer> drillDownDims = query.getDims();
     final CallableCollector<T> drillDownCallableCollector =
