@@ -262,6 +262,11 @@ ConcurrentMergeScheduler now disables auto I/O throttling by default. There is s
 happening at the CPU level, since ConcurrentMergeScheduler has a maximum number of threads it can
 use, which is only a fraction of the total number of threads of the host by default.
 
+### FieldInfos#hasVectors and FieldInfo#hasVectors renamed to hasTermVectors
+
+To reduce confusion between term vectors and numeric vectors, `hasVectors` has been renamed to
+`hasTermVectors`.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

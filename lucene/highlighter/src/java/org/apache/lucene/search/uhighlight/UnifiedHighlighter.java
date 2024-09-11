@@ -684,7 +684,7 @@ public class UnifiedHighlighter {
    *   <li>If there's a field info it has {@link
    *       IndexOptions#DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS} then {@link OffsetSource#POSTINGS}
    *       is returned.
-   *   <li>If there's a field info and {@link FieldInfo#hasVectors()} then {@link
+   *   <li>If there's a field info and {@link FieldInfo#hasTermVectors()} then {@link
    *       OffsetSource#TERM_VECTORS} is returned (note we can't check here if the TV has offsets;
    *       if there isn't then an exception will get thrown down the line).
    *   <li>Fall-back: {@link OffsetSource#ANALYSIS} is returned.
@@ -698,11 +698,11 @@ public class UnifiedHighlighter {
     FieldInfo fieldInfo = getFieldInfo(field);
     if (fieldInfo != null) {
       if (fieldInfo.getIndexOptions() == IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) {
-        return fieldInfo.hasVectors()
+        return fieldInfo.hasTermVectors()
             ? OffsetSource.POSTINGS_WITH_TERM_VECTORS
             : OffsetSource.POSTINGS;
       }
-      if (fieldInfo.hasVectors()) { // unfortunately we can't also check if the TV has offsets
+      if (fieldInfo.hasTermVectors()) { // unfortunately we can't also check if the TV has offsets
         return OffsetSource.TERM_VECTORS;
       }
     }

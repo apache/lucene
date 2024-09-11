@@ -1503,7 +1503,7 @@ public class TestIndexWriter extends LuceneTestCase {
     DirectoryReader r0 = DirectoryReader.open(dir);
     for (LeafReaderContext ctx : r0.leaves()) {
       SegmentReader sr = (SegmentReader) ctx.reader();
-      assertFalse(sr.getFieldInfos().hasVectors());
+      assertFalse(sr.getFieldInfos().hasTermVectors());
     }
 
     r0.close();

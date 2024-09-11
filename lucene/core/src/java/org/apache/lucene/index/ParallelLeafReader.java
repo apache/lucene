@@ -158,7 +158,7 @@ public class ParallelLeafReader extends LeafReader {
           // only add these if the reader responsible for that field name is the current:
           // TODO consider populating 1st leaf with vectors even if the field name has been seen on
           // a previous leaf
-          if (fieldInfo.hasVectors()) {
+          if (fieldInfo.hasTermVectors()) {
             tvFieldToReader.put(fieldInfo.name, reader);
           }
           // TODO consider populating 1st leaf with terms even if the field name has been seen on a

@@ -641,7 +641,7 @@ public final class FieldInfo {
   }
 
   /** Returns true if any term vectors exist for this field. */
-  public boolean hasVectors() {
+  public boolean hasTermVectors() {
     return storeTermVector;
   }
 
