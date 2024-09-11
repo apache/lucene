@@ -73,10 +73,7 @@ import org.apache.lucene.util.InfoStream;
 @SuppressCodecs("SimpleText") // too slow here
 public class TestIndexWriterExceptions extends LuceneTestCase {
 
-  private static class DocCopyIterator implements Iterable<Document> {
-    private final Document doc;
-    private final int count;
-
+  private record DocCopyIterator(Document doc, int count) implements Iterable<Document> {
     /* private field types */
     /* private field types */
 
@@ -103,11 +100,6 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       custom5.setStoreTermVectors(true);
       custom5.setStoreTermVectorPositions(true);
       custom5.setStoreTermVectorOffsets(true);
-    }
-
-    public DocCopyIterator(Document doc, int count) {
-      this.count = count;
-      this.doc = doc;
     }
 
     @Override

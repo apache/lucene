@@ -3118,22 +3118,22 @@ public class IndexWriter
 
   private void validateMergeReader(CodecReader leaf) {
     LeafMetaData segmentMeta = leaf.getMetaData();
-    if (segmentInfos.getIndexCreatedVersionMajor() != segmentMeta.getCreatedVersionMajor()) {
+    if (segmentInfos.getIndexCreatedVersionMajor() != segmentMeta.createdVersionMajor()) {
       throw new IllegalArgumentException(
           "Cannot merge a segment that has been created with major version "
-              + segmentMeta.getCreatedVersionMajor()
+              + segmentMeta.createdVersionMajor()
               + " into this index which has been created by major version "
               + segmentInfos.getIndexCreatedVersionMajor());
     }
 
-    if (segmentInfos.getIndexCreatedVersionMajor() >= 7 && segmentMeta.getMinVersion() == null) {
+    if (segmentInfos.getIndexCreatedVersionMajor() >= 7 && segmentMeta.minVersion() == null) {
       throw new IllegalStateException(
           "Indexes created on or after Lucene 7 must record the created version major, but "
               + leaf
               + " hides it");
     }
 
-    Sort leafIndexSort = segmentMeta.getSort();
+    Sort leafIndexSort = segmentMeta.sort();
     if (config.getIndexSort() != null
         && (leafIndexSort == null
             || isCongruentSort(config.getIndexSort(), leafIndexSort) == false)) {
@@ -6396,16 +6396,16 @@ public class IndexWriter
         deleter.decRef(delFiles);
       }
 
-      if (result.anyDeletes) {
+      if (result.anyDeletes()) {
         maybeMerge.set(true);
         checkpoint();
       }
 
-      if (result.allDeleted != null) {
+      if (result.allDeleted() != null) {
         if (infoStream.isEnabled("IW")) {
-          infoStream.message("IW", "drop 100% deleted segments: " + segString(result.allDeleted));
+          infoStream.message("IW", "drop 100% deleted segments: " + segString(result.allDeleted()));
         }
-        for (SegmentCommitInfo info : result.allDeleted) {
+        for (SegmentCommitInfo info : result.allDeleted()) {
           dropDeletedSegment(info);
         }
         checkpoint();
@@ -6532,12 +6532,7 @@ public class IndexWriter
     }
   }
 
-  private static class IndexWriterMergeSource implements MergeScheduler.MergeSource {
-    private final IndexWriter writer;
-
-    private IndexWriterMergeSource(IndexWriter writer) {
-      this.writer = writer;
-    }
+  private record IndexWriterMergeSource(IndexWriter writer) implements MergeScheduler.MergeSource {
 
     @Override
     public MergePolicy.OneMerge getNextMerge() {

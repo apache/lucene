@@ -28,18 +28,6 @@ import org.apache.lucene.util.Bits;
 public abstract class BulkScorer {
 
   /**
-   * Scores and collects all matching documents.
-   *
-   * @param collector The collector to which all matching documents are passed.
-   * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
-   *     if they are all allowed to match.
-   */
-  public void score(LeafCollector collector, Bits acceptDocs) throws IOException {
-    final int next = score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
-    assert next == DocIdSetIterator.NO_MORE_DOCS;
-  }
-
-  /**
    * Collects matching documents in a range and return an estimation of the next matching document
    * which is on or after {@code max}.
    *

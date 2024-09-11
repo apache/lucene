@@ -146,7 +146,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -211,7 +213,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -289,7 +293,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -367,7 +373,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -503,7 +511,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
               assertEquals(1, i);
             }
           };
-      scorer.score(collector, liveDocs);
+      scorer.score(collector, liveDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
       collector.finish();
     }
 

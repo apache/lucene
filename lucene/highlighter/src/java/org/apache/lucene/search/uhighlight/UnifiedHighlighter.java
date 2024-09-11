@@ -1252,19 +1252,17 @@ public class UnifiedHighlighter {
   }
 
   protected OffsetSource getOptimizedOffsetSource(UHComponents components) {
-    OffsetSource offsetSource = getOffsetSource(components.getField());
+    OffsetSource offsetSource = getOffsetSource(components.field());
 
     // null automata means unknown, so assume a possibility
     boolean mtqOrRewrite =
-        components.getAutomata() == null
-            || components.getAutomata().length > 0
-            || components.getPhraseHelper().willRewrite()
+        components.automata() == null
+            || components.automata().length > 0
+            || components.phraseHelper().willRewrite()
             || components.hasUnrecognizedQueryPart();
 
     // null terms means unknown, so assume something to highlight
-    if (mtqOrRewrite == false
-        && components.getTerms() != null
-        && components.getTerms().length == 0) {
+    if (mtqOrRewrite == false && components.terms() != null && components.terms().length == 0) {
       return OffsetSource.NONE_NEEDED; // nothing to highlight
     }
 
@@ -1295,9 +1293,9 @@ public class UnifiedHighlighter {
       OffsetSource offsetSource, UHComponents components) {
     switch (offsetSource) {
       case ANALYSIS:
-        if (!components.getPhraseHelper().hasPositionSensitivity()
-            && !components.getHighlightFlags().contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
-            && !components.getHighlightFlags().contains(HighlightFlag.WEIGHT_MATCHES)) {
+        if (!components.phraseHelper().hasPositionSensitivity()
+            && !components.highlightFlags().contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
+            && !components.highlightFlags().contains(HighlightFlag.WEIGHT_MATCHES)) {
           // skip using a memory index since it's pure term filtering
           return new TokenStreamOffsetStrategy(components, getIndexAnalyzer());
         } else {
