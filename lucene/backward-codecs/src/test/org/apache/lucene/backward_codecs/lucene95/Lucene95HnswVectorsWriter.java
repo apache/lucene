@@ -18,6 +18,7 @@
 package org.apache.lucene.backward_codecs.lucene95;
 
 import static org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -494,8 +495,10 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         IncrementalHnswGraphMerger merger =
             new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
-          merger.addReader(
-              mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+          if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
+            merger.addReader(
+                mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+          }
         }
         DocIdSetIterator mergedVectorIterator = null;
         switch (fieldInfo.getVectorEncoding()) {

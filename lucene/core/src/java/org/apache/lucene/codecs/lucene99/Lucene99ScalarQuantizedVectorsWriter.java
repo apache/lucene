@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.DYNAMIC_CONFIDENCE_INTERVAL;
 import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
@@ -631,7 +632,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     IntArrayList segmentSizes = new IntArrayList(mergeState.liveDocs.length);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       FloatVectorValues fvv;
-      if (mergeState.knnVectorsReaders[i] != null
+      if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)
           && (fvv = mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name)) != null
           && fvv.size() > 0) {
         ScalarQuantizer quantizationState =
@@ -929,8 +930,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
       List<QuantizedByteVectorValueSub> subs = new ArrayList<>();
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-        if (mergeState.knnVectorsReaders[i] != null
-            && mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name) != null) {
+        if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
           QuantizedVectorsReader reader =
               getQuantizedKnnVectorsReader(mergeState.knnVectorsReaders[i], fieldInfo.name);
           assert scalarQuantizer != null;
