@@ -417,7 +417,7 @@ public class CheckHits {
     if (descr.startsWith("score based on ") && descr.contains("child docs in range")) {
       assertTrue("Child doc explanations are missing", detail.length > 0);
     }
-    if (detail.length > 0) {
+    if (detail.length > 0 && expl.isMatch()) {
       if (detail.length == 1 && COMPUTED_FROM_PATTERN.matcher(descr).matches() == false) {
         // simple containment, unless it's a freq of: (which lets a query explain how the freq is
         // calculated),
@@ -654,6 +654,10 @@ public class CheckHits {
     private final Weight weight;
     private LeafReaderContext context;
     int lastCheckedDoc = -1;
+    // with intra-segment concurrency, we may start from a doc id that isn't -1. We need to make
+    // sure that we don't go outside of the bounds of the current slice, meaning -1 can't be
+    // reliably used to signal that we are collecting the first doc for a given segment partition.
+    boolean collectedOnce = false;
 
     public MatchesAsserter(Query query, IndexSearcher searcher) throws IOException {
       this.weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
@@ -671,7 +675,7 @@ public class CheckHits {
       assertNotNull(
           "Unexpected null Matches object in doc" + doc + " for query " + this.weight.getQuery(),
           matches);
-      if (lastCheckedDoc != doc - 1) {
+      if (collectedOnce && lastCheckedDoc != doc - 1) {
         assertNull(
             "Unexpected non-null Matches object in non-matching doc"
                 + doc
@@ -679,6 +683,7 @@ public class CheckHits {
                 + this.weight.getQuery(),
             this.weight.matches(context, doc - 1));
       }
+      collectedOnce = true;
       lastCheckedDoc = doc;
     }
 

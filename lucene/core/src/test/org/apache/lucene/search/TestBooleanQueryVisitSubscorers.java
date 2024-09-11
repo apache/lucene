@@ -156,7 +156,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     private final Set<Scorer> tqsSet = new HashSet<>();
 
     MyCollector() {
-      super(TopScoreDocCollector.create(10, Integer.MAX_VALUE));
+      super(new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector());
     }
 
     @Override
@@ -190,7 +190,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
         set.add((Scorer) scorer);
       } else {
         for (Scorable.ChildScorable child : scorer.getChildren()) {
-          fillLeaves(child.child, set);
+          fillLeaves(child.child(), set);
         }
       }
     }
@@ -256,9 +256,9 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
           "ConjunctionScorer\n"
               + "    MUST ConstantScoreScorer\n"
               + "    MUST WANDScorer\n"
-              + "            SHOULD TermScorer body:crawler\n"
-              + "            SHOULD TermScorer body:web\n"
-              + "            SHOULD TermScorer body:nutch",
+              + "            SHOULD TermScorer\n"
+              + "            SHOULD TermScorer\n"
+              + "            SHOULD TermScorer",
           summary);
     }
   }
@@ -272,7 +272,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     assertEquals(1, scoreSummary.numHits.get());
     assertFalse(scoreSummary.summaries.isEmpty());
     for (String summary : scoreSummary.summaries) {
-      assertEquals("TermScorer body:nutch", summary);
+      assertEquals("TermScorer", summary);
     }
   }
 
@@ -329,17 +329,9 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     private static void summarizeScorer(
         final StringBuilder builder, final Scorable scorer, final int indent) throws IOException {
       builder.append(scorer.getClass().getSimpleName());
-      if (scorer instanceof TermScorer) {
-        TermQuery termQuery = (TermQuery) ((Scorer) scorer).getWeight().getQuery();
-        builder
-            .append(" ")
-            .append(termQuery.getTerm().field())
-            .append(":")
-            .append(termQuery.getTerm().text());
-      }
       for (final Scorable.ChildScorable childScorer : scorer.getChildren()) {
-        indent(builder, indent + 1).append(childScorer.relationship).append(" ");
-        summarizeScorer(builder, childScorer.child, indent + 2);
+        indent(builder, indent + 1).append(childScorer.relationship()).append(" ");
+        summarizeScorer(builder, childScorer.child(), indent + 2);
       }
     }
 

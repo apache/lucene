@@ -16,8 +16,12 @@
  */
 package org.apache.lucene.codecs;
 
+import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
+import com.carrotsearch.randomizedtesting.RandomizedTest;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,6 +51,7 @@ public class TestCodecLoadingDeadlock extends Assert {
   private static final int MAX_TIME_SECONDS = 30;
 
   @Test
+  @SuppressForbidden(reason = "Uses Path.toFile because ProcessBuilder requires it.")
   public void testDeadlock() throws Exception {
     // pick random codec names for stress test in separate process:
     final Random rnd = RandomizedContext.current().getRandom();
@@ -67,12 +73,23 @@ public class TestCodecLoadingDeadlock extends Assert {
     args.addAll(List.of(getClass().getName(), codecName, pfName, dvfName));
 
     // Fork a separate JVM to reinitialize classes.
-    final Process p = new ProcessBuilder(args).inheritIO().start();
-    if (p.waitFor(MAX_TIME_SECONDS * 2, TimeUnit.SECONDS)) {
-      assertEquals("Process died abnormally?", 0, p.waitFor());
-    } else {
-      p.destroyForcibly().waitFor();
-      fail("Process did not exit after 60 secs?");
+    final Path output = RandomizedTest.newTempFile(LifecycleScope.TEST);
+    final Process p =
+        new ProcessBuilder(args).redirectErrorStream(true).redirectOutput(output.toFile()).start();
+    boolean success = false;
+    try {
+      if (p.waitFor(MAX_TIME_SECONDS * 2, TimeUnit.SECONDS)) {
+        assertEquals("Process died abnormally?", 0, p.waitFor());
+        success = true;
+      } else {
+        p.destroyForcibly().waitFor();
+        fail("Process did not exit after 60 secs?");
+      }
+    } finally {
+      if (!success) {
+        System.out.println("Subprocess emitted the following output:");
+        System.out.write(Files.readAllBytes(output));
+      }
     }
   }
 

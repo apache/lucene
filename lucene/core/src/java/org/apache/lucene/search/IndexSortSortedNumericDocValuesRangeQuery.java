@@ -158,14 +158,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Weight weight = this;
         IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
         if (itAndCount != null) {
           DocIdSetIterator disi = itAndCount.it;
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
-              return new ConstantScoreScorer(weight, score(), scoreMode, disi);
+              return new ConstantScoreScorer(score(), scoreMode, disi);
             }
 
             @Override
@@ -175,15 +174,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
           };
         }
         return fallbackWeight.scorerSupplier(context);
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override
@@ -408,7 +398,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
   private IteratorAndCount getDocIdSetIteratorOrNullFromBkd(
       LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
-    Sort indexSort = context.reader().getMetaData().getSort();
+    Sort indexSort = context.reader().getMetaData().sort();
     if (indexSort == null
         || indexSort.getSort().length == 0
         || indexSort.getSort()[0].getField().equals(field) == false) {
@@ -508,7 +498,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       if (itAndCount != null) {
         return itAndCount;
       }
-      Sort indexSort = context.reader().getMetaData().getSort();
+      Sort indexSort = context.reader().getMetaData().sort();
       if (indexSort != null
           && indexSort.getSort().length > 0
           && indexSort.getSort()[0].getField().equals(field)) {

@@ -183,7 +183,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         dimCount = getCount(dimOrd);
       } else {
         OrdRange ordRange = state.getOrdRange(dim);
-        int dimOrd = ordRange.start;
+        int dimOrd = ordRange.start();
         if (dimConfig.multiValued) {
           if (dimConfig.requireDimCount) {
             // If a dim is configured as multi-valued and requires dim count, we index dim counts
@@ -284,7 +284,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         // means dimension was never indexed
         return null;
       }
-      pathOrd = ordRange.start;
+      pathOrd = ordRange.start();
       childIterator = ordRange.iterator();
       if (dimConfig.multiValued && dimConfig.requireDimCount) {
         // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
@@ -322,8 +322,6 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   private TopChildrenForPath computeTopChildren(
       PrimitiveIterator.OfInt childOrds, int topN, DimConfig dimConfig, int pathOrd) {
     TopOrdAndIntQueue q = null;
-    int bottomCount = 0;
-    int bottomOrd = Integer.MAX_VALUE;
     int pathCount = 0;
     int childCount = 0;
 
@@ -334,23 +332,17 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       if (count > 0) {
         pathCount += count;
         childCount++;
-        if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
-          if (q == null) {
-            // Lazy init, so we don't create this for the
-            // sparse case unnecessarily
-            q = new TopOrdAndIntQueue(topN);
-          }
-          if (reuse == null) {
-            reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
-          }
-          reuse.ord = ord;
-          reuse.value = count;
-          reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
-          if (q.size() == topN) {
-            bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
-            bottomOrd = q.top().ord;
-          }
+        if (q == null) {
+          // Lazy init, so we don't create this for the
+          // sparse case unnecessarily
+          q = new TopOrdAndIntQueue(topN);
         }
+        if (reuse == null) {
+          reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+        }
+        reuse.ord = ord;
+        reuse.value = count;
+        reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
       }
     }
 
@@ -420,13 +412,5 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
   }
 
-  static final class ChildIterationCursor {
-    final int pathOrd;
-    final PrimitiveIterator.OfInt childIterator;
-
-    ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {
-      this.pathOrd = pathOrd;
-      this.childIterator = childIterator;
-    }
-  }
+  record ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {}
 }

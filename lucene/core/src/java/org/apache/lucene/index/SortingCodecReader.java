@@ -35,6 +35,7 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -51,15 +52,7 @@ import org.apache.lucene.util.packed.PackedInts;
  */
 public final class SortingCodecReader extends FilterCodecReader {
 
-  private static class SortingBits implements Bits {
-
-    private final Bits in;
-    private final Sorter.DocMap docMap;
-
-    SortingBits(final Bits in, Sorter.DocMap docMap) {
-      this.in = in;
-      this.docMap = docMap;
-    }
+  private record SortingBits(Bits in, Sorter.DocMap docMap) implements Bits {
 
     @Override
     public boolean get(int index) {
@@ -266,6 +259,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
       return docId = docsWithField.nextSetBit(target);
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private static class SortingByteVectorValues extends ByteVectorValues {
@@ -320,6 +318,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
       return docId = docsWithField.nextSetBit(target);
     }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /**
@@ -338,10 +341,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     LeafMetaData metaData = reader.getMetaData();
     LeafMetaData newMetaData =
         new LeafMetaData(
-            metaData.getCreatedVersionMajor(),
-            metaData.getMinVersion(),
-            sort,
-            metaData.hasBlocks());
+            metaData.createdVersionMajor(), metaData.minVersion(), sort, metaData.hasBlocks());
     if (docMap == null) {
       // the reader is already sorted
       return new FilterCodecReader(reader) {
@@ -430,6 +430,11 @@ public final class SortingCodecReader extends FilterCodecReader {
 
   private StoredFieldsReader newStoredFieldsReader(StoredFieldsReader delegate) {
     return new StoredFieldsReader() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        delegate.prefetch(docMap.newToOld(docID));
+      }
+
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         delegate.document(docMap.newToOld(docID), visitor);
@@ -621,6 +626,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       public void close() throws IOException {
         delegate.close();
       }
+
+      @Override
+      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+        // We can hardly return information about min/max values if doc IDs have been reordered.
+        return null;
+      }
     };
   }
 
@@ -720,10 +731,14 @@ public final class SortingCodecReader extends FilterCodecReader {
     if (timesCached > 1) {
       assert norms == false : "[" + field + "] norms must not be cached twice";
       boolean isSortField = false;
-      for (SortField sf : metaData.getSort().getSort()) {
-        if (field.equals(sf.getField())) {
-          isSortField = true;
-          break;
+      // For things that aren't sort fields, it's possible for sort to be null here
+      // In the event that we accidentally cache twice, its better not to throw an NPE
+      if (metaData.sort() != null) {
+        for (SortField sf : metaData.sort().getSort()) {
+          if (field.equals(sf.getField())) {
+            isSortField = true;
+            break;
+          }
         }
       }
       assert timesCached == 2

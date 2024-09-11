@@ -20,7 +20,8 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 
-class MockVectorValues extends AbstractMockVectorValues<float[]> {
+class MockVectorValues extends AbstractMockVectorValues<float[]>
+    implements RandomAccessVectorValues.Floats {
   private final float[] scratch;
 
   static MockVectorValues fromValues(float[][] values) {
@@ -49,10 +50,7 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
   @Override
   public MockVectorValues copy() {
     return new MockVectorValues(
-        ArrayUtil.copyOfSubArray(values, 0, values.length),
-        dimension,
-        ArrayUtil.copyOfSubArray(denseValues, 0, denseValues.length),
-        numVectors);
+        ArrayUtil.copyArray(values), dimension, ArrayUtil.copyArray(denseValues), numVectors);
   }
 
   @Override

@@ -198,6 +198,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         true,
         IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
         DocValuesType.NONE,
+        false,
         -1,
         Collections.emptyMap(),
         0,
@@ -224,15 +225,7 @@ public class TestSTBlockReader extends LuceneTestCase {
     return lines;
   }
 
-  private static class BlockLineDefinition {
-    final TermBytes termBytes;
-    final List<String> fields;
-
-    BlockLineDefinition(TermBytes termBytes, List<String> fields) {
-      this.termBytes = termBytes;
-      this.fields = fields;
-    }
-  }
+  private record BlockLineDefinition(TermBytes termBytes, List<String> fields) {}
 
   private static class MockSTBlockLine extends STBlockLine {
 

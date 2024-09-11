@@ -132,6 +132,6 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
   private static Scorer wrapWithDummyScorer(Weight weight, DocIdSetIterator disi) {
     // The score and score mode do not actually matter here, except that using TOP_SCORES results
     // in another wrapper object getting created around the disi, so we try to avoid that:
-    return new ConstantScoreScorer(weight, 1f, ScoreMode.COMPLETE_NO_SCORES, disi);
+    return new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, disi);
   }
 }

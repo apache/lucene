@@ -64,7 +64,7 @@ public class ShapeTestUtil {
     }
   }
 
-  public static XYPoint nextPoint() {
+  public static XYPoint nextXYPoint() {
     Random random = random();
     float x = nextFloat(random);
     float y = nextFloat(random);

@@ -30,7 +30,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.util.BitSet;
@@ -90,7 +90,7 @@ public abstract class AbstractPrefixTreeQuery extends Query {
       throws IOException {
     return new ConstantScoreWeight(this, boost) {
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         DocIdSet docSet = getDocIdSet(context);
         if (docSet == null) {
           return null;
@@ -99,7 +99,8 @@ public abstract class AbstractPrefixTreeQuery extends Query {
         if (disi == null) {
           return null;
         }
-        return new ConstantScoreScorer(this, score(), scoreMode, disi);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, disi);
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

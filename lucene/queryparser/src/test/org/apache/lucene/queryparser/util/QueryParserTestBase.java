@@ -1020,6 +1020,29 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   //    iw.addDocument(d);
   //  }
 
+  public void testParsesBracketsIfQuoted() throws Exception {
+    Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+
+    assertQueryEquals("[\"a[i]\" TO \"b[i]\"]", a, "[a[i] TO b[i]]");
+    assertQueryEquals("{\"a[i]\" TO \"b[i]\"}", a, "{a[i] TO b[i]}");
+    assertQueryEquals("[\"a[i]\" TO \"b[i]\"}", a, "[a[i] TO b[i]}");
+    assertQueryEquals("{\"a[i]\" TO \"b[i]\"]", a, "{a[i] TO b[i]]");
+
+    assertQueryEquals("[\"a[i\\]\" TO \"b[i\\]\"]", a, "[a[i] TO b[i]]");
+    assertQueryEquals("[\"a\\[i\\]\" TO \"b\\[i\\]\"]", a, "[a[i] TO b[i]]");
+
+    assertQueryEquals("[\"a[i][j]\" TO \"b[i][j]\"]", a, "[a[i][j] TO b[i][j]]");
+
+    assertQueryEquals(
+        "[ \"2024-01-01T01:01:01+01:00[Europe/Warsaw]\" TO \"2025-01-01T01:01:01+01:00[Europe/Warsaw]\" ]",
+        null,
+        "[2024-01-01t01:01:01+01:00[europe/warsaw] TO 2025-01-01t01:01:01+01:00[europe/warsaw]]");
+
+    // If the range terms aren't wrapped in quotes, a closing bracket will throw
+    assertParseException("[a[i] TO b[i]]");
+    assertParseException("[a\\[i\\] TO b\\[i\\]]");
+  }
+
   public abstract void testStarParsing() throws Exception;
 
   public void testEscapedWildcard() throws Exception {

@@ -60,6 +60,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -111,11 +112,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
@@ -168,11 +165,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
@@ -286,37 +279,19 @@ public class TestRangeFacetCounts extends FacetTestCase {
     assertEquals(0, topNDimsResult.size());
 
     // test getAllDims(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllDims(0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
     r.close();
     d.close();
   }
 
   public void testUselessRange() {
+    expectThrows(IllegalArgumentException.class, () -> new LongRange("useless", 7, true, 6, true));
+    expectThrows(IllegalArgumentException.class, () -> new LongRange("useless", 7, true, 7, false));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", 7, true, 6, true);
-        });
+        IllegalArgumentException.class, () -> new DoubleRange("useless", 7.0, true, 6.0, true));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", 7, true, 7, false);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", 7.0, true, 6.0, true);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", 7.0, true, 7.0, false);
-        });
+        IllegalArgumentException.class, () -> new DoubleRange("useless", 7.0, true, 7.0, false));
   }
 
   public void testLongMinMax() throws Exception {
@@ -494,7 +469,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -1577,9 +1552,21 @@ public class TestRangeFacetCounts extends FacetTestCase {
       final Weight in = this.in.createWeight(searcher, scoreMode, boost);
       return new FilterWeight(in) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          used.set(true);
-          return in.scorer(context);
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorer = in.scorer(context);
+          if (scorer == null) return null;
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              used.set(true);
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
       };
     }
@@ -1665,7 +1652,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     IndexReader r = writer.getReader();
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);

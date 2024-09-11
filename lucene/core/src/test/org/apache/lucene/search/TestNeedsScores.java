@@ -82,7 +82,7 @@ public class TestNeedsScores extends LuceneTestCase {
 
     TopDocs hits =
         searcher.search(
-            constantScore, TopScoreDocCollector.createSharedManager(5, null, Integer.MAX_VALUE));
+            constantScore, new TopScoreDocCollectorManager(5, null, Integer.MAX_VALUE, true));
     assertEquals(5, hits.totalHits.value);
 
     // Queries that support dynamic pruning like top-score or top-doc queries that do not compute
@@ -131,9 +131,24 @@ public class TestNeedsScores extends LuceneTestCase {
       final Weight w = in.createWeight(searcher, scoreMode, boost);
       return new FilterWeight(w) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          assertEquals("query=" + in, value, scoreMode);
-          return w.scorer(context);
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorerSupplier = w.scorerSupplier(context);
+          if (scorerSupplier == null) {
+            return null;
+          }
+          final var scorer = scorerSupplier.get(Long.MAX_VALUE);
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              assertEquals("query=" + in, value, scoreMode);
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
       };
     }

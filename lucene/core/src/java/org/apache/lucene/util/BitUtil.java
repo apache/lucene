@@ -303,4 +303,12 @@ public final class BitUtil {
   public static long zigZagDecode(long l) {
     return ((l >>> 1) ^ -(l & 1));
   }
+
+  /**
+   * Return true if, and only if, the provided integer - treated as an unsigned integer - is either
+   * 0 or a power of two.
+   */
+  public static boolean isZeroOrPowerOfTwo(int x) {
+    return (x & (x - 1)) == 0;
+  }
 }

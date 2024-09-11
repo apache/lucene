@@ -17,13 +17,12 @@
 package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.util.Accountable;
@@ -404,7 +403,7 @@ public class CompiledAutomaton implements Accountable {
       }
     }
 
-    final List<Integer> stack = new ArrayList<>();
+    final IntArrayList stack = new IntArrayList();
 
     int idx = 0;
     while (true) {
@@ -452,7 +451,7 @@ public class CompiledAutomaton implements Accountable {
                 // if (DEBUG) System.out.println("  pop ord=" + idx + " return null");
                 return null;
               } else {
-                state = stack.remove(stack.size() - 1);
+                state = stack.removeLast();
                 idx--;
                 // if (DEBUG) System.out.println("  pop ord=" + (idx+1) + " label=" + (char) label +
                 // " first trans.min=" + (char) transitions[0].min);
@@ -511,6 +510,7 @@ public class CompiledAutomaton implements Accountable {
     final int prime = 31;
     int result = 1;
     result = prime * result + ((runAutomaton == null) ? 0 : runAutomaton.hashCode());
+    result = prime * result + ((nfaRunAutomaton == null) ? 0 : nfaRunAutomaton.hashCode());
     result = prime * result + ((term == null) ? 0 : term.hashCode());
     result = prime * result + ((type == null) ? 0 : type.hashCode());
     return result;
@@ -539,6 +539,7 @@ public class CompiledAutomaton implements Accountable {
         + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(commonSuffixRef)
         + RamUsageEstimator.sizeOfObject(runAutomaton)
+        + RamUsageEstimator.sizeOfObject(nfaRunAutomaton)
         + RamUsageEstimator.sizeOfObject(term)
         + RamUsageEstimator.sizeOfObject(transition);
   }

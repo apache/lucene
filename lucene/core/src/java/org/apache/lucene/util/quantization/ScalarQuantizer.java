@@ -30,6 +30,7 @@ import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.Selector;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Will scalar quantize float vectors into `int8` byte values. This is a lossy transformation.
@@ -87,6 +88,12 @@ public class ScalarQuantizer {
    * @param bits the number of bits to use for quantization
    */
   public ScalarQuantizer(float minQuantile, float maxQuantile, byte bits) {
+    if (Float.isNaN(minQuantile)
+        || Float.isInfinite(minQuantile)
+        || Float.isNaN(maxQuantile)
+        || Float.isInfinite(maxQuantile)) {
+      throw new IllegalStateException("Scalar quantizer does not support infinite or NaN values");
+    }
     assert maxQuantile >= minQuantile;
     assert bits > 0 && bits <= 8;
     this.minQuantile = minQuantile;
@@ -107,6 +114,7 @@ public class ScalarQuantizer {
    */
   public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert src.length == dest.length;
+    assert similarityFunction != VectorSimilarityFunction.COSINE || VectorUtil.isUnitVector(src);
     float correction = 0;
     for (int i = 0; i < src.length; i++) {
       correction += quantizeFloat(src[i], dest, i);
@@ -326,6 +334,7 @@ public class ScalarQuantizer {
       int totalVectorCount,
       byte bits)
       throws IOException {
+    assert function != VectorSimilarityFunction.COSINE;
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
@@ -380,10 +389,20 @@ public class ScalarQuantizer {
     }
 
     // Here we gather the upper and lower bounds for the quantile grid search
-    float al = (float) lowerSum[1] / count;
-    float bu = (float) upperSum[1] / count;
+    final float al = (float) lowerSum[1] / count;
+    final float bu = (float) upperSum[1] / count;
     final float au = (float) lowerSum[0] / count;
     final float bl = (float) upperSum[0] / count;
+    if (Float.isNaN(al)
+        || Float.isInfinite(al)
+        || Float.isNaN(au)
+        || Float.isInfinite(au)
+        || Float.isNaN(bl)
+        || Float.isInfinite(bl)
+        || Float.isNaN(bu)
+        || Float.isInfinite(bu)) {
+      throw new IllegalStateException("Quantile calculation resulted in NaN or infinite values");
+    }
     final float[] lowerCandidates = new float[16];
     final float[] upperCandidates = new float[16];
     int idx = 0;
@@ -448,8 +467,16 @@ public class ScalarQuantizer {
     int bestQuandrantUpper = 0;
     for (int i = 0; i < lowerCandidates.length; i += 4) {
       float lower = lowerCandidates[i];
+      if (Float.isNaN(lower) || Float.isInfinite(lower)) {
+        assert false : "Lower candidate is NaN or infinite";
+        continue;
+      }
       for (int j = 0; j < upperCandidates.length; j += 4) {
         float upper = upperCandidates[j];
+        if (Float.isNaN(upper) || Float.isInfinite(upper)) {
+          assert false : "Upper candidate is NaN or infinite";
+          continue;
+        }
         if (upper <= lower) {
           continue;
         }
@@ -468,6 +495,13 @@ public class ScalarQuantizer {
       for (int j = bestQuandrantUpper + 1; j < bestQuandrantUpper + 4; j++) {
         float lower = lowerCandidates[i];
         float upper = upperCandidates[j];
+        if (Float.isNaN(lower)
+            || Float.isInfinite(lower)
+            || Float.isNaN(upper)
+            || Float.isInfinite(upper)) {
+          assert false : "Lower or upper candidate is NaN or infinite";
+          continue;
+        }
         if (upper <= lower) {
           continue;
         }
@@ -532,8 +566,14 @@ public class ScalarQuantizer {
    * @return lower and upper quantile values
    */
   static float[] getUpperAndLowerQuantile(float[] arr, float confidenceInterval) {
+    assert arr.length > 0;
+    // If we have 1 or 2 values, we can't calculate the quantiles, simply return the min and max
+    if (arr.length <= 2) {
+      Arrays.sort(arr);
+      return new float[] {arr[0], arr[arr.length - 1]};
+    }
     int selectorIndex = (int) (arr.length * (1f - confidenceInterval) / 2f + 0.5f);
-    if (selectorIndex > 0 && arr.length > 2) {
+    if (selectorIndex > 0) {
       Selector selector = new FloatSelector(arr);
       selector.select(0, arr.length, arr.length - selectorIndex);
       selector.select(0, arr.length - selectorIndex, selectorIndex);
@@ -574,19 +614,7 @@ public class ScalarQuantizer {
     }
   }
 
-  private static class ScoreDocsAndScoreVariance {
-    private final ScoreDoc[] scoreDocs;
-    private final float scoreVariance;
-
-    public ScoreDocsAndScoreVariance(ScoreDoc[] scoreDocs, float scoreVariance) {
-      this.scoreDocs = scoreDocs;
-      this.scoreVariance = scoreVariance;
-    }
-
-    public ScoreDoc[] getScoreDocs() {
-      return scoreDocs;
-    }
-  }
+  private record ScoreDocsAndScoreVariance(ScoreDoc[] scoreDocs, float scoreVariance) {}
 
   private static class OnlineMeanAndVar {
     private double mean = 0.0;
@@ -647,7 +675,7 @@ public class ScalarQuantizer {
       for (int i = 0; i < nearestNeighbors.size(); i++) {
         float queryCorrection = quantizer.quantize(vectors.get(i), query, function);
         ScoreDocsAndScoreVariance scoreDocsAndScoreVariance = nearestNeighbors.get(i);
-        ScoreDoc[] scoreDocs = scoreDocsAndScoreVariance.getScoreDocs();
+        ScoreDoc[] scoreDocs = scoreDocsAndScoreVariance.scoreDocs();
         float scoreVariance = scoreDocsAndScoreVariance.scoreVariance;
         // calculate the score for the vector against its nearest neighbors but with quantized
         // scores now
@@ -661,7 +689,7 @@ public class ScalarQuantizer {
         }
         corr.add(1 - errors.var() / scoreVariance);
       }
-      return corr.mean;
+      return Double.isNaN(corr.mean) ? 0.0 : corr.mean;
     }
   }
 }

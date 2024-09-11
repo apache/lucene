@@ -63,7 +63,6 @@ class TermAutomatonScorer extends Scorer {
   public TermAutomatonScorer(
       TermAutomatonWeight weight, EnumAndScorer[] subs, int anyTermID, LeafSimScorer docScorer)
       throws IOException {
-    super(weight);
     // System.out.println("  automaton:\n" + weight.automaton.toDot());
     this.runAutomaton = new TermRunAutomaton(weight.automaton, subs.length);
     this.docScorer = docScorer;
@@ -359,11 +358,6 @@ class TermAutomatonScorer extends Scorer {
 
   LeafSimScorer getLeafSimScorer() {
     return docScorer;
-  }
-
-  @Override
-  public String toString() {
-    return "TermAutomatonScorer(" + weight + ")";
   }
 
   @Override

@@ -16,18 +16,25 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import java.io.IOException;
+import java.lang.foreign.MemorySegment;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
 
-  private final VectorUtilSupport vectorUtilSupport;
+  // NOTE: Avoid static fields or initializers which rely on the vector API, as these initializers
+  // would get called before we have a chance to perform sanity checks around the vector API in the
+  // constructor of this class. Put them in PanamaVectorConstants instead.
 
   // Extracted to a method to be able to apply the SuppressForbidden annotation
   @SuppressWarnings("removal")
@@ -35,6 +42,8 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   private static <T> T doPrivileged(PrivilegedAction<T> action) {
     return AccessController.doPrivileged(action);
   }
+
+  private final VectorUtilSupport vectorUtilSupport;
 
   PanamaVectorizationProvider() {
     // hack to work around for JDK-8309727:
@@ -50,9 +59,9 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
           "We hit initialization failure described in JDK-8309727: " + se);
     }
 
-    if (PanamaVectorUtilSupport.VECTOR_BITSIZE < 128) {
+    if (PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE < 128) {
       throw new UnsupportedOperationException(
-          "Vector bit size is less than 128: " + PanamaVectorUtilSupport.VECTOR_BITSIZE);
+          "Vector bit size is less than 128: " + PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE);
     }
 
     this.vectorUtilSupport = new PanamaVectorUtilSupport();
@@ -62,15 +71,30 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
         String.format(
             Locale.ENGLISH,
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
-            PanamaVectorUtilSupport.VECTOR_BITSIZE,
+            PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE,
             Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
-            PanamaVectorUtilSupport.HAS_FAST_INTEGER_VECTORS
-                ? ""
-                : "; floating-point vectors only"));
+            PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS ? "" : "; floating-point vectors only"));
   }
 
   @Override
   public VectorUtilSupport getVectorUtilSupport() {
     return vectorUtilSupport;
+  }
+
+  @Override
+  public FlatVectorsScorer getLucene99FlatVectorsScorer() {
+    return Lucene99MemorySegmentFlatVectorsScorer.INSTANCE;
+  }
+
+  @Override
+  public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
+    if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS
+        && input instanceof MemorySegmentAccessInput msai) {
+      MemorySegment ms = msai.segmentSliceOrNull(0, input.length());
+      if (ms != null) {
+        return new MemorySegmentPostingDecodingUtil(input, ms);
+      }
+    }
+    return new PostingDecodingUtil(input);
   }
 }

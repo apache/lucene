@@ -229,7 +229,7 @@ public class TestBoolean2 extends LuceneTestCase {
 
     // adjust the expected doc numbers according to our filler docs
     if (0 < NUM_FILLER_DOCS) {
-      expDocNrs = ArrayUtil.copyOfSubArray(expDocNrs, 0, expDocNrs.length);
+      expDocNrs = ArrayUtil.copyArray(expDocNrs);
       for (int i = 0; i < expDocNrs.length; i++) {
         expDocNrs[i] = PRE_FILLER_DOCS + ((NUM_FILLER_DOCS + 1) * expDocNrs[i]);
       }
@@ -403,12 +403,8 @@ public class TestBoolean2 extends LuceneTestCase {
             bigSearcher.count(q3.build()));
 
         // test diff (randomized) scorers produce the same results on bigSearcher as well
-        hits1 =
-            bigSearcher.search(q1, new TopFieldCollectorManager(sort, 1000 * mulFactor, 1))
-                .scoreDocs;
-        hits2 =
-            bigSearcher.search(q1, new TopFieldCollectorManager(sort, 1000 * mulFactor, 1))
-                .scoreDocs;
+        hits1 = bigSearcher.search(q1, new TopFieldCollectorManager(sort, mulFactor, 1)).scoreDocs;
+        hits2 = bigSearcher.search(q1, new TopFieldCollectorManager(sort, mulFactor, 1)).scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
       }
 

@@ -101,12 +101,17 @@ public class ToParentBlockJoinQuery extends Query {
               .rewrite(new ConstantScoreQuery(childQuery))
               .createWeight(searcher, weightScoreMode, 0f);
     } else {
-      // if the score is needed we force the collection mode to COMPLETE because the child query
-      // cannot skip
-      // non-competitive documents.
+      // if the score is needed and the score mode is not max, we force the collection mode to
+      // COMPLETE because the child query cannot skip non-competitive documents.
+      // weightScoreMode.needsScores() will always be true here, but keep the check to make the
+      // logic clearer.
       childWeight =
           childQuery.createWeight(
-              searcher, weightScoreMode.needsScores() ? COMPLETE : weightScoreMode, boost);
+              searcher,
+              weightScoreMode.needsScores() && childScoreMode != ScoreMode.Max
+                  ? COMPLETE
+                  : weightScoreMode,
+              boost);
     }
     return new BlockJoinWeight(this, childWeight, parentsFilter, childScoreMode);
   }
@@ -125,15 +130,6 @@ public class ToParentBlockJoinQuery extends Query {
       super(joinQuery, childWeight);
       this.parentsFilter = parentsFilter;
       this.scoreMode = scoreMode;
-    }
-
-    @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      final ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
     }
 
     // NOTE: acceptDocs applies (and is checked) only in the
@@ -157,13 +153,19 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public Scorer get(long leadCost) throws IOException {
-          return new BlockJoinScorer(
-              BlockJoinWeight.this, childScorerSupplier.get(leadCost), parents, scoreMode);
+          return new BlockJoinScorer(childScorerSupplier.get(leadCost), parents, scoreMode);
         }
 
         @Override
         public long cost() {
           return childScorerSupplier.cost();
+        }
+
+        @Override
+        public void setTopLevelScoringClause() throws IOException {
+          if (scoreMode == ScoreMode.Max) {
+            childScorerSupplier.setTopLevelScoringClause();
+          }
         }
       };
     }
@@ -283,9 +285,7 @@ public class ToParentBlockJoinQuery extends Query {
     private final ParentTwoPhase parentTwoPhase;
     private float score;
 
-    public BlockJoinScorer(
-        Weight weight, Scorer childScorer, BitSet parentBits, ScoreMode scoreMode) {
-      super(weight);
+    public BlockJoinScorer(Scorer childScorer, BitSet parentBits, ScoreMode scoreMode) {
       // System.out.println("Q.init firstChildDoc=" + firstChildDoc);
       this.parentBits = parentBits;
       this.childScorer = childScorer;
@@ -343,7 +343,7 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
-      if (scoreMode == ScoreMode.None) {
+      if (scoreMode == ScoreMode.None || scoreMode == ScoreMode.Max) {
         childScorer.setMinCompetitiveScore(minScore);
       }
     }

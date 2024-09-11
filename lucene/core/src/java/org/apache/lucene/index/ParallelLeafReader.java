@@ -128,7 +128,7 @@ public class ParallelLeafReader extends LeafReader {
     for (final LeafReader reader : this.parallelReaders) {
       LeafMetaData leafMetaData = reader.getMetaData();
 
-      Sort leafIndexSort = leafMetaData.getSort();
+      Sort leafIndexSort = leafMetaData.sort();
       if (indexSort == null) {
         indexSort = leafIndexSort;
       } else if (leafIndexSort != null && indexSort.equals(leafIndexSort) == false) {
@@ -140,13 +140,13 @@ public class ParallelLeafReader extends LeafReader {
       }
 
       if (createdVersionMajor == -1) {
-        createdVersionMajor = leafMetaData.getCreatedVersionMajor();
-      } else if (createdVersionMajor != leafMetaData.getCreatedVersionMajor()) {
+        createdVersionMajor = leafMetaData.createdVersionMajor();
+      } else if (createdVersionMajor != leafMetaData.createdVersionMajor()) {
         throw new IllegalArgumentException(
             "cannot combine LeafReaders that have different creation versions: saw both version="
                 + createdVersionMajor
                 + " and "
-                + leafMetaData.getCreatedVersionMajor());
+                + leafMetaData.createdVersionMajor());
       }
 
       final FieldInfos readerFieldInfos = reader.getFieldInfos();
@@ -177,7 +177,7 @@ public class ParallelLeafReader extends LeafReader {
     Version minVersion = Version.LATEST;
     boolean hasBlocks = false;
     for (final LeafReader reader : this.parallelReaders) {
-      Version leafVersion = reader.getMetaData().getMinVersion();
+      Version leafVersion = reader.getMetaData().minVersion();
       hasBlocks |= reader.getMetaData().hasBlocks();
       if (leafVersion == null) {
         minVersion = null;
@@ -280,6 +280,13 @@ public class ParallelLeafReader extends LeafReader {
       fields[i] = storedFieldsReaders[i].storedFields();
     }
     return new StoredFields() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        for (StoredFields reader : fields) {
+          reader.prefetch(docID);
+        }
+      }
+
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         for (StoredFields reader : fields) {
@@ -390,6 +397,13 @@ public class ParallelLeafReader extends LeafReader {
     ensureOpen();
     LeafReader reader = fieldToReader.get(field);
     return reader == null ? null : reader.getSortedSetDocValues(field);
+  }
+
+  @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(field);
+    return reader == null ? null : reader.getDocValuesSkipper(field);
   }
 
   @Override

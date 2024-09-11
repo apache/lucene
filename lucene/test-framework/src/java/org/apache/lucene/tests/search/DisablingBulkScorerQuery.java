@@ -25,6 +25,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /** A {@link Query} wrapper that disables bulk-scoring optimizations. */
@@ -52,12 +53,25 @@ public class DisablingBulkScorerQuery extends Query {
     Weight in = query.createWeight(searcher, scoreMode, boost);
     return new FilterWeight(in) {
       @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        Scorer scorer = scorer(context);
-        if (scorer == null) {
-          return null;
-        }
-        return new DefaultBulkScorer(scorer);
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        ScorerSupplier scorerSupplier = super.scorerSupplier(context);
+        return new ScorerSupplier() {
+
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            return scorerSupplier.get(leadCost);
+          }
+
+          @Override
+          public long cost() {
+            return scorerSupplier.cost();
+          }
+
+          @Override
+          public BulkScorer bulkScorer() throws IOException {
+            return new DefaultBulkScorer(get(Long.MAX_VALUE));
+          }
+        };
       }
     };
   }

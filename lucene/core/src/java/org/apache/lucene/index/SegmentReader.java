@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import org.apache.lucene.codecs.Codec;
@@ -29,6 +28,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.internal.tests.SegmentReaderAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.Directory;
@@ -225,7 +225,7 @@ public final class SegmentReader extends CodecReader {
       if (docValuesProducer instanceof SegmentDocValuesProducer) {
         segDocValues.decRef(((SegmentDocValuesProducer) docValuesProducer).dvGens);
       } else if (docValuesProducer != null) {
-        segDocValues.decRef(Collections.singletonList(-1L));
+        segDocValues.decRef(LongArrayList.from(-1L));
       }
     }
   }

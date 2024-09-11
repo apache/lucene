@@ -19,10 +19,9 @@ package org.apache.lucene.misc.search;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.internal.hppc.LongObjectHashMap;
 import org.apache.lucene.misc.search.DiversifiedTopDocsCollector.ScoreDocKey;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -69,7 +68,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
   ScoreDocKey spare;
   private ScoreDocKeyQueue globalQueue;
   private int numHits;
-  private Map<Long, ScoreDocKeyQueue> perKeyQueues;
+  private LongObjectHashMap<ScoreDocKeyQueue> perKeyQueues;
   protected int maxNumPerKey;
   private Deque<ScoreDocKeyQueue> sparePerKeyQueues = new ArrayDeque<>();
 
@@ -77,7 +76,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
     super(new ScoreDocKeyQueue(numHits));
     // Need to access pq.lessThan() which is protected so have to cast here...
     this.globalQueue = (ScoreDocKeyQueue) pq;
-    perKeyQueues = new HashMap<Long, ScoreDocKeyQueue>();
+    perKeyQueues = new LongObjectHashMap<>();
     this.numHits = numHits;
     this.maxNumPerKey = maxHitsPerKey;
   }

@@ -19,10 +19,8 @@ package org.apache.lucene.misc.document;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -33,6 +31,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -48,7 +47,7 @@ public class LazyDocument {
   // null until first field is loaded
   private Document doc;
 
-  private Map<Integer, List<LazyField>> fields = new HashMap<>();
+  private IntObjectHashMap<List<LazyField>> fields = new IntObjectHashMap<>();
   private Set<String> fieldNames = new HashSet<>();
 
   public LazyDocument(IndexReader reader, int docID) {

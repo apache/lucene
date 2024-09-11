@@ -42,9 +42,27 @@ public class SortedSetDocValuesField extends Field {
   /** Type for sorted bytes DocValues */
   public static final FieldType TYPE = new FieldType();
 
+  private static final FieldType INDEXED_TYPE;
+
   static {
     TYPE.setDocValuesType(DocValuesType.SORTED_SET);
     TYPE.freeze();
+
+    INDEXED_TYPE = new FieldType(TYPE);
+    INDEXED_TYPE.setDocValuesSkipIndex(true);
+    INDEXED_TYPE.freeze();
+  }
+
+  /**
+   * Creates a new {@link SortedSetDocValuesField} with the specified 64-bit long value that also
+   * creates a {@link FieldType#hasDocValuesSkipIndex() skip index}.
+   *
+   * @param name field name
+   * @param bytes binary content
+   * @throws IllegalArgumentException if the field name is null
+   */
+  public static SortedSetDocValuesField indexedField(String name, BytesRef bytes) {
+    return new SortedSetDocValuesField(name, bytes, INDEXED_TYPE);
   }
 
   /**
@@ -55,7 +73,11 @@ public class SortedSetDocValuesField extends Field {
    * @throws IllegalArgumentException if the field name is null
    */
   public SortedSetDocValuesField(String name, BytesRef bytes) {
-    super(name, TYPE);
+    this(name, bytes, TYPE);
+  }
+
+  private SortedSetDocValuesField(String name, BytesRef bytes, FieldType fieldType) {
+    super(name, fieldType);
     fieldsData = bytes;
   }
 

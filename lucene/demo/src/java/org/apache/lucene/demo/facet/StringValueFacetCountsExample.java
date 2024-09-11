@@ -27,6 +27,7 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.StringDocValuesReaderState;
 import org.apache.lucene.facet.StringValueFacetCounts;
@@ -95,13 +96,14 @@ public class StringValueFacetCountsExample {
     StringDocValuesReaderState publishState =
         new StringDocValuesReaderState(indexReader, "Publish Year");
 
-    // Aggregatses the facet counts
-    FacetsCollector fc = new FacetsCollector();
+    // Aggregates the facet counts
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
 
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollector fc =
+        FacetsCollectorManager.search(searcher, new MatchAllDocsQuery(), 10, fcm).facetsCollector();
 
     // Retrieve results
     Facets authorFacets = new StringValueFacetCounts(authorState, fc);

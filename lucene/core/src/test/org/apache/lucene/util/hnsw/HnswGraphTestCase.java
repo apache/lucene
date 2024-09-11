@@ -40,6 +40,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
@@ -71,6 +72,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -87,6 +89,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   VectorSimilarityFunction similarityFunction;
+  DefaultFlatVectorScorer flatVectorScorer = new DefaultFlatVectorScorer();
 
   abstract VectorEncoding getVectorEncoding();
 
@@ -109,30 +112,23 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   abstract Field knnVectorField(String name, T vector, VectorSimilarityFunction similarityFunction);
 
-  abstract RandomAccessVectorValues<T> circularVectorValues(int nDoc);
+  abstract RandomAccessVectorValues circularVectorValues(int nDoc);
 
   abstract T getTargetVector();
 
-  @SuppressWarnings("unchecked")
-  protected RandomVectorScorerSupplier buildScorerSupplier(RandomAccessVectorValues<T> vectors)
+  protected RandomVectorScorerSupplier buildScorerSupplier(RandomAccessVectorValues vectors)
       throws IOException {
-    return switch (getVectorEncoding()) {
-      case BYTE -> RandomVectorScorerSupplier.createBytes(
-          (RandomAccessVectorValues<byte[]>) vectors, similarityFunction);
-      case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
-          (RandomAccessVectorValues<float[]>) vectors, similarityFunction);
-    };
+    return flatVectorScorer.getRandomVectorScorerSupplier(similarityFunction, vectors);
   }
 
-  @SuppressWarnings("unchecked")
-  protected RandomVectorScorer buildScorer(RandomAccessVectorValues<T> vectors, T query)
+  protected RandomVectorScorer buildScorer(RandomAccessVectorValues vectors, T query)
       throws IOException {
-    RandomAccessVectorValues<T> vectorsCopy = vectors.copy();
+    RandomAccessVectorValues vectorsCopy = vectors.copy();
     return switch (getVectorEncoding()) {
-      case BYTE -> RandomVectorScorer.createBytes(
-          (RandomAccessVectorValues<byte[]>) vectorsCopy, similarityFunction, (byte[]) query);
-      case FLOAT32 -> RandomVectorScorer.createFloats(
-          (RandomAccessVectorValues<float[]>) vectorsCopy, similarityFunction, (float[]) query);
+      case BYTE ->
+          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (byte[]) query);
+      case FLOAT32 ->
+          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (float[]) query);
     };
   }
 
@@ -222,6 +218,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors.size());
+    expectThrows(IllegalStateException.class, () -> builder.addGraphNode(0));
 
     // Recreate the graph while indexing with the same random seed and write it out
     HnswGraphBuilder.randSeed = seed;
@@ -286,7 +283,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     AbstractMockVectorValues<T> vectors = vectorValues(nDoc, dim);
 
     int M = random().nextInt(10) + 5;
-    int beamWidth = random().nextInt(10) + 5;
+    int beamWidth = random().nextInt(10) + 10;
     VectorSimilarityFunction similarityFunction =
         RandomizedTest.randomFrom(VectorSimilarityFunction.values());
     long seed = random().nextLong();
@@ -464,7 +461,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   public void testAknnDiverse() throws IOException {
     int nDoc = 100;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
-    RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
@@ -496,7 +493,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   @SuppressWarnings("unchecked")
   public void testSearchWithAcceptOrds() throws IOException {
     int nDoc = 100;
-    RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
@@ -521,7 +518,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   @SuppressWarnings("unchecked")
   public void testSearchWithSelectiveAcceptOrds() throws IOException {
     int nDoc = 100;
-    RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
@@ -714,7 +711,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   public void testVisitedLimit() throws IOException {
     int nDoc = 500;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
-    RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+    RandomAccessVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
@@ -749,7 +746,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int M = randomIntBetween(4, 96);
 
     similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
-    RandomAccessVectorValues<T> vectors = vectorValues(size, dim);
+    RandomAccessVectorValues vectors = vectorValues(size, dim);
 
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder =
@@ -1018,13 +1015,15 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     builder.setBatchSize(100);
     builder.build(size);
     exec.shutdownNow();
-    OnHeapHnswGraph graph = builder.getGraph();
+    OnHeapHnswGraph graph = builder.getCompletedGraph();
     assertTrue(graph.entryNode() != -1);
     assertEquals(size, graph.size());
     assertEquals(size - 1, graph.maxNodeId());
     for (int l = 0; l < graph.numLevels(); l++) {
       assertNotNull(graph.getNodesOnLevel(l));
     }
+    // cannot build twice
+    expectThrows(IllegalStateException.class, () -> builder.build(size));
   }
 
   public void testAllNodesVisitedInSingleLevel() throws IOException {
@@ -1078,7 +1077,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues<float[]> {
+      implements RandomAccessVectorValues.Floats {
     private final int size;
     private final float[] value;
 
@@ -1133,11 +1132,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     public float[] vectorValue(int ord) {
       return unitVector2d(ord / (double) size, value);
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularByteVectorValues extends ByteVectorValues
-      implements RandomAccessVectorValues<byte[]> {
+      implements RandomAccessVectorValues.Bytes {
     private final int size;
     private final float[] value;
     private final byte[] bValue;
@@ -1198,6 +1202,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       }
       return bValue;
     }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   private static float[] unitVector2d(double piRadians) {
@@ -1229,17 +1238,19 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         break;
       }
       switch (getVectorEncoding()) {
-        case BYTE -> assertArrayEquals(
-            "vectors do not match for doc=" + uDoc,
-            (byte[]) u.vectorValue(),
-            (byte[]) v.vectorValue());
-        case FLOAT32 -> assertArrayEquals(
-            "vectors do not match for doc=" + uDoc,
-            (float[]) u.vectorValue(),
-            (float[]) v.vectorValue(),
-            1e-4f);
-        default -> throw new IllegalArgumentException(
-            "unknown vector encoding: " + getVectorEncoding());
+        case BYTE ->
+            assertArrayEquals(
+                "vectors do not match for doc=" + uDoc,
+                (byte[]) u.vectorValue(),
+                (byte[]) v.vectorValue());
+        case FLOAT32 ->
+            assertArrayEquals(
+                "vectors do not match for doc=" + uDoc,
+                (float[]) u.vectorValue(),
+                (float[]) v.vectorValue(),
+                1e-4f);
+        default ->
+            throw new IllegalArgumentException("unknown vector encoding: " + getVectorEncoding());
       }
     }
   }

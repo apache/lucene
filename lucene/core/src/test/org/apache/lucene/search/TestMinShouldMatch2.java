@@ -135,7 +135,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
           }
           return null;
         }
-        return new BulkScorerWrapperScorer(weight, bulkScorer, TestUtil.nextInt(random(), 1, 100));
+        return new BulkScorerWrapperScorer(bulkScorer, TestUtil.nextInt(random(), 1, 100));
       default:
         throw new AssertionError();
     }
@@ -351,7 +351,6 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
 
     SlowMinShouldMatchScorer(BooleanWeight weight, LeafReader reader, IndexSearcher searcher)
         throws IOException {
-      super(weight);
       this.dv = reader.getSortedSetDocValues("dv");
       this.maxDoc = reader.maxDoc();
       BooleanQuery bq = (BooleanQuery) weight.getQuery();

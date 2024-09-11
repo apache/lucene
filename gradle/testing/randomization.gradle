@@ -30,7 +30,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.7.2'
+    classpath deps.randomizedtesting.runner
   }
 }
 
@@ -62,7 +62,8 @@ allprojects {
 // Configure test property defaults and their descriptions.
 allprojects {
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
+      String randomVectorSize = RandomPicks.randomFrom(new Random(projectSeedLong), ["default", "128", "256", "512"])
       testOptions += [
           // seed, repetition and amplification.
           [propName: 'tests.seed', value: { -> rootSeed }, description: "Sets the master randomization seed."],
@@ -106,11 +107,13 @@ allprojects {
           [propName: 'tests.bwcdir', value: null, description: "Data for backward-compatibility indexes."],
           // vectorization related
           [propName: 'tests.vectorsize',
-             value: { ->
-               RandomPicks.randomFrom(new Random(projectSeedLong), ["128", "256", "512"])
-             },
-             description: "Sets preferred vector size in bits."],
-          [propName: 'tests.forceintegervectors', value: "true", description: "Forces use of integer vectors even when slow."],
+           value: { -> testsDefaultVectorizationRequested() ? 'default' : randomVectorSize },
+           description: "Sets preferred vector size in bits."],
+          [propName: 'tests.forceintegervectors',
+            value: { -> testsDefaultVectorizationRequested() ? false : (randomVectorSize != 'default') },
+            description: "Forces use of integer vectors even when slow."],
+          [propName: 'tests.defaultvectorization', value: false,
+            description: "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize, tests.forceintegervectors)."],
       ]
     }
   }
@@ -123,23 +126,23 @@ allprojects {
       secManagerExclusions
     }
     dependencies {
-      secManagerExclusions ( "com.carrotsearch.randomizedtesting:randomizedtesting-runner", {
+      secManagerExclusions ( deps.randomizedtesting.runner, {
           exclude group: "junit"
       })
-      secManagerExclusions ( "junit:junit", {
+      secManagerExclusions ( deps.junit, {
         exclude group: "org.hamcrest"
       })
     }
 
     afterEvaluate {
-      ext.testOptionsResolved = testOptions.findAll { opt ->
+      project.ext.testOptionsResolved = testOptions.findAll { opt ->
         propertyOrDefault(opt.propName, opt.value) != null
       }.collectEntries { opt ->
         [(opt.propName): Objects.toString(resolvedTestOption(opt.propName))]
       }
 
       // Compute the "reproduce with" string.
-      ext.testOptionsForReproduceLine = testOptions.findAll { opt ->
+      project.ext.testOptionsForReproduceLine = testOptions.findAll { opt ->
         if (opt["includeInReproLine"] == false) {
           return false
         }
@@ -172,6 +175,8 @@ allprojects {
         // and not the test JVM itself.
         systemProperties testOptionsResolved
 
+        jvmArgs Commandline.translateCommandline(testOptionsResolved['tests.jvmargs'])
+      
         if (Boolean.parseBoolean(testOptionsResolved['tests.asserts'])) {
           jvmArgs("-ea", "-esa")
         } else {

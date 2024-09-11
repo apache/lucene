@@ -77,7 +77,9 @@ public final class Circle extends LatLonGeometry {
     if (this == o) return true;
     if (!(o instanceof Circle)) return false;
     Circle circle = (Circle) o;
-    return lat == circle.lat && lon == circle.lon && radiusMeters == circle.radiusMeters;
+    return Double.compare(lat, circle.lat) == 0
+        && Double.compare(lon, circle.lon) == 0
+        && Double.compare(radiusMeters, circle.radiusMeters) == 0;
   }
 
   @Override
@@ -91,7 +93,7 @@ public final class Circle extends LatLonGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("CIRCLE(");
+    sb.append("Circle(");
     sb.append("[" + lat + "," + lon + "]");
     sb.append(" radius = " + radiusMeters + " meters");
     sb.append(')');

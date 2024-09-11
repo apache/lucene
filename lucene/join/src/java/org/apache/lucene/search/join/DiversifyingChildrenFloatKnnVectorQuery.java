@@ -19,11 +19,9 @@ package org.apache.lucene.search.join;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.IndexSearcher;
@@ -34,6 +32,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -91,15 +90,13 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
+    VectorScorer floatVectorScorer = floatVectorValues.scorer(query);
+    if (floatVectorScorer == null) {
+      return NO_RESULTS;
+    }
 
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    DiversifyingChildrenFloatVectorScorer vectorScorer =
-        new DiversifyingChildrenFloatVectorScorer(
-            floatVectorValues,
-            acceptIterator,
-            parentBitSet,
-            query,
-            fi.getVectorSimilarityFunction());
+    DiversifyingChildrenVectorScorer vectorScorer =
+        new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, floatVectorScorer);
     final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
     HitQueue queue = new HitQueue(queueSize, true);
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
@@ -178,26 +175,20 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     return result;
   }
 
-  private static class DiversifyingChildrenFloatVectorScorer {
-    private final float[] query;
-    private final FloatVectorValues values;
-    private final VectorSimilarityFunction similarity;
+  static class DiversifyingChildrenVectorScorer {
+    private final VectorScorer vectorScorer;
+    private final DocIdSetIterator vectorIterator;
     private final DocIdSetIterator acceptedChildrenIterator;
     private final BitSet parentBitSet;
     private int currentParent = -1;
     private int bestChild = -1;
     private float currentScore = Float.NEGATIVE_INFINITY;
 
-    protected DiversifyingChildrenFloatVectorScorer(
-        FloatVectorValues values,
-        DocIdSetIterator acceptedChildrenIterator,
-        BitSet parentBitSet,
-        float[] query,
-        VectorSimilarityFunction similarity) {
-      this.query = query;
-      this.values = values;
-      this.similarity = similarity;
+    protected DiversifyingChildrenVectorScorer(
+        DocIdSetIterator acceptedChildrenIterator, BitSet parentBitSet, VectorScorer vectorScorer) {
       this.acceptedChildrenIterator = acceptedChildrenIterator;
+      this.vectorScorer = vectorScorer;
+      this.vectorIterator = vectorScorer.iterator();
       this.parentBitSet = parentBitSet;
     }
 
@@ -217,8 +208,8 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       currentScore = Float.NEGATIVE_INFINITY;
       currentParent = parentBitSet.nextSetBit(nextChild);
       do {
-        values.advance(nextChild);
-        float score = similarity.compare(query, values.vectorValue());
+        vectorIterator.advance(nextChild);
+        float score = vectorScorer.score();
         if (score > currentScore) {
           bestChild = nextChild;
           currentScore = score;

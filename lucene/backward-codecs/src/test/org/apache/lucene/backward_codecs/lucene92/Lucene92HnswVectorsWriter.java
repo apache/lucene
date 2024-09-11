@@ -26,6 +26,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -145,7 +146,10 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
       // TODO: separate random access vector values from DocIdSetIterator?
       OffHeapFloatVectorValues offHeapVectors =
           new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-              floatVectorValues.dimension(), docsWithField.cardinality(), vectorDataInput);
+              floatVectorValues.dimension(),
+              docsWithField.cardinality(),
+              fieldInfo.getVectorSimilarityFunction(),
+              vectorDataInput);
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
@@ -273,12 +277,12 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues<float[]> vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValues.Floats vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
-
+    DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
     // build graph
     RandomVectorScorerSupplier scorerSupplier =
-        RandomVectorScorerSupplier.createFloats(vectorValues, similarityFunction);
+        defaultFlatVectorScorer.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
     HnswGraphBuilder hnswGraphBuilder =
         HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);

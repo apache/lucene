@@ -802,6 +802,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     iwc.setMaxBufferedDocs(2);
     LogMergePolicy lmp = newLogMergePolicy();
     lmp.setMergeFactor(2);
+    lmp.setTargetSearchConcurrency(1);
     iwc.setMergePolicy(lmp);
 
     IndexWriter w = new IndexWriter(dir, iwc);
@@ -900,10 +901,11 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
   public void testAutoIOThrottleGetter() throws Exception {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
-    cms.disableAutoIOThrottle();
     assertFalse(cms.getAutoIOThrottle());
     cms.enableAutoIOThrottle();
     assertTrue(cms.getAutoIOThrottle());
+    cms.disableAutoIOThrottle();
+    assertFalse(cms.getAutoIOThrottle());
   }
 
   public void testNonSpinningDefaults() throws Exception {
@@ -944,6 +946,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
             super.doStall();
           }
         };
+    cms.enableAutoIOThrottle();
     cms.setMaxMergesAndThreads(2, 1);
     iwc.setMergeScheduler(cms);
     iwc.setMaxBufferedDocs(2);

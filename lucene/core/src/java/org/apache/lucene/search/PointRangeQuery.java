@@ -128,8 +128,8 @@ public abstract class PointRangeQuery extends Query {
       private final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
 
       private boolean matches(byte[] packedValue) {
-        for (int dim = 0; dim < numDims; dim++) {
-          int offset = dim * bytesPerDim;
+        int offset = 0;
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
           if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
             // Doc's value is too low, in this dimension
             return false;
@@ -145,9 +145,9 @@ public abstract class PointRangeQuery extends Query {
       private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
 
         boolean crosses = false;
+        int offset = 0;
 
-        for (int dim = 0; dim < numDims; dim++) {
-          int offset = dim * bytesPerDim;
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
 
           if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
               || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
@@ -341,14 +341,13 @@ public abstract class PointRangeQuery extends Query {
           allDocsMatch = false;
         }
 
-        final Weight weight = this;
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) {
               return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
             }
 
             @Override
@@ -376,12 +375,12 @@ public abstract class PointRangeQuery extends Query {
                 long[] cost = new long[] {reader.maxDoc()};
                 values.intersect(getInverseIntersectVisitor(result, cost));
                 final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-                return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+                return new ConstantScoreScorer(score(), scoreMode, iterator);
               }
 
               values.intersect(visitor);
               DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override
@@ -395,15 +394,6 @@ public abstract class PointRangeQuery extends Query {
             }
           };
         }
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override

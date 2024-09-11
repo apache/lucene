@@ -23,6 +23,7 @@ Apache Lucene is a high-performance, full-featured text search engine library
 written in Java.
 
 [![Build Status](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/badge/icon?subject=Lucene)](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/)
+[![Revved up by Develocity](https://img.shields.io/badge/Revved%20up%20by-Develocity-06A0CE?logo=Gradle&labelColor=02303A)](https://ge.apache.org/scans?search.buildToolType=gradle&search.rootProjectNames=lucene-root)
 
 ## Online Documentation
 
@@ -31,8 +32,8 @@ comprehensive documentation, visit:
 
 - Latest Releases: <https://lucene.apache.org/core/documentation.html>
 - Nightly: <https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/javadoc/>
+- New contributors should start by reading [Contributing Guide](./CONTRIBUTING.md)
 - Build System Documentation: [help/](./help/)
-- Developer Documentation: [dev-docs/](./dev-docs/)
 - Migration Guide: [lucene/MIGRATE.md](./lucene/MIGRATE.md)
 
 ## Building
@@ -45,14 +46,14 @@ comprehensive documentation, visit:
 
 We'll assume that you know how to get and set up the JDK - if you don't, then we suggest starting at https://jdk.java.net/ and learning more about Java, before returning to this README.
 
-See [Contributing Guide](./CONTRIBUTING.md) for details.
-
 ## Contributing
 
 Bug fixes, improvements and new features are always welcome!
 Please review the [Contributing to Lucene
 Guide](./CONTRIBUTING.md) for information on
 contributing.
+
+- Additional Developer Documentation: [dev-docs/](./dev-docs/)
 
 ## Discussion and Support
 

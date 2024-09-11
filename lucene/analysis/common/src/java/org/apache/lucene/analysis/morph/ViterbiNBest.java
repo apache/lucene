@@ -17,12 +17,12 @@
 package org.apache.lucene.analysis.morph;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.fst.FST;
 
@@ -75,12 +75,12 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
     if (VERBOSE) {
       System.out.printf("DEBUG: 1-BEST COST: %d\n", bestCost);
     }
-    for (int node : lattice.bestPathNodeList()) {
-      registerNode(node, fragment);
+    for (IntCursor node : lattice.bestPathNodeList()) {
+      registerNode(node.value, fragment);
     }
 
     for (int n = 2; ; ++n) {
-      List<Integer> nbest = lattice.nBestNodeList(n);
+      IntArrayList nbest = lattice.nBestNodeList(n);
       if (nbest.isEmpty()) {
         break;
       }
@@ -91,8 +91,8 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
       if (bestCost + nBestCost < cost) {
         break;
       }
-      for (int node : nbest) {
-        registerNode(node, fragment);
+      for (IntCursor node : nbest) {
+        registerNode(node.value, fragment);
       }
     }
     if (VERBOSE) {
@@ -137,14 +137,14 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
     }
 
     // offset=>position map
-    HashMap<Integer, Integer> map = new HashMap<>();
+    IntIntHashMap map = new IntIntHashMap();
     for (Token t : pending) {
       map.put(t.getOffset(), 0);
       map.put(t.getOffset() + t.getLength(), 0);
     }
 
     // Get unique and sorted list of all edge position of tokens.
-    Integer[] offsets = map.keySet().toArray(new Integer[0]);
+    int[] offsets = map.keys().toArray();
     Arrays.sort(offsets);
 
     // setup all value of map.  It specifies N-th position from begin.
@@ -558,8 +558,8 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
       }
     }
 
-    List<Integer> bestPathNodeList() {
-      List<Integer> list = new ArrayList<>();
+    IntArrayList bestPathNodeList() {
+      IntArrayList list = new IntArrayList();
       for (int node = nodeRightNode[0]; node != 1; node = nodeRightNode[node]) {
         list.add(node);
         markSameSpanNode(node, 1);
@@ -571,8 +571,8 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
       return nodeLeftCost[node] + nodeWordCost[node] + nodeRightCost[node];
     }
 
-    List<Integer> nBestNodeList(int N) {
-      List<Integer> list = new ArrayList<>();
+    IntArrayList nBestNodeList(int N) {
+      IntArrayList list = new IntArrayList();
       int leastCost = Integer.MAX_VALUE;
       int leastLeft = -1;
       int leastRight = -1;
@@ -591,8 +591,8 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
           }
         }
       }
-      for (int node : list) {
-        markSameSpanNode(node, N);
+      for (IntCursor node : list) {
+        markSameSpanNode(node.value, N);
       }
       return list;
     }

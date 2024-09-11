@@ -23,15 +23,7 @@ import org.apache.lucene.tests.util.TestUtil;
 
 public abstract class BaseSortTestCase extends LuceneTestCase {
 
-  public static class Entry implements java.lang.Comparable<Entry> {
-
-    public final int value;
-    public final int ord;
-
-    public Entry(int value, int ord) {
-      this.value = value;
-      this.ord = ord;
-    }
+  public record Entry(int value, int ord) implements Comparable<Entry> {
 
     @Override
     public int compareTo(Entry other) {
@@ -49,7 +41,7 @@ public abstract class BaseSortTestCase extends LuceneTestCase {
 
   public void assertSorted(Entry[] original, Entry[] sorted) {
     assertEquals(original.length, sorted.length);
-    Entry[] actuallySorted = ArrayUtil.copyOfSubArray(original, 0, original.length);
+    Entry[] actuallySorted = ArrayUtil.copyArray(original);
     Arrays.sort(actuallySorted);
     for (int i = 0; i < original.length; ++i) {
       assertEquals(actuallySorted[i].value, sorted[i].value);

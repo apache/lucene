@@ -157,13 +157,15 @@ if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
 fi
 
 GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
-"$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
-WRAPPER_STATUS=$?
-if [ "$WRAPPER_STATUS" -eq 1 ]; then
-    echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 21."
-    exit $WRAPPER_STATUS
-elif [ "$WRAPPER_STATUS" -ne 0 ]; then
-    exit $WRAPPER_STATUS
+if [ ! -e "$GRADLE_WRAPPER_JAR" ]; then
+    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
+    WRAPPER_STATUS=$?
+    if [ "$WRAPPER_STATUS" -eq 1 ]; then
+        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 21."
+        exit $WRAPPER_STATUS
+    elif [ "$WRAPPER_STATUS" -ne 0 ]; then
+        exit $WRAPPER_STATUS
+    fi
 fi
 
 CLASSPATH=$GRADLE_WRAPPER_JAR
@@ -171,7 +173,7 @@ CLASSPATH=$GRADLE_WRAPPER_JAR
 # START OF LUCENE CUSTOMIZATION
 # Generate gradle.properties if they don't exist
 if [ ! -e "$APP_HOME/gradle.properties" ]; then
-    "$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "$APP_HOME/gradle/template.gradle.properties" "$APP_HOME/gradle.properties"
+    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "$APP_HOME/gradle/template.gradle.properties" "$APP_HOME/gradle.properties"
     GENERATOR_STATUS=$?
     if [ "$GENERATOR_STATUS" -ne 0 ]; then
         exit $GENERATOR_STATUS

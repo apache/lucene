@@ -34,8 +34,7 @@ final class BlockMaxConjunctionScorer extends Scorer {
   float minScore;
 
   /** Create a new {@link BlockMaxConjunctionScorer} from scoring clauses. */
-  BlockMaxConjunctionScorer(Weight weight, Collection<Scorer> scorersList) throws IOException {
-    super(weight);
+  BlockMaxConjunctionScorer(Collection<Scorer> scorersList) throws IOException {
     this.scorers = scorersList.toArray(new Scorer[scorersList.size()]);
     // Sort scorer by cost
     Arrays.sort(this.scorers, Comparator.comparingLong(s -> s.iterator().cost()));
@@ -110,8 +109,13 @@ final class BlockMaxConjunctionScorer extends Scorer {
       }
 
       private void moveToNextBlock(int target) throws IOException {
-        upTo = advanceShallow(target);
-        maxScore = getMaxScore(upTo);
+        if (minScore == 0) {
+          upTo = target;
+          maxScore = Float.POSITIVE_INFINITY;
+        } else {
+          upTo = advanceShallow(target);
+          maxScore = getMaxScore(upTo);
+        }
       }
 
       private int advanceTarget(int target) throws IOException {

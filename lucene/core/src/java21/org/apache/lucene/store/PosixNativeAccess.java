@@ -50,6 +50,7 @@ final class PosixNativeAccess extends NativeAccess {
   public static final int POSIX_MADV_DONTNEED = 4;
 
   private static final MethodHandle MH$posix_madvise;
+  private static final int PAGE_SIZE;
 
   private static final Optional<NativeAccess> INSTANCE;
 
@@ -60,10 +61,14 @@ final class PosixNativeAccess extends NativeAccess {
   }
 
   static {
+    final Linker linker = Linker.nativeLinker();
+    final SymbolLookup stdlib = linker.defaultLookup();
     MethodHandle adviseHandle = null;
+    int pagesize = -1;
     PosixNativeAccess instance = null;
     try {
-      adviseHandle = lookupMadvise();
+      adviseHandle = lookupMadvise(linker, stdlib);
+      pagesize = (int) lookupGetPageSize(linker, stdlib).invokeExact();
       instance = new PosixNativeAccess();
     } catch (UnsupportedOperationException uoe) {
       LOG.warning(uoe.getMessage());
@@ -77,14 +82,17 @@ final class PosixNativeAccess extends NativeAccess {
                   + "pass the following on command line: --enable-native-access=%s",
               Optional.ofNullable(PosixNativeAccess.class.getModule().getName())
                   .orElse("ALL-UNNAMED")));
+    } catch (RuntimeException | Error e) {
+      throw e;
+    } catch (Throwable e) {
+      throw new AssertionError(e);
     }
     MH$posix_madvise = adviseHandle;
+    PAGE_SIZE = pagesize;
     INSTANCE = Optional.ofNullable(instance);
   }
 
-  private static MethodHandle lookupMadvise() {
-    final Linker linker = Linker.nativeLinker();
-    final SymbolLookup stdlib = linker.defaultLookup();
+  private static MethodHandle lookupMadvise(Linker linker, SymbolLookup stdlib) {
     return findFunction(
         linker,
         stdlib,
@@ -94,6 +102,10 @@ final class PosixNativeAccess extends NativeAccess {
             ValueLayout.ADDRESS,
             ValueLayout.JAVA_LONG,
             ValueLayout.JAVA_INT));
+  }
+
+  private static MethodHandle lookupGetPageSize(Linker linker, SymbolLookup stdlib) {
+    return findFunction(linker, stdlib, "getpagesize", FunctionDescriptor.of(ValueLayout.JAVA_INT));
   }
 
   private static MethodHandle findFunction(
@@ -110,17 +122,26 @@ final class PosixNativeAccess extends NativeAccess {
 
   @Override
   public void madvise(MemorySegment segment, ReadAdvice readAdvice) throws IOException {
-    // Note: madvise is bypassed if the segment should be preloaded via MemorySegment#load.
-    if (segment.byteSize() == 0L) {
-      return; // empty segments should be excluded, because they may have no address at all
-    }
     final Integer advice = mapReadAdvice(readAdvice);
     if (advice == null) {
       return; // do nothing
     }
+    madvise(segment, advice);
+  }
+
+  @Override
+  public void madviseWillNeed(MemorySegment segment) throws IOException {
+    madvise(segment, POSIX_MADV_WILLNEED);
+  }
+
+  private void madvise(MemorySegment segment, int advice) throws IOException {
+    // Note: madvise is bypassed if the segment should be preloaded via MemorySegment#load.
+    if (segment.byteSize() == 0L) {
+      return; // empty segments should be excluded, because they may have no address at all
+    }
     final int ret;
     try {
-      ret = (int) MH$posix_madvise.invokeExact(segment, segment.byteSize(), advice.intValue());
+      ret = (int) MH$posix_madvise.invokeExact(segment, segment.byteSize(), advice);
     } catch (Throwable th) {
       throw new AssertionError(th);
     }
@@ -137,10 +158,15 @@ final class PosixNativeAccess extends NativeAccess {
 
   private Integer mapReadAdvice(ReadAdvice readAdvice) {
     return switch (readAdvice) {
-      case NORMAL -> null;
+      case NORMAL -> POSIX_MADV_NORMAL;
       case RANDOM -> POSIX_MADV_RANDOM;
       case SEQUENTIAL -> POSIX_MADV_SEQUENTIAL;
-      case RANDOM_PRELOAD -> null;
+      case RANDOM_PRELOAD -> POSIX_MADV_NORMAL;
     };
+  }
+
+  @Override
+  public int getPageSize() {
+    return PAGE_SIZE;
   }
 }

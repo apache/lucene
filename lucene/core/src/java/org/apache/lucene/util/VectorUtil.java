@@ -47,6 +47,8 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
  */
 public final class VectorUtil {
 
+  private static final float EPSILON = 1e-4f;
+
   private static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
 
@@ -121,6 +123,11 @@ public final class VectorUtil {
     return v;
   }
 
+  public static boolean isUnitVector(float[] v) {
+    double l1norm = IMPL.dotProduct(v, v);
+    return Math.abs(l1norm - 1.0d) <= EPSILON;
+  }
+
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm.
    *
@@ -138,7 +145,7 @@ public final class VectorUtil {
         return v;
       }
     }
-    if (Math.abs(l1norm - 1.0d) <= 1e-5) {
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
       return v;
     }
     int dim = v.length;
@@ -179,7 +186,86 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return IMPL.int4DotProduct(a, b);
+    return IMPL.int4DotProduct(a, false, b, false);
+  }
+
+  /**
+   * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
+   * "packed" (i.e. every byte representing two values). The following packing is assumed:
+   *
+   * <pre class="prettyprint lang-java">
+   *   packed[0] = (raw[0] * 16) | raw[packed.length];
+   *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
+   *   ...
+   *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
+   * </pre>
+   *
+   * @param unpacked the unpacked vector, of even length
+   * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
+   * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+    if (packed.length != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+    }
+    return IMPL.int4DotProduct(unpacked, false, packed, true);
+  }
+
+  /**
+   * For xorBitCount we stride over the values as either 64-bits (long) or 32-bits (int) at a time.
+   * On ARM Long::bitCount is not vectorized, and therefore produces less than optimal code, when
+   * compared to Integer::bitCount. While Long::bitCount is optimal on x64. See
+   * https://bugs.openjdk.org/browse/JDK-8336000
+   */
+  static final boolean XOR_BIT_COUNT_STRIDE_AS_INT = Constants.OS_ARCH.equals("aarch64");
+
+  /**
+   * XOR bit count computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the XOR bit count of the two vectors
+   */
+  public static int xorBitCount(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    if (XOR_BIT_COUNT_STRIDE_AS_INT) {
+      return xorBitCountInt(a, b);
+    } else {
+      return xorBitCountLong(a, b);
+    }
+  }
+
+  /** XOR bit count striding over 4 bytes at a time. */
+  static int xorBitCountInt(byte[] a, byte[] b) {
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & -Integer.BYTES; i < upperBound; i += Integer.BYTES) {
+      distance +=
+          Integer.bitCount(
+              (int) BitUtil.VH_NATIVE_INT.get(a, i) ^ (int) BitUtil.VH_NATIVE_INT.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
+  }
+
+  /** XOR bit count striding over 8 bytes at a time. */
+  static int xorBitCountLong(byte[] a, byte[] b) {
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & -Long.BYTES; i < upperBound; i += Long.BYTES) {
+      distance +=
+          Long.bitCount(
+              (long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
   }
 
   /**

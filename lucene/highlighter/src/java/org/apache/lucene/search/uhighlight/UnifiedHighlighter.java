@@ -21,6 +21,7 @@ import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,6 +32,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
@@ -85,6 +87,7 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  *   <li>{@link #getBreakIterator(String)}: Customize how the text is divided into passages.
  *   <li>{@link #getScorer(String)}: Customize how passages are ranked.
  *   <li>{@link #getFormatter(String)}: Customize how snippets are formatted.
+ *   <li>{@link #getPassageSortComparator(String)}: Customize how snippets are formatted.
  * </ul>
  *
  * <p>This is thread-safe, notwithstanding the setters.
@@ -112,6 +115,8 @@ public class UnifiedHighlighter {
   private static final PassageScorer DEFAULT_PASSAGE_SCORER = new PassageScorer();
   private static final PassageFormatter DEFAULT_PASSAGE_FORMATTER = new DefaultPassageFormatter();
   private static final int DEFAULT_MAX_HIGHLIGHT_PASSAGES = -1;
+  private static final Comparator<Passage> DEFAULT_PASSAGE_SORT_COMPARATOR =
+      Comparator.comparingInt(Passage::getStartOffset);
 
   protected final IndexSearcher searcher; // if null, can only use highlightWithoutSearcher
 
@@ -121,6 +126,8 @@ public class UnifiedHighlighter {
   protected volatile FieldInfos fieldInfos;
 
   private Predicate<String> fieldMatcher;
+
+  private final Function<String, Set<String>> maskedFieldsFunc;
 
   private Set<HighlightFlag> flags;
 
@@ -148,6 +155,8 @@ public class UnifiedHighlighter {
 
   private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
 
+  private Comparator<Passage> passageSortComparator = DEFAULT_PASSAGE_SORT_COMPARATOR;
+
   /**
    * Constructs the highlighter with the given index searcher and analyzer.
    *
@@ -162,6 +171,7 @@ public class UnifiedHighlighter {
         Objects.requireNonNull(
             indexAnalyzer,
             "indexAnalyzer is required" + " (even if in some circumstances it isn't used)");
+    this.maskedFieldsFunc = null;
   }
 
   @Deprecated
@@ -256,6 +266,8 @@ public class UnifiedHighlighter {
 
     private final Analyzer indexAnalyzer;
     private Predicate<String> fieldMatcher;
+
+    private Function<String, Set<String>> maskedFieldsFunc;
     private Set<HighlightFlag> flags;
     private boolean handleMultiTermQuery = DEFAULT_ENABLE_MULTI_TERM_QUERY;
     private boolean highlightPhrasesStrictly = DEFAULT_ENABLE_HIGHLIGHT_PHRASES_STRICTLY;
@@ -270,6 +282,7 @@ public class UnifiedHighlighter {
     private PassageFormatter formatter = DEFAULT_PASSAGE_FORMATTER;
     private int maxNoHighlightPassages = DEFAULT_MAX_HIGHLIGHT_PASSAGES;
     private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
+    private Comparator<Passage> passageSortComparator = DEFAULT_PASSAGE_SORT_COMPARATOR;
 
     /**
      * Constructor for UH builder which accepts {@link IndexSearcher} and {@link Analyzer} objects.
@@ -360,6 +373,22 @@ public class UnifiedHighlighter {
       return this;
     }
 
+    /**
+     * Set up a function that given a field retuns a set of masked fields whose matches are combined
+     * to highlight the given field. Masked fields should not include the original field. This is
+     * useful when you want to highlight a field based on matches from several fields.
+     *
+     * <p>Note: All masked fields must share the same source as the field being highlighted,
+     * otherwise their offsets will not correspond to the highlighted field.
+     *
+     * <p>Note: Only the field being highlighted must provide an original source value (e.g. through
+     * stored field), other masked fields don't need it.
+     */
+    public Builder withMaskedFieldsFunc(Function<String, Set<String>> maskedFieldsFunc) {
+      this.maskedFieldsFunc = maskedFieldsFunc;
+      return this;
+    }
+
     public Builder withScorer(PassageScorer value) {
       this.scorer = value;
       return this;
@@ -377,6 +406,11 @@ public class UnifiedHighlighter {
 
     public Builder withCacheFieldValCharsThreshold(int value) {
       this.cacheFieldValCharsThreshold = value;
+      return this;
+    }
+
+    public Builder withPassageSortComparator(Comparator<Passage> value) {
+      this.passageSortComparator = value;
       return this;
     }
 
@@ -436,10 +470,12 @@ public class UnifiedHighlighter {
     this.maxLength = builder.maxLength;
     this.breakIterator = builder.breakIterator;
     this.fieldMatcher = builder.fieldMatcher;
+    this.maskedFieldsFunc = builder.maskedFieldsFunc;
     this.scorer = builder.scorer;
     this.formatter = builder.formatter;
     this.maxNoHighlightPassages = builder.maxNoHighlightPassages;
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
+    this.passageSortComparator = builder.passageSortComparator;
   }
 
   /** Extracts matching terms */
@@ -543,6 +579,10 @@ public class UnifiedHighlighter {
     }
   }
 
+  protected Set<String> getMaskedFields(String field) {
+    return maskedFieldsFunc == null ? null : maskedFieldsFunc.apply(field);
+  }
+
   /** Returns the {@link HighlightFlag}s applicable for the current UH instance. */
   protected Set<HighlightFlag> getFlags(String field) {
     // If a builder is used for initializing a UH object, then flags will never be null.
@@ -585,6 +625,11 @@ public class UnifiedHighlighter {
    */
   protected PassageFormatter getFormatter(String field) {
     return formatter;
+  }
+
+  /** Returns the {@link Comparator} to use for finally sorting passages. */
+  protected Comparator<Passage> getPassageSortComparator(String field) {
+    return passageSortComparator;
   }
 
   /**
@@ -1065,16 +1110,35 @@ public class UnifiedHighlighter {
 
   protected FieldHighlighter getFieldHighlighter(
       String field, Query query, Set<Term> allTerms, int maxPassages) {
-    UHComponents components = getHighlightComponents(field, query, allTerms);
-    OffsetSource offsetSource = getOptimizedOffsetSource(components);
+    Set<String> maskedFields = getMaskedFields(field);
+    FieldOffsetStrategy fieldOffsetStrategy;
+    if (maskedFields == null || maskedFields.isEmpty()) {
+      UHComponents components = getHighlightComponents(field, query, allTerms);
+      OffsetSource offsetSource = getOptimizedOffsetSource(components);
+      fieldOffsetStrategy = getOffsetStrategy(offsetSource, components);
+    } else {
+      List<FieldOffsetStrategy> fieldsOffsetStrategies = new ArrayList<>(maskedFields.size() + 1);
+      for (String maskedField : maskedFields) {
+        UHComponents components = getHighlightComponents(maskedField, query, allTerms);
+        OffsetSource offsetSource = getOptimizedOffsetSource(components);
+        fieldsOffsetStrategies.add(getOffsetStrategy(offsetSource, components));
+      }
+      // adding original field as well
+      UHComponents components = getHighlightComponents(field, query, allTerms);
+      OffsetSource offsetSource = getOptimizedOffsetSource(components);
+      fieldsOffsetStrategies.add(getOffsetStrategy(offsetSource, components));
+
+      fieldOffsetStrategy = new MultiFieldsOffsetStrategy(fieldsOffsetStrategies);
+    }
     return newFieldHighlighter(
         field,
-        getOffsetStrategy(offsetSource, components),
+        fieldOffsetStrategy,
         new SplittingBreakIterator(getBreakIterator(field), UnifiedHighlighter.MULTIVAL_SEP_CHAR),
         getScorer(field),
         maxPassages,
         getMaxNoHighlightPassages(field),
-        getFormatter(field));
+        getFormatter(field),
+        getPassageSortComparator(field));
   }
 
   protected FieldHighlighter newFieldHighlighter(
@@ -1084,7 +1148,8 @@ public class UnifiedHighlighter {
       PassageScorer passageScorer,
       int maxPassages,
       int maxNoHighlightPassages,
-      PassageFormatter passageFormatter) {
+      PassageFormatter passageFormatter,
+      Comparator<Passage> passageSortComparator) {
     return new FieldHighlighter(
         field,
         fieldOffsetStrategy,
@@ -1092,7 +1157,8 @@ public class UnifiedHighlighter {
         passageScorer,
         maxPassages,
         maxNoHighlightPassages,
-        passageFormatter);
+        passageFormatter,
+        passageSortComparator);
   }
 
   protected UHComponents getHighlightComponents(String field, Query query, Set<Term> allTerms) {
@@ -1186,19 +1252,17 @@ public class UnifiedHighlighter {
   }
 
   protected OffsetSource getOptimizedOffsetSource(UHComponents components) {
-    OffsetSource offsetSource = getOffsetSource(components.getField());
+    OffsetSource offsetSource = getOffsetSource(components.field());
 
     // null automata means unknown, so assume a possibility
     boolean mtqOrRewrite =
-        components.getAutomata() == null
-            || components.getAutomata().length > 0
-            || components.getPhraseHelper().willRewrite()
+        components.automata() == null
+            || components.automata().length > 0
+            || components.phraseHelper().willRewrite()
             || components.hasUnrecognizedQueryPart();
 
     // null terms means unknown, so assume something to highlight
-    if (mtqOrRewrite == false
-        && components.getTerms() != null
-        && components.getTerms().length == 0) {
+    if (mtqOrRewrite == false && components.terms() != null && components.terms().length == 0) {
       return OffsetSource.NONE_NEEDED; // nothing to highlight
     }
 
@@ -1229,9 +1293,9 @@ public class UnifiedHighlighter {
       OffsetSource offsetSource, UHComponents components) {
     switch (offsetSource) {
       case ANALYSIS:
-        if (!components.getPhraseHelper().hasPositionSensitivity()
-            && !components.getHighlightFlags().contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
-            && !components.getHighlightFlags().contains(HighlightFlag.WEIGHT_MATCHES)) {
+        if (!components.phraseHelper().hasPositionSensitivity()
+            && !components.highlightFlags().contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
+            && !components.highlightFlags().contains(HighlightFlag.WEIGHT_MATCHES)) {
           // skip using a memory index since it's pure term filtering
           return new TokenStreamOffsetStrategy(components, getIndexAnalyzer());
         } else {

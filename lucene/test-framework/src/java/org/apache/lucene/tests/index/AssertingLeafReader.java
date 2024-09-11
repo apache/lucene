@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
@@ -50,6 +51,7 @@ import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.VirtualMethod;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -127,6 +129,12 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     public AssertingStoredFields(StoredFields in) {
       this.in = in;
+    }
+
+    @Override
+    public void prefetch(int docID) throws IOException {
+      assertThread("StoredFields", creationThread);
+      in.prefetch(docID);
     }
 
     @Override
@@ -260,7 +268,8 @@ public class AssertingLeafReader extends FilterLeafReader {
     private enum State {
       INITIAL,
       POSITIONED,
-      UNPOSITIONED
+      UNPOSITIONED,
+      TWO_PHASE_SEEKING;
     };
 
     private State state = State.INITIAL;
@@ -363,6 +372,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void seekExact(long ord) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       super.seekExact(ord);
       state = State.POSITIONED;
     }
@@ -370,6 +380,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public SeekStatus seekCeil(BytesRef term) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert term.isValid();
       SeekStatus result = super.seekCeil(term);
       if (result == SeekStatus.END) {
@@ -383,6 +394,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public boolean seekExact(BytesRef text) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert text.isValid();
       boolean result;
       if (delegateOverridesSeekExact) {
@@ -399,6 +411,27 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+      assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
+      assert text.isValid();
+      IOBooleanSupplier in = this.in.prepareSeekExact(text);
+      if (in == null) {
+        return null;
+      }
+      state = State.TWO_PHASE_SEEKING;
+      return () -> {
+        boolean exists = in.get();
+        if (exists) {
+          state = State.POSITIONED;
+        } else {
+          state = State.UNPOSITIONED;
+        }
+        return exists;
+      };
+    }
+
+    @Override
     public TermState termState() throws IOException {
       assertThread("Terms enums", creationThread);
       assert state == State.POSITIONED : "termState() called on unpositioned TermsEnum";
@@ -408,6 +441,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void seekExact(BytesRef term, TermState state) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert this.state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert term.isValid();
       in.seekExact(term, state);
       this.state = State.POSITIONED;
@@ -1149,6 +1183,109 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
   }
 
+  /** Wraps a DocValuesSkipper but with additional asserts */
+  public static class AssertingDocValuesSkipper extends DocValuesSkipper {
+
+    private final Thread creationThread = Thread.currentThread();
+    private final DocValuesSkipper in;
+
+    /** Sole constructor */
+    public AssertingDocValuesSkipper(DocValuesSkipper in) {
+      this.in = in;
+      assert minDocID(0) == -1;
+      assert maxDocID(0) == -1;
+    }
+
+    @Override
+    public void advance(int target) throws IOException {
+      assertThread("Doc values skipper", creationThread);
+      assert target > maxDocID(0)
+          : "Illegal to call advance() on a target that is not beyond the current interval";
+      in.advance(target);
+      assert in.minDocID(0) <= in.maxDocID(0);
+    }
+
+    private boolean iterating() {
+      return maxDocID(0) != -1
+          && minDocID(0) != -1
+          && maxDocID(0) != DocIdSetIterator.NO_MORE_DOCS
+          && minDocID(0) != DocIdSetIterator.NO_MORE_DOCS;
+    }
+
+    @Override
+    public int numLevels() {
+      assertThread("Doc values skipper", creationThread);
+      return in.numLevels();
+    }
+
+    @Override
+    public int minDocID(int level) {
+      assertThread("Doc values skipper", creationThread);
+      Objects.checkIndex(level, numLevels());
+      int minDocID = in.minDocID(level);
+      assert minDocID <= in.maxDocID(level);
+      if (level > 0) {
+        assert minDocID <= in.minDocID(level - 1);
+      }
+      return minDocID;
+    }
+
+    @Override
+    public int maxDocID(int level) {
+      assertThread("Doc values skipper", creationThread);
+      Objects.checkIndex(level, numLevels());
+      int maxDocID = in.maxDocID(level);
+
+      assert maxDocID >= in.minDocID(level);
+      if (level > 0) {
+        assert maxDocID >= in.maxDocID(level - 1);
+      }
+      return maxDocID;
+    }
+
+    @Override
+    public long minValue(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.minValue(level);
+    }
+
+    @Override
+    public long maxValue(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.maxValue(level);
+    }
+
+    @Override
+    public int docCount(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.docCount(level);
+    }
+
+    @Override
+    public long minValue() {
+      assertThread("Doc values skipper", creationThread);
+      return in.minValue();
+    }
+
+    @Override
+    public long maxValue() {
+      assertThread("Doc values skipper", creationThread);
+      return in.maxValue();
+    }
+
+    @Override
+    public int docCount() {
+      assertThread("Doc values skipper", creationThread);
+      return in.docCount();
+    }
+  }
+
   /** Wraps a SortedSetDocValues but with additional asserts */
   public static class AssertingPointValues extends PointValues {
     private final Thread creationThread = Thread.currentThread();
@@ -1473,6 +1610,19 @@ public class AssertingLeafReader extends FilterLeafReader {
       return new AssertingSortedSetDocValues(dv, maxDoc());
     } else {
       assert fi == null || fi.getDocValuesType() != DocValuesType.SORTED_SET;
+      return null;
+    }
+  }
+
+  @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    DocValuesSkipper skipper = super.getDocValuesSkipper(field);
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (skipper != null) {
+      assert fi.hasDocValuesSkipIndex();
+      return new AssertingDocValuesSkipper(skipper);
+    } else {
+      assert fi == null || fi.hasDocValuesSkipIndex() == false;
       return null;
     }
   }

@@ -25,8 +25,11 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  *
  * @lucene.experimental
  */
-public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues<byte[]> {
-  float getScoreCorrectionConstant();
+public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues.Bytes {
+
+  ScalarQuantizer getScalarQuantizer();
+
+  float getScoreCorrectionConstant(int vectorOrd) throws IOException;
 
   @Override
   RandomAccessQuantizedByteVectorValues copy() throws IOException;

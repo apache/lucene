@@ -28,13 +28,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.KeywordField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -114,11 +120,14 @@ public class TestTermInSetQuery extends LuceneTestCase {
       }
       Directory dir = newDirectory();
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
-      final int numDocs = atLeast(100);
+      final int numDocs = atLeast(10_000);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final BytesRef term = allTerms.get(random().nextInt(allTerms.size()));
         doc.add(new StringField(field, term, Store.NO));
+        // Also include a doc values field with a skip-list so we can test doc-value rewrite as
+        // well:
+        doc.add(SortedSetDocValuesField.indexedField(field, term));
         iw.addDocument(doc);
       }
       if (numTerms > 1 && random().nextBoolean()) {
@@ -149,12 +158,124 @@ public class TestTermInSetQuery extends LuceneTestCase {
         }
         final Query q1 = new ConstantScoreQuery(bq.build());
         final Query q2 = new TermInSetQuery(field, queryTerms);
+        final Query q3 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, queryTerms);
         assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+        assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q3, boost), false);
       }
 
       reader.close();
       dir.close();
     }
+  }
+
+  public void testReturnsNullScoreSupplier() throws Exception {
+    try (Directory directory = newDirectory()) {
+      try (IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig())) {
+        for (char ch = 'a'; ch <= 'z'; ch++) {
+          Document doc = new Document();
+          doc.add(new KeywordField("id", Character.toString(ch), Field.Store.YES));
+          doc.add(new KeywordField("content", Character.toString(ch), Field.Store.YES));
+          writer.addDocument(doc);
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(directory)) {
+        List<BytesRef> terms = new ArrayList<>();
+        for (char ch = 'a'; ch <= 'z'; ch++) {
+          terms.add(newBytesRef(Character.toString(ch)));
+        }
+        Query query2 = new TermInSetQuery("content", terms);
+
+        {
+          // query1 doesn't match any documents
+          Query query1 = new TermInSetQuery("id", List.of(newBytesRef("aaa"), newBytesRef("bbb")));
+          BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+          queryBuilder.add(query1, Occur.FILTER);
+          queryBuilder.add(query2, Occur.FILTER);
+          Query boolQuery = queryBuilder.build();
+
+          IndexSearcher searcher = new IndexSearcher(reader);
+          final LeafReaderContext ctx = reader.leaves().get(0);
+
+          Weight weight1 = searcher.createWeight(searcher.rewrite(query1), ScoreMode.COMPLETE, 1);
+          ScorerSupplier scorerSupplier1 = weight1.scorerSupplier(ctx);
+          // as query1 doesn't match any documents, its scorerSupplier must be null
+          assertNull(scorerSupplier1);
+          Weight weight = searcher.createWeight(searcher.rewrite(boolQuery), ScoreMode.COMPLETE, 1);
+          // scorerSupplier of a bool query where query1 is mandatory must be null
+          ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+          assertNull(scorerSupplier);
+        }
+        {
+          // query1 matches some documents
+          Query query1 =
+              new TermInSetQuery(
+                  "id", List.of(newBytesRef("aaa"), newBytesRef("bbb"), newBytesRef("b")));
+          BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+          queryBuilder.add(query1, Occur.FILTER);
+          queryBuilder.add(query2, Occur.FILTER);
+          Query boolQuery = queryBuilder.build();
+
+          IndexSearcher searcher = new IndexSearcher(reader);
+          final LeafReaderContext ctx = reader.leaves().get(0);
+
+          Weight weight1 = searcher.createWeight(searcher.rewrite(query1), ScoreMode.COMPLETE, 1);
+          ScorerSupplier scorerSupplier1 = weight1.scorerSupplier(ctx);
+          // as query1 matches some documents, its scorerSupplier must not be null
+          assertNotNull(scorerSupplier1);
+          Weight weight = searcher.createWeight(searcher.rewrite(boolQuery), ScoreMode.COMPLETE, 1);
+          // scorerSupplier of a bool query where query1 is mandatory must not be null
+          ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+          assertNotNull(scorerSupplier);
+        }
+      }
+    }
+  }
+
+  /**
+   * Make sure the doc values skipper isn't making the incorrect assumption that the min/max terms
+   * from a TermInSetQuery don't form a continuous range.
+   */
+  public void testSkipperOptimizationGapAssumption() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    // Index the first 10,000 docs all with the term "b" to get some skip list blocks with the range
+    // [b, b]:
+    for (int i = 0; i < 10_000; i++) {
+      Document doc = new Document();
+      BytesRef term = new BytesRef("b");
+      doc.add(new SortedSetDocValuesField("field", term));
+      doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+      iw.addDocument(doc);
+    }
+
+    // Index a couple more docs with terms "a" and "c":
+    Document doc = new Document();
+    BytesRef term = new BytesRef("a");
+    doc.add(new SortedSetDocValuesField("field", term));
+    doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+    iw.addDocument(doc);
+    doc = new Document();
+    term = new BytesRef("c");
+    doc.add(new SortedSetDocValuesField("field", term));
+    doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+    iw.addDocument(doc);
+
+    iw.commit();
+    IndexReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // Our query is for (or "a" "c") which should use a skip-list optimization to exclude blocks of
+    // documents that fall outside the range [a, c]. We want to test that they don't incorrectly do
+    // the inverse and include all docs in a block that fall within [a, c] (which is why we have
+    // blocks of only "b" docs up-front):
+    List<BytesRef> queryTerms = List.of(new BytesRef("a"), new BytesRef("c"));
+    Query q1 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "field", queryTerms);
+    Query q2 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "idx_field", queryTerms);
+    assertSameMatches(searcher, q1, q2, false);
+
+    reader.close();
+    dir.close();
   }
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)

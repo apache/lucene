@@ -17,6 +17,7 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import java.io.IOException;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -27,6 +28,8 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
 
@@ -47,7 +50,7 @@ public abstract class VectorizationProvider {
     try {
       vs =
           Stream.ofNullable(System.getProperty("tests.vectorsize"))
-              .filter(Predicate.not(String::isEmpty))
+              .filter(Predicate.not(Set.of("", "default")::contains))
               .mapToInt(Integer::parseInt)
               .findAny();
     } catch (
@@ -91,6 +94,12 @@ public abstract class VectorizationProvider {
    */
   public abstract VectorUtilSupport getVectorUtilSupport();
 
+  /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
+  public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
+
+  /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
+  public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
@@ -99,7 +108,7 @@ public abstract class VectorizationProvider {
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
     assert runtimeVersion >= 21;
-    if (runtimeVersion <= 22) {
+    if (runtimeVersion <= 23) {
       // only use vector module with Hotspot VM
       if (!Constants.IS_HOTSPOT_VM) {
         LOG.warning(
@@ -177,7 +186,12 @@ public abstract class VectorizationProvider {
   }
 
   // add all possible callers here as FQCN:
-  private static final Set<String> VALID_CALLERS = Set.of("org.apache.lucene.util.VectorUtil");
+  private static final Set<String> VALID_CALLERS =
+      Set.of(
+          "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
+          "org.apache.lucene.util.VectorUtil",
+          "org.apache.lucene.codecs.lucene912.Lucene912PostingsReader",
+          "org.apache.lucene.codecs.lucene912.PostingIndexInput");
 
   private static void ensureCaller() {
     final boolean validCaller =

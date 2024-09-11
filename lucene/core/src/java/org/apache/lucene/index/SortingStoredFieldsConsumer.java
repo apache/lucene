@@ -49,7 +49,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             @Override
             public void compress(ByteBuffersDataInput buffersInput, DataOutput out)
                 throws IOException {
-              out.copyBytes(buffersInput, buffersInput.size());
+              out.copyBytes(buffersInput, buffersInput.length());
             }
           };
         }
