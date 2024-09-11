@@ -97,7 +97,7 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
           }
           TopDocs td =
               r.searchNearestVectors("f", randomVector(vector.length), 1, null, Integer.MAX_VALUE);
-          assertEquals(1, td.totalHits.value);
+          assertEquals(1, td.totalHits.value());
           assertTrue(td.scoreDocs[0].score >= 0);
         }
       }
@@ -181,8 +181,8 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
           float[] queryVector = randomVector(dims);
           Query q = new KnnFloatVectorQuery(fieldName, queryVector, k);
           TopDocs collectedDocs = searcher.search(q, k);
-          assertEquals(k, collectedDocs.totalHits.value);
-          assertEquals(TotalHits.Relation.EQUAL_TO, collectedDocs.totalHits.relation);
+          assertEquals(k, collectedDocs.totalHits.value());
+          assertEquals(TotalHits.Relation.EQUAL_TO, collectedDocs.totalHits.relation());
         }
       }
     }

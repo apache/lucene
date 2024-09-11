@@ -84,8 +84,8 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           float[] queryVector = randomVector(dims);
           Query q = new KnnFloatVectorQuery(fieldName, queryVector, k);
           TopDocs collectedDocs = searcher.search(q, k);
-          assertEquals(k, collectedDocs.totalHits.value);
-          assertEquals(TotalHits.Relation.EQUAL_TO, collectedDocs.totalHits.relation);
+          assertEquals(k, collectedDocs.totalHits.value());
+          assertEquals(TotalHits.Relation.EQUAL_TO, collectedDocs.totalHits.relation());
         }
       }
     }
