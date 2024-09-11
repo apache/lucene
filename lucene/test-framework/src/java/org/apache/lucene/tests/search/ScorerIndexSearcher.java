@@ -52,8 +52,16 @@ public class ScorerIndexSearcher extends IndexSearcher {
   }
 
   @Override
-  protected void searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)
+  protected void searchLeaf(
+      LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)
       throws IOException {
+    // the default slices method does not create segment partitions, and we don't provide an
+    // executor to this searcher in our codebase, so we should not run into this problem. This class
+    // can though be used externally, hence it is better to provide a clear and hard error.
+    if (minDocId != 0 || maxDocId != DocIdSetIterator.NO_MORE_DOCS) {
+      throw new IllegalStateException(
+          "intra-segment concurrency is not supported by this searcher");
+    }
     // we force the use of Scorer (not BulkScorer) to make sure
     // that the scorer passed to LeafCollector.setScorer supports
     // Scorer.getChildren

@@ -625,7 +625,7 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
             Operations.removeDeadStates(expected), DEFAULT_DETERMINIZE_WORK_LIMIT);
     Automaton actualDet =
         Operations.determinize(Operations.removeDeadStates(actual), DEFAULT_DETERMINIZE_WORK_LIMIT);
-    if (Operations.sameLanguage(expectedDet, actualDet) == false) {
+    if (AutomatonTestUtil.sameLanguage(expectedDet, actualDet) == false) {
       Set<String> expectedPaths = toPathStrings(expectedDet);
       Set<String> actualPaths = toPathStrings(actualDet);
       StringBuilder b = new StringBuilder();

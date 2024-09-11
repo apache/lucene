@@ -64,7 +64,7 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
 
     assertEquals(4, actualSynonymsResults.size());
     for (int i = 0; i < expectedSynonyms.length; i++) {
-      assertEquals(new BytesRef(expectedSynonyms[i]), actualSynonymsResults.get(i).term);
+      assertEquals(new BytesRef(expectedSynonyms[i]), actualSynonymsResults.get(i).term());
     }
   }
 
@@ -83,8 +83,8 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
 
     BytesRef expectedFirstSynonymTerm = new BytesRef("b");
     double expectedFirstSynonymBoost = 1.0;
-    assertEquals(expectedFirstSynonymTerm, actualSynonymsResults.get(0).term);
-    assertEquals(expectedFirstSynonymBoost, actualSynonymsResults.get(0).boost, 0.001f);
+    assertEquals(expectedFirstSynonymTerm, actualSynonymsResults.get(0).term());
+    assertEquals(expectedFirstSynonymBoost, actualSynonymsResults.get(0).boost(), 0.001f);
   }
 
   @Test

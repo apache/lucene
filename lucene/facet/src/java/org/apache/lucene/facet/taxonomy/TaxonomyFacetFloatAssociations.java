@@ -115,7 +115,7 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
 
       @Override
       public double doubleValue() throws IOException {
-        return hits.scores[index];
+        return hits.scores()[index];
       }
 
       @Override
@@ -134,17 +134,17 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       DoubleValuesSource valueSource)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeValueCounters();
 
       SortedNumericDocValues ordinalValues =
-          DocValues.getSortedNumeric(hits.context.reader(), indexFieldName);
+          DocValues.getSortedNumeric(hits.context().reader(), indexFieldName);
       DoubleValues scores = keepScores ? scores(hits) : null;
-      DoubleValues functionValues = valueSource.getValues(hits.context, scores);
+      DoubleValues functionValues = valueSource.getValues(hits.context(), scores);
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(List.of(hits.bits.iterator(), ordinalValues));
+          ConjunctionUtils.intersectIterators(List.of(hits.bits().iterator(), ordinalValues));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         if (functionValues.advanceExact(doc)) {
@@ -171,14 +171,14 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeValueCounters();
 
-      BinaryDocValues dv = DocValues.getBinary(hits.context.reader(), indexFieldName);
+      BinaryDocValues dv = DocValues.getBinary(hits.context().reader(), indexFieldName);
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), dv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         final BytesRef bytesRef = dv.binaryValue();

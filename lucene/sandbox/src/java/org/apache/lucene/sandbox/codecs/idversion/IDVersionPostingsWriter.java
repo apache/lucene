@@ -71,7 +71,7 @@ final class IDVersionPostingsWriter extends PushPostingsWriterBase {
     // LUCENE-5693: because CheckIndex cross-checks term vectors with postings even for deleted
     // docs, and because our PF only indexes the
     // non-deleted documents on flush, CheckIndex will see this as corruption:
-    if (fieldInfo.hasVectors()) {
+    if (fieldInfo.hasTermVectors()) {
       throw new IllegalArgumentException(
           "field cannot index term vectors: CheckIndex will report this as index corruption");
     }

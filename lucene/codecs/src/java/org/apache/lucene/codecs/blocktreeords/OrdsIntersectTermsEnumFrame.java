@@ -142,8 +142,8 @@ final class OrdsIntersectTermsEnumFrame {
     // + frameIndexData + " trans=" + (transitions.length != 0 ? transitions[0] : "n/a" + " state="
     // + state));
 
-    if (output != null && output.bytes != null && transitionCount != 0) {
-      BytesRef frameIndexData = output.bytes;
+    if (output != null && output.bytes() != null && transitionCount != 0) {
+      BytesRef frameIndexData = output.bytes();
 
       // Floor frame
       if (floorData.length < frameIndexData.length) {

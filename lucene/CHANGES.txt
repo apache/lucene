@@ -112,6 +112,13 @@ API Changes
 
 * GITHUB#13632: CandidateMatcher public matching functions (Bryan Jacobowitz)
 
+* GITHUB#13708: Move Operations.sameLanguage/subsetOf to test-framework. (Robert Muir)
+
+* GITHUB#13733: Move FacetsCollector#search utility methods to `FacetsCollectorManager`, replace the `Collector`
+  argument with a `FacetsCollectorManager` and update the return type to include both `TopDocs` results as well as
+  facets results. (Luca Cavanna)
+
+* GITHUB#13328: Convert many basic Lucene classes to record classes, including CollectionStatistics, TermStatistics and LeafMetadata. (Shubham Chaudhary)
 
 New Features
 ---------------------
@@ -141,8 +148,18 @@ New Features
 
 * GITHUB#13604: Add Kmeans clustering on vectors (Mayya Sharipova, Jim Ferenczi, Tom Veasey)
 
-* GITHUB#13597: Take advantage of the doc value skipper when it is primary sort in SortedNumericDocValuesRangeQuery
+* GITHUB#13592: Take advantage of the doc value skipper when it is primary sort in SortedNumericDocValuesRangeQuery
   and SortedSetDocValuesRangeQuery. (Ignacio Vera)
+
+* GITHUB#13542: Add initial support for intra-segment concurrency. IndexSearcher now supports searching across leaf
+  reader partitions concurrently. This is useful to max out available resource usage especially with force merged
+  indices or big segments. There is still a performance penalty for queries that require segment-level computation
+  ahead of time, such as points/range queries. This is an implementation limitation that we expect to improve in
+  future releases, ad that's why intra-segment slicing is not enabled by default, but leveraged in tests when the
+  searcher is created via LuceneTestCase#newSearcher. Users may override IndexSearcher#slices(List) to optionally
+  create slices that target segment partitions. (Luca Cavanna)
+
+* GITHUB#13741: Implement Accountable for NFARunAutomaton, fix hashCode implementation of CompiledAutomaton. (Patrick Zhai)
 
 Improvements
 ---------------------
@@ -167,6 +184,8 @@ Improvements
 
 * GITHUB#12172: Update Romanian stopwords list to include the modern unicode forms.  (Trey Jones)
 
+* GITHUB#13707: Improve Operations.isTotal() to work with non-minimal automata. (Dawid Weiss, Robert Muir)
+
 Optimizations
 ---------------------
 
@@ -178,6 +197,8 @@ Optimizations
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
+
+* GITHUB#13672: Leverage doc value skip lists in DocValuesRewriteMethod if indexed. (Greg Miller)
 
 Bug Fixes
 ---------------------
@@ -215,6 +236,9 @@ Changes in Backwards Compatibility Policy
 
 * GITHUB#13230: Remove the Kp and Lovins snowball algorithms which are not supported
   or intended for general use. (Robert Muir)
+
+* GITHUB#13602: SearchWithCollectorTask no longer supports the `collector.class` config parameter to load a custom
+  collector implementation. `collector.manager.class` allows users to load a collector manager instead. (Luca Cavanna)
 
 Other
 ---------------------
@@ -261,6 +285,8 @@ Build
 
 * GITHUB#13649: Fix eclipse ide settings generation #13649 (Uwe Schindler, Dawid Weiss)
 
+* GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
+
 ======================== Lucene 9.12.0 =======================
 
 API Changes
@@ -279,10 +305,7 @@ API Changes
 * GITHUB#13568: Add DoubleValuesSource#toSortableLongDoubleValuesSource and
   MultiDoubleValuesSource#toSortableMultiLongValuesSource methods. (Shradha Shankar)
 
-* GITHUB#13568: Add CollectorOwner class that wraps CollectorManager, and handles list of Collectors and results.
-  Add IndexSearcher#search method that takes CollectorOwner. (Egor Potemkin)
-
-* GITHUB#13568: Add DrillSideways#search method that supports any collector types for any drill-sideways dimensions
+* GITHUB#13568, GITHUB#13750: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
 
 New Features
@@ -300,6 +323,13 @@ New Features
 * GITHUB#13568: Add sandbox facets module to compute facets while collecting. (Egor Potemkin, Shradha Shankar)
 
 * GITHUB#13678: Add support JDK 23 to the Panama Vectorization Provider. (Chris Hegarty)
+
+* GITHUB#13689: Add a new faceting feature, dynamic range facets, which automatically picks a balanced set of numeric
+  ranges based on the distribution of values that occur across all hits.  For use cases that have a highly variable
+  numeric doc values field, such as "price" in an e-commerce application, this facet method is powerful as it allows the
+  presented ranges to adapt depending on what hits the query actually matches.  This is in contrast to existing range
+  faceting that requires the application to provide the specific fixed ranges up front. (Yuting Gan, Greg Miller,
+  Stefan Vodita)
 
 Improvements
 ---------------------
@@ -376,6 +406,10 @@ Optimizations
 
 * GITHUB#13587: Use Max WAND optimizations with ToParentBlockJoinQuery when using ScoreMode.Max (Mike Pellegrini)
 
+* GITHUB#13742: Reorder checks in LRUQueryCache#count (Shubham Chaudhary)
+
+* GITHUB#13686: Replace Map<String,Object> with IntObjectHashMap for DV producer (Pan Guixin)
+
 * GITHUB#13697: Add a bulk scorer to ToParentBlockJoinQuery, which delegates to the bulk scorer of the child query.
  This should speed up query evaluation when the child query has a specialized bulk scorer, such as disjunctive queries.
  (Mike Pellegrini)
@@ -404,6 +438,17 @@ Bug Fixes
   before quantization to ensure the cosine similarity is correctly calculated. (Ben Trent)
 
 * GITHUB#13627: Fix race condition on flush for DWPT seqNo generation. (Ben Trent, Ao Li)
+
+* GITHUB#13691: Fix incorrect exponent value in explain of SigmoidFunction. (Owais Kazi)
+
+* GITHUB#13703: Fix bug in LatLonPoint queries where narrow polygons close to latitude 90 don't
+  match any points due to an Integer overflow. (Ignacio Vera)
+
+Build
+---------------------
+
+* GITHUB#13695, GITHUB#13696: Fix Gradle build sometimes gives spurious "unreferenced license file" warnings.
+  (Uwe Schindler)
 
 Other
 --------------------

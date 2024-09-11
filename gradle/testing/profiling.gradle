@@ -19,7 +19,7 @@ def recordings = files()
 
 allprojects {
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
       testOptions += [
           [propName: 'tests.profile', value: false, description: "Enable Java Flight Recorder profiling."]
       ]

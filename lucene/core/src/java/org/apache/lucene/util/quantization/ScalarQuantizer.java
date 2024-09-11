@@ -614,19 +614,7 @@ public class ScalarQuantizer {
     }
   }
 
-  private static class ScoreDocsAndScoreVariance {
-    private final ScoreDoc[] scoreDocs;
-    private final float scoreVariance;
-
-    public ScoreDocsAndScoreVariance(ScoreDoc[] scoreDocs, float scoreVariance) {
-      this.scoreDocs = scoreDocs;
-      this.scoreVariance = scoreVariance;
-    }
-
-    public ScoreDoc[] getScoreDocs() {
-      return scoreDocs;
-    }
-  }
+  private record ScoreDocsAndScoreVariance(ScoreDoc[] scoreDocs, float scoreVariance) {}
 
   private static class OnlineMeanAndVar {
     private double mean = 0.0;
@@ -687,7 +675,7 @@ public class ScalarQuantizer {
       for (int i = 0; i < nearestNeighbors.size(); i++) {
         float queryCorrection = quantizer.quantize(vectors.get(i), query, function);
         ScoreDocsAndScoreVariance scoreDocsAndScoreVariance = nearestNeighbors.get(i);
-        ScoreDoc[] scoreDocs = scoreDocsAndScoreVariance.getScoreDocs();
+        ScoreDoc[] scoreDocs = scoreDocsAndScoreVariance.scoreDocs();
         float scoreVariance = scoreDocsAndScoreVariance.scoreVariance;
         // calculate the score for the vector against its nearest neighbors but with quantized
         // scores now

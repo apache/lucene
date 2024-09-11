@@ -28,6 +28,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
@@ -179,7 +180,7 @@ final class SortedNumericDocValuesRangeQuery extends Query {
               };
         }
         if (skipper != null) {
-          iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue);
+          iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue, false);
         }
         final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
         return new DefaultScorerSupplier(scorer);
@@ -193,7 +194,7 @@ final class SortedNumericDocValuesRangeQuery extends Query {
     if (skipper.docCount() != reader.maxDoc()) {
       return null;
     }
-    final Sort indexSort = reader.getMetaData().getSort();
+    final Sort indexSort = reader.getMetaData().sort();
     if (indexSort == null
         || indexSort.getSort().length == 0
         || indexSort.getSort()[0].getField().equals(field) == false) {
