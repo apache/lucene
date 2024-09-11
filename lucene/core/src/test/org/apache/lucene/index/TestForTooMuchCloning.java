@@ -75,7 +75,7 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     final TopDocs hits =
         s.search(
             new TermRangeQuery("field", new BytesRef(), new BytesRef("\uFFFF"), true, true), 10);
-    assertTrue(hits.totalHits.value > 0);
+    assertTrue(hits.totalHits.value() > 0);
     final int queryCloneCount = dir.getInputCloneCount() - cloneCount;
     // System.out.println("query clone count=" + queryCloneCount);
     // It is rather difficult to reliably predict how many query clone calls will be performed. One

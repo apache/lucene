@@ -429,7 +429,7 @@ public class TestDrillSideways extends FacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
     DrillSidewaysResult r = ds.search(null, ddq, 10);
-    assertEquals(2, r.hits.totalHits.value);
+    assertEquals(2, r.hits.totalHits.value());
     // Publish Date is only drill-down, and Lisa published
     // one in 2012 and one in 2010:
     assertEquals(
@@ -449,7 +449,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Lisa");
     ddq.add("Author", "Bob");
     r = ds.search(null, ddq, 10);
-    assertEquals(3, r.hits.totalHits.value);
+    assertEquals(3, r.hits.totalHits.value());
     // Publish Date is only drill-down: Lisa and Bob
     // (drill-down) published twice in 2010 and once in 2012:
     assertEquals(
@@ -494,7 +494,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Lisa");
     ddq.add("Publish Date", "2010");
     r = ds.search(null, ddq, 10);
-    assertEquals(1, r.hits.totalHits.value);
+    assertEquals(1, r.hits.totalHits.value());
     // Publish Date is drill-sideways + drill-down: Lisa
     // (drill-down) published once in 2010 and once in 2012:
     assertEquals(
@@ -515,7 +515,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Publish Date", "2010");
     ddq.add("Author", "Bob");
     r = ds.search(null, ddq, 10);
-    assertEquals(2, r.hits.totalHits.value);
+    assertEquals(2, r.hits.totalHits.value());
     // Publish Date is both drill-sideways + drill-down:
     // Lisa or Bob published twice in 2010 and once in 2012:
     assertEquals(
@@ -531,7 +531,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq = new DrillDownQuery(config);
     ddq.add("Foobar", "Baz");
     r = ds.search(null, ddq, 10);
-    assertEquals(0, r.hits.totalHits.value);
+    assertEquals(0, r.hits.totalHits.value());
     assertNull(r.facets.getTopChildren(10, "Publish Date"));
     assertNull(r.facets.getTopChildren(10, "Foobar"));
 
@@ -540,7 +540,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Lisa");
     ddq.add("Author", "Tom");
     r = ds.search(null, ddq, 10);
-    assertEquals(2, r.hits.totalHits.value);
+    assertEquals(2, r.hits.totalHits.value());
     // Publish Date is only drill-down, and Lisa published
     // one in 2012 and one in 2010:
     assertEquals(
@@ -559,7 +559,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Lisa");
     ddq.add("Author", "Tom");
     r = ds.search(null, ddq, 10);
-    assertEquals(2, r.hits.totalHits.value);
+    assertEquals(2, r.hits.totalHits.value());
     // Publish Date is only drill-down, and Lisa published
     // one in 2012 and one in 2010:
     assertEquals(
@@ -571,7 +571,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Lisa");
     r = ds.search(null, ddq, 10);
 
-    assertEquals(0, r.hits.totalHits.value);
+    assertEquals(0, r.hits.totalHits.value());
     assertNull(r.facets.getTopChildren(10, "Publish Date"));
     assertNull(r.facets.getTopChildren(10, "Author"));
 
@@ -902,7 +902,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Lisa");
     DrillSidewaysResult r = getNewDrillSideways(searcher, config, taxoReader).search(null, ddq, 10);
 
-    assertEquals(1, r.hits.totalHits.value);
+    assertEquals(1, r.hits.totalHits.value());
     // Publish Date is only drill-down, and Lisa published
     // one in 2012 and one in 2010:
     assertEquals(
@@ -968,7 +968,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("dim", "a");
     DrillSidewaysResult r = getNewDrillSideways(searcher, config, taxoReader).search(null, ddq, 10);
 
-    assertEquals(3, r.hits.totalHits.value);
+    assertEquals(3, r.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=6 childCount=4\n  a (3)\n  b (1)\n  c (1)\n  d (1)\n",
         r.facets.getTopChildren(10, "dim").toString());
@@ -1432,7 +1432,7 @@ public class TestDrillSideways extends FacetTestCase {
         q = new BooleanQuery.Builder().add(q, Occur.MUST).add(filter, Occur.FILTER).build();
       }
       TopDocs ddqHits = s.search(q, numDocs);
-      assertEquals(expected.hits.size(), ddqHits.totalHits.value);
+      assertEquals(expected.hits.size(), ddqHits.totalHits.value());
       for (int i = 0; i < expected.hits.size(); i++) {
         // Score should be IDENTICAL:
         assertEquals(scores.get(expected.hits.get(i).id), ddqHits.scoreDocs[i].score, 0.0f);
@@ -1863,7 +1863,7 @@ public class TestDrillSideways extends FacetTestCase {
     if (VERBOSE) {
       System.out.println("  verify totHits=" + expected.hits.size());
     }
-    assertEquals(expected.hits.size(), actual.resultCount.value);
+    assertEquals(expected.hits.size(), actual.resultCount.value());
     assertEquals(expected.hits.size(), actual.results.size());
     for (int i = 0; i < expected.hits.size(); i++) {
       if (VERBOSE) {
@@ -1991,7 +1991,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Lisa");
 
     DrillSidewaysResult r = ds.search(ddq, 10); // this used to fail on IllegalArgEx
-    assertEquals(0, r.hits.totalHits.value);
+    assertEquals(0, r.hits.totalHits.value());
 
     r =
         ds.search(
@@ -2001,7 +2001,7 @@ public class TestDrillSideways extends FacetTestCase {
             10,
             new Sort(new SortField("foo", SortField.Type.INT)),
             false); // this used to fail on IllegalArgEx
-    assertEquals(0, r.hits.totalHits.value);
+    assertEquals(0, r.hits.totalHits.value());
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, dir, taxoDir);
@@ -2075,7 +2075,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Bob");
     DrillSidewaysResult r = ds.search(null, ddq, 10);
     Facets facets = r.facets;
-    assertEquals(3, r.hits.totalHits.value);
+    assertEquals(3, r.hits.totalHits.value());
     assertEquals(
         "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
         facets.getTopChildren(10, "Author").toString());
@@ -2104,7 +2104,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("Author", "Lisa");
     ddq.add("Publish Date", "2010");
     r = ds.search(null, ddq, 10);
-    assertEquals(1, r.hits.totalHits.value);
+    assertEquals(1, r.hits.totalHits.value());
     // Should be able to count on both fields since they're both drill sideways cases
     assertEquals(
         "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
@@ -2156,7 +2156,7 @@ public class TestDrillSideways extends FacetTestCase {
     ddq.add("author", bq.build());
     ddq.add("dim", bq.build());
     DrillSidewaysResult r = ds.search(null, ddq, 10);
-    assertEquals(0, r.hits.totalHits.value);
+    assertEquals(0, r.hits.totalHits.value());
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
@@ -2270,7 +2270,7 @@ public class TestDrillSideways extends FacetTestCase {
     drillDownQuery.add("dim1", "dim1");
     var result = drill.search(drillDownQuery, 99);
     // We expect to match exactly one document from the query above
-    assertEquals(1, result.hits.totalHits.value);
+    assertEquals(1, result.hits.totalHits.value());
 
     indexReader.close();
     taxonomyReader.close();

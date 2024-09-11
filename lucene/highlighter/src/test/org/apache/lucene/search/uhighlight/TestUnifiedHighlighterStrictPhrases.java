@@ -476,7 +476,7 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
             .add(phraseQuery, BooleanClause.Occur.MUST) // must match and it will
             .build();
     topDocs = searcher.search(query, 10);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     snippets = highlighter.highlight("body", query, topDocs, 2);
     if (highlighter.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES)) {
       assertEquals("one <b>bravo</b> <b>three</b>... four <b>bravo</b> six", snippets[0]);
@@ -594,7 +594,7 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
             .add(proximityBoostingQuery, BooleanClause.Occur.SHOULD)
             .build();
     TopDocs topDocs = searcher.search(totalQuery, 10, Sort.INDEXORDER);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     String[] snippets = highlighter.highlight("body", totalQuery, topDocs);
     assertArrayEquals(
         new String[] {

@@ -153,7 +153,7 @@ public class TestOrdinalData extends FacetTestCase {
       Query q = queryAndCount.getKey();
       int count = queryAndCount.getValue();
       TopDocs td = searcher.search(q, Integer.MAX_VALUE);
-      assertEquals(count, td.totalHits.value);
+      assertEquals(count, td.totalHits.value());
     }
   }
 

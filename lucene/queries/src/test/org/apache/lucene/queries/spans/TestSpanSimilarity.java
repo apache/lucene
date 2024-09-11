@@ -155,7 +155,7 @@ public class TestSpanSimilarity extends LuceneTestCase {
       SpanTermQuery s2 = new SpanTermQuery(new Term("foo", "baz"));
       Query query = new SpanOrQuery(s1, s2);
       TopDocs td = is.search(query, 10);
-      assertEquals(1, td.totalHits.value);
+      assertEquals(1, td.totalHits.value());
       float score = td.scoreDocs[0].score;
       assertFalse("negative score for " + sim, score < 0.0f);
       assertFalse("inf score for " + sim, Float.isInfinite(score));
