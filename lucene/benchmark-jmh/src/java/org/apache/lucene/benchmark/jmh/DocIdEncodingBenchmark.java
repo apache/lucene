@@ -149,7 +149,6 @@ public class DocIdEncodingBenchmark {
     }
   }
 
-  @Benchmark
   public void encode() throws IOException {
     for (int[] docIdSequence : docIdSequences) {
       for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
@@ -158,7 +157,6 @@ public class DocIdEncodingBenchmark {
     }
   }
 
-  @Benchmark
   public void decode() throws IOException {
     for (int[] docIdSequence : docIdSequences) {
       for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
