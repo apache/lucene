@@ -32,13 +32,24 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.IntsRef;
+import org.junit.Assert;
 
 public class TestNFARunAutomaton extends LuceneTestCase {
 
   private static final String FIELD = "field";
+
+  public void testRamUsageEstimation() {
+    RegExp regExp = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
+    Automaton nfa = regExp.toAutomaton();
+    NFARunAutomaton runAutomaton = new NFARunAutomaton(nfa);
+    long estimation = runAutomaton.ramBytesUsed();
+    long actual = RamUsageTester.ramUsed(runAutomaton);
+    Assert.assertEquals((double) actual, (double) estimation, (double) actual * 0.3);
+  }
 
   @SuppressWarnings("unused")
   public void testWithRandomRegex() {

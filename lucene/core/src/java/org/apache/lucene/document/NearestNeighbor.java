@@ -35,30 +35,18 @@ import org.apache.lucene.util.SloppyMath;
 /** KNN search on top of 2D lat/lon indexed points. */
 class NearestNeighbor {
 
-  static class Cell implements Comparable<Cell> {
-    final int readerIndex;
-    final byte[] minPacked;
-    final byte[] maxPacked;
-    final PointTree index;
-
-    /**
-     * The closest distance from a point in this cell to the query point, computed as a sort key
-     * through {@link SloppyMath#haversinSortKey}. Note that this is an approximation to the closest
-     * distance, and there could be a point in the cell that is closer.
-     */
-    final double distanceSortKey;
-
-    public Cell(
-        PointTree index,
-        int readerIndex,
-        byte[] minPacked,
-        byte[] maxPacked,
-        double distanceSortKey) {
-      this.index = index;
-      this.readerIndex = readerIndex;
-      this.minPacked = minPacked.clone();
-      this.maxPacked = maxPacked.clone();
-      this.distanceSortKey = distanceSortKey;
+  /**
+   * @param distanceSortKey The closest distance from a point in this cell to the query point,
+   *     computed as a sort key through {@link SloppyMath#haversinSortKey}. Note that this is an
+   *     approximation to the closest distance, and there could be a point in the cell that is
+   *     closer.
+   */
+  record Cell(
+      PointTree index, int readerIndex, byte[] minPacked, byte[] maxPacked, double distanceSortKey)
+      implements Comparable<Cell> {
+    Cell {
+      minPacked = minPacked.clone();
+      maxPacked = maxPacked.clone();
     }
 
     @Override

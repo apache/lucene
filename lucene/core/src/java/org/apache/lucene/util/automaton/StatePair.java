@@ -35,9 +35,14 @@ package org.apache.lucene.util.automaton;
  * @lucene.experimental
  */
 public class StatePair {
+  // only mike knows what it does (do not expose)
   int s;
-  int s1;
-  int s2;
+
+  /** first state */
+  public final int s1;
+
+  /** second state */
+  public final int s2;
 
   StatePair(int s, int s1, int s2) {
     this.s = s;
@@ -81,7 +86,7 @@ public class StatePair {
   @Override
   public int hashCode() {
     // Don't use s1 ^ s2 since it's vulnerable to the case where s1 == s2 always --> hashCode = 0,
-    // e.g. if you call Operations.sameLanguage,
+    // e.g. if you call AutomatonTestUtil.sameLanguage,
     // passing the same automaton against itself:
     return s1 * 31 + s2;
   }

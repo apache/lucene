@@ -346,16 +346,16 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
         case 0:
           queryShape = randomPoint();
           break;
-          // LUCENE-5549
-          // TODO debug: -Dtests.method=testWithin -Dtests.multiplier=3
-          // -Dtests.seed=5F5294CE2E075A3E:AAD2F0F79288CA64
-          //        case 1:case 2:case 3:
-          //          if (!indexedAtLeastOneShapePair) {
-          // // avoids ShapePair.relate(ShapePair), which isn't reliable
-          //            queryShape = randomShapePairRect(!biasContains);
-          // // invert biasContains for query side
-          //            break;
-          //          }
+        // LUCENE-5549
+        // TODO debug: -Dtests.method=testWithin -Dtests.multiplier=3
+        // -Dtests.seed=5F5294CE2E075A3E:AAD2F0F79288CA64
+        //        case 1:case 2:case 3:
+        //          if (!indexedAtLeastOneShapePair) {
+        // // avoids ShapePair.relate(ShapePair), which isn't reliable
+        //            queryShape = randomShapePairRect(!biasContains);
+        // // invert biasContains for query side
+        //            break;
+        //          }
 
         case 4:
           // choose an existing indexed shape
@@ -366,7 +366,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
               break;
             }
           }
-          // fall-through
+        // fall-through
 
         default:
           queryShape = randomRectangle();

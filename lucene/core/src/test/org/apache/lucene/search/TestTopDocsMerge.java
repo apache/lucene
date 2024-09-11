@@ -51,13 +51,13 @@ public class TestTopDocsMerge extends LuceneTestCase {
     }
 
     public void search(Weight weight, Collector collector) throws IOException {
-      searchLeaf(ctx, weight, collector);
+      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
     }
 
     public TopDocs search(Weight weight, int topN) throws IOException {
       TopScoreDocCollector collector =
           new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE, false).newCollector();
-      searchLeaf(ctx, weight, collector);
+      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
       return collector.topDocs();
     }
 

@@ -87,7 +87,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertFalse(infos2.fieldInfo("field").getDocValuesType() != DocValuesType.NONE);
     assertFalse(infos2.fieldInfo("field").omitsNorms());
     assertFalse(infos2.fieldInfo("field").hasPayloads());
-    assertFalse(infos2.fieldInfo("field").hasVectors());
+    assertFalse(infos2.fieldInfo("field").hasTermVectors());
     assertEquals(0, infos2.fieldInfo("field").getPointDimensionCount());
     assertEquals(0, infos2.fieldInfo("field").getVectorDimension());
     assertFalse(infos2.fieldInfo("field").isSoftDeletesField());
@@ -418,7 +418,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(expected.getIndexOptions(), actual.getIndexOptions());
     assertEquals(expected.hasNorms(), actual.hasNorms());
     assertEquals(expected.hasPayloads(), actual.hasPayloads());
-    assertEquals(expected.hasVectors(), actual.hasVectors());
+    assertEquals(expected.hasTermVectors(), actual.hasTermVectors());
     assertEquals(expected.omitsNorms(), actual.omitsNorms());
     assertEquals(expected.getDocValuesGen(), actual.getDocValuesGen());
   }

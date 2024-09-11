@@ -705,14 +705,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IOUtils.close(r, dir);
   }
 
-  private static class TermAndScore implements Comparable<TermAndScore> {
-    final String term;
-    final float score;
-
-    public TermAndScore(String term, float score) {
-      this.term = term;
-      this.score = score;
-    }
+  private record TermAndScore(String term, float score) implements Comparable<TermAndScore> {
 
     @Override
     public int compareTo(TermAndScore other) {
@@ -724,11 +717,6 @@ public class TestFuzzyQuery extends LuceneTestCase {
       } else {
         return term.compareTo(other.term);
       }
-    }
-
-    @Override
-    public String toString() {
-      return term + " score=" + score;
     }
   }
 

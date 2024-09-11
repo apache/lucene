@@ -1034,10 +1034,12 @@ final class IndexingChain implements Accountable {
       int docID, PerField pf, VectorEncoding vectorEncoding, IndexableField field)
       throws IOException {
     switch (vectorEncoding) {
-      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
-      case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+      case BYTE ->
+          ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 ->
+          ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }
   }
 
@@ -1142,7 +1144,7 @@ final class IndexingChain implements Accountable {
         // segment
         norms = new NormValuesWriter(fieldInfo, bytesUsed);
       }
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         termVectorsWriter.setHasVectors();
       }
     }
@@ -1556,7 +1558,7 @@ final class IndexingChain implements Accountable {
     void assertSameSchema(FieldInfo fi) {
       assertSame("index options", fi.getIndexOptions(), indexOptions);
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
-      assertSame("store term vector", fi.hasVectors(), storeTermVector);
+      assertSame("store term vector", fi.hasTermVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
       assertSame("doc values skip index", fi.hasDocValuesSkipIndex(), hasDocValuesSkipIndex);
       assertSame(

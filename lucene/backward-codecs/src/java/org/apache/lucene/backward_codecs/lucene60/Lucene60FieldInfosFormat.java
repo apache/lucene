@@ -347,7 +347,7 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
         output.writeVInt(fi.number);
 
         byte bits = 0x0;
-        if (fi.hasVectors()) bits |= STORE_TERMVECTOR;
+        if (fi.hasTermVectors()) bits |= STORE_TERMVECTOR;
         if (fi.omitsNorms()) bits |= OMIT_NORMS;
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;

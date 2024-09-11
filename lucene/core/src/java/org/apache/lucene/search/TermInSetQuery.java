@@ -137,7 +137,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   }
 
   @Override
-  public long getTermsCount() throws IOException {
+  public long getTermsCount() {
     return termData.size();
   }
 

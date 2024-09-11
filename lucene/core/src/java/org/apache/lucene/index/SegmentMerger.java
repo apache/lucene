@@ -74,7 +74,7 @@ final class SegmentMerger {
     this.fieldInfosBuilder = new FieldInfos.Builder(fieldNumbers);
     Version minVersion = Version.LATEST;
     for (CodecReader reader : readers) {
-      Version leafMinVersion = reader.getMetaData().getMinVersion();
+      Version leafMinVersion = reader.getMetaData().minVersion();
       if (leafMinVersion == null) {
         minVersion = null;
         break;
@@ -176,7 +176,7 @@ final class SegmentMerger {
           numMerged);
     }
 
-    if (mergeState.mergeFieldInfos.hasVectors()) {
+    if (mergeState.mergeFieldInfos.hasTermVectors()) {
       mergingTasks.add(
           () -> {
             mergeWithLogging(this::mergeTermVectors, "term vectors");

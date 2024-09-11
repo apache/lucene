@@ -160,7 +160,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
     LongRangeCounter counter = null;
     int missingCount = 0;
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
 
@@ -173,8 +173,8 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
         counter = setupCounter();
       }
 
-      DoubleValues fv = valueSource.getValues(hits.context, null);
-      totCount += hits.totalHits;
+      DoubleValues fv = valueSource.getValues(hits.context(), null);
+      totCount += hits.totalHits();
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
@@ -201,7 +201,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
     LongRangeCounter counter = null; // LongRangeCounter.create(longRanges, counts);
     int missingCount = 0;
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
 
@@ -214,7 +214,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
         counter = setupCounter();
       }
 
-      MultiDoubleValues multiValues = valueSource.getValues(hits.context);
+      MultiDoubleValues multiValues = valueSource.getValues(hits.context());
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:

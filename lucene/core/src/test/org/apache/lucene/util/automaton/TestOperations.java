@@ -50,7 +50,7 @@ public class TestOperations extends LuceneTestCase {
     assertTrue(naiveUnion.isDeterministic());
     assertFalse(Operations.hasDeadStatesFromInitial(naiveUnion));
 
-    assertTrue(Operations.sameLanguage(union, naiveUnion));
+    assertTrue(AutomatonTestUtil.sameLanguage(union, naiveUnion));
   }
 
   private static Automaton naiveUnion(List<BytesRef> strings) {
@@ -116,13 +116,13 @@ public class TestOperations extends LuceneTestCase {
     Automaton concat2 = Operations.concatenate(singleton, nfa);
     assertFalse(concat2.isDeterministic());
     assertTrue(
-        Operations.sameLanguage(
+        AutomatonTestUtil.sameLanguage(
             Operations.determinize(concat1, 100), Operations.determinize(concat2, 100)));
     assertTrue(
-        Operations.sameLanguage(
+        AutomatonTestUtil.sameLanguage(
             Operations.determinize(nfa, 100), Operations.determinize(concat1, 100)));
     assertTrue(
-        Operations.sameLanguage(
+        AutomatonTestUtil.sameLanguage(
             Operations.determinize(nfa, 100), Operations.determinize(concat2, 100)));
   }
 
@@ -171,6 +171,42 @@ public class TestOperations extends LuceneTestCase {
     IllegalArgumentException exc =
         expectThrows(IllegalArgumentException.class, () -> AutomatonTestUtil.isFinite(a));
     assertTrue(exc.getMessage().contains("input automaton is too large"));
+  }
+
+  public void testIsTotal() {
+    // minimal
+    assertFalse(Operations.isTotal(Automata.makeEmpty()));
+    assertFalse(Operations.isTotal(Automata.makeEmptyString()));
+    assertTrue(Operations.isTotal(Automata.makeAnyString()));
+    assertTrue(Operations.isTotal(Automata.makeAnyBinary(), 0, 255));
+    assertFalse(Operations.isTotal(Automata.makeNonEmptyBinary(), 0, 255));
+    // deterministic, but not minimal
+    assertTrue(Operations.isTotal(Operations.repeat(Automata.makeAnyChar())));
+    Automaton tricky =
+        Operations.repeat(
+            Operations.union(
+                Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
+                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+    assertTrue(Operations.isTotal(tricky));
+    // not total, but close
+    Automaton tricky2 =
+        Operations.repeat(
+            Operations.union(
+                Automata.makeCharRange(Character.MIN_CODE_POINT + 1, 100),
+                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+    assertFalse(Operations.isTotal(tricky2));
+    Automaton tricky3 =
+        Operations.repeat(
+            Operations.union(
+                Automata.makeCharRange(Character.MIN_CODE_POINT, 99),
+                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+    assertFalse(Operations.isTotal(tricky3));
+    Automaton tricky4 =
+        Operations.repeat(
+            Operations.union(
+                Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
+                Automata.makeCharRange(101, Character.MAX_CODE_POINT - 1)));
+    assertFalse(Operations.isTotal(tricky4));
   }
 
   /**
@@ -253,5 +289,127 @@ public class TestOperations extends LuceneTestCase {
 
     a.finishState();
     return a;
+  }
+
+  public void testRepeat() {
+    Automaton emptyLanguage = Automata.makeEmpty();
+    assertSame(emptyLanguage, Operations.repeat(emptyLanguage));
+
+    Automaton emptyString = Automata.makeEmptyString();
+    assertSame(emptyString, Operations.repeat(emptyString));
+
+    Automaton a = Automata.makeChar('a');
+    Automaton as = new Automaton();
+    as.createState();
+    as.setAccept(0, true);
+    as.addTransition(0, 0, 'a');
+    as.finishState();
+    assertTrue(AutomatonTestUtil.sameLanguage(as, Operations.repeat(a)));
+    assertSame(as, Operations.repeat(as));
+
+    Automaton aOrEmpty = new Automaton();
+    aOrEmpty.createState();
+    aOrEmpty.setAccept(0, true);
+    aOrEmpty.createState();
+    aOrEmpty.setAccept(1, true);
+    aOrEmpty.addTransition(0, 1, 'a');
+    assertTrue(AutomatonTestUtil.sameLanguage(as, Operations.repeat(aOrEmpty)));
+
+    Automaton ab = Automata.makeString("ab");
+    Automaton abs = new Automaton();
+    abs.createState();
+    abs.createState();
+    abs.setAccept(0, true);
+    abs.addTransition(0, 1, 'a');
+    abs.finishState();
+    abs.addTransition(1, 0, 'b');
+    abs.finishState();
+    assertTrue(AutomatonTestUtil.sameLanguage(abs, Operations.repeat(ab)));
+    assertSame(abs, Operations.repeat(abs));
+
+    Automaton absThenC = Operations.concatenate(abs, Automata.makeChar('c'));
+    Automaton absThenCs = new Automaton();
+    absThenCs.createState();
+    absThenCs.createState();
+    absThenCs.createState();
+    absThenCs.setAccept(0, true);
+    absThenCs.addTransition(0, 1, 'a');
+    absThenCs.addTransition(0, 0, 'c');
+    absThenCs.finishState();
+    absThenCs.addTransition(1, 2, 'b');
+    absThenCs.finishState();
+    absThenCs.addTransition(2, 1, 'a');
+    absThenCs.addTransition(2, 0, 'c');
+    absThenCs.finishState();
+    assertTrue(AutomatonTestUtil.sameLanguage(absThenCs, Operations.repeat(absThenC)));
+    assertSame(absThenCs, Operations.repeat(absThenCs));
+
+    Automaton aOrAb = new Automaton();
+    aOrAb.createState();
+    aOrAb.createState();
+    aOrAb.createState();
+    aOrAb.setAccept(1, true);
+    aOrAb.setAccept(2, true);
+    aOrAb.addTransition(0, 1, 'a');
+    aOrAb.finishState();
+    aOrAb.addTransition(1, 2, 'b');
+    aOrAb.finishState();
+    Automaton aOrAbs = new Automaton();
+    aOrAbs.createState();
+    aOrAbs.createState();
+    aOrAbs.setAccept(0, true);
+    aOrAbs.addTransition(0, 0, 'a');
+    aOrAbs.addTransition(0, 1, 'a');
+    aOrAbs.finishState();
+    aOrAbs.addTransition(1, 0, 'b');
+    aOrAbs.finishState();
+    assertTrue(
+        AutomatonTestUtil.sameLanguage(
+            Operations.determinize(aOrAbs, Integer.MAX_VALUE),
+            Operations.determinize(Operations.repeat(aOrAb), Integer.MAX_VALUE)));
+  }
+
+  public void testDuelRepeat() {
+    final int iters = atLeast(1_000);
+    for (int iter = 0; iter < iters; ++iter) {
+      Automaton a = AutomatonTestUtil.randomAutomaton(random());
+      Automaton repeat1 = Operations.determinize(Operations.repeat(a), Integer.MAX_VALUE);
+      Automaton repeat2 = Operations.determinize(naiveRepeat(a), Integer.MAX_VALUE);
+      assertTrue(AutomatonTestUtil.sameLanguage(repeat1, repeat2));
+    }
+  }
+
+  // This is the original implementation of Operations#repeat, before we improved it to generate
+  // simpler automata in some common cases.
+  private static Automaton naiveRepeat(Automaton a) {
+    if (a.getNumStates() == 0) {
+      return a;
+    }
+
+    Automaton.Builder builder = new Automaton.Builder();
+    // Create the initial state, which is accepted
+    builder.createState();
+    builder.setAccept(0, true);
+    builder.copy(a);
+
+    Transition t = new Transition();
+    int count = a.initTransition(0, t);
+    for (int i = 0; i < count; i++) {
+      a.getNextTransition(t);
+      builder.addTransition(0, t.dest + 1, t.min, t.max);
+    }
+
+    int numStates = a.getNumStates();
+    for (int s = 0; s < numStates; s++) {
+      if (a.isAccept(s)) {
+        count = a.initTransition(0, t);
+        for (int i = 0; i < count; i++) {
+          a.getNextTransition(t);
+          builder.addTransition(s + 1, t.dest + 1, t.min, t.max);
+        }
+      }
+    }
+
+    return builder.finish();
   }
 }

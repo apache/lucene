@@ -2412,7 +2412,7 @@ public class TestIndexSorting extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println("TEST: now compare r1=" + r1 + " r2=" + r2);
     }
-    assertEquals(sort, getOnlyLeafReader(r2).getMetaData().getSort());
+    assertEquals(sort, getOnlyLeafReader(r2).getMetaData().sort());
     assertReaderEquals("left: sorted by hand; right: sorted by Lucene", r1, r2);
     IOUtils.close(w1, w2, r1, r2, dir1, dir2);
   }

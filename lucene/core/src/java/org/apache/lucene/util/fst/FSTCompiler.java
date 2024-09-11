@@ -871,10 +871,7 @@ public class FSTCompiler<T> {
     int pos1 = 0;
     int pos2 = input.offset;
     final int pos1Stop = Math.min(lastInput.length(), input.length);
-    while (true) {
-      if (pos1 >= pos1Stop || lastInput.intAt(pos1) != input.ints[pos2]) {
-        break;
-      }
+    while (pos1 < pos1Stop && lastInput.intAt(pos1) == input.ints[pos2]) {
       pos1++;
       pos2++;
     }
