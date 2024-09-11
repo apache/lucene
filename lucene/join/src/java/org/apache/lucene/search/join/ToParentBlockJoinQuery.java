@@ -242,30 +242,18 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public int advance(int target) throws IOException {
-      final int prevParent =
-          target == 0 ? -1 : parentBits.prevSetBit(Math.min(target, parentBits.length()) - 1);
-
-      int childDoc = childApproximation.docID();
-      if (childDoc < prevParent) {
-        childDoc = childApproximation.advance(prevParent);
-      } else if (childDoc == -1) {
-        childDoc = childApproximation.nextDoc();
-      }
-
-      if (childDoc == prevParent) {
-        throw new IllegalStateException(
-            "Child query must not match same docs with parent filter. "
-                + "Combine them as must clauses (+) to find a problem doc. "
-                + "docId="
-                + childDoc
-                + ", "
-                + this.getClass());
-      }
-
-      if (childDoc >= parentBits.length()) {
+      if (target >= parentBits.length()) {
         return doc = NO_MORE_DOCS;
       }
-      return doc = parentBits.nextSetBit(childDoc);
+      final int firstChildTarget = target == 0 ? 0 : parentBits.prevSetBit(target - 1) + 1;
+      int childDoc = childApproximation.docID();
+      if (childDoc < firstChildTarget) {
+        childDoc = childApproximation.advance(firstChildTarget);
+      }
+      if (childDoc >= parentBits.length() - 1) {
+        return doc = NO_MORE_DOCS;
+      }
+      return doc = parentBits.nextSetBit(childDoc + 1);
     }
 
     @Override
@@ -441,6 +429,17 @@ public class ToParentBlockJoinQuery extends Query {
         }
 
         score = parentScore.score();
+      }
+
+      if (childApproximation.docID() == parentApproximation.docID()
+          && (childTwoPhase == null || childTwoPhase.matches())) {
+        throw new IllegalStateException(
+            "Child query must not match same docs with parent filter. "
+                + "Combine them as must clauses (+) to find a problem doc. "
+                + "docId="
+                + parentApproximation.docID()
+                + ", "
+                + childScorer.getClass());
       }
 
       return score;

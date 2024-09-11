@@ -34,6 +34,7 @@ import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
@@ -60,7 +61,6 @@ public class TestBlockJoinScorer extends LuceneTestCase {
       docs.clear();
       for (int j = 0; j < i; j++) {
         Document child = new Document();
-        child.add(newStringField("docType", "child", Field.Store.NO));
         child.add(newStringField("value", Integer.toString(j), Field.Store.YES));
         docs.add(child);
       }
@@ -81,7 +81,7 @@ public class TestBlockJoinScorer extends LuceneTestCase {
         new QueryBitSetProducer(new TermQuery(new Term("docType", "parent")));
     CheckJoinIndex.check(reader, parentsFilter);
 
-    Query childQuery = new TermQuery(new Term("docType", "child"));
+    Query childQuery = new MatchAllDocsQuery();
     ToParentBlockJoinQuery query =
         new ToParentBlockJoinQuery(childQuery, parentsFilter, ScoreMode.None);
 
