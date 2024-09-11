@@ -38,6 +38,8 @@ public class RawTFSimilarity extends Similarity {
   }
 
   /**
+   * RawTFSimilarity
+   *
    * @param discountOverlaps True if overlap tokens (tokens with a position of increment of zero)
    *     are discounted from the document's length.
    */
