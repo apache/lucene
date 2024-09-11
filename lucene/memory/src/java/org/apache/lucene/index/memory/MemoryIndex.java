@@ -836,7 +836,7 @@ public class MemoryIndex {
           new FieldInfo(
               info.fieldInfo.name,
               info.fieldInfo.number,
-              info.fieldInfo.hasVectors(),
+              info.fieldInfo.hasTermVectors(),
               info.fieldInfo.hasPayloads(),
               info.fieldInfo.hasPayloads(),
               info.fieldInfo.getIndexOptions(),

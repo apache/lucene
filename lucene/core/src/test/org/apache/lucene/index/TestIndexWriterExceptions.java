@@ -1447,7 +1447,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         assertTrue(reader.numDocs() > 0);
         SegmentInfos.readLatestCommit(dir);
         for (LeafReaderContext context : reader.leaves()) {
-          assertFalse(context.reader().getFieldInfos().hasVectors());
+          assertFalse(context.reader().getFieldInfos().hasTermVectors());
         }
         reader.close();
         dir.close();

@@ -176,7 +176,7 @@ final class SegmentMerger {
           numMerged);
     }
 
-    if (mergeState.mergeFieldInfos.hasVectors()) {
+    if (mergeState.mergeFieldInfos.hasTermVectors()) {
       mergingTasks.add(
           () -> {
             mergeWithLogging(this::mergeTermVectors, "term vectors");

@@ -187,7 +187,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
               public void stringField(FieldInfo fieldInfo, String value) {
                 Objects.requireNonNull(value, "String value should not be null");
                 FieldType ft = new FieldType(TextField.TYPE_STORED);
-                ft.setStoreTermVectors(fieldInfo.hasVectors());
+                ft.setStoreTermVectors(fieldInfo.hasTermVectors());
                 fields.add(new Field(fieldInfo.name, value, ft));
               }
 
