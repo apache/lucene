@@ -21,12 +21,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValues;
@@ -40,6 +37,7 @@ import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -57,7 +55,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -213,12 +210,12 @@ public final class BPIndexReorderer {
     }
   }
 
-  private abstract class BaseRecursiveAction implements Runnable {
+  private abstract class BaseRecursiveAction implements Callable<Void> {
 
-    protected final Executor executor;
+    protected final TaskExecutor executor;
     protected final int depth;
 
-    BaseRecursiveAction(Executor executor, int depth) {
+    BaseRecursiveAction(TaskExecutor executor, int depth) {
       this.executor = executor;
       this.depth = depth;
     }
@@ -235,31 +232,15 @@ public final class BPIndexReorderer {
       return problemSize > FORK_THRESHOLD;
     }
 
-    private Future<Void> execute() {
-      FutureTask<Void> task = new FutureTask<>(this, null);
-      if (executor == null) {
-        task.run();
-      } else {
-        executor.execute(task);
-      }
-      return task;
-    }
+    @Override
+    public abstract Void call();
 
-    protected static void invokeAll(BaseRecursiveAction... actions) {
-      List<Future<Void>> futures =
-          Arrays.stream(actions).map(BaseRecursiveAction::execute).toList();
-      for (Future<Void> future : futures) {
-        try {
-          future.get();
-        } catch (InterruptedException e) {
-          throw new ThreadInterruptedException(e);
-        } catch (ExecutionException e) {
-          try {
-            throw IOUtils.rethrowAlways(e.getCause());
-          } catch (IOException e2) {
-            throw new UncheckedIOException(e2);
-          }
-        }
+    protected final void invokeAll(BaseRecursiveAction... actions) {
+      assert executor != null : "Only call invokeAll if shouldFork returned true";
+      try {
+        executor.invokeAll(Arrays.asList(actions));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
       }
     }
   }
@@ -276,7 +257,7 @@ public final class BPIndexReorderer {
         float[] biases,
         CloseableThreadLocal<PerThreadState> threadLocal,
         BitSet parents,
-        Executor executor,
+        TaskExecutor executor,
         int depth) {
       super(executor, depth);
       this.docIDs = docIDs;
@@ -306,7 +287,7 @@ public final class BPIndexReorderer {
     }
 
     @Override
-    public void run() {
+    public Void call() {
       if (depth > 0) {
         Arrays.sort(docIDs.ints, docIDs.offset, docIDs.offset + docIDs.length);
       } else {
@@ -316,7 +297,7 @@ public final class BPIndexReorderer {
 
       int halfLength = docIDs.length / 2;
       if (halfLength < minPartitionSize) {
-        return;
+        return null;
       }
 
       IntsRef left = new IntsRef(docIDs.ints, docIDs.offset, halfLength);
@@ -363,7 +344,7 @@ public final class BPIndexReorderer {
           if (split == docIDs.offset) {
             // No good split on the left side either: this slice has a single parent document, no
             // reordering is possible. Stop recursing.
-            return;
+            return null;
           }
         }
 
@@ -383,9 +364,10 @@ public final class BPIndexReorderer {
       if (shouldFork(docIDs.length, docIDs.ints.length)) {
         invokeAll(leftTask, rightTask);
       } else {
-        leftTask.run();
-        rightTask.run();
+        leftTask.call();
+        rightTask.call();
       }
+      return null;
     }
 
     // used for asserts
@@ -438,7 +420,7 @@ public final class BPIndexReorderer {
               threadLocal,
               executor,
               depth)
-          .run();
+          .call();
 
       if (parents != null) {
         for (int i = docIDs.offset, end = docIDs.offset + docIDs.length; i < end; ) {
@@ -607,7 +589,7 @@ public final class BPIndexReorderer {
         int[] fromDocFreqs,
         int[] toDocFreqs,
         CloseableThreadLocal<PerThreadState> threadLocal,
-        Executor executor,
+        TaskExecutor executor,
         int depth) {
       super(executor, depth);
       this.docs = docs;
@@ -620,7 +602,7 @@ public final class BPIndexReorderer {
     }
 
     @Override
-    public void run() {
+    public Void call() {
       final int problemSize = to - from;
       if (problemSize > 1 && shouldFork(problemSize, docs.length)) {
         final int mid = (from + to) >>> 1;
@@ -639,6 +621,7 @@ public final class BPIndexReorderer {
           throw new UncheckedIOException(e);
         }
       }
+      return null;
     }
 
     /**
@@ -868,7 +851,8 @@ public final class BPIndexReorderer {
       }
     }
 
-    int[] newToOld = computePermutation(reader, fields, tempDir, executor);
+    TaskExecutor taskExecutor = executor == null ? null : new TaskExecutor(executor);
+    int[] newToOld = computePermutation(reader, fields, tempDir, taskExecutor);
     int[] oldToNew = new int[newToOld.length];
     for (int i = 0; i < newToOld.length; ++i) {
       oldToNew[newToOld[i]] = i;
@@ -915,7 +899,8 @@ public final class BPIndexReorderer {
    * Compute a permutation of the doc ID space that reduces log gaps between consecutive postings.
    */
   private int[] computePermutation(
-      CodecReader reader, Set<String> fields, Directory dir, Executor executor) throws IOException {
+      CodecReader reader, Set<String> fields, Directory dir, TaskExecutor executor)
+      throws IOException {
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
 
     final int parallelism;
@@ -959,7 +944,7 @@ public final class BPIndexReorderer {
             }
           }) {
         IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
-        new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, executor, 0).run();
+        new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, executor, 0).call();
       }
 
       success = true;
