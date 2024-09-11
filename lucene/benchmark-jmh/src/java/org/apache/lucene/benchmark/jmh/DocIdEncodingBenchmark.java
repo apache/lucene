@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -58,18 +59,31 @@ public class DocIdEncodingBenchmark {
   private static final List<int[]> docIdSequences = new ArrayList<>();
 
   static {
-    try (Scanner fileReader =
-        new Scanner(
-            Objects.requireNonNull(
-                DocIdEncodingBenchmark.class.getResourceAsStream(
-                    "/org.apache.lucene.benchmark.jmh/docIds_bpv21.txt")),
-            Charset.defaultCharset())) {
+    String inputFilePath = System.getProperty("docIdEncoding.input_file");
+    Scanner fileReader = null;
+    try {
+      if (inputFilePath != null) {
+        fileReader = new Scanner(new File(inputFilePath), Charset.defaultCharset());
+      } else {
+        fileReader =
+            new Scanner(
+                Objects.requireNonNull(
+                    DocIdEncodingBenchmark.class.getResourceAsStream(
+                        "/org.apache.lucene.benchmark.jmh/docIds_bpv21.txt")),
+                Charset.defaultCharset());
+      }
       while (fileReader.hasNextLine()) {
         String sequence = fileReader.nextLine().trim();
         if (!sequence.startsWith("#") && !sequence.isEmpty()) {
           docIdSequences.add(
               Arrays.stream(sequence.split(",")).mapToInt(Integer::parseInt).toArray());
         }
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      if (fileReader != null) {
+        fileReader.close();
       }
     }
   }
