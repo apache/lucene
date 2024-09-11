@@ -116,7 +116,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         TopKnnCollector topKnnCollector = new TopKnnCollector(5, Integer.MAX_VALUE);
         r.searchNearestVectors("f", new float[] {0.6f, 0.8f}, topKnnCollector, null);
         TopDocs topDocs = topKnnCollector.topDocs();
-        assertEquals(3, topDocs.totalHits.value);
+        assertEquals(3, topDocs.totalHits.value());
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
           assertTrue(scoreDoc.score >= 0f);
         }

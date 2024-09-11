@@ -145,7 +145,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       Document hitDoc = storedFields.document(hits.scoreDocs[i].doc);
@@ -182,7 +182,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       int docID = hits.scoreDocs[i].doc;
@@ -221,7 +221,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       int docID = hits.scoreDocs[i].doc;
@@ -262,7 +262,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       int hitDocID = hits.scoreDocs[i].doc;
@@ -320,7 +320,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       String id = Integer.toString(i);
       Query query = new TermQuery(new Term("id", id));
       TopDocs hits = isearcher.search(query, 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       // Iterate through the results:
       int hitDocID = hits.scoreDocs[0].doc;
       Document hitDoc = storedFields.document(hitDocID);
@@ -358,7 +358,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       int docID = hits.scoreDocs[i].doc;
@@ -400,7 +400,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
     StoredFields storedFields = isearcher.storedFields();
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       int docID = hits.scoreDocs[i].doc;
@@ -447,7 +447,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     BytesRef scratch;
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
@@ -627,7 +627,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       int hitDocID = hits.scoreDocs[i].doc;
@@ -735,7 +735,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, isearcher.count(new TermQuery(new Term("fieldname", longTerm))));
     Query query = new TermQuery(new Term("fieldname", "text"));
     TopDocs hits = isearcher.search(query, 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     BytesRef scratch;
     // Iterate through the results:
     StoredFields storedFields = isearcher.storedFields();
@@ -1251,7 +1251,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     query.add(new TermQuery(new Term("docId", "4")), BooleanClause.Occur.SHOULD);
 
     TopDocs search = searcher.search(query.build(), 10);
-    assertEquals(5, search.totalHits.value);
+    assertEquals(5, search.totalHits.value());
     ScoreDoc[] scoreDocs = search.scoreDocs;
     NumericDocValues docValues = getOnlyLeafReader(reader).getNumericDocValues("docId");
     for (int i = 0; i < scoreDocs.length; i++) {

@@ -370,16 +370,9 @@ class DisjunctionIntervalsSource extends IntervalsSource {
         }
       };
 
-  private static class DisjunctionMatchesIterator implements IntervalMatchesIterator {
-
-    final DisjunctionIntervalIterator it;
-    final List<IntervalMatchesIterator> subs;
-
-    private DisjunctionMatchesIterator(
-        DisjunctionIntervalIterator it, List<IntervalMatchesIterator> subs) {
-      this.it = it;
-      this.subs = subs;
-    }
+  private record DisjunctionMatchesIterator(
+      DisjunctionIntervalIterator it, List<IntervalMatchesIterator> subs)
+      implements IntervalMatchesIterator {
 
     @Override
     public boolean next() throws IOException {

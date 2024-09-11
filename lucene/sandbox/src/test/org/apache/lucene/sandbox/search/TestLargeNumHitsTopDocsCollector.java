@@ -89,7 +89,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     searcher.search(testQuery, largeCollector);
     TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
+    assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
 
     IllegalArgumentException expected =
         expectThrows(
@@ -110,7 +110,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     searcher.search(testQuery, largeCollector);
     TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
+    assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
 
     assertNull(largeCollector.pq);
     assertNull(largeCollector.pqTop);
@@ -125,7 +125,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     searcher.search(testQuery, largeCollector);
     TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
+    assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
 
     assertNotNull(largeCollector.pq);
     assertNotNull(largeCollector.pqTop);
@@ -140,7 +140,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     searcher.search(testQuery, largeCollector);
     TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value);
+    assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
 
     assertNull(largeCollector.pq);
     assertNull(largeCollector.pqTop);
@@ -167,7 +167,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     TopDocs firstTopDocs = largeCollector.topDocs();
     TopDocs secondTopDocs = searcher.search(testQuery, regularCollectorManager);
 
-    assertEquals(largeCollector.totalHits, secondTopDocs.totalHits.value);
+    assertEquals(largeCollector.totalHits, secondTopDocs.totalHits.value());
     assertEquals(firstTopDocs.scoreDocs.length, secondTopDocs.scoreDocs.length);
     CheckHits.checkEqual(testQuery, firstTopDocs.scoreDocs, secondTopDocs.scoreDocs);
   }

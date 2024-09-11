@@ -147,28 +147,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     }
   }
 
-  static class FieldAndWeight {
-    final String field;
-    final float weight;
-
-    FieldAndWeight(String field, float weight) {
-      this.field = field;
-      this.weight = weight;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      FieldAndWeight that = (FieldAndWeight) o;
-      return Float.compare(that.weight, weight) == 0 && Objects.equals(field, that.field);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(field, weight);
-    }
-  }
+  record FieldAndWeight(String field, float weight) {}
 
   // sorted map for fields.
   private final TreeMap<String, FieldAndWeight> fieldAndWeights;

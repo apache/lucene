@@ -232,7 +232,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       // the next float if the global minimum score is set on a document id that is
       // smaller than the ids in the current leaf
       float score =
-          docBase >= maxMinScore.docBase ? Math.nextUp(maxMinScore.score) : maxMinScore.score;
+          docBase >= maxMinScore.docBase() ? Math.nextUp(maxMinScore.score()) : maxMinScore.score();
       if (score > minCompetitiveScore) {
         assert hitsThresholdChecker.isThresholdReached();
         scorer.setMinCompetitiveScore(score);

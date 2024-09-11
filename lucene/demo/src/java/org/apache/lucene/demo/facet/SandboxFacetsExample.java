@@ -21,7 +21,6 @@ import static org.apache.lucene.sandbox.facet.ComparableUtils.byAggregatedValue;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
@@ -44,7 +43,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.sandbox.facet.ComparableUtils;
-import org.apache.lucene.sandbox.facet.FacetFieldCollector;
 import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
 import org.apache.lucene.sandbox.facet.cutters.TaxonomyFacetsCutter;
 import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
@@ -58,7 +56,6 @@ import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
 import org.apache.lucene.sandbox.facet.recorders.Reducer;
-import org.apache.lucene.search.CollectorOwner;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
@@ -564,17 +561,13 @@ public class SandboxFacetsExample {
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
     FacetFieldCollectorManager<CountFacetRecorder> publishDayDimensionCollectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, publishDayDimensionRecorder);
-    List<CollectorOwner<FacetFieldCollector, CountFacetRecorder>> drillSidewaysOwners =
-        List.of(new CollectorOwner<>(publishDayDimensionCollectorManager));
+    List<FacetFieldCollectorManager<CountFacetRecorder>> drillSidewaysManagers =
+        List.of(publishDayDimensionCollectorManager);
 
     //// (3) search
     // Right now we return the same Recorder we created - so we can ignore results
     DrillSideways ds = new DrillSideways(searcher, config, taxoReader);
-    // We must wrap list of drill sideways owner with unmodifiableList to make generics work.
-    ds.search(
-        q,
-        new CollectorOwner<>(drillDownCollectorManager),
-        Collections.unmodifiableList(drillSidewaysOwners));
+    ds.search(q, drillDownCollectorManager, drillSidewaysManagers);
 
     //// (4) Get top 10 results by count for Author
     List<FacetResult> facetResults = new ArrayList<>(2);

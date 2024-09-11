@@ -71,7 +71,7 @@ public class TestTryDelete extends LuceneTestCase {
     IndexSearcher searcher = mgr.acquire();
 
     TopDocs topDocs = searcher.search(new TermQuery(new Term("foo", "0")), 100);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
 
     long result;
     if (random().nextBoolean()) {
@@ -99,7 +99,7 @@ public class TestTryDelete extends LuceneTestCase {
 
     topDocs = searcher.search(new TermQuery(new Term("foo", "0")), 100);
 
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
   }
 
   public void testTryDeleteDocumentCloseAndReopen() throws IOException {
@@ -112,7 +112,7 @@ public class TestTryDelete extends LuceneTestCase {
     IndexSearcher searcher = mgr.acquire();
 
     TopDocs topDocs = searcher.search(new TermQuery(new Term("foo", "0")), 100);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
 
     long result = writer.tryDeleteDocument(DirectoryReader.open(writer), 0);
 
@@ -128,7 +128,7 @@ public class TestTryDelete extends LuceneTestCase {
 
     topDocs = searcher.search(new TermQuery(new Term("foo", "0")), 100);
 
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
 
     writer.close();
 
@@ -136,7 +136,7 @@ public class TestTryDelete extends LuceneTestCase {
 
     topDocs = searcher.search(new TermQuery(new Term("foo", "0")), 100);
 
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
   }
 
   public void testDeleteDocuments() throws IOException {
@@ -149,7 +149,7 @@ public class TestTryDelete extends LuceneTestCase {
     IndexSearcher searcher = mgr.acquire();
 
     TopDocs topDocs = searcher.search(new TermQuery(new Term("foo", "0")), 100);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
 
     long result = writer.deleteDocuments(new TermQuery(new Term("foo", "0")));
 
@@ -165,6 +165,6 @@ public class TestTryDelete extends LuceneTestCase {
 
     topDocs = searcher.search(new TermQuery(new Term("foo", "0")), 100);
 
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
   }
 }

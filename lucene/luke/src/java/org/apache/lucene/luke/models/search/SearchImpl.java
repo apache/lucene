@@ -342,9 +342,9 @@ public final class SearchImpl extends LukeModel implements Search {
     // proceed to next page
     currentPage += 1;
 
-    if (totalHits.value == 0
-        || (totalHits.relation == TotalHits.Relation.EQUAL_TO
-            && currentPage * (long) pageSize >= totalHits.value)) {
+    if (totalHits.value() == 0
+        || (totalHits.relation() == TotalHits.Relation.EQUAL_TO
+            && currentPage * (long) pageSize >= totalHits.value())) {
       log.warning("No more next search results are available.");
       return Optional.empty();
     }

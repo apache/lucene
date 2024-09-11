@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.Closeable;
-import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -40,14 +39,14 @@ class HnswLock {
   }
 
   LockedRow read(int level, int node) {
-    int lockid = Objects.hash(level, node) % NUM_LOCKS;
+    int lockid = hash(level, node) % NUM_LOCKS;
     Lock lock = locks[lockid].readLock();
     lock.lock();
     return new LockedRow(graph.getNeighbors(level, node), lock);
   }
 
   LockedRow write(int level, int node) {
-    int lockid = Objects.hash(level, node) % NUM_LOCKS;
+    int lockid = hash(level, node) % NUM_LOCKS;
     Lock lock = locks[lockid].writeLock();
     lock.lock();
     return new LockedRow(graph.getNeighbors(level, node), lock);
@@ -66,5 +65,9 @@ class HnswLock {
     public void close() {
       lock.unlock();
     }
+  }
+
+  static int hash(int v1, int v2) {
+    return v1 * 31 + v2;
   }
 }

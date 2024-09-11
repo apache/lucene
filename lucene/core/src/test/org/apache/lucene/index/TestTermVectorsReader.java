@@ -190,7 +190,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(dir);
     for (LeafReaderContext ctx : reader.leaves()) {
       SegmentReader sr = (SegmentReader) ctx.reader();
-      assertTrue(sr.getFieldInfos().hasVectors());
+      assertTrue(sr.getFieldInfos().hasTermVectors());
     }
     reader.close();
   }
