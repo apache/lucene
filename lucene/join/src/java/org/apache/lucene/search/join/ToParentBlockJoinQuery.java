@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.search.ScoreMode.COMPLETE;
 
 import java.io.IOException;
@@ -24,20 +25,25 @@ import java.util.Collections;
 import java.util.Locale;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.Bits;
 
 /**
  * This query requires that you index children and parent docs as a single block, using the {@link
@@ -154,6 +160,18 @@ public class ToParentBlockJoinQuery extends Query {
         @Override
         public Scorer get(long leadCost) throws IOException {
           return new BlockJoinScorer(childScorerSupplier.get(leadCost), parents, scoreMode);
+        }
+
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          if (scoreMode == ScoreMode.None) {
+            // BlockJoinBulkScorer evaluates all child hits exhaustively, but when scoreMode is None
+            // we only need to evaluate a single child doc per parent. In this case, use the default
+            // bulk scorer instead, which uses BlockJoinScorer to iterate over child hits.
+            // BlockJoinScorer is optimized to skip child hit evaluation when scoreMode is None.
+            return super.bulkScorer();
+          }
+          return new BlockJoinBulkScorer(childScorerSupplier.bulkScorer(), parents, scoreMode);
         }
 
         @Override
@@ -275,6 +293,54 @@ public class ToParentBlockJoinQuery extends Query {
     }
   }
 
+  private static class Score extends Scorable {
+    private final ScoreMode scoreMode;
+    private double score;
+    private int freq;
+
+    public Score(ScoreMode scoreMode) {
+      this.scoreMode = scoreMode;
+      this.score = 0;
+      this.freq = 0;
+    }
+
+    public void reset(Scorable firstChildScorer) throws IOException {
+      score = scoreMode == ScoreMode.None ? 0 : firstChildScorer.score();
+      freq = 1;
+    }
+
+    public void addChildScore(Scorable childScorer) throws IOException {
+      final float childScore = scoreMode == ScoreMode.None ? 0 : childScorer.score();
+      freq++;
+      switch (scoreMode) {
+        case Total:
+        case Avg:
+          score += childScore;
+          break;
+        case Min:
+          score = Math.min(score, childScore);
+          break;
+        case Max:
+          score = Math.max(score, childScore);
+          break;
+        case None:
+          break;
+        default:
+          throw new AssertionError();
+      }
+    }
+
+    @Override
+    public float score() {
+      assert freq > 0;
+      double score = this.score;
+      if (scoreMode == ScoreMode.Avg) {
+        score /= freq;
+      }
+      return (float) score;
+    }
+  }
+
   static class BlockJoinScorer extends Scorer {
     private final Scorer childScorer;
     private final BitSet parentBits;
@@ -283,13 +349,14 @@ public class ToParentBlockJoinQuery extends Query {
     private final TwoPhaseIterator childTwoPhase;
     private final ParentApproximation parentApproximation;
     private final ParentTwoPhase parentTwoPhase;
-    private float score;
+    private final Score parentScore;
 
     public BlockJoinScorer(Scorer childScorer, BitSet parentBits, ScoreMode scoreMode) {
       // System.out.println("Q.init firstChildDoc=" + firstChildDoc);
       this.parentBits = parentBits;
       this.childScorer = childScorer;
       this.scoreMode = scoreMode;
+      this.parentScore = new Score(scoreMode);
       childTwoPhase = childScorer.twoPhaseIterator();
       if (childTwoPhase == null) {
         childApproximation = childScorer.iterator();
@@ -329,8 +396,7 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public float score() throws IOException {
-      setScoreAndFreq();
-      return score;
+      return scoreChildDocs();
     }
 
     @Override
@@ -348,34 +414,26 @@ public class ToParentBlockJoinQuery extends Query {
       }
     }
 
-    private void setScoreAndFreq() throws IOException {
+    private float scoreChildDocs() throws IOException {
       if (childApproximation.docID() >= parentApproximation.docID()) {
-        return;
+        return parentScore.score();
       }
-      double score = scoreMode == ScoreMode.None ? 0 : childScorer.score();
-      int freq = 1;
-      while (childApproximation.nextDoc() < parentApproximation.docID()) {
-        if (childTwoPhase == null || childTwoPhase.matches()) {
-          final float childScore = scoreMode == ScoreMode.None ? 0 : childScorer.score();
-          freq += 1;
-          switch (scoreMode) {
-            case Total:
-            case Avg:
-              score += childScore;
-              break;
-            case Min:
-              score = Math.min(score, childScore);
-              break;
-            case Max:
-              score = Math.max(score, childScore);
-              break;
-            case None:
-              break;
-            default:
-              throw new AssertionError();
+
+      float score = 0;
+      if (scoreMode != ScoreMode.None) {
+        parentScore.reset(childScorer);
+        while (childApproximation.nextDoc() < parentApproximation.docID()) {
+          if (childTwoPhase == null || childTwoPhase.matches()) {
+            parentScore.addChildScore(childScorer);
           }
         }
+
+        score = parentScore.score();
       }
+
+      // TODO: When score mode is None, this check is broken because the child approximation is not
+      // advanced and will therefore never match the parent approximation at this point in
+      // execution. Fix this error check when score mode is None.
       if (childApproximation.docID() == parentApproximation.docID()
           && (childTwoPhase == null || childTwoPhase.matches())) {
         throw new IllegalStateException(
@@ -386,10 +444,8 @@ public class ToParentBlockJoinQuery extends Query {
                 + ", "
                 + childScorer.getClass());
       }
-      if (scoreMode == ScoreMode.Avg) {
-        score /= freq;
-      }
-      this.score = (float) score;
+
+      return score;
     }
 
     /*
@@ -437,6 +493,120 @@ public class ToParentBlockJoinQuery extends Query {
           start,
           end,
           scoreMode);
+    }
+  }
+
+  private abstract static class BatchAwareLeafCollector extends FilterLeafCollector {
+    public BatchAwareLeafCollector(LeafCollector in) {
+      super(in);
+    }
+
+    public void endBatch() throws IOException {}
+  }
+
+  private static class BlockJoinBulkScorer extends BulkScorer {
+    private final BulkScorer childBulkScorer;
+    private final ScoreMode scoreMode;
+    private final BitSet parents;
+    private final int parentsLength;
+
+    public BlockJoinBulkScorer(BulkScorer childBulkScorer, BitSet parents, ScoreMode scoreMode) {
+      this.childBulkScorer = childBulkScorer;
+      this.scoreMode = scoreMode;
+      this.parents = parents;
+      this.parentsLength = parents.length();
+    }
+
+    @Override
+    public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+        throws IOException {
+      if (min == max) {
+        return scoringCompleteCheck(max, max);
+      }
+
+      // Subtract one because max is exclusive w.r.t. score but inclusive w.r.t prevSetBit
+      int lastParent = parents.prevSetBit(Math.min(parentsLength, max) - 1);
+      int prevParent = min == 0 ? -1 : parents.prevSetBit(min - 1);
+      if (lastParent == prevParent) {
+        // No parent docs in this range.
+        return scoringCompleteCheck(max, max);
+      }
+
+      BatchAwareLeafCollector wrappedCollector = wrapCollector(collector);
+      childBulkScorer.score(wrappedCollector, acceptDocs, prevParent + 1, lastParent + 1);
+      wrappedCollector.endBatch();
+
+      return scoringCompleteCheck(lastParent + 1, max);
+    }
+
+    private int scoringCompleteCheck(int innerMax, int returnedMax) {
+      // If we've scored the last parent in the bit set, return NO_MORE_DOCS to indicate we are done
+      // scoring
+      return innerMax >= parentsLength ? NO_MORE_DOCS : returnedMax;
+    }
+
+    @Override
+    public long cost() {
+      return childBulkScorer.cost();
+    }
+
+    private BatchAwareLeafCollector wrapCollector(LeafCollector collector) {
+      return new BatchAwareLeafCollector(collector) {
+        private final Score currentParentScore = new Score(scoreMode);
+        private int currentParent = -1;
+        private Scorable scorer = null;
+
+        @Override
+        public void setScorer(Scorable scorer) throws IOException {
+          assert scorer != null;
+          this.scorer = scorer;
+
+          super.setScorer(
+              new Scorable() {
+                @Override
+                public float score() {
+                  return currentParentScore.score();
+                }
+
+                @Override
+                public void setMinCompetitiveScore(float minScore) throws IOException {
+                  if (scoreMode == ScoreMode.None || scoreMode == ScoreMode.Max) {
+                    scorer.setMinCompetitiveScore(minScore);
+                  }
+                }
+              });
+        }
+
+        @Override
+        public void collect(int doc) throws IOException {
+          if (doc > currentParent) {
+            // Emit the current parent and setup scoring for the next parent
+            if (currentParent >= 0) {
+              in.collect(currentParent);
+            }
+
+            currentParent = parents.nextSetBit(doc);
+            currentParentScore.reset(scorer);
+          } else if (doc == currentParent) {
+            throw new IllegalStateException(
+                "Child query must not match same docs with parent filter. "
+                    + "Combine them as must clauses (+) to find a problem doc. "
+                    + "docId="
+                    + doc
+                    + ", "
+                    + childBulkScorer.getClass());
+          } else {
+            currentParentScore.addChildScore(scorer);
+          }
+        }
+
+        @Override
+        public void endBatch() throws IOException {
+          if (currentParent >= 0) {
+            in.collect(currentParent);
+          }
+        }
+      };
     }
   }
 
