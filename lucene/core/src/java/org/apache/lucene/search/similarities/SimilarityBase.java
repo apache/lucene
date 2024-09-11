@@ -41,35 +41,8 @@ public abstract class SimilarityBase extends Similarity {
   /** For {@link #log2(double)}. Precomputed for efficiency reasons. */
   private static final double LOG_2 = Math.log(2);
 
-  /**
-   * True if overlap tokens (tokens with a position of increment of zero) are discounted from the
-   * document's length.
-   */
-  protected boolean discountOverlaps = true;
-
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   public SimilarityBase() {}
-
-  /**
-   * Determines whether overlap tokens (Tokens with 0 position increment) are ignored when computing
-   * norm. By default this is true, meaning overlap tokens do not count when computing norms.
-   *
-   * @lucene.experimental
-   * @see #computeNorm
-   */
-  public void setDiscountOverlaps(boolean v) {
-    discountOverlaps = v;
-  }
-
-  /**
-   * Returns true if overlap tokens are discounted from the document's length.
-   *
-   * @see #setDiscountOverlaps
-   */
-  @Override
-  public boolean getDiscountOverlaps() {
-    return discountOverlaps;
-  }
 
   @Override
   public final SimScorer scorer(

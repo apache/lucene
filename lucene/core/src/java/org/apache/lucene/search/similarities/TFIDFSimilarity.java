@@ -328,33 +328,6 @@ public abstract class TFIDFSimilarity extends Similarity {
   public TFIDFSimilarity() {}
 
   /**
-   * True if overlap tokens (tokens with a position of increment of zero) are discounted from the
-   * document's length.
-   */
-  protected boolean discountOverlaps = true;
-
-  /**
-   * Determines whether overlap tokens (Tokens with 0 position increment) are ignored when computing
-   * norm. By default this is true, meaning overlap tokens do not count when computing norms.
-   *
-   * @lucene.experimental
-   * @see #computeNorm
-   */
-  public void setDiscountOverlaps(boolean v) {
-    discountOverlaps = v;
-  }
-
-  /**
-   * Returns true if overlap tokens are discounted from the document's length.
-   *
-   * @see #setDiscountOverlaps
-   */
-  @Override
-  public boolean getDiscountOverlaps() {
-    return discountOverlaps;
-  }
-
-  /**
    * Computes a score factor based on a term or phrase's frequency in a document. This value is
    * multiplied by the {@link #idf(long, long)} factor for each term in the query and these products
    * are then summed to form the initial score for a document.

@@ -31,7 +31,6 @@ import org.apache.lucene.util.SmallFloat;
 public class BM25Similarity extends Similarity {
   private final float k1;
   private final float b;
-  private final boolean discountOverlaps;
 
   /**
    * BM25 with the supplied parameter values.
@@ -44,6 +43,7 @@ public class BM25Similarity extends Similarity {
    *     within the range {@code [0..1]}
    */
   public BM25Similarity(float k1, float b, boolean discountOverlaps) {
+    super(discountOverlaps);
     if (Float.isFinite(k1) == false || k1 < 0) {
       throw new IllegalArgumentException(
           "illegal k1 value: " + k1 + ", must be a non-negative finite value");
@@ -53,7 +53,6 @@ public class BM25Similarity extends Similarity {
     }
     this.k1 = k1;
     this.b = b;
-    this.discountOverlaps = discountOverlaps;
   }
 
   /**
@@ -106,11 +105,6 @@ public class BM25Similarity extends Similarity {
   /** The default implementation computes the average as <code>sumTotalTermFreq / docCount</code> */
   protected float avgFieldLength(CollectionStatistics collectionStats) {
     return (float) (collectionStats.sumTotalTermFreq() / (double) collectionStats.docCount());
-  }
-
-  @Override
-  public boolean getDiscountOverlaps() {
-    return discountOverlaps;
   }
 
   /** Cache of decoded bytes. */

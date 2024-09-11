@@ -86,7 +86,7 @@ public class SweetSpotSimilarity extends ClassicSimilarity {
     this.ln_min = min;
     this.ln_max = max;
     this.ln_steep = steepness;
-    this.discountOverlaps = discountOverlaps;
+    setDiscountOverlaps(discountOverlaps);
   }
 
   /**

@@ -89,9 +89,41 @@ import org.apache.lucene.util.SmallFloat;
  * @lucene.experimental
  */
 public abstract class Similarity {
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  // Explicitly declared so that we have non-empty javadoc
-  protected Similarity() {}
+  /**
+   * True if overlap tokens (tokens with a position of increment of zero) are discounted from the
+   * document's length.
+   */
+  private boolean discountOverlaps = true;
+
+  /**
+   * Determines whether overlap tokens (Tokens with 0 position increment) are ignored when computing
+   * norm. By default this is true, meaning overlap tokens do not count when computing norms.
+   *
+   * @lucene.experimental
+   * @see #computeNorm
+   */
+  public final void setDiscountOverlaps(boolean v) {
+    discountOverlaps = v;
+  }
+
+  /**
+   * Returns true if overlap tokens are discounted from the document's length.
+   *
+   * @see #setDiscountOverlaps
+   */
+  public final boolean getDiscountOverlaps() {
+    return discountOverlaps;
+  }
+
+  /** Default constructor. (For invocation by subclass constructors, typically implicit.) */
+  protected Similarity() {
+    this(true);
+  }
+
+  /** Primary constructor. */
+  protected Similarity(boolean discountOverlaps) {
+    this.discountOverlaps = discountOverlaps;
+  }
 
   /**
    * Computes the normalization value for a field, given the accumulated state of term processing
@@ -116,17 +148,12 @@ public abstract class Similarity {
     final int numTerms;
     if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
       numTerms = state.getUniqueTermCount();
-    } else if (getDiscountOverlaps()) {
+    } else if (discountOverlaps) {
       numTerms = state.getLength() - state.getNumOverlap();
     } else {
       numTerms = state.getLength();
     }
     return SmallFloat.intToByte4(numTerms);
-  }
-
-  /** Returns true if overlap tokens are discounted from the document's length. */
-  public boolean getDiscountOverlaps() {
-    return true;
   }
 
   /**
