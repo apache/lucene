@@ -58,8 +58,18 @@ public class DocIdEncodingBenchmark {
 
   private static final List<int[]> docIdSequences = new ArrayList<>();
 
+  private static final int INPUT_SCALE_FACTOR;
+
   static {
-    String inputFilePath = System.getProperty("docIdEncoding.input_file");
+    String inputScaleFactor = System.getProperty("docIdEncoding.inputScaleFactor");
+
+    if (inputScaleFactor != null) {
+      INPUT_SCALE_FACTOR = Integer.parseInt(inputScaleFactor);
+    } else {
+      INPUT_SCALE_FACTOR = 2_00_000;
+    }
+
+    String inputFilePath = System.getProperty("docIdEncoding.inputFile");
     Scanner fileReader = null;
     try {
       if (inputFilePath != null) {
@@ -93,8 +103,6 @@ public class DocIdEncodingBenchmark {
 
   @Param({"encode", "decode"})
   String methodName;
-
-  private static final int INPUT_SCALE_FACTOR = 2_00_000;
 
   private DocIdEncoder docIdEncoder;
 
