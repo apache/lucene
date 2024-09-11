@@ -21,8 +21,6 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSi
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -38,6 +36,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -56,13 +55,15 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
+  private final FieldInfos fieldInfos;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
     super(scorer);
     int versionMeta = readMetadata(state);
+    this.fieldInfos = state.fieldInfos;
     boolean success = false;
     try {
       vectorData =
@@ -155,15 +156,13 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
       FieldEntry fieldEntry = FieldEntry.create(meta, info);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
   @Override
   public long ramBytesUsed() {
-    return Lucene99FlatVectorsReader.SHALLOW_SIZE
-        + RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
+    return Lucene99FlatVectorsReader.SHALLOW_SIZE + fields.ramBytesUsed();
   }
 
   @Override
@@ -173,7 +172,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry = fields.get(info.number);
     if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
           "field=\""
@@ -196,7 +196,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry = fields.get(info.number);
     if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
           "field=\""
@@ -219,8 +220,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    FieldEntry fieldEntry;
+    if (info == null
+        || (fieldEntry = fields.get(info.number)) == null
+        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return null;
     }
     return vectorScorer.getRandomVectorScorer(
@@ -239,8 +243,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    FieldEntry fieldEntry;
+    if (info == null
+        || (fieldEntry = fields.get(info.number)) == null
+        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return null;
     }
     return vectorScorer.getRandomVectorScorer(

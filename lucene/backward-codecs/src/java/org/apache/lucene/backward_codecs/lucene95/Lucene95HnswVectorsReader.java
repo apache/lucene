@@ -21,8 +21,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -39,6 +37,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -61,7 +60,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
 
   private final FieldInfos fieldInfos;
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
   private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
@@ -161,7 +160,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
       }
       FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
@@ -240,7 +239,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry = fields.get(info.number);
     if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
           "field=\""
@@ -263,7 +263,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry = fields.get(info.number);
     if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
           "field=\""
@@ -287,7 +288,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry = fields.get(info.number);
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
@@ -318,7 +320,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry = fields.get(info.number);
 
     if (fieldEntry.size() == 0
         || knnCollector.k() == 0
@@ -349,11 +352,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   /** Get knn graph values; used for testing */
   @Override
   public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldInfo info = fieldInfos.fieldInfo(field);
     if (info == null) {
       throw new IllegalArgumentException("No such field '" + field + "'");
     }
-    FieldEntry entry = fields.get(field);
+    final FieldEntry entry = fields.get(info.number);
     if (entry != null && entry.vectorIndexLength > 0) {
       return getGraph(entry);
     } else {
