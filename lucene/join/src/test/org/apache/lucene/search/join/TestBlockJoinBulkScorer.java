@@ -98,12 +98,13 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       this.matches = Collections.unmodifiableList(matches);
     }
 
-    public int docId() {
-      return docId;
-    }
-
     public List<MatchValue> matches() {
       return matches;
+    }
+
+    @Override
+    public String toString() {
+      return "ChildDocMatch{" + "docId=" + docId + ", matches=" + matches + '}';
     }
   }
 
