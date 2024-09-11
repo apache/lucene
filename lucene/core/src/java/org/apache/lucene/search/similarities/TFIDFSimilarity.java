@@ -18,7 +18,6 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -350,6 +349,7 @@ public abstract class TFIDFSimilarity extends Similarity {
    *
    * @see #setDiscountOverlaps
    */
+  @Override
   public boolean getDiscountOverlaps() {
     return discountOverlaps;
   }
@@ -450,11 +450,6 @@ public abstract class TFIDFSimilarity extends Similarity {
     for (int i = 0; i < 256; i++) {
       LENGTH_TABLE[i] = SmallFloat.byte4ToInt((byte) i);
     }
-  }
-
-  @Override
-  public final long computeNorm(FieldInvertState state) {
-    return doComputeNorm(state, discountOverlaps);
   }
 
   @Override

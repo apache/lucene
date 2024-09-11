@@ -112,19 +112,21 @@ public abstract class Similarity {
    * @param state current processing state for this field
    * @return computed norm value
    */
-  public abstract long computeNorm(FieldInvertState state);
-
-  /** TODO */
-  protected static long doComputeNorm(FieldInvertState state, boolean discountOverlaps) {
+  public long computeNorm(FieldInvertState state) {
     final int numTerms;
     if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
       numTerms = state.getUniqueTermCount();
-    } else if (discountOverlaps) {
+    } else if (getDiscountOverlaps()) {
       numTerms = state.getLength() - state.getNumOverlap();
     } else {
       numTerms = state.getLength();
     }
     return SmallFloat.intToByte4(numTerms);
+  }
+
+  /** Returns true if overlap tokens are discounted from the document's length. */
+  public boolean getDiscountOverlaps() {
+    return true;
   }
 
   /**

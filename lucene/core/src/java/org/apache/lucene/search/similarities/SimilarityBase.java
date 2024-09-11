@@ -18,7 +18,6 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
@@ -67,6 +66,7 @@ public abstract class SimilarityBase extends Similarity {
    *
    * @see #setDiscountOverlaps
    */
+  @Override
   public boolean getDiscountOverlaps() {
     return discountOverlaps;
   }
@@ -176,12 +176,6 @@ public abstract class SimilarityBase extends Similarity {
     for (int i = 0; i < 256; i++) {
       LENGTH_TABLE[i] = SmallFloat.byte4ToInt((byte) i);
     }
-  }
-
-  /** Encodes the document length in the same way as {@link BM25Similarity}. */
-  @Override
-  public final long computeNorm(FieldInvertState state) {
-    return doComputeNorm(state, discountOverlaps);
   }
 
   // ----------------------------- Static methods ------------------------------

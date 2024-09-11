@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.similarities;
 
-import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
@@ -33,11 +32,6 @@ public class BooleanSimilarity extends Similarity {
 
   /** Sole constructor */
   public BooleanSimilarity() {}
-
-  @Override
-  public long computeNorm(FieldInvertState state) {
-    return doComputeNorm(state, true /* discountOverlaps */);
-  }
 
   @Override
   public SimScorer scorer(
