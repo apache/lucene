@@ -52,6 +52,8 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#13475: Re-enable intra-merge parallelism except for terms, norms, and doc values.
+  Related to GITHUB#13478.  (Ben Trent)
 
 * GITHUB#13548: Refactor and javadoc update for KNN vector writer classes. (Patrick Zhai)
 
