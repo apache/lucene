@@ -276,6 +276,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertNotNull(mergeScheduler.ex.get());
         Exception ex = mergeScheduler.ex.get();
         assertTrue(ex instanceof IllegalArgumentException);
+        assertTrue(
+            "unexpected exception msg: " + ex.getMessage(),
+            ex.getMessage().matches("field=\".*\" not found"));
       }
     }
   }
@@ -323,6 +326,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertNotNull(mergeScheduler.ex.get());
         Exception ex = mergeScheduler.ex.get();
         assertTrue(ex instanceof IllegalArgumentException);
+        assertTrue(
+            "unexpected exception msg:[" + ex.getMessage() + "]",
+            ex.getMessage().matches("field=\".*\" not found"));
       }
     }
   }
