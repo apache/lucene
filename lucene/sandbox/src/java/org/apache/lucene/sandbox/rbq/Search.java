@@ -66,7 +66,7 @@ public class Search {
             + " maxDoc="
             + searcher.getIndexReader().maxDoc());
     IndexSearcher.LeafSlice[] slices =
-        IndexSearcher.slices(searcher.getIndexReader().leaves(), 250_000, 5);
+        IndexSearcher.slices(searcher.getIndexReader().leaves(), 250_000, 5, false);
     System.out.println(
         "Reader has "
             + slices.length
