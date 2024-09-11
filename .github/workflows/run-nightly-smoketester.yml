@@ -72,3 +72,4 @@ jobs:
           name: smoke-tester-logs-jdk-${{ matrix.java-version }}
           path: |
             ${{ env.TMP_DIR }}/**/*.log
+            /tmp/release.log
