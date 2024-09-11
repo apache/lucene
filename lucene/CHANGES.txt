@@ -452,6 +452,9 @@ Bug Fixes
 * GITHUB#13703: Fix bug in LatLonPoint queries where narrow polygons close to latitude 90 don't
   match any points due to an Integer overflow. (Ignacio Vera)
 
+* GITHUB#13641: Unify how KnnFormats handle missing fields and correctly handle missing vector fields when
+  merging segments. (Ben Trent)
+
 Build
 ---------------------
 
