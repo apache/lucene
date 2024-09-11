@@ -19,6 +19,7 @@ package org.apache.lucene.monitor;
 
 import java.io.IOException;
 import java.util.Map;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
@@ -37,7 +38,9 @@ abstract class CollectingMatcher<T extends QueryMatch> extends CandidateMatcher<
   @Override
   protected void matchQuery(final String queryId, Query matchQuery, Map<String, String> metadata)
       throws IOException {
-    searcher.search(matchQuery, new MatchCollector(queryId, scoreMode));
+    searcher.search(
+        matchQuery,
+        CollectorManager.forSequentialExecution(new MatchCollector(queryId, scoreMode)));
   }
 
   /**
