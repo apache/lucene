@@ -321,7 +321,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     Facets facets =
         new TaxonomyFacetFloatAssociations(
             taxoReader, config, fc, AssociationAggregationFunction.SUM, DoubleValuesSource.SCORES);
-    int expected = (int) (csq.getBoost() * td.totalHits.value);
+    int expected = (int) (csq.getBoost() * td.totalHits.value());
     assertEquals(expected, facets.getSpecificValue("dim", "a").intValue());
 
     // Test MAX:

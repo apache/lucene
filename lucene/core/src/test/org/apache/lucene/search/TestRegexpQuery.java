@@ -170,7 +170,7 @@ public class TestRegexpQuery extends LuceneTestCase {
     RegexpQuery query =
         new RegexpQuery(
             newTerm("<quickBrown>"), RegExp.ALL, myProvider, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    assertEquals(1, searcher.search(query, 5).totalHits.value);
+    assertEquals(1, searcher.search(query, 5).totalHits.value());
   }
 
   /**

@@ -196,8 +196,8 @@ public abstract class SearchEquivalenceTestBase extends LuceneTestCase {
       TopDocs td1 = s1.search(q1, reader.maxDoc(), sort);
       TopDocs td2 = s2.search(q2, reader.maxDoc(), sort);
       assertTrue(
-          "too many hits: " + td1.totalHits.value + " > " + td2.totalHits.value,
-          td1.totalHits.value <= td2.totalHits.value);
+          "too many hits: " + td1.totalHits.value() + " > " + td2.totalHits.value(),
+          td1.totalHits.value() <= td2.totalHits.value());
 
       // fill the superset into a bitset
       BitSet bitset = new BitSet();
@@ -235,7 +235,7 @@ public abstract class SearchEquivalenceTestBase extends LuceneTestCase {
     }
     TopDocs td1 = s1.search(q1, reader.maxDoc());
     TopDocs td2 = s2.search(q2, reader.maxDoc());
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-5);
