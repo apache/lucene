@@ -243,15 +243,16 @@ public class ToParentBlockJoinQuery extends Query {
     @Override
     public int advance(int target) throws IOException {
       final int prevParent =
-          target == 0 ? 0 : parentBits.prevSetBit(Math.min(target, parentBits.length()) - 1);
+          target == 0 ? -1 : parentBits.prevSetBit(Math.min(target, parentBits.length()) - 1);
 
       int childDoc = childApproximation.docID();
       if (childDoc < prevParent) {
         childDoc = childApproximation.advance(prevParent);
+      } else if (childDoc == -1) {
+        childDoc = childApproximation.nextDoc();
       }
 
-      // TODO: Can we assume that doc 0 is never a real parent that also matches the child query?
-      if (prevParent != 0 && childDoc == prevParent) {
+      if (childDoc == prevParent) {
         throw new IllegalStateException(
             "Child query must not match same docs with parent filter. "
                 + "Combine them as must clauses (+) to find a problem doc. "
@@ -261,10 +262,10 @@ public class ToParentBlockJoinQuery extends Query {
                 + this.getClass());
       }
 
-      if (childDoc >= parentBits.length() - 1) {
+      if (childDoc >= parentBits.length()) {
         return doc = NO_MORE_DOCS;
       }
-      return doc = parentBits.nextSetBit(childDoc + 1);
+      return doc = parentBits.nextSetBit(childDoc);
     }
 
     @Override
