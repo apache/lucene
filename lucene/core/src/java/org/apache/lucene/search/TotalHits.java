@@ -46,7 +46,7 @@ public record TotalHits(long value, Relation relation) {
     if (value < 0) {
       throw new IllegalArgumentException("value must be >= 0, got " + value);
     }
-    relation = Objects.requireNonNull(relation);
+    Objects.requireNonNull(relation);
   }
 
   @Override
