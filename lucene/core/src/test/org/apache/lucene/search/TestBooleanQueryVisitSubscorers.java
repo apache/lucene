@@ -35,7 +35,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
-import org.apache.lucene.search.similarities.TFSimilarity;
+import org.apache.lucene.search.similarities.RawTFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -74,7 +74,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     searcher = newSearcher(reader, true, false);
     searcher.setSimilarity(new ClassicSimilarity());
     scorerSearcher = new ScorerIndexSearcher(reader);
-    scorerSearcher.setSimilarity(new TFSimilarity());
+    scorerSearcher.setSimilarity(new RawTFSimilarity());
   }
 
   @Override

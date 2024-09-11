@@ -34,7 +34,7 @@ import org.apache.lucene.tests.search.similarities.BaseSimilarityTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
 
-public class TestTFSimilarity extends BaseSimilarityTestCase {
+public class TestRawTFSimilarity extends BaseSimilarityTestCase {
 
   private Directory directory;
   private IndexReader indexReader;
@@ -42,7 +42,7 @@ public class TestTFSimilarity extends BaseSimilarityTestCase {
 
   @Override
   protected Similarity getSimilarity(Random random) {
-    return new TFSimilarity();
+    return new RawTFSimilarity();
   }
 
   @Override
@@ -63,7 +63,7 @@ public class TestTFSimilarity extends BaseSimilarityTestCase {
     }
     indexReader = DirectoryReader.open(directory);
     indexSearcher = newSearcher(indexReader);
-    indexSearcher.setSimilarity(new TFSimilarity());
+    indexSearcher.setSimilarity(new RawTFSimilarity());
   }
 
   @Override

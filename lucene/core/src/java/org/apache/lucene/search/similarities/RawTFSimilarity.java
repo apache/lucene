@@ -22,18 +22,18 @@ import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.util.SmallFloat;
 
-/** Similarity that returns the TF as score */
-public class TFSimilarity extends Similarity {
+/** Similarity that returns the raw TF as score. */
+public class RawTFSimilarity extends Similarity {
   private final boolean discountOverlaps;
 
   /**
-   * TFSimilarity with these default values:
+   * RawTFSimilarity with these default values:
    *
    * <ul>
    *   <li>{@code discountOverlaps = true}
    * </ul>
    */
-  public TFSimilarity() {
+  public RawTFSimilarity() {
     this(true);
   }
 
@@ -41,7 +41,7 @@ public class TFSimilarity extends Similarity {
    * @param discountOverlaps True if overlap tokens (tokens with a position of increment of zero)
    *     are discounted from the document's length.
    */
-  public TFSimilarity(boolean discountOverlaps) {
+  public RawTFSimilarity(boolean discountOverlaps) {
     this.discountOverlaps = discountOverlaps;
   }
 

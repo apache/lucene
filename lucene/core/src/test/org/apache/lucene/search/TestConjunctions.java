@@ -33,7 +33,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.similarities.TFSimilarity;
+import org.apache.lucene.search.similarities.RawTFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -66,7 +66,7 @@ public class TestConjunctions extends LuceneTestCase {
     reader = writer.getReader();
     writer.close();
     searcher = newSearcher(reader);
-    searcher.setSimilarity(new TFSimilarity());
+    searcher.setSimilarity(new RawTFSimilarity());
   }
 
   static Document doc(String v1, String v2) {
