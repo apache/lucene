@@ -19,6 +19,7 @@ package org.apache.lucene.search.similarities;
 import java.util.Collections;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FieldInvertState;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -112,6 +113,19 @@ public abstract class Similarity {
    * @return computed norm value
    */
   public abstract long computeNorm(FieldInvertState state);
+
+  /** TODO */
+  protected static long doComputeNorm(FieldInvertState state, boolean discountOverlaps) {
+    final int numTerms;
+    if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
+      numTerms = state.getUniqueTermCount();
+    } else if (discountOverlaps) {
+      numTerms = state.getLength() - state.getNumOverlap();
+    } else {
+      numTerms = state.getLength();
+    }
+    return SmallFloat.intToByte4(numTerms);
+  }
 
   /**
    * Compute any collection-level weight (e.g. IDF, average document length, etc) needed for scoring

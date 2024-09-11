@@ -31,14 +31,12 @@ import org.apache.lucene.search.TermStatistics;
  */
 public class BooleanSimilarity extends Similarity {
 
-  private static final Similarity BM25_SIM = new BM25Similarity();
-
   /** Sole constructor */
   public BooleanSimilarity() {}
 
   @Override
   public long computeNorm(FieldInvertState state) {
-    return BM25_SIM.computeNorm(state);
+    return doComputeNorm(state, true /* discountOverlaps */);
   }
 
   @Override

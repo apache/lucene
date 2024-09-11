@@ -19,7 +19,6 @@ package org.apache.lucene.search.similarities;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
@@ -182,15 +181,7 @@ public abstract class SimilarityBase extends Similarity {
   /** Encodes the document length in the same way as {@link BM25Similarity}. */
   @Override
   public final long computeNorm(FieldInvertState state) {
-    final int numTerms;
-    if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
-      numTerms = state.getUniqueTermCount();
-    } else if (discountOverlaps) {
-      numTerms = state.getLength() - state.getNumOverlap();
-    } else {
-      numTerms = state.getLength();
-    }
-    return SmallFloat.intToByte4(numTerms);
+    return doComputeNorm(state, discountOverlaps);
   }
 
   // ----------------------------- Static methods ------------------------------
