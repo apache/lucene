@@ -370,7 +370,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     public TermsEnumWithSlice(int index, ReaderSlice subSlice) {
       super(null, index);
       this.subSlice = subSlice;
-      assert subSlice.length >= 0 : "length=" + subSlice.length;
+      assert subSlice.length() >= 0 : "length=" + subSlice.length();
     }
 
     @Override

@@ -339,6 +339,7 @@ public class Automaton implements Accountable, TransitionAccessor {
   @Override
   public int getNumTransitions(int state) {
     assert state >= 0;
+    assert state < getNumStates();
     int count = states[2 * state + 1];
     if (count == -1) {
       return 0;

@@ -41,8 +41,7 @@ import org.apache.lucene.util.automaton.RegExp;
 
 /** Tests the DocValuesRewriteMethod */
 public class TestDocValuesRewriteMethod extends LuceneTestCase {
-  protected IndexSearcher searcher1;
-  protected IndexSearcher searcher2;
+  protected IndexSearcher searcher;
   private IndexReader reader;
   private Directory dir;
   protected String fieldName;
@@ -69,6 +68,7 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
         String s = TestUtil.randomUnicodeString(random());
         doc.add(newStringField(fieldName, s, Field.Store.NO));
         doc.add(new SortedSetDocValuesField(fieldName, new BytesRef(s)));
+        doc.add(SortedSetDocValuesField.indexedField(fieldName + "_with-skip", new BytesRef(s)));
         terms.add(s);
       }
       writer.addDocument(doc);
@@ -89,8 +89,7 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
     }
 
     reader = writer.getReader();
-    searcher1 = newSearcher(reader);
-    searcher2 = newSearcher(reader);
+    searcher = newSearcher(reader);
     writer.close();
   }
 
@@ -123,12 +122,22 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
             name -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             new DocValuesRewriteMethod());
+    RegexpQuery docValuesWithSkip =
+        new RegexpQuery(
+            new Term(fieldName + "_with-skip", regexp),
+            RegExp.NONE,
+            0,
+            name -> null,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            new DocValuesRewriteMethod());
     RegexpQuery inverted = new RegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
 
-    TopDocs invertedDocs = searcher1.search(inverted, 25);
-    TopDocs docValuesDocs = searcher2.search(docValues, 25);
+    TopDocs invertedDocs = searcher.search(inverted, 25);
+    TopDocs docValuesDocs = searcher.search(docValues, 25);
+    TopDocs docValuesWithSkipDocs = searcher.search(docValuesWithSkip, 25);
 
     CheckHits.checkEqual(inverted, invertedDocs.scoreDocs, docValuesDocs.scoreDocs);
+    CheckHits.checkEqual(inverted, invertedDocs.scoreDocs, docValuesWithSkipDocs.scoreDocs);
   }
 
   public void testEquals() throws Exception {

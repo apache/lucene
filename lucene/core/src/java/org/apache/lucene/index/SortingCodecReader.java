@@ -52,15 +52,7 @@ import org.apache.lucene.util.packed.PackedInts;
  */
 public final class SortingCodecReader extends FilterCodecReader {
 
-  private static class SortingBits implements Bits {
-
-    private final Bits in;
-    private final Sorter.DocMap docMap;
-
-    SortingBits(final Bits in, Sorter.DocMap docMap) {
-      this.in = in;
-      this.docMap = docMap;
-    }
+  private record SortingBits(Bits in, Sorter.DocMap docMap) implements Bits {
 
     @Override
     public boolean get(int index) {
@@ -349,10 +341,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     LeafMetaData metaData = reader.getMetaData();
     LeafMetaData newMetaData =
         new LeafMetaData(
-            metaData.getCreatedVersionMajor(),
-            metaData.getMinVersion(),
-            sort,
-            metaData.hasBlocks());
+            metaData.createdVersionMajor(), metaData.minVersion(), sort, metaData.hasBlocks());
     if (docMap == null) {
       // the reader is already sorted
       return new FilterCodecReader(reader) {
@@ -744,8 +733,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       boolean isSortField = false;
       // For things that aren't sort fields, it's possible for sort to be null here
       // In the event that we accidentally cache twice, its better not to throw an NPE
-      if (metaData.getSort() != null) {
-        for (SortField sf : metaData.getSort().getSort()) {
+      if (metaData.sort() != null) {
+        for (SortField sf : metaData.sort().getSort()) {
           if (field.equals(sf.getField())) {
             isSortField = true;
             break;

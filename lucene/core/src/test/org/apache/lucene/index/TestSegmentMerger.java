@@ -138,7 +138,7 @@ public class TestSegmentMerger extends LuceneTestCase {
 
     int tvCount = 0;
     for (FieldInfo fieldInfo : mergedReader.getFieldInfos()) {
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         tvCount++;
       }
     }

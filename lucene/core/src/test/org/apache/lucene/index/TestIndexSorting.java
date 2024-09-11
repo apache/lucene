@@ -154,7 +154,9 @@ public class TestIndexSorting extends LuceneTestCase {
     Sort indexSort = new Sort(sortField, new SortField("id", SortField.Type.INT));
     iwc.setIndexSort(indexSort);
     LogMergePolicy policy = newLogMergePolicy();
-    // make sure that merge factor is always > 2
+    // make sure that merge factor is always > 2 and target search concurrency is no more than 1 to
+    // avoid creating merges that are accidentally sorted
+    policy.setTargetSearchConcurrency(1);
     if (policy.getMergeFactor() <= 2) {
       policy.setMergeFactor(3);
     }
@@ -2410,7 +2412,7 @@ public class TestIndexSorting extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println("TEST: now compare r1=" + r1 + " r2=" + r2);
     }
-    assertEquals(sort, getOnlyLeafReader(r2).getMetaData().getSort());
+    assertEquals(sort, getOnlyLeafReader(r2).getMetaData().sort());
     assertReaderEquals("left: sorted by hand; right: sorted by Lucene", r1, r2);
     IOUtils.close(w1, w2, r1, r2, dir1, dir2);
   }

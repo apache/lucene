@@ -72,12 +72,13 @@ public final class BlockingFloatHeap {
    * <p>Values must be sorted in ascending order.
    *
    * @param values a set of values to insert, must be sorted in ascending order
+   * @param len number of values from the {@code values} array to insert
    * @return the new 'top' element in the queue.
    */
-  public float offer(float[] values) {
+  public float offer(float[] values, int len) {
     lock.lock();
     try {
-      for (int i = values.length - 1; i >= 0; i--) {
+      for (int i = len - 1; i >= 0; i--) {
         if (size < maxSize) {
           push(values[i]);
         } else {

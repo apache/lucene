@@ -19,8 +19,8 @@ package org.apache.lucene.benchmark.byTask.tasks;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.QueryMaker;
 import org.apache.lucene.benchmark.byTask.utils.Config;
-import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 
 /** Does search w/ a custom collector */
 public class SearchWithCollectorTask extends SearchTask {
@@ -37,7 +37,11 @@ public class SearchWithCollectorTask extends SearchTask {
     // check to make sure either the doc is being stored
     PerfRunData runData = getRunData();
     Config config = runData.getConfig();
-    clnName = config.get("collector.class", "");
+    if (config.get("collector.class", null) != null) {
+      throw new IllegalArgumentException(
+          "collector.class is no longer supported as a config parameter, use collector.manager.class instead to provide a CollectorManager class name");
+    }
+    clnName = config.get("collector.manager.class", "");
   }
 
   @Override
@@ -46,17 +50,17 @@ public class SearchWithCollectorTask extends SearchTask {
   }
 
   @Override
-  protected Collector createCollector() throws Exception {
-    Collector collector = null;
+  protected CollectorManager<?, ?> createCollectorManager() throws Exception {
+    CollectorManager<?, ?> collectorManager;
     if (clnName.equalsIgnoreCase("topScoreDoc") == true) {
-      collector = TopScoreDocCollector.create(numHits(), Integer.MAX_VALUE);
+      collectorManager = new TopScoreDocCollectorManager(numHits(), Integer.MAX_VALUE);
     } else if (clnName.length() > 0) {
-      collector = Class.forName(clnName).asSubclass(Collector.class).getConstructor().newInstance();
-
+      collectorManager =
+          Class.forName(clnName).asSubclass(CollectorManager.class).getConstructor().newInstance();
     } else {
-      collector = super.createCollector();
+      collectorManager = super.createCollectorManager();
     }
-    return collector;
+    return collectorManager;
   }
 
   @Override

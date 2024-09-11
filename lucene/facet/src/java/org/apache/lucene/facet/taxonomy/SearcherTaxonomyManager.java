@@ -38,20 +38,14 @@ import org.apache.lucene.util.IOUtils;
 public class SearcherTaxonomyManager
     extends ReferenceManager<SearcherTaxonomyManager.SearcherAndTaxonomy> {
 
-  /** Holds a matched pair of {@link IndexSearcher} and {@link TaxonomyReader} */
-  public static class SearcherAndTaxonomy {
-    /** Point-in-time {@link IndexSearcher}. */
-    public final IndexSearcher searcher;
-
-    /** Matching point-in-time {@link DirectoryTaxonomyReader}. */
-    public final DirectoryTaxonomyReader taxonomyReader;
-
-    /** Create a SearcherAndTaxonomy */
-    public SearcherAndTaxonomy(IndexSearcher searcher, DirectoryTaxonomyReader taxonomyReader) {
-      this.searcher = searcher;
-      this.taxonomyReader = taxonomyReader;
-    }
-  }
+  /**
+   * Holds a matched pair of {@link IndexSearcher} and {@link TaxonomyReader}
+   *
+   * @param searcher Point-in-time {@link IndexSearcher}.
+   * @param taxonomyReader Matching point-in-time {@link DirectoryTaxonomyReader}.
+   */
+  public record SearcherAndTaxonomy(
+      IndexSearcher searcher, DirectoryTaxonomyReader taxonomyReader) {}
 
   private final SearcherFactory searcherFactory;
   private final long taxoEpoch;

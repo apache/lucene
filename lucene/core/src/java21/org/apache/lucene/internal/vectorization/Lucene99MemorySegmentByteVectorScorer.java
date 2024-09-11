@@ -52,8 +52,8 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
       case COSINE -> Optional.of(new CosineScorer(msInput, values, queryVector));
       case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector));
       case EUCLIDEAN -> Optional.of(new EuclideanScorer(msInput, values, queryVector));
-      case MAXIMUM_INNER_PRODUCT -> Optional.of(
-          new MaxInnerProductScorer(msInput, values, queryVector));
+      case MAXIMUM_INNER_PRODUCT ->
+          Optional.of(new MaxInnerProductScorer(msInput, values, queryVector));
     };
   }
 

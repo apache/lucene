@@ -142,7 +142,7 @@ public class TestDrillSideways extends FacetTestCase {
   private IndexSearcher getNewSearcher(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
-    IndexSearcher searcher = newSearcher(reader, true, false, random().nextBoolean());
+    IndexSearcher searcher = newSearcher(reader, true, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     searcher.setTimeout(null);
@@ -284,7 +284,6 @@ public class TestDrillSideways extends FacetTestCase {
         Weight dimWeight = searcher.createWeight(dimQ, ScoreMode.COMPLETE_NO_SCORES, 1f);
         Scorer dimScorer = dimWeight.scorer(ctx);
 
-        FacetsCollector baseFC = new FacetsCollector();
         FacetsCollector dimFC = new FacetsCollector();
         DrillSidewaysScorer.DocsAndCost docsAndCost =
             new DrillSidewaysScorer.DocsAndCost(dimScorer, dimFC.getLeafCollector(ctx));
@@ -311,17 +310,17 @@ public class TestDrillSideways extends FacetTestCase {
             new DrillSidewaysScorer(
                 ctx,
                 baseScorer,
-                baseFC.getLeafCollector(ctx),
                 new DrillSidewaysScorer.DocsAndCost[] {docsAndCost},
                 scoreSubDocsAtOnce);
-        expectThrows(CollectionTerminatedException.class, () -> scorer.score(baseCollector, null));
+        expectThrows(
+            CollectionTerminatedException.class,
+            () -> scorer.score(baseCollector, null, 0, DocIdSetIterator.NO_MORE_DOCS));
 
         // We've set things up so that our base collector with throw CollectionTerminatedException
         // after collecting the first doc. This means we'll only collect the first indexed doc for
         // both our base and sideways dim facets collectors. What we really want to test here is
         // that the matching docs are still correctly present and populated after an early
         // termination occurs (i.e., #finish is properly called in that scenario):
-        assertEquals(1, baseFC.getMatchingDocs().size());
         assertEquals(1, dimFC.getMatchingDocs().size());
       }
     }
@@ -1488,7 +1487,8 @@ public class TestDrillSideways extends FacetTestCase {
         // context, which happens as part of #finish getting called:
         assertEquals(1, result.drillDownFacetsCollector.getMatchingDocs().size());
         assertEquals(
-            1, result.drillDownFacetsCollector.getMatchingDocs().get(0).context.reader().maxDoc());
+            1,
+            result.drillDownFacetsCollector.getMatchingDocs().get(0).context().reader().maxDoc());
         assertEquals(1, result.drillSidewaysFacetsCollector.length);
         assertEquals(1, result.drillSidewaysFacetsCollector[0].getMatchingDocs().size());
         assertEquals(
@@ -1497,7 +1497,7 @@ public class TestDrillSideways extends FacetTestCase {
                 .drillSidewaysFacetsCollector[0]
                 .getMatchingDocs()
                 .get(0)
-                .context
+                .context()
                 .reader()
                 .maxDoc());
       }
@@ -1563,15 +1563,7 @@ public class TestDrillSideways extends FacetTestCase {
     Facets facets;
   }
 
-  private static class CollectedResult {
-    final DocAndScore docAndScore;
-    final String id;
-
-    CollectedResult(DocAndScore docAndScore, String id) {
-      this.docAndScore = docAndScore;
-      this.id = id;
-    }
-  }
+  private record CollectedResult(DocAndScore docAndScore, String id) {}
 
   private abstract static class SimpleLeafCollector implements LeafCollector {
     protected Scorable scorer;

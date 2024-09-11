@@ -35,8 +35,9 @@ class SlowOpeningMockIndexInputWrapper extends MockIndexInputWrapper {
 
   @SuppressForbidden(reason = "Thread sleep")
   public SlowOpeningMockIndexInputWrapper(
-      MockDirectoryWrapper dir, String name, IndexInput delegate) throws IOException {
-    super(dir, name, delegate, null);
+      MockDirectoryWrapper dir, String name, IndexInput delegate, boolean confined)
+      throws IOException {
+    super(dir, name, delegate, null, confined);
     try {
       Thread.sleep(50);
     } catch (InterruptedException ie) {

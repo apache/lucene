@@ -66,10 +66,7 @@ public enum VectorSimilarityFunction {
    * vectors to unit length, and instead use {@link VectorSimilarityFunction#DOT_PRODUCT}. You
    * should only use this function if you need to preserve the original vectors and cannot normalize
    * them in advance. The similarity score is normalised to assure it is positive.
-   *
-   * @deprecated Use MAXIMUM_INNER_PRODUCT or DOT_PRODUCT instead
    */
-  @Deprecated
   COSINE {
     @Override
     public float compare(float[] v1, float[] v2) {

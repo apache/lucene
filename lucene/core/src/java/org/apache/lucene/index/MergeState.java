@@ -236,7 +236,7 @@ public class MergeState implements Cloneable {
       return;
     }
     for (CodecReader leaf : readers) {
-      Sort segmentSort = leaf.getMetaData().getSort();
+      Sort segmentSort = leaf.getMetaData().sort();
       if (segmentSort == null || isCongruentSort(indexSort, segmentSort) == false) {
         throw new IllegalArgumentException(
             "index sort mismatch: merged segment has sort="

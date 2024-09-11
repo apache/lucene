@@ -99,7 +99,7 @@ public class SpatialDocMaker extends DocMaker {
         return makeRPTStrategy(SPATIAL_FIELD, config, configMap, ctx);
       case "composite":
         return makeCompositeStrategy(config, configMap, ctx);
-        // TODO add more as-needed
+      // TODO add more as-needed
       default:
         throw new IllegalStateException("Unknown spatial.strategy: " + strategyName);
     }

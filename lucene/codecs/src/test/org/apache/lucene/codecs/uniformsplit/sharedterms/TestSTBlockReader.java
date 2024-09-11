@@ -225,15 +225,7 @@ public class TestSTBlockReader extends LuceneTestCase {
     return lines;
   }
 
-  private static class BlockLineDefinition {
-    final TermBytes termBytes;
-    final List<String> fields;
-
-    BlockLineDefinition(TermBytes termBytes, List<String> fields) {
-      this.termBytes = termBytes;
-      this.fields = fields;
-    }
-  }
+  private record BlockLineDefinition(TermBytes termBytes, List<String> fields) {}
 
   private static class MockSTBlockLine extends STBlockLine {
 

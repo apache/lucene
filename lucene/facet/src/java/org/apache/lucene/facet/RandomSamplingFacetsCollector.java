@@ -33,7 +33,7 @@ import org.apache.lucene.util.FixedBitSet;
  * Collects hits for subsequent faceting, using sampling if needed. Once you've run a search and
  * collect hits into this, instantiate one of the {@link Facets} subclasses to do the facet
  * counting. Note that this collector does not collect the scores of matching docs (i.e. {@link
- * FacetsCollector.MatchingDocs#scores}) is {@code null}.
+ * FacetsCollector.MatchingDocs#scores()}) is {@code null}.
  *
  * <p>If you require the original set of hits, you can call {@link #getOriginalMatchingDocs()}.
  * Also, since the counts of the top-facets is based on the sampled set, you can amortize the counts
@@ -125,7 +125,7 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
     if (totalHits == NOT_CALCULATED) {
       totalHits = 0;
       for (MatchingDocs md : matchingDocs) {
-        totalHits += md.totalHits;
+        totalHits += md.totalHits();
       }
     }
 
@@ -156,7 +156,7 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
 
   /** Create a sampled of the given hits. */
   private MatchingDocs createSample(MatchingDocs docs) {
-    int maxdoc = docs.context.reader().maxDoc();
+    int maxdoc = docs.context().reader().maxDoc();
 
     // TODO: we could try the WAH8DocIdSet here as well, as the results will be sparse
     FixedBitSet sampleDocs = new FixedBitSet(maxdoc);
@@ -175,7 +175,7 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
         limit = binSize;
         randomIndex = random.nextInt(binSize);
       }
-      final DocIdSetIterator it = docs.bits.iterator();
+      final DocIdSetIterator it = docs.bits().iterator();
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         if (counter == randomIndex) {
           sampleDocs.set(doc);
@@ -206,7 +206,7 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
         }
       }
 
-      return new MatchingDocs(docs.context, new BitDocIdSet(sampleDocs), docs.totalHits, null);
+      return new MatchingDocs(docs.context(), new BitDocIdSet(sampleDocs), docs.totalHits(), null);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -288,9 +288,8 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
     ReducedRandomSamplingFacetsCollector(
         int sampleSize, long seed, Collection<RandomSamplingFacetsCollector> facetsCollectors) {
       super(sampleSize, seed);
-      facetsCollectors.forEach(
-          facetsCollector ->
-              getOriginalMatchingDocs().addAll(facetsCollector.getOriginalMatchingDocs()));
+      this.getOriginalMatchingDocs()
+          .addAll(FacetsCollectorManager.reduceMatchingDocs(facetsCollectors));
     }
   }
 }

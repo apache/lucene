@@ -125,19 +125,19 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 1:
-                    assertEquals(2048, doc);
+                    assertEquals(4096, doc);
                     assertEquals(2, scorer.score(), 0);
                     break;
                   case 2:
-                    assertEquals(6144, doc);
+                    assertEquals(12288, doc);
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 3:
-                    assertEquals(8192, doc);
+                    assertEquals(16384, doc);
                     assertEquals(1, scorer.score(), 0);
                     break;
                   case 4:
-                    assertEquals(10240, doc);
+                    assertEquals(20480, doc);
                     assertEquals(1, scorer.score(), 0);
                     break;
                   default:
@@ -146,7 +146,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -195,13 +197,13 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 1:
-                    assertEquals(2048, doc);
+                    assertEquals(4096, doc);
                     assertEquals(2, scorer.score(), 0);
                     // simulate top-2 retrieval
                     scorer.setMinCompetitiveScore(Math.nextUp(2));
                     break;
                   case 2:
-                    assertEquals(6144, doc);
+                    assertEquals(12288, doc);
                     assertEquals(2 + 1, scorer.score(), 0);
                     scorer.setMinCompetitiveScore(Math.nextUp(2 + 1));
                     break;
@@ -211,7 +213,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -268,19 +272,19 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 1:
-                    assertEquals(2048, doc);
+                    assertEquals(4096, doc);
                     assertEquals(2, scorer.score(), 0);
                     break;
                   case 2:
-                    assertEquals(6144, doc);
+                    assertEquals(12288, doc);
                     assertEquals(2 + 1 + 3, scorer.score(), 0);
                     break;
                   case 3:
-                    assertEquals(8192, doc);
+                    assertEquals(16384, doc);
                     assertEquals(1, scorer.score(), 0);
                     break;
                   case 4:
-                    assertEquals(10240, doc);
+                    assertEquals(20480, doc);
                     assertEquals(1 + 3, scorer.score(), 0);
                     break;
                   default:
@@ -289,7 +293,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -346,18 +352,18 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 1:
-                    assertEquals(2048, doc);
+                    assertEquals(4096, doc);
                     assertEquals(2, scorer.score(), 0);
                     // simulate top-2 retrieval
                     scorer.setMinCompetitiveScore(Math.nextUp(2));
                     break;
                   case 2:
-                    assertEquals(6144, doc);
+                    assertEquals(12288, doc);
                     assertEquals(2 + 1 + 3, scorer.score(), 0);
                     scorer.setMinCompetitiveScore(Math.nextUp(2 + 1));
                     break;
                   case 3:
-                    assertEquals(10240, doc);
+                    assertEquals(20480, doc);
                     assertEquals(1 + 3, scorer.score(), 0);
                     scorer.setMinCompetitiveScore(Math.nextUp(1 + 3));
                     break;
@@ -367,7 +373,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -503,7 +511,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
               assertEquals(1, i);
             }
           };
-      scorer.score(collector, liveDocs);
+      scorer.score(collector, liveDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
       collector.finish();
     }
 

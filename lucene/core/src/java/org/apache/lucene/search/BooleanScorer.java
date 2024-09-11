@@ -30,7 +30,7 @@ import org.apache.lucene.util.PriorityQueue;
  */
 final class BooleanScorer extends BulkScorer {
 
-  static final int SHIFT = 11;
+  static final int SHIFT = 12;
   static final int SIZE = 1 << SHIFT;
   static final int MASK = SIZE - 1;
   static final int SET_SIZE = 1 << (SHIFT - 6);
