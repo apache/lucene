@@ -867,3 +867,9 @@ method now supports an additional 4th and last argument to optionally enable cre
 `TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`, 
 is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can 
 optimize the type of collectors it creates and exposes via `newCollector`.
+
+### IndexSearcher#search(List<LeafReaderContext, Weight, Collector) removed
+
+The protected `IndexSearcher#search(List<LeafReaderContext leaves, Weight weight, Collector collector)` method has been 
+removed in favour of the newly introduced `search(LeafReaderContextPartition[] partitions, Weight weight, Collector collector)`.
+`IndexSearcher` subclasses that override this method need to instead override the new method.
