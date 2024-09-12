@@ -21,8 +21,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-
-import org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsReader;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -235,7 +233,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
   private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry ;
+    final FieldEntry fieldEntry;
     if (info == null || (fieldEntry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }

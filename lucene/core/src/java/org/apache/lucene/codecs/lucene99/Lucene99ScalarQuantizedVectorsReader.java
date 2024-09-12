@@ -165,7 +165,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   private FieldEntry getFieldEntry(String field) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry ;
+    final FieldEntry fieldEntry;
     if (info == null || (fieldEntry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }

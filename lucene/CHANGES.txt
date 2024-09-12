@@ -422,6 +422,8 @@ Optimizations
  This should speed up query evaluation when the child query has a specialized bulk scorer, such as disjunctive queries.
  (Mike Pellegrini)
 
+* GITHUB#13763: Replace Map<String,Object> with IntObjectHashMap for KnnVectorsReader (Pan Guixin)
+
 Changes in runtime behavior
 ---------------------
 

@@ -246,7 +246,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry ;
+    final FieldEntry fieldEntry;
     if (info == null || (fieldEntry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }

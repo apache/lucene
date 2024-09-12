@@ -216,14 +216,18 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     CodecUtil.checksumEntireFile(vectorIndex);
   }
 
-  @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+  private FieldEntry getFieldEntry(String field) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
     final FieldEntry fieldEntry;
-    if (info == null || (fieldEntry= fields.get(info.number)) == null) {
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    return getOffHeapVectorValues(fieldEntry);
+    return fieldEntry;
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return getOffHeapVectorValues(getFieldEntry(field));
   }
 
   @Override
@@ -234,9 +238,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry = fields.get(info.number);
-
+    final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.size() == 0) {
       return;
     }
