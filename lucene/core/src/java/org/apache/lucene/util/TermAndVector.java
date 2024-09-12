@@ -32,16 +32,9 @@ public record TermAndVector(BytesRef term, float[] vector) {
 
   /** Return a {@link TermAndVector} whose vector is normalized according to the L2 norm. */
   public TermAndVector normalizeVector() {
-    float vectorLength = 0;
-    for (int i = 0; i < vector.length; i++) {
-      vectorLength += vector[i] * vector[i];
-    }
-    vectorLength = (float) Math.sqrt(vectorLength);
-    float[] newVector = new float[vector.length];
-    for (int i = 0; i < vector.length; i++) {
-      newVector[i] = vector[i] / vectorLength;
-    }
-    return new TermAndVector(term, newVector);
+    float[] vector = this.vector.clone();
+    VectorUtil.l2normalize(vector);
+    return new TermAndVector(term, vector);
   }
 
   @Override
