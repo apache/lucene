@@ -624,7 +624,6 @@ public final class FST<T> implements Accountable {
       arc.output = follow.nextFinalOutput();
       arc.flags = BIT_LAST_ARC;
       arc.nodeFlags = arc.flags;
-      return arc;
     } else {
       in.setPosition(follow.target());
       byte flags = arc.nodeFlags = in.readByte();
@@ -677,8 +676,8 @@ public final class FST<T> implements Accountable {
         readNextRealArc(arc, in);
       }
       assert arc.isLast();
-      return arc;
     }
+    return arc;
   }
 
   private long readUnpackedNodeTarget(BytesReader in) throws IOException {
