@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import org.apache.lucene.codecs.CodecUtil;
@@ -49,7 +50,7 @@ import org.apache.lucene.util.ArrayUtil;
 public class TestBPIndexReorderer extends LuceneTestCase {
 
   public void testSingleTerm() throws IOException {
-    doTestSingleTerm(null);
+    doTestSingleTerm(null, true);
   }
 
   public void testSingleTermWithForkJoinPool() throws IOException {
@@ -60,13 +61,27 @@ public class TestBPIndexReorderer extends LuceneTestCase {
         new ForkJoinPool(
             concurrency, p -> new ForkJoinWorkerThread(p) {}, null, random().nextBoolean());
     try {
-      doTestSingleTerm(pool);
+      doTestSingleTerm(pool, true);
     } finally {
       pool.shutdown();
     }
   }
 
-  public void doTestSingleTerm(ForkJoinPool pool) throws IOException {
+  public void testSingleTermWithExecutor() throws IOException {
+    int concurrency = TestUtil.nextInt(random(), 1, 8);
+    // The default ForkJoinPool implementation uses a thread factory that removes all permissions on
+    // threads, so we need to create our own to avoid tests failing with FS-based directories.
+    ForkJoinPool pool =
+        new ForkJoinPool(
+            concurrency, p -> new ForkJoinWorkerThread(p) {}, null, random().nextBoolean());
+    try {
+      doTestSingleTerm(pool, false);
+    } finally {
+      pool.shutdown();
+    }
+  }
+
+  public void doTestSingleTerm(ForkJoinPool pool, boolean asMember) throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
@@ -115,12 +130,20 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     LeafReader leafRealer = getOnlyLeafReader(reader);
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
+    Executor executor;
+    if (asMember) {
+      executor = null;
+    } else {
+      executor = pool;
+      pool = null;
+    }
+
     BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setForkJoinPool(pool);
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    reorderer.setForkJoinPool(pool);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, executor);
     String[] ids = new String[codecReader.maxDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {
@@ -138,7 +161,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
   }
 
   public void testSingleTermWithBlocks() throws IOException {
-    doTestSingleTermWithBlocks(null);
+    doTestSingleTermWithBlocks(null, true);
   }
 
   public void testSingleTermWithBlocksAndForkJoinPool() throws IOException {
@@ -149,13 +172,27 @@ public class TestBPIndexReorderer extends LuceneTestCase {
         new ForkJoinPool(
             concurrency, p -> new ForkJoinWorkerThread(p) {}, null, random().nextBoolean());
     try {
-      doTestSingleTermWithBlocks(pool);
+      doTestSingleTermWithBlocks(pool, true);
     } finally {
       pool.shutdown();
     }
   }
 
-  private void doTestSingleTermWithBlocks(ForkJoinPool pool) throws IOException {
+  public void testSingleTermWithBlocksAndExecutor() throws IOException {
+    int concurrency = TestUtil.nextInt(random(), 1, 8);
+    // The default ForkJoinPool implementation uses a thread factory that removes all permissions on
+    // threads, so we need to create our own to avoid tests failing with FS-based directories.
+    ForkJoinPool pool =
+        new ForkJoinPool(
+            concurrency, p -> new ForkJoinWorkerThread(p) {}, null, random().nextBoolean());
+    try {
+      doTestSingleTermWithBlocks(pool, false);
+    } finally {
+      pool.shutdown();
+    }
+  }
+
+  private void doTestSingleTermWithBlocks(ForkJoinPool pool, boolean asMember) throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
@@ -179,12 +216,20 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     LeafReader leafRealer = getOnlyLeafReader(reader);
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
+    Executor executor;
+    if (asMember) {
+      executor = null;
+    } else {
+      executor = pool;
+      pool = null;
+    }
+
     BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setForkJoinPool(pool);
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    reorderer.setForkJoinPool(pool);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, executor);
     StoredFields storedFields = reordered.storedFields();
 
     assertEquals("2", storedFields.document(0).get("id"));
@@ -307,7 +352,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, null);
     String[] ids = new String[codecReader.maxDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {
