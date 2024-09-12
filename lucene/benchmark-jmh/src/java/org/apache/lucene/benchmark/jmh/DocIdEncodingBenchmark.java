@@ -393,7 +393,6 @@ public class DocIdEncodingBenchmark {
               Arrays.stream(sequence.split(",")).mapToInt(Integer::parseInt).toArray());
         }
       }
-      System.out.println(DOC_ID_SEQUENCES);
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
