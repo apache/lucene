@@ -38,7 +38,11 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.util.BytesRef;
 
-/** A Query class that uses a {@link PayloadFunction} to modify the score of a wrapped SpanQuery */
+/**
+ * A Query class that uses a {@link PayloadFunction} to modify the score of a wrapped {@link
+ * SpanQuery}. A wrapped span query is used due to the way that payload values are indexed, see
+ * {@link PostingsEnum#PAYLOADS}.
+ */
 public class PayloadScoreQuery extends SpanQuery {
 
   private final SpanQuery wrappedQuery;
