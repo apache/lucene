@@ -137,7 +137,7 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
     }
 
     // Total number of hits collected were less than requestedHitCount
-    assert totalHits < requestedHitCount;
+    assert totalHits <= requestedHitCount;
     Collections.sort(
         hits,
         Comparator.comparing((ScoreDoc scoreDoc) -> scoreDoc.score)
