@@ -143,7 +143,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
                         planetModel, toRadians(50), toRadians(-97), Math.PI / 180.)),
                 1)
             .totalHits
-            .value);
+            .value());
     w.close();
     r.close();
     dir.close();

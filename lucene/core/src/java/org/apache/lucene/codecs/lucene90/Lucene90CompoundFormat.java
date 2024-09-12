@@ -104,15 +104,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
     }
   }
 
-  private static class SizedFile {
-    private final String name;
-    private final long length;
-
-    private SizedFile(String name, long length) {
-      this.name = name;
-      this.length = length;
-    }
-  }
+  private record SizedFile(String name, long length) {}
 
   private static class SizedFileQueue extends PriorityQueue<SizedFile> {
     SizedFileQueue(int maxSize) {

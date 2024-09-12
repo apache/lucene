@@ -183,7 +183,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         dimCount = getCount(dimOrd);
       } else {
         OrdRange ordRange = state.getOrdRange(dim);
-        int dimOrd = ordRange.start;
+        int dimOrd = ordRange.start();
         if (dimConfig.multiValued) {
           if (dimConfig.requireDimCount) {
             // If a dim is configured as multi-valued and requires dim count, we index dim counts
@@ -284,7 +284,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         // means dimension was never indexed
         return null;
       }
-      pathOrd = ordRange.start;
+      pathOrd = ordRange.start();
       childIterator = ordRange.iterator();
       if (dimConfig.multiValued && dimConfig.requireDimCount) {
         // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
@@ -412,13 +412,5 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
   }
 
-  static final class ChildIterationCursor {
-    final int pathOrd;
-    final PrimitiveIterator.OfInt childIterator;
-
-    ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {
-      this.pathOrd = pathOrd;
-      this.childIterator = childIterator;
-    }
-  }
+  record ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {}
 }

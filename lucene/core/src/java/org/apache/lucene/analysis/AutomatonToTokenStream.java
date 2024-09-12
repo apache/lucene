@@ -170,24 +170,8 @@ public class AutomatonToTokenStream {
   }
 
   /** Edge between position nodes. These edges will be output as tokens in the TokenStream */
-  private static class EdgeToken {
-    public final int destination;
-    public final int value;
-
-    public EdgeToken(int destination, int value) {
-      this.destination = destination;
-      this.value = value;
-    }
-  }
+  private record EdgeToken(int destination, int value) {}
 
   /** Node that contains original node id and position in TokenStream */
-  private static class RemapNode {
-    public final int id;
-    public final int pos;
-
-    public RemapNode(int id, int pos) {
-      this.id = id;
-      this.pos = pos;
-    }
-  }
+  private record RemapNode(int id, int pos) {}
 }

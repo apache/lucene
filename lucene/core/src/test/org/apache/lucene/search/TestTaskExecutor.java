@@ -132,7 +132,7 @@ public class TestTaskExecutor extends LuceneTestCase {
             new IndexSearcher(reader, executor) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                return slices(leaves, 1, 1);
+                return slices(leaves, 1, 1, false);
               }
             };
 
@@ -206,7 +206,7 @@ public class TestTaskExecutor extends LuceneTestCase {
             new IndexSearcher(reader, executor) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                return slices(leaves, 1, 1);
+                return slices(leaves, 1, 1, false);
               }
             };
 
