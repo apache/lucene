@@ -47,7 +47,7 @@ public class PerThreadPKLookup {
   protected final int[] docBases;
   protected final int numEnums;
   protected final boolean hasDeletions;
-  private final Map<IndexReader.CacheKey, Integer> enumIndex;
+  private final Map<IndexReader.CacheKey, Integer> enumIndexes;
 
   public PerThreadPKLookup(IndexReader reader, String idFieldName) throws IOException {
     this(reader, idFieldName, null, null, null);
@@ -56,9 +56,9 @@ public class PerThreadPKLookup {
   private PerThreadPKLookup(
       IndexReader reader,
       String idFieldName,
-      Map<IndexReader.CacheKey, Integer> reusedEnumIndex,
-      TermsEnum[] reusedTermsEnums,
-      PostingsEnum[] reusedPostingsEnums)
+      Map<IndexReader.CacheKey, Integer> prevEnumIndexes,
+      TermsEnum[] reusableTermsEnums,
+      PostingsEnum[] reusablePostingsEnums)
       throws IOException {
     this.idFieldName = idFieldName;
 
@@ -77,29 +77,29 @@ public class PerThreadPKLookup {
     postingsEnums = new PostingsEnum[leaves.size()];
     liveDocs = new Bits[leaves.size()];
     docBases = new int[leaves.size()];
-    enumIndex = new HashMap<>();
+    enumIndexes = new HashMap<>();
     int numEnums = 0;
     boolean hasDeletions = false;
 
     for (int i = 0; i < leaves.size(); i++) {
       LeafReader leafReader = leaves.get(i).reader();
       IndexReader.CacheKey cacheKey = leafReader.getCoreCacheHelper().getKey();
-      if (reusedEnumIndex != null && reusedEnumIndex.containsKey(cacheKey)) {
+      if (prevEnumIndexes != null && prevEnumIndexes.containsKey(cacheKey)) {
         // Reuse termsEnum, postingsEnum.
-        Integer seg = reusedEnumIndex.get(cacheKey);
+        Integer seg = prevEnumIndexes.get(cacheKey);
         if (seg > -1) {
-          termsEnums[numEnums] = reusedTermsEnums[seg];
-          postingsEnums[numEnums] = reusedPostingsEnums[seg];
+          termsEnums[numEnums] = reusableTermsEnums[seg];
+          postingsEnums[numEnums] = reusablePostingsEnums[seg];
           assert termsEnums[numEnums] != null;
           // Update liveDocs.
           docBases[numEnums] = leaves.get(i).docBase;
           liveDocs[numEnums] = leafReader.getLiveDocs();
           hasDeletions |= leafReader.hasDeletions();
-          enumIndex.put(cacheKey, numEnums);
+          enumIndexes.put(cacheKey, numEnums);
           numEnums++;
         } else {
-          // TermsEnum is always null.
-          enumIndex.put(cacheKey, -1);
+          // TermsEnum will always null.
+          enumIndexes.put(cacheKey, -1);
         }
       } else {
         // New segment.
@@ -110,10 +110,10 @@ public class PerThreadPKLookup {
           docBases[numEnums] = leaves.get(i).docBase;
           liveDocs[numEnums] = leafReader.getLiveDocs();
           hasDeletions |= leafReader.hasDeletions();
-          enumIndex.put(cacheKey, numEnums);
+          enumIndexes.put(cacheKey, numEnums);
           numEnums++;
         } else {
-          enumIndex.put(cacheKey, -1);
+          enumIndexes.put(cacheKey, -1);
         }
       }
     }
@@ -146,6 +146,6 @@ public class PerThreadPKLookup {
       return null;
     }
     return new PerThreadPKLookup(
-        reader, this.idFieldName, this.enumIndex, this.termsEnums, this.postingsEnums);
+        reader, this.idFieldName, this.enumIndexes, this.termsEnums, this.postingsEnums);
   }
 }
