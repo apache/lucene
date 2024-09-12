@@ -129,7 +129,7 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
    */
   protected void populateResults(ScoreDoc[] results, int howMany) {
     if (pq != null) {
-      assert totalHits >= requestedHitCount;
+      assert totalHits > requestedHitCount;
       for (int i = howMany - 1; i >= 0; i--) {
         results[i] = pq.pop();
       }
