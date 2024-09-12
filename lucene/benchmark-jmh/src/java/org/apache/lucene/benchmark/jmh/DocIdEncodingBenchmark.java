@@ -390,7 +390,7 @@ public class DocIdEncodingBenchmark {
         String sequence = fileReader.nextLine().trim();
         if (!sequence.startsWith("#") && !sequence.isEmpty()) {
           DOC_ID_SEQUENCES.add(
-              Arrays.stream(sequence.split(",")).mapToInt(Integer::parseInt).toArray());
+              Arrays.stream(sequence.split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray());
         }
       }
     } catch (IOException e) {
