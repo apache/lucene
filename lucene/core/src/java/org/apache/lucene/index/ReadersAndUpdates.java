@@ -708,7 +708,7 @@ final class ReadersAndUpdates {
     return new FieldInfo(
         fi.name,
         fieldNumber,
-        fi.hasVectors(),
+        fi.hasTermVectors(),
         fi.omitsNorms(),
         fi.hasPayloads(),
         fi.getIndexOptions(),

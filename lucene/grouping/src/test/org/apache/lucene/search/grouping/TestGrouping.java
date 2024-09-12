@@ -1141,7 +1141,7 @@ public class TestGrouping extends LuceneTestCase {
                   "  group="
                       + (gd.groupValue() == null ? "null" : gd.groupValue())
                       + " totalHits="
-                      + gd.totalHits().value
+                      + gd.totalHits().value()
                       + " scoreDocs.len="
                       + gd.scoreDocs().length);
               for (ScoreDoc sd : gd.scoreDocs()) {
@@ -1160,7 +1160,7 @@ public class TestGrouping extends LuceneTestCase {
                   "  group="
                       + (gd.groupValue() == null ? "null" : gd.groupValue())
                       + " totalHits="
-                      + gd.totalHits().value);
+                      + gd.totalHits().value());
               for (ScoreDoc sd : gd.scoreDocs()) {
                 System.out.println("    id=" + docIDToID[sd.doc] + " score=" + sd.score);
               }
@@ -1185,7 +1185,7 @@ public class TestGrouping extends LuceneTestCase {
                   "  group="
                       + (gd.groupValue() == null ? "null" : gd.groupValue())
                       + " totalHits="
-                      + gd.totalHits().value);
+                      + gd.totalHits().value());
               for (ScoreDoc sd : gd.scoreDocs()) {
                 System.out.println("    id=" + docIDToID[sd.doc] + " score=" + sd.score);
               }
@@ -1249,7 +1249,7 @@ public class TestGrouping extends LuceneTestCase {
                   "  group="
                       + (gd.groupValue() == null ? "null" : gd.groupValue().utf8ToString())
                       + " totalHits="
-                      + gd.totalHits().value);
+                      + gd.totalHits().value());
               for (ScoreDoc sd : gd.scoreDocs()) {
                 System.out.println("    id=" + docIDToIDBlocks[sd.doc] + " score=" + sd.score);
                 if (first) {
@@ -1556,7 +1556,7 @@ public class TestGrouping extends LuceneTestCase {
 
       // TODO
       // assertEquals(expectedGroup.maxScore, actualGroup.maxScore);
-      assertEquals(expectedGroup.totalHits().value, actualGroup.totalHits().value);
+      assertEquals(expectedGroup.totalHits().value(), actualGroup.totalHits().value());
 
       final ScoreDoc[] expectedFDs = expectedGroup.scoreDocs();
       final ScoreDoc[] actualFDs = actualGroup.scoreDocs();

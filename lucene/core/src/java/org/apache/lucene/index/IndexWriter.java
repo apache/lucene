@@ -5311,7 +5311,7 @@ public class IndexWriter
               ("merge codec=" + codec)
                   + (" maxDoc=" + merge.info.info.maxDoc())
                   + ("; merged segment has "
-                      + (mergeState.mergeFieldInfos.hasVectors() ? "vectors" : "no vectors"))
+                      + (mergeState.mergeFieldInfos.hasTermVectors() ? "vectors" : "no vectors"))
                   + ("; " + (mergeState.mergeFieldInfos.hasNorms() ? "norms" : "no norms"))
                   + ("; "
                       + (mergeState.mergeFieldInfos.hasDocValues() ? "docValues" : "no docValues"))

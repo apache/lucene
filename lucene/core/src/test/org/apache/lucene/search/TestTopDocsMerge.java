@@ -321,7 +321,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
         }
         System.out.println(
             "  top search: "
-                + topHits.totalHits.value
+                + topHits.totalHits.value()
                 + " totalHits; hits="
                 + (topHits.scoreDocs == null ? "null" : topHits.scoreDocs.length));
         if (topHits.scoreDocs != null) {
@@ -364,7 +364,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
               "  shard="
                   + shardIDX
                   + " "
-                  + subHits.totalHits.value
+                  + subHits.totalHits.value()
                   + " totalHits hits="
                   + (subHits.scoreDocs == null ? "null" : subHits.scoreDocs.length));
           if (subHits.scoreDocs != null) {

@@ -193,6 +193,7 @@ access the members using method calls instead of field accesses. Affected classe
 
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 - `BooleanClause` (GITHUB#13261)
+- `TotalHits` (GITHUB#13762)
 - Many basic Lucene classes, including `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
 ### Boolean flags on IOContext replaced with a new ReadAdvice enum.
@@ -261,6 +262,11 @@ List<Object> results = searcher.search(query, new CustomCollectorManager());
 ConcurrentMergeScheduler now disables auto I/O throttling by default. There is still some throttling
 happening at the CPU level, since ConcurrentMergeScheduler has a maximum number of threads it can
 use, which is only a fraction of the total number of threads of the host by default.
+
+### FieldInfos#hasVectors and FieldInfo#hasVectors renamed to hasTermVectors
+
+To reduce confusion between term vectors and numeric vectors, `hasVectors` has been renamed to
+`hasTermVectors`.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 

@@ -3836,7 +3836,7 @@ public final class CheckIndex implements Closeable {
 
               // Make sure FieldInfo thinks this field is vector'd:
               final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-              if (fieldInfo.hasVectors() == false) {
+              if (fieldInfo.hasTermVectors() == false) {
                 throw new CheckIndexException(
                     "docID="
                         + j

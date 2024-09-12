@@ -195,10 +195,10 @@ public class TestSynonymQuery extends LuceneTestCase {
         new TopScoreDocCollectorManager(
             Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, collectorManager);
-    if (topDocs.totalHits.value < totalHitsThreshold) {
+    if (topDocs.totalHits.value() < totalHitsThreshold) {
       assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     } else {
-      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
     }
     // All docs must have the same score
     for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
@@ -254,11 +254,11 @@ public class TestSynonymQuery extends LuceneTestCase {
         new TopScoreDocCollectorManager(
             Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, collectorManager);
-    if (topDocs.totalHits.value < totalHitsThreshold) {
-      assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
-      assertEquals(22, topDocs.totalHits.value);
+    if (topDocs.totalHits.value() < totalHitsThreshold) {
+      assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
+      assertEquals(22, topDocs.totalHits.value());
     } else {
-      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
     }
     // All docs must have the same score
     for (int i = 0; i < topDocs.scoreDocs.length; ++i) {

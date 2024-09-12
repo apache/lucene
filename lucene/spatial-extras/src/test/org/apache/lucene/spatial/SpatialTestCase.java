@@ -113,7 +113,7 @@ public abstract class SpatialTestCase extends LuceneTestCase {
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
         results.add(new SearchResult(scoreDoc.score, storedFields.document(scoreDoc.doc)));
       }
-      return new SearchResults(topDocs.totalHits.value, results);
+      return new SearchResults(topDocs.totalHits.value(), results);
     } catch (IOException ioe) {
       throw new RuntimeException("IOException thrown while executing query", ioe);
     }

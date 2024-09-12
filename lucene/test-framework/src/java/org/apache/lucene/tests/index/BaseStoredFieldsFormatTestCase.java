@@ -177,7 +177,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
             System.out.println("TEST: test id=" + testID);
           }
           TopDocs hits = s.search(new TermQuery(new Term("id", testID)), 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
           Document doc = storedFields.document(hits.scoreDocs[0].doc);
           Document docExp = docs.get(testID);
           for (int i = 0; i < fieldCount; i++) {
@@ -471,9 +471,9 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
                 try {
                   StoredFields storedFields = rd.storedFields();
                   final TopDocs topDocs = searcher.search(query, 1);
-                  if (topDocs.totalHits.value != 1) {
+                  if (topDocs.totalHits.value() != 1) {
                     throw new IllegalStateException(
-                        "Expected 1 hit, got " + topDocs.totalHits.value);
+                        "Expected 1 hit, got " + topDocs.totalHits.value());
                   }
                   final Document sdoc = storedFields.document(topDocs.scoreDocs[0].doc);
                   if (sdoc == null || sdoc.get("fld") == null) {
@@ -783,7 +783,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     for (int i = 0; i < numDocs; ++i) {
       final Query query = new TermQuery(new Term("id", "" + i));
       final TopDocs topDocs = searcher.search(query, 1);
-      assertEquals("" + i, 1, topDocs.totalHits.value);
+      assertEquals("" + i, 1, topDocs.totalHits.value());
       final Document doc = storedFields.document(topDocs.scoreDocs[0].doc);
       assertNotNull(doc);
       final IndexableField[] fieldValues = doc.getFields("fld");
@@ -943,7 +943,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
                 System.out.println("TEST: test id=" + testID);
               }
               TopDocs hits = searcher.search(new TermQuery(new Term("id", testID)), 1);
-              assertEquals(1, hits.totalHits.value);
+              assertEquals(1, hits.totalHits.value());
               List<IndexableField> expectedFields =
                   docs.get(testID).getFields().stream()
                       .filter(f -> f.fieldType().stored())

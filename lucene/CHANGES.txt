@@ -305,8 +305,11 @@ API Changes
 * GITHUB#13568: Add DoubleValuesSource#toSortableLongDoubleValuesSource and
   MultiDoubleValuesSource#toSortableMultiLongValuesSource methods. (Shradha Shankar)
 
-* GITHUB#13568: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
+* GITHUB#13568, GITHUB#13750: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
+
+* GITHUB#13735: Add CollectorManager#forSequentialExecution to make CollectorManager creation more convenient
+  for users of the deprecated IndexSearcher#search(Query, Collector). (Greg Miller)
 
 New Features
 ---------------------
@@ -333,6 +336,8 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#13475: Re-enable intra-merge parallelism except for terms, norms, and doc values.
+  Related to GITHUB#13478.  (Ben Trent)
 
 * GITHUB#13548: Refactor and javadoc update for KNN vector writer classes. (Patrick Zhai)
 
@@ -349,6 +354,9 @@ Improvements
 * GITHUB#12627: patch HNSW graphs to improve reachability of all nodes from entry points
 
 * GITHUB#13201: Better cost estimation on MultiTermQuery over few terms. (Michael Froh)
+
+* GITHUB#13735: Migrate monitor package usage of deprecated IndexSearcher#search(Query, Collector)
+  to IndexSearcher#search(Query, CollectorManager). (Greg Miller)
 
 Optimizations
 ---------------------
@@ -410,6 +418,10 @@ Optimizations
 
 * GITHUB#13686: Replace Map<String,Object> with IntObjectHashMap for DV producer (Pan Guixin)
 
+* GITHUB#13697: Add a bulk scorer to ToParentBlockJoinQuery, which delegates to the bulk scorer of the child query.
+ This should speed up query evaluation when the child query has a specialized bulk scorer, such as disjunctive queries.
+ (Mike Pellegrini)
+
 Changes in runtime behavior
 ---------------------
 
@@ -439,6 +451,9 @@ Bug Fixes
 
 * GITHUB#13703: Fix bug in LatLonPoint queries where narrow polygons close to latitude 90 don't
   match any points due to an Integer overflow. (Ignacio Vera)
+
+* GITHUB#13641: Unify how KnnFormats handle missing fields and correctly handle missing vector fields when
+  merging segments. (Ben Trent)
 
 Build
 ---------------------
