@@ -865,8 +865,8 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Tests if the arguments are equal, or are within the range of allowed error (inclusive). The
-   * arguments must not be NaN.
+   * Returns true if the arguments are equal or within the range of allowed error (inclusive).
+   * Returns {@code false} if either of the arguments is NaN.
    *
    * <p>Two float numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
    * floating point numbers between them, i.e. two adjacent floating point numbers are considered
@@ -880,8 +880,10 @@ public abstract class LuceneTestCase extends Assert {
    * @param y second value
    * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
    *     and {@code y}.
+   * @return {@code true} if there are fewer than {@code maxUlps} floating point values between
+   *     {@code x} and {@code y}.
    */
-  public static void assertUlpEquals(final float x, final float y, final short maxUlps) {
+  public static boolean floatEquals(final float x, final float y, final short maxUlps) {
     final int xInt = Float.floatToRawIntBits(x);
     final int yInt = Float.floatToRawIntBits(y);
 
@@ -897,19 +899,16 @@ public abstract class LuceneTestCase extends Assert {
       // for NaN and return directly.
 
       // Avoid possible overflow from adding the deltas by splitting the comparison
-      assertTrue(deltaPlus <= maxUlps);
-      assertTrue(deltaMinus <= (maxUlps - deltaPlus));
-    } else {
-      // Numbers have same sign, there is no risk of overflow.
-      assertTrue(Math.abs(xInt - yInt) <= maxUlps);
-      assertFalse(Float.isNaN(x));
-      assertFalse(Float.isNaN(y));
+      return deltaPlus <= maxUlps && deltaMinus <= (maxUlps - deltaPlus);
     }
+
+    // Numbers have same sign, there is no risk of overflow.
+    return Math.abs(xInt - yInt) <= maxUlps && !Float.isNaN(x) && !Float.isNaN(y);
   }
 
   /**
-   * Tests if the arguments are equal, or are within the range of allowed error (inclusive). The
-   * arguments must not be NaN.
+   * Returns true if the arguments are equal or within the range of allowed error (inclusive).
+   * Returns {@code false} if either of the arguments is NaN.
    *
    * <p>Two double numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
    * floating point numbers between them, i.e. two adjacent floating point numbers are considered
@@ -923,8 +922,10 @@ public abstract class LuceneTestCase extends Assert {
    * @param y second value
    * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
    *     and {@code y}.
+   * @return {@code true} if there are fewer than {@code maxUlps} floating point values between
+   *     {@code x} and {@code y}.
    */
-  public static void assertUlpEquals(final double x, final double y, final int maxUlps) {
+  public static boolean doubleEquals(final double x, final double y, final int maxUlps) {
     final long xInt = Double.doubleToRawLongBits(x);
     final long yInt = Double.doubleToRawLongBits(y);
 
@@ -935,19 +936,16 @@ public abstract class LuceneTestCase extends Assert {
       final long deltaMinus = yInt & Long.MAX_VALUE;
 
       // Note:
-      // If either value is NaN, the exponent bits are set to (255 << 23) and the
-      // distance above 0.0 is always above a short ULP error. So omit the test
+      // If either value is NaN, the exponent bits are set to (2047L << 52) and the
+      // distance above 0.0 is always above an integer ULP error. So omit the test
       // for NaN and return directly.
 
       // Avoid possible overflow from adding the deltas by splitting the comparison
-      assertTrue(deltaPlus <= maxUlps);
-      assertTrue(deltaMinus <= (maxUlps - deltaPlus));
-    } else {
-      // Numbers have same sign, there is no risk of overflow.
-      assertTrue(Math.abs(xInt - yInt) <= maxUlps);
-      assertFalse(Double.isNaN(x));
-      assertFalse(Double.isNaN(y));
+      return deltaPlus <= maxUlps && deltaMinus <= (maxUlps - deltaPlus);
     }
+
+    // Numbers have same sign, there is no risk of overflow.
+    return Math.abs(xInt - yInt) <= maxUlps && !Double.isNaN(x) && !Double.isNaN(y);
   }
 
   /**
