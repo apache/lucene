@@ -77,6 +77,8 @@ Improvements
 * GITHUB#13735: Migrate monitor package usage of deprecated IndexSearcher#search(Query, Collector)
   to IndexSearcher#search(Query, CollectorManager). (Greg Miller)
 
+* GITHUB#13746: Introduce ProfilerCollectorManager to parallelize search when using ProfilerCollector. (Luca Cavanna)
+
 Optimizations
 ---------------------
 
