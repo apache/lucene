@@ -56,25 +56,25 @@ public class Word2VecModel implements RandomAccessVectorValues.Floats {
   }
 
   public void addTermAndVector(TermAndVector modelEntry) {
-    modelEntry.normalizeVector();
+    modelEntry = modelEntry.normalizeVector();
     this.termsAndVectors[loadedCount++] = modelEntry;
-    this.word2Vec.add(modelEntry.getTerm());
+    this.word2Vec.add(modelEntry.term());
   }
 
   @Override
   public float[] vectorValue(int targetOrd) {
-    return termsAndVectors[targetOrd].getVector();
+    return termsAndVectors[targetOrd].vector();
   }
 
   public float[] vectorValue(BytesRef term) {
     int termOrd = this.word2Vec.find(term);
     if (termOrd < 0) return null;
     TermAndVector entry = this.termsAndVectors[termOrd];
-    return (entry == null) ? null : entry.getVector();
+    return (entry == null) ? null : entry.vector();
   }
 
   public BytesRef termValue(int targetOrd) {
-    return termsAndVectors[targetOrd].getTerm();
+    return termsAndVectors[targetOrd].term();
   }
 
   @Override
