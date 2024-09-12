@@ -256,7 +256,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         if (minScoreAcc != null) {
           // we don't use the next float but we register the document id so that other leaves or
           // leaf partitions can require it if they are after the current maximum
-          minScoreAcc.accumulate(docBase + pqTop.doc, pqTop.score);
+          minScoreAcc.accumulate(pqTop.doc, pqTop.score);
         }
       }
     }
