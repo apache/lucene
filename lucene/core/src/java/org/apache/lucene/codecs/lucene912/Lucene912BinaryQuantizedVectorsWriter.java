@@ -49,6 +49,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
@@ -175,11 +176,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         vectorClusters = kmeansResult.vectorCentroids();
       } else {
         clusterCenters = new float[1][field.dimensionSums.length];
-        for (int i = 0; i < field.dimensionSums.length; i++) {
-          clusterCenters[0][i] = field.dimensionSums[i] / vectorCount;
-        }
-        if (field.fieldInfo.getVectorSimilarityFunction() == COSINE) {
-          VectorUtil.l2normalize(clusterCenters[0]);
+        if (vectorCount > 0) {
+          for (int i = 0; i < field.dimensionSums.length; i++) {
+            clusterCenters[0][i] = field.dimensionSums[i] / vectorCount;
+          }
+          if (VectorSimilarityFunction.COSINE == field.fieldInfo.getVectorSimilarityFunction()) {
+            VectorUtil.l2normalize(clusterCenters[0]);
+          }
         }
       }
       if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
@@ -189,7 +192,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       int descritizedDimension = BQVectorUtils.discretize(field.fieldInfo.getVectorDimension(), 64);
       BinaryQuantizer quantizer =
-          new BinaryQuantizer(descritizedDimension, field.fieldInfo.getVectorSimilarityFunction());
+          new BinaryQuantizer(
+              field.fieldInfo.getVectorDimension(),
+              descritizedDimension,
+              field.fieldInfo.getVectorSimilarityFunction());
       if (sortMap == null) {
         writeField(field, clusterCenters, vectorClusters, maxDoc, quantizer);
       } else {
@@ -242,6 +248,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     assert clusterCenters.length > 0;
     assert clusterCenters.length == 1 || vectorClusters != null;
+    assert fieldData.fieldInfo.getVectorSimilarityFunction() != COSINE
+        || fieldData.magnitudes.size() == fieldData.getVectors().size();
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
     float[] copy =
@@ -255,7 +263,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] v = fieldData.getVectors().get(i);
       if (copy != null) {
         System.arraycopy(v, 0, copy, 0, v.length);
-        VectorUtil.l2normalize(copy);
+        float magnitude = fieldData.magnitudes.get(i);
+        for (int j = 0; j < v.length; j++) {
+          copy[j] /= magnitude;
+        }
         v = copy;
       }
       float[] clusterCenter =
@@ -321,6 +332,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     assert clusterCenters.length > 0;
     assert clusterCenters.length == 1 || vectorClusters != null;
+    assert fieldData.fieldInfo.getVectorSimilarityFunction() != COSINE
+        || fieldData.magnitudes.size() == fieldData.getVectors().size();
     byte[] vector =
         new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
     int correctionsCount = scalarQuantizer.getSimilarity() != EUCLIDEAN ? 3 : 2;
@@ -334,7 +347,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] v = fieldData.getVectors().get(ordinal);
       if (copy != null) {
         System.arraycopy(v, 0, copy, 0, v.length);
-        VectorUtil.l2normalize(copy);
+        final float magnitude = fieldData.magnitudes.get(ordinal);
+        for (int j = 0; j < v.length; j++) {
+          copy[j] /= magnitude;
+        }
         v = copy;
       }
       float[] clusterCenter =
@@ -432,9 +448,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       final float[][] centroids;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
-      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        VectorUtil.l2normalize(mergedCentroid);
-      }
       // If we have more vectors than allowed for a single cluster, we will use KMeans to cluster
       // we do an early check here to avoid the overhead of `mergeOneFieldToIndex` which might
       // not be as efficient as mergeOneField
@@ -483,7 +496,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         BinarizedFloatVectorValues binarizedVectorValues =
             new BinarizedFloatVectorValues(
                 floatVectorValues,
-                new BinaryQuantizer(descritizedDimension, fieldInfo.getVectorSimilarityFunction()),
+                new BinaryQuantizer(
+                    fieldInfo.getVectorDimension(),
+                    descritizedDimension,
+                    fieldInfo.getVectorSimilarityFunction()),
                 centroids);
         DirectWriter vectorOrdToCentroidWriter = null;
         long centroidMapOffset = -1;
@@ -697,7 +713,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     boolean success = false;
     int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
     BinaryQuantizer quantizer =
-        new BinaryQuantizer(descritizedDimension, fieldInfo.getVectorSimilarityFunction());
+        new BinaryQuantizer(
+            fieldInfo.getVectorDimension(),
+            descritizedDimension,
+            fieldInfo.getVectorSimilarityFunction());
     try {
       long centroidMapOffset = -1;
       long centroidMapLength = -1;
@@ -852,6 +871,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       float[][] centroids = getCentroids(knnVectorsReader, fieldInfo.name);
       int vectorCount = knnVectorsReader.getFloatVectorValues(fieldInfo.name).size();
+      if (vectorCount == 0) {
+        continue;
+      }
       totalVectorCount += vectorCount;
       // If there aren't centroids, or previously clustered with more than one cluster
       // or if there are deleted docs, we must recalculate the centroid
@@ -868,6 +890,9 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     } else {
       for (int j = 0; j < mergedCentroid.length; j++) {
         mergedCentroid[j] += mergedCentroid[j] / totalVectorCount;
+      }
+      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+        VectorUtil.l2normalize(mergedCentroid);
       }
       return totalVectorCount;
     }
@@ -945,6 +970,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private boolean finished;
     private final FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter;
     private final float[] dimensionSums;
+    private final FloatArrayList magnitudes = new FloatArrayList();
 
     FieldWriter(
         FieldInfo fieldInfo,
@@ -972,11 +998,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         return;
       }
       assert flatFieldVectorsWriter.isFinished();
-      if (flatFieldVectorsWriter.getVectors().size() > 0) {
-        for (int i = 0; i < dimensionSums.length; i++) {
-          dimensionSums[i] /= flatFieldVectorsWriter.getVectors().size();
-        }
-      }
       finished = true;
     }
 
@@ -988,8 +1009,17 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
       flatFieldVectorsWriter.addValue(docID, vectorValue);
-      for (int i = 0; i < vectorValue.length; i++) {
-        dimensionSums[i] += vectorValue[i];
+      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+        float dp = VectorUtil.dotProduct(vectorValue, vectorValue);
+        float divisor = (float) Math.sqrt(dp);
+        magnitudes.add(divisor);
+        for (int i = 0; i < vectorValue.length; i++) {
+          dimensionSums[i] += (vectorValue[i] / divisor);
+        }
+      } else {
+        for (int i = 0; i < vectorValue.length; i++) {
+          dimensionSums[i] += vectorValue[i];
+        }
       }
     }
 

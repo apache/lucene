@@ -98,7 +98,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           @Override
           public BinaryQuantizer getQuantizer() {
             int dimensions = 128;
-            return new BinaryQuantizer(dimensions, VectorSimilarityFunction.EUCLIDEAN);
+            return new BinaryQuantizer(dimensions, dimensions, VectorSimilarityFunction.EUCLIDEAN);
           }
 
           @Override
@@ -195,7 +195,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           @Override
           public BinaryQuantizer getQuantizer() {
             int dimensions = 128;
-            return new BinaryQuantizer(dimensions, VectorSimilarityFunction.EUCLIDEAN);
+            return new BinaryQuantizer(dimensions, dimensions, VectorSimilarityFunction.EUCLIDEAN);
           }
 
           @Override
@@ -330,7 +330,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           @Override
           public BinaryQuantizer getQuantizer() {
             int dimensions = 768;
-            return new BinaryQuantizer(dimensions, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+            return new BinaryQuantizer(
+                dimensions, dimensions, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
           }
 
           @Override

@@ -53,7 +53,6 @@ public class StoreScores {
 
   // FIXME: Temporary to help with debugging and iteration
   public static void main(String[] args) throws Exception {
-
     Path docsPath = Paths.get("/Users/benjamintrent/Projects/lucene-bench/data");
     Path indexPath = Paths.get("/Users/benjamintrent/Projects/lucene-bench/util/raw-scoring");
     Path fvecPath = Paths.get(docsPath.toString(), "glove-200-angular.train");

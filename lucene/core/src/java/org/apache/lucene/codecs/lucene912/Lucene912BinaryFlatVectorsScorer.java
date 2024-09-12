@@ -172,7 +172,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     private final RandomAccessBinarizedByteVectorValues targetVectors;
     private final VectorSimilarityFunction similarityFunction;
 
-    private final int discretizedDimensions;
     private final float sqrtDimensions;
 
     public BinarizedRandomVectorScorer(
@@ -184,9 +183,8 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       this.queryVectors = queryVectors;
       this.targetVectors = targetVectors;
       this.similarityFunction = similarityFunction;
-      this.discretizedDimensions = discretizedDimensions;
       // FIXME: precompute this once?
-      this.sqrtDimensions = (float) Utils.constSqrt(discretizedDimensions);
+      this.sqrtDimensions = (float) Utils.constSqrt(targetVectors.dimension());
     }
 
     // FIXME: utils class; pull this out
@@ -288,7 +286,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       // TODO maybe store?
       float xbSum = (float) BQVectorUtils.popcount(binaryCode);
       float factorPPC =
-          (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - discretizedDimensions));
+          (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - targetVectors.dimension()));
       float factorIP = (float) (-2.0 / sqrtDimensions * xX0);
 
       long qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);

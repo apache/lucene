@@ -30,14 +30,20 @@ public class BinaryQuantizer {
   private final VectorSimilarityFunction similarityFunction;
   private final float sqrtDimensions;
 
-  public BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction) {
+  public BinaryQuantizer(
+      int dimensions, int discretizedDimensions, VectorSimilarityFunction similarityFunction) {
     if (dimensions <= 0) {
       throw new IllegalArgumentException("dimensions must be > 0 but was: " + dimensions);
     }
-    assert dimensions % 64 == 0 : "dimensions must be a multiple of 64 but was: " + dimensions;
-    this.discretizedDimensions = dimensions;
+    assert discretizedDimensions % 64 == 0
+        : "discretizedDimensions must be a multiple of 64 but was: " + discretizedDimensions;
+    this.discretizedDimensions = discretizedDimensions;
     this.similarityFunction = similarityFunction;
-    this.sqrtDimensions = (float) Math.sqrt(discretizedDimensions);
+    this.sqrtDimensions = (float) Math.sqrt(dimensions);
+  }
+
+  BinaryQuantizer(int dimensions, VectorSimilarityFunction similarityFunction) {
+    this(dimensions, dimensions, similarityFunction);
   }
 
   private static void removeSignAndDivide(float[] a, float divisor) {
@@ -94,7 +100,7 @@ public class BinaryQuantizer {
 
     packAsBinary(paddedVector, quantizedVector);
 
-    removeSignAndDivide(paddedVector, (float) Math.sqrt(discretizedDimensions));
+    removeSignAndDivide(paddedVector, sqrtDimensions);
     float projection = sumAndNormalize(paddedVector, norm);
 
     return new SubspaceOutput(projection);
