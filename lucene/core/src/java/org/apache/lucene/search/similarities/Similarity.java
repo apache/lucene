@@ -17,6 +17,7 @@
 package org.apache.lucene.search.similarities;
 
 import java.util.Collections;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
@@ -46,7 +47,7 @@ import org.apache.lucene.util.SmallFloat;
  * is in this norm, but it is most useful for encoding length normalization information.
  *
  * <p>Implementations should carefully consider how the normalization is encoded: while Lucene's
- * {@link BM25Similarity} encodes length normalization information with {@link SmallFloat} into a
+ * default implementation encodes length normalization information with {@link SmallFloat} into a
  * single byte, this might not be suitable for all purposes.
  *
  * <p>Many formulas require the use of average document length, which can be computed via a
@@ -109,14 +110,29 @@ public abstract class Similarity {
     this(true);
   }
 
-  /** Primary constructor. */
+  /**
+   * Expert constructor that allows adjustment of {@link #getDiscountOverlaps()} at index-time.
+   *
+   * <p>Overlap tokens are tokens such as synonyms, that have a {@link PositionIncrementAttribute}
+   * of zero from the analysis chain.
+   *
+   * <p><b>NOTE</b>: If you modify this parameter, you'll need to re-index for it to take effect.
+   *
+   * @param discountOverlaps true if overlap tokens should not impact document length for scoring.
+   */
   protected Similarity(boolean discountOverlaps) {
     this.discountOverlaps = discountOverlaps;
   }
 
   /**
-   * Computes the normalization value for a field, given the accumulated state of term processing
-   * for this field (see {@link FieldInvertState}).
+   * Computes the normalization value for a field at index-time.
+   *
+   * <p>The default implementation uses {@link SmallFloat#intToByte4} to encode the number of terms
+   * as a single byte.
+   *
+   * <p><b>WARNING</b>: The default implementation is used by Lucene's supplied Similarity classes,
+   * which means you can change the Similarity at runtime without reindexing. If you override this
+   * method, you'll need to re-index documents for it to take effect.
    *
    * <p>Matches in longer fields are less precise, so implementations of this method usually set
    * smaller values when <code>state.getLength()</code> is large, and larger values when <code>
@@ -130,7 +146,7 @@ public abstract class Similarity {
    * <p>{@code 0} is not a legal norm, so {@code 1} is the norm that produces the highest scores.
    *
    * @lucene.experimental
-   * @param state current processing state for this field
+   * @param state accumulated state of term processing for this field
    * @return computed norm value
    */
   public long computeNorm(FieldInvertState state) {
