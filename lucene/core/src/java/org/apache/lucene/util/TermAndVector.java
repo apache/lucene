@@ -24,37 +24,24 @@ import java.util.Locale;
  *
  * @lucene.experimental
  */
-public class TermAndVector {
-
-  private final BytesRef term;
-  private final float[] vector;
-
-  public TermAndVector(BytesRef term, float[] vector) {
-    this.term = term;
-    this.vector = vector;
-  }
-
-  public BytesRef getTerm() {
-    return this.term;
-  }
-
-  public float[] getVector() {
-    return this.vector;
-  }
+public record TermAndVector(BytesRef term, float[] vector) {
 
   public int size() {
     return vector.length;
   }
 
-  public void normalizeVector() {
+  /** Return a {@link TermAndVector} whose vector is normalized according to the L2 norm. */
+  public TermAndVector normalizeVector() {
     float vectorLength = 0;
     for (int i = 0; i < vector.length; i++) {
       vectorLength += vector[i] * vector[i];
     }
     vectorLength = (float) Math.sqrt(vectorLength);
+    float[] newVector = new float[vector.length];
     for (int i = 0; i < vector.length; i++) {
-      vector[i] /= vectorLength;
+      newVector[i] = vector[i] / vectorLength;
     }
+    return new TermAndVector(term, newVector);
   }
 
   @Override
