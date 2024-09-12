@@ -339,7 +339,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       int nbr = candidates.nodes()[i];
       if (hnswLock != null) {
         try (HnswLock.LockedRow rowLock = hnswLock.write(level, nbr)) {
-          NeighborArray nbrsOfNbr = rowLock.row;
+          NeighborArray nbrsOfNbr = rowLock.row();
           nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
         }
       } else {
