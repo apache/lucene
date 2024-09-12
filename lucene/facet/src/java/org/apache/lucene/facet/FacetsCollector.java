@@ -84,7 +84,7 @@ public class FacetsCollector extends SimpleCollector {
     if (keepScores) {
       if (doc >= scores.length) {
         float[] newScores = new float[ArrayUtil.oversize(doc + 1, 4)];
-        System.arraycopy(scores, 0, newScores, 0, doc);
+        System.arraycopy(scores, 0, newScores, 0, scores.length);
         scores = newScores;
       }
       scores[doc] = scorer.score();
