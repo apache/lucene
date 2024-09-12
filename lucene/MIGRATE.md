@@ -194,6 +194,7 @@ access the members using method calls instead of field accesses. Affected classe
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 - `BooleanClause` (GITHUB#13261)
 - `TotalHits` (GITHUB#13762)
+- `TermAndVector` (GITHUB#13772)
 - Many basic Lucene classes, including `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
 ### Boolean flags on IOContext replaced with a new ReadAdvice enum.
