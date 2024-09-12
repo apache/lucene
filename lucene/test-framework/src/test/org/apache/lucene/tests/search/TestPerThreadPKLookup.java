@@ -87,7 +87,8 @@ public class TestPerThreadPKLookup extends LuceneTestCase {
     assertEquals(1, pkLookup1.lookup(newBytesRef("2")));
     assertEquals(-1, pkLookup1.lookup(newBytesRef("5")));
     assertEquals(-1, pkLookup1.lookup(newBytesRef("8")));
-    PerThreadPKLookup pkLookup2 = pkLookup1.reopen();
+    DirectoryReader reader2 = DirectoryReader.openIfChanged(reader1);
+    PerThreadPKLookup pkLookup2 = pkLookup1.reopen(reader2);
 
     assertEquals(-1, pkLookup2.lookup(newBytesRef("1")));
     assertEquals(1, pkLookup2.lookup(newBytesRef("2")));
@@ -104,16 +105,17 @@ public class TestPerThreadPKLookup extends LuceneTestCase {
     writer.flush();
 
     assertEquals(-1, pkLookup2.lookup(newBytesRef("9")));
-    PerThreadPKLookup pkLookup3 = pkLookup2.reopen();
+    DirectoryReader reader3 = DirectoryReader.openIfChanged(reader2);
+    PerThreadPKLookup pkLookup3 = pkLookup2.reopen(reader3);
     assertEquals(8, pkLookup3.lookup(newBytesRef("9")));
 
-    assertNull(pkLookup3.reopen());
+    DirectoryReader reader4 = DirectoryReader.openIfChanged(reader3);
+    assertNull(pkLookup3.reopen(reader4));
 
     writer.close();
     reader1.close();
-    pkLookup1.closeReader();
-    pkLookup2.closeReader();
-    pkLookup3.closeReader();
+    reader2.close();
+    reader3.close();
     dir.close();
   }
 
