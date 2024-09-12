@@ -103,9 +103,9 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
 
   public void testNoPQBuild() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(2000);
+    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(250_000);
     TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(2000, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(reader.numDocs(), Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
     TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
@@ -133,9 +133,9 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
 
   public void testNoPQHitsOrder() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(2000);
+    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(250_000);
     TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(2000, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(reader.numDocs(), Integer.MAX_VALUE);
 
     searcher.search(testQuery, largeCollector);
     TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
