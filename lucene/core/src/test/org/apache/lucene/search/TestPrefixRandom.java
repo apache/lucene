@@ -43,6 +43,7 @@ public class TestPrefixRandom extends LuceneTestCase {
   private IndexSearcher searcher;
   private IndexReader reader;
   private Directory dir;
+  private int numDocs;
 
   @Override
   public void setUp() throws Exception {
@@ -59,8 +60,8 @@ public class TestPrefixRandom extends LuceneTestCase {
     Field field = newStringField("field", "", Field.Store.NO);
     doc.add(field);
 
-    int num = atLeast(1000);
-    for (int i = 0; i < num; i++) {
+    numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
       field.setStringValue(TestUtil.randomUnicodeString(random(), 10));
       writer.addDocument(doc);
     }
@@ -134,8 +135,8 @@ public class TestPrefixRandom extends LuceneTestCase {
     PrefixQuery smart = new PrefixQuery(new Term("field", prefix));
     DumbPrefixQuery dumb = new DumbPrefixQuery(new Term("field", prefix));
 
-    TopDocs smartDocs = searcher.search(smart, 25);
-    TopDocs dumbDocs = searcher.search(dumb, 25);
+    TopDocs smartDocs = searcher.search(smart, numDocs);
+    TopDocs dumbDocs = searcher.search(dumb, numDocs);
     CheckHits.checkEqual(smart, smartDocs.scoreDocs, dumbDocs.scoreDocs);
   }
 }
