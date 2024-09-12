@@ -25,7 +25,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Provide (read-and-write) locked access to rows of an OnHeapHnswGraph. For use by
  * HnswConcurrentMerger and its HnswGraphBuilders.
  */
-class HnswLock {
+final class HnswLock {
   private static final int NUM_LOCKS = 512;
   private final ReentrantReadWriteLock[] locks;
   private final OnHeapHnswGraph graph;
@@ -52,15 +52,7 @@ class HnswLock {
     return new LockedRow(graph.getNeighbors(level, node), lock);
   }
 
-  static class LockedRow implements Closeable {
-    final Lock lock;
-    final NeighborArray row;
-
-    LockedRow(NeighborArray row, Lock lock) {
-      this.lock = lock;
-      this.row = row;
-    }
-
+  record LockedRow(NeighborArray row, Lock lock) implements Closeable {
     @Override
     public void close() {
       lock.unlock();
