@@ -108,7 +108,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
-    private static class SortingFloatVectorValues extends FloatVectorValues {
+  private static class SortingFloatVectorValues extends FloatVectorValues {
     private final BufferedFloatVectorValues delegate;
     private final DocIndexIterator iterator;
 

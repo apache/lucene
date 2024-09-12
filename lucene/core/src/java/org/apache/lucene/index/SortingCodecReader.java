@@ -212,6 +212,7 @@ public final class SortingCodecReader extends FilterCodecReader {
    * index() may skip around, not increasing monotonically as iteration proceeds.
    */
   public static class SortingValuesIterator extends KnnVectorValues.DocIndexIterator {
+    private final FixedBitSet docBits;
     private final DocIdSetIterator docsWithValues;
     private final int[] docToOrd;
     private final int size;
@@ -222,8 +223,10 @@ public final class SortingCodecReader extends FilterCodecReader {
     public SortingValuesIterator(KnnVectorValues.DocIndexIterator iter, Sorter.DocMap docMap)
         throws IOException {
       docToOrd = new int[docMap.size()];
-      FixedBitSet docBits = new FixedBitSet(docMap.size());
+      docBits = new FixedBitSet(docMap.size());
       int count = 0;
+      // Note: docToOrd will contain zero for docids that have no vector. This is OK though
+      // because the iterator cannot be positioned on such docs
       for (int doc = iter.nextDoc(); doc != NO_MORE_DOCS; doc = iter.nextDoc()) {
         int newDocId = docMap.oldToNew(doc);
         if (newDocId != -1) {
@@ -243,6 +246,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public int index() {
+      assert docBits.get(doc);
       return docToOrd[doc];
     }
 
@@ -266,12 +270,15 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
+      // SortingValuesIterator consumes the iterator and records the docs and ord mapping
       iterator = new SortingValuesIterator(delegate.iterator(), sortMap);
     }
 
     @Override
     public float[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(iterator.index());
+      // ords are interpreted in the delegate's ord-space.
+      assert ord == iterator.index();
+      return delegate.vectorValue(ord);
     }
 
     @Override
@@ -300,12 +307,14 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
+      // SortingValuesIterator consumes the iterator and records the docs and ord mapping
       iterator = new SortingValuesIterator(delegate.iterator(), sortMap);
     }
 
     @Override
     public byte[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(iterator().index());
+      assert ord == iterator.index();
+      return delegate.vectorValue(ord);
     }
 
     @Override

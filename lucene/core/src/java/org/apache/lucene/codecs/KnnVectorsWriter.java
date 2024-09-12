@@ -338,6 +338,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public float[] vectorValue(int ord) throws IOException {
+        assert ord == iterator.index();
         return current.values.vectorValue(current.values.iterator().index());
       }
 

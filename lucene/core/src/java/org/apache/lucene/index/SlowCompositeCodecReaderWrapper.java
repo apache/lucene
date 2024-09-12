@@ -291,7 +291,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
   }
 
-  private record DocValuesSub<T extends KnnVectorValues>(T sub, int docStart) {}
+  private record DocValuesSub<T extends KnnVectorValues>(T sub, int docStart, int ordStart) {}
 
   private static class MergedDocIterator<T extends KnnVectorValues>
       extends KnnVectorValues.DocIndexIterator {
@@ -301,7 +301,6 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     DocValuesSub<T> current;
     int ord = -1;
     int doc = -1;
-    int currentOrdBase = 0;
 
     MergedDocIterator(List<DocValuesSub<T>> subs) {
       long cost = 0;
@@ -336,10 +335,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           }
         }
         if (it.hasNext() == false) {
+          ord = NO_MORE_DOCS;
           return doc = NO_MORE_DOCS;
         }
         current = it.next();
-        currentOrdBase = ord;
+        ord = current.ordStart - 1;
       }
     }
 
@@ -817,41 +817,65 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       int size = 0;
       for (CodecReader reader : codecReaders) {
         FloatVectorValues values = reader.getFloatVectorValues(field);
+        subs.add(new DocValuesSub<>(values, docStarts[i], size));
         if (values != null) {
           if (dimension == -1) {
             dimension = values.dimension();
           }
           size += values.size();
         }
-        subs.add(new DocValuesSub<>(values, docStarts[i]));
         i++;
       }
-      final int finalDimension = dimension;
-      final int finalSize = size;
-      return new FloatVectorValues() {
+      return new MergedFloatVectorValues(dimension, size, subs);
+    }
 
-        final MergedDocIterator<FloatVectorValues> iter = new MergedDocIterator<>(subs);
+    class MergedFloatVectorValues extends FloatVectorValues {
+      final int dimension;
+      final int size;
+      final DocValuesSub<?>[] subs;
+      final MergedDocIterator<FloatVectorValues> iter;
+      final int[] starts;
+      int lastSubIndex;
 
-        @Override
-        public MergedDocIterator<FloatVectorValues> iterator() {
-          return iter;
+      MergedFloatVectorValues(int dimension, int size, List<DocValuesSub<FloatVectorValues>> subs) {
+        this.dimension = dimension;
+        this.size = size;
+        this.subs = subs.toArray(new DocValuesSub<?>[0]);
+        iter = new MergedDocIterator<>(subs);
+        // [0, start(1), ..., size] - we want the extra element
+        // to avoid checking for out-of-array bounds
+        starts = new int[subs.size() + 1];
+        for (int i = 0; i < subs.size(); i++) {
+          starts[i] = subs.get(i).ordStart;
         }
+        starts[starts.length - 1] = size;
+      }
 
-        @Override
-        public int dimension() {
-          return finalDimension;
-        }
+      @Override
+      public MergedDocIterator<FloatVectorValues> iterator() {
+        return iter;
+      }
 
-        @Override
-        public int size() {
-          return finalSize;
-        }
+      @Override
+      public int dimension() {
+        return dimension;
+      }
 
-        @Override
-        public float[] vectorValue(int ord) throws IOException {
-          return iter.current.sub.vectorValue(ord - iter.currentOrdBase);
-        }
-      };
+      @Override
+      public int size() {
+        return size;
+      }
+
+      @Override
+      public float[] vectorValue(int ord) throws IOException {
+        assert ord >= 0 && ord < size;
+        // We need to implement fully random-access API here in order to support callers like
+        // SortingCodecReader that
+        // rely on it.
+        lastSubIndex = findSub(ord, lastSubIndex, starts);
+        return ((FloatVectorValues) subs[lastSubIndex].sub)
+            .vectorValue(ord - subs[lastSubIndex].ordStart);
+      }
     }
 
     @Override
@@ -862,46 +886,86 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       int size = 0;
       for (CodecReader reader : codecReaders) {
         ByteVectorValues values = reader.getByteVectorValues(field);
+        subs.add(new DocValuesSub<>(values, docStarts[i], size));
         if (values != null) {
           if (dimension == -1) {
             dimension = values.dimension();
           }
           size += values.size();
         }
-        subs.add(new DocValuesSub<>(values, docStarts[i]));
         i++;
       }
-      final int finalDimension = dimension;
-      final int finalSize = size;
-      return new ByteVectorValues() {
+      return new MergedByteVectorValues(dimension, size, subs);
+    }
 
-        final MergedDocIterator<ByteVectorValues> iter = new MergedDocIterator<>(subs);
+    class MergedByteVectorValues extends ByteVectorValues {
+      final int dimension;
+      final int size;
+      final DocValuesSub<?>[] subs;
+      final MergedDocIterator<ByteVectorValues> iter;
+      final int[] starts;
+      int lastSubIndex;
 
-        @Override
-        public MergedDocIterator<ByteVectorValues> iterator() {
-          return iter;
+      MergedByteVectorValues(int dimension, int size, List<DocValuesSub<ByteVectorValues>> subs) {
+        this.dimension = dimension;
+        this.size = size;
+        this.subs = subs.toArray(new DocValuesSub<?>[0]);
+        iter = new MergedDocIterator<>(subs);
+        // [0, start(1), ..., size] - we want the extra element
+        // to avoid checking for out-of-array bounds
+        starts = new int[subs.size() + 1];
+        for (int i = 0; i < subs.size(); i++) {
+          starts[i] = subs.get(i).ordStart;
         }
+        starts[starts.length - 1] = size;
+      }
 
-        @Override
-        public int dimension() {
-          return finalDimension;
-        }
+      @Override
+      public MergedDocIterator<ByteVectorValues> iterator() {
+        return iter;
+      }
 
-        @Override
-        public int size() {
-          return finalSize;
-        }
+      @Override
+      public int dimension() {
+        return dimension;
+      }
 
-        @Override
-        public byte[] vectorValue(int ord) throws IOException {
-          return iter.current.sub.vectorValue(ord - iter.currentOrdBase);
-        }
+      @Override
+      public int size() {
+        return size;
+      }
 
-        @Override
-        protected DocIndexIterator createIterator() {
-          return new MergedDocIterator<ByteVectorValues>(subs);
+      @Override
+      public byte[] vectorValue(int ord) throws IOException {
+        assert ord >= 0 && ord < size;
+        // We need to implement fully random-access API here in order to support callers like
+        // SortingCodecReader that rely on it.  We maintain lastSubIndex since we expect some
+        // repetition.
+        lastSubIndex = findSub(ord, lastSubIndex, starts);
+        return ((ByteVectorValues) subs[lastSubIndex].sub)
+            .vectorValue(ord - subs[lastSubIndex].ordStart);
+      }
+    }
+
+    private static int findSub(int ord, int lastSubIndex, int[] starts) {
+      if (ord >= starts[lastSubIndex]) {
+        if (ord >= starts[lastSubIndex + 1]) {
+          return binarySearchStarts(starts, ord, lastSubIndex + 1, starts.length);
         }
-      };
+      } else {
+        return binarySearchStarts(starts, ord, 0, lastSubIndex);
+      }
+      return lastSubIndex;
+    }
+
+    private static int binarySearchStarts(int[] starts, int ord, int from, int to) {
+      int pos = Arrays.binarySearch(starts, from, to, ord);
+      // also subtract one since starts[] is shifted by one
+      if (pos < 0) {
+        return -2 - pos;
+      } else {
+        return pos - 1;
+      }
     }
 
     @Override
