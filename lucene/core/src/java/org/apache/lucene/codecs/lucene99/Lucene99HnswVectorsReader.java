@@ -244,27 +244,43 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return flatVectorsReader.getByteVectorValues(field);
   }
 
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry ;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    if (fieldEntry.vectorEncoding != expectedEncoding) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + expectedEncoding);
+    }
+    return fieldEntry;
+  }
+
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     search(
-        fields.get(info.number),
+        fieldEntry,
         knnCollector,
         acceptDocs,
-        VectorEncoding.FLOAT32,
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     search(
-        fields.get(info.number),
+        fieldEntry,
         knnCollector,
         acceptDocs,
-        VectorEncoding.BYTE,
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
@@ -272,13 +288,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       FieldEntry fieldEntry,
       KnnCollector knnCollector,
       Bits acceptDocs,
-      VectorEncoding vectorEncoding,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
 
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != vectorEncoding) {
+    if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
@@ -304,12 +317,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    FieldEntry entry = fields.get(info.number);
-    if (entry != null && entry.vectorIndexLength > 0) {
+    if (entry.vectorIndexLength > 0) {
       return getGraph(entry);
     } else {
       return HnswGraph.EMPTY;

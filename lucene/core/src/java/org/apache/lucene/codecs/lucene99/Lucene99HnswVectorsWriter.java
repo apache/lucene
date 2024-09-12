@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
@@ -353,8 +354,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                     : new TaskExecutor(mergeState.intraMergeTaskExecutor),
                 numMergeWorkers);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
-          merger.addReader(
-              mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+          if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
+            merger.addReader(
+                mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+          }
         }
         DocIdSetIterator mergedVectorIterator = null;
         switch (fieldInfo.getVectorEncoding()) {

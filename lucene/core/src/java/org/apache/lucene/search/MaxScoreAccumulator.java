@@ -84,18 +84,5 @@ final class MaxScoreAccumulator {
       }
       return cmp;
     }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      DocAndScore result = (DocAndScore) o;
-      return docBase == result.docBase && Float.compare(result.score, score) == 0;
-    }
-
-    @Override
-    public String toString() {
-      return "DocAndScore{" + "docBase=" + docBase + ", score=" + score + '}';
-    }
   }
 }

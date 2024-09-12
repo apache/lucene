@@ -440,7 +440,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       leafCollector.collect(1);
 
       TopDocs topDocs = collector.topDocs();
-      assertEquals(4, topDocs.totalHits.value);
+      assertEquals(4, topDocs.totalHits.value());
       assertEquals(totalHitsThreshold < 4, scorer.minCompetitiveScore != null);
       assertEquals(
           new TotalHits(
@@ -470,18 +470,18 @@ public class TestTopDocsCollector extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 10);
         TopDocs topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertEquals(10, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(10, topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
 
         collectorManager = new TopScoreDocCollectorManager(2, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertTrue(10 >= topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+        assertTrue(10 >= topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
         collectorManager = new TopScoreDocCollectorManager(10, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertEquals(10, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(10, topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
       }
     }
   }
@@ -589,7 +589,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
     assertEquals(Math.nextUp(11f), scorer3.minCompetitiveScore, 0f);
 
     TopDocs topDocs = manager.reduce(Arrays.asList(collector, collector2, collector3));
-    assertEquals(11, topDocs.totalHits.value);
+    assertEquals(11, topDocs.totalHits.value());
     assertEquals(new TotalHits(11, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), topDocs.totalHits);
 
     leafCollector.setScorer(scorer);
@@ -636,8 +636,8 @@ public class TestTopDocsCollector extends LuceneTestCase {
       TopDocs tdc = doConcurrentSearchWithThreshold(5, 0, query, indexReader);
       TopDocs tdc2 = doSearchWithThreshold(5, 0, query, indexReader);
 
-      assertTrue(tdc.totalHits.value > 0);
-      assertTrue(tdc2.totalHits.value > 0);
+      assertTrue(tdc.totalHits.value() > 0);
+      assertTrue(tdc2.totalHits.value() > 0);
       CheckHits.checkEqual(query, tdc.scoreDocs, tdc2.scoreDocs);
     }
 

@@ -262,7 +262,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
-      KnnVectorsReader reader;
+      final KnnVectorsReader reader;
       if (info == null || (reader = fields.get(info.number)) == null) {
         return null;
       }
@@ -272,7 +272,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
-      KnnVectorsReader reader;
+      final KnnVectorsReader reader;
       if (info == null || (reader = fields.get(info.number)) == null) {
         return null;
       }
@@ -283,7 +283,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
-      KnnVectorsReader reader;
+      final KnnVectorsReader reader;
       if (info == null || (reader = fields.get(info.number)) == null) {
         return;
       }
@@ -294,7 +294,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
-      KnnVectorsReader reader;
+      final KnnVectorsReader reader;
       if (info == null || (reader = fields.get(info.number)) == null) {
         return;
       }

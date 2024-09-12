@@ -201,8 +201,8 @@ public class TopGroups<T> {
         }
 
         maxScore = nonNANmax(maxScore, shardGroupDocs.maxScore());
-        assert shardGroupDocs.totalHits().relation == Relation.EQUAL_TO;
-        totalHits += shardGroupDocs.totalHits().value;
+        assert shardGroupDocs.totalHits().relation() == Relation.EQUAL_TO;
+        totalHits += shardGroupDocs.totalHits().value();
         scoreSum += shardGroupDocs.score();
       }
 

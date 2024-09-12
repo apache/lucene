@@ -170,19 +170,27 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     CodecUtil.checksumEntireFile(vectorData);
   }
 
-  @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry = fields.get(info.number);
-    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+    final FieldEntry fieldEntry ;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    if (fieldEntry.vectorEncoding != expectedEncoding) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
               + fieldEntry.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32);
+              + expectedEncoding);
     }
+    return fieldEntry;
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -196,17 +204,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
-    final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry = fields.get(info.number);
-    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + field
-              + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
-              + " expected: "
-              + VectorEncoding.BYTE);
-    }
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     return OffHeapByteVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -220,13 +218,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
-    final FieldInfo info = fieldInfos.fieldInfo(field);
-    FieldEntry fieldEntry;
-    if (info == null
-        || (fieldEntry = fields.get(info.number)) == null
-        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return null;
-    }
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapFloatVectorValues.load(
@@ -243,13 +235,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
-    final FieldInfo info = fieldInfos.fieldInfo(field);
-    FieldEntry fieldEntry;
-    if (info == null
-        || (fieldEntry = fields.get(info.number)) == null
-        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      return null;
-    }
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapByteVectorValues.load(

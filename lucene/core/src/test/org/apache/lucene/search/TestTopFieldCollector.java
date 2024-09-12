@@ -386,7 +386,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
       TopDocsCollector<Entry> tdc =
           new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE, false).newCollector();
       TopDocs td = tdc.topDocs();
-      assertEquals(0, td.totalHits.value);
+      assertEquals(0, td.totalHits.value());
     }
   }
 
@@ -647,7 +647,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     assertEquals(11f, scorer3.minCompetitiveScore, 0f);
 
     TopFieldDocs topDocs = manager.reduce(Arrays.asList(collector, collector2, collector3));
-    assertEquals(11, topDocs.totalHits.value);
+    assertEquals(11, topDocs.totalHits.value());
     assertEquals(new TotalHits(11, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), topDocs.totalHits);
 
     leafCollector.setScorer(scorer);
@@ -695,8 +695,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
       TopDocs tdc = doConcurrentSearchWithThreshold(5, 0, query, sort, indexReader);
       TopDocs tdc2 = doSearchWithThreshold(5, 0, query, sort, indexReader);
 
-      assertTrue(tdc.totalHits.value > 0);
-      assertTrue(tdc2.totalHits.value > 0);
+      assertTrue(tdc.totalHits.value() > 0);
+      assertTrue(tdc2.totalHits.value() > 0);
       CheckHits.checkEqual(query, tdc.scoreDocs, tdc2.scoreDocs);
     }
 
@@ -721,18 +721,18 @@ public class TestTopFieldCollector extends LuceneTestCase {
         TopFieldCollectorManager collectorManager =
             new TopFieldCollectorManager(sort, 2, null, 10, true);
         TopDocs topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertEquals(10, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(10, topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
 
         collectorManager = new TopFieldCollectorManager(sort, 2, null, 2, true);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertTrue(10 >= topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+        assertTrue(10 >= topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
         collectorManager = new TopFieldCollectorManager(sort, 10, null, 2, true);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertEquals(10, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(10, topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
       }
     }
   }

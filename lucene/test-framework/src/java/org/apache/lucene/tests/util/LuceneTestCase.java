@@ -94,6 +94,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -943,10 +944,10 @@ public abstract class LuceneTestCase extends Assert {
     } else if (rarely(r)) {
       ConcurrentMergeScheduler cms;
       if (r.nextBoolean()) {
-        cms = new ConcurrentMergeScheduler();
+        cms = new TestConcurrentMergeScheduler();
       } else {
         cms =
-            new ConcurrentMergeScheduler() {
+            new TestConcurrentMergeScheduler() {
               @Override
               protected synchronized boolean maybeStall(MergeSource mergeSource) {
                 return true;
@@ -965,7 +966,8 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       // Always use consistent settings, else CMS's dynamic (SSD or not)
       // defaults can change, hurting reproducibility:
-      ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
+      ConcurrentMergeScheduler cms =
+          randomBoolean() ? new TestConcurrentMergeScheduler() : new ConcurrentMergeScheduler();
 
       // Only 1 thread can run at once (should maybe help reproducibility),
       // with up to 3 pending merges before segment-producing threads are
@@ -3291,5 +3293,18 @@ public abstract class LuceneTestCase extends Assert {
             .filter(format -> supportsVectorSearch(format))
             .toList();
     return RandomPicks.randomFrom(random(), availableFormats);
+  }
+
+  /**
+   * This is a test merge scheduler that will always use the intra merge executor to ensure we test
+   * it.
+   */
+  static class TestConcurrentMergeScheduler extends ConcurrentMergeScheduler {
+    @Override
+    public Executor getIntraMergeExecutor(MergePolicy.OneMerge merge) {
+      assert intraMergeExecutor != null : "scaledExecutor is not initialized";
+      // Always do the intra merge executor to ensure we test it
+      return intraMergeExecutor;
+    }
   }
 }
