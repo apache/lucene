@@ -107,6 +107,7 @@ public class DFRSimilarity extends SimilarityBase {
    * @param afterEffect First normalization of information gain
    * @param normalization Second (length) normalization
    * @param discountOverlaps True if overlap tokens (tokens with a position of increment of zero)
+   *     are discounted from the document's length.
    */
   public DFRSimilarity(
       BasicModel basicModel,
