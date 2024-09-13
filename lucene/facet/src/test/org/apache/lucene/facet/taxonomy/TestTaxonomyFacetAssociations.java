@@ -654,7 +654,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
       assertEquals(expectedResult.dim, actualResult.dim);
       assertArrayEquals(expectedResult.path, actualResult.path);
-      assertTrue(floatEquals((float) expectedResult.value, (float) actualResult.value, (short) 2));
+      assertFloatUlpEquals((float) expectedResult.value, (float) actualResult.value, (short) 2);
       assertEquals(expectedResult.childCount, actualResult.childCount);
     }
   }

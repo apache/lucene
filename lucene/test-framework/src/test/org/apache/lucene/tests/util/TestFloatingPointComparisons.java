@@ -16,20 +16,23 @@
  */
 package org.apache.lucene.tests.util;
 
+import static org.apache.lucene.tests.util.TestUtil.doubleUlpEquals;
+import static org.apache.lucene.tests.util.TestUtil.floatUlpEquals;
+
 public class TestFloatingPointComparisons extends LuceneTestCase {
   public void test() {
     // Test adjacent numbers
-    assertFalse(doubleEquals(Double.longBitsToDouble(1L), Double.longBitsToDouble(2L), 0));
-    assertTrue(doubleEquals(Double.longBitsToDouble(1L), Double.longBitsToDouble(2L), 1));
-    assertFalse(floatEquals(Float.intBitsToFloat(1), Float.intBitsToFloat(2), (short) 0));
-    assertTrue(floatEquals(Float.intBitsToFloat(1), Float.intBitsToFloat(2), (short) 1));
+    assertFalse(doubleUlpEquals(Double.longBitsToDouble(1L), Double.longBitsToDouble(2L), 0));
+    assertTrue(doubleUlpEquals(Double.longBitsToDouble(1L), Double.longBitsToDouble(2L), 1));
+    assertFalse(floatUlpEquals(Float.intBitsToFloat(1), Float.intBitsToFloat(2), (short) 0));
+    assertTrue(floatUlpEquals(Float.intBitsToFloat(1), Float.intBitsToFloat(2), (short) 1));
 
     // Test signed zeros
-    assertTrue(doubleEquals(0.0d, -0.0d, 0));
-    assertTrue(floatEquals(0.0f, -0.0f, (short) 0));
+    assertTrue(doubleUlpEquals(0.0d, -0.0d, 0));
+    assertTrue(floatUlpEquals(0.0f, -0.0f, (short) 0));
 
     // Test NaNs
-    assertFalse(doubleEquals(Double.NaN, Double.NaN, Integer.MAX_VALUE));
-    assertFalse(floatEquals(Float.NaN, Float.NaN, (short) 32767));
+    assertFalse(doubleUlpEquals(Double.NaN, Double.NaN, Integer.MAX_VALUE));
+    assertFalse(floatUlpEquals(Float.NaN, Float.NaN, (short) 32767));
   }
 }
