@@ -107,7 +107,7 @@ public class ConfusionMatrixGenerator {
               time += end - start;
 
               if (result != null) {
-                T assignedClass = result.getAssignedClass();
+                T assignedClass = result.assignedClass();
                 if (assignedClass != null) {
                   counter++;
                   String classified =

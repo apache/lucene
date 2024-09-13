@@ -50,7 +50,6 @@ import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
 import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 import org.apache.lucene.sandbox.facet.labels.RangeOrdToLabel;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
-import org.apache.lucene.search.CollectorOwner;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
@@ -494,7 +493,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     final IndexReader r = w.getReader();
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -538,9 +537,9 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     ////// First search, no drill-downs:
     DrillDownQuery ddq = new DrillDownQuery(config);
-    ds.search(ddq, new CollectorOwner<>(collectorManager), List.of());
+    ds.search(ddq, collectorManager, List.of());
 
-    // assertEquals(100, dsr.hits.totalHits.value);
+    // assertEquals(100, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=-2147483648 childCount=2\n  b (75)\n  a (25)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
@@ -556,12 +555,9 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     dimCollectorManager = new FacetFieldCollectorManager<>(dimCutter, dimCountRecorder);
     ddq = new DrillDownQuery(config);
     ddq.add("dim", "b");
-    ds.search(
-        ddq,
-        new CollectorOwner<>(fieldCollectorManager),
-        List.of(new CollectorOwner<>(dimCollectorManager)));
+    ds.search(ddq, fieldCollectorManager, List.of(dimCollectorManager));
 
-    // assertEquals(75, dsr.hits.totalHits.value);
+    // assertEquals(75, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=-2147483648 childCount=2\n  b (75)\n  a (25)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
@@ -577,12 +573,9 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     dimCollectorManager = new FacetFieldCollectorManager<>(dimCutter, dimCountRecorder);
     ddq = new DrillDownQuery(config);
     ddq.add("field", LongPoint.newRangeQuery("field", 0L, 10L));
-    ds.search(
-        ddq,
-        new CollectorOwner<>(dimCollectorManager),
-        List.of(new CollectorOwner<>(fieldCollectorManager)));
+    ds.search(ddq, dimCollectorManager, List.of(fieldCollectorManager));
 
-    // assertEquals(11, dsr.hits.totalHits.value);
+    // assertEquals(11, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=-2147483648 childCount=2\n  b (8)\n  a (3)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
@@ -1562,7 +1555,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     IndexReader r = writer.getReader();
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -1616,7 +1609,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     }
 
     // Test simple drill-down:
-    assertEquals(1, s.search(ddq, 10).totalHits.value);
+    assertEquals(1, s.search(ddq, 10).totalHits.value());
 
     // Test drill-sideways after drill-down
     DrillSideways ds =
@@ -1629,14 +1622,12 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     countRecorder = new CountFacetRecorder();
 
-    CollectorOwner<DummyTotalHitCountCollector, Integer> totalHitsCollectorOwner =
-        new CollectorOwner<>(DummyTotalHitCountCollector.createManager());
-    CollectorOwner<FacetFieldCollector, CountFacetRecorder> drillSidewaysCollectorOwner =
-        new CollectorOwner<>(
-            new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder));
-    ds.search(ddq, totalHitsCollectorOwner, List.of(drillSidewaysCollectorOwner));
-    assertEquals(1, totalHitsCollectorOwner.getResult().intValue());
-    drillSidewaysCollectorOwner.getResult();
+    DrillSideways.Result<Integer, CountFacetRecorder> result =
+        ds.search(
+            ddq,
+            DummyTotalHitCountCollector.createManager(),
+            List.of(new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder)));
+    assertEquals(1, result.drillDownResult().intValue());
     assertEquals(
         "dim=field path=[] value=-2147483648 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
         getAllSortByOrd(getRangeOrdinals(ranges), countRecorder, "field", ordToLabel).toString());

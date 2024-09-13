@@ -17,7 +17,6 @@
 
 package org.apache.lucene.search;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.LongAccumulator;
 
 /** Maintains the maximum score and its corresponding document id concurrently */
@@ -68,14 +67,7 @@ final class MaxScoreAccumulator {
     return new DocAndScore(docBase, score);
   }
 
-  static class DocAndScore implements Comparable<DocAndScore> {
-    final int docBase;
-    final float score;
-
-    DocAndScore(int docBase, float score) {
-      this.docBase = docBase;
-      this.score = score;
-    }
+  record DocAndScore(int docBase, float score) implements Comparable<DocAndScore> {
 
     @Override
     public int compareTo(DocAndScore o) {
@@ -91,24 +83,6 @@ final class MaxScoreAccumulator {
         return Integer.compare(o.docBase, docBase);
       }
       return cmp;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      DocAndScore result = (DocAndScore) o;
-      return docBase == result.docBase && Float.compare(result.score, score) == 0;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(docBase, score);
-    }
-
-    @Override
-    public String toString() {
-      return "DocAndScore{" + "docBase=" + docBase + ", score=" + score + '}';
     }
   }
 }

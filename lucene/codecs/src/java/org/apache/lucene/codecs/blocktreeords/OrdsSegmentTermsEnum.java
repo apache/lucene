@@ -150,7 +150,8 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
   // Pushes a frame we seek'd to
   OrdsSegmentTermsEnumFrame pushFrame(FST.Arc<Output> arc, Output frameData, int length)
       throws IOException {
-    scratchReader.reset(frameData.bytes.bytes, frameData.bytes.offset, frameData.bytes.length);
+    scratchReader.reset(
+        frameData.bytes().bytes, frameData.bytes().offset, frameData.bytes().length);
     final long code = scratchReader.readVLong();
     final long fpSeek = code >>> OrdsBlockTreeTermsWriter.OUTPUT_FLAGS_NUM_BITS;
     // System.out.println("    fpSeek=" + fpSeek);
@@ -161,11 +162,11 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
 
     // Must setFloorData before pushFrame in case pushFrame tries to rewind:
     if (f.isFloor) {
-      f.termOrdOrig = frameData.startOrd;
-      f.setFloorData(scratchReader, frameData.bytes);
+      f.termOrdOrig = frameData.startOrd();
+      f.setFloorData(scratchReader, frameData.bytes());
     }
 
-    pushFrame(arc, fpSeek, length, frameData.startOrd);
+    pushFrame(arc, fpSeek, length, frameData.startOrd());
 
     return f;
   }
@@ -867,7 +868,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
           } else if (isSeekFrame && !f.isFloor) {
             final ByteArrayDataInput reader =
                 new ByteArrayDataInput(
-                    output.bytes.bytes, output.bytes.offset, output.bytes.length);
+                    output.bytes().bytes, output.bytes().offset, output.bytes().length);
             final long codeOrig = reader.readVLong();
             final long code =
                 (f.fp << OrdsBlockTreeTermsWriter.OUTPUT_FLAGS_NUM_BITS)
@@ -1186,7 +1187,8 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
             OrdsBlockTreeTermsWriter.FST_OUTPUTS.add(output, arc.nextFinalOutput());
         // System.out.println("  isFinal: " + finalOutput.startOrd + "-" +
         // (Long.MAX_VALUE-finalOutput.endOrd));
-        if (targetOrd >= finalOutput.startOrd && targetOrd <= Long.MAX_VALUE - finalOutput.endOrd) {
+        if (targetOrd >= finalOutput.startOrd()
+            && targetOrd <= Long.MAX_VALUE - finalOutput.endOrd()) {
           // Only one range should match across all arc leaving this node
           // assert bestOutput == null;
           bestOutput = finalOutput;
@@ -1223,9 +1225,9 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
             }
             // System.out.println("  cycle mid=" + mid + " targetOrd=" + targetOrd + " output=" +
             // minArcOutput.startOrd + "-" + (Long.MAX_VALUE-minArcOutput.endOrd));
-            if (targetOrd > Long.MAX_VALUE - minArcOutput.endOrd) {
+            if (targetOrd > Long.MAX_VALUE - minArcOutput.endOrd()) {
               low = mid + 1;
-            } else if (targetOrd < minArcOutput.startOrd) {
+            } else if (targetOrd < minArcOutput.startOrd()) {
               high = mid - 1;
             } else {
               // System.out.println("    found!!");
@@ -1258,10 +1260,10 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
             // this arc:
             final Output minArcOutput =
                 OrdsBlockTreeTermsWriter.FST_OUTPUTS.add(output, arc.output());
-            long endOrd = Long.MAX_VALUE - minArcOutput.endOrd;
+            long endOrd = Long.MAX_VALUE - minArcOutput.endOrd();
             // System.out.println("    endOrd=" + endOrd + " targetOrd=" + targetOrd);
 
-            if (targetOrd >= minArcOutput.startOrd && targetOrd <= endOrd) {
+            if (targetOrd >= minArcOutput.startOrd() && targetOrd <= endOrd) {
               // Recurse on this arc:
               output = minArcOutput;
               result.setIntAt(upto++, arc.label());
