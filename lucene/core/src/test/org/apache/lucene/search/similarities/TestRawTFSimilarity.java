@@ -87,7 +87,7 @@ public class TestRawTFSimilarity extends BaseSimilarityTestCase {
   private void implTest(String text, float expectedScore) throws IOException {
     Query query = new TermQuery(new Term("test", text));
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertEquals(expectedScore, topDocs.scoreDocs[0].score, 0.0);
   }
@@ -96,7 +96,7 @@ public class TestRawTFSimilarity extends BaseSimilarityTestCase {
     Query query = new TermQuery(new Term("test", "three"));
     float boost = 14f;
     TopDocs topDocs = indexSearcher.search(new BoostQuery(query, boost), 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertEquals(42f, topDocs.scoreDocs[0].score, 0.0);
   }

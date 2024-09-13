@@ -16,53 +16,20 @@
  */
 package org.apache.lucene.search.similarities;
 
-import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.TermStatistics;
-import org.apache.lucene.util.SmallFloat;
 
 /** Similarity that returns the raw TF as score. */
 public class RawTFSimilarity extends Similarity {
-  private final boolean discountOverlaps;
 
-  /**
-   * RawTFSimilarity with these default values:
-   *
-   * <ul>
-   *   <li>{@code discountOverlaps = true}
-   * </ul>
-   */
+  /** Default constructor: parameter-free */
   public RawTFSimilarity() {
-    this(true);
+    super();
   }
 
-  /**
-   * RawTFSimilarity
-   *
-   * @param discountOverlaps True if overlap tokens (tokens with a position of increment of zero)
-   *     are discounted from the document's length.
-   */
+  /** Primary constructor. */
   public RawTFSimilarity(boolean discountOverlaps) {
-    this.discountOverlaps = discountOverlaps;
-  }
-
-  /** Returns true if overlap tokens are discounted from the document's length. */
-  public boolean getDiscountOverlaps() {
-    return discountOverlaps;
-  }
-
-  @Override
-  public long computeNorm(FieldInvertState state) {
-    final int numTerms;
-    if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
-      numTerms = state.getUniqueTermCount();
-    } else if (discountOverlaps) {
-      numTerms = state.getLength() - state.getNumOverlap();
-    } else {
-      numTerms = state.getLength();
-    }
-    return SmallFloat.intToByte4(numTerms);
+    super(discountOverlaps);
   }
 
   @Override
