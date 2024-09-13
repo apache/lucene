@@ -18,6 +18,7 @@ package org.apache.lucene.sandbox.codecs.idversion;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Arrays;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
@@ -331,31 +332,18 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
       }
 
       if (cmp == 0) {
-        final int targetUptoMid = targetUpto;
-
         // Second compare the rest of the term, but
         // don't save arc/output/frame; we only do this
         // to find out if the target term is before,
         // equal or after the current term
-        final int targetLimit2 = Math.min(target.length, term.length());
-        while (targetUpto < targetLimit2) {
-          cmp =
-              (term.byteAt(targetUpto) & 0xFF) - (target.bytes[target.offset + targetUpto] & 0xFF);
-          // if (DEBUG) {
-          //    System.out.println("    cycle2 targetUpto=" + targetUpto + " (vs limit=" +
-          // targetLimit + ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset +
-          // targetUpto]) + " vs termLabel=" + (char) (term.bytes[targetUpto]) + ")");
-          // }
-          if (cmp != 0) {
-            break;
-          }
-          targetUpto++;
-        }
-
-        if (cmp == 0) {
-          cmp = term.length() - target.length;
-        }
-        targetUpto = targetUptoMid;
+        cmp =
+            Arrays.compareUnsigned(
+                term.bytes(),
+                targetUpto,
+                term.length(),
+                target.bytes,
+                target.offset + targetUpto,
+                target.offset + target.length);
       }
 
       if (cmp < 0) {
@@ -718,28 +706,16 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
       }
 
       if (cmp == 0) {
-        final int targetUptoMid = targetUpto;
         // Second compare the rest of the term, but
         // don't save arc/output/frame:
-        final int targetLimit2 = Math.min(target.length, term.length());
-        while (targetUpto < targetLimit2) {
-          cmp =
-              (term.byteAt(targetUpto) & 0xFF) - (target.bytes[target.offset + targetUpto] & 0xFF);
-          // if (DEBUG) {
-          // System.out.println("    cycle2 targetUpto=" + targetUpto + " (vs limit=" + targetLimit
-          // + ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset + targetUpto])
-          // + " vs termLabel=" + (char) (term.bytes[targetUpto]) + ")");
-          // }
-          if (cmp != 0) {
-            break;
-          }
-          targetUpto++;
-        }
-
-        if (cmp == 0) {
-          cmp = term.length() - target.length;
-        }
-        targetUpto = targetUptoMid;
+        cmp =
+            Arrays.compareUnsigned(
+                term.bytes(),
+                targetUpto,
+                term.length(),
+                target.bytes,
+                target.offset + targetUpto,
+                target.offset + target.length);
       }
 
       if (cmp < 0) {
