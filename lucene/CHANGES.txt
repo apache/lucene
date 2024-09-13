@@ -292,6 +292,8 @@ Build
 API Changes
 ---------------------
 
+* GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in IDVersionSegmentTermsEnum and OrdsSegmentTermsEnum. (zhouhui)
+
 * GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov)
 
 * GITHUB#13612: Hunspell: add Suggester#proceedPastRep to avoid losing relevant suggestions. (Peter Gromov)
