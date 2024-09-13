@@ -424,7 +424,7 @@ Other
 --------------------
 
 * GITHUB#13720: Add float comparison based on unit of least precision and use it to stop test failures caused by float
-  summation not being commutative. (Alex Herbert, Stefan Vodita)
+  summation not being commutative in Java's IEEE 754 implementation. (Alex Herbert, Stefan Vodita)
 
 ======================== Lucene 9.11.1 =======================
 
