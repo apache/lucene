@@ -27,6 +27,20 @@ public class TestFloatingPointComparisons extends LuceneTestCase {
     assertFalse(floatUlpEquals(Float.intBitsToFloat(1), Float.intBitsToFloat(2), (short) 0));
     assertTrue(floatUlpEquals(Float.intBitsToFloat(1), Float.intBitsToFloat(2), (short) 1));
 
+
+    assertFalse(floatUlpEquals(1.0f, Math.nextUp(1.0f), (short) 0));
+    assertTrue(floatUlpEquals(1.0f, Math.nextUp(1.0f), (short) 1));
+    assertFalse(floatUlpEquals(1.0f, Math.nextDown(1.0f), (short) 0));
+    assertTrue(floatUlpEquals(1.0f, Math.nextDown(1.0f), (short) 1));
+
+    assertFalse(floatUlpEquals(Float.MIN_VALUE, Math.nextUp(Float.MIN_VALUE), (short) 0));
+    assertTrue(floatUlpEquals(Float.MIN_VALUE, Math.nextUp(Float.MIN_VALUE), (short) 1));
+    assertFalse(floatUlpEquals(Float.MIN_VALUE, Math.nextDown(Float.MIN_VALUE), (short) 0));
+    assertTrue(floatUlpEquals(Float.MIN_VALUE, Math.nextDown(Float.MIN_VALUE), (short) 1));
+
+    assertTrue(floatUlpEquals(Float.POSITIVE_INFINITY, Float.MAX_VALUE, (short) 1));
+    System.out.println(Float.intBitsToFloat(Float.floatToRawIntBits(Float.POSITIVE_INFINITY) - 1));
+
     // Test signed zeros
     assertTrue(doubleUlpEquals(0.0d, -0.0d, 0));
     assertTrue(floatUlpEquals(0.0f, -0.0f, (short) 0));
