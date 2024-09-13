@@ -94,6 +94,27 @@ public class DFRSimilarity extends SimilarityBase {
    */
   public DFRSimilarity(
       BasicModel basicModel, AfterEffect afterEffect, Normalization normalization) {
+    this(basicModel, afterEffect, normalization, true);
+  }
+
+  /**
+   * Creates DFRSimilarity from the three components.
+   *
+   * <p>Note that <code>null</code> values are not allowed: if you want no normalization, instead
+   * pass {@link NoNormalization}.
+   *
+   * @param basicModel Basic model of information content
+   * @param afterEffect First normalization of information gain
+   * @param normalization Second (length) normalization
+   * @param discountOverlaps True if overlap tokens (tokens with a position of increment of zero)
+   *     are discounted from the document's length.
+   */
+  public DFRSimilarity(
+      BasicModel basicModel,
+      AfterEffect afterEffect,
+      Normalization normalization,
+      boolean discountOverlaps) {
+    super(discountOverlaps);
     if (basicModel == null || afterEffect == null || normalization == null) {
       throw new NullPointerException("null parameters not allowed.");
     }
