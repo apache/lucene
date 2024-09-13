@@ -46,6 +46,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -377,7 +378,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       false,
                       IndexOptions.NONE,
                       DocValuesType.NONE,
-                      false,
+                      DocValuesSkipIndexType.NONE,
                       -1,
                       Map.of(),
                       0,
