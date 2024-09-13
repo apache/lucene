@@ -260,6 +260,15 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
       Float minScore,
       Map<Integer, Float> expectedScores)
       throws IOException {
+    assertScores(bulkScorer, scoreMode, minScore, List.of(expectedScores));
+  }
+
+  private static void assertScores(
+      BulkScorer bulkScorer,
+      org.apache.lucene.search.ScoreMode scoreMode,
+      Float minScore,
+      List<Map<Integer, Float>> expectedScoresList)
+      throws IOException {
     Map<Integer, Float> actualScores = new HashMap<>();
     bulkScorer.score(
         new LeafCollector() {
@@ -283,7 +292,28 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         null,
         0,
         NO_MORE_DOCS);
-    assertEquals(expectedScores, actualScores);
+    assertEqualsToOneOf(expectedScoresList, actualScores);
+  }
+
+  private static void assertEqualsToOneOf(List<?> expectedList, Object actual) {
+    boolean foundMatch = false;
+    for (Object expected : expectedList) {
+      if (expected == null) {
+        if (actual == null) {
+          foundMatch = true;
+          break;
+        }
+      } else {
+        foundMatch = expected.equals(actual);
+        if (foundMatch) {
+          break;
+        }
+      }
+    }
+
+    if (!foundMatch) {
+      throw new AssertionError("expected one of: " + expectedList + " but was: " + actual);
+    }
   }
 
   public void testScoreRandomIndices() throws IOException {
@@ -370,10 +400,18 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         }
 
         {
-          // Doc 16 is returned because MaxScoreBulkScorer scores assuming A will match in doc 13,
-          // leading to a potential max score of 6. By the time it determines that A doesn't match,
-          // scoring is complete and thus there is no advantage to not collecting the doc.
-          Map<Integer, Float> expectedScores =
+          // This test case has two potential results.
+          // If all docs are scored in the same batch, then doc 16 is collected because
+          // MaxScoreBulkScorer scores assuming A will match in doc 13, leading to a potential max
+          // score of 6.
+          // If the scoring is split across two or more batches, then doc 16 is not collected
+          // because MaxScoreBulkScorer does not assume A will match in doc 13, leading to a
+          // potential max score of 5.
+          Map<Integer, Float> expectedScores1 =
+              Map.of(
+                  2, 6.0f,
+                  10, 10.0f);
+          Map<Integer, Float> expectedScores2 =
               Map.of(
                   2, 6.0f,
                   10, 10.0f,
@@ -381,7 +419,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, 6.0f, expectedScores);
+          assertScores(ss.bulkScorer(), scoreMode, 6.0f, List.of(expectedScores1, expectedScores2));
         }
 
         {
