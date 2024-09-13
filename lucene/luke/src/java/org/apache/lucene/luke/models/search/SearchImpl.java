@@ -395,8 +395,7 @@ public final class SearchImpl extends LukeModel implements Search {
     Similarity similarity;
 
     if (config.isUseClassicSimilarity()) {
-      ClassicSimilarity tfidf = new ClassicSimilarity();
-      tfidf.setDiscountOverlaps(config.isDiscountOverlaps());
+      ClassicSimilarity tfidf = new ClassicSimilarity(config.isDiscountOverlaps());
       similarity = tfidf;
     } else {
       BM25Similarity bm25 =
