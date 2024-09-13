@@ -190,7 +190,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
         set.add((Scorer) scorer);
       } else {
         for (Scorable.ChildScorable child : scorer.getChildren()) {
-          fillLeaves(child.child, set);
+          fillLeaves(child.child(), set);
         }
       }
     }
@@ -330,8 +330,8 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
         final StringBuilder builder, final Scorable scorer, final int indent) throws IOException {
       builder.append(scorer.getClass().getSimpleName());
       for (final Scorable.ChildScorable childScorer : scorer.getChildren()) {
-        indent(builder, indent + 1).append(childScorer.relationship).append(" ");
-        summarizeScorer(builder, childScorer.child, indent + 2);
+        indent(builder, indent + 1).append(childScorer.relationship()).append(" ");
+        summarizeScorer(builder, childScorer.child(), indent + 2);
       }
     }
 

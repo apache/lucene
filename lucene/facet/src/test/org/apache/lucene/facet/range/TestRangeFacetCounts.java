@@ -469,7 +469,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -525,7 +525,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     DrillSidewaysResult dsr = ds.search(null, ddq, 10);
 
-    assertEquals(100, dsr.hits.totalHits.value);
+    assertEquals(100, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -538,7 +538,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
     ddq.add("dim", "b");
     dsr = ds.search(null, ddq, 10);
 
-    assertEquals(75, dsr.hits.totalHits.value);
+    assertEquals(75, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -551,7 +551,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
     ddq.add("field", LongPoint.newRangeQuery("field", 0L, 10L));
     dsr = ds.search(null, ddq, 10);
 
-    assertEquals(11, dsr.hits.totalHits.value);
+    assertEquals(11, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=11 childCount=2\n  b (8)\n  a (3)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -1652,7 +1652,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     IndexReader r = writer.getReader();
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -1709,7 +1709,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
     }
 
     // Test simple drill-down:
-    assertEquals(1, s.search(ddq, 10).totalHits.value);
+    assertEquals(1, s.search(ddq, 10).totalHits.value());
 
     // Test drill-sideways after drill-down
     DrillSideways ds =
@@ -1737,7 +1737,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         };
 
     DrillSidewaysResult dsr = ds.search(ddq, 10);
-    assertEquals(1, dsr.hits.totalHits.value);
+    assertEquals(1, dsr.hits.totalHits.value());
     assertEquals(
         "dim=field path=[] value=3 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
         dsr.facets.getAllChildren("field").toString());

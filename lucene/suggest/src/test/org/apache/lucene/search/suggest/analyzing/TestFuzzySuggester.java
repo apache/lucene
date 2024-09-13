@@ -503,16 +503,8 @@ public class TestFuzzySuggester extends LuceneTestCase {
   }
 
   // Holds surface form separately:
-  private static class TermFreqPayload2 implements Comparable<TermFreqPayload2> {
-    public final String surfaceForm;
-    public final String analyzedForm;
-    public final long weight;
-
-    public TermFreqPayload2(String surfaceForm, String analyzedForm, long weight) {
-      this.surfaceForm = surfaceForm;
-      this.analyzedForm = analyzedForm;
-      this.weight = weight;
-    }
+  private record TermFreqPayload2(String surfaceForm, String analyzedForm, long weight)
+      implements Comparable<TermFreqPayload2> {
 
     @Override
     public int compareTo(TermFreqPayload2 other) {

@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -292,7 +293,7 @@ public abstract class MergePolicy {
      * Wrap a reader prior to merging in order to add/remove fields or documents.
      *
      * <p><b>NOTE:</b> It is illegal to reorder doc IDs here, use {@link
-     * #reorder(CodecReader,Directory)} instead.
+     * #reorder(CodecReader,Directory,Executor)} instead.
      */
     public CodecReader wrapForMerge(CodecReader reader) throws IOException {
       return reader;
@@ -308,9 +309,12 @@ public abstract class MergePolicy {
      *
      * @param reader The reader to reorder.
      * @param dir The {@link Directory} of the index, which may be used to create temporary files.
+     * @param executor An executor that can be used to parallelize the reordering logic. May be
+     *     {@code null} if no concurrency is supported.
      * @lucene.experimental
      */
-    public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
+        throws IOException {
       return null;
     }
 

@@ -150,13 +150,13 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       int compoundOffset = 0;
       for (KoMorphData.Morpheme morpheme : morphemes) {
         if (hasSinglePOS == false) {
-          buffer.put((byte) morpheme.posTag.ordinal());
+          buffer.put((byte) morpheme.posTag().ordinal());
         }
         if (posType != POS.Type.INFLECT) {
-          buffer.put((byte) morpheme.surfaceForm.length());
-          compoundOffset += morpheme.surfaceForm.length();
+          buffer.put((byte) morpheme.surfaceForm().length());
+          compoundOffset += morpheme.surfaceForm().length();
         } else {
-          writeString(morpheme.surfaceForm);
+          writeString(morpheme.surfaceForm());
         }
         assert compoundOffset <= entry[0].length() : Arrays.toString(entry);
       }

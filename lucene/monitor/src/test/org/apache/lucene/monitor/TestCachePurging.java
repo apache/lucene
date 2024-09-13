@@ -51,7 +51,7 @@ public class TestCachePurging extends MonitorTestBase {
       monitor.register(queries);
       assertEquals(3, monitor.getQueryCount());
       assertEquals(4, monitor.getDisjunctCount());
-      assertEquals(4, monitor.getQueryCacheStats().cachedQueries);
+      assertEquals(4, monitor.getQueryCacheStats().cachedQueries());
 
       Document doc = new Document();
       doc.add(newTextField("field", "test1 test2 test3", Field.Store.NO));
@@ -59,11 +59,11 @@ public class TestCachePurging extends MonitorTestBase {
 
       monitor.deleteById("1");
       assertEquals(2, monitor.getQueryCount());
-      assertEquals(4, monitor.getQueryCacheStats().cachedQueries);
+      assertEquals(4, monitor.getQueryCacheStats().cachedQueries());
       assertEquals(2, monitor.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount());
 
       monitor.purgeCache();
-      assertEquals(2, monitor.getQueryCacheStats().cachedQueries);
+      assertEquals(2, monitor.getQueryCacheStats().cachedQueries());
 
       MatchingQueries<QueryMatch> result = monitor.match(doc, QueryMatch.SIMPLE_MATCHER);
       assertEquals(2, result.getMatchCount());
@@ -109,13 +109,13 @@ public class TestCachePurging extends MonitorTestBase {
           monitor.deleteById(Integer.toString(i));
         }
 
-        assertEquals(200, monitor.getQueryCacheStats().cachedQueries);
+        assertEquals(200, monitor.getQueryCacheStats().cachedQueries());
 
         startUpdating.countDown();
         monitor.purgeCache();
         finishUpdating.await();
 
-        assertEquals(340, monitor.getQueryCacheStats().cachedQueries);
+        assertEquals(340, monitor.getQueryCacheStats().cachedQueries());
         Document doc = new Document();
         doc.add(newTextField("field", "test", Field.Store.NO));
         MatchingQueries<QueryMatch> matcher = monitor.match(doc, QueryMatch.SIMPLE_MATCHER);
@@ -137,15 +137,15 @@ public class TestCachePurging extends MonitorTestBase {
         new MonitorConfiguration().setPurgeFrequency(50, TimeUnit.MILLISECONDS);
     try (Monitor monitor = new Monitor(ANALYZER, Presearcher.NO_FILTERING, config)) {
 
-      assertEquals(-1, monitor.getQueryCacheStats().lastPurged);
+      assertEquals(-1, monitor.getQueryCacheStats().lastPurged());
 
       for (int i = 0; i < 100; i++) {
         monitor.register(newMonitorQuery(i));
       }
-      assertEquals(100, monitor.getQueryCacheStats().cachedQueries);
+      assertEquals(100, monitor.getQueryCacheStats().cachedQueries());
 
       monitor.deleteById("5");
-      assertEquals(99, monitor.getQueryCacheStats().queries);
+      assertEquals(99, monitor.getQueryCacheStats().queries());
 
       CountDownLatch latch = new CountDownLatch(1);
       monitor.addQueryIndexUpdateListener(
@@ -154,7 +154,7 @@ public class TestCachePurging extends MonitorTestBase {
             public void onPurge() {
               // It can sometimes take a couple of purge runs to get everything in sync
               try {
-                if (monitor.getQueryCacheStats().cachedQueries == 99) latch.countDown();
+                if (monitor.getQueryCacheStats().cachedQueries() == 99) latch.countDown();
               } catch (IOException e) {
                 // Ignore
                 throw new RuntimeException(e);
@@ -163,9 +163,9 @@ public class TestCachePurging extends MonitorTestBase {
           });
 
       assertTrue(latch.await(5, TimeUnit.SECONDS));
-      assertEquals(99, monitor.getQueryCacheStats().queries);
-      assertEquals(99, monitor.getQueryCacheStats().cachedQueries);
-      assertTrue(monitor.getQueryCacheStats().lastPurged > 0);
+      assertEquals(99, monitor.getQueryCacheStats().queries());
+      assertEquals(99, monitor.getQueryCacheStats().cachedQueries());
+      assertTrue(monitor.getQueryCacheStats().lastPurged() > 0);
     }
   }
 }

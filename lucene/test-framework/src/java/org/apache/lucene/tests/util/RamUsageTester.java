@@ -307,15 +307,7 @@ public final class RamUsageTester {
           });
 
   /** Cached information about a given class. */
-  private static final class ClassCache {
-    public final long alignedShallowInstanceSize;
-    public final Field[] referenceFields;
-
-    public ClassCache(long alignedShallowInstanceSize, Field[] referenceFields) {
-      this.alignedShallowInstanceSize = alignedShallowInstanceSize;
-      this.referenceFields = referenceFields;
-    }
-  }
+  private record ClassCache(long alignedShallowInstanceSize, Field[] referenceFields) {}
 
   /** Create a cached information about shallow size and reference fields for a given class. */
   @SuppressForbidden(reason = "We need to access private fields of measured objects.")

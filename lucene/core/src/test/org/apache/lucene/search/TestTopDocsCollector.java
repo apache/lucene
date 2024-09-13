@@ -89,12 +89,11 @@ public class TestTopDocsCollector extends LuceneTestCase {
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       final int base = context.docBase;
       return new LeafCollector() {
-        private int idx = 0;
 
         @Override
         public void collect(int doc) {
           ++totalHits;
-          pq.insertWithOverflow(new ScoreDoc(doc + base, scores[context.docBase + idx++]));
+          pq.insertWithOverflow(new ScoreDoc(doc + base, scores[context.docBase + doc]));
         }
 
         @Override
@@ -441,7 +440,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       leafCollector.collect(1);
 
       TopDocs topDocs = collector.topDocs();
-      assertEquals(4, topDocs.totalHits.value);
+      assertEquals(4, topDocs.totalHits.value());
       assertEquals(totalHitsThreshold < 4, scorer.minCompetitiveScore != null);
       assertEquals(
           new TotalHits(
@@ -471,18 +470,18 @@ public class TestTopDocsCollector extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 10);
         TopDocs topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertEquals(10, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(10, topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
 
         collectorManager = new TopScoreDocCollectorManager(2, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertTrue(10 >= topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+        assertTrue(10 >= topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
         collectorManager = new TopScoreDocCollectorManager(10, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertEquals(10, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(10, topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
       }
     }
   }
@@ -530,37 +529,37 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
     scorer.score = 2;
     leafCollector.collect(1);
-    assertEquals(2f, minValueChecker.get().score, 0f);
+    assertEquals(2f, minValueChecker.get().score(), 0f);
     assertEquals(Math.nextUp(2f), scorer.minCompetitiveScore, 0f);
     assertNull(scorer2.minCompetitiveScore);
 
     scorer2.score = 9;
     leafCollector2.collect(1);
-    assertEquals(6f, minValueChecker.get().score, 0f);
+    assertEquals(6f, minValueChecker.get().score(), 0f);
     assertEquals(Math.nextUp(2f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(6f), scorer2.minCompetitiveScore, 0f);
 
     scorer2.score = 7;
     leafCollector2.collect(2);
-    assertEquals(minValueChecker.get().score, 7f, 0f);
+    assertEquals(minValueChecker.get().score(), 7f, 0f);
     assertEquals(Math.nextUp(2f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
 
     scorer2.score = 1;
     leafCollector2.collect(3);
-    assertEquals(minValueChecker.get().score, 7f, 0f);
+    assertEquals(minValueChecker.get().score(), 7f, 0f);
     assertEquals(Math.nextUp(2f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 10;
     leafCollector.collect(2);
-    assertEquals(minValueChecker.get().score, 7f, 0f);
+    assertEquals(minValueChecker.get().score(), 7f, 0f);
     assertEquals(7f, scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 11;
     leafCollector.collect(3);
-    assertEquals(minValueChecker.get().score, 10, 0f);
+    assertEquals(minValueChecker.get().score(), 10, 0f);
     assertEquals(Math.nextUp(10f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
 
@@ -572,25 +571,25 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
     scorer3.score = 1f;
     leafCollector3.collect(0);
-    assertEquals(10f, minValueChecker.get().score, 0f);
+    assertEquals(10f, minValueChecker.get().score(), 0f);
     assertEquals(Math.nextUp(10f), scorer3.minCompetitiveScore, 0f);
 
     scorer.score = 11;
     leafCollector.collect(4);
-    assertEquals(11f, minValueChecker.get().score, 0f);
+    assertEquals(11f, minValueChecker.get().score(), 0f);
     assertEquals(Math.nextUp(11f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(10f), scorer3.minCompetitiveScore, 0f);
 
     scorer3.score = 2f;
     leafCollector3.collect(1);
-    assertEquals(minValueChecker.get().score, 11f, 0f);
+    assertEquals(minValueChecker.get().score(), 11f, 0f);
     assertEquals(Math.nextUp(11f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(11f), scorer3.minCompetitiveScore, 0f);
 
     TopDocs topDocs = manager.reduce(Arrays.asList(collector, collector2, collector3));
-    assertEquals(11, topDocs.totalHits.value);
+    assertEquals(11, topDocs.totalHits.value());
     assertEquals(new TotalHits(11, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), topDocs.totalHits);
 
     leafCollector.setScorer(scorer);
@@ -637,8 +636,8 @@ public class TestTopDocsCollector extends LuceneTestCase {
       TopDocs tdc = doConcurrentSearchWithThreshold(5, 0, query, indexReader);
       TopDocs tdc2 = doSearchWithThreshold(5, 0, query, indexReader);
 
-      assertTrue(tdc.totalHits.value > 0);
-      assertTrue(tdc2.totalHits.value > 0);
+      assertTrue(tdc.totalHits.value() > 0);
+      assertTrue(tdc2.totalHits.value() > 0);
       CheckHits.checkEqual(query, tdc.scoreDocs, tdc2.scoreDocs);
     }
 

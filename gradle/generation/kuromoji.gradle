@@ -33,7 +33,7 @@ configure(project(":lucene:analysis:kuromoji")) {
   apply plugin: deps.plugins.undercouch.download.get().pluginId
 
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
       targetDir = file("src/resources")
     }
 

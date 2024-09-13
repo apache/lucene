@@ -398,7 +398,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
   private IteratorAndCount getDocIdSetIteratorOrNullFromBkd(
       LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
-    Sort indexSort = context.reader().getMetaData().getSort();
+    Sort indexSort = context.reader().getMetaData().sort();
     if (indexSort == null
         || indexSort.getSort().length == 0
         || indexSort.getSort()[0].getField().equals(field) == false) {
@@ -498,7 +498,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       if (itAndCount != null) {
         return itAndCount;
       }
-      Sort indexSort = context.reader().getMetaData().getSort();
+      Sort indexSort = context.reader().getMetaData().sort();
       if (indexSort != null
           && indexSort.getSort().length > 0
           && indexSort.getSort()[0].getField().equals(field)) {

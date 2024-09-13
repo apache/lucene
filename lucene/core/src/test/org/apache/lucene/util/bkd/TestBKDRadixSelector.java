@@ -221,8 +221,8 @@ public class TestBKDRadixSelector extends LuceneTestCase {
       byte[] partitionPoint =
           radixSelector.select(
               inputSlice, slices, start, end, middle, splitDim, commonPrefixLengthInput);
-      assertEquals(middle - start, slices[0].count);
-      assertEquals(end - middle, slices[1].count);
+      assertEquals(middle - start, slices[0].count());
+      assertEquals(end - middle, slices[1].count());
       // check that left and right slices contain the correct points
       byte[] max = getMax(config, slices[0], splitDim);
       byte[] min = getMin(config, slices[1], splitDim);
@@ -247,8 +247,8 @@ public class TestBKDRadixSelector extends LuceneTestCase {
         }
       }
       assertTrue(Arrays.equals(partitionPoint, min));
-      slices[0].writer.destroy();
-      slices[1].writer.destroy();
+      slices[0].writer().destroy();
+      slices[1].writer().destroy();
     }
     points.destroy();
   }
@@ -302,7 +302,7 @@ public class TestBKDRadixSelector extends LuceneTestCase {
       throws IOException {
     byte[] min = new byte[config.bytesPerDim()];
     Arrays.fill(min, (byte) 0xff);
-    try (PointReader reader = pathSlice.writer.getReader(pathSlice.start, pathSlice.count)) {
+    try (PointReader reader = pathSlice.writer().getReader(pathSlice.start(), pathSlice.count())) {
       byte[] value = new byte[config.bytesPerDim()];
 
       while (reader.next()) {
@@ -331,7 +331,7 @@ public class TestBKDRadixSelector extends LuceneTestCase {
       byte[] dataDim)
       throws IOException {
     int docID = Integer.MAX_VALUE;
-    try (PointReader reader = p.writer.getReader(p.start, p.count)) {
+    try (PointReader reader = p.writer().getReader(p.start(), p.count())) {
       while (reader.next()) {
         PointValue pointValue = reader.pointValue();
         BytesRef packedValue = pointValue.packedValue();
@@ -371,7 +371,7 @@ public class TestBKDRadixSelector extends LuceneTestCase {
     byte[] min = new byte[numDataDims * config.bytesPerDim()];
     Arrays.fill(min, (byte) 0xff);
     int offset = splitDim * config.bytesPerDim();
-    try (PointReader reader = p.writer.getReader(p.start, p.count)) {
+    try (PointReader reader = p.writer().getReader(p.start(), p.count())) {
       byte[] value = new byte[numDataDims * config.bytesPerDim()];
       while (reader.next()) {
         PointValue pointValue = reader.pointValue();
@@ -410,7 +410,7 @@ public class TestBKDRadixSelector extends LuceneTestCase {
       throws IOException {
     byte[] max = new byte[config.bytesPerDim()];
     Arrays.fill(max, (byte) 0);
-    try (PointReader reader = p.writer.getReader(p.start, p.count)) {
+    try (PointReader reader = p.writer().getReader(p.start(), p.count())) {
       byte[] value = new byte[config.bytesPerDim()];
       while (reader.next()) {
         PointValue pointValue = reader.pointValue();
@@ -437,7 +437,7 @@ public class TestBKDRadixSelector extends LuceneTestCase {
     byte[] max = new byte[numDataDims * config.bytesPerDim()];
     Arrays.fill(max, (byte) 0);
     int offset = splitDim * config.bytesPerDim();
-    try (PointReader reader = p.writer.getReader(p.start, p.count)) {
+    try (PointReader reader = p.writer().getReader(p.start(), p.count())) {
       byte[] value = new byte[numDataDims * config.bytesPerDim()];
       while (reader.next()) {
         PointValue pointValue = reader.pointValue();
@@ -480,7 +480,7 @@ public class TestBKDRadixSelector extends LuceneTestCase {
       byte[] dataDim)
       throws IOException {
     int docID = Integer.MIN_VALUE;
-    try (PointReader reader = p.writer.getReader(p.start, p.count)) {
+    try (PointReader reader = p.writer().getReader(p.start(), p.count())) {
       while (reader.next()) {
         PointValue pointValue = reader.pointValue();
         BytesRef packedValue = pointValue.packedValue();

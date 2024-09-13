@@ -244,7 +244,7 @@ public class TestRangeFieldsDocValuesQuery extends LuceneTestCase {
     Query q1 =
         LongRangeDocValuesField.newSlowIntersectsQuery("bar", new long[] {20}, new long[] {27});
     TopDocs r = searcher.search(q1, 10);
-    assertEquals(0, r.totalHits.value);
+    assertEquals(0, r.totalHits.value());
 
     // test on field of wrong type
     Query q2 =
