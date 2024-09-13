@@ -17,10 +17,12 @@
 
 package org.apache.lucene.tests.util;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.search.IndexSearcher.LeafSlice;
 
 import com.carrotsearch.randomizedtesting.JUnit4MethodProvider;
 import com.carrotsearch.randomizedtesting.LifecycleScope;
@@ -92,6 +94,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -941,10 +944,10 @@ public abstract class LuceneTestCase extends Assert {
     } else if (rarely(r)) {
       ConcurrentMergeScheduler cms;
       if (r.nextBoolean()) {
-        cms = new ConcurrentMergeScheduler();
+        cms = new TestConcurrentMergeScheduler();
       } else {
         cms =
-            new ConcurrentMergeScheduler() {
+            new TestConcurrentMergeScheduler() {
               @Override
               protected synchronized boolean maybeStall(MergeSource mergeSource) {
                 return true;
@@ -963,7 +966,8 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       // Always use consistent settings, else CMS's dynamic (SSD or not)
       // defaults can change, hurting reproducibility:
-      ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
+      ConcurrentMergeScheduler cms =
+          randomBoolean() ? new TestConcurrentMergeScheduler() : new ConcurrentMergeScheduler();
 
       // Only 1 thread can run at once (should maybe help reproducibility),
       // with up to 3 pending merges before segment-producing threads are
@@ -1922,8 +1926,32 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static IndexSearcher newSearcher(
       IndexReader r, boolean maybeWrap, boolean wrapWithAssertions, boolean useThreads) {
+    if (useThreads) {
+      return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.INTRA_SEGMENT);
+    }
+    return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.NONE);
+  }
+
+  /** What level of concurrency is supported by the searcher being created */
+  public enum Concurrency {
+    /** No concurrency, meaning an executor won't be provided to the searcher */
+    NONE,
+    /**
+     * Inter-segment concurrency, meaning an executor will be provided to the searcher and slices
+     * will be randomly created to concurrently search entire segments
+     */
+    INTER_SEGMENT,
+    /**
+     * Intra-segment concurrency, meaning an executor will be provided to the searcher and slices
+     * will be randomly created to concurrently search segment partitions
+     */
+    INTRA_SEGMENT
+  }
+
+  public static IndexSearcher newSearcher(
+      IndexReader r, boolean maybeWrap, boolean wrapWithAssertions, Concurrency concurrency) {
     Random random = random();
-    if (useThreads == false) {
+    if (concurrency == Concurrency.NONE) {
       if (maybeWrap) {
         try {
           r = maybeWrapReader(r);
@@ -1973,7 +2001,8 @@ public abstract class LuceneTestCase extends Assert {
               new AssertingIndexSearcher(random, r, ex) {
                 @Override
                 protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                  return LuceneTestCase.slices(
+                      leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
                 }
               };
         } else {
@@ -1981,7 +2010,8 @@ public abstract class LuceneTestCase extends Assert {
               new AssertingIndexSearcher(random, r.getContext(), ex) {
                 @Override
                 protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                  return LuceneTestCase.slices(
+                      leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
                 }
               };
         }
@@ -1990,7 +2020,8 @@ public abstract class LuceneTestCase extends Assert {
             new IndexSearcher(r, ex) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                return LuceneTestCase.slices(
+                    leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
               }
             };
       }
@@ -2001,6 +2032,25 @@ public abstract class LuceneTestCase extends Assert {
       }
       return ret;
     }
+  }
+
+  /**
+   * Creates leaf slices according to the concurrency argument, that optionally leverage
+   * intra-segment concurrency by splitting segments into multiple partitions according to the
+   * maxDocsPerSlice argument.
+   */
+  private static LeafSlice[] slices(
+      List<LeafReaderContext> leaves,
+      int maxDocsPerSlice,
+      int maxSegmentsPerSlice,
+      Concurrency concurrency) {
+    assert concurrency != Concurrency.NONE;
+    // Rarely test slices without partitions even though intra-segment concurrency is supported
+    return IndexSearcher.slices(
+        leaves,
+        maxDocsPerSlice,
+        maxSegmentsPerSlice,
+        concurrency == Concurrency.INTRA_SEGMENT && frequently());
   }
 
   /**
@@ -3243,5 +3293,18 @@ public abstract class LuceneTestCase extends Assert {
             .filter(format -> supportsVectorSearch(format))
             .toList();
     return RandomPicks.randomFrom(random(), availableFormats);
+  }
+
+  /**
+   * This is a test merge scheduler that will always use the intra merge executor to ensure we test
+   * it.
+   */
+  static class TestConcurrentMergeScheduler extends ConcurrentMergeScheduler {
+    @Override
+    public Executor getIntraMergeExecutor(MergePolicy.OneMerge merge) {
+      assert intraMergeExecutor != null : "scaledExecutor is not initialized";
+      // Always do the intra merge executor to ensure we test it
+      return intraMergeExecutor;
+    }
   }
 }

@@ -268,7 +268,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, STORETV);
-        SimpleTextUtil.write(out, Boolean.toString(fi.hasVectors()), scratch);
+        SimpleTextUtil.write(out, Boolean.toString(fi.hasTermVectors()), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, PAYLOADS);

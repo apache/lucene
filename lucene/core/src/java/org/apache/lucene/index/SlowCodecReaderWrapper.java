@@ -297,6 +297,11 @@ public final class SlowCodecReaderWrapper {
     }
     return new TermVectorsReader() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        termVectors.prefetch(docID);
+      }
+
+      @Override
       public Fields get(int docID) throws IOException {
         return termVectors.get(docID);
       }

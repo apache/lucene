@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -166,7 +167,7 @@ public class TestIndexSearcher extends LuceneTestCase {
                   .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
                   .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
                   .build())) {
-        assertEquals(searcher.count(query), searcher.search(query, 1).totalHits.value);
+        assertEquals(searcher.count(query), searcher.search(query, 1).totalHits.value());
       }
       reader.close();
     }
@@ -246,7 +247,7 @@ public class TestIndexSearcher extends LuceneTestCase {
       // without executor
       IndexSearcher.LeafSlice[] slices = new IndexSearcher(r).getSlices();
       assertEquals(1, slices.length);
-      assertEquals(r.leaves().size(), slices[0].leaves.length);
+      assertEquals(r.leaves().size(), slices[0].partitions.length);
     }
     {
       // force creation of multiple slices, and provide an executor
@@ -254,12 +255,12 @@ public class TestIndexSearcher extends LuceneTestCase {
           new IndexSearcher(r, Runnable::run) {
             @Override
             protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-              return slices(leaves, 1, 1);
+              return slices(leaves, 1, 1, false);
             }
           };
       IndexSearcher.LeafSlice[] slices = searcher.getSlices();
       for (IndexSearcher.LeafSlice slice : slices) {
-        assertEquals(1, slice.leaves.length);
+        assertEquals(1, slice.partitions.length);
       }
       assertEquals(r.leaves().size(), slices.length);
     }
@@ -280,7 +281,10 @@ public class TestIndexSearcher extends LuceneTestCase {
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
             ArrayList<LeafSlice> slices = new ArrayList<>();
             for (LeafReaderContext ctx : leaves) {
-              slices.add(new LeafSlice(Arrays.asList(ctx)));
+              slices.add(
+                  new LeafSlice(
+                      Collections.singletonList(
+                          LeafReaderContextPartition.createForEntireSegment(ctx))));
             }
             return slices.toArray(new LeafSlice[0]);
           }
@@ -292,5 +296,33 @@ public class TestIndexSearcher extends LuceneTestCase {
   public void testNullExecutorNonNullTaskExecutor() {
     IndexSearcher indexSearcher = new IndexSearcher(reader);
     assertNotNull(indexSearcher.getTaskExecutor());
+  }
+
+  public void testSegmentPartitionsSameSlice() {
+    IndexSearcher indexSearcher =
+        new IndexSearcher(reader, Runnable::run) {
+          @Override
+          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+            List<LeafSlice> slices = new ArrayList<>();
+            for (LeafReaderContext ctx : leaves) {
+              slices.add(
+                  new LeafSlice(
+                      new ArrayList<>(
+                          List.of(
+                              LeafReaderContextPartition.createFromAndTo(ctx, 0, 1),
+                              LeafReaderContextPartition.createFromAndTo(
+                                  ctx, 1, ctx.reader().maxDoc())))));
+            }
+            return slices.toArray(new LeafSlice[0]);
+          }
+        };
+
+    assumeTrue(
+        "Needs at least 2 docs in the same segment",
+        indexSearcher.leafContexts.stream().allMatch(ctx -> ctx.reader().maxDoc() > 1));
+    IllegalStateException e = expectThrows(IllegalStateException.class, indexSearcher::getSlices);
+    assertEquals(
+        "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.",
+        e.getMessage());
   }
 }

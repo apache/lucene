@@ -52,7 +52,7 @@ public class TestBooleanOr extends LuceneTestCase {
 
   private long search(Query q) throws IOException {
     QueryUtils.check(random(), q, searcher);
-    return searcher.search(q, 1000).totalHits.value;
+    return searcher.search(q, 1000).totalHits.value();
   }
 
   public void testElements() throws IOException {
@@ -259,7 +259,9 @@ public class TestBooleanOr extends LuceneTestCase {
             matches.add(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(Arrays.asList(4000, 5000, 100000, 1000001, 1000051, 9999998, 9999999), matches);
   }
 }

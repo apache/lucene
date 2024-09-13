@@ -52,7 +52,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final boolean hasProx;
   private final boolean hasPayloads;
   private final boolean hasOffsets;
-  private final boolean hasVectors;
+  private final boolean hasTermVectors;
   private final boolean hasNorms;
   private final boolean hasDocValues;
   private final boolean hasPointValues;
@@ -73,7 +73,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
    * as the backing structure.
    */
   public FieldInfos(FieldInfo[] infos) {
-    boolean hasVectors = false;
+    boolean hasTermVectors = false;
     boolean hasPostings = false;
     boolean hasProx = false;
     boolean hasPayloads = false;
@@ -111,7 +111,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 + info.name);
       }
 
-      hasVectors |= info.hasVectors();
+      hasTermVectors |= info.hasTermVectors();
       hasPostings |= info.getIndexOptions() != IndexOptions.NONE;
       hasProx |= info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
       hasFreq |= info.getIndexOptions() != IndexOptions.DOCS;
@@ -139,7 +139,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       }
     }
 
-    this.hasVectors = hasVectors;
+    this.hasTermVectors = hasTermVectors;
     this.hasPostings = hasPostings;
     this.hasProx = hasProx;
     this.hasPayloads = hasPayloads;
@@ -275,9 +275,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     return hasOffsets;
   }
 
-  /** Returns true if any fields have vectors */
-  public boolean hasVectors() {
-    return hasVectors;
+  /** Returns true if any fields have term vectors */
+  public boolean hasTermVectors() {
+    return hasTermVectors;
   }
 
   /** Returns true if any fields have norms */
@@ -441,7 +441,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 fieldNumber,
                 fi.getIndexOptions(),
                 fi.getIndexOptions() != IndexOptions.NONE
-                    ? new IndexOptionsProperties(fi.hasVectors(), fi.omitsNorms())
+                    ? new IndexOptionsProperties(fi.hasTermVectors(), fi.omitsNorms())
                     : null,
                 fi.getDocValuesType(),
                 fi.hasDocValuesSkipIndex(),
@@ -517,7 +517,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions());
       if (currentOpts != IndexOptions.NONE) {
         boolean curStoreTermVector = fieldProperties.indexOptionsProperties.storeTermVectors;
-        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasVectors());
+        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasTermVectors());
         boolean curOmitNorms = fieldProperties.indexOptionsProperties.omitNorms;
         verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms());
       }
@@ -792,7 +792,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           new FieldInfo(
               fi.getName(),
               fieldNumber,
-              fi.hasVectors(),
+              fi.hasTermVectors(),
               fi.omitsNorms(),
               fi.hasPayloads(),
               fi.getIndexOptions(),

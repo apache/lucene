@@ -1144,7 +1144,7 @@ final class IndexingChain implements Accountable {
         // segment
         norms = new NormValuesWriter(fieldInfo, bytesUsed);
       }
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         termVectorsWriter.setHasVectors();
       }
     }
@@ -1558,7 +1558,7 @@ final class IndexingChain implements Accountable {
     void assertSameSchema(FieldInfo fi) {
       assertSame("index options", fi.getIndexOptions(), indexOptions);
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
-      assertSame("store term vector", fi.hasVectors(), storeTermVector);
+      assertSame("store term vector", fi.hasTermVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
       assertSame("doc values skip index", fi.hasDocValuesSkipIndex(), hasDocValuesSkipIndex);
       assertSame(

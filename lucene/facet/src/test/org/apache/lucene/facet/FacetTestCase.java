@@ -68,8 +68,8 @@ public abstract class FacetTestCase extends LuceneTestCase {
     TaxonomyFacetLabels taxoLabels =
         new TaxonomyFacetLabels(taxoReader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
     for (MatchingDocs m : fc.getMatchingDocs()) {
-      FacetLabelReader facetLabelReader = taxoLabels.getFacetLabelReader(m.context);
-      DocIdSetIterator disi = m.bits.iterator();
+      FacetLabelReader facetLabelReader = taxoLabels.getFacetLabelReader(m.context());
+      DocIdSetIterator disi = m.bits().iterator();
       while (disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
         actualLabels.add(allFacetLabels(disi.docID(), dimension, facetLabelReader));
       }

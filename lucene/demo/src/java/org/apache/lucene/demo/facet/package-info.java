@@ -385,6 +385,12 @@
  * <p>Sampling support is implemented in {@link
  * org.apache.lucene.facet.RandomSamplingFacetsCollector}.
  *
+ * <h3 id="drf">Dynamic Range Facets</h3>
+ *
+ * We can build ranges over numeric fields and count the number of values falling in each range. The
+ * values can be weighted and the number of desired ranges can be specified. To see an example,
+ * check {@link org.apache.lucene.demo.facet.DynamicRangeFacetsExample}.
+ *
  * <h2 id="concurrent_indexing_search">Concurrent Indexing and Search</h2>
  *
  * <p>Sometimes, indexing is done once, and when the index is fully prepared, searching starts.

@@ -541,7 +541,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
   }
 
   private void assertEquals(TopDocs td1, TopDocs td2) {
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     assertEquals(td1.scoreDocs.length, td2.scoreDocs.length);
     Map<Integer, Float> expectedScores =
         Arrays.stream(td1.scoreDocs).collect(Collectors.toMap(sd -> sd.doc, sd -> sd.score));

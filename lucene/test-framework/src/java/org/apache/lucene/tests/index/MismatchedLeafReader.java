@@ -98,7 +98,7 @@ public class MismatchedLeafReader extends FilterLeafReader {
           new FieldInfo(
               oldInfo.name, // name
               i, // number
-              oldInfo.hasVectors(), // storeTermVector
+              oldInfo.hasTermVectors(), // storeTermVector
               oldInfo.omitsNorms(), // omitNorms
               oldInfo.hasPayloads(), // storePayloads
               oldInfo.getIndexOptions(), // indexOptions

@@ -47,7 +47,7 @@ public final class PagedMutable extends AbstractPagedMutable<PagedMutable> {
   }
 
   PagedMutable(long size, int pageSize, PackedInts.FormatAndBits formatAndBits) {
-    this(size, pageSize, formatAndBits.bitsPerValue, formatAndBits.format);
+    this(size, pageSize, formatAndBits.bitsPerValue(), formatAndBits.format());
   }
 
   PagedMutable(long size, int pageSize, int bitsPerValue, PackedInts.Format format) {

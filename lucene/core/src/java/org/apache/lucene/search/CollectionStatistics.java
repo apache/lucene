@@ -17,8 +17,6 @@
 package org.apache.lucene.search;
 
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader; // javadocs
-import org.apache.lucene.index.Terms; // javadocs
 
 /**
  * Contains statistics for a collection (field).
@@ -45,31 +43,41 @@ import org.apache.lucene.index.Terms; // javadocs
  * <p>Be careful when performing calculations on these values because they are represented as 64-bit
  * integer values, you may need to cast to {@code double} for your use.
  *
+ * @param field Field's name.
+ *     <p>This value is never {@code null}.
+ * @param maxDoc The total number of documents in the range [1 .. {@link Long#MAX_VALUE}],
+ *     regardless of whether they all contain values for this field.
+ *     <p>This value is always a positive number. @see IndexReader#maxDoc()
+ * @param docCount The total number of documents that have at least one term for this field , in the
+ *     range [1 .. {@link #maxDoc()}].
+ *     <p>This value is always a positive number, and never exceeds {@link #maxDoc()}. @see
+ *     Terms#getDocCount()
+ * @param sumTotalTermFreq The total number of tokens for this field , in the range [{@link
+ *     #sumDocFreq()} .. {@link Long#MAX_VALUE}]. This is the "word count" for this field across all
+ *     documents. It is the sum of {@link TermStatistics#totalTermFreq()} across all terms. It is
+ *     also the sum of each document's field length across all documents.
+ *     <p>This value is always a positive number, and always at least {@link #sumDocFreq()}. @see
+ *     Terms#getSumTotalTermFreq()
+ * @param sumDocFreq The total number of posting list entries for this field, in the range [{@link
+ *     #docCount()} .. {@link #sumTotalTermFreq()}]. This is the sum of term-document pairs: the sum
+ *     of {@link TermStatistics#docFreq()} across all terms. It is also the sum of each document's
+ *     unique term count for this field across all documents.
+ *     <p>This value is always a positive number, always at least {@link #docCount()}, and never
+ *     exceeds {@link #sumTotalTermFreq()}. @see Terms#getSumDocFreq()
  * @lucene.experimental
  */
-public class CollectionStatistics {
-  private final String field;
-  private final long maxDoc;
-  private final long docCount;
-  private final long sumTotalTermFreq;
-  private final long sumDocFreq;
-
+public record CollectionStatistics(
+    String field, long maxDoc, long docCount, long sumTotalTermFreq, long sumDocFreq) {
   /**
    * Creates statistics instance for a collection (field).
    *
-   * @param field Field's name
-   * @param maxDoc total number of documents.
-   * @param docCount number of documents containing the field.
-   * @param sumTotalTermFreq number of tokens in the field.
-   * @param sumDocFreq number of postings list entries for the field.
    * @throws IllegalArgumentException if {@code maxDoc} is negative or zero.
    * @throws IllegalArgumentException if {@code docCount} is negative or zero.
    * @throws IllegalArgumentException if {@code docCount} is more than {@code maxDoc}.
    * @throws IllegalArgumentException if {@code sumDocFreq} is less than {@code docCount}.
    * @throws IllegalArgumentException if {@code sumTotalTermFreq} is less than {@code sumDocFreq}.
    */
-  public CollectionStatistics(
-      String field, long maxDoc, long docCount, long sumTotalTermFreq, long sumDocFreq) {
+  public CollectionStatistics {
     Objects.requireNonNull(field);
     if (maxDoc <= 0) {
       throw new IllegalArgumentException("maxDoc must be positive, maxDoc: " + maxDoc);
@@ -102,94 +110,5 @@ public class CollectionStatistics {
               + ", sumDocFreq: "
               + sumDocFreq);
     }
-    this.field = field;
-    this.maxDoc = maxDoc;
-    this.docCount = docCount;
-    this.sumTotalTermFreq = sumTotalTermFreq;
-    this.sumDocFreq = sumDocFreq;
-  }
-
-  /**
-   * The field's name.
-   *
-   * <p>This value is never {@code null}.
-   *
-   * @return field's name, not {@code null}
-   */
-  public final String field() {
-    return field;
-  }
-
-  /**
-   * The total number of documents, regardless of whether they all contain values for this field.
-   *
-   * <p>This value is always a positive number.
-   *
-   * @return total number of documents, in the range [1 .. {@link Long#MAX_VALUE}]
-   * @see IndexReader#maxDoc()
-   */
-  public final long maxDoc() {
-    return maxDoc;
-  }
-
-  /**
-   * The total number of documents that have at least one term for this field.
-   *
-   * <p>This value is always a positive number, and never exceeds {@link #maxDoc()}.
-   *
-   * @return total number of documents containing this field, in the range [1 .. {@link #maxDoc()}]
-   * @see Terms#getDocCount()
-   */
-  public final long docCount() {
-    return docCount;
-  }
-
-  /**
-   * The total number of tokens for this field. This is the "word count" for this field across all
-   * documents. It is the sum of {@link TermStatistics#totalTermFreq()} across all terms. It is also
-   * the sum of each document's field length across all documents.
-   *
-   * <p>This value is always a positive number, and always at least {@link #sumDocFreq()}.
-   *
-   * @return total number of tokens in the field, in the range [{@link #sumDocFreq()} .. {@link
-   *     Long#MAX_VALUE}]
-   * @see Terms#getSumTotalTermFreq()
-   */
-  public final long sumTotalTermFreq() {
-    return sumTotalTermFreq;
-  }
-
-  /**
-   * The total number of posting list entries for this field. This is the sum of term-document
-   * pairs: the sum of {@link TermStatistics#docFreq()} across all terms. It is also the sum of each
-   * document's unique term count for this field across all documents.
-   *
-   * <p>This value is always a positive number, always at least {@link #docCount()}, and never
-   * exceeds {@link #sumTotalTermFreq()}.
-   *
-   * @return number of posting list entries, in the range [{@link #docCount()} .. {@link
-   *     #sumTotalTermFreq()}]
-   * @see Terms#getSumDocFreq()
-   */
-  public final long sumDocFreq() {
-    return sumDocFreq;
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("field=");
-    sb.append('"');
-    sb.append(field());
-    sb.append('"');
-    sb.append(",maxDoc=");
-    sb.append(maxDoc());
-    sb.append(",docCount=");
-    sb.append(docCount());
-    sb.append(",sumTotalTermFreq=");
-    sb.append(sumTotalTermFreq());
-    sb.append(",sumDocFreq=");
-    sb.append(sumDocFreq);
-    return sb.toString();
   }
 }

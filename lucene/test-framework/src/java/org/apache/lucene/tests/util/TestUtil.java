@@ -1375,15 +1375,17 @@ public final class TestUtil {
   /** Assert that the given {@link TopDocs} have the same top docs and consistent hit counts. */
   public static void assertConsistent(TopDocs expected, TopDocs actual) {
     Assert.assertEquals(
-        "wrong total hits", expected.totalHits.value == 0, actual.totalHits.value == 0);
-    if (expected.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-      if (actual.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-        Assert.assertEquals("wrong total hits", expected.totalHits.value, actual.totalHits.value);
+        "wrong total hits", expected.totalHits.value() == 0, actual.totalHits.value() == 0);
+    if (expected.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+      if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+        Assert.assertEquals(
+            "wrong total hits", expected.totalHits.value(), actual.totalHits.value());
       } else {
-        Assert.assertTrue("wrong total hits", expected.totalHits.value >= actual.totalHits.value);
+        Assert.assertTrue(
+            "wrong total hits", expected.totalHits.value() >= actual.totalHits.value());
       }
-    } else if (actual.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-      Assert.assertTrue("wrong total hits", expected.totalHits.value <= actual.totalHits.value);
+    } else if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+      Assert.assertTrue("wrong total hits", expected.totalHits.value() <= actual.totalHits.value());
     }
     Assert.assertEquals("wrong hit count", expected.scoreDocs.length, actual.scoreDocs.length);
     for (int hitIDX = 0; hitIDX < expected.scoreDocs.length; hitIDX++) {

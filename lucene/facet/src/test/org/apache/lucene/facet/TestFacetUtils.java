@@ -79,8 +79,8 @@ public class TestFacetUtils extends LuceneTestCase {
     DocIdSetIterator disi;
 
     for (FacetsCollector.MatchingDocs m : fc.getMatchingDocs()) {
-      NumericDocValues numericDV = DocValues.getNumeric(m.context.reader(), "val");
-      Bits liveDocs = m.context.reader().getLiveDocs();
+      NumericDocValues numericDV = DocValues.getNumeric(m.context().reader(), "val");
+      Bits liveDocs = m.context().reader().getLiveDocs();
       // Only use the liveDocsDISI if liveDocs is not null
       disi = (liveDocs == null) ? numericDV : FacetUtils.liveDocsDISI(numericDV, liveDocs);
 

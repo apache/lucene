@@ -138,7 +138,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
     assertEquals(7, values.longValue());
     assertEquals(2, values.nextDoc());
     assertEquals(18, values.longValue());
-    assertNotNull(leaf.getMetaData().getSort());
+    assertNotNull(leaf.getMetaData().sort());
     IOUtils.close(r, w, dir, tmpDir);
   }
 
@@ -290,12 +290,12 @@ public class TestSortingCodecReader extends LuceneTestCase {
               IndexSearcher searcher = new IndexSearcher(r);
               TopDocs result =
                   searcher.search(LongPoint.newExactQuery("point_id", ids.longValue()), 1);
-              assertEquals(1, result.totalHits.value);
+              assertEquals(1, result.totalHits.value());
               assertEquals(idNext, result.scoreDocs[0].doc);
 
               result =
                   searcher.search(new TermQuery(new Term("string_id", "" + ids.longValue())), 1);
-              assertEquals(1, result.totalHits.value);
+              assertEquals(1, result.totalHits.value());
               assertEquals(idNext, result.scoreDocs[0].doc);
             }
             assertEquals(DocIdSetIterator.NO_MORE_DOCS, ids.nextDoc());
