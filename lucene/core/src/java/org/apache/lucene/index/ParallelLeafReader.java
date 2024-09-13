@@ -329,7 +329,7 @@ public class ParallelLeafReader extends LeafReader {
 
     Map<LeafReader, TermVectors> readerToTermVectors = new IdentityHashMap<>();
     for (LeafReader reader : parallelReaders) {
-      if (reader.getFieldInfos().hasVectors()) {
+      if (reader.getFieldInfos().hasTermVectors()) {
         TermVectors termVectors = reader.termVectors();
         readerToTermVectors.put(reader, termVectors);
       }
