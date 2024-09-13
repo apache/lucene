@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.blocktreeords;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
-
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.blocktreeords.FSTOrdsOutputs.Output;
 import org.apache.lucene.index.BaseTermsEnum;

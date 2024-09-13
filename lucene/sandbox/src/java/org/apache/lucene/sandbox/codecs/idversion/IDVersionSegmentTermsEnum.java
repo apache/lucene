@@ -19,7 +19,6 @@ package org.apache.lucene.sandbox.codecs.idversion;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
-
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
