@@ -292,7 +292,12 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
         null,
         0,
         NO_MORE_DOCS);
-    assertEqualsToOneOf(expectedScoresList, actualScores);
+
+    if (expectedScoresList.size() == 1) {
+      assertEquals(expectedScoresList.getFirst(), actualScores);
+    } else {
+      assertEqualsToOneOf(expectedScoresList, actualScores);
+    }
   }
 
   private static void assertEqualsToOneOf(List<?> expectedList, Object actual) {
