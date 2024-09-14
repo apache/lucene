@@ -25,6 +25,7 @@ import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
@@ -50,7 +51,7 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * Setting these properties will make this code run EXTREMELY slow!
  */
-final class PanamaVectorUtilSupport implements VectorUtilSupport {
+public final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
@@ -60,6 +61,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Short> SHORT_SPECIES;
 
   static final int VECTOR_BITSIZE;
+  private static final Arena offHeap = Arena.ofConfined();
 
   static {
     VECTOR_BITSIZE = PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
@@ -305,7 +307,32 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
   }
 
+  /**
+   * For use in JMH benchmarking.
+   *
+   * @param b byte[] whose contents will be copied to offHeap memory
+   * @return offHeap memory segment
+   */
+  public static MemorySegment nativeMemorySegment(byte[] b) {
+    MemorySegment seg = offHeap.allocate(b.length, JAVA_BYTE.byteAlignment());
+    seg.copyFrom(MemorySegment.ofArray(b));
+    return seg;
+  }
+
+  public static int nativeDotProduct(MemorySegment a, MemorySegment b) {
+    assert a.byteSize() == b.byteSize();
+    try {
+      int limit = (int) a.byteSize();
+      return (int) NativeMethodHandles.DOT_PRODUCT_IMPL.invokeExact(a, b, limit);
+    } catch (Throwable ex$) {
+      throw new AssertionError("should not reach here", ex$);
+    }
+  }
+
   public static int dotProduct(MemorySegment a, MemorySegment b) {
+    if (a.isNative() && b.isNative()) {
+      return nativeDotProduct(a, b);
+    }
     assert a.byteSize() == b.byteSize();
     int i = 0;
     int res = 0;

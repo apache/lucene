@@ -17,7 +17,9 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.Optional;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
@@ -25,6 +27,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 abstract sealed class Lucene99MemorySegmentByteVectorScorer
@@ -34,6 +37,8 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
   final MemorySegmentAccessInput input;
   final MemorySegment query;
   byte[] scratch;
+  MemorySegment offHeapScratch;
+  MemorySegment offHeapQuery;
 
   /**
    * Return an optional whose value, if present, is the scorer. Otherwise, an empty optional is
@@ -49,7 +54,10 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     checkInvariants(values.size(), values.getVectorByteLength(), input);
     return switch (type) {
       case COSINE -> Optional.of(new CosineScorer(msInput, values, queryVector));
-      case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector));
+      case DOT_PRODUCT ->
+          Constants.NATIVE_DOT_PRODUCT_ENABLED == false
+              ? Optional.of(new DotProductScorer(msInput, values, queryVector))
+              : Optional.of(new NativeDotProductScorer(msInput, values, queryVector));
       case EUCLIDEAN -> Optional.of(new EuclideanScorer(msInput, values, queryVector));
       case MAXIMUM_INNER_PRODUCT ->
           Optional.of(new MaxInnerProductScorer(msInput, values, queryVector));
@@ -62,6 +70,20 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     this.input = input;
     this.vectorByteSize = values.getVectorByteLength();
     this.query = MemorySegment.ofArray(queryVector);
+  }
+
+  final MemorySegment getNativeSegment(int ord) throws IOException {
+    long byteOffset = (long) ord * vectorByteSize;
+    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
+    if (seg == null) {
+      if (offHeapScratch == null) {
+        offHeapScratch =
+            Arena.ofAuto().allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment());
+      }
+      input.readBytes(byteOffset, offHeapScratch, 0, vectorByteSize);
+      seg = offHeapScratch;
+    }
+    return seg;
   }
 
   final MemorySegment getSegment(int ord) throws IOException {
@@ -100,6 +122,27 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
       checkOrdinal(node);
       float raw = PanamaVectorUtilSupport.cosine(query, getSegment(node));
       return (1 + raw) / 2;
+    }
+  }
+
+  static final class NativeDotProductScorer extends Lucene99MemorySegmentByteVectorScorer {
+
+    NativeDotProductScorer(
+        MemorySegmentAccessInput input, KnnVectorValues values, byte[] queryVector) {
+      super(input, values, queryVector);
+      if (offHeapQuery == null) {
+        offHeapQuery =
+            Arena.ofAuto().allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment());
+      }
+      offHeapQuery.copyFrom(query);
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      checkOrdinal(node);
+      // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+      int raw = PanamaVectorUtilSupport.nativeDotProduct(offHeapQuery, getNativeSegment(node));
+      return 0.5f + raw / (float) (query.byteSize() * (1 << 15));
     }
   }
 

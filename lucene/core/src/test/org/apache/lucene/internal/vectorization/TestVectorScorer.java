@@ -110,7 +110,6 @@ public class TestVectorScorer extends LuceneTestCase {
               float expected = scorer1.scorer(idx0).score(idx1);
               var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
               assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
-
               // getRandomVectorScorer
               var scorer3 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
               assertEquals(scorer3.score(idx1), expected, DELTA);
