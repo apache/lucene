@@ -98,16 +98,15 @@ public class VectorUtilBenchmark {
     nativeBytesB = offHeap.allocate(size, ValueLayout.JAVA_BYTE.byteAlignment());
     for (int i = 0; i < size; ++i) {
       nativeBytesA.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
-      nativeBytesA.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
+      nativeBytesB.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
     }
   }
 
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int dot8s() {
-    return VectorUtil.dot8s(nativeBytesA, nativeBytesB, size);
-  }
-
+  /**
+   * change the wiring here @Benchmark @Fork(jvmArgsPrepend =
+   * {"--add-modules=jdk.incubator.vector"}) public int dot8s() { return
+   * VectorUtil.dot8s(nativeBytesA, nativeBytesB, size); }
+   */
   @Benchmark
   public float binaryCosineScalar() {
     return VectorUtil.cosine(bytesA, bytesB);

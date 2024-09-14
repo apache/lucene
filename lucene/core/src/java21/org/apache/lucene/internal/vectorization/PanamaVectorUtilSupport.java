@@ -303,6 +303,16 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
   }
 
+  public static int nativeDotProduct(MemorySegment a, MemorySegment b) {
+    assert a.byteSize() == b.byteSize();
+    try {
+      int limit = (int) a.byteSize();
+      return (int) NativeMethodHandles.DOT_PRODUCT_IMPL.invokeExact(a, b, limit);
+    } catch (Throwable ex$) {
+      throw new AssertionError("should not reach here", ex$);
+    }
+  }
+
   public static int dotProduct(MemorySegment a, MemorySegment b) {
     assert a.byteSize() == b.byteSize();
     int i = 0;
