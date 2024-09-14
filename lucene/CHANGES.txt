@@ -120,6 +120,9 @@ API Changes
 
 * GITHUB#13328: Convert many basic Lucene classes to record classes, including CollectionStatistics, TermStatistics and LeafMetadata. (Shubham Chaudhary)
 
+* GITHUB#13780: Remove `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` in favour of the newly
+  introduced `IndexSearcher#search(LeafReaderContextPartition[], Weight, Collector)`
+
 New Features
 ---------------------
 
@@ -371,6 +374,8 @@ Improvements
 * GITHUB#13735: Migrate monitor package usage of deprecated IndexSearcher#search(Query, Collector)
   to IndexSearcher#search(Query, CollectorManager). (Greg Miller)
 
+* GITHUB#13746: Introduce ProfilerCollectorManager to parallelize search when using ProfilerCollector. (Luca Cavanna)
+
 Optimizations
 ---------------------
 
@@ -465,6 +470,9 @@ Bug Fixes
 * GITHUB#13703: Fix bug in LatLonPoint queries where narrow polygons close to latitude 90 don't
   match any points due to an Integer overflow. (Ignacio Vera)
 
+* GITHUB#13641: Unify how KnnFormats handle missing fields and correctly handle missing vector fields when
+  merging segments. (Ben Trent)
+
 Build
 ---------------------
 
@@ -473,7 +481,9 @@ Build
 
 Other
 --------------------
-(No changes)
+
+* GITHUB#13720: Add float comparison based on unit of least precision and use it to stop test failures caused by float
+  summation not being associative in IEEE 754. (Alex Herbert, Stefan Vodita)
 
 ======================== Lucene 9.11.1 =======================
 

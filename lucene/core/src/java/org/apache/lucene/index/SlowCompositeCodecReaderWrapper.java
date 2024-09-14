@@ -245,6 +245,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
+    public void prefetch(int doc) throws IOException {
+      int readerId = docIdToReaderId(doc);
+      TermVectorsReader reader = readers[readerId];
+      if (reader != null) {
+        reader.prefetch(doc - docStarts[readerId]);
+      }
+    }
+
+    @Override
     public Fields get(int doc) throws IOException {
       int readerId = docIdToReaderId(doc);
       TermVectorsReader reader = readers[readerId];

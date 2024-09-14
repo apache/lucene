@@ -232,7 +232,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       // the next float if the global minimum score is set on a document id that is
       // smaller than the ids in the current leaf
       float score =
-          docBase >= maxMinScore.docBase() ? Math.nextUp(maxMinScore.score()) : maxMinScore.score();
+          docBase >= maxMinScore.docId() ? Math.nextUp(maxMinScore.score()) : maxMinScore.score();
       if (score > minCompetitiveScore) {
         assert hitsThresholdChecker.isThresholdReached();
         scorer.setMinCompetitiveScore(score);
@@ -254,10 +254,9 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         minCompetitiveScore = localMinScore;
         if (minScoreAcc != null) {
-          // we don't use the next float but we register the document
-          // id so that other leaves can require it if they are after
-          // the current maximum
-          minScoreAcc.accumulate(docBase, pqTop.score);
+          // we don't use the next float but we register the document id so that other leaves or
+          // leaf partitions can require it if they are after the current maximum
+          minScoreAcc.accumulate(pqTop.doc, pqTop.score);
         }
       }
     }

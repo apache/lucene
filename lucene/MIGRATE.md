@@ -194,6 +194,7 @@ access the members using method calls instead of field accesses. Affected classe
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 - `BooleanClause` (GITHUB#13261)
 - `TotalHits` (GITHUB#13762)
+- `TermAndVector` (GITHUB#13772)
 - Many basic Lucene classes, including `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
 ### Boolean flags on IOContext replaced with a new ReadAdvice enum.
@@ -858,7 +859,7 @@ Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need
 
 ### Signature of static IndexSearch#slices method changed
 
-The static `IndexSearcher#sslices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
+The static `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
 method now supports an additional 4th and last argument to optionally enable creating segment partitions:
 `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice, boolean allowSegmentPartitions)`
 
@@ -867,6 +868,12 @@ method now supports an additional 4th and last argument to optionally enable cre
 `TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`, 
 is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can 
 optimize the type of collectors it creates and exposes via `newCollector`.
+
+### `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` removed
+
+The protected `IndexSearcher#search(List<LeafReaderContext> leaves, Weight weight, Collector collector)` method has been 
+removed in favour of the newly introduced `search(LeafReaderContextPartition[] partitions, Weight weight, Collector collector)`.
+`IndexSearcher` subclasses that override this method need to instead override the new method.
 
 ### Indexing vectors with 8 bit scalar quantization is no longer supported but 7 and 4 bit quantization still work (GITHUB#13519)
 

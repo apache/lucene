@@ -129,7 +129,7 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
    */
   protected void populateResults(ScoreDoc[] results, int howMany) {
     if (pq != null) {
-      assert totalHits >= requestedHitCount;
+      assert totalHits > requestedHitCount;
       for (int i = howMany - 1; i >= 0; i--) {
         results[i] = pq.pop();
       }
@@ -137,7 +137,7 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
     }
 
     // Total number of hits collected were less than requestedHitCount
-    assert totalHits < requestedHitCount;
+    assert totalHits <= requestedHitCount;
     Collections.sort(
         hits,
         Comparator.comparing((ScoreDoc scoreDoc) -> scoreDoc.score)
