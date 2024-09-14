@@ -311,9 +311,6 @@ API Changes
 * GITHUB#13568, GITHUB#13750: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
 
-* GITHUB#13735: Add CollectorManager#forSequentialExecution to make CollectorManager creation more convenient
-  for users of the deprecated IndexSearcher#search(Query, Collector). (Greg Miller)
-
 New Features
 ---------------------
 
