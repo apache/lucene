@@ -24,11 +24,7 @@ allprojects { project ->
 
     // Use 'release' flag instead of 'source' and 'target'
     tasks.withType(JavaCompile) {
-      options.compilerArgs += ["--release", rootProject.minJavaVersion.toString(), "--enable-preview"]
-    }
-
-    tasks.withType(Test) {
-      jvmArgs += "--enable-preview"
+      options.compilerArgs += ["--release", rootProject.minJavaVersion.toString()]
     }
 
     // Configure warnings.
@@ -76,7 +72,7 @@ allprojects { project ->
         "-Xdoclint:-accessibility"
       ]
 
-      if (project.path == ":lucene:benchmark-jmh" ) {
+      if (project.path == ":lucene:benchmark-jmh") {
         // JMH benchmarks use JMH preprocessor and incubating modules.
       } else {
         // proc:none was added because of LOG4J2-1925 / JDK-8186647
@@ -84,11 +80,9 @@ allprojects { project ->
             "-proc:none"
         ]
 
-        /**
         if (propertyOrDefault("javac.failOnWarnings", true).toBoolean()) {
           options.compilerArgs += "-Werror"
         }
-        */
       }
     }
   }

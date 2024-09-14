@@ -14,54 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-plugins {
-  id "c"
-}
 
 apply plugin: 'java-library'
-apply plugin: 'c'
 
 description = 'Lucene core library'
-model {
-  binaries {
-    all {
-      cCompiler.args "--shared", "-O3", "-march=native", "-funroll-loops"
-    }
-  }
-
-  toolChains {
-    gcc(Gcc) {
-        target("linux_aarch64") {
-            cCompiler.executable = System.getenv("CC")
-        }
-    }
-    clang(Clang) {
-        target("osx_aarch64"){
-            cCompiler.executable = System.getenv("CC")
-        }
-    }
-  }
-     
-  components {
-    dotProduct(NativeLibrarySpec) {
-      sources {
-        c {
-          source {
-            srcDir 'src/c' // Path to your C source files
-            include "**/*.c"
-          }
-          exportedHeaders {
-            srcDir "src/c"
-            include "**/*.h"
-          }
-        }
-      }
-    }
-  }
-
-}
-
-test.dependsOn 'dotProductSharedLibrary'
 
 dependencies {
   moduleTestImplementation project(':lucene:codecs')
@@ -69,8 +25,11 @@ dependencies {
 }
 
 test {
+  build {
+    dependsOn ':lucene:native:build'
+  }
   systemProperty(
           "java.library.path",
-          file("${buildDir}/libs/dotProduct/shared").absolutePath
+          project(":lucene:native").layout.buildDirectory.get().asFile.absolutePath + "/libs/dotProduct/shared"
   )
 }
