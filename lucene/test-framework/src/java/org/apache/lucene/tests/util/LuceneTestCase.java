@@ -867,6 +867,18 @@ public abstract class LuceneTestCase extends Assert {
     RandomizedTest.assumeNoException(msg, e);
   }
 
+  public static void assertFloatUlpEquals(final float x, final float y, final short maxUlps) {
+    assertTrue(
+        x + " and " + y + " are not within " + maxUlps + " ULPs of each other",
+        TestUtil.floatUlpEquals(x, y, maxUlps));
+  }
+
+  public static void assertDoubleUlpEquals(final double x, final double y, final int maxUlps) {
+    assertTrue(
+        x + " and " + y + " are not within " + maxUlps + " ULPs of each other",
+        TestUtil.doubleUlpEquals(x, y, maxUlps));
+  }
+
   /**
    * Return <code>args</code> as a {@link Set} instance. The order of elements is not preserved in
    * iterators.

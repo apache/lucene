@@ -468,7 +468,9 @@ Build
 
 Other
 --------------------
-(No changes)
+
+* GITHUB#13720: Add float comparison based on unit of least precision and use it to stop test failures caused by float
+  summation not being associative in IEEE 754. (Alex Herbert, Stefan Vodita)
 
 ======================== Lucene 9.11.1 =======================
 
