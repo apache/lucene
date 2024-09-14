@@ -598,7 +598,7 @@ final class SegmentTermsEnumFrame {
       startBytePos = suffixesReader.getPosition();
       suffixesReader.skipBytes(suffixLength);
 
-      // Loop over bytes in the suffix, comparing to the target
+      // Compare suffix and target.
       final int cmp =
           Arrays.compareUnsigned(
               suffixBytes,
@@ -686,7 +686,7 @@ final class SegmentTermsEnumFrame {
       nextEnt = mid + 1;
       startBytePos = mid * suffixLength;
 
-      // Binary search bytes in the suffix, comparing to the target.
+      // Compare suffix and target.
       cmp =
           Arrays.compareUnsigned(
               suffixBytes,
@@ -792,6 +792,7 @@ final class SegmentTermsEnumFrame {
         lastSubFP = fp - subCode;
       }
 
+      // Compare suffix and target.
       final int cmp =
           Arrays.compareUnsigned(
               suffixBytes,
