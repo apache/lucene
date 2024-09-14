@@ -139,8 +139,6 @@ allprojects {
               ":lucene:test-framework"
       ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
 
-      jvmArgs '-Djava.library.path=' + file("${buildDir}/libs/dotProduct/shared").absolutePath
-
       def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
       def tempDir = layout.projectDirectory.dir(testsTmpDir.toString())
       jvmArgumentProviders.add(

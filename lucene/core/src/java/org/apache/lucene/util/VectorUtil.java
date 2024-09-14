@@ -17,11 +17,9 @@
 
 package org.apache.lucene.util;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
-import static java.lang.foreign.ValueLayout.JAVA_INT;
-
-import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
@@ -54,10 +52,41 @@ public final class VectorUtil {
 
   private static final float EPSILON = 1e-4f;
 
-  private static final VectorUtilSupport IMPL =
+  public static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
 
+  // TODO: Harden this implementation and may be find a new home for this
+  private static MethodHandle nativeDotProduct() {
+    try {
+      final var PanamaVectorUtilSupport =
+          "org.apache.lucene.internal.vectorization.PanamaVectorUtilSupport";
+      if (!IMPL.getClass().getName().equals(PanamaVectorUtilSupport)) {
+        return null;
+      }
+      MethodHandles.Lookup lookup = MethodHandles.lookup();
+      final var MemorySegment = "java.lang.foreign.MemorySegment";
+      final var methodType =
+          MethodType.methodType(
+              int.class, lookup.findClass(MemorySegment), lookup.findClass(MemorySegment));
+      return lookup.findStatic(IMPL.getClass(), "nativeDotProduct", methodType);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  // For use in JMH benchmark
+  public static final MethodHandle NATIVE_DOT_PRODUCT = nativeDotProduct();
+
   private VectorUtil() {}
+
+  /*
+    Used in o.a.l.benchmark.jmh.VectorUtilBenchmark to create test vectors
+    in off-heap MemorySegments IF VectorUtilSupport instance supports
+    Panama APIs.
+  */
+  public static Class<?> getVectorUtilSupportClass() {
+    return IMPL.getClass();
+  }
 
   /**
    * Returns the vector dot product of the two vectors.
@@ -173,62 +202,6 @@ public final class VectorUtil {
     }
   }
 
-  /** Ankur: Hacky code start */
-  public static final AddressLayout POINTER =
-      ValueLayout.ADDRESS.withTargetLayout(MemoryLayout.sequenceLayout(JAVA_BYTE));
-
-  private static final Linker LINKER = Linker.nativeLinker();
-  private static final SymbolLookup SYMBOL_LOOKUP;
-
-  static {
-    System.loadLibrary("dotProduct");
-    SymbolLookup loaderLookup = SymbolLookup.loaderLookup();
-    SYMBOL_LOOKUP = name -> loaderLookup.find(name).or(() -> LINKER.defaultLookup().find(name));
-  }
-
-  static final FunctionDescriptor dot8sDesc =
-      FunctionDescriptor.of(JAVA_INT, POINTER, POINTER, JAVA_INT);
-
-  static final MethodHandle dot8sMH =
-      SYMBOL_LOOKUP.find("dot8s").map(addr -> LINKER.downcallHandle(addr, dot8sDesc)).orElse(null);
-
-  static final MethodHandle neonVdot8sMH =
-      SYMBOL_LOOKUP
-          .find("vdot8s_neon")
-          .map(addr -> LINKER.downcallHandle(addr, dot8sDesc))
-          .orElse(null);
-
-  static final MethodHandle sveVdot8sMH =
-      SYMBOL_LOOKUP
-          .find("vdot8s_sve")
-          .map(addr -> LINKER.downcallHandle(addr, dot8sDesc))
-          .orElse(null);
-
-  /* chosen C implementation */
-  static final MethodHandle dot8sImpl;
-
-  static {
-    if (sveVdot8sMH != null) {
-      dot8sImpl = sveVdot8sMH;
-    } else if (neonVdot8sMH != null) {
-      dot8sImpl = neonVdot8sMH;
-    } else if (dot8sMH != null) {
-      dot8sImpl = dot8sMH;
-    } else {
-      throw new RuntimeException("c code was not linked!");
-    }
-  }
-
-  public static int dot8s(MemorySegment vec1, MemorySegment vec2, int limit) {
-    try {
-      return (int) dot8sImpl.invokeExact(vec1, vec2, limit);
-    } catch (Throwable ex$) {
-      throw new AssertionError("should not reach here", ex$);
-    }
-  }
-
-  /** Ankur: Hacky code end * */
-
   /**
    * Dot product computed over signed bytes.
    *
@@ -339,7 +312,9 @@ public final class VectorUtil {
   public static float dotProductScore(byte[] a, byte[] b) {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
-    return 0.5f + dotProduct(a, b) / denom;
+
+    int raw = dotProduct(a, b);
+    return 0.5f + raw / denom;
   }
 
   /**

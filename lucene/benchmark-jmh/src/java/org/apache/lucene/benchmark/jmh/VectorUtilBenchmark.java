@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.VectorUtil;
@@ -52,12 +52,11 @@ public class VectorUtilBenchmark {
   private float[] floatsB;
   private int expectedhalfByteDotProduct;
 
-  private MemorySegment nativeBytesA;
+  private Object nativeBytesA;
+  private Object nativeBytesB;
 
-  private MemorySegment nativeBytesB;
-
-  // @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
-  @Param({"768"})
+  /** private Object nativeBytesA; private Object nativeBytesB; */
+  @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
   int size;
 
   @Setup(Level.Iteration)
@@ -92,20 +91,76 @@ public class VectorUtilBenchmark {
       floatsA[i] = random.nextFloat();
       floatsB[i] = random.nextFloat();
     }
-
-    Arena offHeap = Arena.ofAuto();
-    nativeBytesA = offHeap.allocate(size, ValueLayout.JAVA_BYTE.byteAlignment());
-    nativeBytesB = offHeap.allocate(size, ValueLayout.JAVA_BYTE.byteAlignment());
-    for (int i = 0; i < size; ++i) {
-      nativeBytesA.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
-      nativeBytesA.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
+    // Java 21+ specific initialization
+    final int runtimeVersion = Runtime.version().feature();
+    if (runtimeVersion >= 21) {
+      // Reflection based code to eliminate the use of Preview classes in JMH benchmarks
+      try {
+        final Class<?> vectorUtilSupportClass = VectorUtil.getVectorUtilSupportClass();
+        final var className = "org.apache.lucene.internal.vectorization.PanamaVectorUtilSupport";
+        if (vectorUtilSupportClass.getName().equals(className) == false) {
+          nativeBytesA = null;
+          nativeBytesB = null;
+        } else {
+          MethodHandles.Lookup lookup = MethodHandles.lookup();
+          final var MemorySegment = "java.lang.foreign.MemorySegment";
+          final var methodType =
+              MethodType.methodType(lookup.findClass(MemorySegment), byte[].class);
+          MethodHandle nativeMemorySegment =
+              lookup.findStatic(vectorUtilSupportClass, "nativeMemorySegment", methodType);
+          byte[] a = new byte[size];
+          byte[] b = new byte[size];
+          for (int i = 0; i < size; ++i) {
+            a[i] = (byte) random.nextInt(128);
+            b[i] = (byte) random.nextInt(128);
+          }
+          nativeBytesA = nativeMemorySegment.invoke(a);
+          nativeBytesB = nativeMemorySegment.invoke(b);
+        }
+      } catch (Throwable e) {
+        throw new RuntimeException(e);
+      }
+      /*
+      Arena offHeap = Arena.ofAuto();
+      nativeBytesA = offHeap.allocate(size, ValueLayout.JAVA_BYTE.byteAlignment());
+      nativeBytesB = offHeap.allocate(size, ValueLayout.JAVA_BYTE.byteAlignment());
+      for (int i = 0; i < size; ++i) {
+        nativeBytesA.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
+        nativeBytesB.set(ValueLayout.JAVA_BYTE, i, (byte) random.nextInt(128));
+      }*/
     }
   }
 
+  /**
+   * High overhead (lower score) from using NATIVE_DOT_PRODUCT.invoke(nativeBytesA, nativeBytesB).
+   * Both nativeBytesA and nativeBytesB are offHeap MemorySegments created by invoking the method
+   * PanamaVectorUtilSupport.nativeMemorySegment(byte[]) which allocated these segments and copies
+   * bytes from the supplied byte[] to offHeap memory. The benchmark output below shows
+   * significantly more overhead. <b>NOTE:</b> Return type of dots8s() was set to void for the
+   * benchmark run to avoid boxing/unboxing overhead.
+   *
+   * <pre>
+   * Benchmark                  (size)   Mode  Cnt   Score   Error   Units
+   * VectorUtilBenchmark.dot8s     768  thrpt   15  36.406 ± 0.496  ops/us
+   * </pre>
+   *
+   * Much lower overhead was observed when preview APIs were used directly in JMH benchmarking code
+   * and exact method invocation was made as shown below <b>return (int)
+   * VectorUtil.NATIVE_DOT_PRODUCT.invokeExact(nativeBytesA, nativeBytesB);</b>
+   *
+   * <pre>
+   * Benchmark                  (size)   Mode  Cnt   Score   Error   Units
+   * VectorUtilBenchmark.dot8s     768   thrpt   15   43.662 ± 0.818  ops/us
+   * </pre>
+   */
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int dot8s() {
-    return VectorUtil.dot8s(nativeBytesA, nativeBytesB, size);
+  public void dot8s() {
+    try {
+      VectorUtil.NATIVE_DOT_PRODUCT.invoke(nativeBytesA, nativeBytesB);
+    } catch (Throwable e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Benchmark

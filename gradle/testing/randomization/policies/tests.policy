@@ -52,6 +52,9 @@ grant {
   // Needed for DirectIODirectory to retrieve block size
   permission java.lang.RuntimePermission "getFileStoreAttributes";
 
+  // Needed to load native library containing optimized dot product implementation
+  permission java.lang.RuntimePermission "loadLibrary.dotProduct";
+
   // TestLockFactoriesMultiJVM opens a random port on 127.0.0.1 (port 0 = ephemeral port range):
   permission java.net.SocketPermission "127.0.0.1:0", "accept,listen,resolve";
   // Replicator tests connect to ephemeral ports
@@ -104,7 +107,10 @@ grant codeBase "file:${gradle.worker.jar}" {
 };
 
 grant {
-  permission java.security.AllPermission;
+  // Allow reading gradle worker JAR.
+  permission java.io.FilePermission "${gradle.worker.jar}", "read";
+  // Allow reading from classpath JARs (resources).
+  permission java.io.FilePermission "${gradle.user.home}${/}-", "read";
 };
 
 // Grant permissions to certain test-related JARs (https://github.com/apache/lucene/pull/13146)
