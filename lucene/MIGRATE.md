@@ -874,3 +874,17 @@ optimize the type of collectors it creates and exposes via `newCollector`.
 The protected `IndexSearcher#search(List<LeafReaderContext> leaves, Weight weight, Collector collector)` method has been 
 removed in favour of the newly introduced `search(LeafReaderContextPartition[] partitions, Weight weight, Collector collector)`.
 `IndexSearcher` subclasses that override this method need to instead override the new method.
+
+### Indexing vectors with 8 bit scalar quantization is no longer supported but 7 and 4 bit quantization still work (GITHUB#13519)
+
+8 bit scalar vector quantization is no longer supported: it was buggy
+starting in 9.11 (GITHUB#13197).  4 and 7 bit quantization are still
+supported.  Existing (9.11) Lucene indices that previously used 8 bit
+quantization can still be read/searched but the results from
+`KNN*VectorQuery` are silently buggy.  Further 8 bit quantized vector
+indexing into such (9.11) indices is not permitted, so your path
+forward if you wish to continue using the same 9.11 index is to index
+additional vectors into the same field with either 4 or 7 bit
+quantization (or no quantization), and ensure all older (9.x written)
+segments are rewritten either via `IndexWriter.forceMerge` or
+`IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
