@@ -18,7 +18,6 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.DataInput;
 import java.io.IOException;
-
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
@@ -442,8 +441,8 @@ public final class IndexedDISI extends DocIdSetIterator {
   int gap;
 
   /**
-   * Returns an iterator that delegates to the IndexedDISI. Advancing this iterator will advance
-   * the underlying IndexedDISI, and vice-versa.
+   * Returns an iterator that delegates to the IndexedDISI. Advancing this iterator will advance the
+   * underlying IndexedDISI, and vice-versa.
    */
   public static KnnVectorValues.DocIndexIterator asDocIndexIterator(IndexedDISI disi) {
     // can we replace with fromDISI?

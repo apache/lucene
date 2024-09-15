@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -207,6 +208,48 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
+  // FIXME rename this better?
+  static class IteratorSupplier implements Supplier<SortingValuesIterator> {
+    private final FixedBitSet docBits;
+    private final int[] docToOrd;
+    private final int size;
+
+    IteratorSupplier(FixedBitSet docBits, int[] docToOrd, int size) {
+      this.docBits = docBits;
+      this.docToOrd = docToOrd;
+      this.size = size;
+    }
+
+    @Override
+    public SortingValuesIterator get() {
+      return new SortingValuesIterator(docBits, docToOrd, size);
+    }
+
+    public int size() {
+      return size;
+    }
+  }
+
+  public static IteratorSupplier iteratorSupplier(KnnVectorValues values, Sorter.DocMap docMap)
+      throws IOException {
+
+    final int[] docToOrd = new int[docMap.size()];
+    final FixedBitSet docBits = new FixedBitSet(docMap.size());
+    int count = 0;
+    // Note: docToOrd will contain zero for docids that have no vector. This is OK though
+    // because the iterator cannot be positioned on such docs
+    KnnVectorValues.DocIndexIterator iter = values.iterator();
+    for (int doc = iter.nextDoc(); doc != NO_MORE_DOCS; doc = iter.nextDoc()) {
+      int newDocId = docMap.oldToNew(doc);
+      if (newDocId != -1) {
+        docToOrd[newDocId] = iter.index();
+        docBits.set(newDocId);
+        ++count;
+      }
+    }
+    return new IteratorSupplier(docBits, docToOrd, count);
+  }
+
   /**
    * Iterator over KnnVectorValues accepting a mapping to differently-sorted docs. Consequently
    * index() may skip around, not increasing monotonically as iteration proceeds.
@@ -215,28 +258,13 @@ public final class SortingCodecReader extends FilterCodecReader {
     private final FixedBitSet docBits;
     private final DocIdSetIterator docsWithValues;
     private final int[] docToOrd;
-    private final int size;
 
     int doc = -1;
 
-    /** Creates an iterator accepting a mapping to differently-sorted docs. */
-    public SortingValuesIterator(KnnVectorValues.DocIndexIterator iter, Sorter.DocMap docMap)
-        throws IOException {
-      docToOrd = new int[docMap.size()];
-      docBits = new FixedBitSet(docMap.size());
-      int count = 0;
-      // Note: docToOrd will contain zero for docids that have no vector. This is OK though
-      // because the iterator cannot be positioned on such docs
-      for (int doc = iter.nextDoc(); doc != NO_MORE_DOCS; doc = iter.nextDoc()) {
-        int newDocId = docMap.oldToNew(doc);
-        if (newDocId != -1) {
-          docToOrd[newDocId] = iter.index();
-          docBits.set(newDocId);
-          ++count;
-        }
-      }
-      size = count;
-      docsWithValues = new BitSetIterator(docBits, count);
+    SortingValuesIterator(FixedBitSet docBits, int[] docToOrd, int size) {
+      this.docBits = docBits;
+      this.docToOrd = docToOrd;
+      docsWithValues = new BitSetIterator(docBits, size);
     }
 
     @Override
@@ -259,19 +287,20 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public long cost() {
-      return size;
+    public int advance(int target) {
+      throw new UnsupportedOperationException();
     }
   }
 
   /** Sorting FloatVectorValues that maps ordinals using the provided sortMap */
   private static class SortingFloatVectorValues extends FloatVectorValues {
     final FloatVectorValues delegate;
+    final IteratorSupplier iteratorSupplier;
 
     SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
       // SortingValuesIterator consumes the iterator and records the docs and ord mapping
-      iterator = new SortingValuesIterator(delegate.iterator(), sortMap);
+      iteratorSupplier = iteratorSupplier(delegate, sortMap);
     }
 
     @Override
@@ -288,7 +317,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public int size() {
-      return (int) iterator.cost();
+      return iteratorSupplier.size();
     }
 
     @Override
@@ -298,17 +327,18 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     protected DocIndexIterator createIterator() {
-      throw new IllegalStateException();
+      return iteratorSupplier.get();
     }
   }
 
   private static class SortingByteVectorValues extends ByteVectorValues {
     final ByteVectorValues delegate;
+    final IteratorSupplier iteratorSupplier;
 
     SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
       // SortingValuesIterator consumes the iterator and records the docs and ord mapping
-      iterator = new SortingValuesIterator(delegate.iterator(), sortMap);
+      iteratorSupplier = iteratorSupplier(delegate, sortMap);
     }
 
     @Override
@@ -319,7 +349,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     protected DocIndexIterator createIterator() {
-      throw new IllegalStateException();
+      return iteratorSupplier.get();
     }
 
     @Override
@@ -329,7 +359,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public int size() {
-      return (int) iterator().cost();
+      return iteratorSupplier.size();
     }
 
     @Override

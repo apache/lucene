@@ -540,6 +540,16 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
         return doc;
       }
 
+      @Override
+      public int advance(int target) throws IOException {
+        int doc = delegate.advance(target);
+        if (doc >= nextCheck) {
+          checkAndThrow();
+          nextCheck = doc + ExitableFilterAtomicReader.DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return doc;
+      }
+
       private void checkAndThrow() {
         if (queryTimeout.shouldExit()) {
           throw new ExitingReaderException(

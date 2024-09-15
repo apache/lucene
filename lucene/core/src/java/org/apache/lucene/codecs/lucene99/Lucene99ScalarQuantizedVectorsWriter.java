@@ -19,9 +19,7 @@ package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.DYNAMIC_CONFIDENCE_INTERVAL;
-import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
-import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.*;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
 
@@ -1021,6 +1019,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           ++ord;
         }
         return docId;
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        throw new UnsupportedOperationException();
       }
     }
   }

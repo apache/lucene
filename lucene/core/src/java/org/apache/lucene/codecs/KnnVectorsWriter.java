@@ -330,8 +330,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           }
 
           @Override
-          public long cost() {
-            return size;
+          public int advance(int target) throws IOException {
+            throw new UnsupportedOperationException();
           }
         };
       }
@@ -421,8 +421,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           }
 
           @Override
-          public long cost() {
-            return size;
+          public int advance(int target) throws IOException {
+            throw new UnsupportedOperationException();
           }
         };
       }

@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -118,15 +117,9 @@ public abstract class KnnVectorValues {
     public abstract int index();
 
     @Override
-    public int advance(int target) throws IOException {
-      return slowAdvance(target);
-    }
-
-    @Override
     public long cost() {
       throw new UnsupportedOperationException();
     }
-
   }
 
   /**
@@ -201,6 +194,11 @@ public abstract class KnnVectorValues {
       }
 
       @Override
+      public int advance(int target) throws IOException {
+        return docsWithField.advance(target);
+      }
+
+      @Override
       public long cost() {
         return docsWithField.cost();
       }
@@ -239,6 +237,11 @@ public abstract class KnnVectorValues {
           ++ord;
         }
         return docID();
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        return slowAdvance(target);
       }
 
       @Override

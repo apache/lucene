@@ -297,19 +297,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       extends KnnVectorValues.DocIndexIterator {
 
     final Iterator<DocValuesSub<T>> it;
-    final long cost;
     DocValuesSub<T> current;
     int ord = -1;
     int doc = -1;
 
     MergedDocIterator(List<DocValuesSub<T>> subs) {
-      long cost = 0;
-      for (DocValuesSub<T> sub : subs) {
-        if (sub.sub != null) {
-          cost += sub.sub.size();
-        }
-      }
-      this.cost = cost;
       this.it = subs.iterator();
       current = it.next();
     }
@@ -344,8 +336,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public long cost() {
-      return cost;
+    public int advance(int target) throws IOException {
+      throw new UnsupportedOperationException();
     }
   }
 

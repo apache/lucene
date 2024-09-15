@@ -20,12 +20,14 @@ package org.apache.lucene.codecs;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.SortingCodecReader.SortingValuesIterator;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.util.ArrayUtil;
@@ -110,13 +112,14 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
   private static class SortingFloatVectorValues extends FloatVectorValues {
     private final BufferedFloatVectorValues delegate;
-    private final DocIndexIterator iterator;
+    private final Supplier<SortingValuesIterator> iteratorSupplier;
 
     SortingFloatVectorValues(
         BufferedFloatVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
         throws IOException {
       this.delegate = delegate.copy();
-      iterator = new SortingValuesIterator(delegate.copy().iterator(), sortMap);
+      iteratorSupplier = SortingCodecReader.iteratorSupplier(delegate, sortMap);
+      iterator = iteratorSupplier.get();
     }
 
     @Override
@@ -148,13 +151,15 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   /** Sorting ByteVectorValues that iterate over documents in the order of the provided sortMap */
   private static class SortingByteVectorValues extends ByteVectorValues {
     private final BufferedByteVectorValues delegate;
+    private final Supplier<SortingValuesIterator> iteratorSupplier;
     private final DocIndexIterator iterator;
 
     SortingByteVectorValues(
         BufferedByteVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
         throws IOException {
       this.delegate = delegate;
-      iterator = new SortingValuesIterator(delegate.copy().iterator(), sortMap);
+      iteratorSupplier = SortingCodecReader.iteratorSupplier(delegate, sortMap);
+      iterator = iteratorSupplier.get();
     }
 
     @Override

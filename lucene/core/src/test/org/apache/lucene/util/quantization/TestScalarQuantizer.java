@@ -343,6 +343,11 @@ public class TestScalarQuantizer extends LuceneTestCase {
         public int index() {
           return ord;
         }
+
+        @Override
+        public int advance(int target) throws IOException {
+          throw new UnsupportedOperationException();
+        }
       };
     }
 
