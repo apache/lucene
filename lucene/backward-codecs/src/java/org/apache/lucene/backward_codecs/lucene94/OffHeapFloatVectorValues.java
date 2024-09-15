@@ -184,7 +184,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     protected DocIndexIterator createIterator() {
-      return DocIndexIterator.fromIndexedDISI(disi);
+      return IndexedDISI.asDocIndexIterator(disi);
     }
 
     @Override

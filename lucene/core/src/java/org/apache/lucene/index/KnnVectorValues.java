@@ -17,7 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
+
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -57,6 +57,8 @@ public abstract class KnnVectorValues {
    * Creates a new copy of this {@link KnnVectorValues}. This is helpful when you need to access
    * different values at once, to avoid overwriting the underlying vector returned.
    */
+  // FIXME: replace with some kind of wrapper??? Or can we eliminate completely given
+  // that we no longer have seek() API?
   public abstract KnnVectorValues copy() throws IOException;
 
   /** Returns the vector byte length, defaults to dimension multiplied by float byte size */
@@ -125,39 +127,6 @@ public abstract class KnnVectorValues {
       throw new UnsupportedOperationException();
     }
 
-    /**
-     * Returns an iterator that delegates to the IndexedDISI. Advancing this iterator will advance
-     * the underlying IndexedDISI, and vice-versa.
-     */
-    public static DocIndexIterator fromIndexedDISI(IndexedDISI disi) {
-      // can we replace with fromDISI?
-      return new DocIndexIterator() {
-        @Override
-        public int docID() {
-          return disi.docID();
-        }
-
-        @Override
-        public int index() {
-          return disi.index();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return disi.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return disi.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return disi.cost();
-        }
-      };
-    }
   }
 
   /**
@@ -242,7 +211,7 @@ public abstract class KnnVectorValues {
    * Creates an iterator from this instance's ordinal-to-docid mapping which must be monotonic
    * (docid increases when ordinal does).
    */
-  protected DocIndexIterator fromOrdToDoc() {
+  protected DocIndexIterator all() {
     return new DocIndexIterator() {
       private int ord = -1;
 

@@ -454,7 +454,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     protected DocIndexIterator createIterator() {
-      return fromOrdToDoc();
+      return all();
     }
 
     @Override

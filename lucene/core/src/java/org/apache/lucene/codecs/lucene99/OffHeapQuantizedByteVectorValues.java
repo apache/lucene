@@ -287,7 +287,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     @Override
     public DocIndexIterator createIterator() {
-      return DocIndexIterator.fromIndexedDISI(disi);
+      return IndexedDISI.asDocIndexIterator(disi);
     }
 
     @Override

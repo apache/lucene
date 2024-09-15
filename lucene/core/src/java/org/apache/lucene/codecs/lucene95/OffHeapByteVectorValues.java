@@ -233,7 +233,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
 
     @Override
     protected DocIndexIterator createIterator() {
-      return DocIndexIterator.fromIndexedDISI(disi);
+      return IndexedDISI.asDocIndexIterator(disi);
     }
 
     @Override
