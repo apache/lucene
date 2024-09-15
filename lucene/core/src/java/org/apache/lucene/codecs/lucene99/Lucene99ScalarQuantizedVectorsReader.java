@@ -135,10 +135,11 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
 
     final long quantizedVectorBytes;
-    if (fieldEntry.bits <= 4 && fieldEntry.compress) {
+    if (fieldEntry.compress) {
+      // two dimensions -> one byte
       quantizedVectorBytes = ((dimension + 1) >> 1) + Float.BYTES;
     } else {
-      // int8 quantized and calculated stored offset.
+      // one dimension -> one byte
       quantizedVectorBytes = dimension + Float.BYTES;
     }
     long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, fieldEntry.size);
