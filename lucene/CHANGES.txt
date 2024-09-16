@@ -30,6 +30,11 @@ API Changes
 * GITHUB#13735: Add CollectorManager#forSequentialExecution to make CollectorManager creation more convenient
   for users of the deprecated IndexSearcher#search(Query, Collector). (Greg Miller)
 
+* GITHUB#?????: Deprecate BulkScorer#score(LeafCollector collector, Bits acceptDocs) in favour of
+  BulkScorer#score(LeafCollector collector, Bits acceptDocs, int min, int max). The method will be removed in the next
+  major version. Replace usages with the latter, providing 0 as min and DocIdSetIterator.NO_MORE_DOCS as max in case
+  the entire segment should be scored. (Luca Cavanna)
+
 New Features
 ---------------------
 

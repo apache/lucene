@@ -33,7 +33,11 @@ public abstract class BulkScorer {
    * @param collector The collector to which all matching documents are passed.
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @deprecated in favour of {@link #score(LeafCollector, Bits, int, int)}. Callers should instead
+   *     call the method variant that takes min and max as arguments. Subclasses that override it
+   *     should instead override its replacement.
    */
+  @Deprecated
   public void score(LeafCollector collector, Bits acceptDocs) throws IOException {
     final int next = score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
     assert next == DocIdSetIterator.NO_MORE_DOCS;
