@@ -120,6 +120,9 @@ API Changes
 
 * GITHUB#13328: Convert many basic Lucene classes to record classes, including CollectionStatistics, TermStatistics and LeafMetadata. (Shubham Chaudhary)
 
+* GITHUB#13780: Remove `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` in favour of the newly
+  introduced `IndexSearcher#search(LeafReaderContextPartition[], Weight, Collector)`
+
 New Features
 ---------------------
 
@@ -457,6 +460,19 @@ Bug Fixes
 * GITHUB#13641: Unify how KnnFormats handle missing fields and correctly handle missing vector fields when
   merging segments. (Ben Trent)
 
+* GITHUB#13519: 8 bit scalar vector quantization is no longer
+  supported: it was buggy starting in 9.11 (GITHUB#13197).  4 and 7
+  bit quantization are still supported.  Existing (9.x) Lucene indices
+  that previously used 8 bit quantization can still be read/searched
+  but the results from `KNN*VectorQuery` are silently buggy.  Further
+  8 bit quantized vector indexing into such (9.11) indices is not
+  permitted, so your path forward if you wish to continue using the
+  same 9.11 index is to index additional vectors into the same field
+  with either 4 or 7 bit quantization (or no quantization), and ensure
+  all older (9.11 written) segments are rewritten either via
+  `IndexWriter.forceMerge` or
+  `IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
+
 Build
 ---------------------
 
@@ -465,7 +481,9 @@ Build
 
 Other
 --------------------
-(No changes)
+
+* GITHUB#13720: Add float comparison based on unit of least precision and use it to stop test failures caused by float
+  summation not being associative in IEEE 754. (Alex Herbert, Stefan Vodita)
 
 ======================== Lucene 9.11.1 =======================
 

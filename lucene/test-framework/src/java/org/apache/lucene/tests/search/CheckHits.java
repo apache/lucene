@@ -554,9 +554,9 @@ public class CheckHits {
     }
 
     @Override
-    public void search(Query query, Collector results) throws IOException {
+    public void search(Query query, Collector collector) throws IOException {
       checkExplanations(query);
-      super.search(query, results);
+      super.search(query, collector);
     }
 
     @Override

@@ -606,9 +606,13 @@ public class IndexSearcher {
    *     CollectorManager)} due to its support for concurrency in IndexSearcher
    */
   @Deprecated
-  public void search(Query query, Collector results) throws IOException {
-    query = rewrite(query, results.scoreMode().needsScores());
-    search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
+  public void search(Query query, Collector collector) throws IOException {
+    query = rewrite(query, collector.scoreMode().needsScores());
+    Weight weight = createWeight(query, collector.scoreMode(), 1);
+    collector.setWeight(weight);
+    for (LeafReaderContext ctx : leafContexts) { // search each subreader
+      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
+    }
   }
 
   /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
@@ -782,38 +786,6 @@ public class IndexSearcher {
 
     for (LeafReaderContextPartition partition : partitions) { // search each subreader partition
       searchLeaf(partition.ctx, partition.minDocId, partition.maxDocId, weight, collector);
-    }
-  }
-
-  /**
-   * Lower-level search API.
-   *
-   * <p>{@link #searchLeaf(LeafReaderContext, int, int, Weight, Collector)} is called for every leaf
-   * partition. <br>
-   *
-   * <p>NOTE: this method executes the searches on all given leaves exclusively. To search across
-   * all the searchers leaves use {@link #leafContexts}.
-   *
-   * @param leaves the searchers leaves to execute the searches on
-   * @param weight to match documents
-   * @param collector to receive hits
-   * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
-   *     clauses.
-   * @deprecated in favour of {@link #search(LeafReaderContextPartition[], Weight, Collector)} that
-   *     provides the same functionality while also supporting segments partitioning. Will be
-   *     removed once the removal of the deprecated {@link #search(Query, Collector)} is completed.
-   */
-  @Deprecated
-  protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
-      throws IOException {
-
-    collector.setWeight(weight);
-
-    // TODO: should we make this
-    // threaded...? the Collector could be sync'd?
-    // always use single thread:
-    for (LeafReaderContext ctx : leaves) { // search each subreader
-      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
     }
   }
 
