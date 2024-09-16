@@ -42,6 +42,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
@@ -67,15 +69,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     if (random().nextBoolean()) {
       confidenceInterval = 0f;
     }
-    format =
-        new Lucene99HnswScalarQuantizedVectorsFormat(
-            Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
-            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
-            1,
-            bits,
-            random().nextBoolean(),
-            confidenceInterval,
-            null);
+    format = getKnnFormat(bits);
     super.setUp();
   }
 
@@ -87,6 +81,132 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         return format;
       }
     };
+  }
+
+  private final KnnVectorsFormat getKnnFormat(int bits) {
+    return new Lucene99HnswScalarQuantizedVectorsFormat(
+        Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+        Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+        1,
+        bits,
+        bits == 4 ? random().nextBoolean() : false,
+        confidenceInterval,
+        null);
+  }
+
+  // verifies it's fine to change your mind on the number of bits quantization you want for the same
+  // field in the same index by changing up the Codec.  This is allowed because at merge time we
+  // requantize the vectors.
+  public void testMixedQuantizedBits() throws Exception {
+
+    try (Directory dir = newDirectory()) {
+
+      // add first vector using 4 bit quantization, then close index:
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setCodec(
+                      new Lucene912Codec() {
+                        @Override
+                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                          return getKnnFormat(4);
+                        }
+                      }))) {
+
+        Document doc = new Document();
+        doc.add(
+            new KnnFloatVectorField(
+                "f", new float[] {0.6f, 0.8f}, VectorSimilarityFunction.DOT_PRODUCT));
+        w.addDocument(doc);
+      }
+
+      // create another writer using 7 bit quantization and add 2nd vector
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setCodec(
+                      new Lucene912Codec() {
+                        @Override
+                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                          return getKnnFormat(7);
+                        }
+                      }))) {
+
+        Document doc = new Document();
+        doc.add(
+            new KnnFloatVectorField(
+                "f", new float[] {0.8f, 0.6f}, VectorSimilarityFunction.DOT_PRODUCT));
+        w.addDocument(doc);
+        w.forceMerge(1);
+      }
+
+      // confirm searching works: we find both vectors
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+        KnnFloatVectorQuery q = new KnnFloatVectorQuery("f", new float[] {0.7f, 0.7f}, 10);
+        TopDocs topDocs = searcher.search(q, 100);
+        assertEquals(2, topDocs.totalHits.value());
+      }
+    }
+  }
+
+  // verifies you can change your mind and enable quantization on a previously indexed vector field
+  // without quantization
+  public void testMixedQuantizedUnQuantized() throws Exception {
+
+    try (Directory dir = newDirectory()) {
+
+      // add first vector using no quantization
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setCodec(
+                      new Lucene912Codec() {
+                        @Override
+                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                          return new Lucene99HnswVectorsFormat();
+                        }
+                      }))) {
+
+        Document doc = new Document();
+        doc.add(
+            new KnnFloatVectorField(
+                "f", new float[] {0.6f, 0.8f}, VectorSimilarityFunction.DOT_PRODUCT));
+        w.addDocument(doc);
+      }
+
+      // create another writer using (7 bit) quantization and add 2nd vector
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setCodec(
+                      new Lucene912Codec() {
+                        @Override
+                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                          return getKnnFormat(7);
+                        }
+                      }))) {
+
+        Document doc = new Document();
+        doc.add(
+            new KnnFloatVectorField(
+                "f", new float[] {0.8f, 0.6f}, VectorSimilarityFunction.DOT_PRODUCT));
+        w.addDocument(doc);
+        w.forceMerge(1);
+      }
+
+      // confirm searching works: we find both vectors
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+        KnnFloatVectorQuery q = new KnnFloatVectorQuery("f", new float[] {0.7f, 0.7f}, 10);
+        TopDocs topDocs = searcher.search(q, 100);
+        assertEquals(2, topDocs.totalHits.value());
+      }
+    }
   }
 
   public void testQuantizationScoringEdgeCase() throws Exception {
@@ -125,7 +245,6 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   }
 
   public void testQuantizedVectorsWriteAndRead() throws Exception {
-    // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     int dim = random().nextInt(64) + 1;
@@ -158,6 +277,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     }
     float[] randomlyReusedVector = new float[dim];
 
+    // create lucene directory with codec
     try (Directory dir = newDirectory();
         IndexWriter w =
             new IndexWriter(
