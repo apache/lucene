@@ -239,9 +239,6 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     return new TestScalarQuantizer.TestSimpleFloatVectorValues(floats, deletedVectors) {
       @Override
       public float[] vectorValue(int ord) throws IOException {
-        if (iterator().docID() == -1 || iterator().docID() >= floats.length) {
-          throw new IOException("Current doc not set or too many iterations");
-        }
         float[] v = ArrayUtil.copyArray(floats[ordToDoc[ord]]);
         VectorUtil.l2normalize(v);
         return v;

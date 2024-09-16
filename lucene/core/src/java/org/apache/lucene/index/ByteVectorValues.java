@@ -111,7 +111,7 @@ public abstract class ByteVectorValues extends KnnVectorValues {
       }
 
       @Override
-      protected DocIndexIterator createIterator() {
+      public DocIndexIterator iterator() {
         return createDenseIterator();
       }
     };

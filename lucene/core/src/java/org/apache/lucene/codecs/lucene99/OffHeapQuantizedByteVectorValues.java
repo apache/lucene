@@ -206,8 +206,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
    */
   public static class DenseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
-    private int doc = -1;
-
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -239,23 +237,24 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
       DenseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer vectorScorer =
           vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorScorer.score(copy.doc);
+          return vectorScorer.score(iterator.index());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy.iterator();
+          return iterator;
         }
       };
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return createDenseIterator();
     }
   }
@@ -286,7 +285,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return IndexedDISI.asDocIndexIterator(disi);
     }
 
@@ -330,17 +329,18 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
       SparseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer vectorScorer =
           vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorScorer.score(copy.disi.index());
+          return vectorScorer.score(iterator.index());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy.iterator();
+          return iterator;
         }
       };
     }
@@ -373,7 +373,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return createDenseIterator();
     }
 

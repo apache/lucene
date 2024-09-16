@@ -306,7 +306,6 @@ public final class SortingCodecReader extends FilterCodecReader {
     @Override
     public float[] vectorValue(int ord) throws IOException {
       // ords are interpreted in the delegate's ord-space.
-      assert ord == iterator.index();
       return delegate.vectorValue(ord);
     }
 
@@ -326,7 +325,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return iteratorSupplier.get();
     }
   }
@@ -343,12 +342,11 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public byte[] vectorValue(int ord) throws IOException {
-      assert ord == iterator.index();
       return delegate.vectorValue(ord);
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return iteratorSupplier.get();
     }
 

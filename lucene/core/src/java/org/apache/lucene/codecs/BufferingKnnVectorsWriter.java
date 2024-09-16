@@ -119,7 +119,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
         throws IOException {
       this.delegate = delegate.copy();
       iteratorSupplier = SortingCodecReader.iteratorSupplier(delegate, sortMap);
-      iterator = iteratorSupplier.get();
     }
 
     @Override
@@ -144,7 +143,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public DocIndexIterator iterator() {
-      return iterator;
+      return iteratorSupplier.get();
     }
   }
 
@@ -152,14 +151,12 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   private static class SortingByteVectorValues extends ByteVectorValues {
     private final BufferedByteVectorValues delegate;
     private final Supplier<SortingValuesIterator> iteratorSupplier;
-    private final DocIndexIterator iterator;
 
     SortingByteVectorValues(
         BufferedByteVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
         throws IOException {
       this.delegate = delegate;
       iteratorSupplier = SortingCodecReader.iteratorSupplier(delegate, sortMap);
-      iterator = iteratorSupplier.get();
     }
 
     @Override
@@ -184,7 +181,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public DocIndexIterator iterator() {
-      return iterator;
+      return iteratorSupplier.get();
     }
   }
 

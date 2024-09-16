@@ -116,32 +116,44 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   private static class FloatVectorValuesSub extends DocIDMerger.Sub {
 
     final FloatVectorValues values;
+    final KnnVectorValues.DocIndexIterator iterator;
 
     FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) {
       super(docMap);
       this.values = values;
-      assert values.iterator().docID() == -1;
+      this.iterator = values.iterator();
+      assert iterator.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return values.iterator().nextDoc();
+      return iterator.nextDoc();
+    }
+
+    public int index() {
+      return iterator.index();
     }
   }
 
   private static class ByteVectorValuesSub extends DocIDMerger.Sub {
 
     final ByteVectorValues values;
+    final KnnVectorValues.DocIndexIterator iterator;
 
     ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues values) {
       super(docMap);
       this.values = values;
-      assert values.iterator().docID() == -1;
+      iterator = values.iterator();
+      assert iterator.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return values.iterator().nextDoc();
+      return iterator.nextDoc();
+    }
+
+    int index() {
+      return iterator.index();
     }
   }
 
@@ -302,7 +314,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      protected DocIndexIterator createIterator() {
+      public DocIndexIterator iterator() {
         return new DocIndexIterator() {
           private int index = -1;
 
@@ -338,8 +350,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public float[] vectorValue(int ord) throws IOException {
-        assert ord == iterator.index();
-        return current.values.vectorValue(current.values.iterator().index());
+        // FIXME what can we assert here?
+        // assert ord == iterator.index();
+        return current.values.vectorValue(current.index());
       }
 
       @Override
@@ -389,11 +402,13 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public byte[] vectorValue(int ord) throws IOException {
-        return current.values.vectorValue(current.values.iterator().index());
+        // FIXME
+        // assert ord == iterator.index();
+        return current.values.vectorValue(current.index());
       }
 
       @Override
-      protected DocIndexIterator createIterator() {
+      public DocIndexIterator iterator() {
         return new DocIndexIterator() {
           private int index = -1;
 

@@ -122,7 +122,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
-    public DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return createDenseIterator();
     }
 
@@ -134,15 +134,16 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     @Override
     public VectorScorer scorer(byte[] query) throws IOException {
       DenseOffHeapVectorValues copy = this.copy();
+      DocIndexIterator iterator = copy.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorSimilarityFunction.compare(copy.vectorValue(copy.iterator().docID()), query);
+          return vectorSimilarityFunction.compare(copy.vectorValue(iterator.index()), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy.iterator();
+          return iterator;
         }
       };
     }
@@ -191,7 +192,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return fromDISI(disi);
     }
 
@@ -216,15 +217,16 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     @Override
     public VectorScorer scorer(byte[] query) throws IOException {
       SparseOffHeapVectorValues copy = this.copy();
+      IndexedDISI disi = copy.disi;
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorSimilarityFunction.compare(copy.vectorValue(copy.disi.index()), query);
+          return vectorSimilarityFunction.compare(copy.vectorValue(disi.index()), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy.disi;
+          return disi;
         }
       };
     }

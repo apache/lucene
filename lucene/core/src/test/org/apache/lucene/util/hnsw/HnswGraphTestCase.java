@@ -268,16 +268,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
-        while (v2.iterator().nextDoc() != NO_MORE_DOCS) {
-          while (indexedDoc < v2.iterator().docID()) {
+        KnnVectorValues.DocIndexIterator it2 = v2.iterator();
+        while (it2.nextDoc() != NO_MORE_DOCS) {
+          while (indexedDoc < it2.docID()) {
             // increment docId in the index by adding empty documents
             iw.addDocument(new Document());
             indexedDoc++;
           }
           Document doc = new Document();
-          doc.add(
-              knnVectorField("field", vectorValue(v2, v2.iterator().index()), similarityFunction));
-          doc.add(new StoredField("id", v2.iterator().docID()));
+          doc.add(knnVectorField("field", vectorValue(v2, it2.index()), similarityFunction));
+          doc.add(new StoredField("id", it2.docID()));
           iw.addDocument(doc);
           nVec++;
           indexedDoc++;
@@ -719,14 +719,13 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     // Compute the offset for the ordinal map to be the number of non-null vectors in the total
     // vector values before the docIdOffset
     int ordinalOffset = 0;
-    while (totalVectorValues.iterator().nextDoc() < docIdOffset) {
+    KnnVectorValues.DocIndexIterator it = totalVectorValues.iterator();
+    while (it.nextDoc() < docIdOffset) {
       ordinalOffset++;
     }
     int[] offsetOrdinalMap = new int[docIdSize];
 
-    for (int curr = 0;
-        totalVectorValues.iterator().docID() < docIdOffset + docIdSize;
-        totalVectorValues.iterator().nextDoc()) {
+    for (int curr = 0; it.docID() < docIdOffset + docIdSize; it.nextDoc()) {
       offsetOrdinalMap[curr] = ordinalOffset + curr++;
     }
 

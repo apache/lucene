@@ -153,24 +153,25 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     @Override
-    public DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return createDenseIterator();
     }
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       DenseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer randomVectorScorer =
           flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return randomVectorScorer.score(copy.iterator().docID());
+          return randomVectorScorer.score(iterator.docID());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy.iterator();
+          return iterator;
         }
       };
     }
@@ -245,24 +246,25 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return IndexedDISI.asDocIndexIterator(disi);
     }
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       SparseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer randomVectorScorer =
           flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return randomVectorScorer.score(copy.disi.index());
+          return randomVectorScorer.score(iterator.index());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy.iterator();
+          return iterator;
         }
       };
     }
@@ -298,7 +300,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return createDenseIterator();
     }
 

@@ -337,7 +337,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return all();
     }
 
@@ -348,10 +348,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       }
       SimpleTextFloatVectorValues simpleTextFloatVectorValues =
           new SimpleTextFloatVectorValues(this);
+      DocIndexIterator iterator = simpleTextFloatVectorValues.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          int ord = simpleTextFloatVectorValues.iterator().index();
+          int ord = iterator.index();
           return entry
               .similarityFunction()
               .compare(simpleTextFloatVectorValues.vectorValue(ord), target);
@@ -359,7 +360,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
         @Override
         public DocIdSetIterator iterator() {
-          return simpleTextFloatVectorValues.iterator();
+          return iterator;
         }
       };
     }
@@ -429,7 +430,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return all();
     }
 
@@ -440,9 +441,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       }
       SimpleTextByteVectorValues simpleTextByteVectorValues = new SimpleTextByteVectorValues(this);
       return new VectorScorer() {
+        DocIndexIterator it = simpleTextByteVectorValues.iterator();
+
         @Override
         public float score() throws IOException {
-          int ord = simpleTextByteVectorValues.iterator().index();
+          int ord = it.index();
           return entry
               .similarityFunction()
               .compare(simpleTextByteVectorValues.vectorValue(ord), target);
@@ -450,7 +453,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
         @Override
         public DocIdSetIterator iterator() {
-          return simpleTextByteVectorValues.iterator();
+          return it;
         }
       };
     }

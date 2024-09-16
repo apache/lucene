@@ -2310,7 +2310,7 @@ public class MemoryIndex {
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return createDenseIterator();
     }
 
@@ -2324,10 +2324,11 @@ public class MemoryIndex {
                 + info.fieldInfo.getVectorDimension());
       }
       MemoryFloatVectorValues vectorValues = new MemoryFloatVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          assert iterator().docID() == 0;
+          assert iterator.docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
               .compare(vectorValues.vectorValue(0), query);
@@ -2335,7 +2336,7 @@ public class MemoryIndex {
 
         @Override
         public DocIdSetIterator iterator() {
-          return vectorValues.iterator();
+          return iterator;
         }
       };
     }
@@ -2368,7 +2369,7 @@ public class MemoryIndex {
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return createDenseIterator();
     }
 
@@ -2382,10 +2383,11 @@ public class MemoryIndex {
                 + info.fieldInfo.getVectorDimension());
       }
       MemoryByteVectorValues vectorValues = new MemoryByteVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
       return new VectorScorer() {
         @Override
         public float score() {
-          assert iterator().docID() == 0;
+          assert iterator.docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
               .compare(vectorValues.vectorValue(0), query);
@@ -2393,7 +2395,7 @@ public class MemoryIndex {
 
         @Override
         public DocIdSetIterator iterator() {
-          return vectorValues.iterator();
+          return iterator;
         }
       };
     }

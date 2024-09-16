@@ -316,7 +316,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
 
     @Override
-    public DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return new DocIndexIterator() {
 
         int ord = -1;

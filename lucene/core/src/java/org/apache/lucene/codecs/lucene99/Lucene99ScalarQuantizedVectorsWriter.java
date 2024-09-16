@@ -878,23 +878,29 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return createDenseIterator();
     }
   }
 
   static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
     private final QuantizedByteVectorValues values;
+    private final KnnVectorValues.DocIndexIterator iterator;
 
     QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values) {
       super(docMap);
       this.values = values;
-      assert values.iterator().docID() == -1;
+      iterator = values.iterator();
+      assert iterator.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return values.iterator().nextDoc();
+      return iterator.nextDoc();
+    }
+
+    public int index() {
+      return iterator.index();
     }
   }
 
@@ -966,11 +972,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public byte[] vectorValue(int ord) throws IOException {
-      return current.values.vectorValue(current.values.iterator().index());
+      return current.values.vectorValue(current.index());
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return new CompositeIterator();
     }
 
@@ -986,7 +992,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public float getScoreCorrectionConstant(int ord) throws IOException {
-      return current.values.getScoreCorrectionConstant(current.values.iterator().index());
+      return current.values.getScoreCorrectionConstant(current.index());
     }
 
     private class CompositeIterator extends DocIndexIterator {

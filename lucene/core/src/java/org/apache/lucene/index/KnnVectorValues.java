@@ -30,9 +30,6 @@ import org.apache.lucene.util.Bits;
  */
 public abstract class KnnVectorValues {
 
-  /** The iterator associated with these values. */
-  protected DocIndexIterator iterator;
-
   /** Return the dimension of the vectors */
   public abstract int dimension();
 
@@ -88,22 +85,8 @@ public abstract class KnnVectorValues {
     };
   }
 
-  /**
-   * Return the iterator for this instance. If you need multiple iterators, call <code>
-   * this.copy().iterator()</code>.
-   */
+  /** Create an iterator for this instance. */
   public DocIndexIterator iterator() {
-    if (iterator == null) {
-      iterator = createIterator();
-    }
-    return iterator;
-  }
-
-  /**
-   * Create an iterator for this instance; typically called once by <code>iterator()</code>. Wrapper
-   * value classes delegate to their inner instance's iterator and shouldn't implement this.
-   */
-  protected DocIndexIterator createIterator() {
     throw new UnsupportedOperationException();
   }
 

@@ -28,6 +28,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
@@ -714,18 +715,20 @@ public class TestField extends LuceneTestCase {
       try (IndexReader r = DirectoryReader.open(w)) {
         ByteVectorValues binary = r.leaves().get(0).reader().getByteVectorValues("binary");
         assertEquals(1, binary.size());
-        assertNotEquals(NO_MORE_DOCS, binary.iterator().nextDoc());
+        KnnVectorValues.DocIndexIterator iterator = binary.iterator();
+        assertNotEquals(NO_MORE_DOCS, iterator.nextDoc());
         assertNotNull(binary.vectorValue(0));
         assertArrayEquals(b, binary.vectorValue(0));
-        assertEquals(NO_MORE_DOCS, binary.iterator().nextDoc());
+        assertEquals(NO_MORE_DOCS, iterator.nextDoc());
         expectThrows(IOException.class, () -> binary.vectorValue(1));
 
         FloatVectorValues floatValues = r.leaves().get(0).reader().getFloatVectorValues("float");
         assertEquals(1, floatValues.size());
-        assertNotEquals(NO_MORE_DOCS, floatValues.iterator().nextDoc());
+        KnnVectorValues.DocIndexIterator iterator1 = floatValues.iterator();
+        assertNotEquals(NO_MORE_DOCS, iterator1.nextDoc());
         assertEquals(vector.length, floatValues.vectorValue(0).length);
         assertEquals(vector[0], floatValues.vectorValue(0)[0], 0);
-        assertEquals(NO_MORE_DOCS, floatValues.iterator().nextDoc());
+        assertEquals(NO_MORE_DOCS, iterator1.nextDoc());
         expectThrows(IOException.class, () -> floatValues.vectorValue(1));
       }
     }

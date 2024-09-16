@@ -63,6 +63,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
@@ -851,9 +852,10 @@ public class TestMemoryIndex extends LuceneTestCase {
             .reader()
             .getFloatVectorValues(fieldName);
     assertNotNull(fvv);
-    assertEquals(0, fvv.iterator().nextDoc());
+    KnnVectorValues.DocIndexIterator iterator = fvv.iterator();
+    assertEquals(0, iterator.nextDoc());
     assertArrayEquals(expected, fvv.vectorValue(0), 1e-6f);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, fvv.iterator().nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 
   private static void assertFloatVectorScore(
@@ -886,9 +888,10 @@ public class TestMemoryIndex extends LuceneTestCase {
             .reader()
             .getByteVectorValues(fieldName);
     assertNotNull(bvv);
-    assertEquals(0, bvv.iterator().nextDoc());
+    KnnVectorValues.DocIndexIterator iterator = bvv.iterator();
+    assertEquals(0, iterator.nextDoc());
     assertArrayEquals(expected, bvv.vectorValue(0));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bvv.iterator().nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 
   private static void assertByteVectorScore(

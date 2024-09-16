@@ -409,7 +409,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    protected DocIndexIterator createIterator() {
+    public DocIndexIterator iterator() {
       return all();
     }
 
@@ -419,15 +419,16 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         return null;
       }
       OffHeapFloatVectorValues values = this.copy();
+      DocIndexIterator iterator = values.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.similarityFunction.compare(values.vectorValue(iterator().index()), target);
+          return values.similarityFunction.compare(values.vectorValue(iterator.index()), target);
         }
 
         @Override
         public DocIndexIterator iterator() {
-          return values.iterator();
+          return iterator;
         }
       };
     }

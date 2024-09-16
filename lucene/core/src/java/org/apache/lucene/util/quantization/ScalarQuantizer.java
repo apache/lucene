@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.ScoreDoc;
@@ -269,11 +270,12 @@ public class ScalarQuantizer {
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
+    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
     if (confidenceInterval == 1f) {
       float min = Float.POSITIVE_INFINITY;
       float max = Float.NEGATIVE_INFINITY;
-      while (floatVectorValues.iterator().nextDoc() != NO_MORE_DOCS) {
-        for (float v : floatVectorValues.vectorValue(floatVectorValues.iterator().index())) {
+      while (iterator.nextDoc() != NO_MORE_DOCS) {
+        for (float v : floatVectorValues.vectorValue(iterator.index())) {
           min = Math.min(min, v);
           max = Math.max(max, v);
         }
@@ -289,8 +291,8 @@ public class ScalarQuantizer {
     if (totalVectorCount <= quantizationSampleSize) {
       int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
-      while (floatVectorValues.iterator().nextDoc() != NO_MORE_DOCS) {
-        float[] vectorValue = floatVectorValues.vectorValue(floatVectorValues.iterator().index());
+      while (iterator.nextDoc() != NO_MORE_DOCS) {
+        float[] vectorValue = floatVectorValues.vectorValue(iterator.index());
         System.arraycopy(
             vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
         i++;
@@ -311,11 +313,11 @@ public class ScalarQuantizer {
     for (int i : vectorsToTake) {
       while (index <= i) {
         // We cannot use `advance(docId)` as MergedVectorValues does not support it
-        floatVectorValues.iterator().nextDoc();
+        iterator.nextDoc();
         index++;
       }
-      assert floatVectorValues.iterator().docID() != NO_MORE_DOCS;
-      float[] vectorValue = floatVectorValues.vectorValue(floatVectorValues.iterator().index());
+      assert iterator.docID() != NO_MORE_DOCS;
+      float[] vectorValue = floatVectorValues.vectorValue(iterator.index());
       System.arraycopy(
           vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
       idx++;
@@ -353,12 +355,13 @@ public class ScalarQuantizer {
                   / (floatVectorValues.dimension() + 1),
           1 - 1f / (floatVectorValues.dimension() + 1)
         };
+    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
     if (totalVectorCount <= sampleSize) {
       int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
-      while (floatVectorValues.iterator().nextDoc() != NO_MORE_DOCS) {
+      while (iterator.nextDoc() != NO_MORE_DOCS) {
         gatherSample(
-            floatVectorValues.vectorValue(floatVectorValues.iterator().index()),
+            floatVectorValues.vectorValue(iterator.index()),
             quantileGatheringScratch,
             sampledDocs,
             i);
@@ -378,12 +381,12 @@ public class ScalarQuantizer {
       for (int i : vectorsToTake) {
         while (index <= i) {
           // We cannot use `advance(docId)` as MergedVectorValues does not support it
-          floatVectorValues.iterator().nextDoc();
+          iterator.nextDoc();
           index++;
         }
-        assert floatVectorValues.iterator().docID() != NO_MORE_DOCS;
+        assert iterator.docID() != NO_MORE_DOCS;
         gatherSample(
-            floatVectorValues.vectorValue(floatVectorValues.iterator().index()),
+            floatVectorValues.vectorValue(iterator.index()),
             quantileGatheringScratch,
             sampledDocs,
             idx);

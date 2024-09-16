@@ -456,7 +456,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      protected DocIndexIterator createIterator() {
+      public DocIndexIterator iterator() {
         return createExitableIterator(vectorValues.iterator(), queryTimeout);
       }
 
@@ -499,7 +499,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      protected DocIndexIterator createIterator() {
+      public DocIndexIterator iterator() {
         return createExitableIterator(vectorValues.iterator(), queryTimeout);
       }
 
