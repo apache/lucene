@@ -412,4 +412,70 @@ public class TestOperations extends LuceneTestCase {
 
     return builder.finish();
   }
+
+  public void testOptional() {
+    Automaton a = Automata.makeChar('a');
+
+    Automaton optionalA = new Automaton();
+    optionalA.createState();
+    optionalA.setAccept(0, true);
+    optionalA.finishState();
+    optionalA.createState();
+    optionalA.setAccept(1, true);
+    optionalA.addTransition(0, 1, 'a');
+    optionalA.finishState();
+
+    assertTrue(AutomatonTestUtil.sameLanguage(Operations.optional(a), optionalA));
+    assertSame(optionalA, Operations.optional(optionalA));
+
+    // Now test an automaton that has a transition to state 0. a(ba)*
+    a = new Automaton();
+    a.createState();
+    a.createState();
+    a.setAccept(1, true);
+    a.addTransition(0, 1, 'a');
+    a.finishState();
+    a.addTransition(1, 0, 'b');
+    a.finishState();
+
+    optionalA = new Automaton();
+    optionalA.createState();
+    optionalA.setAccept(0, true);
+    optionalA.createState();
+    optionalA.createState();
+    optionalA.setAccept(2, true);
+    optionalA.addTransition(0, 2, 'a');
+    optionalA.finishState();
+    optionalA.addTransition(1, 2, 'a');
+    optionalA.finishState();
+    optionalA.addTransition(2, 1, 'b');
+    optionalA.finishState();
+
+    assertTrue(AutomatonTestUtil.sameLanguage(Operations.optional(a), optionalA));
+    assertSame(optionalA, Operations.optional(optionalA));
+  }
+
+  public void testDuelOptional() {
+    final int iters = atLeast(1_000);
+    for (int iter = 0; iter < iters; ++iter) {
+      Automaton a = AutomatonTestUtil.randomAutomaton(random());
+      Automaton repeat1 = Operations.determinize(Operations.optional(a), Integer.MAX_VALUE);
+      Automaton repeat2 = Operations.determinize(naiveOptional(a), Integer.MAX_VALUE);
+      assertTrue(AutomatonTestUtil.sameLanguage(repeat1, repeat2));
+    }
+  }
+
+  // This is the original implementation of Operations#optional, before we improved it to generate
+  // simpler automata in some common cases.
+  private static Automaton naiveOptional(Automaton a) {
+    Automaton result = new Automaton();
+    result.createState();
+    result.setAccept(0, true);
+    if (a.getNumStates() > 0) {
+      result.copy(a);
+      result.addEpsilon(0, 1);
+    }
+    result.finishState();
+    return result;
+  }
 }
