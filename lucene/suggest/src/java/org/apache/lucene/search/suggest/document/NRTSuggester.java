@@ -146,10 +146,13 @@ public final class NRTSuggester implements Accountable {
 
     final CharsRefBuilder spare = new CharsRefBuilder();
 
-    Comparator<Pair<Long, BytesRef>> comparator = getComparator();
     Util.TopNSearcher<Pair<Long, BytesRef>> searcher =
-        new Util.TopNSearcher<Pair<Long, BytesRef>>(
-            fst, topN, queueSize, comparator, new ScoringPathComparator(scorer)) {
+        new Util.TopNSearcher<>(
+            fst,
+            topN,
+            queueSize,
+            (o1, o2) -> Long.compare(o1.output1, o2.output1),
+            new ScoringPathComparator(scorer)) {
 
           private final ByteArrayDataInput scratchInput = new ByteArrayDataInput();
 
@@ -273,15 +276,6 @@ public final class NRTSuggester implements Accountable {
               scorer.score((float) decode(first.output.output1), first.boost));
       return (cmp != 0) ? cmp : first.input.get().compareTo(second.input.get());
     }
-  }
-
-  private static Comparator<Pair<Long, BytesRef>> getComparator() {
-    return new Comparator<Pair<Long, BytesRef>>() {
-      @Override
-      public int compare(Pair<Long, BytesRef> o1, Pair<Long, BytesRef> o2) {
-        return Long.compare(o1.output1, o2.output1);
-      }
-    };
   }
 
   /**
