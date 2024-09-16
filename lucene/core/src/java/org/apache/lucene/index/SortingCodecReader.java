@@ -208,13 +208,16 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  // FIXME rename this better?
-  static class IteratorSupplier implements Supplier<SortingValuesIterator> {
+  /**
+   * Factory for SortingValuesIterator. This enables us to create new iterators as needed without
+   * recomputing the sorting mappings.
+   */
+  static class SortingIteratorSupplier implements Supplier<SortingValuesIterator> {
     private final FixedBitSet docBits;
     private final int[] docToOrd;
     private final int size;
 
-    IteratorSupplier(FixedBitSet docBits, int[] docToOrd, int size) {
+    SortingIteratorSupplier(FixedBitSet docBits, int[] docToOrd, int size) {
       this.docBits = docBits;
       this.docToOrd = docToOrd;
       this.size = size;
@@ -230,8 +233,15 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  public static IteratorSupplier iteratorSupplier(KnnVectorValues values, Sorter.DocMap docMap)
-      throws IOException {
+  /**
+   * Creates a factory for SortingValuesIterator. Does the work of computing the (new docId to old
+   * ordinal) mapping, and caches the result, enabling it to create new iterators cheaply.
+   *
+   * @param values the values over which to iterate
+   * @param docMap the mapping from "old" docIds to "new" (sorted) docIds.
+   */
+  public static SortingIteratorSupplier iteratorSupplier(
+      KnnVectorValues values, Sorter.DocMap docMap) throws IOException {
 
     final int[] docToOrd = new int[docMap.size()];
     final FixedBitSet docBits = new FixedBitSet(docMap.size());
@@ -247,7 +257,7 @@ public final class SortingCodecReader extends FilterCodecReader {
         ++count;
       }
     }
-    return new IteratorSupplier(docBits, docToOrd, count);
+    return new SortingIteratorSupplier(docBits, docToOrd, count);
   }
 
   /**
@@ -295,7 +305,7 @@ public final class SortingCodecReader extends FilterCodecReader {
   /** Sorting FloatVectorValues that maps ordinals using the provided sortMap */
   private static class SortingFloatVectorValues extends FloatVectorValues {
     final FloatVectorValues delegate;
-    final IteratorSupplier iteratorSupplier;
+    final SortingIteratorSupplier iteratorSupplier;
 
     SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
@@ -332,7 +342,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
   private static class SortingByteVectorValues extends ByteVectorValues {
     final ByteVectorValues delegate;
-    final IteratorSupplier iteratorSupplier;
+    final SortingIteratorSupplier iteratorSupplier;
 
     SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
