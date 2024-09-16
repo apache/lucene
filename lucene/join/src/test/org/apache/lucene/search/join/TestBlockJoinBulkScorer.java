@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -303,16 +304,9 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
   private static void assertEqualsToOneOf(List<?> expectedList, Object actual) {
     boolean foundMatch = false;
     for (Object expected : expectedList) {
-      if (expected == null) {
-        if (actual == null) {
-          foundMatch = true;
-          break;
-        }
-      } else {
-        foundMatch = expected.equals(actual);
-        if (foundMatch) {
-          break;
-        }
+      if (Objects.equals(expected, actual)) {
+        foundMatch = true;
+        break;
       }
     }
 
