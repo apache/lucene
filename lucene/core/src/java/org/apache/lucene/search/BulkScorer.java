@@ -34,7 +34,8 @@ public abstract class BulkScorer {
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
    * @deprecated in favour of {@link #score(LeafCollector, Bits, int, int)}. Callers should instead
-   *     call the method variant that takes min and max as arguments. Subclasses that override it
+   *     call the method variant that takes min and max as arguments, providing 0 and {@link
+   *     DocIdSetIterator#NO_MORE_DOCS} to score the entire segment. Subclasses that override it
    *     should instead override its replacement.
    */
   @Deprecated
