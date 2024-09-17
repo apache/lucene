@@ -1352,7 +1352,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       if (lastDoc == targetOrd) {
         return normalizedVector;
       }
-      System.arraycopy(values.vectorValue(targetOrd), 0, normalizedVector, 0, normalizedVector.length);
+      System.arraycopy(
+          values.vectorValue(targetOrd), 0, normalizedVector, 0, normalizedVector.length);
       VectorUtil.l2normalize(normalizedVector);
       lastDoc = targetOrd;
       return normalizedVector;
