@@ -45,6 +45,7 @@ import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -157,7 +158,7 @@ public class RandomPostingsTester {
               true,
               IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
               DocValuesType.NONE,
-              false,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -732,7 +733,7 @@ public class RandomPostingsTester {
               doPayloads,
               indexOptions,
               DocValuesType.NONE,
-              false,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,

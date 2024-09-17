@@ -3731,7 +3731,7 @@ public final class CheckIndex implements Closeable {
 
   private static void checkDocValues(
       FieldInfo fi, DocValuesProducer dvReader, DocValuesStatus status) throws Exception {
-    if (fi.hasDocValuesSkipIndex()) {
+    if (fi.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       status.totalSkippingIndex++;
       checkDocValueSkipper(fi, dvReader.getSkipper(fi));
     }

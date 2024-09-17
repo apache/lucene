@@ -365,7 +365,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       IndexOptions indexOptions,
       IndexOptionsProperties indexOptionsProperties,
       DocValuesType docValuesType,
-      boolean docValuesSkipIndex,
+      DocValuesSkipIndexType docValuesSkipIndex,
       FieldDimensions fieldDimensions,
       FieldVectorProperties fieldVectorProperties) {}
 
@@ -444,7 +444,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                     ? new IndexOptionsProperties(fi.hasTermVectors(), fi.omitsNorms())
                     : null,
                 fi.getDocValuesType(),
-                fi.hasDocValuesSkipIndex(),
+                fi.docValuesSkipIndexType(),
                 new FieldDimensions(
                     fi.getPointDimensionCount(),
                     fi.getPointIndexDimensionCount(),
@@ -524,9 +524,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
       DocValuesType currentDVType = fieldProperties.docValuesType;
       verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType());
-      boolean currentDocValuesSkipIndex = fieldProperties.docValuesSkipIndex;
+      DocValuesSkipIndexType currentDocValuesSkipIndex = fieldProperties.docValuesSkipIndex;
       verifySameDocValuesSkipIndex(
-          fieldName, currentDocValuesSkipIndex, fi.hasDocValuesSkipIndex());
+          fieldName, currentDocValuesSkipIndex, fi.docValuesSkipIndexType());
 
       FieldDimensions dims = fieldProperties.fieldDimensions;
       verifySamePointsOptions(
@@ -582,7 +582,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   false,
                   IndexOptions.NONE,
                   dvType,
-                  false,
+                  DocValuesSkipIndexType.NONE,
                   -1,
                   new HashMap<>(),
                   0,
@@ -609,8 +609,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldDvType
                   + "].");
         }
-        boolean hasDocValuesSkipIndex = fieldProperties.docValuesSkipIndex;
-        if (hasDocValuesSkipIndex) {
+        DocValuesSkipIndexType hasDocValuesSkipIndex = fieldProperties.docValuesSkipIndex;
+        if (hasDocValuesSkipIndex != DocValuesSkipIndexType.NONE) {
           throw new IllegalArgumentException(
               "Can't update ["
                   + dvType
@@ -676,7 +676,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           false,
           IndexOptions.NONE,
           dvType,
-          false,
+          DocValuesSkipIndexType.NONE,
           -1,
           new HashMap<>(),
           0,
@@ -797,7 +797,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.hasPayloads(),
               fi.getIndexOptions(),
               fi.getDocValuesType(),
-              fi.hasDocValuesSkipIndex(),
+              fi.docValuesSkipIndexType(),
               dvGen,
               // original attributes is UnmodifiableMap
               new HashMap<>(fi.attributes()),
