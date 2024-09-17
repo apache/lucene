@@ -75,20 +75,6 @@ public abstract class TaxonomyFacets extends Facets {
     }
   }
 
-  private static final Comparator<FacetResult> BY_VALUE_THEN_DIM =
-      new Comparator<FacetResult>() {
-        @Override
-        public int compare(FacetResult a, FacetResult b) {
-          if (a.value.doubleValue() > b.value.doubleValue()) {
-            return -1;
-          } else if (b.value.doubleValue() > a.value.doubleValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        }
-      };
-
   /** Index field name provided to the constructor. */
   protected final String indexFieldName;
 
@@ -638,7 +624,16 @@ public abstract class TaxonomyFacets extends Facets {
     }
 
     // Sort by highest value, tie break by dim:
-    results.sort(BY_VALUE_THEN_DIM);
+    results.sort(
+        (a, b) -> {
+          if (a.value.doubleValue() > b.value.doubleValue()) {
+            return -1;
+          } else if (b.value.doubleValue() > a.value.doubleValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
+          }
+        });
     return results;
   }
 

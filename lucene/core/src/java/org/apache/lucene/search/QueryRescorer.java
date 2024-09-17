@@ -50,14 +50,7 @@ public abstract class QueryRescorer extends Rescorer {
       throws IOException {
     ScoreDoc[] hits = firstPassTopDocs.scoreDocs.clone();
 
-    Arrays.sort(
-        hits,
-        new Comparator<ScoreDoc>() {
-          @Override
-          public int compare(ScoreDoc a, ScoreDoc b) {
-            return a.doc - b.doc;
-          }
-        });
+    Arrays.sort(hits, (a, b) -> a.doc - b.doc);
 
     List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
 
@@ -111,19 +104,16 @@ public abstract class QueryRescorer extends Rescorer {
     }
 
     Comparator<ScoreDoc> sortDocComparator =
-        new Comparator<ScoreDoc>() {
-          @Override
-          public int compare(ScoreDoc a, ScoreDoc b) {
-            // Sort by score descending, then docID ascending:
-            if (a.score > b.score) {
-              return -1;
-            } else if (a.score < b.score) {
-              return 1;
-            } else {
-              // This subtraction can't overflow int
-              // because docIDs are >= 0:
-              return a.doc - b.doc;
-            }
+        (a, b) -> {
+          // Sort by score descending, then docID ascending:
+          if (a.score > b.score) {
+            return -1;
+          } else if (a.score < b.score) {
+            return 1;
+          } else {
+            // This subtraction can't overflow int
+            // because docIDs are >= 0:
+            return a.doc - b.doc;
           }
         };
 

@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -31,14 +30,6 @@ import org.apache.lucene.util.PriorityQueue;
  * @lucene.experimental
  */
 public final class MultiTermsEnum extends BaseTermsEnum {
-
-  private static final Comparator<TermsEnumWithSlice> INDEX_COMPARATOR =
-      new Comparator<TermsEnumWithSlice>() {
-        @Override
-        public int compare(TermsEnumWithSlice o1, TermsEnumWithSlice o2) {
-          return o1.subIndex - o2.subIndex;
-        }
-      };
 
   private final TermMergeQueue queue;
   // all of our subs (one per sub-reader)
@@ -338,7 +329,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
 
     int upto = 0;
 
-    ArrayUtil.timSort(top, 0, numTop, INDEX_COMPARATOR);
+    ArrayUtil.timSort(top, 0, numTop, (o1, o2) -> o1.subIndex - o2.subIndex);
 
     for (int i = 0; i < numTop; i++) {
 
