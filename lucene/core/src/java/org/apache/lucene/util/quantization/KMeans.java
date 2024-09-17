@@ -121,9 +121,11 @@ public class KMeans {
 
     Random random = new Random(seed);
     float[][] centroids;
-    if (numClusters == 1) {
+    if (numClusters == 1 && assignCentroidsToVectors) {
       centroids = new float[1][vectors.dimension()];
     } else {
+      restarts = numClusters == 1 ? 1 : restarts;
+      iters = numClusters == 1 ? 1 : iters;
       RandomAccessVectorValues.Floats sampleVectors =
           vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
       KMeans kmeans =

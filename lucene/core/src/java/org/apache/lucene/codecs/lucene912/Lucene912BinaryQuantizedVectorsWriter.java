@@ -454,8 +454,12 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               }
               KMeans.Results kmeansResult =
                   cluster(vectorValues, false, fieldInfo.getVectorSimilarityFunction());
-              assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
-              centroids = kmeansResult.centroids();
+              assert kmeansResult.centroids() != null && kmeansResult.centroids().length >= 1;
+              // for 1 centroid use mergedCentroid as it is based on all vectors (not sample)
+              centroids =
+                  kmeansResult.centroids().length > 1
+                      ? kmeansResult.centroids()
+                      : new float[][] {mergedCentroid};
             } else {
               centroids = new float[][] {mergedCentroid};
             }
@@ -505,7 +509,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           centroidMapTempInput =
               segmentWriteState.directory.openInput(
                   tempVectorCentroidMapData.getName(), segmentWriteState.context);
-          CodecUtil.retrieveChecksum(centroidMapTempInput);
           centroidMapOffset = binarizedVectorData.getFilePointer();
           binarizedVectorData.copyBytes(
               centroidMapTempInput, centroidMapTempInput.length() - CodecUtil.footerLength());
@@ -646,8 +649,12 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
             }
             KMeans.Results kmeansResult =
                 cluster(vectorValues, false, fieldInfo.getVectorSimilarityFunction());
-            assert kmeansResult.centroids() != null && kmeansResult.centroids().length > 1;
-            centroids = kmeansResult.centroids();
+            assert kmeansResult.centroids() != null && kmeansResult.centroids().length >= 1;
+            // for 1 centroid use mergedCentroid as it is based on all vectors (not sample)
+            centroids =
+                kmeansResult.centroids().length > 1
+                    ? kmeansResult.centroids()
+                    : new float[][] {mergedCentroid};
             cDotC = new float[centroids.length];
             int i = 0;
             for (float[] centroid : centroids) {

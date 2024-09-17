@@ -36,7 +36,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -137,10 +136,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
                     return new Lucene912BinaryQuantizedVectorsFormat(
                         NAME, numberOfVectorsPerCluster);
                   }
-                })
-            .setMaxBufferedDocs(numVectors + 1)
-            .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-            .setMergePolicy(NoMergePolicy.INSTANCE);
+                });
 
     float[] vector = randomVector(dims);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
@@ -152,8 +148,12 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           knnField.setVectorValue(randomVector(dims));
           doc.add(knnField);
           w.addDocument(doc);
+          if (i % 101 == 0) {
+            w.commit();
+          }
         }
         w.commit();
+        w.forceMerge(1);
 
         try (IndexReader reader = DirectoryReader.open(w)) {
           LeafReader r = getOnlyLeafReader(reader);
