@@ -405,7 +405,7 @@ public class KMeans {
           + '}';
     }
 
-    public int nearestCentroid(float[] vector) {
+    public static int nearestCentroid(float[] vector, float[][] centroids) {
       if (centroids.length == 1) {
         return 0;
       }

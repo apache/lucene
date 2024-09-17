@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene912;
 import static java.lang.String.format;
 import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.NAME;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.quantization.KMeans.Results.nearestCentroid;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -44,7 +45,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
@@ -200,18 +200,5 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
         }
       }
     }
-  }
-
-  static int nearestCentroid(float[] vector, float[][] centroids) {
-    int nearest = 0;
-    float minDistance = Float.POSITIVE_INFINITY;
-    for (int i = 0; i < centroids.length; i++) {
-      float distance = VectorUtil.squareDistance(vector, centroids[i]);
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearest = i;
-      }
-    }
-    return nearest;
   }
 }
