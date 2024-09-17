@@ -470,6 +470,8 @@ Bug Fixes
   `IndexWriter.forceMerge` or
   `IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
 
+* GITHUB#13799: Disable intra-merge parallelism for all structures but kNN vectors. (Ben Trent)
+
 Build
 ---------------------
 
