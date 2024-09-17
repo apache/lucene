@@ -192,7 +192,7 @@ public abstract class KnnVectorValues {
    * Creates an iterator from this instance's ordinal-to-docid mapping which must be monotonic
    * (docid increases when ordinal does).
    */
-  protected DocIndexIterator all() {
+  protected DocIndexIterator createSparseIterator() {
     return new DocIndexIterator() {
       private int ord = -1;
 

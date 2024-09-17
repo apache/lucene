@@ -338,7 +338,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     @Override
     public DocIndexIterator iterator() {
-      return all();
+      return createSparseIterator();
     }
 
     @Override
@@ -431,7 +431,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     @Override
     public DocIndexIterator iterator() {
-      return all();
+      return createSparseIterator();
     }
 
     @Override
