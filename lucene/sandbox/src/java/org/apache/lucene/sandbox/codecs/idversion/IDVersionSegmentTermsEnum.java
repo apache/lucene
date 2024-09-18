@@ -181,17 +181,17 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
       // " isFloor?=" + f.isFloor + " hasTerms=" + f.hasTerms + " pref=" + term + " nextEnt=" +
       // f.nextEnt + " targetBeforeCurrentLength=" + targetBeforeCurrentLength + " term.length=" +
       // term.length + " vs prefix=" + f.prefix);
-      if (f.prefix > targetBeforeCurrentLength) {
+      if (f.prefixLength > targetBeforeCurrentLength) {
         f.rewind();
       } else {
         // if (DEBUG) {
         //   System.out.println("        skip rewind!");
         // }
       }
-      assert length == f.prefix;
+      assert length == f.prefixLength;
     } else {
       f.nextEnt = -1;
-      f.prefix = length;
+      f.prefixLength = length;
       f.state.termBlockOrd = 0;
       f.fpOrig = f.fp = fp;
       f.lastSubFP = -1;
@@ -459,7 +459,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
         // Integer.toHexString(targetLabel) + " termExists=" + termExists);
         //  }
 
-        validIndexPrefix = currentFrame.prefix;
+        validIndexPrefix = currentFrame.prefixLength;
         // validIndexPrefix = targetUpto;
 
         currentFrame.scanToFloorFrame(target);
@@ -573,7 +573,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
     }
 
     // validIndexPrefix = targetUpto;
-    validIndexPrefix = currentFrame.prefix;
+    validIndexPrefix = currentFrame.prefixLength;
 
     currentFrame.scanToFloorFrame(target);
 
@@ -802,7 +802,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
         // toHex(targetLabel));
         // }
 
-        validIndexPrefix = currentFrame.prefix;
+        validIndexPrefix = currentFrame.prefixLength;
         // validIndexPrefix = targetUpto;
 
         currentFrame.scanToFloorFrame(target);
@@ -863,7 +863,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
     }
 
     // validIndexPrefix = targetUpto;
-    validIndexPrefix = currentFrame.prefix;
+    validIndexPrefix = currentFrame.prefixLength;
 
     currentFrame.scanToFloorFrame(target);
 
@@ -901,7 +901,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
       while (true) {
         IDVersionSegmentTermsEnumFrame f = getFrame(ord);
         assert f != null;
-        final BytesRef prefix = new BytesRef(term.bytes(), 0, f.prefix);
+        final BytesRef prefix = new BytesRef(term.bytes(), 0, f.prefixLength);
         if (f.nextEnt == -1) {
           out.println(
               "    frame "
@@ -912,7 +912,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
                   + f.fp
                   + (f.isFloor ? (" (fpOrig=" + f.fpOrig + ")") : "")
                   + " prefixLen="
-                  + f.prefix
+                  + f.prefixLength
                   + " prefix="
                   + ToStringUtils.bytesRefToString(prefix)
                   + (f.nextEnt == -1 ? "" : (" (of " + f.entCount + ")"))
@@ -940,7 +940,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
                   + f.fp
                   + (f.isFloor ? (" (fpOrig=" + f.fpOrig + ")") : "")
                   + " prefixLen="
-                  + f.prefix
+                  + f.prefixLength
                   + " prefix="
                   + ToStringUtils.bytesRefToString(prefix)
                   + " nextEnt="
@@ -965,12 +965,14 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
         }
         if (fr.index != null) {
           assert !isSeekFrame || f.arc != null : "isSeekFrame=" + isSeekFrame + " f.arc=" + f.arc;
-          if (f.prefix > 0 && isSeekFrame && f.arc.label() != (term.byteAt(f.prefix - 1) & 0xFF)) {
+          if (f.prefixLength > 0
+              && isSeekFrame
+              && f.arc.label() != (term.byteAt(f.prefixLength - 1) & 0xFF)) {
             out.println(
                 "      broken seek state: arc.label="
                     + (char) f.arc.label()
                     + " vs term byte="
-                    + (char) (term.byteAt(f.prefix - 1) & 0xFF));
+                    + (char) (term.byteAt(f.prefixLength - 1) & 0xFF));
             throw new RuntimeException("seek state is broken");
           }
           Pair<BytesRef, Long> output = Util.get(fr.index, prefix);
@@ -999,7 +1001,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
         if (f == currentFrame) {
           break;
         }
-        if (f.prefix == validIndexPrefix) {
+        if (f.prefixLength == validIndexPrefix) {
           isSeekFrame = false;
         }
         ord++;
@@ -1079,7 +1081,7 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
 
         // Note that the seek state (last seek) has been
         // invalidated beyond this depth
-        validIndexPrefix = Math.min(validIndexPrefix, currentFrame.prefix);
+        validIndexPrefix = Math.min(validIndexPrefix, currentFrame.prefixLength);
         // if (DEBUG) {
         // System.out.println("  reset validIndexPrefix=" + validIndexPrefix);
         // }
