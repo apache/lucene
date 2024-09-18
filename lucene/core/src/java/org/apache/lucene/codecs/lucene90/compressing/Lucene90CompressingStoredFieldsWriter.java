@@ -507,8 +507,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     BULK_MERGE_ENABLED = v;
   }
 
-  private void copyOneDoc(Lucene90CompressingStoredFieldsReader reader, int docID)
-      throws IOException {
+  void copyOneDoc(Lucene90CompressingStoredFieldsReader reader, int docID) throws IOException {
     assert reader.getVersion() == VERSION_CURRENT;
     SerializedDocument doc = reader.serializedDocument(docID);
     startDocument();

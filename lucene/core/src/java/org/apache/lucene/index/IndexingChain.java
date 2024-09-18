@@ -39,6 +39,7 @@ import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90SortingStoredFieldsConsumer;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -127,7 +128,8 @@ final class IndexingChain implements Accountable {
               indexWriterConfig.getCodec());
     } else {
       storedFieldsConsumer =
-          new SortingStoredFieldsConsumer(indexWriterConfig.getCodec(), directory, segmentInfo);
+          new Lucene90SortingStoredFieldsConsumer(
+              indexWriterConfig.getCodec(), directory, segmentInfo);
       termVectorsWriter =
           new SortingTermVectorsConsumer(
               intBlockAllocator,

@@ -23,80 +23,40 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
-import org.apache.lucene.codecs.compressing.Decompressor;
-import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
-import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
-final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
+/** A {@link StoredFieldsConsumer} that handles index sorts */
+public abstract class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
+  private TrackingTmpOutputDirectoryWrapper tmpDirectory;
+  private final StoredFieldsFormat tmpStoredFieldsFormat;
 
-  static final CompressionMode NO_COMPRESSION =
-      new CompressionMode() {
-        @Override
-        public Compressor newCompressor() {
-          return new Compressor() {
-            @Override
-            public void close() throws IOException {}
-
-            @Override
-            public void compress(ByteBuffersDataInput buffersInput, DataOutput out)
-                throws IOException {
-              out.copyBytes(buffersInput, buffersInput.length());
-            }
-          };
-        }
-
-        @Override
-        public Decompressor newDecompressor() {
-          return new Decompressor() {
-            @Override
-            public void decompress(
-                DataInput in, int originalLength, int offset, int length, BytesRef bytes)
-                throws IOException {
-              bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, length);
-              in.skipBytes(offset);
-              in.readBytes(bytes.bytes, 0, length);
-              bytes.offset = 0;
-              bytes.length = length;
-            }
-
-            @Override
-            public Decompressor clone() {
-              return this;
-            }
-          };
-        }
-      };
-  private static final StoredFieldsFormat TEMP_STORED_FIELDS_FORMAT =
-      new Lucene90CompressingStoredFieldsFormat(
-          "TempStoredFields", NO_COMPRESSION, 128 * 1024, 1, 10);
-  TrackingTmpOutputDirectoryWrapper tmpDirectory;
-
-  SortingStoredFieldsConsumer(Codec codec, Directory directory, SegmentInfo info) {
+  /** Sole constructor */
+  protected SortingStoredFieldsConsumer(
+      Codec codec,
+      StoredFieldsFormat tmpStoredFieldsFormat,
+      Directory directory,
+      SegmentInfo info) {
     super(codec, directory, info);
+    this.tmpStoredFieldsFormat = tmpStoredFieldsFormat;
   }
 
   @Override
   protected void initStoredFieldsWriter() throws IOException {
     if (writer == null) {
       this.tmpDirectory = new TrackingTmpOutputDirectoryWrapper(directory);
-      this.writer = TEMP_STORED_FIELDS_FORMAT.fieldsWriter(tmpDirectory, info, IOContext.DEFAULT);
+      this.writer = tmpStoredFieldsFormat.fieldsWriter(tmpDirectory, info, IOContext.DEFAULT);
     }
   }
 
   @Override
-  void flush(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
+  final void flush(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     super.flush(state, sortMap);
     StoredFieldsReader reader =
-        TEMP_STORED_FIELDS_FORMAT.fieldsReader(
+        tmpStoredFieldsFormat.fieldsReader(
             tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.DEFAULT);
     // Don't pull a merge instance, since merge instances optimize for
     // sequential access while we consume stored fields in random order here.
@@ -104,16 +64,26 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
         codec.storedFieldsFormat().fieldsWriter(state.directory, state.segmentInfo, state.context);
     try {
       reader.checkIntegrity();
-      CopyVisitor visitor = new CopyVisitor(sortWriter);
-      for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
-        sortWriter.startDocument();
-        reader.document(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
-        sortWriter.finishDocument();
-      }
+      copyDocs(state, sortMap, sortWriter, reader);
       sortWriter.finish(state.segmentInfo.maxDoc());
     } finally {
       IOUtils.close(reader, sortWriter);
       IOUtils.deleteFiles(tmpDirectory, tmpDirectory.getTemporaryFiles().values());
+    }
+  }
+
+  /** Copy documents from the temp stored fields reader to the final stored fields writer. */
+  protected void copyDocs(
+      SegmentWriteState state,
+      Sorter.DocMap sortMap,
+      StoredFieldsWriter sortWriter,
+      StoredFieldsReader tempReader)
+      throws IOException {
+    CopyVisitor visitor = new CopyVisitor(sortWriter);
+    for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
+      sortWriter.startDocument();
+      tempReader.document(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
+      sortWriter.finishDocument();
     }
   }
 
