@@ -18,10 +18,12 @@ package org.apache.lucene.tests.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexReader.CacheHelper;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -48,7 +50,7 @@ public class PerThreadPKLookup {
   private final Map<IndexReader.CacheKey, Integer> enumIndexes;
 
   public PerThreadPKLookup(IndexReader reader, String idFieldName) throws IOException {
-    this(reader, idFieldName, null, null, null);
+    this(reader, idFieldName, Collections.emptyMap(), null, null);
   }
 
   private PerThreadPKLookup(
@@ -73,39 +75,35 @@ public class PerThreadPKLookup {
     boolean hasDeletions = false;
 
     for (int i = 0; i < leaves.size(); i++) {
-      LeafReader leafReader = leaves.get(i).reader();
-      IndexReader.CacheKey cacheKey = leafReader.getCoreCacheHelper().getKey();
-      if (prevEnumIndexes != null && prevEnumIndexes.containsKey(cacheKey)) {
+      LeafReaderContext context = leaves.get(i);
+      LeafReader leafReader = context.reader();
+      CacheHelper cacheHelper = leafReader.getCoreCacheHelper();
+      IndexReader.CacheKey cacheKey = cacheHelper == null ? null : cacheHelper.getKey();
+
+      if (cacheKey != null && prevEnumIndexes.containsKey(cacheKey)) {
         // Reuse termsEnum, postingsEnum.
-        Integer seg = prevEnumIndexes.get(cacheKey);
-        if (seg > -1) {
-          termsEnums[numEnums] = reusableTermsEnums[seg];
-          postingsEnums[numEnums] = reusablePostingsEnums[seg];
-          assert termsEnums[numEnums] != null;
-          // Update liveDocs.
-          docBases[numEnums] = leaves.get(i).docBase;
-          liveDocs[numEnums] = leafReader.getLiveDocs();
-          hasDeletions |= leafReader.hasDeletions();
-          enumIndexes.put(cacheKey, numEnums);
-          numEnums++;
-        } else {
-          // TermsEnum will always null.
-          enumIndexes.put(cacheKey, -1);
-        }
+        int seg = prevEnumIndexes.get(cacheKey);
+        termsEnums[numEnums] = reusableTermsEnums[seg];
+        postingsEnums[numEnums] = reusablePostingsEnums[seg];
       } else {
-        // New segment.
+        // New or empty segment.
         Terms terms = leafReader.terms(idFieldName);
         if (terms != null) {
           termsEnums[numEnums] = terms.iterator();
           assert termsEnums[numEnums] != null;
-          docBases[numEnums] = leaves.get(i).docBase;
-          liveDocs[numEnums] = leafReader.getLiveDocs();
-          hasDeletions |= leafReader.hasDeletions();
-          enumIndexes.put(cacheKey, numEnums);
-          numEnums++;
-        } else {
-          enumIndexes.put(cacheKey, -1);
         }
+      }
+
+      if (termsEnums[numEnums] != null) {
+        if (cacheKey != null) {
+          enumIndexes.put(cacheKey, numEnums);
+        }
+
+        docBases[numEnums] = context.docBase;
+        liveDocs[numEnums] = leafReader.getLiveDocs();
+        hasDeletions |= leafReader.hasDeletions();
+
+        numEnums++;
       }
     }
 
