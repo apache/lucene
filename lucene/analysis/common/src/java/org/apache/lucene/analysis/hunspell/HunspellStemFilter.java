@@ -17,8 +17,6 @@
 package org.apache.lucene.analysis.hunspell;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -117,7 +115,16 @@ public final class HunspellStemFilter extends TokenFilter {
     }
 
     if (longestOnly && buffer.size() > 1) {
-      Collections.sort(buffer, lengthComparator);
+      buffer.sort(
+          (o1, o2) -> {
+            int cmp = Integer.compare(o2.length, o1.length);
+            if (cmp == 0) {
+              // tie break on text
+              return o2.compareTo(o1);
+            } else {
+              return cmp;
+            }
+          });
     }
 
     CharsRef stem = buffer.remove(0);
@@ -139,18 +146,4 @@ public final class HunspellStemFilter extends TokenFilter {
     super.reset();
     buffer = null;
   }
-
-  static final Comparator<CharsRef> lengthComparator =
-      new Comparator<CharsRef>() {
-        @Override
-        public int compare(CharsRef o1, CharsRef o2) {
-          int cmp = Integer.compare(o2.length, o1.length);
-          if (cmp == 0) {
-            // tie break on text
-            return o2.compareTo(o1);
-          } else {
-            return cmp;
-          }
-        }
-      };
 }

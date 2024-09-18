@@ -65,15 +65,15 @@ final class MultiNormsLeafSimScorer {
       final List<Float> weightList = new ArrayList<>();
       final Set<String> duplicateCheckingSet = new HashSet<>();
       for (FieldAndWeight field : normFields) {
-        assert duplicateCheckingSet.add(field.field)
+        assert duplicateCheckingSet.add(field.field())
             : "There is a duplicated field ["
-                + field.field
+                + field.field()
                 + "] used to construct MultiNormsLeafSimScorer";
 
-        NumericDocValues norms = reader.getNormValues(field.field);
+        NumericDocValues norms = reader.getNormValues(field.field());
         if (norms != null) {
           normsList.add(norms);
-          weightList.add(field.weight);
+          weightList.add(field.weight());
         }
       }
 

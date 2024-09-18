@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,7 +54,20 @@ public final class TaskExecutor {
    * @param executor the executor to be used for running tasks concurrently
    */
   public TaskExecutor(Executor executor) {
-    this.executor = Objects.requireNonNull(executor, "Executor is null");
+    Objects.requireNonNull(executor, "Executor is null");
+    this.executor =
+        r -> {
+          try {
+            executor.execute(r);
+          } catch (
+              @SuppressWarnings("unused")
+              RejectedExecutionException rejectedExecutionException) {
+            // execute directly on the current thread in case of rejection to ensure a rejecting
+            // executor only reduces parallelism and does not
+            // result in failure
+            r.run();
+          }
+        };
   }
 
   /**
@@ -96,21 +110,23 @@ public final class TaskExecutor {
     }
 
     RunnableFuture<T> createTask(Callable<T> callable) {
-      AtomicBoolean startedOrCancelled = new AtomicBoolean(false);
-      return new FutureTask<>(
-          () -> {
-            if (startedOrCancelled.compareAndSet(false, true)) {
-              try {
-                return callable.call();
-              } catch (Throwable t) {
-                cancelAll();
-                throw t;
-              }
-            }
-            // task is cancelled hence it has no results to return. That's fine: they would be
-            // ignored anyway.
-            return null;
-          }) {
+      return new FutureTask<>(callable) {
+
+        private final AtomicBoolean startedOrCancelled = new AtomicBoolean(false);
+
+        @Override
+        public void run() {
+          if (startedOrCancelled.compareAndSet(false, true)) {
+            super.run();
+          }
+        }
+
+        @Override
+        protected void setException(Throwable t) {
+          super.setException(t);
+          cancelAll();
+        }
+
         @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
           assert mayInterruptIfRunning == false
@@ -122,7 +138,13 @@ public final class TaskExecutor {
           wait for them to finish instead of throwing CancellationException. A cleaner way would have been to override FutureTask#get and
           make it wait for cancelled tasks, but FutureTask#awaitDone is private. Tasks that are cancelled before they are started will be no-op.
            */
-          return startedOrCancelled.compareAndSet(false, true);
+          if (startedOrCancelled.compareAndSet(false, true)) {
+            // task is cancelled hence it has no results to return. That's fine: they would be
+            // ignored anyway.
+            set(null);
+            return true;
+          }
+          return false;
         }
       };
     }

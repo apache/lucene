@@ -132,7 +132,7 @@ public class TestTaskExecutor extends LuceneTestCase {
             new IndexSearcher(reader, executor) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                return slices(leaves, 1, 1);
+                return slices(leaves, 1, 1, false);
               }
             };
 
@@ -206,7 +206,7 @@ public class TestTaskExecutor extends LuceneTestCase {
             new IndexSearcher(reader, executor) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                return slices(leaves, 1, 1);
+                return slices(leaves, 1, 1, false);
               }
             };
 
@@ -362,5 +362,25 @@ public class TestTaskExecutor extends LuceneTestCase {
     }
     assertEquals(0, throwable.getSuppressed().length);
     assertEquals(throwingTask, executedTasks.get());
+  }
+
+  public void testTaskRejectionDoesNotFailExecution() throws Exception {
+    try (ThreadPoolExecutor threadPoolExecutor =
+        new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(1))) {
+      final int taskCount = 1000; // enough tasks to cause queuing and rejections on the executor
+      final ArrayList<Callable<Void>> callables = new ArrayList<>(taskCount);
+      final AtomicInteger executedTasks = new AtomicInteger(0);
+      for (int i = 0; i < taskCount; i++) {
+        callables.add(
+            () -> {
+              executedTasks.incrementAndGet();
+              return null;
+            });
+      }
+      final TaskExecutor taskExecutor = new TaskExecutor(threadPoolExecutor);
+      var res = taskExecutor.invokeAll(callables);
+      assertEquals(taskCount, res.size());
+      assertEquals(taskCount, executedTasks.get());
+    }
   }
 }

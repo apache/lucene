@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -186,7 +187,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     storePayloads,
                     indexOptions,
                     docValuesType,
-                    false,
+                    DocValuesSkipIndexType.NONE,
                     dvGen,
                     attributes,
                     pointDataDimensionCount,
@@ -333,7 +334,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         output.writeVInt(fi.number);
 
         byte bits = 0x0;
-        if (fi.hasVectors()) bits |= STORE_TERMVECTOR;
+        if (fi.hasTermVectors()) bits |= STORE_TERMVECTOR;
         if (fi.omitsNorms()) bits |= OMIT_NORMS;
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;

@@ -474,14 +474,8 @@ public abstract class LogMergePolicy extends MergePolicy {
     return spec;
   }
 
-  private static class SegmentInfoAndLevel implements Comparable<SegmentInfoAndLevel> {
-    final SegmentCommitInfo info;
-    final float level;
-
-    public SegmentInfoAndLevel(SegmentCommitInfo info, float level) {
-      this.info = info;
-      this.level = level;
-    }
+  private record SegmentInfoAndLevel(SegmentCommitInfo info, float level)
+      implements Comparable<SegmentInfoAndLevel> {
 
     // Sorts largest to smallest
     @Override

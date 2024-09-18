@@ -20,10 +20,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -34,6 +32,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
@@ -81,15 +80,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     for (CodecReader reader : codecReaders) {
       LeafMetaData readerMeta = reader.getMetaData();
       if (majorVersion == -1) {
-        majorVersion = readerMeta.getCreatedVersionMajor();
-      } else if (majorVersion != readerMeta.getCreatedVersionMajor()) {
+        majorVersion = readerMeta.createdVersionMajor();
+      } else if (majorVersion != readerMeta.createdVersionMajor()) {
         throw new IllegalArgumentException(
             "Cannot combine leaf readers created with different major versions");
       }
       if (minVersion == null) {
-        minVersion = readerMeta.getMinVersion();
-      } else if (minVersion.onOrAfter(readerMeta.getMinVersion())) {
-        minVersion = readerMeta.getMinVersion();
+        minVersion = readerMeta.minVersion();
+      } else if (minVersion.onOrAfter(readerMeta.minVersion())) {
+        minVersion = readerMeta.minVersion();
       }
       hasBlocks |= readerMeta.hasBlocks();
     }
@@ -246,6 +245,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
+    public void prefetch(int doc) throws IOException {
+      int readerId = docIdToReaderId(doc);
+      TermVectorsReader reader = readers[readerId];
+      if (reader != null) {
+        reader.prefetch(doc - docStarts[readerId]);
+      }
+    }
+
+    @Override
     public Fields get(int doc) throws IOException {
       int readerId = docIdToReaderId(doc);
       TermVectorsReader reader = readers[readerId];
@@ -294,17 +302,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
   }
 
-  private static class DocValuesSub<T extends DocIdSetIterator> {
-    private final T sub;
-    private final int docStart;
-    private final int docEnd;
-
-    DocValuesSub(T sub, int docStart, int docEnd) {
-      this.sub = sub;
-      this.docStart = docStart;
-      this.docEnd = docEnd;
-    }
-  }
+  private record DocValuesSub<T extends DocIdSetIterator>(T sub, int docStart, int docEnd) {}
 
   private static class MergedDocIdSetIterator<T extends DocIdSetIterator> extends DocIdSetIterator {
 
@@ -391,7 +389,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     private final CodecReader[] codecReaders;
     private final DocValuesProducer[] producers;
     private final int[] docStarts;
-    private final Map<String, OrdinalMap> cachedOrdMaps = new HashMap<>();
+    private final IntObjectHashMap<OrdinalMap> cachedOrdMaps = new IntObjectHashMap<>();
 
     SlowCompositeDocValuesProducerWrapper(CodecReader[] codecReaders, int[] docStarts) {
       this.codecReaders = codecReaders;
@@ -430,14 +428,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     public SortedDocValues getSorted(FieldInfo field) throws IOException {
       OrdinalMap map = null;
       synchronized (cachedOrdMaps) {
-        map = cachedOrdMaps.get(field.name);
+        map = cachedOrdMaps.get(field.number);
         if (map == null) {
           // uncached, or not a multi dv
           SortedDocValues dv =
               MultiDocValues.getSortedValues(new MultiReader(codecReaders), field.name);
           if (dv instanceof MultiSortedDocValues) {
             map = ((MultiSortedDocValues) dv).mapping;
-            cachedOrdMaps.put(field.name, map);
+            cachedOrdMaps.put(field.number, map);
           }
           return dv;
         }
@@ -466,14 +464,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
       OrdinalMap map = null;
       synchronized (cachedOrdMaps) {
-        map = cachedOrdMaps.get(field.name);
+        map = cachedOrdMaps.get(field.number);
         if (map == null) {
           // uncached, or not a multi dv
           SortedSetDocValues dv =
               MultiDocValues.getSortedSetValues(new MultiReader(codecReaders), field.name);
           if (dv instanceof MultiSortedSetDocValues) {
             map = ((MultiSortedSetDocValues) dv).mapping;
-            cachedOrdMaps.put(field.name, map);
+            cachedOrdMaps.put(field.number, map);
           }
           return dv;
         }
@@ -565,11 +563,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     return new SlowCompositePointsReaderWrapper(codecReaders, docStarts);
   }
 
-  private static class PointValuesSub {
-    private final PointValues sub;
-    private final int docBase;
-
-    PointValuesSub(PointValues sub, int docBase) {
+  private record PointValuesSub(PointValues sub, int docBase) {
+    private PointValuesSub(PointValues sub, int docBase) {
       this.sub = Objects.requireNonNull(sub);
       this.docBase = docBase;
     }

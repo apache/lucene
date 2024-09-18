@@ -269,16 +269,8 @@ public class TestVectorScorer extends LuceneTestCase {
   }
 
   // A callable that scores the given ord and scorer and asserts the expected result.
-  static class AssertingScoreCallable implements Callable<Optional<Throwable>> {
-    final RandomVectorScorer scorer;
-    final int ord;
-    final float expectedScore;
-
-    AssertingScoreCallable(RandomVectorScorer scorer, int ord, float expectedScore) {
-      this.scorer = scorer;
-      this.ord = ord;
-      this.expectedScore = expectedScore;
-    }
+  record AssertingScoreCallable(RandomVectorScorer scorer, int ord, float expectedScore)
+      implements Callable<Optional<Throwable>> {
 
     @Override
     public Optional<Throwable> call() throws Exception {

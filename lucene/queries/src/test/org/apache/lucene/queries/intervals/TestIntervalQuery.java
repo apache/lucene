@@ -388,7 +388,7 @@ public class TestIntervalQuery extends LuceneTestCase {
 
     Query q = new IntervalQuery(field, source);
     TopDocs td = searcher.search(q, 10);
-    assertEquals(5, td.totalHits.value);
+    assertEquals(5, td.totalHits.value());
     assertEquals(1, td.scoreDocs[0].doc);
     assertEquals(3, td.scoreDocs[1].doc);
     assertEquals(0, td.scoreDocs[2].doc);
@@ -397,7 +397,7 @@ public class TestIntervalQuery extends LuceneTestCase {
 
     Query boostQ = new BoostQuery(q, 2);
     TopDocs boostTD = searcher.search(boostQ, 10);
-    assertEquals(5, boostTD.totalHits.value);
+    assertEquals(5, boostTD.totalHits.value());
     for (int i = 0; i < 5; i++) {
       assertEquals(td.scoreDocs[i].score * 2, boostTD.scoreDocs[i].score, 0);
     }
@@ -405,7 +405,7 @@ public class TestIntervalQuery extends LuceneTestCase {
     // change the pivot - order should remain the same
     Query q1 = new IntervalQuery(field, source, 2);
     TopDocs td1 = searcher.search(q1, 10);
-    assertEquals(5, td1.totalHits.value);
+    assertEquals(5, td1.totalHits.value());
     assertEquals(0.5f, td1.scoreDocs[0].score, 0); // freq=pivot
     for (int i = 0; i < 5; i++) {
       assertEquals(td.scoreDocs[i].doc, td1.scoreDocs[i].doc);
@@ -414,7 +414,7 @@ public class TestIntervalQuery extends LuceneTestCase {
     // increase the exp, docs higher than pivot should get a higher score, and vice versa
     Query q2 = new IntervalQuery(field, source, 1.2f, 2f);
     TopDocs td2 = searcher.search(q2, 10);
-    assertEquals(5, td2.totalHits.value);
+    assertEquals(5, td2.totalHits.value());
     for (int i = 0; i < 5; i++) {
       assertEquals(td.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (i < 2) {
@@ -446,5 +446,25 @@ public class TestIntervalQuery extends LuceneTestCase {
         new IntervalQuery(
             field, or(term("XXX"), containing(extend(term("message"), 0, 10), term("intend"))));
     checkHits(q, new int[] {});
+  }
+
+  public void testEquality() {
+    assertEquals(
+        new IntervalQuery("f", Intervals.regexp(new BytesRef(".*foo"))),
+        new IntervalQuery("f", Intervals.regexp(new BytesRef(".*foo"))));
+    assertEquals(
+        new IntervalQuery("f", Intervals.prefix(new BytesRef("p"), 1)),
+        new IntervalQuery("f", Intervals.prefix(new BytesRef("p"), 1)));
+    assertEquals(
+        new IntervalQuery("f", Intervals.fuzzyTerm("kot", 1)),
+        new IntervalQuery("f", Intervals.fuzzyTerm("kot", 1)));
+    assertEquals(
+        new IntervalQuery("f", Intervals.wildcard(new BytesRef("*.txt"))),
+        new IntervalQuery("f", Intervals.wildcard(new BytesRef("*.txt"))));
+    assertEquals(
+        new IntervalQuery(
+            "f", Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true)),
+        new IntervalQuery(
+            "f", Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true)));
   }
 }

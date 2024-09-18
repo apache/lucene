@@ -27,11 +27,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -43,6 +46,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -53,6 +57,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.MergeScheduler;
+import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentWriteState;
@@ -99,8 +106,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
       case BYTE -> doc.add(new KnnByteVectorField("v2", randomVector8(30), similarityFunction));
-      case FLOAT32 -> doc.add(
-          new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
+      case FLOAT32 ->
+          doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
     }
   }
 
@@ -230,6 +237,106 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  public void testMergingWithDifferentKnnFields() throws Exception {
+    try (var dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      Codec codec = getCodec();
+      if (codec.knnVectorsFormat() instanceof PerFieldKnnVectorsFormat perFieldKnnVectorsFormat) {
+        final KnnVectorsFormat format =
+            perFieldKnnVectorsFormat.getKnnVectorsFormatForField("field");
+        iwc.setCodec(
+            new FilterCodec(codec.getName(), codec) {
+              @Override
+              public KnnVectorsFormat knnVectorsFormat() {
+                return format;
+              }
+            });
+      }
+      TestMergeScheduler mergeScheduler = new TestMergeScheduler();
+      iwc.setMergeScheduler(mergeScheduler);
+      iwc.setMergePolicy(new ForceMergePolicy(iwc.getMergePolicy()));
+      try (var writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 10; i++) {
+          var doc = new Document();
+          doc.add(new KnnFloatVectorField("field", new float[] {i, i + 1, i + 2, i + 3}));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+        for (int i = 0; i < 10; i++) {
+          var doc = new Document();
+          doc.add(new KnnFloatVectorField("otherVector", new float[] {i, i, i, i}));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+        writer.forceMerge(1);
+        assertNull(mergeScheduler.ex.get());
+      }
+    }
+  }
+
+  public void testMergingWithDifferentByteKnnFields() throws Exception {
+    try (var dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      Codec codec = getCodec();
+      if (codec.knnVectorsFormat() instanceof PerFieldKnnVectorsFormat perFieldKnnVectorsFormat) {
+        final KnnVectorsFormat format =
+            perFieldKnnVectorsFormat.getKnnVectorsFormatForField("field");
+        iwc.setCodec(
+            new FilterCodec(codec.getName(), codec) {
+              @Override
+              public KnnVectorsFormat knnVectorsFormat() {
+                return format;
+              }
+            });
+      }
+      TestMergeScheduler mergeScheduler = new TestMergeScheduler();
+      iwc.setMergeScheduler(mergeScheduler);
+      iwc.setMergePolicy(new ForceMergePolicy(iwc.getMergePolicy()));
+      try (var writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 10; i++) {
+          var doc = new Document();
+          doc.add(
+              new KnnByteVectorField("field", new byte[] {(byte) i, (byte) i, (byte) i, (byte) i}));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+        for (int i = 0; i < 10; i++) {
+          var doc = new Document();
+          doc.add(
+              new KnnByteVectorField(
+                  "otherVector", new byte[] {(byte) i, (byte) i, (byte) i, (byte) i}));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+        writer.forceMerge(1);
+        assertNull(mergeScheduler.ex.get());
+      }
+    }
+  }
+
+  private static final class TestMergeScheduler extends MergeScheduler {
+    AtomicReference<Exception> ex = new AtomicReference<>();
+
+    @Override
+    public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
+      while (true) {
+        MergePolicy.OneMerge merge = mergeSource.getNextMerge();
+        if (merge == null) {
+          break;
+        }
+        try {
+          mergeSource.merge(merge);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+          ex.set(e);
+          break;
+        }
+      }
+    }
+
+    @Override
+    public void close() {}
+  }
+
   @SuppressWarnings("unchecked")
   public void testWriterRamEstimate() throws Exception {
     final FieldInfos fieldInfos = new FieldInfos(new FieldInfo[0]);
@@ -271,7 +378,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       false,
                       IndexOptions.NONE,
                       DocValuesType.NONE,
-                      false,
+                      DocValuesSkipIndexType.NONE,
                       -1,
                       Map.of(),
                       0,
@@ -1331,8 +1438,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               ctx.reader()
                   .searchNearestVectors(
                       fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
-          assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation);
-          assertEquals(visitedLimit, results.totalHits.value);
+          assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation());
+          assertEquals(visitedLimit, results.totalHits.value());
 
           // check the limit is not hit when it clearly exceeds the number of vectors
           k = vectorValues.size();
@@ -1341,8 +1448,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               ctx.reader()
                   .searchNearestVectors(
                       fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
-          assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
-          assertTrue(results.totalHits.value <= visitedLimit);
+          assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
+          assertTrue(results.totalHits.value() <= visitedLimit);
         }
       }
     }

@@ -18,8 +18,6 @@ package org.apache.lucene.tests.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -49,14 +47,7 @@ public class PerThreadPKLookup {
     List<LeafReaderContext> leaves = new ArrayList<>(r.leaves());
 
     // Larger segments are more likely to have the id, so we sort largest to smallest by numDocs:
-    Collections.sort(
-        leaves,
-        new Comparator<LeafReaderContext>() {
-          @Override
-          public int compare(LeafReaderContext c1, LeafReaderContext c2) {
-            return c2.reader().numDocs() - c1.reader().numDocs();
-          }
-        });
+    leaves.sort((c1, c2) -> c2.reader().numDocs() - c1.reader().numDocs());
 
     termsEnums = new TermsEnum[leaves.size()];
     postingsEnums = new PostingsEnum[leaves.size()];

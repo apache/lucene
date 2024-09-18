@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
@@ -353,15 +354,19 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                     : new TaskExecutor(mergeState.intraMergeTaskExecutor),
                 numMergeWorkers);
         for (int i = 0; i < mergeState.liveDocs.length; i++) {
-          merger.addReader(
-              mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+          if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
+            merger.addReader(
+                mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+          }
         }
         DocIdSetIterator mergedVectorIterator = null;
         switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> mergedVectorIterator =
-              KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-          case FLOAT32 -> mergedVectorIterator =
-              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+          case BYTE ->
+              mergedVectorIterator =
+                  KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+          case FLOAT32 ->
+              mergedVectorIterator =
+                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
         }
         graph =
             merger.merge(
@@ -543,20 +548,22 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         InfoStream infoStream)
         throws IOException {
       return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> new FieldWriter<>(
-            scorer,
-            (FlatFieldVectorsWriter<byte[]>) flatFieldVectorsWriter,
-            fieldInfo,
-            M,
-            beamWidth,
-            infoStream);
-        case FLOAT32 -> new FieldWriter<>(
-            scorer,
-            (FlatFieldVectorsWriter<float[]>) flatFieldVectorsWriter,
-            fieldInfo,
-            M,
-            beamWidth,
-            infoStream);
+        case BYTE ->
+            new FieldWriter<>(
+                scorer,
+                (FlatFieldVectorsWriter<byte[]>) flatFieldVectorsWriter,
+                fieldInfo,
+                M,
+                beamWidth,
+                infoStream);
+        case FLOAT32 ->
+            new FieldWriter<>(
+                scorer,
+                (FlatFieldVectorsWriter<float[]>) flatFieldVectorsWriter,
+                fieldInfo,
+                M,
+                beamWidth,
+                infoStream);
       };
     }
 
@@ -572,16 +579,18 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.fieldInfo = fieldInfo;
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> scorer.getRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(),
-                RandomAccessVectorValues.fromBytes(
-                    (List<byte[]>) flatFieldVectorsWriter.getVectors(),
-                    fieldInfo.getVectorDimension()));
-            case FLOAT32 -> scorer.getRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(),
-                RandomAccessVectorValues.fromFloats(
-                    (List<float[]>) flatFieldVectorsWriter.getVectors(),
-                    fieldInfo.getVectorDimension()));
+            case BYTE ->
+                scorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    RandomAccessVectorValues.fromBytes(
+                        (List<byte[]>) flatFieldVectorsWriter.getVectors(),
+                        fieldInfo.getVectorDimension()));
+            case FLOAT32 ->
+                scorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    RandomAccessVectorValues.fromFloats(
+                        (List<float[]>) flatFieldVectorsWriter.getVectors(),
+                        fieldInfo.getVectorDimension()));
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -612,7 +621,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       throw new UnsupportedOperationException();
     }
 
-    OnHeapHnswGraph getGraph() {
+    OnHeapHnswGraph getGraph() throws IOException {
       assert flatFieldVectorsWriter.isFinished();
       if (node > 0) {
         return hnswGraphBuilder.getCompletedGraph();

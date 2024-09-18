@@ -487,7 +487,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         infoStream.message(
             "DWPT",
             "new segment has "
-                + (flushState.fieldInfos.hasVectors() ? "vectors" : "no vectors")
+                + (flushState.fieldInfos.hasTermVectors() ? "vectors" : "no vectors")
                 + "; "
                 + (flushState.fieldInfos.hasNorms() ? "norms" : "no norms")
                 + "; "
@@ -716,6 +716,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   /** Returns true iff this DWPT is marked as flush pending */
   boolean isFlushPending() {
     return flushPending.get() == Boolean.TRUE;
+  }
+
+  boolean isQueueAdvanced() {
+    return deleteQueue.isAdvanced();
   }
 
   /** Sets this DWPT as flush pending. This can only be set once. */
