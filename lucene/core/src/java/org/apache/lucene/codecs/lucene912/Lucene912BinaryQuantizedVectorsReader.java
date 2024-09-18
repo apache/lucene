@@ -140,7 +140,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
     int correctionsCount =
         fieldEntry.similarityFunction != VectorSimilarityFunction.EUCLIDEAN ? 3 : 2;
     long numQuantizedVectorBytes =
-        Math.multiplyExact(binaryDims + (Float.BYTES * correctionsCount), fieldEntry.size);
+        Math.multiplyExact((binaryDims + (Float.BYTES * correctionsCount)), (long) fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "Binarized vector data length "
