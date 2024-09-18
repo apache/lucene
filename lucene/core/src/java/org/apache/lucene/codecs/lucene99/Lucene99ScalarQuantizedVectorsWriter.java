@@ -1031,6 +1031,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       public int advance(int target) throws IOException {
         throw new UnsupportedOperationException();
       }
+
+      @Override
+      public long cost() {
+        return size;
+      }
     }
   }
 

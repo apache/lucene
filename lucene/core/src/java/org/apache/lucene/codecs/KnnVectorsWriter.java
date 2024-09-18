@@ -298,7 +298,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private final List<FloatVectorValuesSub> subs;
       private final DocIDMerger<FloatVectorValuesSub> docIdMerger;
       private final int size;
-      private int docId;
+      private int docId = -1;
+      private int lastOrd = -1;
       FloatVectorValuesSub current;
 
       private MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
@@ -310,7 +311,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           totalSize += sub.values.size();
         }
         size = totalSize;
-        docId = -1;
       }
 
       @Override
@@ -345,13 +345,22 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           public int advance(int target) throws IOException {
             throw new UnsupportedOperationException();
           }
+
+          @Override
+          public long cost() {
+            return size;
+          }
         };
       }
 
       @Override
       public float[] vectorValue(int ord) throws IOException {
-        // FIXME what can we assert here?
-        // assert ord == iterator.index();
+        if (ord != lastOrd + 1) {
+          throw new IllegalStateException(
+              "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
+        } else {
+          lastOrd = ord;
+        }
         return current.values.vectorValue(current.index());
       }
 
@@ -386,7 +395,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private final DocIDMerger<ByteVectorValuesSub> docIdMerger;
       private final int size;
 
-      private int docId;
+      private int lastOrd = -1;
+      private int docId = -1;
       ByteVectorValuesSub current;
 
       private MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
@@ -402,8 +412,12 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public byte[] vectorValue(int ord) throws IOException {
-        // FIXME
-        // assert ord == iterator.index();
+        if (ord != lastOrd + 1) {
+          throw new IllegalStateException(
+              "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
+        } else {
+          lastOrd = ord;
+        }
         return current.values.vectorValue(current.index());
       }
 
@@ -438,6 +452,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           @Override
           public int advance(int target) throws IOException {
             throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public long cost() {
+            return size;
           }
         };
       }

@@ -98,11 +98,6 @@ public abstract class KnnVectorValues {
 
     /** return the value index (aka "ordinal" or "ord") corresponding to the current doc */
     public abstract int index();
-
-    @Override
-    public long cost() {
-      throw new UnsupportedOperationException();
-    }
   }
 
   /**

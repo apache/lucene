@@ -297,6 +297,11 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
+    public long cost() {
+      return docBits.cardinality();
+    }
+
+    @Override
     public int advance(int target) {
       throw new UnsupportedOperationException();
     }

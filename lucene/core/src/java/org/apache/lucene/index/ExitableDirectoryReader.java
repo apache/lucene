@@ -541,6 +541,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public long cost() {
+        return delegate.cost();
+      }
+
+      @Override
       public int advance(int target) throws IOException {
         int doc = delegate.advance(target);
         if (doc >= nextCheck) {

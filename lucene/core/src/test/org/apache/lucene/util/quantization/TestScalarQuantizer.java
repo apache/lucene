@@ -345,6 +345,11 @@ public class TestScalarQuantizer extends LuceneTestCase {
         }
 
         @Override
+        public long cost() {
+          return floats.length - deletedVectors.size();
+        }
+
+        @Override
         public int advance(int target) throws IOException {
           throw new UnsupportedOperationException();
         }

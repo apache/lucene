@@ -345,6 +345,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
+    public long cost() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public int advance(int target) throws IOException {
       throw new UnsupportedOperationException();
     }
