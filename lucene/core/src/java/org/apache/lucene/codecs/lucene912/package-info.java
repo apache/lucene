@@ -400,8 +400,8 @@
  *       performant encoding that is vectorized.
  *   <li>In version 8.6, index sort serialization is delegated to the sorts themselves, to allow
  *       user-defined sorts to be used
- *   <li>In version 8.6, points fields split the index tree and leaf data into separate files,
- *       to allow for different access patterns to the different data structures</li>
+ *   <li>In version 8.6, points fields split the index tree and leaf data into separate files, to
+ *       allow for different access patterns to the different data structures
  *   <li>In version 8.7, stored fields compression became adaptive to better handle documents with
  *       smaller stored fields.
  *   <li>In version 9.0, vector-valued fields were added.
