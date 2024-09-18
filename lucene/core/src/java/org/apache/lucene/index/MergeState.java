@@ -41,7 +41,7 @@ import org.apache.lucene.util.packed.PackedLongValues;
  *
  * @lucene.experimental
  */
-public class MergeState implements Cloneable {
+public class MergeState {
 
   /** Maps document IDs from old segments to document IDs in the new segment */
   public final DocMap[] docMaps;
@@ -301,56 +301,5 @@ public class MergeState implements Cloneable {
     this.infoStream = infoStream;
     this.intraMergeTaskExecutor = intraMergeTaskExecutor;
     this.needsIndexSort = needsIndexSort;
-  }
-
-  @Override
-  public MergeState clone() {
-    StoredFieldsReader[] storedFieldsReaders = this.storedFieldsReaders.clone();
-    TermVectorsReader[] termVectorsReaders = this.termVectorsReaders.clone();
-    NormsProducer[] normsProducers = this.normsProducers.clone();
-    DocValuesProducer[] docValuesProducers = this.docValuesProducers.clone();
-    FieldsProducer[] fieldsProducers = this.fieldsProducers.clone();
-    PointsReader[] pointsReaders = this.pointsReaders.clone();
-    KnnVectorsReader[] knnVectorsReaders = this.knnVectorsReaders.clone();
-    for (int i = 0; i < storedFieldsReaders.length; ++i) {
-      if (storedFieldsReaders[i] != null) {
-        storedFieldsReaders[i] = storedFieldsReaders[i].getMergeInstance();
-      }
-      if (termVectorsReaders[i] != null) {
-        termVectorsReaders[i] = termVectorsReaders[i].getMergeInstance();
-      }
-      if (normsProducers[i] != null) {
-        normsProducers[i] = normsProducers[i].getMergeInstance();
-      }
-      if (docValuesProducers[i] != null) {
-        docValuesProducers[i] = docValuesProducers[i].getMergeInstance();
-      }
-      if (fieldsProducers[i] != null) {
-        fieldsProducers[i] = fieldsProducers[i].getMergeInstance();
-      }
-      if (pointsReaders[i] != null) {
-        pointsReaders[i] = pointsReaders[i].getMergeInstance();
-      }
-      if (knnVectorsReaders[i] != null) {
-        knnVectorsReaders[i] = knnVectorsReaders[i].getMergeInstance();
-      }
-    }
-    return new MergeState(
-        docMaps,
-        segmentInfo,
-        mergeFieldInfos,
-        storedFieldsReaders,
-        termVectorsReaders,
-        normsProducers,
-        docValuesProducers,
-        fieldInfos,
-        liveDocs,
-        fieldsProducers,
-        pointsReaders,
-        knnVectorsReaders,
-        maxDocs,
-        infoStream,
-        intraMergeTaskExecutor,
-        needsIndexSort);
   }
 }
