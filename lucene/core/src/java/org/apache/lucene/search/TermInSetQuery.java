@@ -135,6 +135,11 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     return termData.size();
   }
 
+  /**
+   * Get an iterator over the encoded terms for query inspection.
+   *
+   * @lucene.experimental
+   */
   public BytesRefIterator getBytesRefIterator() {
     final TermIterator iterator = this.termData.iterator();
     return () -> iterator.next();
