@@ -19,8 +19,9 @@ package org.apache.lucene.util.quantization;
 /** Utility class for quantization calculations */
 public class BQSpaceUtils {
 
-  // FIXME: allow for a settable B_QUERY of 4 or 2
   public static final short B_QUERY = 4;
+  // the first four bits masked
+  private static final int B_QUERY_MASK = 15;
 
   /**
    * Transpose the query vector into a byte array allowing for efficient bitwise operations with the
@@ -35,27 +36,23 @@ public class BQSpaceUtils {
    * @param quantQueryByte the byte array to store the transposed query vector
    */
   public static void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
-    int byte_mask = 1;
-    for (int i = 0; i < B_QUERY - 1; i++) {
-      byte_mask = byte_mask << 1 | 0b00000001;
-    }
+    // TODO: rewrite this in Panama Vector API
     int qOffset = 0;
     final byte[] v1 = new byte[4];
     final byte[] v = new byte[32];
     for (int i = 0; i < dimensions; i += 32) {
       // for every four bytes we shift left (with remainder across those bytes)
-      int shift = 8 - B_QUERY;
       for (int j = 0; j < v.length; j += 4) {
-        v[j] = (byte) (q[qOffset + j] << shift | ((q[qOffset + j] >>> (8 - shift)) & byte_mask));
+        v[j] = (byte) (q[qOffset + j] << B_QUERY | ((q[qOffset + j] >>> B_QUERY) & B_QUERY_MASK));
         v[j + 1] =
             (byte)
-                (q[qOffset + j + 1] << shift | ((q[qOffset + j + 1] >>> (8 - shift)) & byte_mask));
+                (q[qOffset + j + 1] << B_QUERY | ((q[qOffset + j + 1] >>> B_QUERY) & B_QUERY_MASK));
         v[j + 2] =
             (byte)
-                (q[qOffset + j + 2] << shift | ((q[qOffset + j + 2] >>> (8 - shift)) & byte_mask));
+                (q[qOffset + j + 2] << B_QUERY | ((q[qOffset + j + 2] >>> B_QUERY) & B_QUERY_MASK));
         v[j + 3] =
             (byte)
-                (q[qOffset + j + 3] << shift | ((q[qOffset + j + 3] >>> (8 - shift)) & byte_mask));
+                (q[qOffset + j + 3] << B_QUERY | ((q[qOffset + j + 3] >>> B_QUERY) & B_QUERY_MASK));
       }
       for (int j = 0; j < B_QUERY; j++) {
         moveMaskEpi8Byte(v, v1);
