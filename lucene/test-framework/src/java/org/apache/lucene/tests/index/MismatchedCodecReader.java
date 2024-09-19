@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.index;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Random;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -64,7 +65,11 @@ public class MismatchedCodecReader extends FilterCodecReader {
 
   @Override
   public StoredFieldsReader getFieldsReader() {
-    return new MismatchedStoredFieldsReader(super.getFieldsReader(), shuffled);
+    StoredFieldsReader in = super.getFieldsReader();
+    if (in == null) {
+      return null;
+    }
+    return new MismatchedStoredFieldsReader(in, shuffled);
   }
 
   private static class MismatchedStoredFieldsReader extends StoredFieldsReader {
@@ -73,7 +78,7 @@ public class MismatchedCodecReader extends FilterCodecReader {
     private final FieldInfos shuffled;
 
     MismatchedStoredFieldsReader(StoredFieldsReader in, FieldInfos shuffled) {
-      this.in = in;
+      this.in = Objects.requireNonNull(in);
       this.shuffled = shuffled;
     }
 
@@ -100,8 +105,12 @@ public class MismatchedCodecReader extends FilterCodecReader {
 
   @Override
   public DocValuesProducer getDocValuesReader() {
+    DocValuesProducer in = super.getDocValuesReader();
+    if (in == null) {
+      return null;
+    }
     return new MismatchedDocValuesProducer(
-        super.getDocValuesReader(), shuffled, super.getFieldInfos());
+        in, shuffled, super.getFieldInfos());
   }
 
   private static class MismatchedDocValuesProducer extends DocValuesProducer {
@@ -111,7 +120,7 @@ public class MismatchedCodecReader extends FilterCodecReader {
     private final FieldInfos orig;
 
     MismatchedDocValuesProducer(DocValuesProducer in, FieldInfos shuffled, FieldInfos orig) {
-      this.in = in;
+      this.in = Objects.requireNonNull(in);
       this.shuffled = shuffled;
       this.orig = orig;
     }
@@ -165,7 +174,11 @@ public class MismatchedCodecReader extends FilterCodecReader {
 
   @Override
   public NormsProducer getNormsReader() {
-    return new MismatchedNormsProducer(super.getNormsReader(), shuffled, super.getFieldInfos());
+    NormsProducer in = super.getNormsReader();
+    if (in == null) {
+      return null;
+    }
+    return new MismatchedNormsProducer(in, shuffled, super.getFieldInfos());
   }
 
   private static class MismatchedNormsProducer extends NormsProducer {
@@ -175,7 +188,7 @@ public class MismatchedCodecReader extends FilterCodecReader {
     private final FieldInfos orig;
 
     MismatchedNormsProducer(NormsProducer in, FieldInfos shuffled, FieldInfos orig) {
-      this.in = in;
+      this.in = Objects.requireNonNull(in);
       this.shuffled = shuffled;
       this.orig = orig;
     }
