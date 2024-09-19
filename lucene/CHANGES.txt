@@ -574,7 +574,7 @@ Optimizations
 
 * GITHUB#13306: Use RWLock to access LRUQueryCache to reduce contention. (Boice Huang)
 
-* GITHUB#13252, GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum classes. (zhouhui)
+* GITHUB#13252, GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (zhouhui)
 
 * GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
 
