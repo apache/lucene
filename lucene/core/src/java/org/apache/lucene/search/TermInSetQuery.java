@@ -28,13 +28,7 @@ import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.AttributeSource;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.BytesRefComparator;
-import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.StringSorter;
+import org.apache.lucene.util.*;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -161,6 +155,16 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     return termData.size();
   }
 
+  /**
+   * Get an iterator over the encoded terms for query inspection.
+   *
+   * @lucene.experimental
+   */
+  public BytesRefIterator getBytesRefIterator() {
+    final TermIterator iterator = this.termData.iterator();
+    return () -> iterator.next();
+  }
+
   @Override
   public void visit(QueryVisitor visitor) {
     if (visitor.acceptField(field) == false) {
@@ -207,7 +211,8 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
    * Returns the terms wrapped in a PrefixCodedTerms.
    *
    * @deprecated the encoded terms will no longer be exposed in a future major version; this is an
-   *     implementation detail that could change at some point and shouldn't be relied on directly
+   *     implementation detail that could change at some point and shouldn't be relied on directly.
+   *     Call {@link #getBytesRefIterator()} instead to retrieve over the terms.
    */
   @Deprecated
   public PrefixCodedTerms getTermData() {
