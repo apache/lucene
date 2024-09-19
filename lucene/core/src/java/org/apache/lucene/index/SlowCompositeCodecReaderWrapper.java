@@ -20,8 +20,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -32,7 +34,6 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
-import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
@@ -384,7 +385,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     private final CodecReader[] codecReaders;
     private final DocValuesProducer[] producers;
     private final int[] docStarts;
-    private final IntObjectHashMap<OrdinalMap> cachedOrdMaps = new IntObjectHashMap<>();
+    private final Map<String, OrdinalMap> cachedOrdMaps = new HashMap<>();
 
     SlowCompositeDocValuesProducerWrapper(CodecReader[] codecReaders, int[] docStarts) {
       this.codecReaders = codecReaders;
@@ -423,14 +424,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     public SortedDocValues getSorted(FieldInfo field) throws IOException {
       OrdinalMap map = null;
       synchronized (cachedOrdMaps) {
-        map = cachedOrdMaps.get(field.number);
+        map = cachedOrdMaps.get(field.name);
         if (map == null) {
           // uncached, or not a multi dv
           SortedDocValues dv =
               MultiDocValues.getSortedValues(new MultiReader(codecReaders), field.name);
           if (dv instanceof MultiSortedDocValues) {
             map = ((MultiSortedDocValues) dv).mapping;
-            cachedOrdMaps.put(field.number, map);
+            cachedOrdMaps.put(field.name, map);
           }
           return dv;
         }
@@ -459,14 +460,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
       OrdinalMap map = null;
       synchronized (cachedOrdMaps) {
-        map = cachedOrdMaps.get(field.number);
+        map = cachedOrdMaps.get(field.name);
         if (map == null) {
           // uncached, or not a multi dv
           SortedSetDocValues dv =
               MultiDocValues.getSortedSetValues(new MultiReader(codecReaders), field.name);
           if (dv instanceof MultiSortedSetDocValues) {
             map = ((MultiSortedSetDocValues) dv).mapping;
-            cachedOrdMaps.put(field.number, map);
+            cachedOrdMaps.put(field.name, map);
           }
           return dv;
         }
