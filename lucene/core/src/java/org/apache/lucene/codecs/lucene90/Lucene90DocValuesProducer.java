@@ -194,7 +194,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
       byte type = meta.readByte();
       if (info.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
-        skippers.put(info.number, readDocValueSkipperMeta(meta));
+        skippers.put(info.name, readDocValueSkipperMeta(meta));
       }
       if (type == Lucene90DocValuesFormat.NUMERIC) {
         numerics.put(info.name, readNumeric(meta));
