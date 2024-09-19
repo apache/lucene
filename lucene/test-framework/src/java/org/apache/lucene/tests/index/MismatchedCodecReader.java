@@ -109,8 +109,7 @@ public class MismatchedCodecReader extends FilterCodecReader {
     if (in == null) {
       return null;
     }
-    return new MismatchedDocValuesProducer(
-        in, shuffled, super.getFieldInfos());
+    return new MismatchedDocValuesProducer(in, shuffled, super.getFieldInfos());
   }
 
   private static class MismatchedDocValuesProducer extends DocValuesProducer {
