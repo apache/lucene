@@ -103,9 +103,8 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final int DEFAULT_NUM_VECTORS_PER_CLUSTER = 10_000_000;
   // we set minimum here as we store the cluster ID in a short, and we need to ensure that we can
   // cluster the max number of docs supported in a segment
-  // this resolves to a minimum of 65537 per cluster
-  public static final int MIN_NUM_VECTORS_PER_CLUSTER =
-      ((DocIdSetIterator.NO_MORE_DOCS - 1) / Short.MAX_VALUE) - 1;
+  // additionally, too many clusters puts a strain on the heap & disk space during merge
+  public static final int MIN_NUM_VECTORS_PER_CLUSTER = 1_000_000;
 
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());

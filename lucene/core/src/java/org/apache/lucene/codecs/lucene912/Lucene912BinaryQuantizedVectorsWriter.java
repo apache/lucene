@@ -174,10 +174,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
                 field.flatFieldVectorsWriter.getVectors(), field.fieldInfo.getVectorDimension());
         KMeans.Results kmeansResult =
             cluster(vectorValues, true, field.fieldInfo.getVectorSimilarityFunction());
-        if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
-          segmentWriteState.infoStream.message(
-              BINARIZED_VECTOR_COMPONENT, "clustered: " + kmeansResult);
-        }
         clusterCenters = kmeansResult.centroids();
         vectorClusters = kmeansResult.vectorCentroids();
       } else {
