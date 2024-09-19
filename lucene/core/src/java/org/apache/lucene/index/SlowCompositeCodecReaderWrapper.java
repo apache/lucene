@@ -872,6 +872,16 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         return size;
       }
 
+      @SuppressWarnings("unchecked")
+      @Override
+      public FloatVectorValues copy() throws IOException {
+        List<DocValuesSub<FloatVectorValues>> subsCopy = new ArrayList<>();
+        for (Object sub : subs) {
+          subsCopy.add((DocValuesSub<FloatVectorValues>) sub);
+        }
+        return new MergedFloatVectorValues(dimension, size, subsCopy);
+      }
+
       @Override
       public float[] vectorValue(int ord) throws IOException {
         assert ord >= 0 && ord < size;
@@ -950,6 +960,16 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         lastSubIndex = findSub(ord, lastSubIndex, starts);
         return ((ByteVectorValues) subs[lastSubIndex].sub)
             .vectorValue(ord - subs[lastSubIndex].ordStart);
+      }
+
+      @SuppressWarnings("unchecked")
+      @Override
+      public ByteVectorValues copy() throws IOException {
+        List<DocValuesSub<ByteVectorValues>> newSubs = new ArrayList<>();
+        for (Object sub : subs) {
+          newSubs.add((DocValuesSub<ByteVectorValues>) sub);
+        }
+        return new MergedByteVectorValues(dimension, size, newSubs);
       }
     }
 

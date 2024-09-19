@@ -360,5 +360,10 @@ public class TestScalarQuantizer extends LuceneTestCase {
     public VectorScorer scorer(float[] target) {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public TestSimpleFloatVectorValues copy() {
+      return this;
+    }
   }
 }

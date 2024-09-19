@@ -853,7 +853,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   static class FloatVectorWrapper extends FloatVectorValues {
     private final List<float[]> vectorList;
-    protected int curDoc = -1;
 
     FloatVectorWrapper(List<float[]> vectorList) {
       this.vectorList = vectorList;
@@ -867,6 +866,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     @Override
     public int size() {
       return vectorList.size();
+    }
+
+    @Override
+    public FloatVectorValues copy() throws IOException {
+      return this;
     }
 
     @Override
@@ -1196,7 +1200,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   static final class NormalizedFloatVectorValues extends FloatVectorValues {
     private final FloatVectorValues values;
     private final float[] normalizedVector;
-    int curOrd = -1;
 
     public NormalizedFloatVectorValues(FloatVectorValues values) {
       this.values = values;
@@ -1228,6 +1231,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     @Override
     public DocIndexIterator iterator() {
       return values.iterator();
+    }
+
+    @Override
+    public NormalizedFloatVectorValues copy() throws IOException {
+      return new NormalizedFloatVectorValues(values.copy());
     }
   }
 }

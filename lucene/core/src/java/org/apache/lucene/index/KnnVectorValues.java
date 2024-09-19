@@ -53,8 +53,6 @@ public abstract class KnnVectorValues {
    * Creates a new copy of this {@link KnnVectorValues}. This is helpful when you need to access
    * different values at once, to avoid overwriting the underlying vector returned.
    */
-  // FIXME: replace with some kind of wrapper??? Or can we eliminate completely given
-  // that we no longer have seek() API?
   public abstract KnnVectorValues copy() throws IOException;
 
   /** Returns the vector byte length, defaults to dimension multiplied by float byte size */

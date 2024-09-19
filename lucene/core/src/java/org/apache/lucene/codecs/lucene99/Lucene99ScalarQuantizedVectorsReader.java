@@ -402,10 +402,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   private static final class QuantizedVectorValues extends FloatVectorValues {
     private final FloatVectorValues rawVectorValues;
-    private final OffHeapQuantizedByteVectorValues quantizedVectorValues;
+    private final QuantizedByteVectorValues quantizedVectorValues;
 
     QuantizedVectorValues(
-        FloatVectorValues rawVectorValues, OffHeapQuantizedByteVectorValues quantizedVectorValues) {
+        FloatVectorValues rawVectorValues, QuantizedByteVectorValues quantizedVectorValues) {
       this.rawVectorValues = rawVectorValues;
       this.quantizedVectorValues = quantizedVectorValues;
     }
@@ -428,6 +428,11 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     @Override
     public int ordToDoc(int ord) {
       return rawVectorValues.ordToDoc(ord);
+    }
+
+    @Override
+    public QuantizedVectorValues copy() throws IOException {
+      return new QuantizedVectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
     }
 
     @Override

@@ -382,6 +382,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         value[i] = Float.parseFloat(floatStrings[i]);
       }
     }
+
+    @Override
+    public SimpleTextFloatVectorValues copy() {
+      return this;
+    }
   }
 
   private static class SimpleTextByteVectorValues extends ByteVectorValues {
@@ -474,6 +479,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       for (int i = 0; i < floatStrings.length; i++) {
         value[i] = (byte) Float.parseFloat(floatStrings[i]);
       }
+    }
+
+    @Override
+    public SimpleTextByteVectorValues copy() {
+      return this;
     }
   }
 

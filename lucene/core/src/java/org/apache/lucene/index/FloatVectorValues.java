@@ -32,11 +32,6 @@ public abstract class FloatVectorValues extends KnnVectorValues {
   /** Sole constructor */
   protected FloatVectorValues() {}
 
-  @Override
-  public FloatVectorValues copy() throws IOException {
-    return this;
-  }
-
   /**
    * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
    * otherwise IndexOutOfBoundsException is thrown. The returned array may be shared across calls.
@@ -44,6 +39,9 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    * @return the vector value
    */
   public abstract float[] vectorValue(int ord) throws IOException;
+
+  @Override
+  public abstract FloatVectorValues copy() throws IOException;
 
   /**
    * Checks the Vector Encoding of a field

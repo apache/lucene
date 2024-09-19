@@ -2340,6 +2340,11 @@ public class MemoryIndex {
         }
       };
     }
+
+    @Override
+    public MemoryFloatVectorValues copy() {
+      return this;
+    }
   }
 
   private static final class MemoryByteVectorValues extends ByteVectorValues {
@@ -2398,6 +2403,11 @@ public class MemoryIndex {
           return iterator;
         }
       };
+    }
+
+    @Override
+    public MemoryByteVectorValues copy() {
+      return this;
     }
   }
 }
