@@ -23,7 +23,10 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 
-/** Quantized that quantizes raw vector values to binary */
+/**
+ * Quantized that quantizes raw vector values to binary. The algorithm is based on the paper <a
+ * href="https://arxiv.org/abs/2405.12497">RaBitQ</a>.
+ */
 public class BinaryQuantizer {
   private final int discretizedDimensions;
 

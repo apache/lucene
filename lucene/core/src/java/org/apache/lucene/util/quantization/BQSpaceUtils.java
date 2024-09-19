@@ -22,6 +22,18 @@ public class BQSpaceUtils {
   // FIXME: allow for a settable B_QUERY of 4 or 2
   public static final short B_QUERY = 4;
 
+  /**
+   * Transpose the query vector into a byte array allowing for efficient bitwise operations with the
+   * index bit vectors. The idea here is to organize the query vector bits such that the first bit
+   * of every dimension is in the first set dimensions bits, or (dimensions/8) bytes. The second,
+   * third, and fourth bits are in the second, third, and fourth set of dimensions bits,
+   * respectively. This allows for direct bitwise comparisons with the stored index vectors through
+   * summing the bitwise results with the relative required bit shifts.
+   *
+   * @param q the query vector, assumed to be half-byte quantized with values between 0 and 15
+   * @param dimensions the number of dimensions in the query vector
+   * @param quantQueryByte the byte array to store the transposed query vector
+   */
   public static void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
     int byte_mask = 1;
     for (int i = 0; i < B_QUERY - 1; i++) {

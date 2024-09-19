@@ -141,6 +141,21 @@ public class Lucene912HnswBinaryQuantizedVectorsFormat extends KnnVectorsFormat 
     this.flatVectorsFormat = new Lucene912BinaryQuantizedVectorsFormat(numVectorsPerCluster);
   }
 
+  // For testing only
+  Lucene912HnswBinaryQuantizedVectorsFormat(
+      int maxConn,
+      int beamWidth,
+      int numMergeWorkers,
+      Lucene912BinaryQuantizedVectorsFormat flatVectorsFormat,
+      TaskExecutor mergeExec) {
+    super(NAME);
+    this.maxConn = maxConn;
+    this.beamWidth = beamWidth;
+    this.numMergeWorkers = numMergeWorkers;
+    this.flatVectorsFormat = flatVectorsFormat;
+    this.mergeExec = mergeExec;
+  }
+
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99HnswVectorsWriter(

@@ -121,10 +121,9 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
     expectThrows(
         IllegalArgumentException.class,
         () -> new Lucene912HnswBinaryQuantizedVectorsFormat(20, 3201));
-    // TODO: uncomment this test we decide on the number of vectors in a cluster
-    //    expectThrows(
-    //        IllegalArgumentException.class,
-    //        () -> new Lucene912HnswBinaryQuantizedVectorsFormat(20, 100, 0, 12, null));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene912HnswBinaryQuantizedVectorsFormat(20, 100, 0, 12, null));
     expectThrows(
         IllegalArgumentException.class,
         () ->
@@ -152,7 +151,12 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
                   @Override
                   public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                     return new Lucene912HnswBinaryQuantizedVectorsFormat(
-                        DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 1, numberOfVectorsPerCluster, null);
+                        DEFAULT_MAX_CONN,
+                        DEFAULT_BEAM_WIDTH,
+                        1,
+                        new Lucene912BinaryQuantizedVectorsFormat(
+                            Lucene912BinaryQuantizedVectorsFormat.NAME, numberOfVectorsPerCluster),
+                        null);
                   }
                 })
             .setMaxBufferedDocs(numVectors + 1)

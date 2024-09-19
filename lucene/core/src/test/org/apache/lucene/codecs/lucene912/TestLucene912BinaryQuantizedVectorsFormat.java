@@ -107,9 +107,8 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testLimits() {
-    // TODO: uncomment this test we decide on the number of vectors in a cluster
-    //    expectThrows(
-    //        IllegalArgumentException.class, () -> new Lucene912BinaryQuantizedVectorsFormat(12));
+    expectThrows(
+        IllegalArgumentException.class, () -> new Lucene912BinaryQuantizedVectorsFormat(12));
   }
 
   @Override
@@ -123,9 +122,9 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testQuantizedVectorsWriteAndRead() throws IOException {
-    int numberOfVectorsPerCluster = 50;
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
+    int numberOfVectorsPerCluster = random().nextInt(numVectors / 80, numVectors + 1);
     int dims = random().nextInt(4, 65);
     IndexWriterConfig conf =
         newIndexWriterConfig()
