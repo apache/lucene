@@ -63,6 +63,7 @@ import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -78,6 +79,7 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.VectorUtil;
@@ -1809,5 +1811,52 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(fieldSumDocIDs, sumDocIds);
       }
     }
+  }
+
+  public void testMismatchedFields() throws Exception {
+    Directory dir1 = newDirectory();
+    IndexWriter w1 = new IndexWriter(dir1, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new KnnFloatVectorField("float", new float[] {1f}));
+    doc.add(new KnnByteVectorField("byte", new byte[] {42}));
+    w1.addDocument(doc);
+
+    Directory dir2 = newDirectory();
+    IndexWriter w2 =
+        new IndexWriter(dir2, newIndexWriterConfig().setMergeScheduler(new SerialMergeScheduler()));
+    w2.addDocument(doc);
+    w2.commit();
+
+    DirectoryReader reader = DirectoryReader.open(w1);
+    w1.close();
+    w2.addIndexes(new MismatchedCodecReader((CodecReader) getOnlyLeafReader(reader), random()));
+    reader.close();
+    w2.forceMerge(1);
+    reader = DirectoryReader.open(w2);
+    w2.close();
+
+    LeafReader leafReader = getOnlyLeafReader(reader);
+
+    ByteVectorValues byteVectors = leafReader.getByteVectorValues("byte");
+    assertNotNull(byteVectors);
+    assertEquals(0, byteVectors.nextDoc());
+    assertArrayEquals(new byte[] {42}, byteVectors.vectorValue());
+    assertEquals(1, byteVectors.nextDoc());
+    assertArrayEquals(new byte[] {42}, byteVectors.vectorValue());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, byteVectors.nextDoc());
+
+    FloatVectorValues floatVectors = leafReader.getFloatVectorValues("float");
+    assertNotNull(floatVectors);
+    assertEquals(0, floatVectors.nextDoc());
+    float[] vector = floatVectors.vectorValue();
+    assertEquals(1, vector.length);
+    assertEquals(1f, vector[0], 0f);
+    assertEquals(1, floatVectors.nextDoc());
+    vector = floatVectors.vectorValue();
+    assertEquals(1, vector.length);
+    assertEquals(1f, vector[0], 0f);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, floatVectors.nextDoc());
+
+    IOUtils.close(reader, w2, dir1, dir2);
   }
 }
