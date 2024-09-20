@@ -33,9 +33,9 @@ import org.apache.lucene.util.bkd.BKDReader;
 
 /** Reads point values previously written with {@link Lucene90PointsWriter} */
 public class Lucene90PointsReader extends PointsReader {
-  final IndexInput indexIn, dataIn;
-  final SegmentReadState readState;
-  final IntObjectHashMap<PointValues> readers = new IntObjectHashMap<>();
+  private final IndexInput indexIn, dataIn;
+  private final SegmentReadState readState;
+  private final IntObjectHashMap<PointValues> readers = new IntObjectHashMap<>();
 
   /** Sole constructor */
   public Lucene90PointsReader(SegmentReadState readState) throws IOException {
