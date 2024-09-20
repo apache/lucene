@@ -71,7 +71,7 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
     String expectedPattern =
         "Lucene912HnswBinaryQuantizedVectorsFormat(name=Lucene912HnswBinaryQuantizedVectorsFormat, maxConn=10, beamWidth=20,"
             + " flatVectorFormat=Lucene912BinaryQuantizedVectorsFormat(name=Lucene912BinaryQuantizedVectorsFormat, numVectorsPerCluster=90000000,"
-            + " flatVectorScorer=Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=DefaultFlatVectorScorer())))";
+            + " flatVectorScorer=Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=%s())))";
 
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
     var memSegScorer =

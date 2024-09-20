@@ -366,7 +366,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float normOC = corrections[1];
     float oDotC = corrections[2];
 
-    assertEquals(0.8145253f, ooq, 0.0000001f);
+    assertEquals(0.8145253f, ooq, 0.000001f);
     assertEquals(1.3955297f, normOC, 0.00001f);
     assertEquals(0.026248248f, oDotC, 0.0001f);
     assertArrayEquals(

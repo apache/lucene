@@ -99,7 +99,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           }
         };
     String expectedPattern =
-        "Lucene912BinaryQuantizedVectorsFormat(name=Lucene912BinaryQuantizedVectorsFormat, numVectorsPerCluster=90000000, flatVectorScorer=Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=DefaultFlatVectorScorer()))";
+        "Lucene912BinaryQuantizedVectorsFormat(name=Lucene912BinaryQuantizedVectorsFormat, numVectorsPerCluster=90000000, flatVectorScorer=Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()))";
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
     var memSegScorer =
         format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
