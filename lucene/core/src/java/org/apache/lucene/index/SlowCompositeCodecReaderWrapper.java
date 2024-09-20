@@ -308,12 +308,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     final Iterator<DocValuesSub<T>> it;
     DocValuesSub<T> current;
+    KnnVectorValues.DocIndexIterator currentIterator;
     int ord = -1;
     int doc = -1;
 
     MergedDocIterator(List<DocValuesSub<T>> subs) {
       this.it = subs.iterator();
       current = it.next();
+      currentIterator = current.sub.iterator();
     }
 
     @Override
@@ -330,7 +332,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     public int nextDoc() throws IOException {
       while (true) {
         if (current.sub != null) {
-          int next = current.sub.iterator().nextDoc();
+          int next = currentIterator.nextDoc();
           if (next != NO_MORE_DOCS) {
             ++ord;
             return doc = current.docStart + next;
@@ -341,6 +343,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           return doc = NO_MORE_DOCS;
         }
         current = it.next();
+        currentIterator = current.sub.iterator();
         ord = current.ordStart - 1;
       }
     }
@@ -987,11 +990,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     private static int binarySearchStarts(int[] starts, int ord, int from, int to) {
       int pos = Arrays.binarySearch(starts, from, to, ord);
-      // also subtract one since starts[] is shifted by one
       if (pos < 0) {
+        // subtract one since binarySearch returns an *insertion point*
         return -2 - pos;
       } else {
-        return pos - 1;
+        return pos;
       }
     }
 
