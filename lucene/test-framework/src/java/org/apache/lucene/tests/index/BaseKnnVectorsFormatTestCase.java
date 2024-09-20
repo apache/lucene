@@ -1817,7 +1817,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     Directory dir1 = newDirectory();
     IndexWriter w1 = new IndexWriter(dir1, newIndexWriterConfig());
     Document doc = new Document();
-    doc.add(new KnnFloatVectorField("float", new float[] {1f}));
+    doc.add(new KnnFloatVectorField("float", new float[] {1f, 2f}));
     doc.add(new KnnByteVectorField("byte", new byte[] {42}));
     w1.addDocument(doc);
 
@@ -1849,12 +1849,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertNotNull(floatVectors);
     assertEquals(0, floatVectors.nextDoc());
     float[] vector = floatVectors.vectorValue();
-    assertEquals(1, vector.length);
+    assertEquals(2, vector.length);
     assertEquals(1f, vector[0], 0f);
+    assertEquals(2f, vector[1], 0f);
     assertEquals(1, floatVectors.nextDoc());
     vector = floatVectors.vectorValue();
-    assertEquals(1, vector.length);
+    assertEquals(2, vector.length);
     assertEquals(1f, vector[0], 0f);
+    assertEquals(2f, vector[1], 0f);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, floatVectors.nextDoc());
 
     IOUtils.close(reader, w2, dir1, dir2);
