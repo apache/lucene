@@ -31,6 +31,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.search.join.GlobalOrdinalsWithScoreCollectorManager.GlobalOrdinalsWithScoreResult;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
@@ -40,7 +41,7 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
   private static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(GlobalOrdinalsWithScoreQuery.class);
 
-  private final GlobalOrdinalsWithScoreCollector collector;
+  private final GlobalOrdinalsWithScoreResult ordinalsAndScores;
   private final String joinField;
   private final OrdinalMap globalOrds;
   // Is also an approximation of the docs that will match. Can be all docs that have toField or
@@ -59,7 +60,7 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
   private final long ramBytesUsed; // cache
 
   GlobalOrdinalsWithScoreQuery(
-      GlobalOrdinalsWithScoreCollector collector,
+      GlobalOrdinalsWithScoreResult ordinalsAndScores,
       ScoreMode scoreMode,
       String joinField,
       OrdinalMap globalOrds,
@@ -68,7 +69,7 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
       int min,
       int max,
       Object indexReaderContextId) {
-    this.collector = collector;
+    this.ordinalsAndScores = ordinalsAndScores;
     this.joinField = joinField;
     this.globalOrds = globalOrds;
     this.toQuery = toQuery;
@@ -106,7 +107,7 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
       // We don't need scores then quickly change the query to not uses the scores:
       GlobalOrdinalsQuery globalOrdinalsQuery =
           new GlobalOrdinalsQuery(
-              collector.collectedOrds,
+              ordinalsAndScores.collectedOrds(),
               joinField,
               globalOrds,
               toQuery,
@@ -196,11 +197,11 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
       } else {
         ord = segmentOrd;
       }
-      if (collector.match(ord) == false) {
+      if (ordinalsAndScores.match(ord) == false) {
         return Explanation.noMatch("Not a match, join value " + Term.toString(joinValue));
       }
 
-      float score = collector.score(ord);
+      float score = ordinalsAndScores.score(ord);
       if (boost == 1.0f) {
         return Explanation.match(score, "A match, join value " + Term.toString(joinValue));
       }
@@ -222,13 +223,15 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
       } else if (globalOrds != null) {
         scorer =
             new OrdinalMapScorer(
-                collector,
+                ordinalsAndScores,
                 boost,
                 values,
                 approximationScorer.iterator(),
                 globalOrds.getGlobalOrds(context.ord));
       } else {
-        scorer = new SegmentOrdinalScorer(collector, values, boost, approximationScorer.iterator());
+        scorer =
+            new SegmentOrdinalScorer(
+                ordinalsAndScores, values, boost, approximationScorer.iterator());
       }
       return new DefaultScorerSupplier(scorer);
     }
@@ -245,17 +248,17 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
   static final class OrdinalMapScorer extends BaseGlobalOrdinalScorer {
 
     final LongValues segmentOrdToGlobalOrdLookup;
-    final GlobalOrdinalsWithScoreCollector collector;
+    final GlobalOrdinalsWithScoreResult ordinalsAndScores;
 
     public OrdinalMapScorer(
-        GlobalOrdinalsWithScoreCollector collector,
+        GlobalOrdinalsWithScoreResult ordinalsAndScores,
         float boost,
         SortedDocValues values,
         DocIdSetIterator approximation,
         LongValues segmentOrdToGlobalOrdLookup) {
       super(values, approximation, boost);
       this.segmentOrdToGlobalOrdLookup = segmentOrdToGlobalOrdLookup;
-      this.collector = collector;
+      this.ordinalsAndScores = ordinalsAndScores;
     }
 
     @Override
@@ -267,8 +270,8 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
           if (values.advanceExact(approximation.docID())) {
             final long segmentOrd = values.ordValue();
             final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(segmentOrd);
-            if (collector.match(globalOrd)) {
-              score = collector.score(globalOrd);
+            if (ordinalsAndScores.match(globalOrd)) {
+              score = ordinalsAndScores.score(globalOrd);
               return true;
             }
           }
@@ -285,15 +288,15 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
 
   static final class SegmentOrdinalScorer extends BaseGlobalOrdinalScorer {
 
-    final GlobalOrdinalsWithScoreCollector collector;
+    final GlobalOrdinalsWithScoreResult ordinalsAndScores;
 
     public SegmentOrdinalScorer(
-        GlobalOrdinalsWithScoreCollector collector,
+        GlobalOrdinalsWithScoreResult ordinalsAndScores,
         SortedDocValues values,
         float boost,
         DocIdSetIterator approximation) {
       super(values, approximation, boost);
-      this.collector = collector;
+      this.ordinalsAndScores = ordinalsAndScores;
     }
 
     @Override
@@ -304,8 +307,8 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
         public boolean matches() throws IOException {
           if (values.advanceExact(approximation.docID())) {
             final int segmentOrd = values.ordValue();
-            if (collector.match(segmentOrd)) {
-              score = collector.score(segmentOrd);
+            if (ordinalsAndScores.match(segmentOrd)) {
+              score = ordinalsAndScores.score(segmentOrd);
               return true;
             }
           }
