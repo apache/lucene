@@ -66,7 +66,7 @@ public class TestQueryRescorerWithSpans extends LuceneTestCase {
     IndexSearcher searcher = getSearcher(r);
 
     TopDocs hits = searcher.search(bq.build(), 10);
-    assertEquals(2, hits.totalHits.value);
+    assertEquals(2, hits.totalHits.value());
     assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
     assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
@@ -78,7 +78,7 @@ public class TestQueryRescorerWithSpans extends LuceneTestCase {
     TopDocs hits3 = QueryRescorer.rescore(searcher, hits, snq, 2.0, 10);
 
     // Resorting changed the order:
-    assertEquals(2, hits3.totalHits.value);
+    assertEquals(2, hits3.totalHits.value());
     assertEquals("1", searcher.storedFields().document(hits3.scoreDocs[0].doc).get("id"));
     assertEquals("0", searcher.storedFields().document(hits3.scoreDocs[1].doc).get("id"));
 
@@ -109,7 +109,7 @@ public class TestQueryRescorerWithSpans extends LuceneTestCase {
     IndexSearcher searcher = getSearcher(r);
 
     TopDocs hits = searcher.search(bq.build(), 10);
-    assertEquals(2, hits.totalHits.value);
+    assertEquals(2, hits.totalHits.value());
     assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
     assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
@@ -121,7 +121,7 @@ public class TestQueryRescorerWithSpans extends LuceneTestCase {
     TopDocs hits3 = QueryRescorer.rescore(searcher, hits, snq, 2.0, 10);
 
     // Resorting changed the order:
-    assertEquals(2, hits3.totalHits.value);
+    assertEquals(2, hits3.totalHits.value());
     assertEquals("1", searcher.storedFields().document(hits3.scoreDocs[0].doc).get("id"));
     assertEquals("0", searcher.storedFields().document(hits3.scoreDocs[1].doc).get("id"));
 

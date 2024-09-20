@@ -62,7 +62,8 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
       confidenceInterval = 0f;
     }
     format =
-        new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, random().nextBoolean());
+        new Lucene99ScalarQuantizedVectorsFormat(
+            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false);
     super.setUp();
   }
 

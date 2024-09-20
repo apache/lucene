@@ -102,7 +102,7 @@ public class SortRescorer extends Rescorer {
             new TotalHits(1, Relation.EQUAL_TO),
             new ScoreDoc[] {new ScoreDoc(docID, firstPassExplanation.getValue().floatValue())});
     TopDocs hits = rescore(searcher, oneHit, 1);
-    assert hits.totalHits.value == 1;
+    assert hits.totalHits.value() == 1;
 
     List<Explanation> subs = new ArrayList<>();
 

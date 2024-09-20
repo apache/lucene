@@ -1717,20 +1717,16 @@ public class GeoPolygonFactory {
     return index;
   }
 
-  /** Class representing a single (unused) edge. */
-  private static class Edge {
-    /** Plane */
-    public final SidedPlane plane;
-
-    /** Start point */
-    public final GeoPoint startPoint;
-
-    /** End point */
-    public final GeoPoint endPoint;
-
-    /** Internal edge flag */
-    public final boolean isInternal;
-
+  /**
+   * Class representing a single (unused) edge.
+   *
+   * @param plane Plane
+   * @param startPoint Start point
+   * @param endPoint End point
+   * @param isInternal Internal edge flag
+   */
+  private record Edge(
+      GeoPoint startPoint, GeoPoint endPoint, SidedPlane plane, boolean isInternal) {
     /**
      * Constructor.
      *
@@ -1739,16 +1735,7 @@ public class GeoPolygonFactory {
      * @param plane the edge plane
      * @param isInternal true if internal edge
      */
-    public Edge(
-        final GeoPoint startPoint,
-        final GeoPoint endPoint,
-        final SidedPlane plane,
-        final boolean isInternal) {
-      this.startPoint = startPoint;
-      this.endPoint = endPoint;
-      this.plane = plane;
-      this.isInternal = isInternal;
-    }
+    private Edge {}
 
     @Override
     public int hashCode() {

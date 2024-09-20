@@ -680,7 +680,7 @@ public class TestField extends LuceneTestCase {
 
     IndexSearcher s = newSearcher(r);
     TopDocs hits = s.search(new TermQuery(new Term("binary", br)), 1);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     Document storedDoc = s.storedFields().document(hits.scoreDocs[0].doc);
     assertEquals(br, storedDoc.getField("binary").binaryValue());
 

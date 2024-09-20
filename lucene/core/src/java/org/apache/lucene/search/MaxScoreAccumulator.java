@@ -17,7 +17,6 @@
 
 package org.apache.lucene.search;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.LongAccumulator;
 
 /** Maintains the maximum score and its corresponding document id concurrently */
@@ -52,9 +51,9 @@ final class MaxScoreAccumulator {
     return v2;
   }
 
-  void accumulate(int docBase, float score) {
-    assert docBase >= 0 && score >= 0;
-    long encode = (((long) Float.floatToIntBits(score)) << 32) | docBase;
+  void accumulate(int docId, float score) {
+    assert docId >= 0 && score >= 0;
+    long encode = (((long) Float.floatToIntBits(score)) << 32) | docId;
     acc.accumulate(encode);
   }
 
@@ -64,51 +63,20 @@ final class MaxScoreAccumulator {
       return null;
     }
     float score = Float.intBitsToFloat((int) (value >> 32));
-    int docBase = (int) value;
-    return new DocAndScore(docBase, score);
+    int docId = (int) value;
+    return new DocAndScore(docId, score);
   }
 
-  static class DocAndScore implements Comparable<DocAndScore> {
-    final int docBase;
-    final float score;
-
-    DocAndScore(int docBase, float score) {
-      this.docBase = docBase;
-      this.score = score;
-    }
+  record DocAndScore(int docId, float score) implements Comparable<DocAndScore> {
 
     @Override
     public int compareTo(DocAndScore o) {
       int cmp = Float.compare(score, o.score);
       if (cmp == 0) {
-        // tie-break on the minimum doc base
-        // For a given minimum competitive score, we want to know the first segment
-        // where this score occurred, hence the reverse order here.
-        // On segments with a lower docBase, any document whose score is greater
-        // than or equal to this score would be competitive, while on segments with a
-        // higher docBase, documents need to have a strictly greater score to be
-        // competitive since we tie break on doc ID.
-        return Integer.compare(o.docBase, docBase);
+        // tie-break on doc id, lower id has the priority
+        return Integer.compare(o.docId, docId);
       }
       return cmp;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      DocAndScore result = (DocAndScore) o;
-      return docBase == result.docBase && Float.compare(result.score, score) == 0;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(docBase, score);
-    }
-
-    @Override
-    public String toString() {
-      return "DocAndScore{" + "docBase=" + docBase + ", score=" + score + '}';
     }
   }
 }

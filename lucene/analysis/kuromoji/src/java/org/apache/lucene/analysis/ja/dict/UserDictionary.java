@@ -20,8 +20,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.morph.Dictionary;
@@ -83,14 +81,7 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     // TODO: should we allow multiple segmentations per input 'phrase'?
     // the old treemap didn't support this either, and i'm not sure if it's needed/useful?
 
-    Collections.sort(
-        featureEntries,
-        new Comparator<String[]>() {
-          @Override
-          public int compare(String[] left, String[] right) {
-            return left[0].compareTo(right[0]);
-          }
-        });
+    featureEntries.sort((left, right) -> left[0].compareTo(right[0]));
 
     List<String> data = new ArrayList<>(featureEntries.size());
     List<int[]> segmentations = new ArrayList<>(featureEntries.size());

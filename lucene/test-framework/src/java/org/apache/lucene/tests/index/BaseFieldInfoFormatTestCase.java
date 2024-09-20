@@ -30,6 +30,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -87,7 +88,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertFalse(infos2.fieldInfo("field").getDocValuesType() != DocValuesType.NONE);
     assertFalse(infos2.fieldInfo("field").omitsNorms());
     assertFalse(infos2.fieldInfo("field").hasPayloads());
-    assertFalse(infos2.fieldInfo("field").hasVectors());
+    assertFalse(infos2.fieldInfo("field").hasTermVectors());
     assertEquals(0, infos2.fieldInfo("field").getPointDimensionCount());
     assertEquals(0, infos2.fieldInfo("field").getVectorDimension());
     assertFalse(infos2.fieldInfo("field").isSoftDeletesField());
@@ -303,14 +304,14 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
           storePayloads = random().nextBoolean();
         }
       }
-      boolean hasDocValuesSkipIndex = false;
+      DocValuesSkipIndexType docValuesSkipIndexType = DocValuesSkipIndexType.NONE;
       if (EnumSet.of(
               DocValuesType.NUMERIC,
               DocValuesType.SORTED,
               DocValuesType.SORTED_NUMERIC,
               DocValuesType.SORTED_SET)
           .contains(fieldType.docValuesType())) {
-        hasDocValuesSkipIndex = fieldType.hasDocValuesSkipIndex();
+        docValuesSkipIndexType = fieldType.docValuesSkipIndexType();
       }
       FieldInfo fi =
           new FieldInfo(
@@ -321,7 +322,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               storePayloads,
               fieldType.indexOptions(),
               fieldType.docValuesType(),
-              hasDocValuesSkipIndex,
+              docValuesSkipIndexType,
               -1,
               new HashMap<>(),
               fieldType.pointDimensionCount(),
@@ -374,7 +375,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
           || current == DocValuesType.SORTED_NUMERIC
           || current == DocValuesType.SORTED
           || current == DocValuesType.SORTED_SET) {
-        type.setDocValuesSkipIndex(supportDocValuesSkipIndex() && random().nextBoolean());
+        type.setDocValuesSkipIndexType(
+            supportDocValuesSkipIndex()
+                ? DocValuesSkipIndexType.RANGE
+                : DocValuesSkipIndexType.NONE);
       }
     }
 
@@ -414,11 +418,11 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(expected.number, actual.number);
     assertEquals(expected.name, actual.name);
     assertEquals(expected.getDocValuesType(), actual.getDocValuesType());
-    assertEquals(expected.hasDocValuesSkipIndex(), actual.hasDocValuesSkipIndex());
+    assertEquals(expected.docValuesSkipIndexType(), actual.docValuesSkipIndexType());
     assertEquals(expected.getIndexOptions(), actual.getIndexOptions());
     assertEquals(expected.hasNorms(), actual.hasNorms());
     assertEquals(expected.hasPayloads(), actual.hasPayloads());
-    assertEquals(expected.hasVectors(), actual.hasVectors());
+    assertEquals(expected.hasTermVectors(), actual.hasTermVectors());
     assertEquals(expected.omitsNorms(), actual.omitsNorms());
     assertEquals(expected.getDocValuesGen(), actual.getDocValuesGen());
   }
@@ -455,7 +459,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         false,
         TextField.TYPE_STORED.indexOptions(),
         DocValuesType.NONE,
-        false,
+        DocValuesSkipIndexType.NONE,
         -1,
         new HashMap<>(),
         0,

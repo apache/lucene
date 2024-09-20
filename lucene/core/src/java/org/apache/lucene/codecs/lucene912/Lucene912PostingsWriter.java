@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.codecs.lucene912;
 
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.*;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.BLOCK_SIZE;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.LEVEL1_MASK;
+import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.META_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.POS_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.TERMS_CODEC;
 import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.VERSION_CURRENT;
 
@@ -141,7 +143,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       CodecUtil.writeIndexHeader(
           docOut, DOC_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       final ForUtil forUtil = new ForUtil();
-      forDeltaUtil = new ForDeltaUtil(forUtil);
+      forDeltaUtil = new ForDeltaUtil();
       pforUtil = new PForUtil(forUtil);
       if (state.fieldInfos.hasProx()) {
         posDeltaBuffer = new long[BLOCK_SIZE];

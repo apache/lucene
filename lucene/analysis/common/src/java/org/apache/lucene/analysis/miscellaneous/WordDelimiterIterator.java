@@ -194,7 +194,7 @@ public final class WordDelimiterIterator {
 
     int type = charType(text[current]);
     switch (type) {
-        // return ALPHA word type for both lower and upper
+      // return ALPHA word type for both lower and upper
       case LOWER:
       case UPPER:
         return ALPHA;
@@ -332,27 +332,27 @@ public final class WordDelimiterIterator {
       case Character.OTHER_NUMBER:
         return DIGIT;
 
-        // case Character.SPACE_SEPARATOR:
-        // case Character.LINE_SEPARATOR:
-        // case Character.PARAGRAPH_SEPARATOR:
-        // case Character.CONTROL:
-        // case Character.FORMAT:
-        // case Character.PRIVATE_USE:
+      // case Character.SPACE_SEPARATOR:
+      // case Character.LINE_SEPARATOR:
+      // case Character.PARAGRAPH_SEPARATOR:
+      // case Character.CONTROL:
+      // case Character.FORMAT:
+      // case Character.PRIVATE_USE:
 
       case Character.SURROGATE: // prevent splitting
         return ALPHA | DIGIT;
 
-        // case Character.DASH_PUNCTUATION:
-        // case Character.START_PUNCTUATION:
-        // case Character.END_PUNCTUATION:
-        // case Character.CONNECTOR_PUNCTUATION:
-        // case Character.OTHER_PUNCTUATION:
-        // case Character.MATH_SYMBOL:
-        // case Character.CURRENCY_SYMBOL:
-        // case Character.MODIFIER_SYMBOL:
-        // case Character.OTHER_SYMBOL:
-        // case Character.INITIAL_QUOTE_PUNCTUATION:
-        // case Character.FINAL_QUOTE_PUNCTUATION:
+      // case Character.DASH_PUNCTUATION:
+      // case Character.START_PUNCTUATION:
+      // case Character.END_PUNCTUATION:
+      // case Character.CONNECTOR_PUNCTUATION:
+      // case Character.OTHER_PUNCTUATION:
+      // case Character.MATH_SYMBOL:
+      // case Character.CURRENCY_SYMBOL:
+      // case Character.MODIFIER_SYMBOL:
+      // case Character.OTHER_SYMBOL:
+      // case Character.INITIAL_QUOTE_PUNCTUATION:
+      // case Character.FINAL_QUOTE_PUNCTUATION:
 
       default:
         return SUBWORD_DELIM;

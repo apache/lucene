@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene912;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -38,15 +39,18 @@ public class TestPForUtil extends LuceneTestCase {
     final Directory d = new ByteBuffersDirectory();
     final long endPointer = encodeTestData(iterations, values, d);
 
+    ForUtil forUtil = new ForUtil();
     IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    PostingDecodingUtil pdu =
+        Lucene912PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
+    final PForUtil pforUtil = new PForUtil(forUtil);
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {
         pforUtil.skip(in);
         continue;
       }
       final long[] restored = new long[ForUtil.BLOCK_SIZE];
-      pforUtil.decode(in, restored);
+      pforUtil.decode(pdu, restored);
       int[] ints = new int[ForUtil.BLOCK_SIZE];
       for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
         ints[j] = Math.toIntExact(restored[j]);

@@ -299,14 +299,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
   }
 
-  private static class WriterAndSuffix implements Closeable {
-    final KnnVectorsWriter writer;
-    final int suffix;
-
-    WriterAndSuffix(KnnVectorsWriter writer, int suffix) {
-      this.writer = writer;
-      this.suffix = suffix;
-    }
+  private record WriterAndSuffix(KnnVectorsWriter writer, int suffix) implements Closeable {
 
     @Override
     public void close() throws IOException {

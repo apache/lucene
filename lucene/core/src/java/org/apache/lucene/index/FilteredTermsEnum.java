@@ -252,7 +252,7 @@ public abstract class FilteredTermsEnum extends TermsEnum {
       switch (accept(actualTerm)) {
         case YES_AND_SEEK:
           doSeek = true;
-          // term accepted, but we need to seek so fall-through
+        // term accepted, but we need to seek so fall-through
         case YES:
           // term accepted
           return actualTerm;

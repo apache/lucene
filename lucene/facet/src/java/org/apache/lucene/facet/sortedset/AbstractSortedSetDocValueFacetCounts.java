@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,20 +38,6 @@ import org.apache.lucene.util.PriorityQueue;
 
 /** Base class for SSDV faceting implementations. */
 abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
-
-  private static final Comparator<FacetResult> FACET_RESULT_COMPARATOR =
-      new Comparator<>() {
-        @Override
-        public int compare(FacetResult a, FacetResult b) {
-          if (a.value.intValue() > b.value.intValue()) {
-            return -1;
-          } else if (b.value.intValue() > a.value.intValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        }
-      };
 
   final SortedSetDocValuesReaderState state;
   final FacetsConfig stateConfig;
@@ -140,7 +125,16 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
 
     // Sort by highest count:
-    results.sort(FACET_RESULT_COMPARATOR);
+    results.sort(
+        (a, b) -> {
+          if (a.value.intValue() > b.value.intValue()) {
+            return -1;
+          } else if (b.value.intValue() > a.value.intValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
+          }
+        });
     return results;
   }
 
@@ -183,7 +177,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         dimCount = getCount(dimOrd);
       } else {
         OrdRange ordRange = state.getOrdRange(dim);
-        int dimOrd = ordRange.start;
+        int dimOrd = ordRange.start();
         if (dimConfig.multiValued) {
           if (dimConfig.requireDimCount) {
             // If a dim is configured as multi-valued and requires dim count, we index dim counts
@@ -284,7 +278,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         // means dimension was never indexed
         return null;
       }
-      pathOrd = ordRange.start;
+      pathOrd = ordRange.start();
       childIterator = ordRange.iterator();
       if (dimConfig.multiValued && dimConfig.requireDimCount) {
         // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
@@ -412,13 +406,5 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
   }
 
-  static final class ChildIterationCursor {
-    final int pathOrd;
-    final PrimitiveIterator.OfInt childIterator;
-
-    ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {
-      this.pathOrd = pathOrd;
-      this.childIterator = childIterator;
-    }
-  }
+  record ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {}
 }
