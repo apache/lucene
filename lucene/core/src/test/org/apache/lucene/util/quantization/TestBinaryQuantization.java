@@ -87,10 +87,10 @@ public class TestBinaryQuantization extends LuceneTestCase {
       VectorUtil.l2normalize(vector);
       VectorUtil.l2normalize(centroid);
     }
+    float cDotC = VectorUtil.dotProduct(centroid, centroid);
     byte[] destination = new byte[discretizedDimensions / 8 * BQSpaceUtils.B_QUERY];
     BinaryQuantizer.QueryFactors corrections =
-        quantizer.quantizeForQuery(
-            vector, destination, centroid, VectorUtil.dotProduct(centroid, centroid));
+        quantizer.quantizeForQuery(vector, destination, centroid);
 
     if (similarityFunction != VectorSimilarityFunction.EUCLIDEAN) {
       int sumQ = corrections.quantizedSum();
@@ -105,7 +105,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
       assertTrue(width >= 0);
       assertTrue(normVmC >= 0);
       assertFalse(Float.isNaN(vDotC));
-      assertTrue(corrections.cDotC() >= 0);
+      assertTrue(cDotC >= 0);
     } else {
       int sumQ = corrections.quantizedSum();
       float distToC = corrections.distToC();
@@ -117,7 +117,6 @@ public class TestBinaryQuantization extends LuceneTestCase {
       assertTrue(width >= 0);
       assertEquals(corrections.normVmC(), 0.0f, 0.01f);
       assertEquals(corrections.vDotC(), 0.0f, 0.01f);
-      assertEquals(corrections.cDotC(), 0.0f, 0.01f);
     }
   }
 
@@ -208,9 +207,8 @@ public class TestBinaryQuantization extends LuceneTestCase {
           33.582f, 35.997f, 33.528f, 30.369f, 36.955f, 21.23f, 15.2f, 30.252f, 34.56f, 22.295f,
           29.413f, 16.576f, 11.226f, 10.754f, 12.936f, 15.525f, 15.868f, 16.43f
         };
-    float cDotC = VectorUtil.dotProduct(centroid, centroid);
     BinaryQuantizer.QueryFactors corrections =
-        quantizer.quantizeForQuery(vector, destination, centroid, cDotC);
+        quantizer.quantizeForQuery(vector, destination, centroid);
 
     int sumQ = corrections.quantizedSum();
     float lower = corrections.lower();
@@ -304,14 +302,13 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float[] centroid = mipCentroid;
     float cDotC = VectorUtil.dotProduct(centroid, centroid);
     BinaryQuantizer.QueryFactors corrections =
-        quantizer.quantizeForQuery(vector, destination, centroid, cDotC);
+        quantizer.quantizeForQuery(vector, destination, centroid);
 
     int sumQ = corrections.quantizedSum();
     float lower = corrections.lower();
     float width = corrections.width();
     float normVmC = corrections.normVmC();
     float vDotC = corrections.vDotC();
-    cDotC = corrections.cDotC();
 
     assertEquals(5272, sumQ);
     assertEquals(-0.08603752f, lower, 0.00000001f);
@@ -403,14 +400,13 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float[] centroid = mipCentroid;
     float cDotC = VectorUtil.dotProduct(centroid, centroid);
     BinaryQuantizer.QueryFactors corrections =
-        quantizer.quantizeForQuery(vector, destination, centroid, cDotC);
+        quantizer.quantizeForQuery(vector, destination, centroid);
 
     int sumQ = corrections.quantizedSum();
     float lower = corrections.lower();
     float width = corrections.width();
     float normVmC = corrections.normVmC();
     float vDotC = corrections.vDotC();
-    cDotC = corrections.cDotC();
 
     assertEquals(5277, sumQ);
     assertEquals(-0.086002514f, lower, 0.00000001f);

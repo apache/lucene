@@ -34,8 +34,6 @@ public interface RandomAccessBinarizedQueryByteVectorValues {
 
   float getVDotC(int targetOrd, int centroidOrd) throws IOException;
 
-  float getCDotC(int targetOrd, int centroidOrd) throws IOException;
-
   int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
 
   byte[] vectorValue(int targetOrd, int centroidOrd) throws IOException;

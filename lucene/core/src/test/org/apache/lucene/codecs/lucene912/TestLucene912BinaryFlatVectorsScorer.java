@@ -55,12 +55,11 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
       short quantizedSum = (short) random().nextInt(0, 4097);
       float normVmC = random().nextFloat(-1000f, 1000f);
       float vDotC = random().nextFloat(-1000f, 1000f);
-      float cDotC = VectorUtil.dotProduct(centroids[i], centroids[i]);
       queryVectors[i] =
           new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
               vector,
               new BinaryQuantizer.QueryFactors(
-                  quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC, cDotC));
+                  quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC));
     }
 
     RandomAccessBinarizedByteVectorValues targetVectors =
@@ -131,7 +130,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
     Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
         new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
-            queryVectors, targetVectors, similarityFunction, discretizedDimensions);
+            queryVectors, targetVectors, similarityFunction);
 
     float score = scorer.score(0);
 
@@ -157,8 +156,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
     queryVectors[0] =
         new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
             vector,
-            new BinaryQuantizer.QueryFactors(
-                quantizedSum, distanceToCentroid, vl, width, 0f, 0f, 0f));
+            new BinaryQuantizer.QueryFactors(quantizedSum, distanceToCentroid, vl, width, 0f, 0f));
 
     RandomAccessBinarizedByteVectorValues targetVectors =
         new RandomAccessBinarizedByteVectorValues() {
@@ -245,11 +243,9 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
-    int discretizedDimensions = dimensions;
-
     Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
         new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
-            queryVectors, targetVectors, similarityFunction, discretizedDimensions);
+            queryVectors, targetVectors, similarityFunction);
 
     assertEquals(1f / (1f + 245482.47f), scorer.score(0), 0.1f);
   }
@@ -293,13 +289,18 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
         new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
             vector,
             new BinaryQuantizer.QueryFactors(
-                quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC, cDotC));
+                quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC));
 
     RandomAccessBinarizedByteVectorValues targetVectors =
         new RandomAccessBinarizedByteVectorValues() {
           @Override
           public float getCentroidDistance(int vectorOrd) throws IOException {
             return 0f;
+          }
+
+          @Override
+          public float[] getCentroidsDPs() throws IOException {
+            return new float[] {cDotC};
           }
 
           @Override
@@ -501,11 +502,9 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 
-    int discretizedDimensions = dimensions;
-
     Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
         new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
-            queryVectors, targetVectors, similarityFunction, discretizedDimensions);
+            queryVectors, targetVectors, similarityFunction);
 
     assertEquals(132.30249f, scorer.score(0), 0.0001f);
   }

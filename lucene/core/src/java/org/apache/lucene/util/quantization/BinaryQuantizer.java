@@ -234,16 +234,9 @@ public class BinaryQuantizer {
 
   /** Factors for quantizing query */
   public record QueryFactors(
-      int quantizedSum,
-      float distToC,
-      float lower,
-      float width,
-      float normVmC,
-      float vDotC,
-      float cDotC) {}
+      int quantizedSum, float distToC, float lower, float width, float normVmC, float vDotC) {}
 
-  public QueryFactors quantizeForQuery(
-      float[] vector, byte[] destination, float[] centroid, float cDotC) {
+  public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
     assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
@@ -300,11 +293,10 @@ public class BinaryQuantizer {
     if (similarityFunction != EUCLIDEAN) {
       float vDotC = VectorUtil.dotProduct(vector, centroid);
       // FIXME: quantize the corrections as well so we store less
-      factors =
-          new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC, cDotC);
+      factors = new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC);
     } else {
       // FIXME: quantize the corrections as well so we store less
-      factors = new QueryFactors(quantResult.quantizedSum, distToC, lower, width, 0f, 0f, 0f);
+      factors = new QueryFactors(quantResult.quantizedSum, distToC, lower, width, 0f, 0f);
     }
 
     return factors;

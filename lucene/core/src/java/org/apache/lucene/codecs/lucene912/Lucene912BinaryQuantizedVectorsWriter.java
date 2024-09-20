@@ -554,7 +554,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         new byte
             [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
-    int correctionsCount = quantizer.getSimilarity() != EUCLIDEAN ? 6 : 3;
+    int correctionsCount = quantizer.getSimilarity() != EUCLIDEAN ? 5 : 3;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES)
             .order(ByteOrder.LITTLE_ENDIAN);
@@ -564,18 +564,16 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] floatVector = floatVectorValues.vectorValue();
       for (int i = 0; i < centroids.length; i++) {
         BinaryQuantizer.QueryFactors factors =
-            quantizer.quantizeForQuery(floatVector, vector, centroids[i], cDotC[i]);
+            quantizer.quantizeForQuery(floatVector, vector, centroids[i]);
         output.writeBytes(vector, vector.length);
 
         correctionsBuffer.putFloat(factors.distToC());
         correctionsBuffer.putFloat(factors.lower());
         correctionsBuffer.putFloat(factors.width());
 
-        // FIXME: handle other similarity types here like COSINE
         if (quantizer.getSimilarity() != EUCLIDEAN) {
           correctionsBuffer.putFloat(factors.normVmC());
           correctionsBuffer.putFloat(factors.vDotC());
-          correctionsBuffer.putFloat(factors.cDotC());
         }
         // ensure we are positive and fit within an unsigned short value.
         assert factors.quantizedSum() >= 0 && factors.quantizedSum() <= 0xffff;
@@ -1076,7 +1074,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       this.size = size;
       this.numCentroids = numCentroids;
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      this.correctiveValuesSize = vectorSimilarityFunction != EUCLIDEAN ? 6 : 3;
+      this.correctiveValuesSize = vectorSimilarityFunction != EUCLIDEAN ? 5 : 3;
       // 4x the quantized binary dimensions
       int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
@@ -1139,15 +1137,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       readCorrectiveValues(targetOrd);
       return correctiveValues[centroidOrd][4];
-    }
-
-    @Override
-    public float getCDotC(int targetOrd, int centroidOrd) throws IOException {
-      if (lastOrd == targetOrd) {
-        return correctiveValues[centroidOrd][5];
-      }
-      readCorrectiveValues(targetOrd);
-      return correctiveValues[centroidOrd][5];
     }
 
     private void readCorrectiveValues(int targetOrd) throws IOException {

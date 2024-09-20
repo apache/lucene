@@ -60,7 +60,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedVectors) {
       BinaryQuantizer quantizer = binarizedVectors.getQuantizer();
       float[][] centroids = binarizedVectors.getCentroids();
-      float[] cDotCs = binarizedVectors.getCentroidsDPs();
       // FIXME: precompute this once?
       int discretizedDimensions = BQVectorUtils.discretize(target.length, 64);
       if (similarityFunction == COSINE) {
@@ -73,11 +72,10 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         // TODO: if there are many clusters, do quantizing of query lazily
         byte[] quantized = new byte[BQSpaceUtils.B_QUERY * discretizedDimensions / 8];
         BinaryQuantizer.QueryFactors factors =
-            quantizer.quantizeForQuery(target, quantized, centroids[i], cDotCs[i]);
+            quantizer.quantizeForQuery(target, quantized, centroids[i]);
         queryVectors[i] = new BinaryQueryVector(quantized, factors);
       }
-      return new BinarizedRandomVectorScorer(
-          queryVectors, binarizedVectors, similarityFunction, discretizedDimensions);
+      return new BinarizedRandomVectorScorer(queryVectors, binarizedVectors, similarityFunction);
     }
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
@@ -112,8 +110,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     private final RandomAccessBinarizedByteVectorValues targetVectors;
     private final VectorSimilarityFunction similarityFunction;
 
-    private final int discretizedDimensions;
-
     public BinarizedRandomVectorScorerSupplier(
         RandomAccessBinarizedQueryByteVectorValues queryVectors,
         RandomAccessBinarizedByteVectorValues targetVectors,
@@ -122,7 +118,6 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       this.queryVectors = queryVectors;
       this.targetVectors = targetVectors;
       this.similarityFunction = similarityFunction;
-      this.discretizedDimensions = BQVectorUtils.discretize(this.queryVectors.dimension(), 64);
     }
 
     @Override
@@ -138,21 +133,18 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
         float width = queryVectors.getWidth(ord, i);
         float normVmC = 0f;
         float vDotC = 0f;
-        float cDotC = 0f;
         if (similarityFunction != EUCLIDEAN) {
           normVmC = queryVectors.getNormVmC(ord, i);
           vDotC = queryVectors.getVDotC(ord, i);
-          cDotC = queryVectors.getCDotC(ord, i);
         }
         binaryQueryVectors[i] =
             new BinaryQueryVector(
                 vector,
                 new BinaryQuantizer.QueryFactors(
-                    quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC, cDotC));
+                    quantizedSum, distanceToCentroid, lower, width, normVmC, vDotC));
       }
 
-      return new BinarizedRandomVectorScorer(
-          binaryQueryVectors, targetVectors, similarityFunction, discretizedDimensions);
+      return new BinarizedRandomVectorScorer(binaryQueryVectors, targetVectors, similarityFunction);
     }
 
     @Override
@@ -177,8 +169,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
     public BinarizedRandomVectorScorer(
         BinaryQueryVector[] queryVectors,
         RandomAccessBinarizedByteVectorValues targetVectors,
-        VectorSimilarityFunction similarityFunction,
-        int discretizedDimensions) {
+        VectorSimilarityFunction similarityFunction) {
       super(targetVectors);
       this.queryVectors = queryVectors;
       this.targetVectors = targetVectors;
@@ -223,7 +214,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
       float vmC = queryVector.factors().normVmC();
       float vDotC = queryVector.factors().vDotC();
-      float cDotC = queryVector.factors().cDotC();
+      float cDotC = targetVectors.getCentroidsDPs()[clusterId];
       byte[] binaryCode = targetVectors.vectorValue(targetOrd);
       float ooq = targetVectors.getOOQ(targetOrd);
       float normOC = targetVectors.getNormOC(targetOrd);
