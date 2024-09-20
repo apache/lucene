@@ -420,8 +420,6 @@ Optimizations
 
 * GITHUB#13742: Reorder checks in LRUQueryCache#count (Shubham Chaudhary)
 
-* GITHUB#13686: Replace Map<String,Object> with IntObjectHashMap for DV producer (Pan Guixin)
-
 * GITHUB#13697: Add a bulk scorer to ToParentBlockJoinQuery, which delegates to the bulk scorer of the child query.
  This should speed up query evaluation when the child query has a specialized bulk scorer, such as disjunctive queries.
  (Mike Pellegrini)
