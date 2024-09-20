@@ -163,7 +163,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           q.add("a", "foo");
           q.add("b", "baz");
           TopDocs hits = searcher.search(q, 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -410,17 +410,17 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           q.add("a", "foo");
           q.add("b", "baz");
           TopDocs hits = searcher.search(q, 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
 
           q = new DrillDownQuery(config);
           q.add("c", "buzz", "bif");
           hits = searcher.search(q, 2);
-          assertEquals(2, hits.totalHits.value);
+          assertEquals(2, hits.totalHits.value());
 
           q = new DrillDownQuery(config);
           q.add("c", "buzz", "biz", "bar");
           hits = searcher.search(q, 2);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -658,7 +658,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           q.add("a", "foo");
           q.add("b", "bar");
           TopDocs hits = searcher.search(q, 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -710,12 +710,12 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("c", "buzz");
           TopDocs hits = searcher.search(q, 1);
-          assertEquals(2, hits.totalHits.value);
+          assertEquals(2, hits.totalHits.value());
 
           q = new DrillDownQuery(config);
           q.add("c", "buzz", "bar");
           hits = searcher.search(q, 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -756,52 +756,52 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         DrillDownQuery q = new DrillDownQuery(config);
         q.add("c");
         TopDocs hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("c", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
       }
     }
   }
@@ -844,102 +844,102 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         DrillDownQuery q = new DrillDownQuery(config);
         q.add("c");
         TopDocs hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("c", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("c", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("c", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
       }
     }
   }
@@ -1362,9 +1362,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               if (VERBOSE) {
                 System.out.println("\nTEST: iter content=" + searchToken);
               }
-              FacetsCollector fc = new FacetsCollector();
-              FacetsCollector.search(
-                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+              FacetsCollector fc =
+                  FacetsCollectorManager.search(
+                          searcher,
+                          new TermQuery(new Term("content", searchToken)),
+                          10,
+                          new FacetsCollectorManager())
+                      .facetsCollector();
               Facets facets;
               if (exec != null) {
                 facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);
@@ -1503,9 +1507,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               if (VERBOSE) {
                 System.out.println("\nTEST: iter content=" + searchToken);
               }
-              FacetsCollector fc = new FacetsCollector();
-              FacetsCollector.search(
-                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+              FacetsCollector fc =
+                  FacetsCollectorManager.search(
+                          searcher,
+                          new TermQuery(new Term("content", searchToken)),
+                          10,
+                          new FacetsCollectorManager())
+                      .facetsCollector();
               Facets facets;
               if (exec != null) {
                 facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);

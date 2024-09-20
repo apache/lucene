@@ -135,10 +135,11 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
 
     final long quantizedVectorBytes;
-    if (fieldEntry.bits <= 4 && fieldEntry.compress) {
+    if (fieldEntry.compress) {
+      // two dimensions -> one byte
       quantizedVectorBytes = ((dimension + 1) >> 1) + Float.BYTES;
     } else {
-      // int8 quantized and calculated stored offset.
+      // one dimension -> one byte
       quantizedVectorBytes = dimension + Float.BYTES;
     }
     long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, fieldEntry.size);
@@ -165,8 +166,17 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return null;
+    if (fieldEntry == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT32);
     }
     final FloatVectorValues rawVectorValues = rawVectorsReader.getFloatVectorValues(field);
     OffHeapQuantizedByteVectorValues quantizedByteVectorValues =

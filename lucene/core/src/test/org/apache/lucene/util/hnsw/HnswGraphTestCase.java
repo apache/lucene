@@ -125,10 +125,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       throws IOException {
     RandomAccessVectorValues vectorsCopy = vectors.copy();
     return switch (getVectorEncoding()) {
-      case BYTE -> flatVectorScorer.getRandomVectorScorer(
-          similarityFunction, vectorsCopy, (byte[]) query);
-      case FLOAT32 -> flatVectorScorer.getRandomVectorScorer(
-          similarityFunction, vectorsCopy, (float[]) query);
+      case BYTE ->
+          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (byte[]) query);
+      case FLOAT32 ->
+          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (float[]) query);
     };
   }
 
@@ -1238,17 +1238,19 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         break;
       }
       switch (getVectorEncoding()) {
-        case BYTE -> assertArrayEquals(
-            "vectors do not match for doc=" + uDoc,
-            (byte[]) u.vectorValue(),
-            (byte[]) v.vectorValue());
-        case FLOAT32 -> assertArrayEquals(
-            "vectors do not match for doc=" + uDoc,
-            (float[]) u.vectorValue(),
-            (float[]) v.vectorValue(),
-            1e-4f);
-        default -> throw new IllegalArgumentException(
-            "unknown vector encoding: " + getVectorEncoding());
+        case BYTE ->
+            assertArrayEquals(
+                "vectors do not match for doc=" + uDoc,
+                (byte[]) u.vectorValue(),
+                (byte[]) v.vectorValue());
+        case FLOAT32 ->
+            assertArrayEquals(
+                "vectors do not match for doc=" + uDoc,
+                (float[]) u.vectorValue(),
+                (float[]) v.vectorValue(),
+                1e-4f);
+        default ->
+            throw new IllegalArgumentException("unknown vector encoding: " + getVectorEncoding());
       }
     }
   }

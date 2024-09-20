@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene912;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -69,12 +70,14 @@ public class TestForUtil extends LuceneTestCase {
     {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-      final ForUtil forUtil = new ForUtil();
+      PostingDecodingUtil pdu =
+          Lucene912PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
+      ForUtil forUtil = new ForUtil();
       for (int i = 0; i < iterations; ++i) {
         final int bitsPerValue = in.readByte();
         final long currentFilePointer = in.getFilePointer();
         final long[] restored = new long[ForUtil.BLOCK_SIZE];
-        forUtil.decode(bitsPerValue, in, restored);
+        forUtil.decode(bitsPerValue, pdu, restored);
         int[] ints = new int[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           ints[j] = Math.toIntExact(restored[j]);
@@ -83,7 +86,7 @@ public class TestForUtil extends LuceneTestCase {
             Arrays.toString(ints),
             ArrayUtil.copyOfSubArray(values, i * ForUtil.BLOCK_SIZE, (i + 1) * ForUtil.BLOCK_SIZE),
             ints);
-        assertEquals(forUtil.numBytes(bitsPerValue), in.getFilePointer() - currentFilePointer);
+        assertEquals(ForUtil.numBytes(bitsPerValue), in.getFilePointer() - currentFilePointer);
       }
       assertEquals(endPointer, in.getFilePointer());
       in.close();

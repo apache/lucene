@@ -118,6 +118,15 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     TermVectors[] subVectors = new TermVectors[subReaders.length];
     return new TermVectors() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        if (subVectors[i] == null) {
+          subVectors[i] = subReaders[i].termVectors();
+        }
+        subVectors[i].prefetch(docID - starts[i]);
+      }
+
+      @Override
       public Fields get(int docID) throws IOException {
         final int i = readerIndex(docID); // find subreader num
         // dispatch to subreader, reusing if possible

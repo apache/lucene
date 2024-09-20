@@ -61,12 +61,12 @@ public final class TurkishLowerCaseFilter extends TokenFilter {
 
         if (iOrAfter) { // all the special I turkish handling happens here.
           switch (ch) {
-              // remove COMBINING_DOT_ABOVE to mimic composed lowercase
+            // remove COMBINING_DOT_ABOVE to mimic composed lowercase
             case COMBINING_DOT_ABOVE:
               length = delete(buffer, i, length);
               continue;
-              // i itself, it depends if it is followed by COMBINING_DOT_ABOVE
-              // if it is, we will make it small i and later remove the dot
+            // i itself, it depends if it is followed by COMBINING_DOT_ABOVE
+            // if it is, we will make it small i and later remove the dot
             case LATIN_CAPITAL_LETTER_I:
               if (isBeforeDot(buffer, i + 1, length)) {
                 buffer[i] = LATIN_SMALL_LETTER_I;

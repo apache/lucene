@@ -21,14 +21,13 @@ import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_IND
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -42,6 +41,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -58,12 +58,12 @@ import org.apache.lucene.util.packed.DirectReader;
 
 /** reader for {@link Lucene90DocValuesFormat} */
 final class Lucene90DocValuesProducer extends DocValuesProducer {
-  private final Map<String, NumericEntry> numerics;
-  private final Map<String, BinaryEntry> binaries;
-  private final Map<String, SortedEntry> sorted;
-  private final Map<String, SortedSetEntry> sortedSets;
-  private final Map<String, SortedNumericEntry> sortedNumerics;
-  private final Map<String, DocValuesSkipperEntry> skippers;
+  private final IntObjectHashMap<NumericEntry> numerics;
+  private final IntObjectHashMap<BinaryEntry> binaries;
+  private final IntObjectHashMap<SortedEntry> sorted;
+  private final IntObjectHashMap<SortedSetEntry> sortedSets;
+  private final IntObjectHashMap<SortedNumericEntry> sortedNumerics;
+  private final IntObjectHashMap<DocValuesSkipperEntry> skippers;
   private final IndexInput data;
   private final int maxDoc;
   private int version = -1;
@@ -80,12 +80,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     String metaName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
     this.maxDoc = state.segmentInfo.maxDoc();
-    numerics = new HashMap<>();
-    binaries = new HashMap<>();
-    sorted = new HashMap<>();
-    sortedSets = new HashMap<>();
-    sortedNumerics = new HashMap<>();
-    skippers = new HashMap<>();
+    numerics = new IntObjectHashMap<>();
+    binaries = new IntObjectHashMap<>();
+    sorted = new IntObjectHashMap<>();
+    sortedSets = new IntObjectHashMap<>();
+    sortedNumerics = new IntObjectHashMap<>();
+    skippers = new IntObjectHashMap<>();
     merging = false;
 
     // read in the entries from the metadata file.
@@ -148,12 +148,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   // Used for cloning
   private Lucene90DocValuesProducer(
-      Map<String, NumericEntry> numerics,
-      Map<String, BinaryEntry> binaries,
-      Map<String, SortedEntry> sorted,
-      Map<String, SortedSetEntry> sortedSets,
-      Map<String, SortedNumericEntry> sortedNumerics,
-      Map<String, DocValuesSkipperEntry> skippers,
+      IntObjectHashMap<NumericEntry> numerics,
+      IntObjectHashMap<BinaryEntry> binaries,
+      IntObjectHashMap<SortedEntry> sorted,
+      IntObjectHashMap<SortedSetEntry> sortedSets,
+      IntObjectHashMap<SortedNumericEntry> sortedNumerics,
+      IntObjectHashMap<DocValuesSkipperEntry> skippers,
       IndexInput data,
       int maxDoc,
       int version,
@@ -192,19 +192,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
       byte type = meta.readByte();
-      if (info.hasDocValuesSkipIndex()) {
-        skippers.put(info.name, readDocValueSkipperMeta(meta));
+      if (info.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+        skippers.put(info.number, readDocValueSkipperMeta(meta));
       }
       if (type == Lucene90DocValuesFormat.NUMERIC) {
-        numerics.put(info.name, readNumeric(meta));
+        numerics.put(info.number, readNumeric(meta));
       } else if (type == Lucene90DocValuesFormat.BINARY) {
-        binaries.put(info.name, readBinary(meta));
+        binaries.put(info.number, readBinary(meta));
       } else if (type == Lucene90DocValuesFormat.SORTED) {
-        sorted.put(info.name, readSorted(meta));
+        sorted.put(info.number, readSorted(meta));
       } else if (type == Lucene90DocValuesFormat.SORTED_SET) {
-        sortedSets.put(info.name, readSortedSet(meta));
+        sortedSets.put(info.number, readSortedSet(meta));
       } else if (type == Lucene90DocValuesFormat.SORTED_NUMERIC) {
-        sortedNumerics.put(info.name, readSortedNumeric(meta));
+        sortedNumerics.put(info.number, readSortedNumeric(meta));
       } else {
         throw new CorruptIndexException("invalid type: " + type, meta);
       }
@@ -429,7 +429,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-    NumericEntry entry = numerics.get(field.name);
+    NumericEntry entry = numerics.get(field.number);
     return getNumeric(entry);
   }
 
@@ -785,7 +785,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-    BinaryEntry entry = binaries.get(field.name);
+    BinaryEntry entry = binaries.get(field.number);
 
     if (entry.docsWithFieldOffset == -2) {
       return DocValues.emptyBinary();
@@ -890,7 +890,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedDocValues getSorted(FieldInfo field) throws IOException {
-    SortedEntry entry = sorted.get(field.name);
+    SortedEntry entry = sorted.get(field.number);
     return getSorted(entry);
   }
 
@@ -1367,7 +1367,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-    SortedNumericEntry entry = sortedNumerics.get(field.name);
+    SortedNumericEntry entry = sortedNumerics.get(field.number);
     return getSortedNumeric(entry);
   }
 
@@ -1512,7 +1512,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
-    SortedSetEntry entry = sortedSets.get(field.name);
+    SortedSetEntry entry = sortedSets.get(field.number);
     if (entry.singleValueEntry != null) {
       return DocValues.singleton(getSorted(entry.singleValueEntry));
     }
@@ -1786,7 +1786,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
-    final DocValuesSkipperEntry entry = skippers.get(field.name);
+    final DocValuesSkipperEntry entry = skippers.get(field.number);
 
     final IndexInput input = data.slice("doc value skipper", entry.offset, entry.length);
     // Prefetch the first page of data. Following pages are expected to get prefetched through

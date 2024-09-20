@@ -492,7 +492,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
 
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -549,7 +549,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     DrillSideways.DrillSidewaysResult dsr = ds.search(null, ddq, 10);
 
-    assertEquals(100, dsr.hits.totalHits.value);
+    assertEquals(100, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -562,7 +562,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     ddq.add("dim", "b");
     dsr = ds.search(null, ddq, 10);
 
-    assertEquals(75, dsr.hits.totalHits.value);
+    assertEquals(75, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -605,7 +605,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
 
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -666,7 +666,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     DrillSideways.DrillSidewaysResult dsr = ds.search(null, ddq, 10);
 
-    assertEquals(100, dsr.hits.totalHits.value);
+    assertEquals(100, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -679,7 +679,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     ddq.add("dim", "b");
     dsr = ds.search(null, ddq, 10);
 
-    assertEquals(75, dsr.hits.totalHits.value);
+    assertEquals(75, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());

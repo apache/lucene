@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -283,7 +284,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
 
     @Override
     public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
-      assert field.hasDocValuesSkipIndex();
+      assert field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE;
       DocValuesSkipper skipper = in.getSkipper(field);
       assert skipper != null;
       return new AssertingLeafReader.AssertingDocValuesSkipper(skipper);

@@ -123,7 +123,9 @@ public class TestTermScorer extends LuceneTestCase {
             return ScoreMode.COMPLETE;
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     assertTrue("docs Size: " + docs.size() + " is not: " + 2, docs.size() == 2);
     TestHit doc0 = docs.get(0);
     TestHit doc5 = docs.get(1);

@@ -87,7 +87,7 @@ public interface IndexableFieldType {
   DocValuesType docValuesType();
 
   /** Whether a skip index for doc values should be created on this field. */
-  boolean hasDocValuesSkipIndex();
+  DocValuesSkipIndexType docValuesSkipIndexType();
 
   /**
    * If this is positive (representing the number of point dimensions), the field is indexed as a
