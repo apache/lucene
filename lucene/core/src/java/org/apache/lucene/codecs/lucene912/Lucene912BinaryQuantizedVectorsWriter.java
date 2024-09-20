@@ -547,8 +547,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       IndexOutput output,
       BinaryQuantizer quantizer,
       FloatVectorValues floatVectorValues,
-      float[][] centroids,
-      float[] cDotC)
+      float[][] centroids)
       throws IOException {
     byte[] vector =
         new byte
@@ -757,23 +756,19 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         fvvForQuery = new NormalizedFloatVectorValues(fvvForQuery);
       }
       writeQueryBinarizedVectorData(
-          tempScoreQuantizedVectorData, quantizer, fvvForQuery, centroids, cDotC);
+          tempScoreQuantizedVectorData, quantizer, fvvForQuery, centroids);
       CodecUtil.writeFooter(tempScoreQuantizedVectorData);
       IOUtils.close(tempScoreQuantizedVectorData);
       binarizedScoreDataInput =
           segmentWriteState.directory.openInput(
               tempScoreQuantizedVectorData.getName(), segmentWriteState.context);
-      float[] centroidDps = new float[centroids.length];
-      for (int i = 0; i < centroids.length; i++) {
-        centroidDps[i] = VectorUtil.dotProduct(centroids[i], centroids[i]);
-      }
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
           vectorDataOffset,
           vectorDataLength,
           centroids,
-          centroidDps,
+          cDotC,
           docsWithField,
           centroidMapOffset,
           centroidMapLength);
@@ -786,7 +781,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               fieldInfo.getVectorDimension(),
               docsWithField.cardinality(),
               centroids,
-              centroidDps,
+              cDotC,
               quantizer,
               finalCentroidMapTempInput != null
                   ? DirectReader.getInstance(
