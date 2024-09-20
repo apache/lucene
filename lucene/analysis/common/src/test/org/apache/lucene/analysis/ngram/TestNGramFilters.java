@@ -90,12 +90,12 @@ public class TestNGramFilters extends BaseTokenStreamFactoryTestCase {
     stream.close();
   }
 
-  /** Test EdgeNGramTokenizerFactory */
+  /** Test EdgeNGramTokenizerFactory with default (after commit '3b442bd3834') */
   public void testEdgeNGramTokenizer() throws Exception {
     Reader reader = new StringReader("test");
     TokenStream stream = tokenizerFactory("EdgeNGram").create();
     ((Tokenizer) stream).setReader(reader);
-    assertTokenStreamContents(stream, new String[] {"t"});
+    assertTokenStreamContents(stream, new String[] {"t", "te"});
   }
 
   /** Test EdgeNGramTokenizerFactory with min and max gram size */
@@ -107,7 +107,7 @@ public class TestNGramFilters extends BaseTokenStreamFactoryTestCase {
     assertTokenStreamContents(stream, new String[] {"t", "te"});
   }
 
-  /** Test EdgeNGramFilterFactory with old defaults */
+  /** Test EdgeNGramFilterFactory with old defaults (before commit '3b442bd3834') */
   public void testEdgeNGramFilter() throws Exception {
     Reader reader = new StringReader("test");
     TokenStream stream = whitespaceMockTokenizer(reader);
