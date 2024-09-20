@@ -1882,25 +1882,27 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
     ByteVectorValues byteVectors = leafReader.getByteVectorValues("byte");
     assertNotNull(byteVectors);
-    assertEquals(0, byteVectors.nextDoc());
-    assertArrayEquals(new byte[] {42}, byteVectors.vectorValue());
-    assertEquals(1, byteVectors.nextDoc());
-    assertArrayEquals(new byte[] {42}, byteVectors.vectorValue());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, byteVectors.nextDoc());
+    KnnVectorValues.DocIndexIterator iter = byteVectors.iterator();
+    assertEquals(0, iter.nextDoc());
+    assertArrayEquals(new byte[] {42}, byteVectors.vectorValue(0));
+    assertEquals(1, iter.nextDoc());
+    assertArrayEquals(new byte[] {42}, byteVectors.vectorValue(1));
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
 
     FloatVectorValues floatVectors = leafReader.getFloatVectorValues("float");
     assertNotNull(floatVectors);
-    assertEquals(0, floatVectors.nextDoc());
-    float[] vector = floatVectors.vectorValue();
+    iter = floatVectors.iterator();
+    assertEquals(0, iter.nextDoc());
+    float[] vector = floatVectors.vectorValue(0);
     assertEquals(2, vector.length);
     assertEquals(1f, vector[0], 0f);
     assertEquals(2f, vector[1], 0f);
-    assertEquals(1, floatVectors.nextDoc());
-    vector = floatVectors.vectorValue();
+    assertEquals(1, iter.nextDoc());
+    vector = floatVectors.vectorValue(1);
     assertEquals(2, vector.length);
     assertEquals(1f, vector[0], 0f);
     assertEquals(2f, vector[1], 0f);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, floatVectors.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
 
     IOUtils.close(reader, w2, dir1, dir2);
   }
