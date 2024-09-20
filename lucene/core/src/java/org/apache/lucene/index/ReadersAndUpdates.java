@@ -713,7 +713,7 @@ final class ReadersAndUpdates {
         fi.hasPayloads(),
         fi.getIndexOptions(),
         fi.getDocValuesType(),
-        fi.hasDocValuesSkipIndex(),
+        fi.docValuesSkipIndexType(),
         fi.getDocValuesGen(),
         new HashMap<>(fi.attributes()),
         fi.getPointDimensionCount(),

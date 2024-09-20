@@ -4992,8 +4992,9 @@ public class TestIndexWriter extends LuceneTestCase {
         doc2.add(new SortedNumericDocValuesField("test", random().nextLong()));
         IllegalArgumentException ex =
             expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
+        ex.printStackTrace();
         assertEquals(
-            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index: expected 'true', but it has 'false'.",
+            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'RANGE', but it has 'NONE'.",
             ex.getMessage());
       }
     }
@@ -5009,7 +5010,7 @@ public class TestIndexWriter extends LuceneTestCase {
         IllegalArgumentException ex =
             expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
         assertEquals(
-            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index: expected 'false', but it has 'true'.",
+            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'NONE', but it has 'RANGE'.",
             ex.getMessage());
       }
     }
@@ -5021,7 +5022,7 @@ public class TestIndexWriter extends LuceneTestCase {
       FieldType fieldType = new FieldType();
       fieldType.setStored(true);
       fieldType.setDocValuesType(docValuesType);
-      fieldType.setDocValuesSkipIndex(true);
+      fieldType.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
       fieldType.freeze();
       try (Directory dir = newMockDirectory()) {
         try (IndexWriter writer =
@@ -5031,8 +5032,7 @@ public class TestIndexWriter extends LuceneTestCase {
           IllegalArgumentException ex =
               expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
           assertTrue(
-              ex.getMessage()
-                  .startsWith("field 'test' cannot have docValuesSkipIndex set to true"));
+              ex.getMessage().startsWith("field 'test' cannot have docValuesSkipIndexType=RANGE"));
         }
       }
     }

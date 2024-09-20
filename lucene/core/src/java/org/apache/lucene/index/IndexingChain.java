@@ -680,7 +680,7 @@ final class IndexingChain implements Accountable {
                 false,
                 s.indexOptions,
                 s.docValuesType,
-                s.hasDocValuesSkipIndex,
+                s.docValuesSkipIndex,
                 -1,
                 s.attributes,
                 s.pointDimensionCount,
@@ -832,12 +832,14 @@ final class IndexingChain implements Accountable {
       verifyUnIndexedFieldType(fieldName, fieldType);
     }
     if (fieldType.docValuesType() != DocValuesType.NONE) {
-      schema.setDocValues(fieldType.docValuesType(), fieldType.hasDocValuesSkipIndex());
-    } else if (fieldType.hasDocValuesSkipIndex()) {
+      schema.setDocValues(fieldType.docValuesType(), fieldType.docValuesSkipIndexType());
+    } else if (fieldType.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       throw new IllegalArgumentException(
           "field '"
               + schema.name
-              + "' cannot have docValuesSkipIndex set to true without doc values");
+              + "' cannot have docValuesSkipIndexType="
+              + fieldType.docValuesSkipIndexType()
+              + " without doc values");
     }
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
@@ -1440,7 +1442,7 @@ final class IndexingChain implements Accountable {
     private boolean storeTermVector = false;
     private IndexOptions indexOptions = IndexOptions.NONE;
     private DocValuesType docValuesType = DocValuesType.NONE;
-    private boolean hasDocValuesSkipIndex = false;
+    private DocValuesSkipIndexType docValuesSkipIndex = DocValuesSkipIndexType.NONE;
     private int pointDimensionCount = 0;
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
@@ -1506,13 +1508,14 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setDocValues(DocValuesType newDocValuesType, boolean newHasDocValuesSkipIndex) {
+    void setDocValues(
+        DocValuesType newDocValuesType, DocValuesSkipIndexType newDocValuesSkipIndex) {
       if (docValuesType == DocValuesType.NONE) {
         this.docValuesType = newDocValuesType;
-        this.hasDocValuesSkipIndex = newHasDocValuesSkipIndex;
+        this.docValuesSkipIndex = newDocValuesSkipIndex;
       } else {
         assertSame("doc values type", docValuesType, newDocValuesType);
-        assertSame("doc values skip index", hasDocValuesSkipIndex, newHasDocValuesSkipIndex);
+        assertSame("doc values skip index type", docValuesSkipIndex, newDocValuesSkipIndex);
       }
     }
 
@@ -1560,7 +1563,7 @@ final class IndexingChain implements Accountable {
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
       assertSame("store term vector", fi.hasTermVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
-      assertSame("doc values skip index", fi.hasDocValuesSkipIndex(), hasDocValuesSkipIndex);
+      assertSame("doc values skip index type", fi.docValuesSkipIndexType(), docValuesSkipIndex);
       assertSame(
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);

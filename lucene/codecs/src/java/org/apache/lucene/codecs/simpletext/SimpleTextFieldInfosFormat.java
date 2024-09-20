@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -125,8 +126,8 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), DOCVALUES_SKIP_INDEX);
-        boolean docValueSkipper =
-            Boolean.parseBoolean(readString(DOCVALUES_SKIP_INDEX.length, scratch));
+        DocValuesSkipIndexType docValueSkipper =
+            docValuesSkipIndexType(readString(DOCVALUES_SKIP_INDEX.length, scratch));
 
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), DOCVALUES_GEN);
@@ -221,6 +222,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
     return DocValuesType.valueOf(dvType);
   }
 
+  public DocValuesSkipIndexType docValuesSkipIndexType(String dvSkipIndexType) {
+    return DocValuesSkipIndexType.valueOf(dvSkipIndexType);
+  }
+
   public VectorEncoding vectorEncoding(String vectorEncoding) {
     return VectorEncoding.valueOf(vectorEncoding);
   }
@@ -284,7 +289,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, DOCVALUES_SKIP_INDEX);
-        SimpleTextUtil.write(out, Boolean.toString(fi.hasDocValuesSkipIndex()), scratch);
+        SimpleTextUtil.write(out, getDocValuesSkipIndexType(fi.docValuesSkipIndexType()), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, DOCVALUES_GEN);
@@ -353,6 +358,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   }
 
   private static String getDocValuesType(DocValuesType type) {
+    return type.toString();
+  }
+
+  private static String getDocValuesSkipIndexType(DocValuesSkipIndexType type) {
     return type.toString();
   }
 }

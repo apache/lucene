@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.EmptyDocValuesProducer;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -143,7 +144,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             return DocValues.singleton(valuesProducer.getNumeric(field));
           }
         };
-    if (field.hasDocValuesSkipIndex()) {
+    if (field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       writeSkipIndex(field, producer);
     }
     writeValues(field, producer, false);
@@ -248,7 +249,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private void writeSkipIndex(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
-    assert field.hasDocValuesSkipIndex();
+    assert field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE;
     final long start = data.getFilePointer();
     final SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     long globalMaxValue = Long.MIN_VALUE;
@@ -700,7 +701,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             return DocValues.singleton(sortedOrds);
           }
         };
-    if (field.hasDocValuesSkipIndex()) {
+    if (field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       writeSkipIndex(field, producer);
     }
     if (addTypeByte) {
@@ -873,7 +874,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private void doAddSortedNumericField(
       FieldInfo field, DocValuesProducer valuesProducer, boolean ords) throws IOException {
-    if (field.hasDocValuesSkipIndex()) {
+    if (field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       writeSkipIndex(field, valuesProducer);
     }
     if (ords) {

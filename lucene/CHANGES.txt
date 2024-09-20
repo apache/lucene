@@ -295,6 +295,8 @@ Build
 API Changes
 ---------------------
 
+* GITHUB#13806: Add TermInSetQuery#getBytesRefIterator to be able to iterate over query terms. (Christoph Büscher)
+
 * GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov)
 
 * GITHUB#13612: Hunspell: add Suggester#proceedPastRep to avoid losing relevant suggestions. (Peter Gromov)
@@ -310,9 +312,6 @@ API Changes
 
 * GITHUB#13568, GITHUB#13750: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
-
-* GITHUB#13735: Add CollectorManager#forSequentialExecution to make CollectorManager creation more convenient
-  for users of the deprecated IndexSearcher#search(Query, Collector). (Greg Miller)
 
 New Features
 ---------------------
@@ -421,8 +420,6 @@ Optimizations
 
 * GITHUB#13742: Reorder checks in LRUQueryCache#count (Shubham Chaudhary)
 
-* GITHUB#13686: Replace Map<String,Object> with IntObjectHashMap for DV producer (Pan Guixin)
-
 * GITHUB#13697: Add a bulk scorer to ToParentBlockJoinQuery, which delegates to the bulk scorer of the child query.
  This should speed up query evaluation when the child query has a specialized bulk scorer, such as disjunctive queries.
  (Mike Pellegrini)
@@ -472,6 +469,8 @@ Bug Fixes
   all older (9.11 written) segments are rewritten either via
   `IndexWriter.forceMerge` or
   `IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
+
+* GITHUB#13799: Disable intra-merge parallelism for all structures but kNN vectors. (Ben Trent)
 
 Build
 ---------------------
