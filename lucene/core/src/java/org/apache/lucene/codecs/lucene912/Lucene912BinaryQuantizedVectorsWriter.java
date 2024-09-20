@@ -599,7 +599,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       if (vectorOrdToClusterOrdWriter != null) {
         vectorOrdToClusterOrdWriter.add(binarizedByteVectorValues.clusterId());
       }
-      // TODO handle quantization output correctly
       float[] corrections = binarizedByteVectorValues.getCorrectiveTerms();
       for (int i = 0; i < corrections.length; i++) {
         output.writeInt(Float.floatToIntBits(corrections[i]));
@@ -1145,7 +1144,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         return sumQuantizationValues[centroidOrd];
       }
       // load values
-      // todo improve
       vectorValue(targetOrd, centroidOrd);
       return sumQuantizationValues[centroidOrd];
     }

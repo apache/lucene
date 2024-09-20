@@ -60,7 +60,6 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   private final int correctionsCount;
   protected final LongValues vectorOrdToCentroidOrd;
 
-  // TODO do we want to use `LongValues` to store vectorOrd -> centroidOrd mapping?
   OffHeapBinarizedVectorValues(
       int dimension,
       int size,
