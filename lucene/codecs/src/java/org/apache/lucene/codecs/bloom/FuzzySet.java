@@ -151,8 +151,8 @@ public class FuzzySet implements Accountable {
   public ContainsResult contains(BytesRef value) {
     long[] hash = StringHelper.murmurhash3_x64_128(value);
 
-    int msb = ((int) hash[0] >>> Integer.SIZE) >>> 1 + ((int) hash[1] >>> Integer.SIZE) >>> 1;
-    int lsb = ((int) hash[0]) >>> 1 + ((int) hash[1]) >>> 1;
+    int msb = (((int) hash[0] >>> Integer.SIZE) >>> 1) + (((int) hash[1] >>> Integer.SIZE) >>> 1);
+    int lsb = ((int) hash[0] >>> 1) + ((int) hash[1] >>> 1);
     for (int i = 0; i < hashCount; i++) {
       int bloomPos = (lsb + i * msb);
       if (!mayContainValue(bloomPos)) {
@@ -219,8 +219,8 @@ public class FuzzySet implements Accountable {
    */
   public void addValue(BytesRef value) {
     long[] hash = StringHelper.murmurhash3_x64_128(value);
-    int msb = ((int) hash[0] >>> Integer.SIZE) >>> 1 + ((int) hash[1] >>> Integer.SIZE) >>> 1;
-    int lsb = ((int) hash[0]) >>> 1 + ((int) hash[1]) >>> 1;
+    int msb = (((int) hash[0] >>> Integer.SIZE) >>> 1) + (((int) hash[1] >>> Integer.SIZE) >>> 1);
+    int lsb = ((int) hash[0] >>> 1) + ((int) hash[1] >>> 1);
     for (int i = 0; i < hashCount; i++) {
       // Bitmasking using bloomSize is effectively a modulo operation.
       int bloomPos = (lsb + i * msb) & bloomSize;

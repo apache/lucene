@@ -273,7 +273,7 @@ public abstract class StringHelper {
     long k1 = 0;
     long k2 = 0;
     final int index = offset + (nblocks << 4);
-    switch (offset + length - index) {
+    switch (length & 0x0F) {
       case 15:
         k2 ^= ((long) data[index + 14] & 0xff) << 48;
       case 14:
