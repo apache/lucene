@@ -49,7 +49,6 @@ module org.apache.lucene.test_framework {
   exports org.apache.lucene.tests.store;
   exports org.apache.lucene.tests.util.automaton;
   exports org.apache.lucene.tests.util.fst;
-  exports org.apache.lucene.tests.util.hnsw;
   exports org.apache.lucene.tests.util;
 
   provides org.apache.lucene.codecs.Codec with

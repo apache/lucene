@@ -269,7 +269,7 @@ public class TestDirectoryReader extends LuceneTestCase {
       } else {
         notIndexedFieldNames.add(name);
       }
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         tvFieldNames.add(name);
       }
     }

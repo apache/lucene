@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -51,6 +52,7 @@ import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.VirtualMethod;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -150,6 +152,12 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     public AssertingTermVectors(TermVectors in) {
       this.in = in;
+    }
+
+    @Override
+    public void prefetch(int docID) throws IOException {
+      assertThread("TermVectors", creationThread);
+      in.prefetch(docID);
     }
 
     @Override
@@ -267,7 +275,8 @@ public class AssertingLeafReader extends FilterLeafReader {
     private enum State {
       INITIAL,
       POSITIONED,
-      UNPOSITIONED
+      UNPOSITIONED,
+      TWO_PHASE_SEEKING;
     };
 
     private State state = State.INITIAL;
@@ -370,6 +379,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void seekExact(long ord) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       super.seekExact(ord);
       state = State.POSITIONED;
     }
@@ -377,6 +387,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public SeekStatus seekCeil(BytesRef term) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert term.isValid();
       SeekStatus result = super.seekCeil(term);
       if (result == SeekStatus.END) {
@@ -390,6 +401,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public boolean seekExact(BytesRef text) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert text.isValid();
       boolean result;
       if (delegateOverridesSeekExact) {
@@ -406,6 +418,27 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+      assertThread("Terms enums", creationThread);
+      assert state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
+      assert text.isValid();
+      IOBooleanSupplier in = this.in.prepareSeekExact(text);
+      if (in == null) {
+        return null;
+      }
+      state = State.TWO_PHASE_SEEKING;
+      return () -> {
+        boolean exists = in.get();
+        if (exists) {
+          state = State.POSITIONED;
+        } else {
+          state = State.UNPOSITIONED;
+        }
+        return exists;
+      };
+    }
+
+    @Override
     public TermState termState() throws IOException {
       assertThread("Terms enums", creationThread);
       assert state == State.POSITIONED : "termState() called on unpositioned TermsEnum";
@@ -415,6 +448,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void seekExact(BytesRef term, TermState state) throws IOException {
       assertThread("Terms enums", creationThread);
+      assert this.state != State.TWO_PHASE_SEEKING : "Unfinished two-phase seeking";
       assert term.isValid();
       in.seekExact(term, state);
       this.state = State.POSITIONED;
@@ -1592,10 +1626,10 @@ public class AssertingLeafReader extends FilterLeafReader {
     DocValuesSkipper skipper = super.getDocValuesSkipper(field);
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (skipper != null) {
-      assert fi.hasDocValuesSkipIndex();
+      assert fi.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE;
       return new AssertingDocValuesSkipper(skipper);
     } else {
-      assert fi == null || fi.hasDocValuesSkipIndex() == false;
+      assert fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE;
       return null;
     }
   }

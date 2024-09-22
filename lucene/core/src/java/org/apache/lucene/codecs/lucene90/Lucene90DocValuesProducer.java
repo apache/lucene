@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_JUMP_LENGTH_PER_LEVEL;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_MAX_LEVEL;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
 import java.io.IOException;
@@ -27,6 +29,7 @@ import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -190,7 +193,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
       byte type = meta.readByte();
-      if (info.hasDocValuesSkipIndex()) {
+      if (info.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
         skippers.put(info.name, readDocValueSkipperMeta(meta));
       }
       if (type == Lucene90DocValuesFormat.NUMERIC) {
@@ -1792,28 +1795,55 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     if (input.length() > 0) {
       input.prefetch(0, 1);
     }
+    // TODO: should we write to disk the actual max level for this segment?
     return new DocValuesSkipper() {
-      int minDocID = -1;
-      int maxDocID = -1;
-      long minValue, maxValue;
-      int docCount;
+      final int[] minDocID = new int[SKIP_INDEX_MAX_LEVEL];
+      final int[] maxDocID = new int[SKIP_INDEX_MAX_LEVEL];
+
+      {
+        for (int i = 0; i < SKIP_INDEX_MAX_LEVEL; i++) {
+          minDocID[i] = maxDocID[i] = -1;
+        }
+      }
+
+      final long[] minValue = new long[SKIP_INDEX_MAX_LEVEL];
+      final long[] maxValue = new long[SKIP_INDEX_MAX_LEVEL];
+      final int[] docCount = new int[SKIP_INDEX_MAX_LEVEL];
+      int levels = 1;
 
       @Override
       public void advance(int target) throws IOException {
         if (target > entry.maxDocId) {
-          minDocID = DocIdSetIterator.NO_MORE_DOCS;
-          maxDocID = DocIdSetIterator.NO_MORE_DOCS;
+          // skipper is exhausted
+          for (int i = 0; i < SKIP_INDEX_MAX_LEVEL; i++) {
+            minDocID[i] = maxDocID[i] = DocIdSetIterator.NO_MORE_DOCS;
+          }
         } else {
+          // find next interval
+          assert target > maxDocID[0] : "target must be bigger that current interval";
           while (true) {
-            maxDocID = input.readInt();
-            if (maxDocID >= target) {
-              minDocID = input.readInt();
-              maxValue = input.readLong();
-              minValue = input.readLong();
-              docCount = input.readInt();
+            levels = input.readByte();
+            assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0
+                : "level out of range [" + levels + "]";
+            boolean valid = true;
+            // check if current interval is competitive or we can jump to the next position
+            for (int level = levels - 1; level >= 0; level--) {
+              if ((maxDocID[level] = input.readInt()) < target) {
+                input.skipBytes(SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level]); // the jump for the level
+                valid = false;
+                break;
+              }
+              minDocID[level] = input.readInt();
+              maxValue[level] = input.readLong();
+              minValue[level] = input.readLong();
+              docCount[level] = input.readInt();
+            }
+            if (valid) {
+              // adjust levels
+              while (levels < SKIP_INDEX_MAX_LEVEL && maxDocID[levels] >= target) {
+                levels++;
+              }
               break;
-            } else {
-              input.skipBytes(24);
             }
           }
         }
@@ -1821,32 +1851,32 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public int numLevels() {
-        return 1;
+        return levels;
       }
 
       @Override
       public int minDocID(int level) {
-        return minDocID;
+        return minDocID[level];
       }
 
       @Override
       public int maxDocID(int level) {
-        return maxDocID;
+        return maxDocID[level];
       }
 
       @Override
       public long minValue(int level) {
-        return minValue;
+        return minValue[level];
       }
 
       @Override
       public long maxValue(int level) {
-        return maxValue;
+        return maxValue[level];
       }
 
       @Override
       public int docCount(int level) {
-        return docCount;
+        return docCount[level];
       }
 
       @Override

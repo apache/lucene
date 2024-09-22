@@ -34,8 +34,10 @@ import org.apache.lucene.index.SegmentWriteState;
 public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   // The bits that are allowed for scalar quantization
-  // We only allow unsigned byte (8), signed byte (7), and half-byte (4)
-  private static final int ALLOWED_BITS = (1 << 8) | (1 << 7) | (1 << 4);
+  // We only allow signed byte (7), and half-byte (4)
+  // NOTE: we used to allow 8 bits as well, but it was broken so we removed it
+  // (https://github.com/apache/lucene/issues/13519)
+  private static final int ALLOWED_BITS = (1 << 7) | (1 << 4);
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
   public static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
@@ -72,7 +74,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
-    this(null, 7, true);
+    this(null, 7, false);
   }
 
   /**
@@ -83,9 +85,10 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    *     determined by sampling many confidence intervals and determining the most accurate pair.
    * @param bits the number of bits to use for scalar quantization (must be between 1 and 8,
    *     inclusive)
-   * @param compress whether to compress the vectors, if true, the vectors that are quantized with
-   *     lte 4 bits will be compressed into a single byte. If false, the vectors will be stored as
-   *     is. This provides a trade-off of memory usage and speed.
+   * @param compress whether to compress the quantized vectors by another 50% when bits=4. If
+   *     `true`, pairs of (4 bit quantized) dimensions are packed into a single byte. This must be
+   *     `false` when bits=7. This provides a trade-off of 50% reduction in hot vector memory usage
+   *     during searching, at some decode speed penalty.
    */
   public Lucene99ScalarQuantizedVectorsFormat(
       Float confidenceInterval, int bits, boolean compress) {
@@ -104,7 +107,12 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
               + confidenceInterval);
     }
     if (bits < 1 || bits > 8 || (ALLOWED_BITS & (1 << bits)) == 0) {
-      throw new IllegalArgumentException("bits must be one of: 4, 7, 8; bits=" + bits);
+      throw new IllegalArgumentException("bits must be one of: 4, 7; bits=" + bits);
+    }
+
+    if (bits > 4 && compress) {
+      // compress=true otherwise silently does nothing when bits=7?
+      throw new IllegalArgumentException("compress=true only applies when bits=4");
     }
     this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;

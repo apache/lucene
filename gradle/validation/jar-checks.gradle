@@ -20,6 +20,10 @@
 // 2) notice file
 // 3) checksum validation/ generation.
 
+// WARNING: The tasks in this file share internal state between tasks without using files.
+// Because of this all tasks here must always execute together, so they cannot define task outputs.
+// TODO: Rewrite the internal state to use state files containing the ext.jarInfos and its referencedFiles
+
 // This should be false only for debugging.
 def failOnError = true
 
@@ -194,13 +198,6 @@ subprojects {
     description = "Validate license and notice files of dependencies"
     dependsOn collectJarInfos
 
-    def outputFileName = 'validateJarLicenses'
-    inputs.dir(file(project.rootDir.path + '/lucene/licenses'))
-        .withPropertyName('licenses')
-        .withPathSensitivity(PathSensitivity.RELATIVE)
-    outputs.file(layout.buildDirectory.file(outputFileName))
-        .withPropertyName('validateJarLicensesResult')
-
     doLast {
       def errors = []
       jarInfos.each { dep ->
@@ -246,9 +243,7 @@ subprojects {
           }
         }
       }
-      // Required to take advantage of incremental building and the build cache
-      def f = new File(project.buildDir.path + "/" + outputFileName)
-      f.write(errors.toString(), "UTF-8")
+
       if (errors) {
         def msg = "Certain license/ notice files are missing:\n  - " + errors.join("\n  - ")
         if (failOnError) {

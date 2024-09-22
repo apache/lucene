@@ -92,7 +92,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     // make sure to set score=0
     BooleanQuery.Builder query2 = new BooleanQuery.Builder();
     query2.add(new TermQuery(new Term("field", "a")), Occur.FILTER);
-    query2.add(new TermQuery(new Term("field", "b")), Occur.SHOULD);
+    query2.add(new TermQuery(new Term("missing_field", "b")), Occur.SHOULD);
     final Weight weight =
         searcher.createWeight(searcher.rewrite(query2.build()), ScoreMode.COMPLETE, 1);
     final Scorer scorer = weight.scorer(reader.leaves().get(0));
@@ -541,7 +541,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
   }
 
   private void assertEquals(TopDocs td1, TopDocs td2) {
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     assertEquals(td1.scoreDocs.length, td2.scoreDocs.length);
     Map<Integer, Float> expectedScores =
         Arrays.stream(td1.scoreDocs).collect(Collectors.toMap(sd -> sd.doc, sd -> sd.score));

@@ -73,10 +73,7 @@ import org.apache.lucene.util.InfoStream;
 @SuppressCodecs("SimpleText") // too slow here
 public class TestIndexWriterExceptions extends LuceneTestCase {
 
-  private static class DocCopyIterator implements Iterable<Document> {
-    private final Document doc;
-    private final int count;
-
+  private record DocCopyIterator(Document doc, int count) implements Iterable<Document> {
     /* private field types */
     /* private field types */
 
@@ -103,11 +100,6 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       custom5.setStoreTermVectors(true);
       custom5.setStoreTermVectorPositions(true);
       custom5.setStoreTermVectorOffsets(true);
-    }
-
-    public DocCopyIterator(Document doc, int count) {
-      this.count = count;
-      this.doc = doc;
     }
 
     @Override
@@ -471,6 +463,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     cms.setSuppressExceptions();
     conf.setMergeScheduler(cms);
     ((LogMergePolicy) conf.getMergePolicy()).setMergeFactor(2);
+    ((LogMergePolicy) conf.getMergePolicy()).setTargetSearchConcurrency(1);
     TestPoint3 testPoint = new TestPoint3();
     IndexWriter w = RandomIndexWriter.mockIndexWriter(random(), dir, conf, testPoint);
     testPoint.doFail = true;
@@ -1275,7 +1268,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     assertTrue("segment generation should be > 0 but got " + gen, gen > 0);
 
     final String segmentsFileName = SegmentInfos.getLastCommitSegmentsFileName(dir);
-    IndexInput in = dir.openInput(segmentsFileName, newIOContext(random()));
+    IndexInput in = dir.openInput(segmentsFileName, IOContext.READONCE);
     IndexOutput out =
         dir.createOutput(
             IndexFileNames.fileNameFromGeneration(IndexFileNames.SEGMENTS, "", 1 + gen),
@@ -1320,7 +1313,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     String fileNameIn = SegmentInfos.getLastCommitSegmentsFileName(dir);
     String fileNameOut =
         IndexFileNames.fileNameFromGeneration(IndexFileNames.SEGMENTS, "", 1 + gen);
-    IndexInput in = dir.openInput(fileNameIn, newIOContext(random()));
+    IndexInput in = dir.openInput(fileNameIn, IOContext.READONCE);
     IndexOutput out = dir.createOutput(fileNameOut, newIOContext(random()));
     long length = in.length();
     for (int i = 0; i < length - 1; i++) {
@@ -1454,7 +1447,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         assertTrue(reader.numDocs() > 0);
         SegmentInfos.readLatestCommit(dir);
         for (LeafReaderContext context : reader.leaves()) {
-          assertFalse(context.reader().getFieldInfos().hasVectors());
+          assertFalse(context.reader().getFieldInfos().hasTermVectors());
         }
         reader.close();
         dir.close();

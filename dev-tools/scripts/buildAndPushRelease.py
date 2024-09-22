@@ -112,8 +112,8 @@ def prepare(root, version, pause_before_sign, gpg_key_id, gpg_password, gpg_home
   checkDOAPfiles(version)
 
   if not dev_mode:
-    print('  ./gradlew --no-daemon clean check')
-    run('./gradlew --no-daemon clean check')
+    print('  ./gradlew --stacktrace --no-daemon clean check')
+    run('./gradlew --stacktrace --no-daemon clean check')
   else:
     print('  skipping precommit check due to dev-mode')
 
@@ -121,7 +121,7 @@ def prepare(root, version, pause_before_sign, gpg_key_id, gpg_password, gpg_home
     input("Tests complete! Please press ENTER to proceed to assembleRelease: ")
 
   print('  prepare-release')
-  cmd = './gradlew --no-daemon assembleRelease' \
+  cmd = './gradlew --stacktrace --no-daemon assembleRelease' \
         ' -Dversion.release=%s' % version
   if dev_mode:
     cmd += ' -Pvalidation.git.failOnModified=false'

@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -51,7 +52,7 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
 public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
 
   private static Codec getCodec(int bits, boolean compress) {
-    return new Lucene99Codec() {
+    return new Lucene912Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene99HnswScalarQuantizedVectorsFormat(
@@ -164,7 +165,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
   }
 
   public void testScoringInt7() throws Exception {
-    vectorScoringTest(7, random().nextBoolean());
+    vectorScoringTest(7, false);
   }
 
   private void vectorScoringTest(int bits, boolean compress) throws IOException {

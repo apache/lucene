@@ -62,6 +62,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.SimilarityBase;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.SmallFloat;
 
@@ -146,28 +147,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     }
   }
 
-  static class FieldAndWeight {
-    final String field;
-    final float weight;
-
-    FieldAndWeight(String field, float weight) {
-      this.field = field;
-      this.weight = weight;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      FieldAndWeight that = (FieldAndWeight) o;
-      return Float.compare(that.weight, weight) == 0 && Objects.equals(field, that.field);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(field, weight);
-    }
-  }
+  record FieldAndWeight(String field, float weight) {}
 
   // sorted map for fields.
   private final TreeMap<String, FieldAndWeight> fieldAndWeights;
@@ -405,7 +385,8 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
       for (int i = 0; i < fieldTerms.length; i++) {
-        TermState state = termStates[i].get(context);
+        IOSupplier<TermState> supplier = termStates[i].get(context);
+        TermState state = supplier == null ? null : supplier.get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(fieldTerms[i].field()).iterator();
           termsEnum.seekExact(fieldTerms[i].bytes(), state);

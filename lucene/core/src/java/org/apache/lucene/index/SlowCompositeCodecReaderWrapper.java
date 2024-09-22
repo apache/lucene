@@ -81,15 +81,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     for (CodecReader reader : codecReaders) {
       LeafMetaData readerMeta = reader.getMetaData();
       if (majorVersion == -1) {
-        majorVersion = readerMeta.getCreatedVersionMajor();
-      } else if (majorVersion != readerMeta.getCreatedVersionMajor()) {
+        majorVersion = readerMeta.createdVersionMajor();
+      } else if (majorVersion != readerMeta.createdVersionMajor()) {
         throw new IllegalArgumentException(
             "Cannot combine leaf readers created with different major versions");
       }
       if (minVersion == null) {
-        minVersion = readerMeta.getMinVersion();
-      } else if (minVersion.onOrAfter(readerMeta.getMinVersion())) {
-        minVersion = readerMeta.getMinVersion();
+        minVersion = readerMeta.minVersion();
+      } else if (minVersion.onOrAfter(readerMeta.minVersion())) {
+        minVersion = readerMeta.minVersion();
       }
       hasBlocks |= readerMeta.hasBlocks();
     }
@@ -246,6 +246,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
+    public void prefetch(int doc) throws IOException {
+      int readerId = docIdToReaderId(doc);
+      TermVectorsReader reader = readers[readerId];
+      if (reader != null) {
+        reader.prefetch(doc - docStarts[readerId]);
+      }
+    }
+
+    @Override
     public Fields get(int doc) throws IOException {
       int readerId = docIdToReaderId(doc);
       TermVectorsReader reader = readers[readerId];
@@ -294,17 +303,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
   }
 
-  private static class DocValuesSub<T extends DocIdSetIterator> {
-    private final T sub;
-    private final int docStart;
-    private final int docEnd;
-
-    DocValuesSub(T sub, int docStart, int docEnd) {
-      this.sub = sub;
-      this.docStart = docStart;
-      this.docEnd = docEnd;
-    }
-  }
+  private record DocValuesSub<T extends DocIdSetIterator>(T sub, int docStart, int docEnd) {}
 
   private static class MergedDocIdSetIterator<T extends DocIdSetIterator> extends DocIdSetIterator {
 
@@ -565,11 +564,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     return new SlowCompositePointsReaderWrapper(codecReaders, docStarts);
   }
 
-  private static class PointValuesSub {
-    private final PointValues sub;
-    private final int docBase;
-
-    PointValuesSub(PointValues sub, int docBase) {
+  private record PointValuesSub(PointValues sub, int docBase) {
+    private PointValuesSub(PointValues sub, int docBase) {
       this.sub = Objects.requireNonNull(sub);
       this.docBase = docBase;
     }
