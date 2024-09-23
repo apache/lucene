@@ -27,13 +27,9 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.packed.DirectReader;
-import org.apache.lucene.util.packed.DirectWriter;
 import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
@@ -50,23 +46,20 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   protected final IndexInput slice;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
-  protected short clusterId = 0;
   protected final int byteSize;
   private int lastOrd = -1;
   protected final float[] correctiveValues;
   protected final BinaryQuantizer binaryQuantizer;
-  protected final float[][] centroids;
-  protected final float[] centroidDps;
+  protected final float[] centroid;
+  protected final float centroidDp;
   private final int correctionsCount;
-  protected final LongValues vectorOrdToCentroidOrd;
 
   OffHeapBinarizedVectorValues(
       int dimension,
       int size,
-      float[][] centroids,
-      float[] centroidDps,
+      float[] centroid,
+      float centroidDp,
       BinaryQuantizer quantizer,
-      LongValues vectorOrdToCentroidOrd,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       IndexInput slice) {
@@ -75,12 +68,8 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.similarityFunction = similarityFunction;
     this.vectorsScorer = vectorsScorer;
     this.slice = slice;
-    this.centroids = centroids;
-    this.centroidDps = centroidDps;
-    this.vectorOrdToCentroidOrd = vectorOrdToCentroidOrd;
-    if (centroids != null && centroids.length > 1) {
-      assert vectorOrdToCentroidOrd != null;
-    }
+    this.centroid = centroid;
+    this.centroidDp = centroidDp;
     this.numBytes = BQVectorUtils.discretize(dimension, 64) / 8;
     this.correctionsCount = similarityFunction != EUCLIDEAN ? 3 : 2;
     this.correctiveValues = new float[this.correctionsCount];
@@ -107,17 +96,14 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), numBytes);
-    if (vectorOrdToCentroidOrd != null) {
-      clusterId = (short) vectorOrdToCentroidOrd.get(targetOrd);
-    }
     slice.readFloats(correctiveValues, 0, correctionsCount);
     lastOrd = targetOrd;
     return binaryValue;
   }
 
   @Override
-  public float[] getCentroidsDPs() {
-    return centroidDps;
+  public float getCentroidDP() {
+    return centroidDp;
   }
 
   @Override
@@ -176,25 +162,13 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   @Override
-  public short getClusterId(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return clusterId;
-    }
-    if (vectorOrdToCentroidOrd == null) {
-      return clusterId;
-    }
-    clusterId = (short) vectorOrdToCentroidOrd.get(targetOrd);
-    return clusterId;
-  }
-
-  @Override
   public BinaryQuantizer getQuantizer() {
     return binaryQuantizer;
   }
 
   @Override
-  public float[][] getCentroids() {
-    return centroids;
+  public float[] getCentroid() {
+    return centroid;
   }
 
   @Override
@@ -214,30 +188,16 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       BinaryQuantizer binaryQuantizer,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
-      float[][] centroids,
-      float[] centroidDps,
+      float[] centroid,
+      float centroidDp,
       long quantizedVectorDataOffset,
       long quantizedVectorDataLength,
-      long centroidOffset,
-      long centroidLength,
       IndexInput vectorData)
       throws IOException {
     if (configuration.isEmpty()) {
       return new EmptyOffHeapVectorValues(dimension, similarityFunction, vectorsScorer);
     }
-    assert centroids != null;
-    LongValues vectorOrdToCentroidOrd = null;
-    if (centroids.length > 1) {
-      assert centroidOffset >= 0;
-      assert centroidLength > 0;
-      RandomAccessInput centroidSlice =
-          vectorData
-              .slice("vector-centroid-data", centroidOffset, centroidLength)
-              .randomAccessSlice(0, centroidLength);
-      vectorOrdToCentroidOrd =
-          DirectReader.getInstance(
-              centroidSlice, DirectWriter.unsignedBitsRequired(centroids.length));
-    }
+    assert centroid != null;
     IndexInput bytesSlice =
         vectorData.slice(
             "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
@@ -245,10 +205,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       return new DenseOffHeapVectorValues(
           dimension,
           size,
-          centroids,
-          centroidDps,
+          centroid,
+          centroidDp,
           binaryQuantizer,
-          vectorOrdToCentroidOrd,
           similarityFunction,
           vectorsScorer,
           bytesSlice);
@@ -257,10 +216,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           configuration,
           dimension,
           size,
-          centroids,
-          centroidDps,
+          centroid,
+          centroidDp,
           binaryQuantizer,
-          vectorOrdToCentroidOrd,
           vectorData,
           similarityFunction,
           vectorsScorer,
@@ -275,20 +233,18 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
-        float[][] centroids,
-        float[] centroidDps,
+        float[] centroid,
+        float centroidDp,
         BinaryQuantizer binaryQuantizer,
-        LongValues vectorOrdToCentroidOrd,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice) {
       super(
           dimension,
           size,
-          centroids,
-          centroidDps,
+          centroid,
+          centroidDp,
           binaryQuantizer,
-          vectorOrdToCentroidOrd,
           similarityFunction,
           vectorsScorer,
           slice);
@@ -297,11 +253,6 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public byte[] vectorValue() throws IOException {
       return vectorValue(doc);
-    }
-
-    @Override
-    public short clusterId() throws IOException {
-      return super.getClusterId(doc);
     }
 
     @Override
@@ -328,10 +279,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       return new DenseOffHeapVectorValues(
           dimension,
           size,
-          centroids,
-          centroidDps,
+          centroid,
+          centroidDp,
           binaryQuantizer,
-          vectorOrdToCentroidOrd,
           similarityFunction,
           vectorsScorer,
           slice.clone());
@@ -373,10 +323,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         OrdToDocDISIReaderConfiguration configuration,
         int dimension,
         int size,
-        float[][] centroids,
-        float[] centroidDps,
+        float[] centroid,
+        float centroidDp,
         BinaryQuantizer binaryQuantizer,
-        LongValues vectorOrdToCentroidOrd,
         IndexInput dataIn,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
@@ -385,10 +334,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
       super(
           dimension,
           size,
-          centroids,
-          centroidDps,
+          centroid,
+          centroidDp,
           binaryQuantizer,
-          vectorOrdToCentroidOrd,
           similarityFunction,
           vectorsScorer,
           slice);
@@ -401,11 +349,6 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public byte[] vectorValue() throws IOException {
       return vectorValue(disi.index());
-    }
-
-    @Override
-    public short clusterId() throws IOException {
-      return super.getClusterId(disi.index());
     }
 
     @Override
@@ -430,10 +373,9 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
           configuration,
           dimension,
           size,
-          centroids,
-          centroidDps,
+          centroid,
+          centroidDp,
           binaryQuantizer,
-          vectorOrdToCentroidOrd,
           dataIn,
           similarityFunction,
           vectorsScorer,
@@ -489,7 +431,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
         int dimension,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer) {
-      super(dimension, 0, null, null, null, null, similarityFunction, vectorsScorer, null);
+      super(dimension, 0, null, Float.NaN, null, similarityFunction, vectorsScorer, null);
     }
 
     @Override
@@ -510,11 +452,6 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     @Override
     public byte[] vectorValue() {
       throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public short clusterId() {
-      return 0;
     }
 
     @Override

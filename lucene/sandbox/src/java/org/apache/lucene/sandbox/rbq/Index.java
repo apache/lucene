@@ -28,7 +28,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.lucene912.Lucene912HnswBinaryQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
@@ -84,11 +83,7 @@ public class Index {
             //            return new Lucene912HnswBinaryQuantizedVectorsFormat();
             //          }
             return new Lucene912HnswBinaryQuantizedVectorsFormat(
-                DEFAULT_MAX_CONN,
-                DEFAULT_BEAM_WIDTH,
-                12,
-                Lucene912BinaryQuantizedVectorsFormat.DEFAULT_NUM_VECTORS_PER_CLUSTER,
-                hnswMergeExec);
+                DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 12, hnswMergeExec);
           }
         };
 

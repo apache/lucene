@@ -48,9 +48,6 @@ public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVecto
    */
   float getODotC(int targetOrd) throws IOException;
 
-  /** Returns the cluster ID for the vector in the range [0, 255] */
-  short getClusterId(int vectorOrd) throws IOException;
-
   /**
    * @return the quantizer used to quantize the vectors
    */
@@ -59,20 +56,14 @@ public interface RandomAccessBinarizedByteVectorValues extends RandomAccessVecto
   /**
    * @return coarse grained centroids for the vectors
    */
-  float[][] getCentroids() throws IOException;
+  float[] getCentroid() throws IOException;
 
   @Override
   RandomAccessBinarizedByteVectorValues copy() throws IOException;
 
-  default float[] getCentroidsDPs() throws IOException {
+  default float getCentroidDP() throws IOException {
     // this only gets executed on-merge
-    float[][] centroids = getCentroids();
-    float[] cDotC = new float[centroids.length];
-    int i = 0;
-    for (float[] centroid : centroids) {
-      cDotC[i] = VectorUtil.dotProduct(centroid, centroid);
-      i++;
-    }
-    return cDotC;
+    float[] centroid = getCentroid();
+    return VectorUtil.dotProduct(centroid, centroid);
   }
 }

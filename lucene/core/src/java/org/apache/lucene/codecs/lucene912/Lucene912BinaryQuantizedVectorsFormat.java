@@ -59,9 +59,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *         <li><b>[float]</b> the corrective values. Two floats for Euclidean distance. Three floats
  *             for the dot-product family of distances.
  *       </ul>
- *   <li>After all vectors are encoded, the vector ordinal to centroid ordinal mapping is stored
- *       using bit packed integers.
- *   <li>After the mapping, sparse vector information keeping track of monotonic blocks.
+ *   <li>After the vectors, sparse vector information keeping track of monotonic blocks.
  * </ul>
  *
  * <h2>.vemb (vector metadata) file</h2>
@@ -77,12 +75,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li><b>vlong</b> the offset to the vector data in the .veb file
  *   <li><b>vlong</b> the length of the vector data in the .veb file
  *   <li><b>vint</b> the number of vectors
- *   <li><b>vint</b> the number of cluster, if vector count is more than 0
- *   <li><b>[[float]]</b> the centroids of each cluster, each of size dimensions
- *   <li><b>vlong</b> the offset to the vector ordinal to centroid ordinal mapping in the .veb file
- *       (if centroid count is more than 1)
- *   <li><b>vlong</b> the length of the vector ordinal to centroid ordinal mapping in the .veb file
- *       (if centroid count is more than 1)
+ *   <li><b>[float]</b> the centroid of the vectors
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
  */
@@ -99,51 +92,21 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veb";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
-  public static final int DEFAULT_NUM_VECTORS_PER_CLUSTER = 10_000_000;
-  // we set minimum here as we store the cluster ID in a short, and we need to ensure that we can
-  // cluster the max number of docs supported in a segment
-  // additionally, too many clusters puts a strain on the heap & disk space during merge
-  public static final int MIN_NUM_VECTORS_PER_CLUSTER = 1_000_000;
-
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private final int numVectorsPerCluster;
   private final BinaryFlatVectorsScorer scorer =
       new Lucene912BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** Creates a new instance with the default number of vectors per cluster. */
   public Lucene912BinaryQuantizedVectorsFormat() {
-    this(NAME, DEFAULT_NUM_VECTORS_PER_CLUSTER);
-  }
-
-  /**
-   * Creates a new instance with the specified number of vectors per cluster.
-   *
-   * @param numVectorsPerCluster the number of vectors per cluster, when the number of vectors
-   *     exceed this value, the vectors are clustered. Note, a smaller value will result in more
-   *     clusters. But this will increase heap usage, indexing time and search time at the cost of
-   *     slightly improved search recall.
-   */
-  public Lucene912BinaryQuantizedVectorsFormat(int numVectorsPerCluster) {
     super(NAME);
-    if (numVectorsPerCluster < MIN_NUM_VECTORS_PER_CLUSTER) {
-      throw new IllegalArgumentException(
-          "numVectorsPerCluster must be at least " + MIN_NUM_VECTORS_PER_CLUSTER);
-    }
-    this.numVectorsPerCluster = numVectorsPerCluster;
-  }
-
-  // for testing, purposefully bypasses the check for minimum numVectorsPerCluster & not public
-  Lucene912BinaryQuantizedVectorsFormat(String name, int numVectorsPerCluster) {
-    super(name);
-    this.numVectorsPerCluster = numVectorsPerCluster;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene912BinaryQuantizedVectorsWriter(
-        scorer, numVectorsPerCluster, rawVectorFormat.fieldsWriter(state), state);
+        scorer, rawVectorFormat.fieldsWriter(state), state);
   }
 
   @Override
@@ -156,8 +119,6 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   public String toString() {
     return "Lucene912BinaryQuantizedVectorsFormat(name="
         + NAME
-        + ", numVectorsPerCluster="
-        + numVectorsPerCluster
         + ", flatVectorScorer="
         + scorer
         + ")";

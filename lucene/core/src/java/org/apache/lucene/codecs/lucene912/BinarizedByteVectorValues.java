@@ -28,8 +28,6 @@ import org.apache.lucene.search.VectorScorer;
  * @lucene.experimental
  */
 public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
-  /** Returns the cluster ID for the vector in the range [0, 255] */
-  public abstract short clusterId() throws IOException;
 
   public static byte encodeClusterIdToByte(short clusterId) {
     return (byte) clusterId;

@@ -24,23 +24,21 @@ import java.io.IOException;
  * @lucene.experimental
  */
 public interface RandomAccessBinarizedQueryByteVectorValues {
-  float getCentroidDistance(int targetOrd, int centroidOrd) throws IOException;
+  float getCentroidDistance(int targetOrd) throws IOException;
 
-  float getLower(int targetOrd, int centroidOrd) throws IOException;
+  float getLower(int targetOrd) throws IOException;
 
-  float getWidth(int targetOrd, int centroidOrd) throws IOException;
+  float getWidth(int targetOrd) throws IOException;
 
-  float getNormVmC(int targetOrd, int centroidOrd) throws IOException;
+  float getNormVmC(int targetOrd) throws IOException;
 
-  float getVDotC(int targetOrd, int centroidOrd) throws IOException;
+  float getVDotC(int targetOrd) throws IOException;
 
-  int sumQuantizedValues(int targetOrd, int centroidOrd) throws IOException;
+  int sumQuantizedValues(int targetOrd) throws IOException;
 
-  byte[] vectorValue(int targetOrd, int centroidOrd) throws IOException;
+  byte[] vectorValue(int targetOrd) throws IOException;
 
   int size() throws IOException;
-
-  int centroidsCount();
 
   int dimension();
 

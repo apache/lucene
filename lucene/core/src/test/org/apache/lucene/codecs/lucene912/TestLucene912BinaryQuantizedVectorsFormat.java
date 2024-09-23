@@ -17,9 +17,7 @@
 package org.apache.lucene.codecs.lucene912;
 
 import static java.lang.String.format;
-import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.NAME;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.quantization.KMeans.Results.nearestCentroid;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -95,20 +93,15 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene912BinaryQuantizedVectorsFormat(90_000_000);
+            return new Lucene912BinaryQuantizedVectorsFormat();
           }
         };
     String expectedPattern =
-        "Lucene912BinaryQuantizedVectorsFormat(name=Lucene912BinaryQuantizedVectorsFormat, numVectorsPerCluster=90000000, flatVectorScorer=Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()))";
+        "Lucene912BinaryQuantizedVectorsFormat(name=Lucene912BinaryQuantizedVectorsFormat, flatVectorScorer=Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()))";
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
     var memSegScorer =
         format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
     assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
-  }
-
-  public void testLimits() {
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene912BinaryQuantizedVectorsFormat(12));
   }
 
   @Override
@@ -124,24 +117,13 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
   public void testQuantizedVectorsWriteAndRead() throws IOException {
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
-    int numberOfVectorsPerCluster = random().nextInt(numVectors / 80, numVectors + 1);
     int dims = random().nextInt(4, 65);
-    IndexWriterConfig conf =
-        newIndexWriterConfig()
-            .setCodec(
-                new Lucene912Codec() {
-                  @Override
-                  public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                    return new Lucene912BinaryQuantizedVectorsFormat(
-                        NAME, numberOfVectorsPerCluster);
-                  }
-                });
 
     float[] vector = randomVector(dims);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     KnnFloatVectorField knnField = new KnnFloatVectorField(fieldName, vector, similarityFunction);
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(dir, conf)) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           knnField.setVectorValue(randomVector(dims));
@@ -161,11 +143,8 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           OffHeapBinarizedVectorValues qvectorValues =
               ((Lucene912BinaryQuantizedVectorsReader.BinarizedVectorValues) vectorValues)
                   .getQuantizedVectorValues();
-          float[][] centroids = qvectorValues.getCentroids();
-          assertEquals(centroids[0].length, dims);
-          int expectedNumCentroids = Math.max(1, numVectors / numberOfVectorsPerCluster);
-          int maxNumClusters = Math.max(1, numVectors / 100);
-          assertEquals(centroids.length, Math.min(expectedNumCentroids, maxNumClusters));
+          float[] centroid = qvectorValues.getCentroid();
+          assertEquals(centroid.length, dims);
 
           int descritizedDimension = BQVectorUtils.discretize(dims, 64);
           BinaryQuantizer quantizer =
@@ -176,13 +155,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
                 new Lucene912BinaryQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
           }
 
-          int correctCentroidAssigns = 0;
           while (vectorValues.nextDoc() != NO_MORE_DOCS) {
-            int nearestCentroid = nearestCentroid(vectorValues.vectorValue(), centroids);
-            if (nearestCentroid == qvectorValues.clusterId()) {
-              correctCentroidAssigns++;
-            }
-            float[] centroid = centroids[qvectorValues.clusterId()];
             float[] corrections =
                 quantizer.quantizeForIndex(vectorValues.vectorValue(), expectedVector, centroid);
             assertArrayEquals(expectedVector, qvectorValues.vectorValue());
@@ -190,11 +163,6 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
             for (int i = 0; i < corrections.length; i++) {
               assertEquals(corrections[i], qvectorValues.getCorrectiveTerms()[i], 0.00001f);
             }
-          }
-          // Because we recalculate centroids as the last step,
-          // it could happen that some vectors have slightly wrong centroids assigned
-          if (correctCentroidAssigns < numVectors * 0.9) {
-            fail("Centroids were not assigned correctly");
           }
         }
       }
