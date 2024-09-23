@@ -2,6 +2,7 @@
 #define _COMMON_H_
 
 #include <attributes.h>
+#include <dpu_characteristics.h>
 #include <stdint.h>
 
 /**
@@ -76,8 +77,8 @@ typedef __mram_ptr uint8_t *mram_ptr_t;
  * Used to store MRAM 8 byte word before write.
  */
 extern union __dma_aligned mram_unaligned_access_buffer_lucene_t {
-    __dma_aligned uint8_t char_buff[NR_THREADS << 3];
-    __dma_aligned int int_buff[NR_THREADS << 1];
+    __dma_aligned uint8_t char_buff[DPU_NR_THREADS << 3];
+    __dma_aligned int int_buff[DPU_NR_THREADS << 1];
 } mram_unaligned_access_buffer_lucene;
 
 #undef mram_write_int_atomic

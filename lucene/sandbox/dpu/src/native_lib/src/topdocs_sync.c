@@ -120,7 +120,6 @@ typedef struct {
     uint32_t nr_ranks;
 } run_sync_loop_context_t;
 
-static const uint32_t MAX_NR_DPUS_PER_RANK = DPU_MAX_NR_CIS * DPU_MAX_NR_DPUS_PER_CI;
 static const uint32_t MAX_NB_SCORES = 8;
 // NOLINTBEGIN (*-avoid-non-const-global-variables)
 static pque_array_t pque_pool = { NULL, 0 };
