@@ -373,43 +373,57 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  static void writeQueryBinarizedVectorData(
-      IndexOutput output,
-      BinaryQuantizer quantizer,
+  static DocsWithFieldSet writeBinarizedVectorAndQueryData(
+      IndexOutput binarizedVectorData,
+      IndexOutput binarizedQueryData,
       FloatVectorValues floatVectorValues,
-      float[] centroid)
+      float[] centroid,
+      BinaryQuantizer binaryQuantizer)
       throws IOException {
-    byte[] vector =
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    byte[] toIndex = new byte[BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8];
+    byte[] toQuery =
         new byte
             [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
-    int correctionsCount = quantizer.getSimilarity() != EUCLIDEAN ? 5 : 3;
-    final ByteBuffer correctionsBuffer =
-        ByteBuffer.allocate(Float.BYTES * correctionsCount + Short.BYTES)
+    int queryCorrectionCount = binaryQuantizer.getSimilarity() != EUCLIDEAN ? 5 : 3;
+    final ByteBuffer queryCorrectionsBuffer =
+        ByteBuffer.allocate(Float.BYTES * queryCorrectionCount + Short.BYTES)
             .order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = floatVectorValues.nextDoc();
         docV != NO_MORE_DOCS;
         docV = floatVectorValues.nextDoc()) {
-      float[] floatVector = floatVectorValues.vectorValue();
-      BinaryQuantizer.QueryFactors factors =
-          quantizer.quantizeForQuery(floatVector, vector, centroid);
-      output.writeBytes(vector, vector.length);
+      // write index vector
+      BinaryQuantizer.QueryAndIndexResults r =
+          binaryQuantizer.quantizeQueryAndIndex(
+              floatVectorValues.vectorValue(), toIndex, toQuery, centroid);
+      binarizedVectorData.writeBytes(toIndex, toIndex.length);
+      float[] corrections = r.indexFeatures();
+      for (int i = 0; i < corrections.length; i++) {
+        binarizedVectorData.writeInt(Float.floatToIntBits(corrections[i]));
+      }
+      docsWithField.add(docV);
 
-      correctionsBuffer.putFloat(factors.distToC());
-      correctionsBuffer.putFloat(factors.lower());
-      correctionsBuffer.putFloat(factors.width());
+      // write query vector
+      binarizedQueryData.writeBytes(toQuery, toQuery.length);
+      BinaryQuantizer.QueryFactors factors = r.queryFeatures();
+      queryCorrectionsBuffer.putFloat(factors.distToC());
+      queryCorrectionsBuffer.putFloat(factors.lower());
+      queryCorrectionsBuffer.putFloat(factors.width());
 
-      if (quantizer.getSimilarity() != EUCLIDEAN) {
-        correctionsBuffer.putFloat(factors.normVmC());
-        correctionsBuffer.putFloat(factors.vDotC());
+      if (binaryQuantizer.getSimilarity() != EUCLIDEAN) {
+        queryCorrectionsBuffer.putFloat(factors.normVmC());
+        queryCorrectionsBuffer.putFloat(factors.vDotC());
       }
       // ensure we are positive and fit within an unsigned short value.
       assert factors.quantizedSum() >= 0 && factors.quantizedSum() <= 0xffff;
-      correctionsBuffer.putShort((short) factors.quantizedSum());
+      queryCorrectionsBuffer.putShort((short) factors.quantizedSum());
 
-      output.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
-      correctionsBuffer.rewind();
+      binarizedQueryData.writeBytes(
+          queryCorrectionsBuffer.array(), queryCorrectionsBuffer.array().length);
+      queryCorrectionsBuffer.rewind();
     }
+    return docsWithField;
   }
 
   static DocsWithFieldSet writeBinarizedVectorData(
@@ -484,10 +498,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         floatVectorValues = new NormalizedFloatVectorValues(floatVectorValues);
       }
-      BinarizedFloatVectorValues binarizedVectorValues =
-          new BinarizedFloatVectorValues(floatVectorValues, quantizer, centroid);
       DocsWithFieldSet docsWithField =
-          writeBinarizedVectorData(tempQuantizedVectorData, binarizedVectorValues);
+          writeBinarizedVectorAndQueryData(
+              tempQuantizedVectorData,
+              tempScoreQuantizedVectorData,
+              floatVectorValues,
+              centroid,
+              quantizer);
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       binarizedDataInput =
@@ -497,12 +514,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           binarizedDataInput, binarizedDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(binarizedDataInput);
-      FloatVectorValues fvvForQuery =
-          KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        fvvForQuery = new NormalizedFloatVectorValues(fvvForQuery);
-      }
-      writeQueryBinarizedVectorData(tempScoreQuantizedVectorData, quantizer, fvvForQuery, centroid);
       CodecUtil.writeFooter(tempScoreQuantizedVectorData);
       IOUtils.close(tempScoreQuantizedVectorData);
       binarizedScoreDataInput =

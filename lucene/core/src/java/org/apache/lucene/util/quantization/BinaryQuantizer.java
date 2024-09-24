@@ -157,6 +157,92 @@ public class BinaryQuantizer {
     return new float[] {vl, vr};
   }
 
+  /** Results of quantizing a vector for both querying and indexing */
+  public record QueryAndIndexResults(float[] indexFeatures, QueryFactors queryFeatures) {}
+
+  public QueryAndIndexResults quantizeQueryAndIndex(
+      float[] vector, byte[] indexDestination, byte[] queryDestination, float[] centroid) {
+    assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
+    assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
+    assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
+
+    if (this.discretizedDimensions != indexDestination.length * 8) {
+      throw new IllegalArgumentException(
+          "vector and quantized vector destination must be compatible dimensions: "
+              + BQVectorUtils.discretize(vector.length, 64)
+              + " [ "
+              + this.discretizedDimensions
+              + " ]"
+              + "!= "
+              + indexDestination.length
+              + " * 8");
+    }
+
+    if (this.discretizedDimensions != (queryDestination.length * 8) / BQSpaceUtils.B_QUERY) {
+      throw new IllegalArgumentException(
+          "vector and quantized vector destination must be compatible dimensions: "
+              + vector.length
+              + " [ "
+              + this.discretizedDimensions
+              + " ]"
+              + "!= ("
+              + queryDestination.length
+              + " * 8) / "
+              + BQSpaceUtils.B_QUERY);
+    }
+
+    if (vector.length != centroid.length) {
+      throw new IllegalArgumentException(
+          "vector and centroid dimensions must be the same: "
+              + vector.length
+              + "!= "
+              + centroid.length);
+    }
+    vector = ArrayUtil.copyArray(vector);
+    float distToC = VectorUtil.squareDistance(vector, centroid);
+    // only need vdotc for dot-products similarity, but not for euclidean
+    float vDotC = similarityFunction != EUCLIDEAN ? VectorUtil.dotProduct(vector, centroid) : 0f;
+    BQVectorUtils.subtractInPlace(vector, centroid);
+    // both euclidean and dot-product need the norm of the vector, just at different times
+    float normVmC = BQVectorUtils.norm(vector);
+    // quantize for index
+    packAsBinary(BQVectorUtils.pad(vector, discretizedDimensions), indexDestination);
+    if (similarityFunction != EUCLIDEAN) {
+      BQVectorUtils.divideInPlace(vector, normVmC);
+    }
+
+    // Quantize for query
+    float[] range = range(vector);
+    float lower = range[0];
+    float upper = range[1];
+    // Δ := (𝑣𝑟 − 𝑣𝑙)/(2𝐵𝑞 − 1)
+    float width = (upper - lower) / ((1 << BQSpaceUtils.B_QUERY) - 1);
+
+    QuantResult quantResult = quantize(vector, lower, width);
+    byte[] byteQuery = quantResult.result();
+
+    // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
+    // q¯ is an approximation of q′  (scalar quantized approximation)
+    // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal
+    byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
+    BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, queryDestination);
+    QueryFactors factors =
+        new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC);
+    final float[] indexCorrections;
+    if (similarityFunction == EUCLIDEAN) {
+      indexCorrections = new float[2];
+      indexCorrections[0] = (float) Math.sqrt(distToC);
+      removeSignAndDivide(vector, sqrtDimensions);
+      indexCorrections[1] = sumAndNormalize(vector, normVmC);
+    } else {
+      indexCorrections = new float[3];
+      indexCorrections[0] = computerOOQ(vector.length, vector, indexDestination);
+      indexCorrections[1] = normVmC;
+      indexCorrections[2] = vDotC;
+    }
+    return new QueryAndIndexResults(indexCorrections, factors);
+  }
+
   public float[] quantizeForIndex(float[] vector, byte[] destination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
