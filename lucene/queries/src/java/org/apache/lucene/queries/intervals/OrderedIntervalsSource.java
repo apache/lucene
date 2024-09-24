@@ -30,23 +30,11 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
     if (sources.size() == 1) {
       return sources.get(0);
     }
-    List<IntervalsSource> rewritten = deduplicate(flatten(sources));
+    List<IntervalsSource> rewritten = deduplicate(sources);
     if (rewritten.size() == 1) {
       return rewritten.get(0);
     }
     return new OrderedIntervalsSource(rewritten);
-  }
-
-  private static List<IntervalsSource> flatten(List<IntervalsSource> sources) {
-    List<IntervalsSource> flattened = new ArrayList<>();
-    for (IntervalsSource s : sources) {
-      if (s instanceof OrderedIntervalsSource) {
-        flattened.addAll(((OrderedIntervalsSource) s).subSources);
-      } else {
-        flattened.add(s);
-      }
-    }
-    return flattened;
   }
 
   private static List<IntervalsSource> deduplicate(List<IntervalsSource> sources) {
