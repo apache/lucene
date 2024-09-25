@@ -39,7 +39,6 @@ public final class MultiLeafKnnCollector implements KnnCollector {
   // the local queue of the highest similarities if we are not competitive globally
   // the size of this queue is defined by greediness
   private final FloatHeap nonCompetitiveQueue;
-  private final float greediness;
   // the queue of the local similarities to periodically update with the global queue
   private final FloatHeap updatesQueue;
   private final float[] updatesScratch;
@@ -84,7 +83,6 @@ public final class MultiLeafKnnCollector implements KnnCollector {
     if (interval <= 0) {
       throw new IllegalArgumentException("interval must be positive");
     }
-    this.greediness = greediness;
     this.interval = interval;
     this.subCollector = subCollector;
     this.globalSimilarityQueue = globalSimilarityQueue;
