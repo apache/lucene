@@ -29,14 +29,6 @@ import org.apache.lucene.search.VectorScorer;
  */
 public abstract class BinarizedByteVectorValues extends DocIdSetIterator {
 
-  public static byte encodeClusterIdToByte(short clusterId) {
-    return (byte) clusterId;
-  }
-
-  public static short decodeClusterIdFromByte(byte bClusterId) {
-    return (short) Byte.toUnsignedInt(bClusterId);
-  }
-
   public abstract float[] getCorrectiveTerms();
 
   public abstract byte[] vectorValue() throws IOException;
