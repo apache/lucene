@@ -91,17 +91,22 @@ public class MergeState {
   /** Indicates if the index needs to be sorted * */
   public boolean needsIndexSort;
 
+  /** Progress and state for an executing merge. */
+  public final MergePolicy.OneMergeProgress mergeProgress;
+
   /** Sole constructor. */
   MergeState(
       List<CodecReader> readers,
       SegmentInfo segmentInfo,
       InfoStream infoStream,
-      Executor intraMergeTaskExecutor)
+      Executor intraMergeTaskExecutor,
+      MergePolicy.OneMergeProgress mergeProgress)
       throws IOException {
     verifyIndexSort(readers, segmentInfo);
     this.infoStream = infoStream;
     int numReaders = readers.size();
     this.intraMergeTaskExecutor = intraMergeTaskExecutor;
+    this.mergeProgress = mergeProgress;
 
     maxDocs = new int[numReaders];
     fieldsProducers = new FieldsProducer[numReaders];
@@ -284,7 +289,8 @@ public class MergeState {
       int[] maxDocs,
       InfoStream infoStream,
       Executor intraMergeTaskExecutor,
-      boolean needsIndexSort) {
+      boolean needsIndexSort,
+      MergePolicy.OneMergeProgress mergeProgress) {
     this.docMaps = docMaps;
     this.segmentInfo = segmentInfo;
     this.mergeFieldInfos = mergeFieldInfos;
@@ -301,5 +307,6 @@ public class MergeState {
     this.infoStream = infoStream;
     this.intraMergeTaskExecutor = intraMergeTaskExecutor;
     this.needsIndexSort = needsIndexSort;
+    this.mergeProgress = mergeProgress;
   }
 }
