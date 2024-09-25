@@ -107,7 +107,7 @@ public abstract class DataInput implements Cloneable {
    * @param limit the number of int values to read.
    * @lucene.experimental
    */
-  public final void readGroupVInts(long[] dst, int limit) throws IOException {
+  public void readGroupVInts(long[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
       readGroupVInt(dst, i);
@@ -118,7 +118,7 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Override if you have a efficient implementation. In general this is when the input supports
+   * Override if you have an efficient implementation. In general this is when the input supports
    * random access.
    */
   protected void readGroupVInt(long[] dst, int offset) throws IOException {
