@@ -64,14 +64,20 @@ public final class MultiLeafKnnCollector implements KnnCollector {
 
   /**
    * Create a new MultiLeafKnnCollector.
+   *
    * @param k the number of neighbors to collect
    * @param greediness the greediness of the global search
-   * @param interval (by number of collected values) the interval to synchronize the local and global queues
+   * @param interval (by number of collected values) the interval to synchronize the local and
+   *     global queues
    * @param globalSimilarityQueue the global queue of the highest similarities collected so far
    * @param subCollector the local collector
    */
   public MultiLeafKnnCollector(
-    int k, float greediness, int interval, BlockingFloatHeap globalSimilarityQueue, AbstractKnnCollector subCollector) {
+      int k,
+      float greediness,
+      int interval,
+      BlockingFloatHeap globalSimilarityQueue,
+      AbstractKnnCollector subCollector) {
     if (greediness <= 0 || greediness > 1) {
       throw new IllegalArgumentException("greediness must be in (0,1]");
     }
