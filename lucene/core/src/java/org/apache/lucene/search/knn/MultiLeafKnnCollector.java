@@ -77,8 +77,8 @@ public final class MultiLeafKnnCollector implements KnnCollector {
       int interval,
       BlockingFloatHeap globalSimilarityQueue,
       AbstractKnnCollector subCollector) {
-    if (greediness <= 0 || greediness > 1) {
-      throw new IllegalArgumentException("greediness must be in (0,1]");
+    if (greediness < 0 || greediness > 1) {
+      throw new IllegalArgumentException("greediness must be in [0,1]");
     }
     if (interval <= 0) {
       throw new IllegalArgumentException("interval must be positive");
