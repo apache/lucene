@@ -80,4 +80,17 @@ public class FixedBitSetBenchmark {
   public void fixedBitSetAndVector() {
     fixedBitSetA.and(fixedBitSetB);
   }
+
+  @Benchmark
+  public void fixedBitSetXor() {
+    fixedBitSetA.xor(fixedBitSetB);
+  }
+
+  @Benchmark
+  @Fork(
+      value = 3,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public void fixedBitSetXorVector() {
+    fixedBitSetA.xor(fixedBitSetB);
+  }
 }

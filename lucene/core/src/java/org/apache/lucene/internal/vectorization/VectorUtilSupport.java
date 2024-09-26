@@ -46,4 +46,6 @@ public interface VectorUtilSupport {
   int squareDistance(byte[] a, byte[] b);
 
   void andLongArray(long[] a, long[] b);
+
+  void xorLongArray(long[] a, long[] b);
 }

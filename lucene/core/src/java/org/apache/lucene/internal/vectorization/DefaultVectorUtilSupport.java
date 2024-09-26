@@ -210,4 +210,12 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       Arrays.fill(a, b.length, a.length, 0L);
     }
   }
+
+  @Override
+  public void xorLongArray(long[] a, long[] b) {
+    int pos = Math.min(a.length, b.length);
+    while (--pos >= 0) {
+      a[pos] ^= b[pos];
+    }
+  }
 }

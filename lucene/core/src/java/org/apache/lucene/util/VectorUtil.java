@@ -311,4 +311,8 @@ public final class VectorUtil {
   public static void andLongArray(long[] a, long[] b) {
     IMPL.andLongArray(a, b);
   }
+
+  public static void xorLongArray(long[] a, long[] b) {
+    IMPL.xorLongArray(a, b);
+  }
 }

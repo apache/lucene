@@ -368,9 +368,9 @@ public final class FixedBitSet extends BitSet {
 
   /** this = this XOR other */
   public void xor(FixedBitSet other) {
-    xor(other.bits, other.numWords);
+    VectorUtil.xorLongArray(this.bits, other.bits);
   }
-
+  
   /** Does in-place XOR of the bits provided by the iterator. */
   public void xor(DocIdSetIterator iter) throws IOException {
     checkUnpositioned(iter);

@@ -23,6 +23,7 @@ import static jdk.incubator.vector.VectorOperators.B2I;
 import static jdk.incubator.vector.VectorOperators.B2S;
 import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
+import static jdk.incubator.vector.VectorOperators.XOR;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
 import java.lang.foreign.MemorySegment;
@@ -782,6 +783,22 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     if (a.length > b.length) {
       Arrays.fill(a, b.length, a.length, 0L);
+    }
+  }
+
+  @Override
+  public void xorLongArray(long[] a, long[] b) {
+    int i = 0;
+    int aBound = LONG_SPECIES.loopBound(a.length);
+    int bBound = LONG_SPECIES.loopBound(b.length);
+    for (; i < aBound && i < bBound; i += LONG_SPECIES.length()) {
+      LongVector vecA = LongVector.fromArray(LONG_SPECIES, a, i);
+      LongVector vecB = LongVector.fromArray(LONG_SPECIES, b, i);
+      LongVector xoredVector = vecA.lanewise(XOR, vecB);
+      xoredVector.intoArray(a, i);
+    }
+    for (; i < a.length && i < b.length; i++) {
+      a[i] ^= b[i];
     }
   }
 }
