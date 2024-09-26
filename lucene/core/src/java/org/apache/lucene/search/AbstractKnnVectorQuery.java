@@ -213,7 +213,11 @@ abstract class AbstractKnnVectorQuery extends Query {
         if (leafCollector != null) {
           BulkScorer scorer = seedWeight.bulkScorer(ctx);
           if (scorer != null) {
-            scorer.score(leafCollector, ctx.reader().getLiveDocs());
+            scorer.score(
+                leafCollector,
+                ctx.reader().getLiveDocs(),
+                0 /* min */,
+                DocIdSetIterator.NO_MORE_DOCS /* max */);
           }
           leafCollector.finish();
         }

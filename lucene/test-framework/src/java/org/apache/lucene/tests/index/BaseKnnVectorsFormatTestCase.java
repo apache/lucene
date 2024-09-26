@@ -1466,7 +1466,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       null,
                       visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
-          assertTrue(results.totalHits.value <= visitedLimit());
+          assertTrue(results.totalHits.value() <= visitedLimit);
         }
       }
     }

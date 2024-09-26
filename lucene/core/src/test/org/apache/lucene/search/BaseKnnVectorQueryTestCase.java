@@ -656,7 +656,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           // test that
           assert reader.hasDeletions() == false;
           assertEquals(expected, results.scoreDocs.length);
-          assertTrue(results.totalHits.value >= results.scoreDocs.length);
+          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
           float last = Float.MAX_VALUE;
           for (ScoreDoc scoreDoc : results.scoreDocs) {
@@ -673,7 +673,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           // test that
           assert reader.hasDeletions() == false;
           assertEquals(expected, results.scoreDocs.length);
-          assertTrue(results.totalHits.value >= results.scoreDocs.length);
+          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
           last = Float.MAX_VALUE;
           for (ScoreDoc scoreDoc : results.scoreDocs) {
@@ -690,7 +690,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           // test that
           assert reader.hasDeletions() == false;
           assertEquals(expected, results.scoreDocs.length);
-          assertTrue(results.totalHits.value >= results.scoreDocs.length);
+          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
           last = Float.MAX_VALUE;
           for (ScoreDoc scoreDoc : results.scoreDocs) {
