@@ -464,7 +464,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   public void testAnd() {
-    //Need to set -Dtests.defaultvectorization=true
+    // Need to set -Dtests.defaultvectorization=true
     Random random = random();
 
     int numBits1 = TestUtil.nextInt(random, 1000, 2000);
@@ -491,7 +491,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   public void testXOr() {
-    //Need to set -Dtests.defaultvectorization=true
+    // Need to set -Dtests.defaultvectorization=true
     Random random = random();
 
     int numBits1 = TestUtil.nextInt(random, 1000, 2000);

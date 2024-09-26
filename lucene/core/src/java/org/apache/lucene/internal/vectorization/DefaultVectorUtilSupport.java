@@ -18,7 +18,6 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.util.Arrays;
-
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 

@@ -18,7 +18,6 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.util.FixedBitSet;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -57,11 +56,10 @@ public class FixedBitSetBenchmark {
     fixedBitSetA = new FixedBitSet(size);
     fixedBitSetB = new FixedBitSet(size);
 
-
     for (int i = 0; i < size; ++i) {
       if (random.nextBoolean()) {
         fixedBitSetA.set(i);
-      } 
+      }
       if (random.nextBoolean()) {
         fixedBitSetB.set(i);
       }
