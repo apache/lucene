@@ -56,7 +56,7 @@ public class MismatchedLeafReader extends FilterLeafReader {
     return new StoredFields() {
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-        inStoredFields.document(docID, new MismatchedVisitor(visitor));
+        inStoredFields.document(docID, new MismatchedVisitor(visitor, shuffled));
       }
     };
   }
@@ -109,12 +109,12 @@ public class MismatchedLeafReader extends FilterLeafReader {
           new FieldInfo(
               oldInfo.name, // name
               i, // number
-              oldInfo.hasVectors(), // storeTermVector
+              oldInfo.hasTermVectors(), // storeTermVector
               oldInfo.omitsNorms(), // omitNorms
               oldInfo.hasPayloads(), // storePayloads
               oldInfo.getIndexOptions(), // indexOptions
               oldInfo.getDocValuesType(), // docValuesType
-              oldInfo.hasDocValuesSkipIndex(), // hasDocValuesSkipIndex
+              oldInfo.docValuesSkipIndexType(), // docValuesSkipIndexType
               oldInfo.getDocValuesGen(), // dvGen
               oldInfo.attributes(), // attributes
               oldInfo.getPointDimensionCount(), // data dimension count
@@ -135,11 +135,13 @@ public class MismatchedLeafReader extends FilterLeafReader {
   /** StoredFieldsVisitor that remaps actual field numbers to our new shuffled ones. */
   // TODO: its strange this part of our IR api exposes FieldInfo,
   // no other "user-accessible" codec apis do this?
-  class MismatchedVisitor extends StoredFieldVisitor {
+  static class MismatchedVisitor extends StoredFieldVisitor {
     final StoredFieldVisitor in;
+    final FieldInfos shuffled;
 
-    MismatchedVisitor(StoredFieldVisitor in) {
+    MismatchedVisitor(StoredFieldVisitor in, FieldInfos shuffled) {
       this.in = in;
+      this.shuffled = shuffled;
     }
 
     @Override

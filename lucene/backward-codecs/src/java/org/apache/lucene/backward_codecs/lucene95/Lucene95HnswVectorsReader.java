@@ -242,6 +242,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
     if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
           "field=\""
@@ -265,6 +268,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
     if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
           "field=\""

@@ -165,7 +165,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
   }
 
   public void testScoringInt7() throws Exception {
-    vectorScoringTest(7, random().nextBoolean());
+    vectorScoringTest(7, false);
   }
 
   private void vectorScoringTest(int bits, boolean compress) throws IOException {

@@ -493,7 +493,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     final IndexReader r = w.getReader();
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -539,7 +539,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     ds.search(ddq, collectorManager, List.of());
 
-    // assertEquals(100, dsr.hits.totalHits.value);
+    // assertEquals(100, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=-2147483648 childCount=2\n  b (75)\n  a (25)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
@@ -557,7 +557,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     ddq.add("dim", "b");
     ds.search(ddq, fieldCollectorManager, List.of(dimCollectorManager));
 
-    // assertEquals(75, dsr.hits.totalHits.value);
+    // assertEquals(75, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=-2147483648 childCount=2\n  b (75)\n  a (25)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
@@ -575,7 +575,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     ddq.add("field", LongPoint.newRangeQuery("field", 0L, 10L));
     ds.search(ddq, dimCollectorManager, List.of(fieldCollectorManager));
 
-    // assertEquals(11, dsr.hits.totalHits.value);
+    // assertEquals(11, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=-2147483648 childCount=2\n  b (8)\n  a (3)\n",
         getTopChildrenByCount(dimCountRecorder, tr, 10, "dim").toString());
@@ -1555,7 +1555,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     IndexReader r = writer.getReader();
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -1609,7 +1609,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     }
 
     // Test simple drill-down:
-    assertEquals(1, s.search(ddq, 10).totalHits.value);
+    assertEquals(1, s.search(ddq, 10).totalHits.value());
 
     // Test drill-sideways after drill-down
     DrillSideways ds =

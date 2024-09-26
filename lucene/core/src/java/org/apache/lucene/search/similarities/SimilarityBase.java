@@ -18,8 +18,6 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
@@ -43,33 +41,14 @@ public abstract class SimilarityBase extends Similarity {
   /** For {@link #log2(double)}. Precomputed for efficiency reasons. */
   private static final double LOG_2 = Math.log(2);
 
-  /**
-   * True if overlap tokens (tokens with a position of increment of zero) are discounted from the
-   * document's length.
-   */
-  protected boolean discountOverlaps = true;
-
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  public SimilarityBase() {}
-
-  /**
-   * Determines whether overlap tokens (Tokens with 0 position increment) are ignored when computing
-   * norm. By default this is true, meaning overlap tokens do not count when computing norms.
-   *
-   * @lucene.experimental
-   * @see #computeNorm
-   */
-  public void setDiscountOverlaps(boolean v) {
-    discountOverlaps = v;
+  /** Default constructor: parameter-free */
+  public SimilarityBase() {
+    super();
   }
 
-  /**
-   * Returns true if overlap tokens are discounted from the document's length.
-   *
-   * @see #setDiscountOverlaps
-   */
-  public boolean getDiscountOverlaps() {
-    return discountOverlaps;
+  /** Primary constructor. */
+  public SimilarityBase(boolean discountOverlaps) {
+    super(discountOverlaps);
   }
 
   @Override
@@ -177,20 +156,6 @@ public abstract class SimilarityBase extends Similarity {
     for (int i = 0; i < 256; i++) {
       LENGTH_TABLE[i] = SmallFloat.byte4ToInt((byte) i);
     }
-  }
-
-  /** Encodes the document length in the same way as {@link BM25Similarity}. */
-  @Override
-  public final long computeNorm(FieldInvertState state) {
-    final int numTerms;
-    if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
-      numTerms = state.getUniqueTermCount();
-    } else if (discountOverlaps) {
-      numTerms = state.getLength() - state.getNumOverlap();
-    } else {
-      numTerms = state.getLength();
-    }
-    return SmallFloat.intToByte4(numTerms);
   }
 
   // ----------------------------- Static methods ------------------------------

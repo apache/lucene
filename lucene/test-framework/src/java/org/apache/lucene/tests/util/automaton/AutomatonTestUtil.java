@@ -156,15 +156,7 @@ public class AutomatonTestUtil {
     private final Automaton a;
     private final Transition[][] transitions;
 
-    private static class ArrivingTransition {
-      final int from;
-      final Transition t;
-
-      public ArrivingTransition(int from, Transition t) {
-        this.from = from;
-        this.t = t;
-      }
-    }
+    private record ArrivingTransition(int from, Transition t) {}
 
     public RandomAcceptedStrings(Automaton a) {
       this.a = a;

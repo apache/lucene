@@ -255,7 +255,7 @@ public class TestBoolean2 extends LuceneTestCase {
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // sanity check expected num matches in bigSearcher
-    assertEquals(mulFactor * topDocs.totalHits.value, bigSearcher.count(query));
+    assertEquals(mulFactor * topDocs.totalHits.value(), bigSearcher.count(query));
 
     // now check 2 diff scorers from the bigSearcher as well
     collectorManager = new TopScoreDocCollectorManager(topDocsToCheck, Integer.MAX_VALUE);
@@ -399,7 +399,7 @@ public class TestBoolean2 extends LuceneTestCase {
         q3.add(q1, BooleanClause.Occur.SHOULD);
         q3.add(new PrefixQuery(new Term("field2", "b")), BooleanClause.Occur.SHOULD);
         assertEquals(
-            mulFactor * topDocs.totalHits.value + NUM_EXTRA_DOCS / 2,
+            mulFactor * topDocs.totalHits.value() + NUM_EXTRA_DOCS / 2,
             bigSearcher.count(q3.build()));
 
         // test diff (randomized) scorers produce the same results on bigSearcher as well

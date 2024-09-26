@@ -186,7 +186,7 @@ abstract class AbstractKnnVectorQuery extends Query {
             executeSeedQuery(ctx, seedWeight),
             cost + 1,
             timeLimitingKnnCollectorManager);
-    if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO
+    if (results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
