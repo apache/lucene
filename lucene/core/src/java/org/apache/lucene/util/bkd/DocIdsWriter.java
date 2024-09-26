@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.bkd;
 
+import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
@@ -24,9 +26,6 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocBaseBitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
-
-import java.io.IOException;
-import java.util.Arrays;
 
 final class DocIdsWriter {
 
