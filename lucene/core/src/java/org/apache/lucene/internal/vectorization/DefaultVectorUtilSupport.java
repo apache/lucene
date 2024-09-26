@@ -17,6 +17,8 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import java.util.Arrays;
+
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -200,6 +202,12 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public void andLongArray(long[] a, long[] b) {
-    
+    int pos = Math.min(a.length, b.length);
+    while (--pos >= 0) {
+      a[pos] &= b[pos];
+    }
+    if (a.length > b.length) {
+      Arrays.fill(a, b.length, a.length, 0L);
+    }
   }
 }

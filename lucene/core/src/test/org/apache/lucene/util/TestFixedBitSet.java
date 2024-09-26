@@ -485,7 +485,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     assertArrayEquals(fixedBitSet1.getBits(), fixedBitSet1b.getBits());
 
     fixedBitSet1a.and(fixedBitSet2);
-    fixedBitSet1b.andVector(fixedBitSet2);
+    fixedBitSet1b.and(fixedBitSet2);
 
     assertArrayEquals(fixedBitSet1a.getBits(), fixedBitSet1b.getBits());
   }

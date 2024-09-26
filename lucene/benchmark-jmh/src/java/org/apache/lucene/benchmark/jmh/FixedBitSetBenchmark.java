@@ -20,7 +20,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.VectorUtil;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -79,6 +78,6 @@ public class FixedBitSetBenchmark {
       value = 3,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public void fixedBitSetAndVector() {
-    fixedBitSetA.andVector(fixedBitSetB);
+    fixedBitSetA.and(fixedBitSetB);
   }
 }
