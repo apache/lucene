@@ -153,14 +153,14 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   /**
    * Returns a new iterator that maps the provided docIds to the vector ordinals.
    *
-   * <p>This method assumes that all docIds have corresponding ordinals.
+   * <p>This method assumes that all docIds have corresponding .
    *
    * @lucene.internal
    * @lucene.experimental
    */
   @Override
   protected DocIdSetIterator convertDocIdsToVectorOrdinals(
-      LeafReaderContext ctx, DocIdSetIterator docIds) throws IOException {
-    return ctx.reader().getByteVectorValues(field).convertDocIdsToVectorOrdinals(docIds);
+      LeafReader reader, DocIdSetIterator docIds) throws IOException {
+    return reader.getByteVectorValues(field).convertDocIdsToVectorOrdinals(docIds);
   }
 }

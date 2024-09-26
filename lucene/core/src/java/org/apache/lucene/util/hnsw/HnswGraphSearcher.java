@@ -73,8 +73,8 @@ public class HnswGraphSearcher {
   }
 
   /**
-   * Searches the HNSW graph for the nearest neighbors of a query vector, starting from the
-   * provided entry points.
+   * Searches the HNSW graph for the nearest neighbors of a query vector, starting from the provided
+   * entry points.
    *
    * @param scorer the scorer to compare the query with the nodes
    * @param knnCollector a collector of top knn results to be returned
@@ -104,9 +104,12 @@ public class HnswGraphSearcher {
     } else {
       HnswGraphSearcher graphSearcher =
           new HnswGraphSearcher(
-              new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
+              new NeighborQueue(knnCollector.k(), true),
+              new SparseFixedBitSet(getGraphSize(graph)));
       int[] entryPointOrdIntsArr = entryPointOrdInts.stream().mapToInt(Integer::intValue).toArray();
-      graphSearcher.searchLevel(knnCollector, scorer, 0, entryPointOrdIntsArr, graph, acceptOrds);
+      // We use provided entry point ordinals to search the complete graph (level 0)
+      graphSearcher.searchLevel(
+          knnCollector, scorer, 0 /* level */, entryPointOrdIntsArr, graph, acceptOrds);
     }
   }
 

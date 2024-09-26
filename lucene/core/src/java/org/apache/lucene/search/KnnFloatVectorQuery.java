@@ -163,7 +163,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    */
   @Override
   protected DocIdSetIterator convertDocIdsToVectorOrdinals(
-      LeafReaderContext ctx, DocIdSetIterator docIds) throws IOException {
-    return ctx.reader().getFloatVectorValues(field).convertDocIdsToVectorOrdinals(docIds);
+      LeafReader reader, DocIdSetIterator docIds) throws IOException {
+    return reader.getFloatVectorValues(field).convertDocIdsToVectorOrdinals(docIds);
   }
 }

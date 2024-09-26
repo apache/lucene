@@ -210,6 +210,13 @@ abstract class AbstractKnnVectorQuery extends Query {
       LeafCollector leafCollector;
       try {
         leafCollector = seedCollector.getLeafCollector(ctx);
+        if (leafCollector != null) {
+          BulkScorer scorer = seedWeight.bulkScorer(ctx);
+          if (scorer != null) {
+            scorer.score(leafCollector, ctx.reader().getLiveDocs());
+          }
+          leafCollector.finish();
+        }
       } catch (
           @SuppressWarnings("unused")
           CollectionTerminatedException e) {
@@ -217,23 +224,9 @@ abstract class AbstractKnnVectorQuery extends Query {
         // continue with the following leaf
         leafCollector = null;
       }
-      if (leafCollector != null) {
-        BulkScorer scorer = seedWeight.bulkScorer(ctx);
-        if (scorer != null) {
-          try {
-            scorer.score(leafCollector, ctx.reader().getLiveDocs());
-          } catch (
-              @SuppressWarnings("unused")
-              CollectionTerminatedException e) {
-            // collection was terminated prematurely
-            // continue with the following leaf
-          }
-        }
-        leafCollector.finish();
-      }
 
       TopDocs seedTopDocs = seedCollector.topDocs();
-      return convertDocIdsToVectorOrdinals(ctx, new TopDocsDISI(seedTopDocs));
+      return convertDocIdsToVectorOrdinals(ctx.reader(), new TopDocsDISI(seedTopDocs));
     } else {
       return null;
     }
@@ -246,7 +239,7 @@ abstract class AbstractKnnVectorQuery extends Query {
    * @lucene.experimental
    */
   protected abstract DocIdSetIterator convertDocIdsToVectorOrdinals(
-      LeafReaderContext ctx, DocIdSetIterator docIds) throws IOException;
+      LeafReader reader, DocIdSetIterator docIds) throws IOException;
 
   private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
       throws IOException {

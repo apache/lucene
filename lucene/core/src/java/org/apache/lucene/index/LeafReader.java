@@ -247,6 +247,8 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @param k the number of docs to return
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @param seedDocs candidate documents to seed the KNN search, or {@code null} to search without
+   *     using seeds.
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    * @lucene.experimental
@@ -297,6 +299,8 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @param k the number of docs to return
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @param seedDocs candidate documents to seed the KNN search, or {@code null} to search without
+   *     using seeds.
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    * @lucene.experimental
