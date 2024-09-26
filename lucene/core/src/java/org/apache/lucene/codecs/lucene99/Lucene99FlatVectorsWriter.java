@@ -51,6 +51,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
@@ -294,36 +295,33 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           docsWithField);
       success = true;
       final IndexInput finalVectorDataInput = vectorDataInput;
-      final RandomVectorScorerSupplier randomVectorScorerSupplier =
+      final RandomAccessVectorValues randomAccessVectorValues =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
-                vectorsScorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        finalVectorDataInput,
-                        fieldInfo.getVectorDimension() * Byte.BYTES,
-                        vectorsScorer,
-                        fieldInfo.getVectorSimilarityFunction()));
+                new OffHeapByteVectorValues.DenseOffHeapVectorValues(
+                    fieldInfo.getVectorDimension(),
+                    docsWithField.cardinality(),
+                    finalVectorDataInput,
+                    fieldInfo.getVectorDimension() * Byte.BYTES,
+                    vectorsScorer,
+                    fieldInfo.getVectorSimilarityFunction());
             case FLOAT32 ->
-                vectorsScorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        finalVectorDataInput,
-                        fieldInfo.getVectorDimension() * Float.BYTES,
-                        vectorsScorer,
-                        fieldInfo.getVectorSimilarityFunction()));
+                new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+                    fieldInfo.getVectorDimension(),
+                    docsWithField.cardinality(),
+                    finalVectorDataInput,
+                    fieldInfo.getVectorDimension() * Float.BYTES,
+                    vectorsScorer,
+                    fieldInfo.getVectorSimilarityFunction());
           };
       return new FlatCloseableRandomVectorScorerSupplier(
           () -> {
             IOUtils.close(finalVectorDataInput);
             segmentWriteState.directory.deleteFile(tempVectorData.getName());
           },
-          docsWithField.cardinality(),
-          randomVectorScorerSupplier);
+          randomAccessVectorValues,
+          vectorsScorer.getRandomVectorScorerSupplier(
+              fieldInfo.getVectorSimilarityFunction(), randomAccessVectorValues));
     } finally {
       if (success == false) {
         IOUtils.closeWhileHandlingException(vectorDataInput, tempVectorData);
@@ -497,14 +495,16 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       implements CloseableRandomVectorScorerSupplier {
 
     private final RandomVectorScorerSupplier supplier;
+    private final RandomAccessVectorValues vectors;
     private final Closeable onClose;
-    private final int numVectors;
 
     FlatCloseableRandomVectorScorerSupplier(
-        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier) {
+        Closeable onClose,
+        RandomAccessVectorValues vectorValues,
+        RandomVectorScorerSupplier supplier) {
       this.onClose = onClose;
       this.supplier = supplier;
-      this.numVectors = numVectors;
+      this.vectors = vectorValues;
     }
 
     @Override
@@ -524,7 +524,12 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public int totalVectorCount() {
-      return numVectors;
+      return vectors.size();
+    }
+
+    @Override
+    public RandomAccessVectorValues vectors() {
+      return vectors;
     }
   }
 }

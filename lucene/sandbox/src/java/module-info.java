@@ -23,7 +23,6 @@ module org.apache.lucene.sandbox {
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.idversion;
-  exports org.apache.lucene.sandbox.codecs.quantization;
   exports org.apache.lucene.sandbox.document;
   exports org.apache.lucene.sandbox.queries;
   exports org.apache.lucene.sandbox.search;
@@ -34,6 +33,7 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.facet.iterators;
   exports org.apache.lucene.sandbox.facet.cutters;
   exports org.apache.lucene.sandbox.facet.labels;
+  exports org.apache.lucene.sandbox.rbq;
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;

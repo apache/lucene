@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.codecs.quantization;
+package org.apache.lucene.util.quantization;
 
-import static org.apache.lucene.sandbox.codecs.quantization.SampleReader.createSampleReader;
+import static org.apache.lucene.util.quantization.SampleReader.createSampleReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -121,9 +121,11 @@ public class KMeans {
 
     Random random = new Random(seed);
     float[][] centroids;
-    if (numClusters == 1) {
+    if (numClusters == 1 && assignCentroidsToVectors) {
       centroids = new float[1][vectors.dimension()];
     } else {
+      restarts = numClusters == 1 ? 1 : restarts;
+      iters = numClusters == 1 ? 1 : iters;
       RandomAccessVectorValues.Floats sampleVectors =
           vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
       KMeans kmeans =
@@ -390,5 +392,35 @@ public class KMeans {
    *     expect less than {@code MAX_NUM_CENTROIDS} which is equal to 32767 centroids. Can be {@code
    *     null} if they were not computed.
    */
-  public record Results(float[][] centroids, short[] vectorCentroids) {}
+  public record Results(float[][] centroids, short[] vectorCentroids) {
+    @Override
+    public String toString() {
+      // print to string, note that centroids is an array of float arrays
+      return "Results{"
+          + "centroids="
+          // map arrays to string over the float arrays
+          + Arrays.stream(centroids)
+              .map(Arrays::toString)
+              .collect(java.util.stream.Collectors.joining("\n"))
+          + ", vectorCentroids="
+          + Arrays.toString(vectorCentroids)
+          + '}';
+    }
+
+    public static int nearestCentroid(float[] vector, float[][] centroids) {
+      if (centroids.length == 1) {
+        return 0;
+      }
+      float minDist = Float.MAX_VALUE;
+      int nearest = -1;
+      for (int i = 0; i < centroids.length; i++) {
+        float dist = VectorUtil.squareDistance(centroids[i], vector);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = i;
+        }
+      }
+      return nearest;
+    }
+  }
 }

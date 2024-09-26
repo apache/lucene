@@ -15,19 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.util.quantization;
 
-import java.io.Closeable;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
-/**
- * A supplier that creates {@link RandomVectorScorer} from an ordinal. Caller should be sure to
- * close after use
- *
- * <p>NOTE: the {@link #copy()} returned {@link RandomVectorScorerSupplier} is not necessarily
- * closeable
- */
-public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVectorScorerSupplier {
-  int totalVectorCount();
-
-  RandomAccessVectorValues vectors();
+public class TestBQSpaceUtils extends LuceneTestCase {
+  // FIXME: write me
 }

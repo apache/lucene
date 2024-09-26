@@ -15,5 +15,5 @@
  * limitations under the License.
  */
 
-/** This package implements KMeans algorithm for clustering vectors */
-package org.apache.lucene.sandbox.codecs.quantization;
+/** A package for testing binary quantization */
+package org.apache.lucene.sandbox.rbq;

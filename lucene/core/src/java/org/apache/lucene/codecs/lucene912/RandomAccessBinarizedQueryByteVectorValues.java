@@ -14,20 +14,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.lucene912;
 
-package org.apache.lucene.util.hnsw;
-
-import java.io.Closeable;
+import java.io.IOException;
 
 /**
- * A supplier that creates {@link RandomVectorScorer} from an ordinal. Caller should be sure to
- * close after use
+ * Gets access to the query vector values stored in a binary format
  *
- * <p>NOTE: the {@link #copy()} returned {@link RandomVectorScorerSupplier} is not necessarily
- * closeable
+ * @lucene.experimental
  */
-public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVectorScorerSupplier {
-  int totalVectorCount();
+public interface RandomAccessBinarizedQueryByteVectorValues {
+  float getCentroidDistance(int targetOrd) throws IOException;
 
-  RandomAccessVectorValues vectors();
+  float getLower(int targetOrd) throws IOException;
+
+  float getWidth(int targetOrd) throws IOException;
+
+  float getNormVmC(int targetOrd) throws IOException;
+
+  float getVDotC(int targetOrd) throws IOException;
+
+  int sumQuantizedValues(int targetOrd) throws IOException;
+
+  byte[] vectorValue(int targetOrd) throws IOException;
+
+  int size() throws IOException;
+
+  int dimension();
+
+  RandomAccessBinarizedQueryByteVectorValues copy() throws IOException;
 }
