@@ -156,7 +156,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   /**
    * Returns a new iterator that maps the provided docIds to the vector ordinals.
    *
-   * <p>This method assumes that all docIds have corresponding orginals.
+   * <p>This method assumes that all docIds have corresponding ordinals.
    *
    * @lucene.internal
    * @lucene.experimental
