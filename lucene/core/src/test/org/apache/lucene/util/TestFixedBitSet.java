@@ -463,6 +463,33 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     assertEquals(bitSet1.cardinality(), intersectionCount);
   }
 
+  public void testAnd() {
+    //Need to set -Dtests.defaultvectorization=true
+    Random random = random();
+
+    int numBits1 = TestUtil.nextInt(random, 1000, 2000);
+    int numBits2 = TestUtil.nextInt(random, 1000, 2000);
+
+    int count1 = TestUtil.nextInt(random, 0, numBits1 - 1);
+    int count2 = TestUtil.nextInt(random, 0, numBits2 - 1);
+
+    int[] bits1 = makeIntArray(random, count1, 0, numBits1 - 1);
+    int[] bits2 = makeIntArray(random, count2, 0, numBits2 - 1);
+
+    FixedBitSet fixedBitSet1 = makeFixedBitSet(bits1, numBits1);
+    FixedBitSet fixedBitSet1a = fixedBitSet1.clone();
+    FixedBitSet fixedBitSet1b = fixedBitSet1.clone();
+    FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
+
+    assertArrayEquals(fixedBitSet1.getBits(), fixedBitSet1a.getBits());
+    assertArrayEquals(fixedBitSet1.getBits(), fixedBitSet1b.getBits());
+
+    fixedBitSet1a.and(fixedBitSet2);
+    fixedBitSet1b.andVector(fixedBitSet2);
+
+    assertArrayEquals(fixedBitSet1a.getBits(), fixedBitSet1b.getBits());
+  }
+
   public void testAndNot() throws IOException {
     Random random = random();
 

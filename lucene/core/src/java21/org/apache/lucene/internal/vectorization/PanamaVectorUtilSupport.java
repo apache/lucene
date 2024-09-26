@@ -26,9 +26,11 @@ import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
 import java.lang.foreign.MemorySegment;
+import java.util.Arrays;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorShape;
@@ -54,6 +56,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Float> FLOAT_SPECIES;
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
+  private static final VectorSpecies<Long> LONG_SPECIES =
+      PanamaVectorConstants.PRERERRED_LONG_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
 
@@ -760,5 +764,24 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     // reduce
     return acc1.add(acc2).reduceLanes(ADD);
+  }
+
+  @Override
+  public void andLongArray(long[] a, long[] b) {
+    int i = 0;
+    int aBound = LONG_SPECIES.loopBound(a.length);
+    int bBound = LONG_SPECIES.loopBound(b.length);
+    for (; i < aBound && i < bBound; i += LONG_SPECIES.length()) {
+      LongVector vecA = LongVector.fromArray(LONG_SPECIES, a, i);
+      LongVector vecB = LongVector.fromArray(LONG_SPECIES, b, i);
+      LongVector andedVector = vecA.and(vecB);
+      andedVector.intoArray(a, i);
+    }
+    for (; i < a.length && i < b.length; i++) {
+      a[i] &= b[i];
+    }
+    if (a.length > b.length) {
+      Arrays.fill(a, b.length, a.length, 0L);
+    }
   }
 }

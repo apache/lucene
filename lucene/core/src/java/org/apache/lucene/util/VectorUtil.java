@@ -307,4 +307,8 @@ public final class VectorUtil {
     }
     return v;
   }
+
+  public static void andLongArray(long[] a, long[] b) {
+    IMPL.andLongArray(a, b);
+  }
 }

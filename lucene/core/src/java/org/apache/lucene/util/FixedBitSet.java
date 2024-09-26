@@ -409,6 +409,10 @@ public final class FixedBitSet extends BitSet {
     and(other.bits, other.numWords);
   }
 
+  public void andVector(FixedBitSet other) {
+    VectorUtil.andLongArray(this.bits, other.bits);
+  }
+
   private void and(final long[] otherArr, final int otherNumWords) {
     final long[] thisArr = this.bits;
     int pos = Math.min(this.numWords, otherNumWords);

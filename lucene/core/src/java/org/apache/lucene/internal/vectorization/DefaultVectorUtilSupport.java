@@ -197,4 +197,9 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
     return squareSum;
   }
+
+  @Override
+  public void andLongArray(long[] a, long[] b) {
+    
+  }
 }
