@@ -73,7 +73,7 @@ public class HnswGraphSearcher {
   }
 
   /**
-   * Searches the HNSW graph for for the nerest neighbors of a query vector, starting from the
+   * Searches the HNSW graph for the nearest neighbors of a query vector, starting from the
    * provided entry points.
    *
    * @param scorer the scorer to compare the query with the nodes
