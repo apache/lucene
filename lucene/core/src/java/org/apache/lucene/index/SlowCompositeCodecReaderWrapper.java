@@ -315,7 +315,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     MergedDocIterator(List<DocValuesSub<T>> subs) {
       this.it = subs.iterator();
       current = it.next();
-      currentIterator = current.sub.iterator();
+      currentIterator = currentIterator();
     }
 
     @Override
@@ -343,8 +343,16 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           return doc = NO_MORE_DOCS;
         }
         current = it.next();
-        currentIterator = current.sub.iterator();
+        currentIterator = currentIterator();
         ord = current.ordStart - 1;
+      }
+    }
+
+    private KnnVectorValues.DocIndexIterator currentIterator() {
+      if (current.sub != null) {
+        return current.sub.iterator();
+      } else {
+        return null;
       }
     }
 
