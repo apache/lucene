@@ -595,9 +595,9 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
   }
 
-  private class TopDocsDISI extends DocIdSetIterator {
-    int idx = -1;
-    List<Integer> sortedDocIdList;
+  private static class TopDocsDISI extends DocIdSetIterator {
+    private final List<Integer> sortedDocIdList;
+    private int idx = -1;
 
     public TopDocsDISI(TopDocs topDocs) {
       sortedDocIdList = new ArrayList<Integer>(topDocs.scoreDocs.length);
