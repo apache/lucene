@@ -104,7 +104,7 @@ public class HnswGraphSearcher {
     } else {
       HnswGraphSearcher graphSearcher =
           new HnswGraphSearcher(
-              new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(graph.size()));
+              new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
       int[] entryPointOrdIntsArr = entryPointOrdInts.stream().mapToInt(Integer::intValue).toArray();
       graphSearcher.searchLevel(knnCollector, scorer, 0, entryPointOrdIntsArr, graph, acceptOrds);
     }
