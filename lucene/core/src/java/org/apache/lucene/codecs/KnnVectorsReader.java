@@ -75,7 +75,7 @@ public abstract class KnnVectorsReader implements Closeable {
    * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
    *
    * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
+   * FieldInfo}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query
@@ -103,7 +103,7 @@ public abstract class KnnVectorsReader implements Closeable {
    * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
    *
    * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
+   * FieldInfo}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query

@@ -92,7 +92,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
     segmentWriteState = state;
-
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
@@ -290,6 +289,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       @Override
       public int numLevels() {
         return graph.numLevels();
+      }
+
+      @Override
+      public int maxConn() {
+        return graph.maxConn();
       }
 
       @Override

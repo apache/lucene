@@ -32,6 +32,8 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -39,6 +41,8 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -207,17 +211,236 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
-  private static class SortingFloatVectorValues extends FloatVectorValues {
-    final int size;
-    final int dimension;
+  private abstract static class SortingFloatVectorValues extends FloatVectorValues {
+    final FloatVectorValues delegate;
+    final Sorter.DocMap sortMap;
+
+    protected int docId = -1;
+
+    static SortingFloatVectorValues create(
+        FloatVectorValues delegate, Sorter.DocMap sortMap, int maxDoc) throws IOException {
+      if (delegate instanceof RandomAccessVectorValues.Floats) {
+        return new OffHeapSortingFloatVectorValues(
+            (RandomAccessVectorValues.Floats) delegate, sortMap);
+      } else {
+        // just checking - this never occurs for standard Lucene classes
+        // assert false : "on heap";
+        return new OnHeapSortingFloatVectorValues(delegate, sortMap);
+      }
+    }
+
+    private SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) {
+      this.delegate = delegate;
+      this.sortMap = sortMap;
+    }
+
+    @Override
+    public int dimension() {
+      return delegate.dimension();
+    }
+
+    @Override
+    public int size() {
+      return delegate.size();
+    }
+
+    @Override
+    public int docID() {
+      return docId;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(docId + 1);
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  private abstract static class SortingByteVectorValues extends ByteVectorValues {
+    final ByteVectorValues delegate;
+    final Sorter.DocMap sortMap;
+
+    protected int docId = -1;
+
+    static SortingByteVectorValues create(
+        ByteVectorValues delegate, Sorter.DocMap sortMap, int maxDoc) throws IOException {
+      if (delegate instanceof RandomAccessVectorValues.Bytes) {
+        return new OffHeapSortingByteVectorValues(
+            (RandomAccessVectorValues.Bytes) delegate, sortMap);
+      } else {
+        assert false : "on heap";
+        return new OnHeapSortingByteVectorValues(delegate, sortMap);
+      }
+    }
+
+    private SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) {
+      this.delegate = delegate;
+      this.sortMap = sortMap;
+    }
+
+    @Override
+    public int dimension() {
+      return delegate.dimension();
+    }
+
+    @Override
+    public int size() {
+      return delegate.size();
+    }
+
+    @Override
+    public int docID() {
+      return docId;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(docId + 1);
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] target) {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  private static class OffHeapSortingByteVectorValues extends SortingByteVectorValues {
+
+    private final FixedBitSet docsWithField;
+    private final int[] docToOrd;
+    private final RandomAccessVectorValues.Bytes bytes;
+
+    OffHeapSortingByteVectorValues(RandomAccessVectorValues.Bytes delegate, Sorter.DocMap sortMap)
+        throws IOException {
+      super((ByteVectorValues) delegate, sortMap);
+      this.bytes = delegate;
+      if (delegate.size() == sortMap.size()) {
+        docsWithField = null;
+        docToOrd = null;
+      } else {
+        docsWithField = new FixedBitSet(sortMap.size());
+        docToOrd = new int[sortMap.size()];
+        DocIdSetIterator disi = (DocIdSetIterator) delegate;
+        for (int doc = disi.nextDoc(), ord = 0; doc != NO_MORE_DOCS; doc = disi.nextDoc(), ord++) {
+          int newDocID = sortMap.oldToNew(doc);
+          docsWithField.set(newDocID);
+          docToOrd[newDocID] = ord;
+        }
+      }
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target >= size()) {
+        return NO_MORE_DOCS;
+      }
+      if (docsWithField == null) {
+        docId = target;
+      } else {
+        docId = docsWithField.nextSetBit(target);
+      }
+      return docId;
+    }
+
+    @Override
+    public byte[] vectorValue() throws IOException {
+      if (docToOrd == null) {
+        return bytes.vectorValue(sortMap.newToOld(docId));
+      } else {
+        return bytes.vectorValue(docToOrd[docId]);
+      }
+    }
+  }
+
+  private static class OnHeapSortingByteVectorValues extends SortingByteVectorValues {
+    final FixedBitSet docsWithField;
+    final byte[][] vectors;
+
+    OnHeapSortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap)
+        throws IOException {
+      super(delegate, sortMap);
+      docsWithField = new FixedBitSet(size());
+      vectors = new byte[size()][];
+      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
+        int newDocID = sortMap.oldToNew(doc);
+        docsWithField.set(newDocID);
+        vectors[newDocID] = delegate.vectorValue().clone();
+      }
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target >= docsWithField.length()) {
+        return NO_MORE_DOCS;
+      }
+      return docId = docsWithField.nextSetBit(target);
+    }
+
+    @Override
+    public byte[] vectorValue() throws IOException {
+      return vectors[docId];
+    }
+  }
+
+  private static class OffHeapSortingFloatVectorValues extends SortingFloatVectorValues {
+
+    private final RandomAccessVectorValues.Floats floats;
+    private final FixedBitSet docsWithField;
+    private final int[] docToOrd;
+
+    OffHeapSortingFloatVectorValues(RandomAccessVectorValues.Floats delegate, Sorter.DocMap sortMap)
+        throws IOException {
+      super((FloatVectorValues) delegate, sortMap);
+      this.floats = delegate;
+      if (delegate.size() == sortMap.size()) {
+        docsWithField = null;
+        docToOrd = null;
+      } else {
+        docsWithField = new FixedBitSet(sortMap.size());
+        docToOrd = new int[sortMap.size()];
+        DocIdSetIterator disi = (DocIdSetIterator) delegate;
+        for (int doc = disi.nextDoc(), ord = 0; doc != NO_MORE_DOCS; doc = disi.nextDoc(), ord++) {
+          int newDocID = sortMap.oldToNew(doc);
+          docsWithField.set(newDocID);
+          docToOrd[newDocID] = ord;
+        }
+      }
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target >= size()) {
+        return NO_MORE_DOCS;
+      }
+      if (docsWithField == null) {
+        docId = target;
+      } else {
+        docId = docsWithField.nextSetBit(target);
+      }
+      return docId;
+    }
+
+    @Override
+    public float[] vectorValue() throws IOException {
+      if (docToOrd == null) {
+        return floats.vectorValue(sortMap.newToOld(docId));
+      } else {
+        return floats.vectorValue(docToOrd[docId]);
+      }
+    }
+  }
+
+  private static class OnHeapSortingFloatVectorValues extends SortingFloatVectorValues {
     final FixedBitSet docsWithField;
     final float[][] vectors;
 
-    private int docId = -1;
-
-    SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.size = delegate.size();
-      this.dimension = delegate.dimension();
+    OnHeapSortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap)
+        throws IOException {
+      super(delegate, sortMap);
       docsWithField = new FixedBitSet(sortMap.size());
       vectors = new float[sortMap.size()][];
       for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
@@ -228,32 +451,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      return vectors[docId];
-    }
-
-    @Override
-    public int dimension() {
-      return dimension;
-    }
-
-    @Override
-    public int size() {
-      return size;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
+    public int advance(int target) {
       if (target >= docsWithField.length()) {
         return NO_MORE_DOCS;
       }
@@ -261,67 +459,128 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public VectorScorer scorer(float[] target) {
-      throw new UnsupportedOperationException();
+    public float[] vectorValue() {
+      return vectors[docId];
     }
   }
 
-  private static class SortingByteVectorValues extends ByteVectorValues {
-    final int size;
-    final int dimension;
-    final FixedBitSet docsWithField;
-    final byte[][] vectors;
+  private static class SortingHnswGraph extends HnswGraph {
+    private final HnswGraph delegate;
+    private final Sorter.DocMap sortMap;
 
-    private int docId = -1;
+    SortingHnswGraph(HnswGraph delegate, DocIdSetIterator oldValues, Sorter.DocMap sortMap)
+        throws IOException {
+      this.delegate = delegate;
+      if (sortMap.size() == delegate.size()) {
+        // ord == doc; use sortMap for translation
+        this.sortMap = sortMap;
+      } else {
+        // Translate sortMap over documents into newToOldOrd (over node ids)
+        long[] docsWithField = new long[delegate.size()];
+        int[] newToOldOrd = new int[delegate.size()];
+        int[] oldToNewOrd = new int[delegate.size()];
+        for (int oldOrd = 0, doc = oldValues.nextDoc();
+            doc != NO_MORE_DOCS;
+            doc = oldValues.nextDoc(), oldOrd++) {
+          int newDoc = sortMap.oldToNew(doc);
+          // record old ord in LSBits so we can recover it after sorting
+          docsWithField[oldOrd] = (long) newDoc << 32 | oldOrd;
+        }
+        Arrays.sort(docsWithField);
+        for (int ord = 0; ord < docsWithField.length; ord++) {
+          int oldOrd = (int) docsWithField[ord];
+          newToOldOrd[ord] = oldOrd;
+          oldToNewOrd[oldOrd] = ord;
+        }
+        this.sortMap = new DocMap(oldToNewOrd, newToOldOrd);
+      }
+    }
 
-    SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.size = delegate.size();
-      this.dimension = delegate.dimension();
-      docsWithField = new FixedBitSet(sortMap.size());
-      vectors = new byte[sortMap.size()][];
-      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
-        int newDocID = sortMap.oldToNew(doc);
-        docsWithField.set(newDocID);
-        vectors[newDocID] = delegate.vectorValue().clone();
+    class DocMap extends Sorter.DocMap {
+
+      final int[] oldToNewOrd;
+      final int[] newToOldOrd;
+
+      DocMap(int[] oldToNewOrd, int[] newToOldOrd) {
+        this.oldToNewOrd = oldToNewOrd;
+        this.newToOldOrd = newToOldOrd;
+      }
+
+      @Override
+      public int oldToNew(int ord) {
+        return oldToNewOrd[ord];
+      }
+
+      @Override
+      public int newToOld(int ord) {
+        return newToOldOrd[ord];
+      }
+
+      @Override
+      public int size() {
+        return newToOldOrd.length;
       }
     }
 
     @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
-    }
-
-    @Override
-    public byte[] vectorValue() throws IOException {
-      return vectors[docId];
-    }
-
-    @Override
-    public int dimension() {
-      return dimension;
+    public void seek(int level, int target) throws IOException {
+      delegate.seek(level, sortMap.newToOld(target));
     }
 
     @Override
     public int size() {
-      return size;
+      return delegate.size();
     }
 
     @Override
-    public int advance(int target) throws IOException {
-      if (target >= docsWithField.length()) {
+    public int nextNeighbor() throws IOException {
+      int next = delegate.nextNeighbor();
+      if (next == NO_MORE_DOCS) {
         return NO_MORE_DOCS;
+      } else {
+        return sortMap.oldToNew(next);
       }
-      return docId = docsWithField.nextSetBit(target);
     }
 
     @Override
-    public VectorScorer scorer(byte[] target) {
-      throw new UnsupportedOperationException();
+    public int numLevels() throws IOException {
+      return delegate.numLevels();
+    }
+
+    @Override
+    public int maxConn() throws IOException {
+      return delegate.maxConn();
+    }
+
+    @Override
+    public int entryNode() throws IOException {
+      return sortMap.oldToNew(delegate.entryNode());
+    }
+
+    @Override
+    public NodesIterator getNodesOnLevel(int level) throws IOException {
+      NodesIterator in = delegate.getNodesOnLevel(level);
+      return new NodesIterator(in.size()) {
+
+        @Override
+        public int consume(int[] dest) {
+          int n = in.consume(dest);
+          for (int i = 0; i < n; i++) {
+            dest[i] = sortMap.oldToNew(dest[i]);
+          }
+          return n;
+        }
+
+        @Override
+        public int nextInt() {
+          return sortMap.oldToNew(in.nextInt());
+        }
+
+        @Override
+        public boolean hasNext() {
+          return in.hasNext();
+        }
+      };
     }
   }
 
@@ -494,38 +753,67 @@ public final class SortingCodecReader extends FilterCodecReader {
 
   @Override
   public KnnVectorsReader getVectorReader() {
-    KnnVectorsReader delegate = in.getVectorReader();
-    return new KnnVectorsReader() {
-      @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
-      }
+    return new SortingKnnVectorReader(in.getVectorReader());
+  }
 
-      @Override
-      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-        return new SortingFloatVectorValues(delegate.getFloatVectorValues(field), docMap);
-      }
+  private class SortingKnnVectorReader extends KnnVectorsReader implements HnswGraphProvider {
+    private final KnnVectorsReader delegate;
 
-      @Override
-      public ByteVectorValues getByteVectorValues(String field) throws IOException {
-        return new SortingByteVectorValues(delegate.getByteVectorValues(field), docMap);
-      }
+    SortingKnnVectorReader(KnnVectorsReader delegate) {
+      this.delegate = delegate;
+    }
 
-      @Override
-      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
-        throw new UnsupportedOperationException();
-      }
+    @Override
+    public void checkIntegrity() throws IOException {
+      delegate.checkIntegrity();
+    }
 
-      @Override
-      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
-        throw new UnsupportedOperationException();
-      }
+    @Override
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      return SortingFloatVectorValues.create(
+          delegate.getFloatVectorValues(field), docMap, maxDoc());
+    }
 
-      @Override
-      public void close() throws IOException {
-        delegate.close();
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      return SortingByteVectorValues.create(delegate.getByteVectorValues(field), docMap, maxDoc());
+    }
+
+    @Override
+    public HnswGraph getGraph(String field) throws IOException {
+      DocIdSetIterator values = delegate.getFloatVectorValues(field);
+      if (values == null) {
+        values = delegate.getByteVectorValues(field);
       }
-    };
+      if (values == null) {
+        throw new IllegalStateException("HnswGraph with no vector values");
+      }
+      if (delegate instanceof HnswGraphProvider) {
+        HnswGraph hnswDelegate = ((HnswGraphProvider) delegate).getGraph(field);
+        if (hnswDelegate == null) {
+          return null;
+        } else {
+          return new SortingHnswGraph(hnswDelegate, values, docMap);
+        }
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void close() throws IOException {
+      delegate.close();
+    }
   }
 
   @Override

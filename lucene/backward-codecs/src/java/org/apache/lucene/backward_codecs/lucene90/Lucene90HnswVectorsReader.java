@@ -516,6 +516,11 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int maxConn() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public NodesIterator getNodesOnLevel(int level) {
       throw new UnsupportedOperationException();
     }

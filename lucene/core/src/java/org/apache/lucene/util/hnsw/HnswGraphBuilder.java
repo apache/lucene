@@ -99,19 +99,14 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected HnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize)
       throws IOException {
-    this(scorerSupplier, M, beamWidth, seed, new OnHeapHnswGraph(M, graphSize));
+    this(scorerSupplier, beamWidth, seed, new OnHeapHnswGraph(M, graphSize));
   }
 
   protected HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier,
-      int M,
-      int beamWidth,
-      long seed,
-      OnHeapHnswGraph hnsw)
+      RandomVectorScorerSupplier scorerSupplier, int beamWidth, long seed, OnHeapHnswGraph hnsw)
       throws IOException {
     this(
         scorerSupplier,
-        M,
         beamWidth,
         seed,
         hnsw,
@@ -124,8 +119,6 @@ public class HnswGraphBuilder implements HnswBuilder {
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
    * @param scorerSupplier a supplier to create vector scorer from ordinals.
-   * @param M – graph fanout parameter used to calculate the maximum number of connections a node
-   *     can have – M on upper layers, and M * 2 on the lowest level.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
@@ -133,20 +126,19 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   protected HnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier,
-      int M,
       int beamWidth,
       long seed,
       OnHeapHnswGraph hnsw,
       HnswLock hnswLock,
       HnswGraphSearcher graphSearcher)
       throws IOException {
-    if (M <= 0) {
+    if (hnsw.maxConn() <= 0) {
       throw new IllegalArgumentException("M (max connections) must be positive");
     }
     if (beamWidth <= 0) {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
-    this.M = M;
+    this.M = hnsw.maxConn();
     this.scorerSupplier =
         Objects.requireNonNull(scorerSupplier, "scorer supplier must not be null");
     // normalization factor for level generation; currently not configurable
