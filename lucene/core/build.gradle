@@ -15,11 +15,25 @@
  * limitations under the License.
  */
 
+
 apply plugin: 'java-library'
 
+
 description = 'Lucene core library'
+
 
 dependencies {
   moduleTestImplementation project(':lucene:codecs')
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+/**
+test.dependsOn 'dotProductSharedLibrary'
+
+test {
+  systemProperty(
+          "java.library.path",
+          file("${buildDir}/libs/dotProduct/shared").absolutePath
+  )
+}
+*/

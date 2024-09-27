@@ -17,12 +17,15 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.Optional;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -35,6 +38,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
   final MemorySegmentAccessInput input;
   final RandomAccessVectorValues values; // to support ordToDoc/getAcceptOrds
   byte[] scratch1, scratch2;
+  MemorySegment offHeapScratch1, offHeapScratch2;
 
   /**
    * Return an optional whose value, if present, is the scorer supplier. Otherwise, an empty
@@ -49,7 +53,9 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     checkInvariants(values.size(), values.getVectorByteLength(), input);
     return switch (type) {
       case COSINE -> Optional.of(new CosineSupplier(msInput, values));
-      case DOT_PRODUCT -> Optional.of(new DotProductSupplier(msInput, values));
+      case DOT_PRODUCT -> Constants.NATIVE_DOT_PRODUCT_ENABLED == false
+          ? Optional.of(new DotProductSupplier(msInput, values))
+          : Optional.of(new NativeDotProductSupplier(msInput, values));
       case EUCLIDEAN -> Optional.of(new EuclideanSupplier(msInput, values));
       case MAXIMUM_INNER_PRODUCT -> Optional.of(new MaxInnerProductSupplier(msInput, values));
     };
@@ -75,10 +81,38 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
   }
 
-  final MemorySegment getFirstSegment(int ord) throws IOException {
+  final MemorySegment getFirstNativeSegment(int ord) throws IOException {
     long byteOffset = (long) ord * vectorByteSize;
     MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
+      if (offHeapScratch1 == null) {
+        Arena offHeap = Arena.ofAuto();
+        offHeapScratch1 = offHeap.allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment());
+      }
+      input.readBytes(byteOffset, offHeapScratch1, 0, vectorByteSize);
+      seg = offHeapScratch1;
+    }
+    return seg;
+  }
+
+  final MemorySegment getSecondNativeSegment(int ord) throws IOException {
+    long byteOffset = (long) ord * vectorByteSize;
+    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
+    if (seg == null) {
+      if (offHeapScratch2 == null) {
+        Arena offHeap = Arena.ofAuto();
+        offHeapScratch2 = offHeap.allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment());
+      }
+      input.readBytes(byteOffset, offHeapScratch2, 0, vectorByteSize);
+      seg = offHeapScratch2;
+    }
+    return seg;
+  }
+
+  final MemorySegment getFirstSegment(int ord) throws IOException {
+    long byteOffset = (long) ord * vectorByteSize;
+    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
+    if (seg == null) { // This should be rare enough
       if (scratch1 == null) {
         scratch1 = new byte[vectorByteSize];
       }
@@ -123,6 +157,35 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     @Override
     public CosineSupplier copy() throws IOException {
       return new CosineSupplier(input.clone(), values);
+    }
+  }
+
+  static final class NativeDotProductSupplier
+      extends Lucene99MemorySegmentByteVectorScorerSupplier {
+
+    NativeDotProductSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
+      super(input, values);
+    }
+
+    @Override
+    public RandomVectorScorer scorer(int ord) {
+      checkOrdinal(ord);
+      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+        @Override
+        public float score(int node) throws IOException {
+          checkOrdinal(node);
+          // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+          float raw =
+              PanamaVectorUtilSupport.nativeDotProduct(
+                  getFirstNativeSegment(ord), getSecondNativeSegment(node));
+          return 0.5f + raw / (float) (values.dimension() * (1 << 15));
+        }
+      };
+    }
+
+    @Override
+    public NativeDotProductSupplier copy() throws IOException {
+      return new NativeDotProductSupplier(input.clone(), values);
     }
   }
 

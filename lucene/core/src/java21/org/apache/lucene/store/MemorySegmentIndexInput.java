@@ -436,6 +436,32 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
+  public void readBytes(long pos, MemorySegment dst, int offset, int len) throws IOException {
+    try {
+      int si = (int) (pos >> chunkSizePower);
+      pos = pos & chunkSizeMask;
+      long curAvail = segments[si].byteSize() - pos;
+      while (len > curAvail) {
+        MemorySegment.copy(
+            segments[si], LAYOUT_BYTE, pos, dst, LAYOUT_BYTE, offset, (int) curAvail);
+        len -= curAvail;
+        offset += curAvail;
+        si++;
+        if (si >= segments.length) {
+          throw new EOFException("read past EOF: " + this);
+        }
+        pos = 0L;
+        curAvail = segments[si].byteSize();
+      }
+      MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, dst, LAYOUT_BYTE, offset, len);
+    } catch (IndexOutOfBoundsException ioobe) {
+      throw handlePositionalIOOBE(ioobe, "read", pos);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
   public void readBytes(long pos, byte[] b, int offset, int len) throws IOException {
     try {
       int si = (int) (pos >> chunkSizePower);

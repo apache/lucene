@@ -14,23 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
 
-import java.io.IOException;
-import java.lang.foreign.MemorySegment;
-
-/**
- * Provides access to the backing memory segment.
- *
- * <p>Expert API, allows access to the backing memory.
- */
-public interface MemorySegmentAccessInput extends RandomAccessInput, Cloneable {
-
-  /** Returns the memory segment for a given position and length, or null. */
-  MemorySegment segmentSliceOrNull(long pos, long len) throws IOException;
-
-  /** Copy bytes from underlying MemorySegment to another memory segment */
-  void readBytes(long pos, MemorySegment dst, int offset, int len) throws IOException;
-
-  MemorySegmentAccessInput clone();
-}
+int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit);
+int32_t vdot8s_neon(int8_t vec1[], int8_t vec2[], int32_t limit);
+int32_t dot8s(int8_t vec1[], int8_t vec2[], int32_t limit);
