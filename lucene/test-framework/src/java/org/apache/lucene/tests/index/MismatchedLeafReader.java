@@ -28,9 +28,6 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.Bits;
 
 /**
  * Shuffles field numbers around to try to trip bugs where field numbers are assumed to always be
@@ -69,28 +66,6 @@ public class MismatchedLeafReader extends FilterLeafReader {
   @Override
   public CacheHelper getReaderCacheHelper() {
     return in.getReaderCacheHelper();
-  }
-
-  @Override
-  public void searchNearestVectors(
-      String field,
-      float[] target,
-      KnnCollector knnCollector,
-      Bits acceptDocs,
-      DocIdSetIterator seedDocs)
-      throws IOException {
-    in.searchNearestVectors(field, target, knnCollector, acceptDocs, seedDocs);
-  }
-
-  @Override
-  public void searchNearestVectors(
-      String field,
-      byte[] target,
-      KnnCollector knnCollector,
-      Bits acceptDocs,
-      DocIdSetIterator seedDocs)
-      throws IOException {
-    in.searchNearestVectors(field, target, knnCollector, acceptDocs, seedDocs);
   }
 
   static FieldInfos shuffleInfos(FieldInfos infos, Random random) {

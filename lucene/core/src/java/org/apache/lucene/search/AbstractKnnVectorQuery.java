@@ -198,42 +198,36 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   private DocIdSetIterator executeSeedQuery(LeafReaderContext ctx, Weight seedWeight)
       throws IOException {
-    if (seedWeight != null) {
-      // Execute the seed query
-      TopScoreDocCollector seedCollector =
-          new TopScoreDocCollectorManager(
-                  k /* numHits */,
-                  null /* after */,
-                  Integer.MAX_VALUE /* totalHitsThreshold */,
-                  false /* supportsConcurrency */)
-              .newCollector();
-      LeafCollector leafCollector;
-      try {
-        leafCollector = seedCollector.getLeafCollector(ctx);
-        if (leafCollector != null) {
-          BulkScorer scorer = seedWeight.bulkScorer(ctx);
-          if (scorer != null) {
-            scorer.score(
-                leafCollector,
-                ctx.reader().getLiveDocs(),
-                0 /* min */,
-                DocIdSetIterator.NO_MORE_DOCS /* max */);
-          }
-          leafCollector.finish();
+    if (seedWeight == null) return null;
+    // Execute the seed query
+    TopScoreDocCollector seedCollector =
+        new TopScoreDocCollectorManager(
+                k /* numHits */,
+                null /* after */,
+                Integer.MAX_VALUE /* totalHitsThreshold */,
+                false /* supportsConcurrency */)
+            .newCollector();
+    final LeafReader leafReader = ctx.reader();
+    try {
+      final LeafCollector leafCollector = seedCollector.getLeafCollector(ctx);
+      if (leafCollector != null) {
+        BulkScorer scorer = seedWeight.bulkScorer(ctx);
+        if (scorer != null) {
+          scorer.score(
+              leafCollector,
+              leafReader.getLiveDocs(),
+              0 /* min */,
+              DocIdSetIterator.NO_MORE_DOCS /* max */);
         }
-      } catch (
-          @SuppressWarnings("unused")
-          CollectionTerminatedException e) {
-        // there is no doc of interest in this reader context
-        // continue with the following leaf
-        leafCollector = null;
+        leafCollector.finish();
       }
-
-      TopDocs seedTopDocs = seedCollector.topDocs();
-      return convertDocIdsToVectorOrdinals(ctx.reader(), new TopDocsDISI(seedTopDocs));
-    } else {
-      return null;
+    } catch (
+        @SuppressWarnings("unused")
+        CollectionTerminatedException e) {
     }
+
+    TopDocs seedTopDocs = seedCollector.topDocs();
+    return convertDocIdsToVectorOrdinals(leafReader, new TopDocsDISI(seedTopDocs));
   }
 
   /**
