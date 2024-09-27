@@ -113,6 +113,12 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
+    public float score(int firstOrd, int secondOrd) throws IOException {
+      return similarityFunction.compare(
+          vectors1.vectorValue(firstOrd), vectors2.vectorValue(secondOrd));
+    }
+
+    @Override
     public RandomVectorScorerSupplier copy() throws IOException {
       return new ByteScoringSupplier(vectors, similarityFunction);
     }
@@ -147,6 +153,12 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
           return similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(node));
         }
       };
+    }
+
+    @Override
+    public float score(int firstOrd, int secondOrd) throws IOException {
+      return similarityFunction.compare(
+          vectors1.vectorValue(firstOrd), vectors2.vectorValue(secondOrd));
     }
 
     @Override

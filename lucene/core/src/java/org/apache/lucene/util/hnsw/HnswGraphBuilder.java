@@ -393,9 +393,8 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private boolean diversityCheck(int candidate, float score, NeighborArray neighbors)
       throws IOException {
-    RandomVectorScorer scorer = scorerSupplier.scorer(candidate);
     for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
+      float neighborSimilarity = scorerSupplier.score(candidate, neighbors.nodes()[i]);
       if (neighborSimilarity >= score) {
         return false;
       }

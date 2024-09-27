@@ -19,7 +19,14 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 
-/** A supplier that creates {@link RandomVectorScorer} from an ordinal. */
+/**
+ * A supplier that creates {@link RandomVectorScorer} from an ordinal.
+ *
+ * <p>Not thread-safe, use {@link #copy()} to return an instance suitable for sharing with another
+ * thread. Each thread should have its own copy.
+ *
+ * @lucene.experimental
+ */
 public interface RandomVectorScorerSupplier {
   /**
    * This creates a {@link RandomVectorScorer} for scoring random nodes in batches against the given
@@ -31,8 +38,17 @@ public interface RandomVectorScorerSupplier {
   RandomVectorScorer scorer(int ord) throws IOException;
 
   /**
+   * Returns the score between the given nodes.
+   *
+   * @param firstOrd the ordinal of the first node to compare
+   * @param secondOrd the ordinal of the second node to compare
+   * @return the score between the first and second nodes
+   */
+  float score(int firstOrd, int secondOrd) throws IOException;
+
+  /**
    * Make a copy of the supplier, which will copy the underlying vectorValues so the copy is safe to
-   * be used in other threads.
+   * be used in another thread.
    */
   RandomVectorScorerSupplier copy() throws IOException;
 }

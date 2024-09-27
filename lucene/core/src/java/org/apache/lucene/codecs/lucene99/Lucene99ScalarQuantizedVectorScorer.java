@@ -298,6 +298,11 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
+    public float score(int firstOrd, int secondOrd) throws IOException {
+      return scorer(firstOrd).score(secondOrd);
+    }
+
+    @Override
     public ScalarQuantizedRandomVectorScorerSupplier copy() throws IOException {
       return new ScalarQuantizedRandomVectorScorerSupplier(values.copy(), vectorSimilarityFunction);
     }

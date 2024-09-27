@@ -118,7 +118,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   protected RandomVectorScorerSupplier buildScorerSupplier(RandomAccessVectorValues vectors)
       throws IOException {
-    return flatVectorScorer.getRandomVectorScorerSupplier(similarityFunction, vectors);
+    return new DelegatingRandomVectorScorerSupplier(
+        flatVectorScorer.getRandomVectorScorerSupplier(similarityFunction, vectors));
   }
 
   protected RandomVectorScorer buildScorer(RandomAccessVectorValues vectors, T query)
@@ -1376,6 +1377,31 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     @Override
     public NodesIterator getNodesOnLevel(int level) throws IOException {
       return delegate.getNodesOnLevel(level);
+    }
+  }
+
+  static class DelegatingRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
+    final RandomVectorScorerSupplier delegate;
+
+    DelegatingRandomVectorScorerSupplier(RandomVectorScorerSupplier delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public RandomVectorScorer scorer(int ord) throws IOException {
+      return delegate.scorer(ord);
+    }
+
+    @Override
+    public float score(int firstOrd, int secondOrd) throws IOException {
+      var res = delegate.score(firstOrd, secondOrd);
+      assertEquals(res, delegate.scorer(firstOrd).score(secondOrd), 0.0);
+      return res;
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new DelegatingRandomVectorScorerSupplier(delegate.copy());
     }
   }
 }
