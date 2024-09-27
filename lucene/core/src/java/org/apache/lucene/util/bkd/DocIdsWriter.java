@@ -26,6 +26,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocBaseBitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.LongsRef;
 
 final class DocIdsWriter {
 
@@ -38,7 +39,7 @@ final class DocIdsWriter {
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
 
   private final int[] scratch;
-  private long[] scratchLongs = new long[0];
+  private final LongsRef scratchLongs = new LongsRef();
 
   /**
    * IntsRef to be used to iterate over the scratch buffer. A single instance is reused to avoid
@@ -211,13 +212,14 @@ final class DocIdsWriter {
   private DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
     int offsetWords = in.readVInt();
     int longLen = in.readVInt();
-    if (longLen > scratchLongs.length) {
-      scratchLongs = ArrayUtil.growNoCopy(scratchLongs, longLen);
+    scratchLongs.longs = ArrayUtil.growNoCopy(scratchLongs.longs, longLen);
+    in.readLongs(scratchLongs.longs, 0, longLen);
+    // make ghost bits clear for FixedBitSet.
+    if (longLen < scratchLongs.length) {
+      Arrays.fill(scratchLongs.longs, longLen, scratchLongs.longs.length, 0);
     }
-    in.readLongs(scratchLongs, 0, longLen);
-    // make ghost bits clear
-    Arrays.fill(scratchLongs, longLen, scratchLongs.length, 0);
-    FixedBitSet bitSet = new FixedBitSet(scratchLongs, longLen << 6);
+    scratchLongs.length = longLen;
+    FixedBitSet bitSet = new FixedBitSet(scratchLongs.longs, longLen << 6);
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
