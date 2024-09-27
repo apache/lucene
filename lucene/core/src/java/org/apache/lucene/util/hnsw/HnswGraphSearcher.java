@@ -158,7 +158,16 @@ public class HnswGraphSearcher {
         foundBetter = false;
         graphSeek(graph, level, currentEp);
         int friendOrd;
-        while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+        int nextFriendOrd = nextNonVisitedFriendOrd(graph, visited);
+        if (nextFriendOrd == NO_MORE_DOCS) {
+          continue;
+        }
+        scorer.prepareToScore(nextFriendOrd);
+        while ((friendOrd = nextFriendOrd) != NO_MORE_DOCS) {
+          nextFriendOrd = nextNonVisitedFriendOrd(graph, visited);
+          if (nextFriendOrd != NO_MORE_DOCS) {
+            scorer.prepareToScore(nextFriendOrd);
+          }
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
           if (visited.getAndSet(friendOrd)) {
             continue;
@@ -225,7 +234,16 @@ public class HnswGraphSearcher {
       int topCandidateNode = candidates.pop();
       graphSeek(graph, level, topCandidateNode);
       int friendOrd;
-      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+      int nextFriendOrd = nextNonVisitedFriendOrd(graph, visited);
+      if (nextFriendOrd == NO_MORE_DOCS) {
+        continue;
+      }
+      scorer.prepareToScore(nextFriendOrd);
+      while ((friendOrd = nextFriendOrd) != NO_MORE_DOCS) {
+        nextFriendOrd = nextNonVisitedFriendOrd(graph, visited);
+        if (nextFriendOrd != NO_MORE_DOCS) {
+          scorer.prepareToScore(nextFriendOrd);
+        }
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
@@ -246,6 +264,16 @@ public class HnswGraphSearcher {
         }
       }
     }
+  }
+
+  private int nextNonVisitedFriendOrd(HnswGraph graph, BitSet visited) throws IOException {
+    int friendOrd;
+    while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+      if (visited.get(friendOrd) == false) {
+        return friendOrd;
+      }
+    }
+    return NO_MORE_DOCS;
   }
 
   private void prepareScratchState(int capacity) {

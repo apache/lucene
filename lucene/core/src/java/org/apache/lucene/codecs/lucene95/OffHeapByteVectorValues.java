@@ -84,6 +84,11 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues
   }
 
   @Override
+  public void prefetchOrdinal(int ordinal) throws IOException {
+    slice.prefetch((long) ordinal * byteSize, byteSize);
+  }
+
+  @Override
   public IndexInput getSlice() {
     return slice;
   }

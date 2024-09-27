@@ -31,6 +31,16 @@ public interface RandomVectorScorer {
   float score(int node) throws IOException;
 
   /**
+   * Indicates to the scorer that the following ordinal will likely be scored soon. This allows the
+   * underlying implementation to prepare optionally pre-fetch data.
+   *
+   * @param node the node that will soon be scored
+   * @throws IOException if an I/O error occurs
+   * @lucene.experimental
+   */
+  void prepareToScore(int node) throws IOException;
+
+  /**
    * @return the maximum possible ordinal for this scorer
    */
   int maxOrd();
@@ -81,6 +91,11 @@ public interface RandomVectorScorer {
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return values.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public void prepareToScore(int node) throws IOException {
+      values.prefetchOrdinal(node);
     }
   }
 }

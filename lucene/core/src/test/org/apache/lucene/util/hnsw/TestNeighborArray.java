@@ -240,5 +240,10 @@ public class TestNeighborArray extends LuceneTestCase {
     default Bits getAcceptOrds(Bits acceptDocs) {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    default void prepareToScore(int node) throws IOException {
+      // no-op
+    }
   }
 }
