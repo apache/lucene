@@ -203,6 +203,8 @@ Optimizations
 
 * GITHUB#13672: Leverage doc value skip lists in DocValuesRewriteMethod if indexed. (Greg Miller)
 
+* GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
+
 Bug Fixes
 ---------------------
 
