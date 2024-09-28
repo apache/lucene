@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static java.lang.String.format;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -312,14 +311,13 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
             assertNotNull(hnswReader.getQuantizationState("f"));
             QuantizedByteVectorValues quantizedByteVectorValues =
                 hnswReader.getQuantizedVectorValues("f");
-            int docId = -1;
-            while ((docId = quantizedByteVectorValues.nextDoc()) != NO_MORE_DOCS) {
-              byte[] vector = quantizedByteVectorValues.vectorValue();
-              float offset = quantizedByteVectorValues.getScoreCorrectionConstant();
+            for (int ord = 0; ord < quantizedByteVectorValues.size(); ord++) {
+              byte[] vector = quantizedByteVectorValues.vectorValue(ord);
+              float offset = quantizedByteVectorValues.getScoreCorrectionConstant(ord);
               for (int i = 0; i < dim; i++) {
-                assertEquals(vector[i], expectedVectors[docId][i]);
+                assertEquals(vector[i], expectedVectors[ord][i]);
               }
-              assertEquals(offset, expectedCorrections[docId], 0.00001f);
+              assertEquals(offset, expectedCorrections[ord], 0.00001f);
             }
           } else {
             fail("reader is not Lucene99HnswVectorsReader");

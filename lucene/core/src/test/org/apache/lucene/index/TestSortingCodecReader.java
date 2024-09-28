@@ -242,6 +242,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
             NumericDocValues ids = leaf.getNumericDocValues("id");
             long prevValue = -1;
             boolean usingAltIds = false;
+            KnnVectorValues.DocIndexIterator valuesIterator = vectorValues.iterator();
             for (int i = 0; i < actualNumDocs; i++) {
               int idNext = ids.nextDoc();
               if (idNext == DocIdSetIterator.NO_MORE_DOCS) {
@@ -262,7 +263,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertTrue(sorted_numeric_dv.advanceExact(idNext));
               assertTrue(sorted_set_dv.advanceExact(idNext));
               assertTrue(binary_sorted_dv.advanceExact(idNext));
-              assertEquals(idNext, vectorValues.advance(idNext));
+              assertEquals(idNext, valuesIterator.advance(idNext));
               assertEquals(new BytesRef(ids.longValue() + ""), binary_dv.binaryValue());
               assertEquals(
                   new BytesRef(ids.longValue() + ""),
@@ -274,7 +275,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertEquals(1, sorted_numeric_dv.docValueCount());
               assertEquals(ids.longValue(), sorted_numeric_dv.nextValue());
 
-              float[] vectorValue = vectorValues.vectorValue();
+              float[] vectorValue = vectorValues.vectorValue(valuesIterator.index());
               assertEquals(1, vectorValue.length);
               assertEquals((float) ids.longValue(), vectorValue[0], 0.001f);
 
