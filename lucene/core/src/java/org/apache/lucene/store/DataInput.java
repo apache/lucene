@@ -100,7 +100,7 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Override if you have a efficient implementation. In general this is when the input supports
+   * Override if you have an efficient implementation. In general this is when the input supports
    * random access.
    */
   public void readGroupVInt(long[] dst, int offset) throws IOException {
