@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -32,7 +33,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.openjdk.jmh.annotations.*;
@@ -55,7 +55,7 @@ public class VectorScorerBenchmark {
 
   Directory dir;
   IndexInput in;
-  RandomAccessVectorValues vectorValues;
+  KnnVectorValues vectorValues;
   byte[] vec1, vec2;
   RandomVectorScorer scorer;
 
@@ -95,7 +95,7 @@ public class VectorScorerBenchmark {
     return scorer.score(1);
   }
 
-  static RandomAccessVectorValues vectorValues(
+  static KnnVectorValues vectorValues(
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
         dims, size, in.slice("test", 0, in.length()), dims, new ThrowingFlatVectorScorer(), sim);
@@ -105,23 +105,19 @@ public class VectorScorerBenchmark {
 
     @Override
     public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-        VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues) {
+        VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues) {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public RandomVectorScorer getRandomVectorScorer(
-        VectorSimilarityFunction similarityFunction,
-        RandomAccessVectorValues vectorValues,
-        float[] target) {
+        VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target) {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public RandomVectorScorer getRandomVectorScorer(
-        VectorSimilarityFunction similarityFunction,
-        RandomAccessVectorValues vectorValues,
-        byte[] target) {
+        VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target) {
       throw new UnsupportedOperationException();
     }
   }

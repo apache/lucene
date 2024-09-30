@@ -37,6 +37,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -173,9 +174,10 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
             QuantizedByteVectorValues quantizedByteVectorValues =
                 quantizedReader.getQuantizedVectorValues("f");
             int docId = -1;
-            while ((docId = quantizedByteVectorValues.nextDoc()) != NO_MORE_DOCS) {
-              byte[] vector = quantizedByteVectorValues.vectorValue();
-              float offset = quantizedByteVectorValues.getScoreCorrectionConstant();
+            KnnVectorValues.DocIndexIterator iter = quantizedByteVectorValues.iterator();
+            for (docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+              byte[] vector = quantizedByteVectorValues.vectorValue(iter.index());
+              float offset = quantizedByteVectorValues.getScoreCorrectionConstant(iter.index());
               for (int i = 0; i < dim; i++) {
                 assertEquals(vector[i], expectedVectors[docId][i]);
               }

@@ -38,6 +38,7 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
@@ -740,7 +741,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         FieldInfo fi = leafReader.getFieldInfos().fieldInfo("field");
         assertNotNull(fi);
-        DocIdSetIterator vectorValues;
+        KnnVectorValues vectorValues;
         switch (fi.getVectorEncoding()) {
           case BYTE:
             vectorValues = leafReader.getByteVectorValues("field");
@@ -752,7 +753,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             throw new AssertionError();
         }
         assertNotNull(vectorValues);
-        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        assertEquals(NO_MORE_DOCS, vectorValues.iterator().nextDoc());
       }
     }
   }
