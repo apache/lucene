@@ -59,6 +59,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Assert;
@@ -1458,7 +1459,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       assertEquals(43, in.readByte());
       assertEquals(12345, in.readShort());
       assertEquals(1234567890, in.readInt());
-      in.readGroupVInts(restored, 4);
+      GroupVIntUtil.readGroupVInts(in, restored, 4);
       assertArrayEquals(values, restored);
       assertEquals(1234567890123456789L, in.readLong());
       in.close();
@@ -1485,7 +1486,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       out.writeGroupVInts(values, limit);
       out.close();
       try (IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
-        in.readGroupVInts(restore, limit);
+        GroupVIntUtil.readGroupVInts(in, restore, limit);
         for (int i = 0; i < limit; i++) {
           assertEquals(values[i], restore[i]);
         }
@@ -1533,7 +1534,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     IndexInput groupVIntIn = dir.openInput("group-varint", IOContext.DEFAULT);
     IndexInput vIntIn = dir.openInput("vint", IOContext.DEFAULT);
     for (int iter = 0; iter < iterations; iter++) {
-      groupVIntIn.readGroupVInts(values, numValuesArray[iter]);
+      GroupVIntUtil.readGroupVInts(groupVIntIn, values, numValuesArray[iter]);
       for (int j = 0; j < numValuesArray[iter]; j++) {
         assertEquals(vIntIn.readVInt(), values[j]);
       }
