@@ -69,11 +69,18 @@
     <!-- NOTE: please insert releases in numeric order, NOT chronologically. -->
     <release>
        <Version>
+         <name>lucene-9.12.0</name>
+         <created>2024-09-28</created>
+         <revision>9.12.0</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
          <name>lucene-9.11.1</name>
          <created>2024-06-27</created>
          <revision>9.11.1</revision>
        </Version>
-    </release>. 
+    </release> 
     <release>
        <Version>
          <name>lucene-9.11.0</name>
@@ -184,6 +191,13 @@
          <name>lucene-9.0.0</name>
          <created>2021-12-07</created>
          <revision>9.0.0</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-8.11.4</name>
+         <created>2024-09-24</created>
+         <revision>8.11.4</revision>
        </Version>
     </release>
     <release>

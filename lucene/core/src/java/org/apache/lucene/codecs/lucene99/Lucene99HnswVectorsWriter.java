@@ -32,14 +32,16 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
@@ -54,7 +56,6 @@ import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -359,18 +360,18 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
           }
         }
-        DocIdSetIterator mergedVectorIterator = null;
+        KnnVectorValues mergedVectorValues = null;
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE ->
-              mergedVectorIterator =
+              mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
           case FLOAT32 ->
-              mergedVectorIterator =
+              mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
         }
         graph =
             merger.merge(
-                mergedVectorIterator,
+                mergedVectorValues,
                 segmentWriteState.infoStream,
                 scorerSupplier.totalVectorCount());
         vectorIndexNodeOffsets = writeGraph(graph);
@@ -582,13 +583,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             case BYTE ->
                 scorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
-                    RandomAccessVectorValues.fromBytes(
+                    ByteVectorValues.fromBytes(
                         (List<byte[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension()));
             case FLOAT32 ->
                 scorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
-                    RandomAccessVectorValues.fromFloats(
+                    FloatVectorValues.fromFloats(
                         (List<float[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension()));
           };

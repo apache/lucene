@@ -39,6 +39,7 @@ import java.util.stream.IntStream;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -47,7 +48,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.junit.BeforeClass;
 
@@ -329,8 +329,8 @@ public class TestVectorScorer extends LuceneTestCase {
     }
   }
 
-  RandomAccessVectorValues vectorValues(
-      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
+  KnnVectorValues vectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
+      throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
         dims, size, in.slice("byteValues", 0, in.length()), dims, MEMSEG_SCORER, sim);
   }

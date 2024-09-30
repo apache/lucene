@@ -52,6 +52,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.LogByteSizeMergePolicy;
 import org.apache.lucene.index.MultiBits;
@@ -477,10 +478,14 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         FloatVectorValues values = ctx.reader().getFloatVectorValues(KNN_VECTOR_FIELD);
         if (values != null) {
           assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
-          for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
+          KnnVectorValues.DocIndexIterator it = values.iterator();
+          for (int doc = it.nextDoc(); doc != NO_MORE_DOCS; doc = it.nextDoc()) {
             float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};
             assertArrayEquals(
-                "vectors do not match for doc=" + cnt, expectedVector, values.vectorValue(), 0);
+                "vectors do not match for doc=" + cnt,
+                expectedVector,
+                values.vectorValue(it.index()),
+                0);
             cnt++;
           }
         }

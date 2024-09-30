@@ -138,12 +138,6 @@ public class TestHnswUtil extends LuceneTestCase {
         }
       }
       MockGraph graph = new MockGraph(nodes);
-      /**/
-      if (i == 2) {
-        System.out.println("iter " + i);
-        System.out.print(graph.toString());
-      }
-      /**/
       assertEquals(isRooted(nodes), HnswUtil.isRooted(graph));
     }
   }
