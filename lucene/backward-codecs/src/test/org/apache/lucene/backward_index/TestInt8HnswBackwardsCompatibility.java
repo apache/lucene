@@ -46,7 +46,7 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
 
   static final String INDEX_NAME = "int8_hnsw";
   static final String SUFFIX = "";
-  private static final Version FIRST_INT8_HNSW_VERSION = Version.LUCENE_9_10_0;
+  private static final Version FIRST_INT8_HNSW_VERSION = Version.fromBits(9, 10, 0);
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final int DOC_COUNT = 30;
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
