@@ -204,7 +204,7 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
-  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+  public void readGroupVInt(long[] dst, int offset) throws IOException {
     final ByteBuffer block = blocks[blockIndex(pos)];
     final int blockOffset = blockOffset(pos);
     // We MUST save the return value to local variable, could not use pos += readGroupVInt(...).
