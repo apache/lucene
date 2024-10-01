@@ -439,7 +439,11 @@ public class HnswGraphBuilder implements HnswBuilder {
       maxConn *= 2;
     }
     List<Component> components = HnswUtil.components(hnsw, level, notFullyConnected, maxConn);
-    // System.out.println("HnswGraphBuilder.connectComponents level=" + level + ": " + components);
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT, "connect " + components.size() + " components on level=" + level);
+    }
+    // System.out.println("HnswGraphBuilder. level=" + level + ": " + components);
     boolean result = true;
     if (components.size() > 1) {
       // connect other components to the largest one
@@ -457,6 +461,10 @@ public class HnswGraphBuilder implements HnswBuilder {
           if (c.start() == NO_MORE_DOCS) {
             continue;
           }
+          if (infoStream.isEnabled(HNSW_COMPONENT)) {
+            infoStream.message(HNSW_COMPONENT, "connect component " + c + " to " + c0);
+          }
+
           beam.clear();
           eps[0] = c0.start();
           RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
@@ -475,8 +483,10 @@ public class HnswGraphBuilder implements HnswBuilder {
             // System.out.println("link " + c0 + "." + c0node + " to " + c + "." + c.start());
             link(level, c0node, c.start(), score, notFullyConnected);
             linked = true;
+            infoStream.message(HNSW_COMPONENT, "connected ok " + c0node + " -> " + c.start());
           }
           if (!linked) {
+            infoStream.message(HNSW_COMPONENT, "not connected; no free nodes found");
             result = false;
           }
         }
