@@ -46,7 +46,11 @@ abstract class HitsThresholdChecker {
       if (thresholdReached) {
         return true;
       }
-      return thresholdReached = globalHitCount.longValue() > getHitsThreshold();
+      if (globalHitCount.longValue() > getHitsThreshold()) {
+        thresholdReached = true;
+        return true;
+      }
+      return false;
     }
 
     @Override
