@@ -483,10 +483,14 @@ public class HnswGraphBuilder implements HnswBuilder {
             // System.out.println("link " + c0 + "." + c0node + " to " + c + "." + c.start());
             link(level, c0node, c.start(), score, notFullyConnected);
             linked = true;
-            infoStream.message(HNSW_COMPONENT, "connected ok " + c0node + " -> " + c.start());
+            if (infoStream.isEnabled(HNSW_COMPONENT)) {
+              infoStream.message(HNSW_COMPONENT, "connected ok " + c0node + " -> " + c.start());
+            }
           }
           if (!linked) {
-            infoStream.message(HNSW_COMPONENT, "not connected; no free nodes found");
+            if (infoStream.isEnabled(HNSW_COMPONENT)) {
+              infoStream.message(HNSW_COMPONENT, "not connected; no free nodes found");
+            }
             result = false;
           }
         }
