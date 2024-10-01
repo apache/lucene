@@ -112,8 +112,10 @@ def prepare(root, version, pause_before_sign, gpg_key_id, gpg_password, gpg_home
   checkDOAPfiles(version)
 
   if not dev_mode:
-    print('  ./gradlew --stacktrace --no-daemon clean check')
-    run('./gradlew --stacktrace --no-daemon clean check')
+    print('  ./gradlew --stacktrace --no-daemon clean')
+    run('./gradlew --stacktrace --no-daemon clean')
+    print('  ./gradlew --stacktrace --no-daemon check')
+    run('./gradlew --stacktrace --no-daemon check')
   else:
     print('  skipping precommit check due to dev-mode')
 
