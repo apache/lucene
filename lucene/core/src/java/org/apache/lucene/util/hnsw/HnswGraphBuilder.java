@@ -462,7 +462,7 @@ public class HnswGraphBuilder implements HnswBuilder {
           RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
           // find the closest node in the largest component to the lowest-numbered node in this
           // component that has room to make a connection
-          graphSearcher.searchLevel(beam, scorer, 0, eps, hnsw, notFullyConnected);
+          graphSearcher.searchLevel(beam, scorer, level, eps, hnsw, notFullyConnected);
           boolean linked = false;
           while (beam.size() > 0) {
             int c0node = beam.popNode();
