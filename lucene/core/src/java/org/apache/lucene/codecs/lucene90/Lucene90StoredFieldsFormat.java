@@ -49,9 +49,9 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  *
  * <pre class="prettyprint">
  *   // the default: for high performance
- *   indexWriterConfig.setCodec(new Lucene912Codec(Mode.BEST_SPEED));
+ *   indexWriterConfig.setCodec(new Lucene100Codec(Mode.BEST_SPEED));
  *   // instead for higher performance (but slower):
- *   // indexWriterConfig.setCodec(new Lucene912Codec(Mode.BEST_COMPRESSION));
+ *   // indexWriterConfig.setCodec(new Lucene100Codec(Mode.BEST_COMPRESSION));
  * </pre>
  *
  * <p><b>File formats</b>

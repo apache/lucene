@@ -435,6 +435,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int ordToDoc(int ord) {
+      return entry.ordToDoc[ord];
+    }
+
+    @Override
     public DocIndexIterator iterator() {
       return createSparseIterator();
     }
