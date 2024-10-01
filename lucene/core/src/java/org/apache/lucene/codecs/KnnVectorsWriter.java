@@ -336,6 +336,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
               index = NO_MORE_DOCS;
             } else {
               docId = current.mappedDocID;
+              ++lastOrd;
               ++index;
             }
             return docId;
@@ -355,11 +356,12 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public float[] vectorValue(int ord) throws IOException {
-        if (ord != lastOrd + 1) {
+        if (ord != lastOrd) {
           throw new IllegalStateException(
-              "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
-        } else {
-          lastOrd = ord;
+              "only supports forward iteration with a single iterator: ord="
+                  + ord
+                  + ", lastOrd="
+                  + lastOrd);
         }
         return current.values.vectorValue(current.index());
       }

@@ -898,9 +898,9 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       public float[] vectorValue(int ord) throws IOException {
         assert ord >= 0 && ord < size;
         // We need to implement fully random-access API here in order to support callers like
-        // SortingCodecReader that
-        // rely on it.
+        // SortingCodecReader that rely on it.
         lastSubIndex = findSub(ord, lastSubIndex, starts);
+        assert subs[lastSubIndex].sub != null;
         return ((FloatVectorValues) subs[lastSubIndex].sub)
             .vectorValue(ord - subs[lastSubIndex].ordStart);
       }
@@ -1002,6 +1002,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         // subtract one since binarySearch returns an *insertion point*
         return -2 - pos;
       } else {
+        while (pos < starts.length - 1 && starts[pos + 1] == ord) {
+          // Arrays.binarySearch can return any of a sequence of repeated value
+          // but we always want the last one
+          ++pos;
+        }
         return pos;
       }
     }
