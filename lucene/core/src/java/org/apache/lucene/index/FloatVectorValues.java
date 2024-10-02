@@ -77,6 +77,13 @@ public abstract class FloatVectorValues extends KnnVectorValues {
     return docIds;
   }
 
+  /**
+   * Return a {@link VectorScorer} for the given query vector and the current {@link
+   * FloatVectorValues}.
+   *
+   * @param target the query vector
+   * @return a {@link VectorScorer} instance or null
+   */
   public VectorScorer scorer(float[] target) throws IOException {
     throw new UnsupportedOperationException();
   }

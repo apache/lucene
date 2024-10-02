@@ -77,6 +77,12 @@ public abstract class ByteVectorValues extends KnnVectorValues {
     return docIds;
   }
 
+  /**
+   * Return a {@link VectorScorer} for the given query vector.
+   *
+   * @param query the query vector
+   * @return a {@link VectorScorer} instance or null
+   */
   public VectorScorer scorer(byte[] query) throws IOException {
     throw new UnsupportedOperationException();
   }
