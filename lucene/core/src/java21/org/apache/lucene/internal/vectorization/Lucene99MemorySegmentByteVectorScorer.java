@@ -19,6 +19,7 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
@@ -40,6 +41,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
    */
   public static Optional<Lucene99MemorySegmentByteVectorScorer> create(
       VectorSimilarityFunction type, IndexInput input, KnnVectorValues values, byte[] queryVector) {
+    assert values instanceof ByteVectorValues;
     input = FilterIndexInput.unwrapOnlyTest(input);
     if (!(input instanceof MemorySegmentAccessInput msInput)) {
       return Optional.empty();

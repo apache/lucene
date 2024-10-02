@@ -17,7 +17,6 @@
 package org.apache.lucene.backward_index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
@@ -96,7 +95,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   private static final int DOCS_COUNT = 35;
   private static final int DELETED_ID = 7;
 
-  private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
+  private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = Version.fromBits(9, 0, 0).major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
       KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
