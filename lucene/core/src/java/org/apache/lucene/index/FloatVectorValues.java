@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 
 /**
@@ -63,15 +64,6 @@ public abstract class FloatVectorValues extends KnnVectorValues {
               + ")");
     }
   }
-
-  /**
-   * Return a {@link VectorScorer} for the given query vector and the current {@link
-   * FloatVectorValues}.
-   *
-   * @param target the query vector
-   * @return a {@link VectorScorer} instance or null
-   */
-  public abstract VectorScorer scorer(float[] query) throws IOException;
 
   /**
    * Returns a new iterator that maps the provided docIds to the vector ordinals.
