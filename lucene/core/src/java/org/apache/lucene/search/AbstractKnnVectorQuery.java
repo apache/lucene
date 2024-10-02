@@ -51,7 +51,7 @@ import org.apache.lucene.util.Bits;
  * </ul>
  *
  * <p>When a seed query is provided, this query is executed first to seed the kNN search (subject to
- * the same rules about the filter). If the seed query fails to identify any documents, it falls
+ * the same rules provided by the filter). If the seed query fails to identify any documents, it falls
  * back on the strategy above.
  */
 abstract class AbstractKnnVectorQuery extends Query {
