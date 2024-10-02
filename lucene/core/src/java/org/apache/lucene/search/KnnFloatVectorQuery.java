@@ -31,8 +31,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, Bits, DocIdSetIterator)} to
- * perform nearest neighbour search.
+ * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, Bits)} to perform nearest
+ * neighbour search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
  * executes the filter for each leaf, then chooses a strategy dynamically:
@@ -101,6 +101,9 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
+    if (seedDocs != null) {
+      knnCollector = new SeededKnnCollector(knnCollector, seedDocs);
+    }
     LeafReader reader = context.reader();
     FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
     if (floatVectorValues == null) {
@@ -110,7 +113,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
     if (Math.min(knnCollector.k(), floatVectorValues.size()) == 0) {
       return NO_RESULTS;
     }
-    reader.searchNearestVectors(field, target, knnCollector, acceptDocs, seedDocs);
+    reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
     TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
   }

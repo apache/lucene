@@ -114,7 +114,7 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     KnnCollector collector = knnCollectorManager.newCollector(visitLimit, context);
-    context.reader().searchNearestVectors(field, target, collector, acceptDocs, null);
+    context.reader().searchNearestVectors(field, target, collector, acceptDocs);
     return collector.topDocs();
   }
 

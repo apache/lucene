@@ -180,12 +180,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(
-      String field,
-      float[] target,
-      KnnCollector knnCollector,
-      Bits acceptDocs,
-      DocIdSetIterator seedDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FloatVectorValues values = getFloatVectorValues(field);
     if (target.length != values.dimension()) {
@@ -215,12 +210,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(
-      String field,
-      byte[] target,
-      KnnCollector knnCollector,
-      Bits acceptDocs,
-      DocIdSetIterator seedDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     ByteVectorValues values = getByteVectorValues(field);
     if (target.length != values.dimension()) {

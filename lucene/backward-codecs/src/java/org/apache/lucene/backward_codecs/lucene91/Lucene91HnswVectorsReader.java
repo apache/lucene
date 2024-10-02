@@ -230,12 +230,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(
-      String field,
-      float[] target,
-      KnnCollector knnCollector,
-      Bits acceptDocs,
-      DocIdSetIterator seedDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -251,17 +246,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        getAcceptOrds(acceptDocs, fieldEntry),
-        seedDocs);
+        getAcceptOrds(acceptDocs, fieldEntry));
   }
 
   @Override
-  public void search(
-      String field,
-      byte[] target,
-      KnnCollector knnCollector,
-      Bits acceptDocsBits,
-      DocIdSetIterator seedDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocsBits)
       throws IOException {
     throw new UnsupportedOperationException();
   }

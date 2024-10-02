@@ -2769,7 +2769,7 @@ public final class CheckIndex implements Closeable {
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
           codecReader
               .getVectorReader()
-              .search(fieldInfo.name, values.vectorValue(), collector, null, null);
+              .search(fieldInfo.name, values.vectorValue(), collector, null);
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -2815,9 +2815,7 @@ public final class CheckIndex implements Closeable {
       // search the first maxNumSearches vectors to exercise the graph
       if (supportsSearch && values.docID() % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader
-            .getVectorReader()
-            .search(fieldInfo.name, values.vectorValue(), collector, null, null);
+        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(

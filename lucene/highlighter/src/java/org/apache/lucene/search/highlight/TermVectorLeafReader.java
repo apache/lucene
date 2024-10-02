@@ -42,7 +42,6 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
@@ -182,19 +181,11 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String field,
-      float[] target,
-      KnnCollector knnCollector,
-      Bits acceptDocs,
-      DocIdSetIterator seedDocs) {}
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
   public void searchNearestVectors(
-      String field,
-      byte[] target,
-      KnnCollector knnCollector,
-      Bits acceptDocs,
-      DocIdSetIterator seedDocs) {}
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
   public void checkIntegrity() throws IOException {}

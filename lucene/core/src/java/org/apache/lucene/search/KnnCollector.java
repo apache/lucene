@@ -85,4 +85,9 @@ public interface KnnCollector {
    * @return The collected top documents
    */
   TopDocs topDocs();
+
+  /** TODO */
+  default DocIdSetIterator getSeedEntryPoints() {
+    return null;
+  }
 }

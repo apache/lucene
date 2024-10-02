@@ -245,19 +245,11 @@ public class QueryUtils {
 
       @Override
       public void searchNearestVectors(
-          String field,
-          float[] target,
-          KnnCollector knnCollector,
-          Bits acceptDocs,
-          DocIdSetIterator seedDocs) {}
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
       @Override
       public void searchNearestVectors(
-          String field,
-          byte[] target,
-          KnnCollector knnCollector,
-          Bits acceptDocs,
-          DocIdSetIterator seedDocs) {}
+          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
       @Override
       public FieldInfos getFieldInfos() {

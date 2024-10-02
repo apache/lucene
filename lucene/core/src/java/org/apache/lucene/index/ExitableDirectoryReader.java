@@ -333,11 +333,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     @Override
     public void searchNearestVectors(
-        String field,
-        float[] target,
-        KnnCollector knnCollector,
-        Bits acceptDocs,
-        DocIdSetIterator seedDocs)
+        String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
 
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
@@ -365,16 +361,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
             }
           };
 
-      in.searchNearestVectors(field, target, knnCollector, timeoutCheckingAcceptDocs, seedDocs);
+      in.searchNearestVectors(field, target, knnCollector, timeoutCheckingAcceptDocs);
     }
 
     @Override
     public void searchNearestVectors(
-        String field,
-        byte[] target,
-        KnnCollector knnCollector,
-        Bits acceptDocs,
-        DocIdSetIterator seedDocs)
+        String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
       // match all docs to allow timeout checking.
@@ -401,7 +393,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
             }
           };
 
-      in.searchNearestVectors(field, target, knnCollector, timeoutCheckingAcceptDocs, seedDocs);
+      in.searchNearestVectors(field, target, knnCollector, timeoutCheckingAcceptDocs);
     }
 
     private void checkAndThrowForSearchVectors() {

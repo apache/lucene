@@ -54,7 +54,8 @@ public class HnswGraphSearcher {
   }
 
   /**
-   * Searches HNSW graph for the nearest neighbors of a query vector.
+   * Searches the HNSW graph for the nearest neighbors of a query vector, starting from the provided
+   * entry points.
    *
    * @param scorer the scorer to compare the query with the nodes
    * @param knnCollector a collector of top knn results to be returned
@@ -66,46 +67,21 @@ public class HnswGraphSearcher {
   public static void search(
       RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
-    HnswGraphSearcher graphSearcher =
-        new HnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
-    search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
-  }
-
-  /**
-   * Searches the HNSW graph for the nearest neighbors of a query vector, starting from the provided
-   * entry points.
-   *
-   * @param scorer the scorer to compare the query with the nodes
-   * @param knnCollector a collector of top knn results to be returned
-   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
-   *     graph.
-   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
-   *     {@code null} if they are all allowed to match.
-   * @param entryPointOrds the entry points for search.
-   */
-  public static void search(
-      RandomVectorScorer scorer,
-      KnnCollector knnCollector,
-      HnswGraph graph,
-      Bits acceptOrds,
-      DocIdSetIterator entryPointOrds)
-      throws IOException {
     ArrayList<Integer> entryPointOrdInts = null;
-    if (entryPointOrds != null) {
+    DocIdSetIterator entryPoints = knnCollector.getSeedEntryPoints();
+    if (entryPoints != null) {
       entryPointOrdInts = new ArrayList<Integer>();
       int entryPointOrdInt;
-      while ((entryPointOrdInt = entryPointOrds.nextDoc()) != NO_MORE_DOCS) {
+      while ((entryPointOrdInt = entryPoints.nextDoc()) != NO_MORE_DOCS) {
         entryPointOrdInts.add(entryPointOrdInt);
       }
     }
+    HnswGraphSearcher graphSearcher =
+        new HnswGraphSearcher(
+            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
     if (entryPointOrdInts == null || entryPointOrdInts.isEmpty()) {
-      search(scorer, knnCollector, graph, acceptOrds);
+      search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
     } else {
-      HnswGraphSearcher graphSearcher =
-          new HnswGraphSearcher(
-              new NeighborQueue(knnCollector.k(), true),
-              new SparseFixedBitSet(getGraphSize(graph)));
       int[] entryPointOrdIntsArr = entryPointOrdInts.stream().mapToInt(Integer::intValue).toArray();
       // We use provided entry point ordinals to search the complete graph (level 0)
       graphSearcher.searchLevel(

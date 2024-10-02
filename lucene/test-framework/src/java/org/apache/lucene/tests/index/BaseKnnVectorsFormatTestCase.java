@@ -802,12 +802,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
             leafReader.searchNearestVectors(
-                "v",
-                randomNormalizedVector(4),
-                1,
-                leafReader.getLiveDocs(),
-                null,
-                Integer.MAX_VALUE);
+                "v", randomNormalizedVector(4), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -1444,12 +1439,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName,
-                      randomNormalizedVector(dimension),
-                      k,
-                      liveDocs,
-                      null,
-                      visitedLimit);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation());
           assertEquals(visitedLimit, results.totalHits.value());
 
@@ -1459,12 +1449,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName,
-                      randomNormalizedVector(dimension),
-                      k,
-                      liveDocs,
-                      null,
-                      visitedLimit);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
           assertTrue(results.totalHits.value() <= visitedLimit);
         }
@@ -1543,12 +1528,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName,
-                      randomNormalizedVector(dimension),
-                      k,
-                      liveDocs,
-                      null,
-                      Integer.MAX_VALUE);
+                      fieldName, randomNormalizedVector(dimension), k, liveDocs, Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
