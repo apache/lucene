@@ -98,4 +98,71 @@ public interface KnnCollector {
   default DocIdSetIterator getSeedEntryPoints() {
     return null;
   }
+
+  public abstract static class Decorator implements KnnCollector {
+    private KnnCollector collector;
+
+    public Decorator(KnnCollector collector) {
+      this.collector = collector;
+    }
+
+    @Override
+    public boolean earlyTerminated() {
+      return collector.earlyTerminated();
+    }
+
+    @Override
+    public void incVisitedCount(int count) {
+      collector.incVisitedCount(count);
+    }
+
+    @Override
+    public long visitedCount() {
+      return collector.visitedCount();
+    }
+
+    @Override
+    public long visitLimit() {
+      return collector.visitLimit();
+    }
+
+    @Override
+    public int k() {
+      return collector.k();
+    }
+
+    @Override
+    public boolean collect(int docId, float similarity) {
+      return collector.collect(docId, similarity);
+    }
+
+    @Override
+    public float minCompetitiveSimilarity() {
+      return collector.minCompetitiveSimilarity();
+    }
+
+    @Override
+    public TopDocs topDocs() {
+      return collector.topDocs();
+    }
+
+    @Override
+    public DocIdSetIterator getSeedEntryPoints() {
+      return collector.getSeedEntryPoints();
+    }
+  }
+
+  public static class Seeded extends Decorator {
+    private DocIdSetIterator seedEntryPoints;
+
+    public Seeded(KnnCollector collector, DocIdSetIterator seedEntryPoints) {
+      super(collector);
+      this.seedEntryPoints = seedEntryPoints;
+    }
+
+    @Override
+    public DocIdSetIterator getSeedEntryPoints() {
+      return seedEntryPoints;
+    }
+  }
 }

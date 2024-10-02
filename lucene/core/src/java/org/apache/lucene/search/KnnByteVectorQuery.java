@@ -101,7 +101,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
       throws IOException {
     KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
     if (seedDocs != null) {
-      knnCollector = new SeededKnnCollector(knnCollector, seedDocs);
+      knnCollector = new KnnCollector.Seeded(knnCollector, seedDocs);
     }
     LeafReader reader = context.reader();
     ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
