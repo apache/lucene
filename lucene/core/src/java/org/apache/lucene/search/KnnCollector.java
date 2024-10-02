@@ -99,6 +99,12 @@ public interface KnnCollector {
     return null;
   }
 
+  /**
+   * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend
+   * the object with new behaviors.
+   *
+   * @lucene.experimental
+   */
   public abstract static class Decorator implements KnnCollector {
     private KnnCollector collector;
 
@@ -152,6 +158,11 @@ public interface KnnCollector {
     }
   }
 
+  /**
+   * KnnCollector.Seeded is a KnnCollector decorator that replaces the seedEntryPoints.
+   *
+   * @lucene.experimental
+   */
   public static class Seeded extends Decorator {
     private DocIdSetIterator seedEntryPoints;
 
