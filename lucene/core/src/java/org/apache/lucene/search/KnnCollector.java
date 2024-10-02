@@ -87,13 +87,12 @@ public interface KnnCollector {
   TopDocs topDocs();
 
   /**
-   * This method returns a {@link DocIdSetIterator} over entry points that seed the KNN search,
-   * or {@code null} (default) to perform a full KNN search (without seeds).
-   * 
+   * This method returns a {@link DocIdSetIterator} over entry points that seed the KNN search, or
+   * {@code null} (default) to perform a full KNN search (without seeds).
+   *
    * <p>Note that the entry points should represent ordinals, rather than true document IDs.
    *
    * @return the seed entry points or {@code null}.
-   * 
    * @lucene.experimental
    */
   default DocIdSetIterator getSeedEntryPoints() {
