@@ -95,10 +95,10 @@ public class TestDefaultPassageFormatter extends LuceneTestCase {
     passages[1].setScore(1.5923802f);
     passages[1].addMatch(33, 41, new BytesRef("document"), 1);
 
-    DefaultPassageFormatter formatter = new DefaultPassageFormatter("<b>", "</b>", "\n ", false);
+    DefaultPassageFormatter formatter = new DefaultPassageFormatter("<b>", "</b>", "\n", false);
     assertEquals(
         "A <b>document</b> essentially represents a single record, and each <b>document</b> typically contains a unique ID field.\n"
-            + " When indexing data in Solr, each <b>document</b> is composed of various fields. ",
+            + "When indexing data in Solr, each <b>document</b> is composed of various fields. ",
         formatter.format(passages, content));
   }
 }
