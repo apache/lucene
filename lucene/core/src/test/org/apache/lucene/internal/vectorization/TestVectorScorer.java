@@ -360,7 +360,7 @@ public class TestVectorScorer extends LuceneTestCase {
             assertEquals(supplier2.scorer(0).score(0), expected, DELTA);
 
             var scorer1 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, new float[] {1f});
-            var scorer2 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, new float[] {1f});
+            var scorer2 = MEMSEG_SCORER.getRandomVectorScorer(sim, vectorValues, new float[] {1f});
             assertTrue(scorer1.toString().toLowerCase(ROOT).contains("float"));
             assertTrue(scorer2.toString().toLowerCase(ROOT).contains("float"));
             expected = scorer1.score(0);
