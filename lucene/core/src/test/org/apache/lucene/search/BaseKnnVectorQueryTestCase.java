@@ -619,7 +619,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     int numDocs = 1000;
     int dimension = atLeast(5);
     int numIters = atLeast(10);
-    try (Directory d = newDirectory()) {
+    int numDocsWithVector = 0;
+    try (Directory d = newDirectoryForTest()) {
       // Always use the default kNN format to have predictable behavior around when it hits
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
@@ -628,10 +629,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
-        if (random()
-            .nextBoolean()) { // Randomly skip some vectors to test the mapping from docid to
-          // ordinals
+        if (random().nextBoolean()) {
+          // Randomly skip some vectors to test the mapping from docid to ordinals
           doc.add(getKnnVectorField("field", randomVector(dimension)));
+          numDocsWithVector += 1;
         }
         doc.add(new NumericDocValuesField("tag", i));
         doc.add(new IntPoint("tag", i));
@@ -645,16 +646,18 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         for (int i = 0; i < numIters; i++) {
           int k = random().nextInt(80) + 1;
           int n = random().nextInt(100) + 1;
+          // we may get fewer results than requested if there are deletions, but this test doesn't
+          // check that
+          assert reader.hasDeletions() == false;
 
           // All documents as seeds
           Query seed1 = new MatchAllDocsQuery();
+          Query filter = random().nextBoolean() ? null : new MatchAllDocsQuery();
           AbstractKnnVectorQuery query =
-              getKnnVectorQuery("field", randomVector(dimension), k, null, seed1);
+              getKnnVectorQuery("field", randomVector(dimension), k, filter, seed1);
           TopDocs results = searcher.search(query, n);
-          int expected = Math.min(Math.min(n, k), reader.numDocs());
-          // we may get fewer results than requested if there are deletions, but this test doesn't
-          // test that
-          assert reader.hasDeletions() == false;
+          int expected = Math.min(Math.min(n, k), numDocsWithVector);
+
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
@@ -669,9 +672,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           query = getKnnVectorQuery("field", randomVector(dimension), k, null, seed2);
           results = searcher.search(query, n);
           expected = Math.min(Math.min(n, k), reader.numDocs());
-          // we may get fewer results than requested if there are deletions, but this test doesn't
-          // test that
-          assert reader.hasDeletions() == false;
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
@@ -682,13 +682,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           }
 
           // No seed documents -- falls back on full approx search
-          Query seed3 = new BooleanQuery.Builder().build();
+          Query seed3 = new MatchNoDocsQuery();
           query = getKnnVectorQuery("field", randomVector(dimension), k, null, seed3);
           results = searcher.search(query, n);
           expected = Math.min(Math.min(n, k), reader.numDocs());
-          // we may get fewer results than requested if there are deletions, but this test doesn't
-          // test that
-          assert reader.hasDeletions() == false;
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order

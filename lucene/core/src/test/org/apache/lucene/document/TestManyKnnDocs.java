@@ -54,17 +54,16 @@ public class TestManyKnnDocs extends LuceneTestCase {
     mp.setMaxMergeAtOnce(256); // avoid intermediate merges (waste of time with HNSW?)
     mp.setSegmentsPerTier(256); // only merge once at the end when we ask
     iwc.setMergePolicy(mp);
-    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
 
     try (Directory dir = FSDirectory.open(testDir = createTempDir("ManyKnnVectorDocs"));
         IndexWriter iw = new IndexWriter(dir, iwc)) {
 
       int numVectors = 2088992;
       for (int i = 0; i < numVectors; i++) {
-        float[] vector = new float[128];
+        float[] vector = new float[1];
         Document doc = new Document();
         vector[0] = (i % 256);
-        vector[1] = (float) (i / 256.);
         doc.add(new KnnFloatVectorField("field", vector, similarityFunction));
         doc.add(new KeywordField("int", "" + i, org.apache.lucene.document.Field.Store.YES));
         doc.add(new StoredField("intValue", i));
