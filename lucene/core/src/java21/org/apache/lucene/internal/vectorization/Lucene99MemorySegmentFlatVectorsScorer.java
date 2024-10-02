@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -43,7 +44,8 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
     // a quantized values here is a wrapping or delegation issue
     assert !(vectorValues instanceof QuantizedByteVectorValues);
     // currently only supports binary vectors
-    if (vectorValues instanceof HasIndexSlice byteVectorValues
+    if (vectorValues instanceof ByteVectorValues bvv
+        && bvv instanceof HasIndexSlice byteVectorValues
         && byteVectorValues.getSlice() != null) {
       var scorer =
           Lucene99MemorySegmentByteVectorScorerSupplier.create(
@@ -70,7 +72,8 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
     checkDimensions(queryVector.length, vectorValues.dimension());
     // a quantized values here is a wrapping or delegation issue
     assert !(vectorValues instanceof QuantizedByteVectorValues);
-    if (vectorValues instanceof HasIndexSlice byteVectorValues
+    if (vectorValues instanceof ByteVectorValues bvv
+        && bvv instanceof HasIndexSlice byteVectorValues
         && byteVectorValues.getSlice() != null) {
       var scorer =
           Lucene99MemorySegmentByteVectorScorer.create(
