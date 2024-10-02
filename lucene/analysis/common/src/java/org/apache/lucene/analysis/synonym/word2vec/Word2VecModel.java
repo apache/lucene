@@ -17,7 +17,6 @@
 
 package org.apache.lucene.analysis.synonym.word2vec;
 
-import java.io.IOException;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
@@ -62,8 +61,13 @@ public class Word2VecModel extends FloatVectorValues {
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) {
-    return termsAndVectors[targetOrd].vector();
+  public Floats values() {
+    return new Floats() {
+      @Override
+      public float[] get(int targetOrd) {
+        return termsAndVectors[targetOrd].vector();
+      }
+    };
   }
 
   public float[] vectorValue(BytesRef term) {
@@ -85,11 +89,5 @@ public class Word2VecModel extends FloatVectorValues {
   @Override
   public int size() {
     return dictionarySize;
-  }
-
-  @Override
-  public Word2VecModel copy() throws IOException {
-    return new Word2VecModel(
-        this.dictionarySize, this.vectorDimension, this.termsAndVectors, this.word2Vec);
   }
 }

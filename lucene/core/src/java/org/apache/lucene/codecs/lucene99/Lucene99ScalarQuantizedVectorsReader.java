@@ -421,18 +421,19 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
 
     @Override
-    public float[] vectorValue(int ord) throws IOException {
-      return rawVectorValues.vectorValue(ord);
+    public Floats values() throws IOException {
+      Floats rawDict = rawVectorValues.values();
+      return new Floats() {
+        @Override
+        public float[] get(int ord) throws IOException {
+          return rawDict.get(ord);
+        }
+      };
     }
 
     @Override
     public int ordToDoc(int ord) {
       return rawVectorValues.ordToDoc(ord);
-    }
-
-    @Override
-    public QuantizedVectorValues copy() throws IOException {
-      return new QuantizedVectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
     }
 
     @Override

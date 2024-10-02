@@ -726,10 +726,10 @@ public class TestField extends LuceneTestCase {
         assertEquals(1, floatValues.size());
         KnnVectorValues.DocIndexIterator iterator1 = floatValues.iterator();
         assertNotEquals(NO_MORE_DOCS, iterator1.nextDoc());
-        assertEquals(vector.length, floatValues.vectorValue(0).length);
-        assertEquals(vector[0], floatValues.vectorValue(0)[0], 0);
+        assertEquals(vector.length, floatValues.values().get(0).length);
+        assertEquals(vector[0], floatValues.values().get(0)[0], 0);
         assertEquals(NO_MORE_DOCS, iterator1.nextDoc());
-        expectThrows(IOException.class, () -> floatValues.vectorValue(1));
+        expectThrows(IOException.class, () -> floatValues.values().get(1));
       }
     }
   }

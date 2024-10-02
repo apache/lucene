@@ -2301,12 +2301,17 @@ public class MemoryIndex {
     }
 
     @Override
-    public float[] vectorValue(int ord) {
-      if (ord == 0) {
-        return info.floatVectorValues[0];
-      } else {
-        return null;
-      }
+    public Floats values() {
+      return new Floats() {
+        @Override
+        public float[] get(int ord) {
+          if (ord == 0) {
+            return info.floatVectorValues[0];
+          } else {
+            return null;
+          }
+        }
+      };
     }
 
     @Override
@@ -2325,13 +2330,12 @@ public class MemoryIndex {
       }
       MemoryFloatVectorValues vectorValues = new MemoryFloatVectorValues(info);
       DocIndexIterator iterator = vectorValues.iterator();
+      FloatVectorValues.Floats floats = vectorValues.values();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
           assert iterator.docID() == 0;
-          return info.fieldInfo
-              .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(0), query);
+          return info.fieldInfo.getVectorSimilarityFunction().compare(floats.get(0), query);
         }
 
         @Override
@@ -2339,11 +2343,6 @@ public class MemoryIndex {
           return iterator;
         }
       };
-    }
-
-    @Override
-    public MemoryFloatVectorValues copy() {
-      return this;
     }
   }
 

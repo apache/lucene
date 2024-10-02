@@ -441,8 +441,13 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public float[] vectorValue(int ord) throws IOException {
-        return vectorValues.vectorValue(ord);
+      public Floats values() throws IOException {
+        Floats dict = vectorValues.values();
+        return new Floats() {
+          public float[] get(int ord) throws IOException {
+            return dict.get(ord);
+          }
+        };
       }
 
       @Override
@@ -463,11 +468,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       @Override
       public VectorScorer scorer(float[] target) throws IOException {
         return vectorValues.scorer(target);
-      }
-
-      @Override
-      public FloatVectorValues copy() {
-        throw new UnsupportedOperationException();
       }
     }
 

@@ -869,16 +869,16 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public FloatVectorValues copy() throws IOException {
-      return this;
-    }
-
-    @Override
-    public float[] vectorValue(int ord) throws IOException {
-      if (ord < 0 || ord >= vectorList.size()) {
-        throw new IOException("vector ord " + ord + " out of bounds");
-      }
-      return vectorList.get(ord);
+    public Floats values() {
+      return new Floats() {
+        @Override
+        public float[] get(int ord) throws IOException {
+          if (ord < 0 || ord >= vectorList.size()) {
+            throw new IOException("vector ord " + ord + " out of bounds");
+          }
+          return vectorList.get(ord);
+        }
+      };
     }
 
     @Override
@@ -1047,6 +1047,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     private final FloatVectorValues values;
     private final ScalarQuantizer quantizer;
     private final byte[] quantizedVector;
+    private final FloatVectorValues.Floats floats;
     private int lastOrd = -1;
     private float offsetValue = 0f;
 
@@ -1055,11 +1056,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     public QuantizedFloatVectorValues(
         FloatVectorValues values,
         VectorSimilarityFunction vectorSimilarityFunction,
-        ScalarQuantizer quantizer) {
+        ScalarQuantizer quantizer)
+        throws IOException {
       this.values = values;
       this.quantizer = quantizer;
-      this.quantizedVector = new byte[values.dimension()];
+      quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
+      floats = values.values();
     }
 
     @Override
@@ -1099,7 +1102,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     private float quantize(int ord) throws IOException {
-      return quantizer.quantize(values.vectorValue(ord), quantizedVector, vectorSimilarityFunction);
+      return quantizer.quantize(floats.get(ord), quantizedVector, vectorSimilarityFunction);
     }
 
     @Override
@@ -1199,11 +1202,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   static final class NormalizedFloatVectorValues extends FloatVectorValues {
     private final FloatVectorValues values;
-    private final float[] normalizedVector;
+    private final Floats floats;
 
-    public NormalizedFloatVectorValues(FloatVectorValues values) {
+    public NormalizedFloatVectorValues(FloatVectorValues values) throws IOException {
       this.values = values;
-      this.normalizedVector = new float[values.dimension()];
+      floats = values.values();
     }
 
     @Override
@@ -1222,20 +1225,21 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public float[] vectorValue(int ord) throws IOException {
-      System.arraycopy(values.vectorValue(ord), 0, normalizedVector, 0, normalizedVector.length);
-      VectorUtil.l2normalize(normalizedVector);
-      return normalizedVector;
+    public Floats values() {
+      float[] normalizedVector = new float[values.dimension()];
+      return new Floats() {
+        @Override
+        public float[] get(int ord) throws IOException {
+          System.arraycopy(floats.get(ord), 0, normalizedVector, 0, normalizedVector.length);
+          VectorUtil.l2normalize(normalizedVector);
+          return normalizedVector;
+        }
+      };
     }
 
     @Override
     public DocIndexIterator iterator() {
       return values.iterator();
-    }
-
-    @Override
-    public NormalizedFloatVectorValues copy() throws IOException {
-      return new NormalizedFloatVectorValues(values.copy());
     }
   }
 }

@@ -83,6 +83,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       throws IOException {
     int size = graphValues.size();
 
+    FloatVectorValues.Floats values = vectors.values();
     // MIN heap, holding the top results
     NeighborQueue results = new NeighborQueue(numSeed, false);
     // MAX heap, from which to pull the candidate nodes
@@ -101,7 +102,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           break;
         }
         // explore the topK starting points of some random numSeed probes
-        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
+        float score = similarityFunction.compare(query, values.get(entryPoint));
         candidates.add(entryPoint, score);
         if (acceptOrds == null || acceptOrds.get(entryPoint)) {
           results.add(entryPoint, score);
@@ -137,7 +138,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           break;
         }
 
-        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        float friendSimilarity = similarityFunction.compare(query, values.get(friendOrd));
         if (results.size() < numSeed || bound.check(friendSimilarity) == false) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {

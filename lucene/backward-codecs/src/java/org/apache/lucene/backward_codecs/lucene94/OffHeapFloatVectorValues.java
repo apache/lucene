@@ -35,8 +35,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
   protected final int size;
   protected final IndexInput slice;
   protected final int byteSize;
-  protected int lastOrd = -1;
-  protected final float[] value;
   protected final VectorSimilarityFunction vectorSimilarityFunction;
 
   OffHeapFloatVectorValues(
@@ -49,7 +47,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     this.size = size;
     this.slice = slice;
     this.byteSize = byteSize;
-    value = new float[dimension];
     this.vectorSimilarityFunction = vectorSimilarityFunction;
   }
 
@@ -64,14 +61,23 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return value;
-    }
-    slice.seek((long) targetOrd * byteSize);
-    slice.readFloats(value, 0, value.length);
-    lastOrd = targetOrd;
-    return value;
+  public Floats values() {
+    return new Floats() {
+      final IndexInput dictionarySlice = slice.clone();
+      int lastOrd = -1;
+      float[] value = new float[dimension];
+
+      @Override
+      public float[] get(int targetOrd) throws IOException {
+        if (lastOrd == targetOrd) {
+          return value;
+        }
+        dictionarySlice.seek((long) targetOrd * byteSize);
+        dictionarySlice.readFloats(value, 0, value.length);
+        lastOrd = targetOrd;
+        return value;
+      }
+    };
   }
 
   static OffHeapFloatVectorValues load(
@@ -112,12 +118,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    public DenseOffHeapVectorValues copy() throws IOException {
-      return new DenseOffHeapVectorValues(
-          dimension, size, slice.clone(), vectorSimilarityFunction, byteSize);
-    }
-
-    @Override
     public DocIndexIterator iterator() {
       return createDenseIterator();
     }
@@ -129,14 +129,13 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      DenseOffHeapVectorValues values = this.copy();
-      DocIndexIterator iterator = values.iterator();
+      Floats floats = values();
+      DocIndexIterator iterator = iterator();
 
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.vectorSimilarityFunction.compare(
-              values.vectorValue(iterator.index()), query);
+          return vectorSimilarityFunction.compare(floats.get(iterator.index()), query);
         }
 
         @Override
@@ -179,12 +178,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    public SparseOffHeapVectorValues copy() throws IOException {
-      return new SparseOffHeapVectorValues(
-          fieldEntry, dataIn, slice.clone(), vectorSimilarityFunction, byteSize);
-    }
-
-    @Override
     public DocIndexIterator iterator() {
       return IndexedDISI.asDocIndexIterator(disi);
     }
@@ -214,13 +207,12 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      SparseOffHeapVectorValues values = this.copy();
-      DocIndexIterator iterator = values.iterator();
+      DocIndexIterator iterator = iterator();
+      Floats values = values();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.vectorSimilarityFunction.compare(
-              values.vectorValue(iterator.index()), query);
+          return vectorSimilarityFunction.compare(values.get(iterator.index()), query);
         }
 
         @Override
@@ -248,13 +240,13 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    public OffHeapFloatVectorValues copy() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
+    public Floats values() {
+      return new Floats() {
+        @Override
+        public float[] get(int targetOrd) {
+          throw new UnsupportedOperationException();
+        }
+      };
     }
 
     @Override

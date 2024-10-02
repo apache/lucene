@@ -604,13 +604,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       IndexOutput output, FloatVectorValues floatVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+    FloatVectorValues.Floats values = floatVectorValues.values();
     ByteBuffer binaryVector =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] vectorValue = floatVectorValues.vectorValue(iter.index());
-      binaryVector.asFloatBuffer().put(vectorValue);
+      binaryVector.asFloatBuffer().put(values.get(iter.index()));
       output.writeBytes(binaryVector.array(), binaryVector.limit());
       docsWithField.add(docV);
     }

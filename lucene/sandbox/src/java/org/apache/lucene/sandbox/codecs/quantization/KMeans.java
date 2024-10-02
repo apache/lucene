@@ -39,6 +39,7 @@ public class KMeans {
   public static final int DEFAULT_SAMPLE_SIZE = 100_000;
 
   private final FloatVectorValues vectors;
+  private final FloatVectorValues.Floats vectorValues;
   private final int numVectors;
   private final int numCentroids;
   private final Random random;
@@ -145,8 +146,10 @@ public class KMeans {
       Random random,
       KmeansInitializationMethod initializationMethod,
       int restarts,
-      int iters) {
+      int iters)
+      throws IOException {
     this.vectors = vectors;
+    this.vectorValues = vectors.values();
     this.numVectors = vectors.size();
     this.numCentroids = numCentroids;
     this.random = random;
@@ -197,7 +200,7 @@ public class KMeans {
     float[][] initialCentroids = new float[numCentroids][];
     int i = 0;
     for (Integer selectedIdx : selection) {
-      float[] vector = vectors.vectorValue(selectedIdx);
+      float[] vector = vectorValues.get(selectedIdx);
       initialCentroids[i++] = ArrayUtil.copyOfSubArray(vector, 0, vector.length);
     }
     return initialCentroids;
@@ -207,7 +210,7 @@ public class KMeans {
   private float[][] initializeReservoirSampling() throws IOException {
     float[][] initialCentroids = new float[numCentroids][];
     for (int index = 0; index < numVectors; index++) {
-      float[] vector = vectors.vectorValue(index);
+      float[] vector = vectorValues.get(index);
       if (index < numCentroids) {
         initialCentroids[index] = ArrayUtil.copyOfSubArray(vector, 0, vector.length);
       } else if (random.nextDouble() < numCentroids * (1.0 / index)) {
@@ -223,7 +226,7 @@ public class KMeans {
     float[][] initialCentroids = new float[numCentroids][];
     // Choose the first centroid uniformly at random
     int firstIndex = random.nextInt(numVectors);
-    float[] value = vectors.vectorValue(firstIndex);
+    float[] value = vectorValues.get(firstIndex);
     initialCentroids[0] = ArrayUtil.copyOfSubArray(value, 0, value.length);
 
     // Store distances of each point to the nearest centroid
@@ -236,7 +239,7 @@ public class KMeans {
       double totalSum = 0;
       for (int j = 0; j < numVectors; j++) {
         // TODO: replace with RandomVectorScorer::score possible on quantized vectors
-        float dist = VectorUtil.squareDistance(vectors.vectorValue(j), initialCentroids[i - 1]);
+        float dist = VectorUtil.squareDistance(vectorValues.get(j), initialCentroids[i - 1]);
         if (dist < minDistances[j]) {
           minDistances[j] = dist;
         }
@@ -255,7 +258,7 @@ public class KMeans {
         }
       }
       // Update centroid
-      value = vectors.vectorValue(nextCentroidIndex);
+      value = vectorValues.get(nextCentroidIndex);
       initialCentroids[i] = ArrayUtil.copyOfSubArray(value, 0, value.length);
     }
     return initialCentroids;
@@ -289,9 +292,10 @@ public class KMeans {
       compensations = new float[numCentroids][centroids[0].length];
     }
 
+    FloatVectorValues.Floats values = vectors.values();
     double sumSquaredDist = 0;
     for (int docID = 0; docID < vectors.size(); docID++) {
-      float[] vector = vectors.vectorValue(docID);
+      float[] vector = values.get(docID);
       short bestCentroid = 0;
       if (numCentroids > 1) {
         float minSquaredDist = Float.MAX_VALUE;
@@ -355,16 +359,17 @@ public class KMeans {
         assignedCentroidsIdxs[assignedIndex++] = i;
       }
     }
+    FloatVectorValues.Floats vectorValues = vectors.values();
     NeighborQueue queue = new NeighborQueue(unassignedCentroidsIdxs.size(), false);
     for (int i = 0; i < vectors.size(); i++) {
-      float[] vector = vectors.vectorValue(i);
+      float[] vector = vectorValues.get(i);
       for (short j = 0; j < assignedCentroidsIdxs.length; j++) {
         float squareDist = VectorUtil.squareDistance(centroids[assignedCentroidsIdxs[j]], vector);
         queue.insertWithOverflow(i, squareDist);
       }
     }
     for (int i = 0; i < unassignedCentroidsIdxs.size(); i++) {
-      float[] vector = vectors.vectorValue(queue.topNode());
+      float[] vector = vectorValues.get(queue.topNode());
       int unassignedCentroidIdx = unassignedCentroidsIdxs.get(i);
       centroids[unassignedCentroidIdx] = ArrayUtil.copyArray(vector);
       queue.pop();

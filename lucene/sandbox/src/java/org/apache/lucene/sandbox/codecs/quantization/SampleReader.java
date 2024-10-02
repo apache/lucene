@@ -48,18 +48,19 @@ public class SampleReader extends FloatVectorValues implements HasIndexSlice {
   }
 
   @Override
-  public FloatVectorValues copy() throws IOException {
-    throw new IllegalStateException("Not supported");
-  }
-
-  @Override
   public IndexInput getSlice() {
     return ((HasIndexSlice) origin).getSlice();
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
-    return origin.vectorValue(sampleFunction.applyAsInt(targetOrd));
+  public Floats values() throws IOException {
+    Floats originValues = origin.values();
+    return new Floats() {
+      @Override
+      public float[] get(int targetOrd) throws IOException {
+        return originValues.get(sampleFunction.applyAsInt(targetOrd));
+      }
+    };
   }
 
   @Override

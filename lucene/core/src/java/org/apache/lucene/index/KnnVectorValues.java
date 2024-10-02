@@ -49,12 +49,6 @@ public abstract class KnnVectorValues {
     return ord;
   }
 
-  /**
-   * Creates a new copy of this {@link KnnVectorValues}. This is helpful when you need to access
-   * different values at once, to avoid overwriting the underlying vector returned.
-   */
-  public abstract KnnVectorValues copy() throws IOException;
-
   /** Returns the vector byte length, defaults to dimension multiplied by float byte size */
   public int getVectorByteLength() {
     return dimension() * getEncoding().byteSize;

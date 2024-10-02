@@ -189,10 +189,10 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
     ByteBuffer binaryVector =
         ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     KnnVectorValues.DocIndexIterator iter = vectors.iterator();
+    FloatVectorValues.Floats values = vectors.values();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] vectorValue = vectors.vectorValue(iter.index());
-      binaryVector.asFloatBuffer().put(vectorValue);
+      binaryVector.asFloatBuffer().put(values.get(iter.index()));
       output.writeBytes(binaryVector.array(), binaryVector.limit());
       docIds[count++] = docV;
     }
@@ -250,7 +250,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
             beamWidth,
             Lucene90HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    Lucene90OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.copy());
+    Lucene90OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues);
 
     for (int ord = 0; ord < offsets.length; ord++) {
       // write graph

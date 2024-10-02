@@ -581,7 +581,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       if (random().nextBoolean()
           && iter.docID() != DocIdSetIterator.NO_MORE_DOCS
           && values instanceof FloatVectorValues) {
-        ((FloatVectorValues) values).vectorValue(iter.index());
+        ((FloatVectorValues) values).values().get(iter.index());
       }
     }
   }

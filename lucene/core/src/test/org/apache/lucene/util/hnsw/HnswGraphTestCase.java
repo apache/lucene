@@ -85,6 +85,7 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
+import org.junit.Ignore;
 
 /** Tests HNSW KNN graphs */
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
@@ -119,12 +120,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   protected RandomVectorScorer buildScorer(KnnVectorValues vectors, T query) throws IOException {
-    KnnVectorValues vectorsCopy = vectors.copy();
     return switch (getVectorEncoding()) {
       case BYTE ->
-          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (byte[]) query);
+          flatVectorScorer.getRandomVectorScorer(
+              similarityFunction, ((ByteVectorValues) vectors).copy(), (byte[]) query);
       case FLOAT32 ->
-          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (float[]) query);
+          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectors, (float[]) query);
     };
   }
 
@@ -191,11 +192,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 doc.add(
                     knnVectorField(
                         "field",
-                        (T) ((FloatVectorValues) vectors).vectorValue(ord),
+                        (T) ((FloatVectorValues) vectors).values().get(ord),
                         similarityFunction));
               }
             }
-            ;
             doc.add(new StringField("id", Integer.toString(vectors.ordToDoc(ord)), Field.Store.NO));
             iw.addDocument(doc);
           }
@@ -226,10 +226,37 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         return (T) ((ByteVectorValues) vectors).vectorValue(ord);
       }
       case FLOAT32 -> {
-        return (T) ((FloatVectorValues) vectors).vectorValue(ord);
+        return (T) ((FloatVectorValues) vectors).values().get(ord);
       }
     }
     throw new AssertionError("unknown encoding " + vectors.getEncoding());
+  }
+
+  interface Vectors<T> {
+    T get(int ord) throws IOException;
+  }
+
+  // we used to have a generically-typed vector API, now this persists only in tests
+  @SuppressWarnings("unchecked")
+  private static <T> Vectors<T> vectors(KnnVectorValues vectors) throws IOException {
+    return switch (vectors.getEncoding()) {
+      case FLOAT32 ->
+          new Vectors<T>() {
+            FloatVectorValues.Floats dict = ((FloatVectorValues) vectors).values();
+
+            @Override
+            public T get(int ord) throws IOException {
+              return (T) dict.get(ord);
+            }
+          };
+      case BYTE ->
+          new Vectors<T>() {
+            @Override
+            public T get(int ord) throws IOException {
+              return (T) ((ByteVectorValues) vectors).vectorValue(ord);
+            }
+          };
+    };
   }
 
   // test writing out and reading in a graph gives the expected graph
@@ -240,7 +267,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();
     KnnVectorValues vectors = vectorValues(nDoc, dim);
-    KnnVectorValues v2 = vectors.copy(), v3 = vectors.copy();
+    Vectors<T> v1 = vectors(vectors), v2 = vectors(vectors), v3 = vectors(vectors);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors.size());
@@ -268,7 +295,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
-        KnnVectorValues.DocIndexIterator it2 = v2.iterator();
+        KnnVectorValues.DocIndexIterator it2 = vectors.iterator();
         while (it2.nextDoc() != NO_MORE_DOCS) {
           while (indexedDoc < it2.docID()) {
             // increment docId in the index by adding empty documents
@@ -276,7 +303,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             indexedDoc++;
           }
           Document doc = new Document();
-          doc.add(knnVectorField("field", vectorValue(v2, it2.index()), similarityFunction));
+          doc.add(knnVectorField("field", vectorValue(vectors, it2.index()), similarityFunction));
           doc.add(new StoredField("id", it2.docID()));
           iw.addDocument(doc);
           nVec++;
@@ -290,7 +317,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           assertEquals(nVec, values.size());
           assertEquals(indexedDoc, ctx.reader().maxDoc());
           assertEquals(indexedDoc, ctx.reader().numDocs());
-          assertVectorsEqual(v3, values);
+          assertVectorsEqual(vectors, values);
           HnswGraph graphValues =
               ((Lucene99HnswVectorsReader)
                       ((PerFieldKnnVectorsFormat.FieldsReader)
@@ -632,7 +659,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.size());
     KnnVectorValues finalVectorValues =
-        vectorValues(totalSize, dim, initializerVectors.copy(), docIdOffset);
+        vectorValues(totalSize, dim, initializerVectors, docIdOffset);
     int[] initializerOrdMap =
         createOffsetOrdinalMap(initializerSize, finalVectorValues, docIdOffset);
 
@@ -968,7 +995,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 30, random().nextLong());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
-
+    System.out.println("acceptOrds=" + acceptOrds);
     List<T> queries = new ArrayList<>();
     List<KnnCollector> expects = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
@@ -1101,18 +1128,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularFloatVectorValues extends FloatVectorValues {
     private final int size;
-    private final float[] value;
 
     int doc = -1;
 
     CircularFloatVectorValues(int size) {
       this.size = size;
-      value = new float[2];
-    }
-
-    @Override
-    public CircularFloatVectorValues copy() {
-      return new CircularFloatVectorValues(size);
     }
 
     @Override
@@ -1125,8 +1145,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       return size;
     }
 
-    public float[] vectorValue() {
-      return vectorValue(doc);
+    @Override
+    public Floats values() {
+      return new Floats() {
+        float[] value = new float[2];
+
+        @Override
+        public float[] get(int ord) {
+          return unitVector2d(ord / (double) size, value);
+        }
+      };
     }
 
     public int docID() {
@@ -1144,11 +1172,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         doc = NO_MORE_DOCS;
       }
       return doc;
-    }
-
-    @Override
-    public float[] vectorValue(int ord) {
-      return unitVector2d(ord / (double) size, value);
     }
 
     @Override

@@ -306,8 +306,13 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
 
     @Override
-    public float[] vectorValue(int ord) throws IOException {
-      return floats[ordToDoc(ord)];
+    public Floats values() {
+      return new Floats() {
+        @Override
+        public float[] get(int ord) throws IOException {
+          return floats[ordToDoc(ord)];
+        }
+      };
     }
 
     @Override
@@ -359,11 +364,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
     @Override
     public VectorScorer scorer(float[] target) {
       throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public TestSimpleFloatVectorValues copy() {
-      return this;
     }
   }
 }

@@ -853,7 +853,6 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       final DocValuesSub<?>[] subs;
       final MergedDocIterator<FloatVectorValues> iter;
       final int[] starts;
-      int lastSubIndex;
 
       MergedFloatVectorValues(int dimension, int size, List<DocValuesSub<FloatVectorValues>> subs) {
         this.dimension = dimension;
@@ -884,25 +883,26 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         return size;
       }
 
-      @SuppressWarnings("unchecked")
       @Override
-      public FloatVectorValues copy() throws IOException {
-        List<DocValuesSub<FloatVectorValues>> subsCopy = new ArrayList<>();
-        for (Object sub : subs) {
-          subsCopy.add((DocValuesSub<FloatVectorValues>) sub);
-        }
-        return new MergedFloatVectorValues(dimension, size, subsCopy);
-      }
+      public Floats values() {
+        return new Floats() {
+          int lastSubIndex = -1;
+          Floats subDict;
 
-      @Override
-      public float[] vectorValue(int ord) throws IOException {
-        assert ord >= 0 && ord < size;
-        // We need to implement fully random-access API here in order to support callers like
-        // SortingCodecReader that rely on it.
-        lastSubIndex = findSub(ord, lastSubIndex, starts);
-        assert subs[lastSubIndex].sub != null;
-        return ((FloatVectorValues) subs[lastSubIndex].sub)
-            .vectorValue(ord - subs[lastSubIndex].ordStart);
+          @Override
+          public float[] get(int ord) throws IOException {
+            assert ord >= 0 && ord < size;
+            // We need to implement fully random-access API here in order to support callers like
+            // SortingCodecReader that rely on it.
+            int newSubIndex = findSub(ord, lastSubIndex, starts);
+            if (newSubIndex != lastSubIndex) {
+              lastSubIndex = newSubIndex;
+              assert subs[lastSubIndex].sub != null;
+              subDict = ((FloatVectorValues) subs[lastSubIndex].sub).values();
+            }
+            return subDict.get(ord - subs[lastSubIndex].ordStart);
+          }
+        };
       }
     }
 

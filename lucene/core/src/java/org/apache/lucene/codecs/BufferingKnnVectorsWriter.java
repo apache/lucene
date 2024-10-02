@@ -117,13 +117,19 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     SortingFloatVectorValues(
         BufferedFloatVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
         throws IOException {
-      this.delegate = delegate.copy();
+      this.delegate = delegate;
       iteratorSupplier = SortingCodecReader.iteratorSupplier(delegate, sortMap);
     }
 
     @Override
-    public float[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(ord);
+    public Floats values() {
+      Floats delegateFloats = delegate.values();
+      return new Floats() {
+        @Override
+        public float[] get(int ord) throws IOException {
+          return delegateFloats.get(ord);
+        }
+      };
     }
 
     @Override
@@ -134,11 +140,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public int size() {
       return delegate.size();
-    }
-
-    @Override
-    public SortingFloatVectorValues copy() {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -295,18 +296,18 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) {
-      return vectors.get(targetOrd);
+    public Floats values() {
+      return new Floats() {
+        @Override
+        public float[] get(int ord) throws IOException {
+          return vectors.get(ord);
+        }
+      };
     }
 
     @Override
     public DocIndexIterator iterator() {
       return iterator;
-    }
-
-    @Override
-    public BufferedFloatVectorValues copy() throws IOException {
-      return new BufferedFloatVectorValues(vectors, dimension, docsWithField);
     }
   }
 

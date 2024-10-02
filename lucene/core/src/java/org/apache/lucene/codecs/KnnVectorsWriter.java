@@ -71,9 +71,10 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
             MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+        FloatVectorValues.Floats mergedDict = mergedFloats.values();
         KnnVectorValues.DocIndexIterator iter = mergedFloats.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-          floatWriter.addValue(doc, mergedFloats.vectorValue(iter.index()));
+          floatWriter.addValue(doc, mergedDict.get(iter.index()));
         }
       }
     }
@@ -355,15 +356,27 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public float[] vectorValue(int ord) throws IOException {
-        if (ord != lastOrd) {
-          throw new IllegalStateException(
-              "only supports forward iteration with a single iterator: ord="
-                  + ord
-                  + ", lastOrd="
-                  + lastOrd);
-        }
-        return current.values.vectorValue(current.index());
+      public Floats values() {
+        return new Floats() {
+          FloatVectorValues currentValues = null;
+          Floats currentFloats = null;
+
+          @Override
+          public float[] get(int ord) throws IOException {
+            if (ord != lastOrd) {
+              throw new IllegalStateException(
+                  "only supports forward iteration with a single iterator: ord="
+                      + ord
+                      + ", lastOrd="
+                      + lastOrd);
+            }
+            if (currentValues != current.values) {
+              currentValues = current.values;
+              currentFloats = current.values.values();
+            }
+            return currentFloats.get(current.index());
+          }
+        };
       }
 
       @Override
@@ -383,11 +396,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public VectorScorer scorer(float[] target) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public FloatVectorValues copy() {
         throw new UnsupportedOperationException();
       }
     }

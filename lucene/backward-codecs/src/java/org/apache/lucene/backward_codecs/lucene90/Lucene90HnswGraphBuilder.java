@@ -50,6 +50,7 @@ public final class Lucene90HnswGraphBuilder {
 
   private final VectorSimilarityFunction similarityFunction;
   private final FloatVectorValues vectorValues;
+  private final FloatVectorValues.Floats vectors;
   private final SplittableRandom random;
   private final Lucene90BoundsChecker bound;
   final Lucene90OnHeapHnswGraph hnsw;
@@ -58,7 +59,7 @@ public final class Lucene90HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private final FloatVectorValues buildVectors;
+  private final FloatVectorValues.Floats buildVectors;
 
   /**
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
@@ -79,8 +80,9 @@ public final class Lucene90HnswGraphBuilder {
       int beamWidth,
       long seed)
       throws IOException {
-    vectorValues = vectors.copy();
-    buildVectors = vectors.copy();
+    this.vectorValues = vectors;
+    this.vectors = vectors.values();
+    buildVectors = vectors.values();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -105,17 +107,14 @@ public final class Lucene90HnswGraphBuilder {
    *     accessor for the vectors
    */
   public Lucene90OnHeapHnswGraph build(FloatVectorValues vectors) throws IOException {
-    if (vectors == vectorValues) {
-      throw new IllegalArgumentException(
-          "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
-    }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
     }
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
+    FloatVectorValues.Floats values = vectors.values();
     for (int node = 1; node < vectors.size(); node++) {
-      addGraphNode(vectors.vectorValue(node));
+      addGraphNode(values.get(node));
       if (node % 10000 == 0) {
         if (infoStream.isEnabled(HNSW_COMPONENT)) {
           long now = System.nanoTime();
@@ -200,7 +199,7 @@ public final class Lucene90HnswGraphBuilder {
       int cNode = candidates.node()[i];
       float cScore = candidates.score()[i];
       assert cNode < hnsw.size();
-      if (diversityCheck(vectorValues.vectorValue(cNode), cScore, neighbors, buildVectors)) {
+      if (diversityCheck(vectors.get(cNode), cScore, neighbors, buildVectors)) {
         neighbors.add(cNode, cScore);
       }
     }
@@ -230,12 +229,12 @@ public final class Lucene90HnswGraphBuilder {
       float[] candidate,
       float score,
       Lucene90NeighborArray neighbors,
-      FloatVectorValues vectorValues)
+      FloatVectorValues.Floats vectorValues)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
-          similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node()[i]));
+          similarityFunction.compare(candidate, vectorValues.get(neighbors.node()[i]));
       if (bound.check(neighborSimilarity) == false) {
         return false;
       }
@@ -269,11 +268,10 @@ public final class Lucene90HnswGraphBuilder {
       // them, drop it
       int neighborId = neighbors.node()[i];
       bound.set(neighbors.score()[i]);
-      float[] neighborVector = vectorValues.vectorValue(neighborId);
+      float[] neighborVector = vectors.get(neighborId);
       for (int j = maxConn; j > i; j--) {
         float neighborSimilarity =
-            similarityFunction.compare(
-                neighborVector, buildVectors.vectorValue(neighbors.node()[j]));
+            similarityFunction.compare(neighborVector, buildVectors.get(neighbors.node()[j]));
         if (bound.check(neighborSimilarity) == false) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]

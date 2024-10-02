@@ -40,7 +40,6 @@ public abstract class ByteVectorValues extends KnnVectorValues {
    */
   public abstract byte[] vectorValue(int ord) throws IOException;
 
-  @Override
   public abstract ByteVectorValues copy() throws IOException;
 
   /**

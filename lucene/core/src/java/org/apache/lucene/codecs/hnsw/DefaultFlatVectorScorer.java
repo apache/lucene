@@ -125,15 +125,15 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   /** RandomVectorScorerSupplier for Float vector */
   private static final class FloatScoringSupplier implements RandomVectorScorerSupplier {
     private final FloatVectorValues vectors;
-    private final FloatVectorValues vectors1;
-    private final FloatVectorValues vectors2;
+    private final FloatVectorValues.Floats vectors1;
+    private final FloatVectorValues.Floats vectors2;
     private final VectorSimilarityFunction similarityFunction;
 
     private FloatScoringSupplier(
         FloatVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
       this.vectors = vectors;
-      vectors1 = vectors.copy();
-      vectors2 = vectors.copy();
+      vectors1 = vectors.values();
+      vectors2 = vectors.values();
       this.similarityFunction = similarityFunction;
     }
 
@@ -142,7 +142,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
       return new RandomVectorScorer.AbstractRandomVectorScorer(vectors) {
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(node));
+          return similarityFunction.compare(vectors1.get(ord), vectors2.get(node));
         }
       };
     }
@@ -160,21 +160,22 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** A {@link RandomVectorScorer} for float vectors. */
   private static class FloatVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
-    private final FloatVectorValues values;
+    private final FloatVectorValues.Floats floats;
     private final float[] query;
     private final VectorSimilarityFunction similarityFunction;
 
     public FloatVectorScorer(
-        FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction) {
+        FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction)
+        throws IOException {
       super(values);
-      this.values = values;
+      this.floats = values.values();
       this.query = query;
       this.similarityFunction = similarityFunction;
     }
 
     @Override
     public float score(int node) throws IOException {
-      return similarityFunction.compare(query, values.vectorValue(node));
+      return similarityFunction.compare(query, floats.get(node));
     }
   }
 

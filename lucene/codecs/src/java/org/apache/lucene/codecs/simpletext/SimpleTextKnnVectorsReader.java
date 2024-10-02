@@ -192,6 +192,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
+    FloatVectorValues.Floats valuesDict = values.values();
     for (int ord = 0; ord < values.size(); ord++) {
       int doc = values.ordToDoc(ord);
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
@@ -202,7 +203,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         break;
       }
 
-      float[] vector = values.vectorValue(ord);
+      float[] vector = valuesDict.get(ord);
       float score = vectorSimilarity.compare(vector, target);
       knnCollector.collect(doc, score);
       knnCollector.incVisitedCount(1);
@@ -327,8 +328,13 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public float[] vectorValue(int ord) {
-      return values[ord];
+    public Floats values() {
+      return new Floats() {
+        @Override
+        public float[] get(int ord) {
+          return values[ord];
+        }
+      };
     }
 
     @Override
@@ -349,13 +355,12 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       SimpleTextFloatVectorValues simpleTextFloatVectorValues =
           new SimpleTextFloatVectorValues(this);
       DocIndexIterator iterator = simpleTextFloatVectorValues.iterator();
+      Floats valuesDict = simpleTextFloatVectorValues.values();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
           int ord = iterator.index();
-          return entry
-              .similarityFunction()
-              .compare(simpleTextFloatVectorValues.vectorValue(ord), target);
+          return entry.similarityFunction().compare(valuesDict.get(ord), target);
         }
 
         @Override
@@ -381,11 +386,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       for (int i = 0; i < floatStrings.length; i++) {
         value[i] = Float.parseFloat(floatStrings[i]);
       }
-    }
-
-    @Override
-    public SimpleTextFloatVectorValues copy() {
-      return this;
     }
   }
 

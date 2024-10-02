@@ -388,19 +388,19 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public OffHeapFloatVectorValues copy() {
-      return new OffHeapFloatVectorValues(dimension, ordToDoc, similarityFunction, dataIn.clone());
-    }
-
-    @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
-      if (lastOrd == targetOrd) {
-        return value;
-      }
-      dataIn.seek((long) targetOrd * byteSize);
-      dataIn.readFloats(value, 0, value.length);
-      lastOrd = targetOrd;
-      return value;
+    public Floats values() {
+      return new Floats() {
+        @Override
+        public float[] get(int targetOrd) throws IOException {
+          if (lastOrd == targetOrd) {
+            return value;
+          }
+          dataIn.seek((long) targetOrd * byteSize);
+          dataIn.readFloats(value, 0, value.length);
+          lastOrd = targetOrd;
+          return value;
+        }
+      };
     }
 
     @Override
@@ -418,12 +418,12 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       if (size() == 0) {
         return null;
       }
-      OffHeapFloatVectorValues values = this.copy();
-      DocIndexIterator iterator = values.iterator();
+      FloatVectorValues.Floats values = values();
+      DocIndexIterator iterator = iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.similarityFunction.compare(values.vectorValue(iterator.index()), target);
+          return similarityFunction.compare(values.get(iterator.index()), target);
         }
 
         @Override

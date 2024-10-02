@@ -854,7 +854,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertNotNull(fvv);
     KnnVectorValues.DocIndexIterator iterator = fvv.iterator();
     assertEquals(0, iterator.nextDoc());
-    assertArrayEquals(expected, fvv.vectorValue(0), 1e-6f);
+    assertArrayEquals(expected, fvv.values().get(0), 1e-6f);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 

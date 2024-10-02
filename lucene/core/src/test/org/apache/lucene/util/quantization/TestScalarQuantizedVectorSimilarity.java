@@ -238,10 +238,15 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float[][] floats, Set<Integer> deletedVectors) {
     return new TestScalarQuantizer.TestSimpleFloatVectorValues(floats, deletedVectors) {
       @Override
-      public float[] vectorValue(int ord) throws IOException {
-        float[] v = ArrayUtil.copyArray(floats[ordToDoc[ord]]);
-        VectorUtil.l2normalize(v);
-        return v;
+      public Floats values() {
+        return new Floats() {
+          @Override
+          public float[] get(int ord) throws IOException {
+            float[] v = ArrayUtil.copyArray(floats[ordToDoc[ord]]);
+            VectorUtil.l2normalize(v);
+            return v;
+          }
+        };
       }
     };
   }

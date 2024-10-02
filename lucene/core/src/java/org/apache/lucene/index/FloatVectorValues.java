@@ -32,16 +32,18 @@ public abstract class FloatVectorValues extends KnnVectorValues {
   /** Sole constructor */
   protected FloatVectorValues() {}
 
-  /**
-   * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
-   * otherwise IndexOutOfBoundsException is thrown. The returned array may be shared across calls.
-   *
-   * @return the vector value
-   */
-  public abstract float[] vectorValue(int ord) throws IOException;
+  public abstract static class Floats {
+    /**
+     * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
+     * otherwise IndexOutOfBoundsException is thrown. The returned array may be shared across calls.
+     *
+     * @return the vector value
+     */
+    public abstract float[] get(int ord) throws IOException;
+  }
 
-  @Override
-  public abstract FloatVectorValues copy() throws IOException;
+  /** Returns a random access (lookup by ord) provider of the vector values */
+  public abstract Floats values() throws IOException;
 
   /**
    * Checks the Vector Encoding of a field
@@ -100,13 +102,13 @@ public abstract class FloatVectorValues extends KnnVectorValues {
       }
 
       @Override
-      public float[] vectorValue(int targetOrd) {
-        return vectors.get(targetOrd);
-      }
-
-      @Override
-      public FloatVectorValues copy() {
-        return this;
+      public Floats values() {
+        return new Floats() {
+          @Override
+          public float[] get(int ord) throws IOException {
+            return vectors.get(ord);
+          }
+        };
       }
 
       @Override

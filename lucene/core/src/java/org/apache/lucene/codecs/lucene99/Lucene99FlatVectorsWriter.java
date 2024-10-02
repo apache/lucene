@@ -383,9 +383,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
     KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+    FloatVectorValues.Floats dict = floatVectorValues.values();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] value = floatVectorValues.vectorValue(iter.index());
+      float[] value = dict.get(iter.index());
       buffer.asFloatBuffer().put(value);
       output.writeBytes(buffer.array(), buffer.limit());
       docsWithField.add(docV);

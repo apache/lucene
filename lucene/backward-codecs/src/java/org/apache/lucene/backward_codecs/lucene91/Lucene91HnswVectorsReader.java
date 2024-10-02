@@ -405,7 +405,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     private final IntUnaryOperator ordToDocOperator;
     private final IndexInput dataIn;
     private final int byteSize;
-    private final float[] value;
     private final VectorSimilarityFunction similarityFunction;
 
     OffHeapFloatVectorValues(
@@ -421,7 +420,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.dataIn = dataIn;
       this.similarityFunction = similarityFunction;
       byteSize = Float.BYTES * dimension;
-      value = new float[dimension];
     }
 
     @Override
@@ -435,16 +433,17 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public OffHeapFloatVectorValues copy() {
-      return new OffHeapFloatVectorValues(
-          dimension, size, ordToDoc, similarityFunction, dataIn.clone());
-    }
-
-    @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
-      dataIn.seek((long) targetOrd * byteSize);
-      dataIn.readFloats(value, 0, value.length);
-      return value;
+    public Floats values() throws IOException {
+      IndexInput input = dataIn.clone();
+      float[] value = new float[dimension];
+      return new Floats() {
+        @Override
+        public float[] get(int targetOrd) throws IOException {
+          input.seek((long) targetOrd * byteSize);
+          input.readFloats(value, 0, value.length);
+          return value;
+        }
+      };
     }
 
     @Override
@@ -458,16 +457,16 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public VectorScorer scorer(float[] target) {
+    public VectorScorer scorer(float[] target) throws IOException {
       if (size == 0) {
         return null;
       }
-      OffHeapFloatVectorValues values = this.copy();
-      DocIndexIterator iterator = values.iterator();
+      Floats values = values();
+      DocIndexIterator iterator = iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.similarityFunction.compare(values.vectorValue(iterator.index()), target);
+          return similarityFunction.compare(values.get(iterator.index()), target);
         }
 
         @Override
