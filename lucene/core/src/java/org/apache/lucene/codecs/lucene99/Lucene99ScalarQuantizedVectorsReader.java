@@ -402,10 +402,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   private static final class QuantizedVectorValues extends FloatVectorValues {
     private final FloatVectorValues rawVectorValues;
-    private final OffHeapQuantizedByteVectorValues quantizedVectorValues;
+    private final QuantizedByteVectorValues quantizedVectorValues;
 
     QuantizedVectorValues(
-        FloatVectorValues rawVectorValues, OffHeapQuantizedByteVectorValues quantizedVectorValues) {
+        FloatVectorValues rawVectorValues, QuantizedByteVectorValues quantizedVectorValues) {
       this.rawVectorValues = rawVectorValues;
       this.quantizedVectorValues = quantizedVectorValues;
     }
@@ -421,34 +421,28 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      return rawVectorValues.vectorValue();
+    public float[] vectorValue(int ord) throws IOException {
+      return rawVectorValues.vectorValue(ord);
     }
 
     @Override
-    public int docID() {
-      return rawVectorValues.docID();
+    public int ordToDoc(int ord) {
+      return rawVectorValues.ordToDoc(ord);
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      int rawDocId = rawVectorValues.nextDoc();
-      int quantizedDocId = quantizedVectorValues.nextDoc();
-      assert rawDocId == quantizedDocId;
-      return quantizedDocId;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      int rawDocId = rawVectorValues.advance(target);
-      int quantizedDocId = quantizedVectorValues.advance(target);
-      assert rawDocId == quantizedDocId;
-      return quantizedDocId;
+    public QuantizedVectorValues copy() throws IOException {
+      return new QuantizedVectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
     }
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       return quantizedVectorValues.scorer(query);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return rawVectorValues.iterator();
     }
   }
 }

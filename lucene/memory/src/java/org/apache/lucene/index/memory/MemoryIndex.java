@@ -2285,7 +2285,6 @@ public class MemoryIndex {
 
   private static final class MemoryFloatVectorValues extends FloatVectorValues {
     private final Info info;
-    private int currentDoc = -1;
 
     MemoryFloatVectorValues(Info info) {
       this.info = info;
@@ -2302,12 +2301,17 @@ public class MemoryIndex {
     }
 
     @Override
-    public float[] vectorValue() {
-      if (currentDoc == 0) {
+    public float[] vectorValue(int ord) {
+      if (ord == 0) {
         return info.floatVectorValues[0];
       } else {
         return null;
       }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override
@@ -2320,50 +2324,31 @@ public class MemoryIndex {
                 + info.fieldInfo.getVectorDimension());
       }
       MemoryFloatVectorValues vectorValues = new MemoryFloatVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
+          assert iterator.docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(), query);
+              .compare(vectorValues.vectorValue(0), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return vectorValues;
+          return iterator;
         }
       };
     }
 
     @Override
-    public int docID() {
-      return currentDoc;
-    }
-
-    @Override
-    public int nextDoc() {
-      int doc = ++currentDoc;
-      if (doc == 0) {
-        return doc;
-      } else {
-        return NO_MORE_DOCS;
-      }
-    }
-
-    @Override
-    public int advance(int target) {
-      if (target == 0) {
-        currentDoc = target;
-        return target;
-      } else {
-        return NO_MORE_DOCS;
-      }
+    public MemoryFloatVectorValues copy() {
+      return this;
     }
   }
 
   private static final class MemoryByteVectorValues extends ByteVectorValues {
     private final Info info;
-    private int currentDoc = -1;
 
     MemoryByteVectorValues(Info info) {
       this.info = info;
@@ -2380,12 +2365,17 @@ public class MemoryIndex {
     }
 
     @Override
-    public byte[] vectorValue() {
-      if (currentDoc == 0) {
+    public byte[] vectorValue(int ord) {
+      if (ord == 0) {
         return info.byteVectorValues[0];
       } else {
         return null;
       }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override
@@ -2398,44 +2388,26 @@ public class MemoryIndex {
                 + info.fieldInfo.getVectorDimension());
       }
       MemoryByteVectorValues vectorValues = new MemoryByteVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
       return new VectorScorer() {
         @Override
         public float score() {
+          assert iterator.docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(), query);
+              .compare(vectorValues.vectorValue(0), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return vectorValues;
+          return iterator;
         }
       };
     }
 
     @Override
-    public int docID() {
-      return currentDoc;
-    }
-
-    @Override
-    public int nextDoc() {
-      int doc = ++currentDoc;
-      if (doc == 0) {
-        return doc;
-      } else {
-        return NO_MORE_DOCS;
-      }
-    }
-
-    @Override
-    public int advance(int target) {
-      if (target == 0) {
-        currentDoc = target;
-        return target;
-      } else {
-        return NO_MORE_DOCS;
-      }
+    public MemoryByteVectorValues copy() {
+      return this;
     }
   }
 }

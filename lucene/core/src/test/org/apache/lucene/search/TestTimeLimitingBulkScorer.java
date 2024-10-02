@@ -113,7 +113,7 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
   private static QueryTimeout countingQueryTimeout(int timeallowed) {
 
     return new QueryTimeout() {
-      static int counter = 0;
+      int counter = 0;
 
       @Override
       public boolean shouldExit() {

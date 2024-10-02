@@ -35,6 +35,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -42,7 +44,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 
@@ -174,13 +175,13 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     }
   }
 
-  RandomAccessVectorValues byteVectorValues(
-      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
+  ByteVectorValues byteVectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
+      throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
         dims, size, in.slice("byteValues", 0, in.length()), dims, flatVectorsScorer, sim);
   }
 
-  RandomAccessVectorValues floatVectorValues(
+  FloatVectorValues floatVectorValues(
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
         dims,

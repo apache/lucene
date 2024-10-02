@@ -17,7 +17,6 @@
 package org.apache.lucene.backward_index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
@@ -52,6 +51,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.LogByteSizeMergePolicy;
 import org.apache.lucene.index.MultiBits;
@@ -95,7 +95,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   private static final int DOCS_COUNT = 35;
   private static final int DELETED_ID = 7;
 
-  private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
+  private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = Version.fromBits(9, 0, 0).major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
       KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
@@ -477,10 +477,14 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         FloatVectorValues values = ctx.reader().getFloatVectorValues(KNN_VECTOR_FIELD);
         if (values != null) {
           assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
-          for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
+          KnnVectorValues.DocIndexIterator it = values.iterator();
+          for (int doc = it.nextDoc(); doc != NO_MORE_DOCS; doc = it.nextDoc()) {
             float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};
             assertArrayEquals(
-                "vectors do not match for doc=" + cnt, expectedVector, values.vectorValue(), 0);
+                "vectors do not match for doc=" + cnt,
+                expectedVector,
+                values.vectorValue(it.index()),
+                0);
             cnt++;
           }
         }

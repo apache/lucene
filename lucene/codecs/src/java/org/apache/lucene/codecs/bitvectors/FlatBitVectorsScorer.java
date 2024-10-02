@@ -19,10 +19,11 @@ package org.apache.lucene.codecs.bitvectors;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
@@ -30,45 +31,39 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 public class FlatBitVectorsScorer implements FlatVectorsScorer {
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-      VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    assert vectorValues instanceof RandomAccessVectorValues.Bytes;
-    if (vectorValues instanceof RandomAccessVectorValues.Bytes byteVectorValues) {
+    assert vectorValues instanceof ByteVectorValues;
+    if (vectorValues instanceof ByteVectorValues byteVectorValues) {
       return new BitRandomVectorScorerSupplier(byteVectorValues);
     }
-    throw new IllegalArgumentException(
-        "vectorValues must be an instance of RandomAccessVectorValues.Bytes");
+    throw new IllegalArgumentException("vectorValues must be an instance of ByteVectorValues");
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      float[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
     throw new IllegalArgumentException("bit vectors do not support float[] targets");
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      byte[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
-    assert vectorValues instanceof RandomAccessVectorValues.Bytes;
-    if (vectorValues instanceof RandomAccessVectorValues.Bytes byteVectorValues) {
+    assert vectorValues instanceof ByteVectorValues;
+    if (vectorValues instanceof ByteVectorValues byteVectorValues) {
       return new BitRandomVectorScorer(byteVectorValues, target);
     }
-    throw new IllegalArgumentException(
-        "vectorValues must be an instance of RandomAccessVectorValues.Bytes");
+    throw new IllegalArgumentException("vectorValues must be an instance of ByteVectorValues");
   }
 
   static class BitRandomVectorScorer implements RandomVectorScorer {
-    private final RandomAccessVectorValues.Bytes vectorValues;
+    private final ByteVectorValues vectorValues;
     private final int bitDimensions;
     private final byte[] query;
 
-    BitRandomVectorScorer(RandomAccessVectorValues.Bytes vectorValues, byte[] query) {
+    BitRandomVectorScorer(ByteVectorValues vectorValues, byte[] query) {
       this.query = query;
       this.bitDimensions = vectorValues.dimension() * Byte.SIZE;
       this.vectorValues = vectorValues;
@@ -97,12 +92,11 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
   }
 
   static class BitRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
-    protected final RandomAccessVectorValues.Bytes vectorValues;
-    protected final RandomAccessVectorValues.Bytes vectorValues1;
-    protected final RandomAccessVectorValues.Bytes vectorValues2;
+    protected final ByteVectorValues vectorValues;
+    protected final ByteVectorValues vectorValues1;
+    protected final ByteVectorValues vectorValues2;
 
-    public BitRandomVectorScorerSupplier(RandomAccessVectorValues.Bytes vectorValues)
-        throws IOException {
+    public BitRandomVectorScorerSupplier(ByteVectorValues vectorValues) throws IOException {
       this.vectorValues = vectorValues;
       this.vectorValues1 = vectorValues.copy();
       this.vectorValues2 = vectorValues.copy();
