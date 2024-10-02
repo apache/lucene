@@ -51,8 +51,8 @@ import org.apache.lucene.util.Bits;
  * </ul>
  *
  * <p>When a seed query is provided, this query is executed first to seed the kNN search (subject to
- * the same rules provided by the filter). If the seed query fails to identify any documents, it falls
- * back on the strategy above.
+ * the same rules provided by the filter). If the seed query fails to identify any documents, it
+ * falls back on the strategy above.
  */
 abstract class AbstractKnnVectorQuery extends Query {
 
@@ -208,9 +208,9 @@ abstract class AbstractKnnVectorQuery extends Query {
                 false /* supportsConcurrency */)
             .newCollector();
     final LeafReader leafReader = ctx.reader();
-    try {
-      final LeafCollector leafCollector = seedCollector.getLeafCollector(ctx);
-      if (leafCollector != null) {
+    final LeafCollector leafCollector = seedCollector.getLeafCollector(ctx);
+    if (leafCollector != null) {
+      try {
         BulkScorer scorer = seedWeight.bulkScorer(ctx);
         if (scorer != null) {
           scorer.score(
@@ -220,10 +220,10 @@ abstract class AbstractKnnVectorQuery extends Query {
               DocIdSetIterator.NO_MORE_DOCS /* max */);
         }
         leafCollector.finish();
+      } catch (
+          @SuppressWarnings("unused")
+          CollectionTerminatedException e) {
       }
-    } catch (
-        @SuppressWarnings("unused")
-        CollectionTerminatedException e) {
     }
 
     TopDocs seedTopDocs = seedCollector.topDocs();
