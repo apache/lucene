@@ -255,6 +255,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
                 sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
                 binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
                 vectorValues = leaf.getFloatVectorValues("vector");
+                valuesIterator = vectorValues.iterator();
                 prevValue = -1;
               }
               assertTrue(prevValue + " < " + ids.longValue(), prevValue < ids.longValue());
