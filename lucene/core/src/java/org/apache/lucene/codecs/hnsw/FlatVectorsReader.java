@@ -62,7 +62,7 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDoc)
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     // don't scan stored field data. If we didn't index it, produce no search results
   }

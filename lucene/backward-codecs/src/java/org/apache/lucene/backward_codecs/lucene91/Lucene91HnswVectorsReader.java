@@ -250,7 +250,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocsBits)
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }
