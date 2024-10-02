@@ -48,9 +48,9 @@ API Changes
 
 * GITHUB#12296: Make IndexReader and IndexReaderContext classes explicitly sealed.
   They have already been runtime-checked to only be implemented by the specific classes
-  so this is effectively a non-breaking change.
+  so this is effectively a non-breaking change. (Petr Portnov)
 
-* GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton
+* GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton. (Michael McCandless)
 
 * GITHUB#12321: Reduced visibility of StringsToAutomaton. Please use Automata#makeStringUnion instead. (Greg Miller)
 
@@ -120,12 +120,12 @@ API Changes
 
 * GITHUB#13328: Convert many basic Lucene classes to record classes, including CollectionStatistics, TermStatistics and LeafMetadata. (Shubham Chaudhary)
 
-* GITHUB#13780: Remove `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` in favour of the newly
-  introduced `IndexSearcher#search(LeafReaderContextPartition[], Weight, Collector)`
+* GITHUB#13780: Remove IndexSearcher#search(List<LeafReaderContext>, Weight, Collector) in favour of the newly
+  introduced IndexSearcher#search(LeafReaderContextPartition[], Weight, Collector). (Luca Cavanna)
 
 * GITHUB#13779:  First-class random access API for KnnVectorValues
   unifies Byte/FloatVectorValues incorporating RandomAccess* API and introduces
-  DocIndexIterator for iterative access in place of direct inheritance from DISI.
+  DocIndexIterator for iterative access in place of direct inheritance from DISI. (Michael Sokolov)
 
 New Features
 ---------------------
@@ -213,7 +213,7 @@ Bug Fixes
 * LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
   they reach the maximum merge size. (Adrien Grand)
 
-* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end. (Peter Gromov)
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
