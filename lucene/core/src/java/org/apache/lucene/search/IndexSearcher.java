@@ -27,7 +27,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -115,13 +114,7 @@ public class IndexSearcher {
   protected final IndexReaderContext readerContext;
   protected final List<LeafReaderContext> leafContexts;
 
-  /**
-   * Used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
-   * one thread. We are caching it instead of creating it eagerly to avoid calling a protected
-   * method from constructor, which is a bad practice. Always non-null, regardless of whether an
-   * executor is provided or not.
-   */
-  private final Supplier<LeafSlice[]> leafSlicesSupplier;
+  private volatile LeafSlice[] leafSlices;
 
   // Used internally for load balancing threads executing for the query
   private final TaskExecutor taskExecutor;
@@ -227,23 +220,20 @@ public class IndexSearcher {
         : "IndexSearcher's ReaderContext must be topLevel for reader " + context.reader();
     reader = context.reader();
     this.taskExecutor =
-        executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
+        executor == null ? TaskExecutor.DIRECT_TASK_EXECUTOR : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
-    Function<List<LeafReaderContext>, LeafSlice[]> slicesProvider =
-        executor == null
-            ? leaves ->
-                leaves.isEmpty()
-                    ? new LeafSlice[0]
-                    : new LeafSlice[] {
-                      new LeafSlice(
-                          new ArrayList<>(
-                              leaves.stream()
-                                  .map(LeafReaderContextPartition::createForEntireSegment)
-                                  .toList()))
-                    }
-            : this::slices;
-    leafSlicesSupplier = new CachingLeafSlicesSupplier(slicesProvider, leafContexts);
+    if (executor == null) {
+      leafSlices =
+          leafContexts.isEmpty()
+              ? LeafSlice.EMPTY_ARRAY
+              : new LeafSlice[] {
+                new LeafSlice(
+                    leafContexts.stream()
+                        .map(LeafReaderContextPartition::createForEntireSegment)
+                        .toList())
+              };
+    }
   }
 
   /**
@@ -360,102 +350,95 @@ public class IndexSearcher {
       boolean allowSegmentPartitions) {
 
     // Make a copy so we can sort:
-    List<LeafReaderContext> sortedLeaves = new ArrayList<>(leaves);
+    LeafReaderContext[] sortedLeaves = leaves.toArray(new LeafReaderContext[0]);
 
     // Sort by maxDoc, descending:
-    sortedLeaves.sort(Collections.reverseOrder(Comparator.comparingInt(l -> l.reader().maxDoc())));
+    Arrays.sort(
+        sortedLeaves, (l1, l2) -> Integer.compare(l2.reader().maxDoc(), l1.reader().maxDoc()));
 
     if (allowSegmentPartitions) {
-      final List<List<LeafReaderContextPartition>> groupedLeafPartitions = new ArrayList<>();
-      int currentSliceNumDocs = 0;
-      List<LeafReaderContextPartition> group = null;
-      for (LeafReaderContext ctx : sortedLeaves) {
-        if (ctx.reader().maxDoc() > maxDocsPerSlice) {
-          assert group == null;
-          // if the segment does not fit in a single slice, we split it into maximum 5 partitions of
-          // equal size
-          int numSlices = Math.min(5, Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice));
-          int numDocs = ctx.reader().maxDoc() / numSlices;
-          int maxDocId = numDocs;
-          int minDocId = 0;
-          for (int i = 0; i < numSlices - 1; i++) {
-            groupedLeafPartitions.add(
-                Collections.singletonList(
-                    LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId)));
-            minDocId = maxDocId;
-            maxDocId += numDocs;
-          }
-          // the last slice gets all the remaining docs
-          groupedLeafPartitions.add(
-              Collections.singletonList(
-                  LeafReaderContextPartition.createFromAndTo(
-                      ctx, minDocId, ctx.reader().maxDoc())));
-        } else {
-          if (group == null) {
-            group = new ArrayList<>();
-            groupedLeafPartitions.add(group);
-          }
-          group.add(LeafReaderContextPartition.createForEntireSegment(ctx));
-
-          currentSliceNumDocs += ctx.reader().maxDoc();
-          // We only split a segment when it does not fit entirely in a slice. We don't partition
-          // the
-          // segment that makes the current slice (which holds multiple segments) go over
-          // maxDocsPerSlice. This means that a slice either contains multiple entire segments, or a
-          // single partition of a segment.
-          if (group.size() >= maxSegmentsPerSlice || currentSliceNumDocs > maxDocsPerSlice) {
-            group = null;
-            currentSliceNumDocs = 0;
-          }
-        }
-      }
-
-      LeafSlice[] slices = new LeafSlice[groupedLeafPartitions.size()];
-      int upto = 0;
-      for (List<LeafReaderContextPartition> currentGroup : groupedLeafPartitions) {
-        slices[upto] = new LeafSlice(currentGroup);
-        ++upto;
-      }
-      return slices;
+      return slicesWithPartitionedSegments(maxDocsPerSlice, maxSegmentsPerSlice, sortedLeaves);
     }
 
-    final List<List<LeafReaderContext>> groupedLeaves = new ArrayList<>();
+    final List<LeafSlice> groupedLeaves = new ArrayList<>();
     long docSum = 0;
-    List<LeafReaderContext> group = null;
+    List<LeafReaderContextPartition> group = null;
     for (LeafReaderContext ctx : sortedLeaves) {
-      if (ctx.reader().maxDoc() > maxDocsPerSlice) {
+      final int maxDoc = ctx.reader().maxDoc();
+      var partition = LeafReaderContextPartition.createForEntireSegment(ctx);
+      if (maxDoc > maxDocsPerSlice) {
         assert group == null;
-        groupedLeaves.add(Collections.singletonList(ctx));
+        groupedLeaves.add(new LeafSlice(Collections.singletonList(partition)));
       } else {
         if (group == null) {
           group = new ArrayList<>();
-          group.add(ctx);
-
-          groupedLeaves.add(group);
-        } else {
-          group.add(ctx);
         }
-
-        docSum += ctx.reader().maxDoc();
-        if (group.size() >= maxSegmentsPerSlice || docSum > maxDocsPerSlice) {
+        group.add(partition);
+        docSum += maxDoc;
+        if (docSum > maxDocsPerSlice || group.size() >= maxSegmentsPerSlice) {
+          groupedLeaves.add(new LeafSlice(group));
           group = null;
           docSum = 0;
         }
       }
     }
+    if (group != null) {
+      groupedLeaves.add(new LeafSlice(group));
+    }
+    return groupedLeaves.toArray(LeafSlice.EMPTY_ARRAY);
+  }
 
-    LeafSlice[] slices = new LeafSlice[groupedLeaves.size()];
-    int upto = 0;
-    for (List<LeafReaderContext> currentLeaf : groupedLeaves) {
-      slices[upto] =
-          new LeafSlice(
-              new ArrayList<>(
-                  currentLeaf.stream()
-                      .map(LeafReaderContextPartition::createForEntireSegment)
-                      .toList()));
-      ++upto;
+  private static LeafSlice[] slicesWithPartitionedSegments(
+      int maxDocsPerSlice, int maxSegmentsPerSlice, LeafReaderContext[] sortedLeaves) {
+    final List<List<LeafReaderContextPartition>> groupedLeafPartitions = new ArrayList<>();
+    int currentSliceNumDocs = 0;
+    List<LeafReaderContextPartition> group = null;
+    for (LeafReaderContext ctx : sortedLeaves) {
+      if (ctx.reader().maxDoc() > maxDocsPerSlice) {
+        assert group == null;
+        // if the segment does not fit in a single slice, we split it into maximum 5 partitions of
+        // equal size
+        int numSlices = Math.min(5, Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice));
+        int numDocs = ctx.reader().maxDoc() / numSlices;
+        int maxDocId = numDocs;
+        int minDocId = 0;
+        for (int i = 0; i < numSlices - 1; i++) {
+          groupedLeafPartitions.add(
+              Collections.singletonList(
+                  LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId)));
+          minDocId = maxDocId;
+          maxDocId += numDocs;
+        }
+        // the last slice gets all the remaining docs
+        groupedLeafPartitions.add(
+            Collections.singletonList(
+                LeafReaderContextPartition.createFromAndTo(ctx, minDocId, ctx.reader().maxDoc())));
+      } else {
+        if (group == null) {
+          group = new ArrayList<>();
+          groupedLeafPartitions.add(group);
+        }
+        group.add(LeafReaderContextPartition.createForEntireSegment(ctx));
+
+        currentSliceNumDocs += ctx.reader().maxDoc();
+        // We only split a segment when it does not fit entirely in a slice. We don't partition
+        // the
+        // segment that makes the current slice (which holds multiple segments) go over
+        // maxDocsPerSlice. This means that a slice either contains multiple entire segments, or a
+        // single partition of a segment.
+        if (group.size() >= maxSegmentsPerSlice || currentSliceNumDocs > maxDocsPerSlice) {
+          group = null;
+          currentSliceNumDocs = 0;
+        }
+      }
     }
 
+    LeafSlice[] slices = new LeafSlice[groupedLeafPartitions.size()];
+    int upto = 0;
+    for (List<LeafReaderContextPartition> currentGroup : groupedLeafPartitions) {
+      slices[upto] = new LeafSlice(currentGroup);
+      ++upto;
+    }
     return slices;
   }
 
@@ -540,7 +523,43 @@ public class IndexSearcher {
    * @lucene.experimental
    */
   public final LeafSlice[] getSlices() {
-    return leafSlicesSupplier.get();
+    LeafSlice[] res = leafSlices;
+    if (res == null) {
+      res = computeAndCacheSlices();
+    }
+    return res;
+  }
+
+  private synchronized LeafSlice[] computeAndCacheSlices() {
+    LeafSlice[] res = leafSlices;
+    if (res == null) {
+      res = slices(leafContexts);
+      /*
+       * Enforce that there aren't multiple leaf partitions within the same leaf slice pointing to the
+       * same leaf context. It is a requirement that {@link Collector#getLeafCollector(LeafReaderContext)}
+       * gets called once per leaf context. Also, it does not make sense to partition a segment to then search
+       * those partitions as part of the same slice, because the goal of partitioning is parallel searching
+       * which happens at the slice level.
+       */
+      for (LeafSlice leafSlice : res) {
+        if (leafSlice.partitions.length <= 1) {
+          continue;
+        }
+        enforceDistinctLeaves(leafSlice);
+      }
+      leafSlices = res;
+    }
+    return res;
+  }
+
+  private static void enforceDistinctLeaves(LeafSlice leafSlice) {
+    Set<LeafReaderContext> distinctLeaves = new HashSet<>();
+    for (LeafReaderContextPartition leafPartition : leafSlice.partitions) {
+      if (distinctLeaves.add(leafPartition.ctx) == false) {
+        throw new IllegalStateException(
+            "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.");
+      }
+    }
   }
 
   /**
@@ -724,44 +743,50 @@ public class IndexSearcher {
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
     final C firstCollector = collectorManager.newCollector();
-    query = rewrite(query, firstCollector.scoreMode().needsScores());
-    final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
-    return search(weight, collectorManager, firstCollector);
-  }
-
-  private <C extends Collector, T> T search(
-      Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
     if (leafSlices.length == 0) {
       // there are no segments, nothing to offload to the executor, but we do need to call reduce to
       // create some kind of empty result
       assert leafContexts.isEmpty();
-      return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
-      final List<C> collectors = new ArrayList<>(leafSlices.length);
-      collectors.add(firstCollector);
       final ScoreMode scoreMode = firstCollector.scoreMode();
-      for (int i = 1; i < leafSlices.length; ++i) {
-        final C collector = collectorManager.newCollector();
-        collectors.add(collector);
+      final Weight weight = createWeight(rewrite(query, scoreMode.needsScores()), scoreMode, 1);
+      if (leafSlices.length == 1) {
+        search(leafSlices[0].partitions, weight, firstCollector);
+      } else {
+        return searchMultipleSlices(collectorManager, leafSlices, firstCollector, weight);
+      }
+    }
+    return collectorManager.reduce(Collections.singletonList(firstCollector));
+  }
+
+  private <C extends Collector, T> T searchMultipleSlices(
+      CollectorManager<C, T> collectorManager,
+      LeafSlice[] leafSlices,
+      C firstCollector,
+      Weight weight)
+      throws IOException {
+    final ScoreMode scoreMode = firstCollector.scoreMode();
+    final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
+    for (int i = 0; i < leafSlices.length; ++i) {
+      final C collector;
+      if (i == 0) {
+        collector = firstCollector;
+      } else {
+        collector = collectorManager.newCollector();
         if (scoreMode != collector.scoreMode()) {
           throw new IllegalStateException(
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
-      for (int i = 0; i < leafSlices.length; ++i) {
-        final LeafReaderContextPartition[] leaves = leafSlices[i].partitions;
-        final C collector = collectors.get(i);
-        listTasks.add(
-            () -> {
-              search(leaves, weight, collector);
-              return collector;
-            });
-      }
-      List<C> results = taskExecutor.invokeAll(listTasks);
-      return collectorManager.reduce(results);
+      final LeafReaderContextPartition[] leaves = leafSlices[i].partitions;
+      listTasks.add(
+          () -> {
+            search(leaves, weight, collector);
+            return collector;
+          });
     }
+    return collectorManager.reduce(taskExecutor.invokeAll(listTasks));
   }
 
   /**
@@ -979,6 +1004,12 @@ public class IndexSearcher {
    */
   public static class LeafSlice {
 
+    public static final LeafSlice[] EMPTY_ARRAY = new LeafSlice[0];
+
+    private static final Comparator<LeafReaderContextPartition> COMPARATOR =
+        Comparator.<LeafReaderContextPartition>comparingInt(l -> l.ctx.docBase)
+            .thenComparingInt(l -> l.minDocId);
+
     /**
      * The leaves that make up this slice.
      *
@@ -989,17 +1020,14 @@ public class IndexSearcher {
     private final int maxDocs;
 
     public LeafSlice(List<LeafReaderContextPartition> leafReaderContextPartitions) {
-      Comparator<LeafReaderContextPartition> docBaseComparator =
-          Comparator.comparingInt(l -> l.ctx.docBase);
-      Comparator<LeafReaderContextPartition> minDocIdComparator =
-          Comparator.comparingInt(l -> l.minDocId);
-      leafReaderContextPartitions.sort(docBaseComparator.thenComparing(minDocIdComparator));
-      this.partitions = leafReaderContextPartitions.toArray(new LeafReaderContextPartition[0]);
-      this.maxDocs =
-          Arrays.stream(partitions)
-              .map(leafPartition -> leafPartition.maxDocs)
-              .reduce(Integer::sum)
-              .get();
+      var partitions = leafReaderContextPartitions.toArray(new LeafReaderContextPartition[0]);
+      Arrays.sort(partitions, COMPARATOR);
+      this.partitions = partitions;
+      int maxDocs = 0;
+      for (LeafReaderContextPartition partition : partitions) {
+        maxDocs += partition.maxDocs;
+      }
+      this.maxDocs = maxDocs;
     }
 
     /**
@@ -1167,62 +1195,6 @@ public class IndexSearcher {
       super(
           "Query contains too many nested clauses; maxClauseCount is set to "
               + IndexSearcher.getMaxClauseCount());
-    }
-  }
-
-  /**
-   * Supplier for {@link LeafSlice} slices which computes and caches the value on first invocation
-   * and returns cached value on subsequent invocation. If the passed in provider for slice
-   * computation throws exception then same will be passed to the caller of this supplier on each
-   * invocation. If the provider returns null then {@link NullPointerException} will be thrown to
-   * the caller.
-   *
-   * <p>NOTE: To provide thread safe caching mechanism this class is implementing the (subtle) <a
-   * href="https://shipilev.net/blog/2014/safe-public-construction/">double-checked locking
-   * idiom</a>
-   */
-  private static class CachingLeafSlicesSupplier implements Supplier<LeafSlice[]> {
-    private volatile LeafSlice[] leafSlices;
-
-    private final Function<List<LeafReaderContext>, LeafSlice[]> sliceProvider;
-
-    private final List<LeafReaderContext> leaves;
-
-    private CachingLeafSlicesSupplier(
-        Function<List<LeafReaderContext>, LeafSlice[]> provider, List<LeafReaderContext> leaves) {
-      this.sliceProvider = Objects.requireNonNull(provider, "leaf slice provider cannot be null");
-      this.leaves = Objects.requireNonNull(leaves, "list of LeafReaderContext cannot be null");
-    }
-
-    @Override
-    public LeafSlice[] get() {
-      if (leafSlices == null) {
-        synchronized (this) {
-          if (leafSlices == null) {
-            leafSlices =
-                Objects.requireNonNull(
-                    sliceProvider.apply(leaves), "slices computed by the provider is null");
-            /*
-             * Enforce that there aren't multiple leaf partitions within the same leaf slice pointing to the
-             * same leaf context. It is a requirement that {@link Collector#getLeafCollector(LeafReaderContext)}
-             * gets called once per leaf context. Also, it does not make sense to partition a segment to then search
-             * those partitions as part of the same slice, because the goal of partitioning is parallel searching
-             * which happens at the slice level.
-             */
-            for (LeafSlice leafSlice : leafSlices) {
-              Set<LeafReaderContext> distinctLeaves = new HashSet<>();
-              for (LeafReaderContextPartition leafPartition : leafSlice.partitions) {
-                distinctLeaves.add(leafPartition.ctx);
-              }
-              if (leafSlice.partitions.length != distinctLeaves.size()) {
-                throw new IllegalStateException(
-                    "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.");
-              }
-            }
-          }
-        }
-      }
-      return leafSlices;
     }
   }
 }
