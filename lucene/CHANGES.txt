@@ -49,7 +49,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
+  when they were not sorted by startOffset. (Seunghan Jung)
 
 Other
 ---------------------
@@ -269,9 +270,6 @@ Bug Fixes
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
-
-* GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
-  when they were not sorted by startOffset. (Seunghan Jung)
 
 Changes in Runtime Behavior
 ---------------------
