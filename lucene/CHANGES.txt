@@ -33,7 +33,7 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
 
 New Features
 ---------------------
@@ -178,8 +178,6 @@ API Changes
 * GITHUB#13779:  First-class random access API for KnnVectorValues
   unifies Byte/FloatVectorValues incorporating RandomAccess* API and introduces
   DocIndexIterator for iterative access in place of direct inheritance from DISI.
-
-* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke)
 
 New Features
 ---------------------
