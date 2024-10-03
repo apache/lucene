@@ -58,12 +58,6 @@ public class LMJelinekMercerSimilarity extends LMSimilarity {
 
   /** Instantiates with the specified &lambda; parameter. */
   public LMJelinekMercerSimilarity(float lambda) {
-    this(true, lambda);
-  }
-
-  /** Instantiates with the specified parameters. */
-  public LMJelinekMercerSimilarity(boolean discountOverlaps, float lambda) {
-    super(discountOverlaps);
     if (Float.isNaN(lambda) || lambda <= 0 || lambda > 1) {
       throw new IllegalArgumentException("lambda must be in the range (0 .. 1]");
     }

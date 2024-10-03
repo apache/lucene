@@ -55,12 +55,6 @@ public class LMDirichletSimilarity extends LMSimilarity {
 
   /** Instantiates the similarity with the provided &mu; parameter. */
   public LMDirichletSimilarity(float mu) {
-    this(true, mu);
-  }
-
-  /** Instantiates the similarity with the provided parameters. */
-  public LMDirichletSimilarity(boolean discountOverlaps, float mu) {
-    super(discountOverlaps);
     if (Float.isFinite(mu) == false || mu < 0) {
       throw new IllegalArgumentException(
           "illegal mu value: " + mu + ", must be a non-negative finite value");
@@ -74,15 +68,8 @@ public class LMDirichletSimilarity extends LMSimilarity {
   }
 
   /** Instantiates the similarity with the default &mu; value of 2000. */
-  public LMDirichletSimilarity(boolean discountOverlaps) {
-    this(discountOverlaps, 2000);
-  }
-
-  /**
-   * Instantiates the similarity with the default &mu; value of 2000 and discountOverlaps of true.
-   */
   public LMDirichletSimilarity() {
-    this(true, 2000);
+    this(2000);
   }
 
   @Override

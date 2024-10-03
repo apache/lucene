@@ -90,7 +90,7 @@ public class IBSimilarity extends SimilarityBase {
   }
 
   /**
-   * Creates IBSimilarity from the four components.
+   * Creates IBSimilarity from the three components and with the specified discountOverlaps value.
    *
    * <p>Note that <code>null</code> values are not allowed: if you want no normalization, instead
    * pass {@link NoNormalization}.
