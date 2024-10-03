@@ -23,7 +23,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
+  when they were not sorted by startOffset. (Seunghan Jung)
 
 Other
 ---------------------
