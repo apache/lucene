@@ -14,18 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
+package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.ArrayUtil;
 
-final class IntArrayDocIdSet extends DocIdSet {
-
-  private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(IntArrayDocIdSet.class);
-
+class IntArrayDocIdSet extends DocIdSet {
   private final int[] docs;
   private final int length;
 
@@ -50,54 +45,44 @@ final class IntArrayDocIdSet extends DocIdSet {
   }
 
   @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(docs);
+  public DocIdSetIterator iterator() throws IOException {
+    return new DocIdSetIterator() {
+      int i = 0;
+      int doc = -1;
+
+      @Override
+      public int docID() {
+        return doc;
+      }
+
+      @Override
+      public int nextDoc() {
+        return doc = docs[i++];
+      }
+
+      @Override
+      public int advance(int target) {
+        int bound = 1;
+        // given that we use this for small arrays only, this is very unlikely to overflow
+        while (i + bound < length && docs[i + bound] < target) {
+          bound *= 2;
+        }
+        i = Arrays.binarySearch(docs, i + bound / 2, Math.min(i + bound + 1, length), target);
+        if (i < 0) {
+          i = -1 - i;
+        }
+        return doc = docs[i++];
+      }
+
+      @Override
+      public long cost() {
+        return length;
+      }
+    };
   }
 
   @Override
-  public DocIdSetIterator iterator() throws IOException {
-    return new IntArrayDocIdSetIterator(docs, length);
-  }
-
-  static class IntArrayDocIdSetIterator extends DocIdSetIterator {
-
-    private final int[] docs;
-    private final int length;
-    private int i = 0;
-    private int doc = -1;
-
-    IntArrayDocIdSetIterator(int[] docs, int length) {
-      this.docs = docs;
-      this.length = length;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return doc = docs[i++];
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      int bound = 1;
-      // given that we use this for small arrays only, this is very unlikely to overflow
-      while (i + bound < length && docs[i + bound] < target) {
-        bound *= 2;
-      }
-      i = Arrays.binarySearch(docs, i + bound / 2, Math.min(i + bound + 1, length), target);
-      if (i < 0) {
-        i = -1 - i;
-      }
-      return doc = docs[i++];
-    }
-
-    @Override
-    public long cost() {
-      return length;
-    }
+  public long ramBytesUsed() {
+    throw new UnsupportedOperationException();
   }
 }
