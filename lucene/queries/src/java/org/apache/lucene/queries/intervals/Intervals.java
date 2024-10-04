@@ -286,9 +286,9 @@ public final class Intervals {
 
     StringBuilder buffer = new StringBuilder();
     buffer.append("{");
-    buffer.append(lowerTerm.utf8ToString());
+    buffer.append(lowerTerm == null ? "* " : lowerTerm.utf8ToString());
     buffer.append(",");
-    buffer.append(upperTerm.utf8ToString());
+    buffer.append(upperTerm == null ? "*" : upperTerm.utf8ToString());
     buffer.append("}");
     return new MultiTermIntervalsSource(ca, maxExpansions, buffer.toString());
   }
