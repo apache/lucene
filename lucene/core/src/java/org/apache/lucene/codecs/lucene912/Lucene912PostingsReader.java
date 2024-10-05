@@ -77,8 +77,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   private final int maxNumImpactsAtLevel1;
   private final int maxImpactNumBytesAtLevel1;
 
-  private final int version;
-
   /** Sole constructor. */
   public Lucene912PostingsReader(SegmentReadState state) throws IOException {
     String metaName =
@@ -87,6 +85,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     final long expectedDocFileLength, expectedPosFileLength, expectedPayFileLength;
     ChecksumIndexInput metaIn = null;
     boolean success = false;
+    int version;
     try {
       metaIn = state.directory.openChecksumInput(metaName);
       version =
@@ -344,16 +343,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   final class BlockDocsEnum extends PostingsEnum {
 
-    final ForUtil forUtil = new ForUtil();
     final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
 
     private int docBufferUpto;
-
-    final IndexInput startDocIn;
 
     IndexInput docIn;
     PostingDecodingUtil docInUtil;
@@ -378,8 +374,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
     private long freqFP;
 
-    public BlockDocsEnum(FieldInfo fieldInfo) throws IOException {
-      this.startDocIn = Lucene912PostingsReader.this.docIn;
+    public BlockDocsEnum(FieldInfo fieldInfo) {
       this.docIn = null;
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasPos =
@@ -396,7 +391,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     public boolean canReuse(IndexInput docIn, FieldInfo fieldInfo) {
-      return docIn == startDocIn
+      return docIn == Lucene912PostingsReader.this.docIn
           && indexHasFreq
               == (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0)
           && indexHasPos
@@ -417,7 +412,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       if (docFreq > 1) {
         if (docIn == null) {
           // lazy init
-          docIn = startDocIn.clone();
+          docIn = Lucene912PostingsReader.this.docIn.clone();
           docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
         }
         prefetchPostings(docIn, termState);
@@ -460,22 +455,22 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public int nextPosition() throws IOException {
+    public int nextPosition() {
       return -1;
     }
 
     @Override
-    public int startOffset() throws IOException {
+    public int startOffset() {
       return -1;
     }
 
     @Override
-    public int endOffset() throws IOException {
+    public int endOffset() {
       return -1;
     }
 
     @Override
-    public BytesRef getPayload() throws IOException {
+    public BytesRef getPayload() {
       return null;
     }
 
@@ -493,7 +488,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         if (needsFreq) {
           freqFP = docIn.getFilePointer();
         }
-        pforUtil.skip(docIn);
+        PForUtil.skip(docIn);
       }
       docCountUpto += BLOCK_SIZE;
       prevDocID = docBuffer[BLOCK_SIZE - 1];
@@ -629,9 +624,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   final class EverythingEnum extends PostingsEnum {
 
-    final ForUtil forUtil = new ForUtil();
     final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE + 1];
@@ -651,8 +645,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private int docBufferUpto;
     private int posBufferUpto;
-
-    final IndexInput startDocIn;
 
     IndexInput docIn;
     PostingDecodingUtil docInUtil;
@@ -680,13 +672,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // skip these to "catch up":
     private long posPendingCount;
 
-    // Where this term's postings start in the .pos file:
-    private long posTermStartFP;
-
-    // Where this term's payloads/offsets start in the .pay
-    // file:
-    private long payTermStartFP;
-
     // File pointer where the last (vInt encoded) pos delta
     // block is.  We need this to know whether to bulk
     // decode vs vInt decode the block:
@@ -713,7 +698,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
     public EverythingEnum(FieldInfo fieldInfo) throws IOException {
-      this.startDocIn = Lucene912PostingsReader.this.docIn;
       this.docIn = null;
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasPos =
@@ -761,7 +745,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     public boolean canReuse(IndexInput docIn, FieldInfo fieldInfo) {
-      return docIn == startDocIn
+      return docIn == Lucene912PostingsReader.this.docIn
           && indexHasOffsets
               == (fieldInfo
                       .getIndexOptions()
@@ -772,14 +756,17 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
       docFreq = termState.docFreq;
-      posTermStartFP = termState.posStartFP;
-      payTermStartFP = termState.payStartFP;
+      // Where this term's postings start in the .pos file:
+      final long posTermStartFP = termState.posStartFP;
+      // Where this term's payloads/offsets start in the .pay
+      // file:
+      final long payTermStartFP = termState.payStartFP;
       totalTermFreq = termState.totalTermFreq;
       singletonDocID = termState.singletonDocID;
       if (docFreq > 1) {
         if (docIn == null) {
           // lazy init
-          docIn = startDocIn.clone();
+          docIn = Lucene912PostingsReader.this.docIn.clone();
           docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
         }
         prefetchPostings(docIn, termState);
@@ -829,7 +816,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public int freq() throws IOException {
+    public int freq() {
       return freq;
     }
 
@@ -1054,11 +1041,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         toSkip -= leftInBlock;
         while (toSkip >= BLOCK_SIZE) {
           assert posIn.getFilePointer() != lastPosBlockFP;
-          pforUtil.skip(posIn);
+          PForUtil.skip(posIn);
 
           if (indexHasPayloads) {
             // Skip payloadLength block:
-            pforUtil.skip(payIn);
+            PForUtil.skip(payIn);
 
             // Skip payloadBytes block:
             int numBytes = payIn.readVInt();
@@ -1066,14 +1053,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           }
 
           if (indexHasOffsets) {
-            pforUtil.skip(payIn);
-            pforUtil.skip(payIn);
+            PForUtil.skip(payIn);
+            PForUtil.skip(payIn);
           }
           toSkip -= BLOCK_SIZE;
         }
         refillPositions();
         payloadByteUpto = 0;
-        posBufferUpto = 0;
         final int toSkipInt = (int) toSkip;
         if (indexHasPayloads) {
           for (int i = 0; i < toSkipInt; ++i) {
@@ -1137,7 +1123,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           } else {
             // this works, because when writing a vint block we always force the first length to be
             // written
-            pforUtil.skip(payIn); // skip over lengths
+            PForUtil.skip(payIn); // skip over lengths
             int numBytes = payIn.readVInt(); // read length of payloadBytes
             payIn.seek(payIn.getFilePointer() + numBytes); // skip over payloadBytes
           }
@@ -1151,8 +1137,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           } else {
             // this works, because when writing a vint block we always force the first length to be
             // written
-            pforUtil.skip(payIn); // skip over starts
-            pforUtil.skip(payIn); // skip over lengths
+            PForUtil.skip(payIn); // skip over starts
+            PForUtil.skip(payIn); // skip over lengths
           }
         }
       }
@@ -1219,16 +1205,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsDocsEnum extends ImpactsEnum {
 
-    final ForUtil forUtil = new ForUtil();
     final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
 
     private int docBufferUpto;
-
-    final IndexInput startDocIn;
 
     final IndexInput docIn;
     final PostingDecodingUtil docInUtil;
@@ -1236,7 +1219,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     final boolean indexHasPos;
     final boolean indexHasOffsetsOrPayloads;
 
-    private int docFreq; // number of docs in this posting list
+    private final int docFreq; // number of docs in this posting list
     private int docCountUpto; // number of docs in or before the current block
     private int doc; // doc we last read
     private long prevDocID; // last doc ID of the previous block
@@ -1245,23 +1228,22 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
 
+    private final ByteArrayDataInput scratch = new ByteArrayDataInput();
+
     // level 0 skip data
     private int level0LastDocID;
     private long level0DocEndFP;
     private final BytesRef level0SerializedImpacts;
-    private final ByteArrayDataInput level0SerializedImpactsIn = new ByteArrayDataInput();
     private final MutableImpactList level0Impacts;
     // level 1 skip data
     private int level1LastDocID;
     private long level1DocEndFP;
     private int level1DocCountUpto;
     private final BytesRef level1SerializedImpacts;
-    private final ByteArrayDataInput level1SerializedImpactsIn = new ByteArrayDataInput();
     private final MutableImpactList level1Impacts;
 
     public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
-      this.startDocIn = Lucene912PostingsReader.this.docIn;
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasPos =
           fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
@@ -1277,7 +1259,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
       docFreq = termState.docFreq;
       if (docFreq > 1) {
-        docIn = startDocIn.clone();
+        docIn = Lucene912PostingsReader.this.docIn.clone();
         docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
         prefetchPostings(docIn, termState);
       } else {
@@ -1323,22 +1305,22 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public int nextPosition() throws IOException {
+    public int nextPosition() {
       return -1;
     }
 
     @Override
-    public int startOffset() throws IOException {
+    public int startOffset() {
       return -1;
     }
 
     @Override
-    public int endOffset() throws IOException {
+    public int endOffset() {
       return -1;
     }
 
     @Override
-    public BytesRef getPayload() throws IOException {
+    public BytesRef getPayload() {
       return null;
     }
 
@@ -1356,7 +1338,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
         if (indexHasFreq) {
           freqFP = docIn.getFilePointer();
-          pforUtil.skip(docIn);
+          PForUtil.skip(docIn);
         }
         docCountUpto += BLOCK_SIZE;
       } else {
@@ -1502,7 +1484,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public Impacts getImpacts() throws IOException {
+    public Impacts getImpacts() {
       return new Impacts() {
 
         @Override
@@ -1533,7 +1515,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             if (level == 0) {
               return level1LastDocID;
             }
-            level--;
           }
 
           return NO_MORE_DOCS;
@@ -1543,9 +1524,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         public List<Impact> getImpacts(int level) {
           if (level0LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              level0SerializedImpactsIn.reset(
-                  level0SerializedImpacts.bytes, 0, level0SerializedImpacts.length);
-              readImpacts(level0SerializedImpactsIn, level0Impacts);
+              scratch.reset(level0SerializedImpacts.bytes, 0, level0SerializedImpacts.length);
+              readImpacts(scratch, level0Impacts);
               return level0Impacts;
             }
             level--;
@@ -1553,12 +1533,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
           if (level1LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              level1SerializedImpactsIn.reset(
-                  level1SerializedImpacts.bytes, 0, level1SerializedImpacts.length);
-              readImpacts(level1SerializedImpactsIn, level1Impacts);
+              scratch.reset(level1SerializedImpacts.bytes, 0, level1SerializedImpacts.length);
+              readImpacts(scratch, level1Impacts);
               return level1Impacts;
             }
-            level--;
           }
 
           return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
@@ -1574,9 +1552,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsPostingsEnum extends ImpactsEnum {
 
-    final ForUtil forUtil = new ForUtil();
     final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil(new ForUtil());
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -1585,21 +1562,19 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int docBufferUpto;
     private int posBufferUpto;
 
-    final IndexInput startDocIn;
-
     final IndexInput docIn;
     final PostingDecodingUtil docInUtil;
     final IndexInput posIn;
     final PostingDecodingUtil posInUtil;
 
     final boolean indexHasFreq;
-    final boolean indexHasPos;
     final boolean indexHasOffsets;
     final boolean indexHasPayloads;
     final boolean indexHasOffsetsOrPayloads;
 
-    private int docFreq; // number of docs in this posting list
-    private long totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
+    private final int docFreq; // number of docs in this posting list
+    private final long
+        totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
     private int docCountUpto; // number of docs in or before the current block
     private int doc; // doc we last read
     private long prevDocID; // last doc ID of the previous block
@@ -1610,16 +1585,15 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // skip these to "catch up":
     private long posPendingCount;
 
-    // Where this term's postings start in the .pos file:
-    private long posTermStartFP;
-
     // File pointer where the last (vInt encoded) pos delta
     // block is.  We need this to know whether to bulk
     // decode vs vInt decode the block:
-    private long lastPosBlockFP;
+    private final long lastPosBlockFP;
 
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
+
+    private final ByteArrayDataInput scratch = new ByteArrayDataInput();
 
     // level 0 skip data
     private int level0LastDocID;
@@ -1627,7 +1601,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private long level0PosEndFP;
     private int level0BlockPosUpto;
     private final BytesRefBuilder level0SerializedImpacts = new BytesRefBuilder();
-    private final ByteArrayDataInput level0SerializedImpactsIn = new ByteArrayDataInput();
     private final MutableImpactList level0Impacts;
     // level 1 skip data
     private int level1LastDocID;
@@ -1636,17 +1609,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private long level1PosEndFP;
     private int level1BlockPosUpto;
     private final BytesRefBuilder level1SerializedImpacts = new BytesRefBuilder();
-    private final ByteArrayDataInput level1SerializedImpactsIn = new ByteArrayDataInput();
     private final MutableImpactList level1Impacts;
 
-    private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
+    private final int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
     public BlockImpactsPostingsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
-      this.startDocIn = Lucene912PostingsReader.this.docIn;
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-      indexHasPos =
-          fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
       indexHasOffsets =
           fieldInfo
                   .getIndexOptions()
@@ -1663,11 +1632,12 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
 
       docFreq = termState.docFreq;
-      posTermStartFP = termState.posStartFP;
+      // Where this term's postings start in the .pos file:
+      final long posTermStartFP = termState.posStartFP;
       totalTermFreq = termState.totalTermFreq;
       singletonDocID = termState.singletonDocID;
       if (docFreq > 1) {
-        docIn = startDocIn.clone();
+        docIn = Lucene912PostingsReader.this.docIn.clone();
         docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
         prefetchPostings(docIn, termState);
       } else {
@@ -1710,7 +1680,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public int freq() throws IOException {
+    public int freq() {
       return freq;
     }
 
@@ -1850,7 +1820,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public Impacts getImpacts() throws IOException {
+    public Impacts getImpacts() {
       return new Impacts() {
 
         @Override
@@ -1881,7 +1851,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             if (level == 0) {
               return level1LastDocID;
             }
-            level--;
           }
 
           return NO_MORE_DOCS;
@@ -1891,9 +1860,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         public List<Impact> getImpacts(int level) {
           if (level0LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              level0SerializedImpactsIn.reset(
-                  level0SerializedImpacts.bytes(), 0, level0SerializedImpacts.length());
-              readImpacts(level0SerializedImpactsIn, level0Impacts);
+              scratch.reset(level0SerializedImpacts.bytes(), 0, level0SerializedImpacts.length());
+              readImpacts(scratch, level0Impacts);
               return level0Impacts;
             }
             level--;
@@ -1901,12 +1869,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
           if (level1LastDocID != NO_MORE_DOCS) {
             if (level == 0) {
-              level1SerializedImpactsIn.reset(
-                  level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
-              readImpacts(level1SerializedImpactsIn, level1Impacts);
+              scratch.reset(level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
+              readImpacts(scratch, level1Impacts);
               return level1Impacts;
             }
-            level--;
           }
 
           return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
@@ -1962,7 +1928,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         toSkip -= leftInBlock;
         while (toSkip >= BLOCK_SIZE) {
           assert posIn.getFilePointer() != lastPosBlockFP;
-          pforUtil.skip(posIn);
+          PForUtil.skip(posIn);
           toSkip -= BLOCK_SIZE;
         }
         refillPositions();
@@ -2067,7 +2033,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
   }
 
-  private void prefetchPostings(IndexInput docIn, IntBlockTermState state) throws IOException {
+  private static void prefetchPostings(IndexInput docIn, IntBlockTermState state)
+      throws IOException {
     assert state.docFreq > 1; // Singletons are inlined in the terms dict, nothing to prefetch
     if (docIn.getFilePointer() != state.docStartFP) {
       // Don't prefetch if the input is already positioned at the right offset, which suggests that
