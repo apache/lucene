@@ -235,13 +235,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       DataInput in, FieldInfo fieldInfo, BlockTermState _termState, boolean absolute)
       throws IOException {
     final IntBlockTermState termState = (IntBlockTermState) _termState;
-    final boolean fieldHasPositions =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-    final boolean fieldHasOffsets =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-            >= 0;
-    final boolean fieldHasPayloads = fieldInfo.hasPayloads();
-
     if (absolute) {
       termState.docStartFP = 0;
       termState.posStartFP = 0;
@@ -262,9 +255,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       termState.singletonDocID += BitUtil.zigZagDecode(l >>> 1);
     }
 
-    if (fieldHasPositions) {
+    if (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
       termState.posStartFP += in.readVLong();
-      if (fieldHasOffsets || fieldHasPayloads) {
+      if (fieldInfo
+                  .getIndexOptions()
+                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
+              >= 0
+          || fieldInfo.hasPayloads()) {
         termState.payStartFP += in.readVLong();
       }
       if (termState.totalTermFreq > BLOCK_SIZE) {
@@ -655,7 +652,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     final BytesRef payload;
 
     final boolean indexHasFreq;
-    final boolean indexHasPos;
     final boolean indexHasOffsets;
     final boolean indexHasPayloads;
     final boolean indexHasOffsetsOrPayloads;
@@ -700,8 +696,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     public EverythingEnum(FieldInfo fieldInfo) throws IOException {
       this.docIn = null;
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-      indexHasPos =
-          fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
       indexHasOffsets =
           fieldInfo
                   .getIndexOptions()
@@ -1217,7 +1211,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     final PostingDecodingUtil docInUtil;
     final boolean indexHasFreq;
     final boolean indexHasPos;
-    final boolean indexHasOffsetsOrPayloads;
 
     private final int docFreq; // number of docs in this posting list
     private int docCountUpto; // number of docs in or before the current block
@@ -1247,12 +1240,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasPos =
           fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-      indexHasOffsetsOrPayloads =
-          fieldInfo
-                      .getIndexOptions()
-                      .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-                  >= 0
-              || fieldInfo.hasPayloads();
       // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
       // advance()
       docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
