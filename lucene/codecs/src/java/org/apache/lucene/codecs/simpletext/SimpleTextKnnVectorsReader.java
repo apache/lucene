@@ -221,6 +221,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
               + " differs from field dimension: "
               + values.dimension());
     }
+    ByteVectorValues.Bytes vectors = values.values();
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
 
@@ -234,7 +235,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         break;
       }
 
-      byte[] vector = values.vectorValue(ord);
+      byte[] vector = vectors.get(ord);
       float score = vectorSimilarity.compare(vector, target);
       knnCollector.collect(doc, score);
       knnCollector.incVisitedCount(1);
@@ -300,13 +301,10 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     private final IndexInput in;
     private final float[][] values;
 
-    int curOrd;
-
     SimpleTextFloatVectorValues(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new float[entry.size()][entry.dimension];
-      curOrd = -1;
       readAllVectors();
     }
 
@@ -314,7 +312,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       this.entry = other.entry;
       this.in = other.in.clone();
       this.values = other.values;
-      this.curOrd = other.curOrd;
     }
 
     @Override
@@ -394,18 +391,12 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
     private final IndexInput in;
-    private final BytesRef binaryValue;
     private final byte[][] values;
-
-    int curOrd;
 
     SimpleTextByteVectorValues(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new byte[entry.size()][entry.dimension];
-      binaryValue = new BytesRef(entry.dimension);
-      binaryValue.length = binaryValue.bytes.length;
-      curOrd = -1;
       readAllVectors();
     }
 
@@ -413,9 +404,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       this.entry = other.entry;
       this.in = other.in.clone();
       this.values = other.values;
-      this.binaryValue = new BytesRef(entry.dimension);
-      this.binaryValue.length = binaryValue.bytes.length;
-      this.curOrd = other.curOrd;
     }
 
     @Override
@@ -429,9 +417,17 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public byte[] vectorValue(int ord) {
-      binaryValue.bytes = values[ord];
-      return binaryValue.bytes;
+    public Bytes values() {
+      BytesRef binaryValue = new BytesRef(entry.dimension);
+      binaryValue.length = binaryValue.bytes.length;
+
+      return new Bytes() {
+        @Override
+        public byte[] get(int ord) {
+          binaryValue.bytes = values[ord];
+          return binaryValue.bytes;
+        }
+      };
     }
 
     @Override
@@ -450,15 +446,14 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         return null;
       }
       SimpleTextByteVectorValues simpleTextByteVectorValues = new SimpleTextByteVectorValues(this);
+      ByteVectorValues.Bytes vectors = simpleTextByteVectorValues.values();
       return new VectorScorer() {
         DocIndexIterator it = simpleTextByteVectorValues.iterator();
 
         @Override
         public float score() throws IOException {
           int ord = it.index();
-          return entry
-              .similarityFunction()
-              .compare(simpleTextByteVectorValues.vectorValue(ord), target);
+          return entry.similarityFunction().compare(vectors.get(ord), target);
         }
 
         @Override
@@ -484,11 +479,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       for (int i = 0; i < floatStrings.length; i++) {
         value[i] = (byte) Float.parseFloat(floatStrings[i]);
       }
-    }
-
-    @Override
-    public SimpleTextByteVectorValues copy() {
-      return this;
     }
   }
 

@@ -2812,20 +2812,19 @@ public final class CheckIndex implements Closeable {
     int count = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
     boolean supportsSearch = vectorsReaderSupportsSearch(codecReader, fieldInfo.name);
+    ByteVectorValues.Bytes vectors = values.values();
     while (count < values.size()) {
       // search the first maxNumSearches vectors to exercise the graph
       if (supportsSearch && values.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader
-            .getVectorReader()
-            .search(fieldInfo.name, values.vectorValue(count), collector, null);
+        codecReader.getVectorReader().search(fieldInfo.name, vectors.get(count), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
         }
       }
-      int valueLength = values.vectorValue(count).length;
+      int valueLength = vectors.get(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""

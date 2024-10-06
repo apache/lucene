@@ -65,11 +65,12 @@ public class ByteKnnVectorFieldSource extends ValueSource {
 
     return new VectorFieldFunction(this) {
       KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
+      ByteVectorValues.Bytes vectors = vectorValues.values();
 
       @Override
       public byte[] byteVectorVal(int doc) throws IOException {
         if (exists(doc)) {
-          return vectorValues.vectorValue(iterator.index());
+          return vectors.get(iterator.index());
         } else {
           return null;
         }

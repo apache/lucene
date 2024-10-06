@@ -22,9 +22,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 class MockVectorValues extends FloatVectorValues {
   private final int dimension;
-  private final float[][] denseValues;
   protected final float[][] values;
-  private final int numVectors;
 
   static MockVectorValues fromValues(float[][] values) {
     float[] firstNonNull = null;
@@ -33,22 +31,12 @@ class MockVectorValues extends FloatVectorValues {
       firstNonNull = values[j++];
     }
     int dimension = firstNonNull.length;
-    int maxDoc = values.length;
-    float[][] denseValues = new float[maxDoc][];
-    int count = 0;
-    for (int i = 0; i < maxDoc; i++) {
-      if (values[i] != null) {
-        denseValues[count++] = values[i];
-      }
-    }
-    return new MockVectorValues(values, dimension, denseValues, count);
+    return new MockVectorValues(values, dimension);
   }
 
-  MockVectorValues(float[][] values, int dimension, float[][] denseValues, int numVectors) {
+  MockVectorValues(float[][] values, int dimension) {
     this.dimension = dimension;
     this.values = values;
-    this.denseValues = denseValues;
-    this.numVectors = numVectors;
   }
 
   @Override

@@ -401,7 +401,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     private final int dimension;
     private final int size;
-    private final int[] ordToDoc;
     private final IntUnaryOperator ordToDocOperator;
     private final IndexInput dataIn;
     private final int byteSize;
@@ -415,7 +414,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         IndexInput dataIn) {
       this.dimension = dimension;
       this.size = size;
-      this.ordToDoc = ordToDoc;
       ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
       this.dataIn = dataIn;
       this.similarityFunction = similarityFunction;

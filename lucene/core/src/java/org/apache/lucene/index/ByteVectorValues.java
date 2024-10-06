@@ -32,15 +32,27 @@ public abstract class ByteVectorValues extends KnnVectorValues {
   /** Sole constructor */
   protected ByteVectorValues() {}
 
-  /**
-   * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
-   * otherwise IndexOutOfBoundsException is thrown. The returned array may be shared across calls.
-   *
-   * @return the vector value
-   */
-  public abstract byte[] vectorValue(int ord) throws IOException;
+  /** A random access (lookup by ord) provider of the vector values */
+  public abstract static class Bytes {
+    /**
+     * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
+     * otherwise IndexOutOfBoundsException is thrown. The returned array may be shared across calls.
+     *
+     * @return the vector value
+     */
+    public abstract byte[] get(int ord) throws IOException;
 
-  public abstract ByteVectorValues copy() throws IOException;
+    public static final Bytes EMPTY =
+        new Bytes() {
+          @Override
+          public byte[] get(int ord) {
+            throw new UnsupportedOperationException();
+          }
+        };
+  }
+
+  /** Returns a random access (lookup by ord) provider of the vector values */
+  public abstract Bytes values() throws IOException;
 
   /**
    * Checks the Vector Encoding of a field
@@ -98,13 +110,13 @@ public abstract class ByteVectorValues extends KnnVectorValues {
       }
 
       @Override
-      public byte[] vectorValue(int targetOrd) {
-        return vectors.get(targetOrd);
-      }
-
-      @Override
-      public ByteVectorValues copy() {
-        return this;
+      public Bytes values() {
+        return new Bytes() {
+          @Override
+          public byte[] get(int targetOrd) {
+            return vectors.get(targetOrd);
+          }
+        };
       }
 
       @Override

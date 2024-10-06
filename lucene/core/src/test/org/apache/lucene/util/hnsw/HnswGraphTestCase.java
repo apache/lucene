@@ -85,7 +85,6 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
-import org.junit.Ignore;
 
 /** Tests HNSW KNN graphs */
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
@@ -122,8 +121,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   protected RandomVectorScorer buildScorer(KnnVectorValues vectors, T query) throws IOException {
     return switch (getVectorEncoding()) {
       case BYTE ->
-          flatVectorScorer.getRandomVectorScorer(
-              similarityFunction, ((ByteVectorValues) vectors).copy(), (byte[]) query);
+          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectors, (byte[]) query);
       case FLOAT32 ->
           flatVectorScorer.getRandomVectorScorer(similarityFunction, vectors, (float[]) query);
     };
@@ -185,7 +183,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 doc.add(
                     knnVectorField(
                         "field",
-                        (T) ((ByteVectorValues) vectors).vectorValue(ord),
+                        (T) ((ByteVectorValues) vectors).values().get(ord),
                         similarityFunction));
               }
               case FLOAT32 -> {
@@ -223,7 +221,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   private T vectorValue(KnnVectorValues vectors, int ord) throws IOException {
     switch (vectors.getEncoding()) {
       case BYTE -> {
-        return (T) ((ByteVectorValues) vectors).vectorValue(ord);
+        return (T) ((ByteVectorValues) vectors).values().get(ord);
       }
       case FLOAT32 -> {
         return (T) ((FloatVectorValues) vectors).values().get(ord);
@@ -236,29 +234,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     T get(int ord) throws IOException;
   }
 
-  // we used to have a generically-typed vector API, now this persists only in tests
-  @SuppressWarnings("unchecked")
-  private static <T> Vectors<T> vectors(KnnVectorValues vectors) throws IOException {
-    return switch (vectors.getEncoding()) {
-      case FLOAT32 ->
-          new Vectors<T>() {
-            FloatVectorValues.Floats dict = ((FloatVectorValues) vectors).values();
-
-            @Override
-            public T get(int ord) throws IOException {
-              return (T) dict.get(ord);
-            }
-          };
-      case BYTE ->
-          new Vectors<T>() {
-            @Override
-            public T get(int ord) throws IOException {
-              return (T) ((ByteVectorValues) vectors).vectorValue(ord);
-            }
-          };
-    };
-  }
-
   // test writing out and reading in a graph gives the expected graph
   public void testReadWrite() throws IOException {
     int dim = random().nextInt(100) + 1;
@@ -267,7 +242,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();
     KnnVectorValues vectors = vectorValues(nDoc, dim);
-    Vectors<T> v1 = vectors(vectors), v2 = vectors(vectors), v3 = vectors(vectors);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors.size());
@@ -1183,20 +1157,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularByteVectorValues extends ByteVectorValues {
     private final int size;
-    private final float[] value;
-    private final byte[] bValue;
 
     int doc = -1;
 
     CircularByteVectorValues(int size) {
       this.size = size;
-      value = new float[2];
-      bValue = new byte[2];
-    }
-
-    @Override
-    public CircularByteVectorValues copy() {
-      return new CircularByteVectorValues(size);
     }
 
     @Override
@@ -1209,34 +1174,21 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       return size;
     }
 
-    public byte[] vectorValue() {
-      return vectorValue(doc);
-    }
-
-    public int docID() {
-      return doc;
-    }
-
-    public int nextDoc() {
-      return advance(doc + 1);
-    }
-
-    public int advance(int target) {
-      if (target >= 0 && target < size) {
-        doc = target;
-      } else {
-        doc = NO_MORE_DOCS;
-      }
-      return doc;
-    }
-
     @Override
-    public byte[] vectorValue(int ord) {
-      unitVector2d(ord / (double) size, value);
-      for (int i = 0; i < value.length; i++) {
-        bValue[i] = (byte) (value[i] * 127);
-      }
-      return bValue;
+    public Bytes values() {
+      return new Bytes() {
+        byte[] bValue = new byte[2];
+        float[] value = new float[2];
+
+        @Override
+        public byte[] get(int ord) {
+          unitVector2d(ord / (double) size, value);
+          for (int i = 0; i < value.length; i++) {
+            bValue[i] = (byte) (value[i] * 127);
+          }
+          return bValue;
+        }
+      };
     }
 
     @Override

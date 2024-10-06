@@ -729,9 +729,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                 quantizedByteVectorValues.dimension(), bits)
             : null;
     KnnVectorValues.DocIndexIterator iter = quantizedByteVectorValues.iterator();
+    QuantizedByteVectorValues.QuantizedBytes vectors = quantizedByteVectorValues.values();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = quantizedByteVectorValues.vectorValue(iter.index());
+      byte[] binaryValue = vectors.get(iter.index());
       assert binaryValue.length == quantizedByteVectorValues.dimension()
           : "dim=" + quantizedByteVectorValues.dimension() + " len=" + binaryValue.length;
       if (compressedVector != null) {
@@ -740,8 +741,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       } else {
         output.writeBytes(binaryValue, binaryValue.length);
       }
-      output.writeInt(
-          Float.floatToIntBits(quantizedByteVectorValues.getScoreCorrectionConstant(iter.index())));
+      output.writeInt(Float.floatToIntBits(vectors.getScoreCorrectionConstant(iter.index())));
       docsWithField.add(docV);
     }
     return docsWithField;
@@ -889,12 +889,15 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
     private final QuantizedByteVectorValues values;
+    private final QuantizedByteVectorValues.QuantizedBytes vectors;
     private final KnnVectorValues.DocIndexIterator iterator;
 
-    QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values) {
+    QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values)
+        throws IOException {
       super(docMap);
       this.values = values;
       iterator = values.iterator();
+      vectors = values.values();
       assert iterator.docID() == -1;
     }
 
@@ -975,8 +978,18 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public byte[] vectorValue(int ord) throws IOException {
-      return current.values.vectorValue(current.index());
+    public QuantizedBytes values() throws IOException {
+      return new QuantizedBytes() {
+        @Override
+        public byte[] get(int ord) throws IOException {
+          return current.vectors.get(current.index());
+        }
+
+        @Override
+        public float getScoreCorrectionConstant(int ord) throws IOException {
+          return current.vectors.getScoreCorrectionConstant(current.index());
+        }
+      };
     }
 
     @Override
@@ -992,11 +1005,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     @Override
     public int dimension() {
       return subs.get(0).values.dimension();
-    }
-
-    @Override
-    public float getScoreCorrectionConstant(int ord) throws IOException {
-      return current.values.getScoreCorrectionConstant(current.index());
     }
 
     private class CompositeIterator extends DocIndexIterator {
@@ -1046,10 +1054,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
     private final FloatVectorValues values;
     private final ScalarQuantizer quantizer;
-    private final byte[] quantizedVector;
-    private final FloatVectorValues.Floats floats;
-    private int lastOrd = -1;
-    private float offsetValue = 0f;
 
     private final VectorSimilarityFunction vectorSimilarityFunction;
 
@@ -1060,21 +1064,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         throws IOException {
       this.values = values;
       this.quantizer = quantizer;
-      quantizedVector = new byte[values.dimension()];
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      floats = values.values();
-    }
-
-    @Override
-    public float getScoreCorrectionConstant(int ord) {
-      if (ord != lastOrd) {
-        throw new IllegalStateException(
-            "attempt to retrieve score correction for different ord "
-                + ord
-                + " than the quantization was done for: "
-                + lastOrd);
-      }
-      return offsetValue;
     }
 
     @Override
@@ -1088,21 +1078,43 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public byte[] vectorValue(int ord) throws IOException {
-      if (ord != lastOrd) {
-        offsetValue = quantize(ord);
-        lastOrd = ord;
-      }
-      return quantizedVector;
+    public QuantizedBytes values() throws IOException {
+      return new QuantizedBytes() {
+        FloatVectorValues.Floats vectors = values.values();
+        byte[] quantizedVector = new byte[values.dimension()];
+        float offsetValue = 0f;
+        int lastOrd = -1;
+
+        @Override
+        public byte[] get(int ord) throws IOException {
+          if (ord != lastOrd) {
+            offsetValue = quantize(ord);
+            lastOrd = ord;
+          }
+          return quantizedVector;
+        }
+
+        @Override
+        public float getScoreCorrectionConstant(int ord) {
+          if (ord != lastOrd) {
+            throw new IllegalStateException(
+                "attempt to retrieve score correction for different ord "
+                    + ord
+                    + " than the quantization was done for: "
+                    + lastOrd);
+          }
+          return offsetValue;
+        }
+
+        private float quantize(int ord) throws IOException {
+          return quantizer.quantize(vectors.get(ord), quantizedVector, vectorSimilarityFunction);
+        }
+      };
     }
 
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
       throw new UnsupportedOperationException();
-    }
-
-    private float quantize(int ord) throws IOException {
-      return quantizer.quantize(floats.get(ord), quantizedVector, vectorSimilarityFunction);
     }
 
     @Override
@@ -1136,11 +1148,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public RandomVectorScorerSupplier copy() throws IOException {
-      return supplier.copy();
-    }
-
-    @Override
     public void close() throws IOException {
       onClose.close();
     }
@@ -1169,9 +1176,21 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public float getScoreCorrectionConstant(int ord) throws IOException {
-      return scalarQuantizer.recalculateCorrectiveOffset(
-          in.vectorValue(ord), oldScalarQuantizer, vectorSimilarityFunction);
+    public QuantizedBytes values() throws IOException {
+      return new QuantizedBytes() {
+        Bytes vectors = in.values();
+
+        @Override
+        public byte[] get(int ord) throws IOException {
+          return vectors.get(ord);
+        }
+
+        @Override
+        public float getScoreCorrectionConstant(int ord) throws IOException {
+          return scalarQuantizer.recalculateCorrectiveOffset(
+              vectors.get(ord), oldScalarQuantizer, vectorSimilarityFunction);
+        }
+      };
     }
 
     @Override
@@ -1182,11 +1201,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     @Override
     public int size() {
       return in.size();
-    }
-
-    @Override
-    public byte[] vectorValue(int ord) throws IOException {
-      return in.vectorValue(ord);
     }
 
     @Override

@@ -60,18 +60,20 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
 
   static class BitRandomVectorScorer implements RandomVectorScorer {
     private final ByteVectorValues vectorValues;
+    private final ByteVectorValues.Bytes vectors;
     private final int bitDimensions;
     private final byte[] query;
 
-    BitRandomVectorScorer(ByteVectorValues vectorValues, byte[] query) {
+    BitRandomVectorScorer(ByteVectorValues vectorValues, byte[] query) throws IOException {
       this.query = query;
       this.bitDimensions = vectorValues.dimension() * Byte.SIZE;
       this.vectorValues = vectorValues;
+      vectors = vectorValues.values();
     }
 
     @Override
     public float score(int node) throws IOException {
-      return (bitDimensions - VectorUtil.xorBitCount(query, vectorValues.vectorValue(node)))
+      return (bitDimensions - VectorUtil.xorBitCount(query, vectors.get(node)))
           / (float) bitDimensions;
     }
 
@@ -93,24 +95,16 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
 
   static class BitRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
     protected final ByteVectorValues vectorValues;
-    protected final ByteVectorValues vectorValues1;
-    protected final ByteVectorValues vectorValues2;
+    protected final ByteVectorValues.Bytes vectors;
 
     public BitRandomVectorScorerSupplier(ByteVectorValues vectorValues) throws IOException {
       this.vectorValues = vectorValues;
-      this.vectorValues1 = vectorValues.copy();
-      this.vectorValues2 = vectorValues.copy();
+      this.vectors = vectorValues.values();
     }
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      byte[] query = vectorValues1.vectorValue(ord);
-      return new BitRandomVectorScorer(vectorValues2, query);
-    }
-
-    @Override
-    public RandomVectorScorerSupplier copy() throws IOException {
-      return new BitRandomVectorScorerSupplier(vectorValues.copy());
+      return new BitRandomVectorScorer(vectorValues, vectors.get(ord));
     }
   }
 

@@ -714,13 +714,14 @@ public class TestField extends LuceneTestCase {
       w.addDocument(doc);
       try (IndexReader r = DirectoryReader.open(w)) {
         ByteVectorValues binary = r.leaves().get(0).reader().getByteVectorValues("binary");
+        ByteVectorValues.Bytes vectors = binary.values();
         assertEquals(1, binary.size());
         KnnVectorValues.DocIndexIterator iterator = binary.iterator();
         assertNotEquals(NO_MORE_DOCS, iterator.nextDoc());
-        assertNotNull(binary.vectorValue(0));
-        assertArrayEquals(b, binary.vectorValue(0));
+        assertNotNull(vectors.get(0));
+        assertArrayEquals(b, vectors.get(0));
         assertEquals(NO_MORE_DOCS, iterator.nextDoc());
-        expectThrows(IOException.class, () -> binary.vectorValue(1));
+        expectThrows(IOException.class, () -> vectors.get(1));
 
         FloatVectorValues floatValues = r.leaves().get(0).reader().getFloatVectorValues("float");
         assertEquals(1, floatValues.size());

@@ -77,7 +77,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
   }
 
-  final MemorySegment getFirstSegment(int ord) throws IOException {
+  final MemorySegment getFirstSegment(MemorySegmentAccessInput input, int ord) throws IOException {
     long byteOffset = (long) ord * vectorByteSize;
     MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
@@ -90,7 +90,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     return seg;
   }
 
-  final MemorySegment getSecondSegment(int ord) throws IOException {
+  final MemorySegment getSecondSegment(MemorySegmentAccessInput input, int ord) throws IOException {
     long byteOffset = (long) ord * vectorByteSize;
     MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
@@ -112,19 +112,15 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     @Override
     public RandomVectorScorer scorer(int ord) {
       checkOrdinal(ord);
+      MemorySegmentAccessInput slice = input.clone();
       return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
-          float raw = PanamaVectorUtilSupport.cosine(getFirstSegment(ord), getSecondSegment(node));
+          float raw = PanamaVectorUtilSupport.cosine(getFirstSegment(slice, ord), getSecondSegment(slice, node));
           return (1 + raw) / 2;
         }
       };
-    }
-
-    @Override
-    public CosineSupplier copy() throws IOException {
-      return new CosineSupplier(input.clone(), values);
     }
   }
 
@@ -138,20 +134,16 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     public RandomVectorScorer scorer(int ord) {
       checkOrdinal(ord);
       return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+        MemorySegmentAccessInput slice = input.clone();
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.dotProduct(getFirstSegment(slice, ord), getSecondSegment(slice, node));
           return 0.5f + raw / (float) (values.dimension() * (1 << 15));
         }
       };
-    }
-
-    @Override
-    public DotProductSupplier copy() throws IOException {
-      return new DotProductSupplier(input.clone(), values);
     }
   }
 
@@ -164,20 +156,16 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     @Override
     public RandomVectorScorer scorer(int ord) {
       checkOrdinal(ord);
+      MemorySegmentAccessInput slice = input.clone();
       return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.squareDistance(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.squareDistance(getFirstSegment(slice, ord), getSecondSegment(slice, node));
           return 1 / (1f + raw);
         }
       };
-    }
-
-    @Override
-    public EuclideanSupplier copy() throws IOException {
-      return new EuclideanSupplier(input.clone(), values);
     }
   }
 
@@ -191,22 +179,18 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     public RandomVectorScorer scorer(int ord) {
       checkOrdinal(ord);
       return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+        MemorySegmentAccessInput slice = input.clone();
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.dotProduct(getFirstSegment(slice, ord), getSecondSegment(slice, node));
           if (raw < 0) {
             return 1 / (1 + -1 * raw);
           }
           return raw + 1;
         }
       };
-    }
-
-    @Override
-    public MaxInnerProductSupplier copy() throws IOException {
-      return new MaxInnerProductSupplier(input.clone(), values);
     }
   }
 }

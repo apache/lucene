@@ -103,18 +103,20 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     KnnVectorValues.DocIndexIterator it = byteVectorValues.iterator();
+    ByteVectorValues.Bytes vectors = byteVectorValues.values();
     for (int docV = it.nextDoc(); docV != NO_MORE_DOCS; docV = it.nextDoc()) {
-      writeByteVectorValue(byteVectorValues, it.index());
+      writeByteVectorValue(vectors, it.index(), byteVectorValues.dimension());
       docIds.add(docV);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeByteVectorValue(ByteVectorValues vectors, int ord) throws IOException {
+  private void writeByteVectorValue(ByteVectorValues.Bytes vectors, int ord, int dim)
+      throws IOException {
     // write vector value
-    byte[] value = vectors.vectorValue(ord);
-    assert value.length == vectors.dimension();
+    byte[] value = vectors.get(ord);
+    assert value.length == dim;
     write(vectorData, Arrays.toString(value));
     newline(vectorData);
   }

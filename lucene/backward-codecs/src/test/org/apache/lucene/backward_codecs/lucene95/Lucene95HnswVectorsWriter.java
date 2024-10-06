@@ -635,9 +635,10 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     KnnVectorValues.DocIndexIterator iter = byteVectorValues.iterator();
+    ByteVectorValues.Bytes vectors = byteVectorValues.values();
     for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue(iter.index());
+      byte[] binaryValue = vectors.get(iter.index());
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docId);

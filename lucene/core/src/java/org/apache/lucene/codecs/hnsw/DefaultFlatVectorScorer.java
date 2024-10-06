@@ -89,15 +89,15 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   /** RandomVectorScorerSupplier for bytes vector */
   private static final class ByteScoringSupplier implements RandomVectorScorerSupplier {
     private final ByteVectorValues vectors;
-    private final ByteVectorValues vectors1;
-    private final ByteVectorValues vectors2;
+    private final ByteVectorValues.Bytes vectors1;
+    private final ByteVectorValues.Bytes vectors2;
     private final VectorSimilarityFunction similarityFunction;
 
     private ByteScoringSupplier(
         ByteVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
       this.vectors = vectors;
-      vectors1 = vectors.copy();
-      vectors2 = vectors.copy();
+      vectors1 = vectors.values();
+      vectors2 = vectors.values();
       this.similarityFunction = similarityFunction;
     }
 
@@ -106,14 +106,9 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
       return new RandomVectorScorer.AbstractRandomVectorScorer(vectors) {
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(node));
+          return similarityFunction.compare(vectors1.get(ord), vectors2.get(node));
         }
       };
-    }
-
-    @Override
-    public RandomVectorScorerSupplier copy() throws IOException {
-      return new ByteScoringSupplier(vectors, similarityFunction);
     }
 
     @Override
@@ -148,11 +143,6 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public RandomVectorScorerSupplier copy() throws IOException {
-      return new FloatScoringSupplier(vectors, similarityFunction);
-    }
-
-    @Override
     public String toString() {
       return "FloatScoringSupplier(similarityFunction=" + similarityFunction + ")";
     }
@@ -181,21 +171,22 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** A {@link RandomVectorScorer} for byte vectors. */
   private static class ByteVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
-    private final ByteVectorValues values;
+    private final ByteVectorValues.Bytes vectors;
     private final byte[] query;
     private final VectorSimilarityFunction similarityFunction;
 
     public ByteVectorScorer(
-        ByteVectorValues values, byte[] query, VectorSimilarityFunction similarityFunction) {
+        ByteVectorValues values, byte[] query, VectorSimilarityFunction similarityFunction)
+        throws IOException {
       super(values);
-      this.values = values;
+      vectors = values.values();
       this.query = query;
       this.similarityFunction = similarityFunction;
     }
 
     @Override
     public float score(int node) throws IOException {
-      return similarityFunction.compare(query, values.vectorValue(node));
+      return similarityFunction.compare(query, vectors.get(node));
     }
   }
 }

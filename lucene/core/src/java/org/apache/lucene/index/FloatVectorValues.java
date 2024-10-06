@@ -32,6 +32,7 @@ public abstract class FloatVectorValues extends KnnVectorValues {
   /** Sole constructor */
   protected FloatVectorValues() {}
 
+  /** A random access (lookup by ord) provider of the vector values */
   public abstract static class Floats {
     /**
      * Return the vector value for the given vector ordinal which must be in [0, size() - 1],

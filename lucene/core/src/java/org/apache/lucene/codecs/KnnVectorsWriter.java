@@ -61,9 +61,10 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<byte[]>) addField(fieldInfo);
         ByteVectorValues mergedBytes =
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+        ByteVectorValues.Bytes values = mergedBytes.values();
         KnnVectorValues.DocIndexIterator iter = mergedBytes.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-          byteWriter.addValue(doc, mergedBytes.vectorValue(iter.index()));
+          byteWriter.addValue(doc, values.get(iter.index()));
         }
       }
       case FLOAT32 -> {
@@ -71,10 +72,10 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
             MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-        FloatVectorValues.Floats mergedDict = mergedFloats.values();
+        FloatVectorValues.Floats values = mergedFloats.values();
         KnnVectorValues.DocIndexIterator iter = mergedFloats.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-          floatWriter.addValue(doc, mergedDict.get(iter.index()));
+          floatWriter.addValue(doc, values.get(iter.index()));
         }
       }
     }
@@ -421,14 +422,27 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public byte[] vectorValue(int ord) throws IOException {
-        if (ord != lastOrd + 1) {
-          throw new IllegalStateException(
-              "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
-        } else {
-          lastOrd = ord;
-        }
-        return current.values.vectorValue(current.index());
+      public Bytes values() {
+        return new Bytes() {
+          ByteVectorValues currentValues = null;
+          Bytes currentBytes = null;
+
+          @Override
+          public byte[] get(int ord) throws IOException {
+            if (ord != lastOrd) {
+              throw new IllegalStateException(
+                  "only supports forward iteration with a single iterator: ord="
+                      + ord
+                      + ", lastOrd="
+                      + lastOrd);
+            }
+            if (currentValues != current.values) {
+              currentValues = current.values;
+              currentBytes = current.values.values();
+            }
+            return currentBytes.get(current.index());
+          }
+        };
       }
 
       @Override
@@ -455,6 +469,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             } else {
               docId = current.mappedDocID;
               ++index;
+              ++lastOrd;
             }
             return docId;
           }
@@ -488,11 +503,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public VectorScorer scorer(byte[] target) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public ByteVectorValues copy() {
         throw new UnsupportedOperationException();
       }
     }

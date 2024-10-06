@@ -118,23 +118,23 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
               }
 
               @Override
-              public byte[] vectorValue(int ord) {
-                return new byte[32];
-              }
+              public QuantizedBytes values() {
+                return new QuantizedBytes() {
+                  @Override
+                  public byte[] get(int ord) {
+                    return new byte[32];
+                  }
 
-              @Override
-              public float getScoreCorrectionConstant(int ord) {
-                return -50;
-              }
+                  @Override
+                  public float getScoreCorrectionConstant(int ord) {
+                    return -50;
+                  }
 
-              @Override
-              public QuantizedByteVectorValues copy() throws IOException {
-                return this;
-              }
-
-              @Override
-              public IndexInput getSlice() {
-                return in;
+                  @Override
+                  public IndexInput getSlice() {
+                    return in;
+                  }
+                };
               }
 
               @Override

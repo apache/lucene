@@ -28,13 +28,11 @@ import org.apache.lucene.store.IndexInput;
  *
  * @lucene.experimental
  */
-public abstract class QuantizedByteVectorValues extends ByteVectorValues implements HasIndexSlice {
+public abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
   public ScalarQuantizer getScalarQuantizer() {
     throw new UnsupportedOperationException();
   }
-
-  public abstract float getScoreCorrectionConstant(int ord) throws IOException;
 
   /**
    * Return a {@link VectorScorer} for the given query vector.
@@ -46,13 +44,35 @@ public abstract class QuantizedByteVectorValues extends ByteVectorValues impleme
     throw new UnsupportedOperationException();
   }
 
+  /** Returns a random access (lookup by ord) provider of the quantized vector values */
   @Override
-  public QuantizedByteVectorValues copy() throws IOException {
-    return this;
-  }
+  public abstract QuantizedBytes values() throws IOException;
 
-  @Override
-  public IndexInput getSlice() {
-    return null;
+  /** A Bytes that also provides quantization info */
+  public abstract static class QuantizedBytes extends Bytes implements HasIndexSlice {
+
+    /**
+     * Returns a constant that can be used to account for differences in quantization in order to
+     * make scores computed across differently-quantized vectors comparable.
+     */
+    public abstract float getScoreCorrectionConstant(int ord) throws IOException;
+
+    @Override
+    public IndexInput getSlice() {
+      return null;
+    }
+
+    public static final QuantizedBytes EMPTY =
+        new QuantizedBytes() {
+          @Override
+          public byte[] get(int ord) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public float getScoreCorrectionConstant(int ord) {
+            throw new UnsupportedOperationException();
+          }
+        };
   }
 }

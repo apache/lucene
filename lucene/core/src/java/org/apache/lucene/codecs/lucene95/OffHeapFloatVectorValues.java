@@ -179,9 +179,6 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
   private static class SparseOffHeapVectorValues extends OffHeapFloatVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
-    // dataIn was used to init a new IndexedDIS for #randomAccess()
-    private final IndexInput dataIn;
-    private final OrdToDocDISIReaderConfiguration configuration;
 
     public SparseOffHeapVectorValues(
         OrdToDocDISIReaderConfiguration configuration,
@@ -194,10 +191,8 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         throws IOException {
 
       super(dimension, configuration.size, slice, byteSize, flatVectorsScorer, similarityFunction);
-      this.configuration = configuration;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
-      this.dataIn = dataIn;
       this.ordToDoc = DirectMonotonicReader.getInstance(configuration.meta, addressesData);
       this.disi =
           new IndexedDISI(

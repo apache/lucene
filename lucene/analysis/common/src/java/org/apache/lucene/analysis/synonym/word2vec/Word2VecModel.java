@@ -43,17 +43,6 @@ public class Word2VecModel extends FloatVectorValues {
     this.word2Vec = new BytesRefHash();
   }
 
-  private Word2VecModel(
-      int dictionarySize,
-      int vectorDimension,
-      TermAndVector[] termsAndVectors,
-      BytesRefHash word2Vec) {
-    this.dictionarySize = dictionarySize;
-    this.vectorDimension = vectorDimension;
-    this.termsAndVectors = termsAndVectors;
-    this.word2Vec = word2Vec;
-  }
-
   public void addTermAndVector(TermAndVector modelEntry) {
     modelEntry = modelEntry.normalizeVector();
     this.termsAndVectors[loadedCount++] = modelEntry;

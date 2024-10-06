@@ -87,10 +87,12 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
               scalarQuantizer.getConstantMultiplier(),
               scalarQuantizer.getBits());
       return new RandomVectorScorer.AbstractRandomVectorScorer(quantizedByteVectorValues) {
+        QuantizedByteVectorValues.QuantizedBytes values = quantizedByteVectorValues.values();
+
         @Override
         public float score(int node) throws IOException {
-          byte[] nodeVector = quantizedByteVectorValues.vectorValue(node);
-          float nodeOffset = quantizedByteVectorValues.getScoreCorrectionConstant(node);
+          byte[] nodeVector = values.get(node);
+          float nodeOffset = values.getScoreCorrectionConstant(node);
           return scalarQuantizedVectorSimilarity.score(
               targetBytes, offsetCorrection, nodeVector, nodeOffset);
         }
@@ -137,34 +139,19 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       this.vectorSimilarityFunction = similarityFunction;
     }
 
-    private ScalarQuantizedRandomVectorScorerSupplier(
-        ScalarQuantizedVectorSimilarity similarity,
-        VectorSimilarityFunction vectorSimilarityFunction,
-        QuantizedByteVectorValues values) {
-      this.similarity = similarity;
-      this.values = values;
-      this.vectorSimilarityFunction = vectorSimilarityFunction;
-    }
-
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      final QuantizedByteVectorValues vectorsCopy = values.copy();
-      final byte[] queryVector = values.vectorValue(ord);
-      final float queryOffset = values.getScoreCorrectionConstant(ord);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(vectorsCopy) {
+      final QuantizedByteVectorValues.QuantizedBytes vectors = values.values();
+      final byte[] queryVector = vectors.get(ord);
+      final float queryOffset = vectors.getScoreCorrectionConstant(ord);
+      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
         @Override
         public float score(int node) throws IOException {
-          byte[] nodeVector = vectorsCopy.vectorValue(node);
-          float nodeOffset = vectorsCopy.getScoreCorrectionConstant(node);
+          byte[] nodeVector = vectors.get(node);
+          float nodeOffset = vectors.getScoreCorrectionConstant(node);
           return similarity.score(queryVector, queryOffset, nodeVector, nodeOffset);
         }
       };
-    }
-
-    @Override
-    public RandomVectorScorerSupplier copy() throws IOException {
-      return new ScalarQuantizedRandomVectorScorerSupplier(
-          similarity, vectorSimilarityFunction, values.copy());
     }
 
     @Override

@@ -161,8 +161,15 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public byte[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(ord);
+    public Bytes values() throws IOException {
+      return new Bytes() {
+        Bytes values = delegate.values();
+
+        @Override
+        public byte[] get(int ord) throws IOException {
+          return values.get(ord);
+        }
+      };
     }
 
     @Override
@@ -173,11 +180,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public int size() {
       return delegate.size();
-    }
-
-    @Override
-    public SortingByteVectorValues copy() {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -269,14 +271,12 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<float[]> vectors;
     final int dimension;
-    private final DocIdSet docsWithField;
     private final DocIndexIterator iterator;
 
     BufferedFloatVectorValues(List<float[]> vectors, int dimension, DocIdSet docsWithField)
         throws IOException {
       this.vectors = vectors;
       this.dimension = dimension;
-      this.docsWithField = docsWithField;
       this.iterator = fromDISI(docsWithField.iterator());
     }
 
@@ -315,14 +315,12 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<byte[]> vectors;
     final int dimension;
-    private final DocIdSet docsWithField;
     private final DocIndexIterator iterator;
 
     BufferedByteVectorValues(List<byte[]> vectors, int dimension, DocIdSet docsWithField)
         throws IOException {
       this.vectors = vectors;
       this.dimension = dimension;
-      this.docsWithField = docsWithField;
       iterator = fromDISI(docsWithField.iterator());
     }
 
@@ -337,18 +335,18 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public byte[] vectorValue(int targetOrd) {
-      return vectors.get(targetOrd);
+    public Bytes values() {
+      return new Bytes() {
+        @Override
+        public byte[] get(int targetOrd) {
+          return vectors.get(targetOrd);
+        }
+      };
     }
 
     @Override
     public DocIndexIterator iterator() {
       return iterator;
-    }
-
-    @Override
-    public BufferedByteVectorValues copy() throws IOException {
-      return new BufferedByteVectorValues(vectors, dimension, docsWithField);
     }
   }
 }

@@ -887,7 +887,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       public Floats values() {
         return new Floats() {
           int lastSubIndex = -1;
-          Floats subDict;
+          Floats subValues;
 
           @Override
           public float[] get(int ord) throws IOException {
@@ -898,9 +898,9 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
             if (newSubIndex != lastSubIndex) {
               lastSubIndex = newSubIndex;
               assert subs[lastSubIndex].sub != null;
-              subDict = ((FloatVectorValues) subs[lastSubIndex].sub).values();
+              subValues = ((FloatVectorValues) subs[lastSubIndex].sub).values();
             }
-            return subDict.get(ord - subs[lastSubIndex].ordStart);
+            return subValues.get(ord - subs[lastSubIndex].ordStart);
           }
         };
       }
@@ -932,7 +932,6 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       final DocValuesSub<?>[] subs;
       final MergedDocIterator<ByteVectorValues> iter;
       final int[] starts;
-      int lastSubIndex;
 
       MergedByteVectorValues(int dimension, int size, List<DocValuesSub<ByteVectorValues>> subs) {
         this.dimension = dimension;
@@ -964,24 +963,26 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       }
 
       @Override
-      public byte[] vectorValue(int ord) throws IOException {
-        assert ord >= 0 && ord < size;
-        // We need to implement fully random-access API here in order to support callers like
-        // SortingCodecReader that rely on it.  We maintain lastSubIndex since we expect some
-        // repetition.
-        lastSubIndex = findSub(ord, lastSubIndex, starts);
-        return ((ByteVectorValues) subs[lastSubIndex].sub)
-            .vectorValue(ord - subs[lastSubIndex].ordStart);
-      }
+      public Bytes values() {
+        return new Bytes() {
+          int lastSubIndex = -1;
+          Bytes subValues;
 
-      @SuppressWarnings("unchecked")
-      @Override
-      public ByteVectorValues copy() throws IOException {
-        List<DocValuesSub<ByteVectorValues>> newSubs = new ArrayList<>();
-        for (Object sub : subs) {
-          newSubs.add((DocValuesSub<ByteVectorValues>) sub);
-        }
-        return new MergedByteVectorValues(dimension, size, newSubs);
+          @Override
+          public byte[] get(int ord) throws IOException {
+            assert ord >= 0 && ord < size;
+            // We need to implement fully random-access API here in order to support callers like
+            // SortingCodecReader that rely on it.  We maintain lastSubIndex since we expect some
+            // repetition.
+            int newSubIndex = findSub(ord, lastSubIndex, starts);
+            if (newSubIndex != lastSubIndex) {
+              lastSubIndex = newSubIndex;
+              assert subs[lastSubIndex].sub != null;
+              subValues = ((ByteVectorValues) subs[lastSubIndex].sub).values();
+            }
+            return subValues.get(ord - subs[lastSubIndex].ordStart);
+          }
+        };
       }
     }
 
