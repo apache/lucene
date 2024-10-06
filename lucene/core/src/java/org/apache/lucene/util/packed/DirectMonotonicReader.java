@@ -43,7 +43,6 @@ public final class DirectMonotonicReader extends LongValues {
     private final long[] mins;
     private final float[] avgs;
     private final byte[] bpvs;
-    private final long[] offsets;
 
     Meta(long numValues, int blockShift) {
       this.blockShift = blockShift;
@@ -55,9 +54,11 @@ public final class DirectMonotonicReader extends LongValues {
       this.mins = new long[this.numBlocks];
       this.avgs = new float[this.numBlocks];
       this.bpvs = new byte[this.numBlocks];
-      this.offsets = new long[this.numBlocks];
     }
   }
+
+  private static final DirectMonotonicReader SINGLE_ZERO_BLOCK_READER =
+      createInstance(Meta.SINGLE_ZERO_BLOCK, null, false);
 
   /**
    * Load metadata from the given {@link IndexInput}.
@@ -73,7 +74,9 @@ public final class DirectMonotonicReader extends LongValues {
       meta.mins[i] = min;
       int avgInt = metaIn.readInt();
       meta.avgs[i] = Float.intBitsToFloat(avgInt);
-      meta.offsets[i] = metaIn.readLong();
+      // skip a long for BwC, this holds the offset value that  #createInstance needed but is
+      // redundant since we can calculate it from blockShift and bpvs.
+      metaIn.skipBytes(8);
       byte bpvs = metaIn.readByte();
       meta.bpvs[i] = bpvs;
       allValuesZero = allValuesZero && min == 0L && avgInt == 0 && bpvs == 0;
@@ -90,20 +93,29 @@ public final class DirectMonotonicReader extends LongValues {
 
   /** Retrieves an instance from the specified slice. */
   public static DirectMonotonicReader getInstance(
-      Meta meta, RandomAccessInput data, boolean merging) throws IOException {
+      Meta meta, RandomAccessInput data, boolean merging) {
+    if (meta == Meta.SINGLE_ZERO_BLOCK) {
+      return SINGLE_ZERO_BLOCK_READER;
+    }
+    return createInstance(meta, data, merging);
+  }
+
+  private static DirectMonotonicReader createInstance(
+      Meta meta, RandomAccessInput data, boolean merging) {
     final LongValues[] readers = new LongValues[meta.numBlocks];
+    long offset = 0L;
     for (int i = 0; i < meta.numBlocks; ++i) {
-      if (meta.bpvs[i] == 0) {
+      byte bpvs = meta.bpvs[i];
+      if (bpvs == 0) {
         readers[i] = LongValues.ZEROES;
       } else if (merging
           && i < meta.numBlocks - 1 // we only know the number of values for the last block
           && meta.blockShift >= DirectReader.MERGE_BUFFER_SHIFT) {
-        readers[i] =
-            DirectReader.getMergeInstance(
-                data, meta.bpvs[i], meta.offsets[i], 1L << meta.blockShift);
+        readers[i] = DirectReader.getMergeInstance(data, bpvs, offset, 1L << meta.blockShift);
       } else {
-        readers[i] = DirectReader.getInstance(data, meta.bpvs[i], meta.offsets[i]);
+        readers[i] = DirectReader.getInstance(data, bpvs, offset);
       }
+      offset += (((1L << meta.blockShift) * bpvs) + DirectWriter.paddingBitsNeeded(bpvs) + 7) / 8;
     }
 
     return new DirectMonotonicReader(meta.blockShift, readers, meta.mins, meta.avgs, meta.bpvs);
