@@ -1123,7 +1123,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public DocIndexIterator iterator() {
+    public DocIndexIterator iterator() throws IOException {
       return values.iterator();
     }
   }
@@ -1209,7 +1209,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public DocIndexIterator iterator() {
+    public DocIndexIterator iterator() throws IOException {
       return in.iterator();
     }
   }
@@ -1252,7 +1252,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public DocIndexIterator iterator() {
+    public DocIndexIterator iterator() throws IOException {
       return values.iterator();
     }
   }

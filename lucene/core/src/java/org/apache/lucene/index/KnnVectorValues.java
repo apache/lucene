@@ -78,7 +78,7 @@ public abstract class KnnVectorValues {
   }
 
   /** Create an iterator for this instance. */
-  public DocIndexIterator iterator() {
+  public DocIndexIterator iterator() throws IOException {
     throw new UnsupportedOperationException();
   }
 

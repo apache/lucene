@@ -442,7 +442,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
 
     @Override
-    public DocIndexIterator iterator() {
+    public DocIndexIterator iterator() throws IOException {
       return rawVectorValues.iterator();
     }
   }

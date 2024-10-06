@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -38,6 +37,7 @@ import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.IOBiFunction;
 import org.apache.lucene.util.IOFunction;
 
 /** Writes vectors to an index. */
@@ -120,7 +120,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     final FloatVectorValues values;
     final KnnVectorValues.DocIndexIterator iterator;
 
-    FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) {
+    FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) throws IOException {
       super(docMap);
       this.values = values;
       this.iterator = values.iterator();
@@ -142,7 +142,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     final ByteVectorValues values;
     final KnnVectorValues.DocIndexIterator iterator;
 
-    ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues values) {
+    ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues values) throws IOException {
       super(docMap);
       this.values = values;
       iterator = values.iterator();
@@ -247,7 +247,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         FieldInfo mergingField,
         FieldInfos[] sourceFieldInfos,
         IOFunction<KnnVectorsReader, V> valuesSupplier,
-        BiFunction<MergeState.DocMap, V, S> newSub)
+        IOBiFunction<MergeState.DocMap, V, S> newSub)
         throws IOException {
       List<S> subs = new ArrayList<>();
       for (int i = 0; i < knnVectorsReaders.length; i++) {

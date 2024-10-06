@@ -148,7 +148,8 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
   private static class SparseOffHeapVectorValues extends OffHeapFloatVectorValues {
     private final DirectMonotonicReader ordToDoc;
-    private final IndexedDISI disi;
+    private final IndexInput dataIn;
+    private final Lucene94HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
         Lucene94HnswVectorsReader.FieldEntry fieldEntry,
@@ -162,19 +163,23 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(fieldEntry.addressesOffset(), fieldEntry.addressesLength());
       this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta(), addressesData);
-      this.disi =
-          new IndexedDISI(
-              dataIn,
-              fieldEntry.docsWithFieldOffset(),
-              fieldEntry.docsWithFieldLength(),
-              fieldEntry.jumpTableEntryCount(),
-              fieldEntry.denseRankPower(),
-              fieldEntry.size());
+      this.dataIn = dataIn;
+      this.fieldEntry = fieldEntry;
+    }
+
+    private IndexedDISI createDISI() throws IOException {
+      return new IndexedDISI(
+          dataIn.clone(),
+          fieldEntry.docsWithFieldOffset(),
+          fieldEntry.docsWithFieldLength(),
+          fieldEntry.jumpTableEntryCount(),
+          fieldEntry.denseRankPower(),
+          fieldEntry.size());
     }
 
     @Override
-    public DocIndexIterator iterator() {
-      return IndexedDISI.asDocIndexIterator(disi);
+    public DocIndexIterator iterator() throws IOException {
+      return IndexedDISI.asDocIndexIterator(createDISI());
     }
 
     @Override
@@ -202,17 +207,17 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      DocIndexIterator iterator = iterator();
+      IndexedDISI disi = createDISI();
       Floats values = values();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorSimilarityFunction.compare(values.get(iterator.index()), query);
+          return vectorSimilarityFunction.compare(values.get(disi.index()), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return iterator;
+          return disi;
         }
       };
     }

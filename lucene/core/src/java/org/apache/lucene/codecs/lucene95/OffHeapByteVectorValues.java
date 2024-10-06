@@ -188,8 +188,6 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexInput dataIn;
     private final OrdToDocDISIReaderConfiguration configuration;
-    private final IndexedDISI disi;
-    private DocIndexIterator iterator;
 
     public SparseOffHeapVectorValues(
         OrdToDocDISIReaderConfiguration configuration,
@@ -213,17 +211,16 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues {
       this.ordToDoc = DirectMonotonicReader.getInstance(configuration.meta, addressesData);
       this.dataIn = dataIn;
       this.configuration = configuration;
-      this.disi = createDISI();
     }
 
     IndexedDISI createDISI() throws IOException {
       return new IndexedDISI(
-              dataIn.clone(),
-              configuration.docsWithFieldOffset,
-              configuration.docsWithFieldLength,
-              configuration.jumpTableEntryCount,
-              configuration.denseRankPower,
-              configuration.size);
+          dataIn.clone(),
+          configuration.docsWithFieldOffset,
+          configuration.docsWithFieldLength,
+          configuration.jumpTableEntryCount,
+          configuration.denseRankPower,
+          configuration.size);
     }
 
     @Override
@@ -232,12 +229,8 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
-    public DocIndexIterator iterator() {
-      // we can only create a single iterator since creating a new IndexedDISI
-      // could throw an IOException
-      assert iterator == null;
-      iterator = IndexedDISI.asDocIndexIterator(disi);
-      return iterator;
+    public DocIndexIterator iterator() throws IOException {
+      return IndexedDISI.asDocIndexIterator(createDISI());
     }
 
     @Override
@@ -260,10 +253,10 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues {
 
     @Override
     public VectorScorer scorer(byte[] query) throws IOException {
+      IndexedDISI disi = createDISI();
       RandomVectorScorer scorer =
           flatVectorsScorer.getRandomVectorScorer(similarityFunction, this, query);
       return new VectorScorer() {
-        IndexedDISI disi = createDISI();
 
         @Override
         public float score() throws IOException {

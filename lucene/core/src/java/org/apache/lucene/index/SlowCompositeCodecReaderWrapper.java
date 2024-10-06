@@ -312,7 +312,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     int ord = -1;
     int doc = -1;
 
-    MergedDocIterator(List<DocValuesSub<T>> subs) {
+    MergedDocIterator(List<DocValuesSub<T>> subs) throws IOException {
       this.it = subs.iterator();
       current = it.next();
       currentIterator = currentIterator();
@@ -348,7 +348,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       }
     }
 
-    private KnnVectorValues.DocIndexIterator currentIterator() {
+    private KnnVectorValues.DocIndexIterator currentIterator() throws IOException {
       if (current.sub != null) {
         return current.sub.iterator();
       } else {
@@ -850,15 +850,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     class MergedFloatVectorValues extends FloatVectorValues {
       final int dimension;
       final int size;
-      final DocValuesSub<?>[] subs;
-      final MergedDocIterator<FloatVectorValues> iter;
+      final List<DocValuesSub<FloatVectorValues>> subs;
       final int[] starts;
 
-      MergedFloatVectorValues(int dimension, int size, List<DocValuesSub<FloatVectorValues>> subs) {
+      MergedFloatVectorValues(int dimension, int size, List<DocValuesSub<FloatVectorValues>> subs)
+          throws IOException {
         this.dimension = dimension;
         this.size = size;
-        this.subs = subs.toArray(new DocValuesSub<?>[0]);
-        iter = new MergedDocIterator<>(subs);
+        this.subs = subs;
         // [0, start(1), ..., size] - we want the extra element
         // to avoid checking for out-of-array bounds
         starts = new int[subs.size() + 1];
@@ -869,8 +868,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       }
 
       @Override
-      public MergedDocIterator<FloatVectorValues> iterator() {
-        return iter;
+      public MergedDocIterator<FloatVectorValues> iterator() throws IOException {
+        return new MergedDocIterator<FloatVectorValues>(subs);
       }
 
       @Override
@@ -897,10 +896,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
             int newSubIndex = findSub(ord, lastSubIndex, starts);
             if (newSubIndex != lastSubIndex) {
               lastSubIndex = newSubIndex;
-              assert subs[lastSubIndex].sub != null;
-              subValues = ((FloatVectorValues) subs[lastSubIndex].sub).values();
+              assert subs.get(lastSubIndex).sub != null;
+              subValues = subs.get(lastSubIndex).sub.values();
             }
-            return subValues.get(ord - subs[lastSubIndex].ordStart);
+            return subValues.get(ord - subs.get(lastSubIndex).ordStart);
           }
         };
       }
@@ -929,15 +928,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     class MergedByteVectorValues extends ByteVectorValues {
       final int dimension;
       final int size;
-      final DocValuesSub<?>[] subs;
-      final MergedDocIterator<ByteVectorValues> iter;
+      final List<DocValuesSub<ByteVectorValues>> subs;
       final int[] starts;
 
-      MergedByteVectorValues(int dimension, int size, List<DocValuesSub<ByteVectorValues>> subs) {
+      MergedByteVectorValues(int dimension, int size, List<DocValuesSub<ByteVectorValues>> subs)
+          throws IOException {
         this.dimension = dimension;
         this.size = size;
-        this.subs = subs.toArray(new DocValuesSub<?>[0]);
-        iter = new MergedDocIterator<>(subs);
+        this.subs = subs;
         // [0, start(1), ..., size] - we want the extra element
         // to avoid checking for out-of-array bounds
         starts = new int[subs.size() + 1];
@@ -948,8 +946,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       }
 
       @Override
-      public MergedDocIterator<ByteVectorValues> iterator() {
-        return iter;
+      public MergedDocIterator<ByteVectorValues> iterator() throws IOException {
+        return new MergedDocIterator<ByteVectorValues>(subs);
       }
 
       @Override
@@ -977,10 +975,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
             int newSubIndex = findSub(ord, lastSubIndex, starts);
             if (newSubIndex != lastSubIndex) {
               lastSubIndex = newSubIndex;
-              assert subs[lastSubIndex].sub != null;
-              subValues = ((ByteVectorValues) subs[lastSubIndex].sub).values();
+              assert subs.get(lastSubIndex).sub != null;
+              subValues = subs.get(lastSubIndex).sub.values();
             }
-            return subValues.get(ord - subs[lastSubIndex].ordStart);
+            return subValues.get(ord - subs.get(lastSubIndex).ordStart);
           }
         };
       }

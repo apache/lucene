@@ -153,7 +153,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexInput dataIn;
     private final Lucene94HnswVectorsReader.FieldEntry fieldEntry;
-    private final IndexedDISI disi;
 
     public SparseOffHeapVectorValues(
         Lucene94HnswVectorsReader.FieldEntry fieldEntry,
@@ -169,17 +168,16 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
       this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta(), addressesData);
       this.fieldEntry = fieldEntry;
       this.dataIn = dataIn;
-      this.disi = createDISI();
     }
 
     IndexedDISI createDISI() throws IOException {
       return new IndexedDISI(
-              dataIn.clone(),
-              fieldEntry.docsWithFieldOffset(),
-              fieldEntry.docsWithFieldLength(),
-              fieldEntry.jumpTableEntryCount(),
-              fieldEntry.denseRankPower(),
-              fieldEntry.size());
+          dataIn.clone(),
+          fieldEntry.docsWithFieldOffset(),
+          fieldEntry.docsWithFieldLength(),
+          fieldEntry.jumpTableEntryCount(),
+          fieldEntry.denseRankPower(),
+          fieldEntry.size());
     }
 
     @Override
@@ -188,8 +186,8 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
-    public DocIndexIterator iterator() {
-      return fromDISI(disi);
+    public DocIndexIterator iterator() throws IOException {
+      return IndexedDISI.asDocIndexIterator(createDISI());
     }
 
     @Override

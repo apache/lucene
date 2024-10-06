@@ -1201,13 +1201,18 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         ByteVectorValues.Bytes vectors = vectorValues.values();
         assertEquals(2, vectorValues.dimension());
         assertEquals(3, vectorValues.size());
-        assertEquals("1", storedFields.document(vectorValues.iterator().nextDoc()).get("id"));
+        DocIdSetIterator iter = vectorValues.iterator();
+        assertEquals("1", storedFields.document(iter.nextDoc()).get("id"));
         assertEquals(-1, vectors.get(0)[0], 0);
-        assertEquals("2", storedFields.document(vectorValues.iterator().nextDoc()).get("id"));
+        assertEquals("2", storedFields.document(iter.nextDoc()).get("id"));
         assertEquals(1, vectors.get(1)[0], 0);
-        assertEquals("4", storedFields.document(vectorValues.iterator().nextDoc()).get("id"));
+        assertEquals("4", storedFields.document(iter.nextDoc()).get("id"));
         assertEquals(0, vectors.get(2)[0], 0);
-        assertEquals(NO_MORE_DOCS, vectorValues.iterator().nextDoc());
+        assertEquals(NO_MORE_DOCS, iter.nextDoc());
+        // Each call to iterator() produces a new iterator
+        DocIdSetIterator iter2 = vectorValues.iterator();
+        assertNotSame(iter, iter2);
+        assertEquals("1", storedFields.document(iter2.nextDoc()).get("id"));
       }
     }
   }

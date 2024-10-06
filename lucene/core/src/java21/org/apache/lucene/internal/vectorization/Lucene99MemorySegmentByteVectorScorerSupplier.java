@@ -117,7 +117,9 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
-          float raw = PanamaVectorUtilSupport.cosine(getFirstSegment(slice, ord), getSecondSegment(slice, node));
+          float raw =
+              PanamaVectorUtilSupport.cosine(
+                  getFirstSegment(slice, ord), getSecondSegment(slice, node));
           return (1 + raw) / 2;
         }
       };
@@ -135,12 +137,14 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
       checkOrdinal(ord);
       return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
         MemorySegmentAccessInput slice = input.clone();
+
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(slice, ord), getSecondSegment(slice, node));
+              PanamaVectorUtilSupport.dotProduct(
+                  getFirstSegment(slice, ord), getSecondSegment(slice, node));
           return 0.5f + raw / (float) (values.dimension() * (1 << 15));
         }
       };
@@ -162,7 +166,8 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.squareDistance(getFirstSegment(slice, ord), getSecondSegment(slice, node));
+              PanamaVectorUtilSupport.squareDistance(
+                  getFirstSegment(slice, ord), getSecondSegment(slice, node));
           return 1 / (1f + raw);
         }
       };
@@ -180,11 +185,13 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
       checkOrdinal(ord);
       return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
         MemorySegmentAccessInput slice = input.clone();
+
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(slice, ord), getSecondSegment(slice, node));
+              PanamaVectorUtilSupport.dotProduct(
+                  getFirstSegment(slice, ord), getSecondSegment(slice, node));
           if (raw < 0) {
             return 1 / (1 + -1 * raw);
           }
