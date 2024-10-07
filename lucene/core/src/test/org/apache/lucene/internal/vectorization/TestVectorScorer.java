@@ -253,7 +253,6 @@ public class TestVectorScorer extends LuceneTestCase {
           var scoreSupplier = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
           var expectedScore1 = scoreSupplier.scorer(0).score(1);
           var expectedScore2 = scoreSupplier.scorer(2).score(3);
-
           var scorer = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
           var tasks =
               List.<Callable<Optional<Throwable>>>of(
@@ -280,7 +279,12 @@ public class TestVectorScorer extends LuceneTestCase {
     public Optional<Throwable> call() throws Exception {
       try {
         for (int i = 0; i < 100; i++) {
-          assertEquals(scorer.score(ord), expectedScore, DELTA);
+          float score = scorer.score(ord);
+          assertEquals(
+              "ord=" + ord + " i=" + i + " expected=" + expectedScore + " actual=" + score,
+              expectedScore,
+              score,
+              DELTA);
         }
       } catch (Throwable t) {
         return Optional.of(t);

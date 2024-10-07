@@ -88,22 +88,20 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** RandomVectorScorerSupplier for bytes vector */
   private static final class ByteScoringSupplier implements RandomVectorScorerSupplier {
-    private final ByteVectorValues vectors;
-    private final ByteVectorValues.Bytes vectors1;
-    private final ByteVectorValues.Bytes vectors2;
+    private final ByteVectorValues vectorValues;
     private final VectorSimilarityFunction similarityFunction;
 
     private ByteScoringSupplier(
         ByteVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
-      this.vectors = vectors;
-      vectors1 = vectors.values();
-      vectors2 = vectors.values();
+      vectorValues = vectors;
       this.similarityFunction = similarityFunction;
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      return new RandomVectorScorer.AbstractRandomVectorScorer(vectors) {
+    public RandomVectorScorer scorer(int ord) throws IOException {
+      ByteVectorValues.Bytes vectors1 = vectorValues.values();
+      ByteVectorValues.Bytes vectors2 = vectorValues.values();
+      return new RandomVectorScorer.AbstractRandomVectorScorer(vectorValues) {
         @Override
         public float score(int node) throws IOException {
           return similarityFunction.compare(vectors1.get(ord), vectors2.get(node));
@@ -119,22 +117,20 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** RandomVectorScorerSupplier for Float vector */
   private static final class FloatScoringSupplier implements RandomVectorScorerSupplier {
-    private final FloatVectorValues vectors;
-    private final FloatVectorValues.Floats vectors1;
-    private final FloatVectorValues.Floats vectors2;
+    private final FloatVectorValues vectorValues;
     private final VectorSimilarityFunction similarityFunction;
 
     private FloatScoringSupplier(
         FloatVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
-      this.vectors = vectors;
-      vectors1 = vectors.values();
-      vectors2 = vectors.values();
+      vectorValues = vectors;
       this.similarityFunction = similarityFunction;
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      return new RandomVectorScorer.AbstractRandomVectorScorer(vectors) {
+    public RandomVectorScorer scorer(int ord) throws IOException {
+      FloatVectorValues.Floats vectors1 = vectorValues.values();
+      FloatVectorValues.Floats vectors2 = vectorValues.values();
+      return new RandomVectorScorer.AbstractRandomVectorScorer(vectorValues) {
         @Override
         public float score(int node) throws IOException {
           return similarityFunction.compare(vectors1.get(ord), vectors2.get(node));
@@ -150,7 +146,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** A {@link RandomVectorScorer} for float vectors. */
   private static class FloatVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
-    private final FloatVectorValues.Floats floats;
+    private final FloatVectorValues.Floats vectors;
     private final float[] query;
     private final VectorSimilarityFunction similarityFunction;
 
@@ -158,14 +154,14 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
         FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction)
         throws IOException {
       super(values);
-      this.floats = values.values();
+      this.vectors = values.values();
       this.query = query;
       this.similarityFunction = similarityFunction;
     }
 
     @Override
     public float score(int node) throws IOException {
-      return similarityFunction.compare(query, floats.get(node));
+      return similarityFunction.compare(query, vectors.get(node));
     }
   }
 
