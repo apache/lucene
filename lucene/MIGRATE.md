@@ -892,3 +892,7 @@ segments are rewritten either via `IndexWriter.forceMerge` or
 ### Vector values APIs switched to primarily random-access
 
 `{Byte/Float}VectorValues` no longer inherit from `DocIdSetIterator`. Rather they extend a common class, `KnnVectorValues`, that provides a random access API (previously provided by `RandomAccessVectorValues`, now removed), and an `iterator()` method for retrieving `DocIndexIterator`: an iterator which is a DISI that also provides an `index()` method. Therefore, any iteration over vector values must now be performed using the values' `iterator()`. Random access works as before, but does not require casting to `RandomAccessVectorValues`.
+
+## Migration from Lucene 10.0 to Lucene 10.1
+
+The refactoring of random-access vector API begun in 10.0 is completed in 10.1, where `{Byte/Float}VectorValues.copy()` methods have been removed. It is no longer necessary to copy instances of `KnnVectorValues` in order to obtain unique vector sources that do not share underlying data structures. Instead, random-access vectors are accessed via `{Byte/Float}VectorValues.vectors().get(int)`. The `Bytes`/`Floats` instances returned from `{Byte/Float}VectorValues.vectors()` now encapsulate non-shareable storage.
