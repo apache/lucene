@@ -183,14 +183,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 doc.add(
                     knnVectorField(
                         "field",
-                        (T) ((ByteVectorValues) vectors).values().get(ord),
+                        (T) ((ByteVectorValues) vectors).vectors().get(ord),
                         similarityFunction));
               }
               case FLOAT32 -> {
                 doc.add(
                     knnVectorField(
                         "field",
-                        (T) ((FloatVectorValues) vectors).values().get(ord),
+                        (T) ((FloatVectorValues) vectors).vectors().get(ord),
                         similarityFunction));
               }
             }
@@ -221,10 +221,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   private T vectorValue(KnnVectorValues vectors, int ord) throws IOException {
     switch (vectors.getEncoding()) {
       case BYTE -> {
-        return (T) ((ByteVectorValues) vectors).values().get(ord);
+        return (T) ((ByteVectorValues) vectors).vectors().get(ord);
       }
       case FLOAT32 -> {
-        return (T) ((FloatVectorValues) vectors).values().get(ord);
+        return (T) ((FloatVectorValues) vectors).vectors().get(ord);
       }
     }
     throw new AssertionError("unknown encoding " + vectors.getEncoding());
@@ -1120,7 +1120,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     @Override
-    public Floats values() {
+    public Floats vectors() {
       return new Floats() {
         float[] value = new float[2];
 
@@ -1175,7 +1175,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     @Override
-    public Bytes values() {
+    public Bytes vectors() {
       return new Bytes() {
         byte[] bValue = new byte[2];
         float[] value = new float[2];

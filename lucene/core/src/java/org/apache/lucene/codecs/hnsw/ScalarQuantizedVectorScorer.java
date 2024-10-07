@@ -87,7 +87,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
               scalarQuantizer.getConstantMultiplier(),
               scalarQuantizer.getBits());
       return new RandomVectorScorer.AbstractRandomVectorScorer(quantizedByteVectorValues) {
-        QuantizedByteVectorValues.QuantizedBytes values = quantizedByteVectorValues.values();
+        QuantizedByteVectorValues.QuantizedBytes values = quantizedByteVectorValues.vectors();
 
         @Override
         public float score(int node) throws IOException {
@@ -122,29 +122,29 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public static class ScalarQuantizedRandomVectorScorerSupplier
       implements RandomVectorScorerSupplier {
 
-    private final QuantizedByteVectorValues values;
+    private final QuantizedByteVectorValues vectorValues;
     private final ScalarQuantizedVectorSimilarity similarity;
     private final VectorSimilarityFunction vectorSimilarityFunction;
 
     public ScalarQuantizedRandomVectorScorerSupplier(
         VectorSimilarityFunction similarityFunction,
         ScalarQuantizer scalarQuantizer,
-        QuantizedByteVectorValues values) {
+        QuantizedByteVectorValues vectorValues) {
       this.similarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
               similarityFunction,
               scalarQuantizer.getConstantMultiplier(),
               scalarQuantizer.getBits());
-      this.values = values;
+      this.vectorValues = vectorValues;
       this.vectorSimilarityFunction = similarityFunction;
     }
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      final QuantizedByteVectorValues.QuantizedBytes vectors = values.values();
+      final QuantizedByteVectorValues.QuantizedBytes vectors = vectorValues.vectors();
       final byte[] queryVector = vectors.get(ord);
       final float queryOffset = vectors.getScoreCorrectionConstant(ord);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+      return new RandomVectorScorer.AbstractRandomVectorScorer(vectorValues) {
         @Override
         public float score(int node) throws IOException {
           byte[] nodeVector = vectors.get(node);

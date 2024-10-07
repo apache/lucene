@@ -441,12 +441,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public Floats values() throws IOException {
-        Floats dict = vectorValues.values();
+      public Floats vectors() throws IOException {
+        Floats vectors = vectorValues.vectors();
         return new Floats() {
           @Override
           public float[] get(int ord) throws IOException {
-            return dict.get(ord);
+            return vectors.get(ord);
           }
         };
       }
@@ -490,9 +490,9 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public Bytes values() throws IOException {
+      public Bytes vectors() throws IOException {
         return new Bytes() {
-          Bytes vectors = vectorValues.values();
+          Bytes vectors = vectorValues.vectors();
 
           @Override
           public byte[] get(int ord) throws IOException {

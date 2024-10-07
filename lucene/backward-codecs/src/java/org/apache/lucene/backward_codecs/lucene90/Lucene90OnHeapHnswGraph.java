@@ -62,7 +62,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
    * @param topK the number of nodes to be returned
    * @param numSeed the size of the queue maintained while searching, and controls the number of
    *     random entry points to sample
-   * @param vectors vector values
+   * @param vectorValues vector values
    * @param graphValues the graph values. May represent the entire graph, or a level in a
    *     hierarchical graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
@@ -74,7 +74,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       float[] query,
       int topK,
       int numSeed,
-      FloatVectorValues vectors,
+      FloatVectorValues vectorValues,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graphValues,
       Bits acceptOrds,
@@ -83,7 +83,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       throws IOException {
     int size = graphValues.size();
 
-    FloatVectorValues.Floats values = vectors.values();
+    FloatVectorValues.Floats values = vectorValues.vectors();
     // MIN heap, holding the top results
     NeighborQueue results = new NeighborQueue(numSeed, false);
     // MAX heap, from which to pull the candidate nodes

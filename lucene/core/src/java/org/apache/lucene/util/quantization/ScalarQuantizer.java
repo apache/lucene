@@ -271,12 +271,12 @@ public class ScalarQuantizer {
       return new ScalarQuantizer(0f, 0f, bits);
     }
     KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
-    FloatVectorValues.Floats dict = floatVectorValues.values();
+    FloatVectorValues.Floats vectors = floatVectorValues.vectors();
     if (confidenceInterval == 1f) {
       float min = Float.POSITIVE_INFINITY;
       float max = Float.NEGATIVE_INFINITY;
       while (iterator.nextDoc() != NO_MORE_DOCS) {
-        for (float v : dict.get(iterator.index())) {
+        for (float v : vectors.get(iterator.index())) {
           min = Math.min(min, v);
           max = Math.max(max, v);
         }
@@ -293,7 +293,7 @@ public class ScalarQuantizer {
       int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
       while (iterator.nextDoc() != NO_MORE_DOCS) {
-        float[] vectorValue = dict.get(iterator.index());
+        float[] vectorValue = vectors.get(iterator.index());
         System.arraycopy(
             vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
         i++;
@@ -318,7 +318,7 @@ public class ScalarQuantizer {
         index++;
       }
       assert iterator.docID() != NO_MORE_DOCS;
-      float[] vectorValue = dict.get(iterator.index());
+      float[] vectorValue = vectors.get(iterator.index());
       System.arraycopy(
           vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
       idx++;
@@ -357,12 +357,12 @@ public class ScalarQuantizer {
           1 - 1f / (floatVectorValues.dimension() + 1)
         };
     KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
-    FloatVectorValues.Floats dict = floatVectorValues.values();
+    FloatVectorValues.Floats vectors = floatVectorValues.vectors();
     if (totalVectorCount <= sampleSize) {
       int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
       while (iterator.nextDoc() != NO_MORE_DOCS) {
-        gatherSample(dict.get(iterator.index()), quantileGatheringScratch, sampledDocs, i);
+        gatherSample(vectors.get(iterator.index()), quantileGatheringScratch, sampledDocs, i);
         i++;
         if (i == scratchSize) {
           extractQuantiles(confidenceIntervals, quantileGatheringScratch, upperSum, lowerSum);
@@ -383,7 +383,7 @@ public class ScalarQuantizer {
           index++;
         }
         assert iterator.docID() != NO_MORE_DOCS;
-        gatherSample(dict.get(iterator.index()), quantileGatheringScratch, sampledDocs, idx);
+        gatherSample(vectors.get(iterator.index()), quantileGatheringScratch, sampledDocs, idx);
         idx++;
         if (idx == SCRATCH_SIZE) {
           extractQuantiles(confidenceIntervals, quantileGatheringScratch, upperSum, lowerSum);

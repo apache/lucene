@@ -238,7 +238,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float[][] floats, Set<Integer> deletedVectors) {
     return new TestScalarQuantizer.TestSimpleFloatVectorValues(floats, deletedVectors) {
       @Override
-      public Floats values() {
+      public Floats vectors() {
         return new Floats() {
           @Override
           public float[] get(int ord) throws IOException {

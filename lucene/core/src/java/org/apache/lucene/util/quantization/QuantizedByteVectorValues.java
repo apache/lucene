@@ -46,7 +46,7 @@ public abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
   /** Returns a random access (lookup by ord) provider of the quantized vector values */
   @Override
-  public abstract QuantizedBytes values() throws IOException;
+  public abstract QuantizedBytes vectors() throws IOException;
 
   /** A Bytes that also provides quantization info */
   public abstract static class QuantizedBytes extends Bytes implements HasIndexSlice {

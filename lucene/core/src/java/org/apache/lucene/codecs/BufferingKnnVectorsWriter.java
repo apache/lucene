@@ -122,8 +122,8 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public Floats values() {
-      Floats delegateFloats = delegate.values();
+    public Floats vectors() {
+      Floats delegateFloats = delegate.vectors();
       return new Floats() {
         @Override
         public float[] get(int ord) throws IOException {
@@ -161,9 +161,9 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public Bytes values() throws IOException {
+    public Bytes vectors() throws IOException {
       return new Bytes() {
-        Bytes values = delegate.values();
+        Bytes values = delegate.vectors();
 
         @Override
         public byte[] get(int ord) throws IOException {
@@ -296,7 +296,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public Floats values() {
+    public Floats vectors() {
       return new Floats() {
         @Override
         public float[] get(int ord) throws IOException {
@@ -335,7 +335,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public Bytes values() {
+    public Bytes vectors() {
       return new Bytes() {
         @Override
         public byte[] get(int targetOrd) {

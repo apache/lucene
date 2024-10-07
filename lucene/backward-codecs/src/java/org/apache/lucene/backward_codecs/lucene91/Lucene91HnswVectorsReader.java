@@ -431,7 +431,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public Floats values() throws IOException {
+    public Floats vectors() throws IOException {
       IndexInput input = dataIn.clone();
       float[] value = new float[dimension];
       return new Floats() {
@@ -459,7 +459,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       if (size == 0) {
         return null;
       }
-      Floats values = values();
+      Floats values = vectors();
       DocIndexIterator iterator = iterator();
       return new VectorScorer() {
         @Override

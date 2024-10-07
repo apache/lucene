@@ -174,7 +174,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
             QuantizedByteVectorValues quantizedByteVectorValues =
                 quantizedReader.getQuantizedVectorValues("f");
             QuantizedByteVectorValues.QuantizedBytes byteVectors =
-                quantizedByteVectorValues.values();
+                quantizedByteVectorValues.vectors();
             int docId = -1;
             KnnVectorValues.DocIndexIterator iter = quantizedByteVectorValues.iterator();
             for (docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {

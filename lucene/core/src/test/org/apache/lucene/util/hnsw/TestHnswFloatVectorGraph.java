@@ -71,11 +71,11 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   @Override
   MockVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
-    FloatVectorValues.Floats dict = vectorValues.values();
+    FloatVectorValues.Floats vectors = vectorValues.vectors();
     float[][] vectors = new float[reader.maxDoc()][];
     for (int i = 0; i < vectorValues.size(); i++) {
       vectors[vectorValues.ordToDoc(i)] =
-          ArrayUtil.copyOfSubArray(dict.get(i), 0, vectorValues.dimension());
+          ArrayUtil.copyOfSubArray(vectors.get(i), 0, vectorValues.dimension());
     }
     return MockVectorValues.fromValues(vectors);
   }

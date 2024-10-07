@@ -478,7 +478,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         if (values != null) {
           assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
           KnnVectorValues.DocIndexIterator it = values.iterator();
-          FloatVectorValues.Floats vectors = values.values();
+          FloatVectorValues.Floats vectors = vectorValues.vectors();
           for (int doc = it.nextDoc(); doc != NO_MORE_DOCS; doc = it.nextDoc()) {
             float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};
             assertArrayEquals(

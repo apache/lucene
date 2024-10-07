@@ -72,7 +72,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
   }
 
   @Override
-  public Floats values() {
+  public Floats vectors() {
     IndexInput sliceCopy = slice.clone();
     float[] value = new float[dimension];
     return new Floats() {
@@ -276,7 +276,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     @Override
-    public Floats values() {
+    public Floats vectors() {
       return new Floats() {
         @Override
         public float[] get(int ord) {

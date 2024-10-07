@@ -68,7 +68,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues {
   }
 
   @Override
-  public Bytes values() throws IOException {
+  public Bytes vectors() throws IOException {
     return new OffHeapBytes();
   }
 
@@ -291,7 +291,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
-    public Bytes values() {
+    public Bytes vectors() {
       return Bytes.EMPTY;
     }
 

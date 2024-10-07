@@ -714,7 +714,7 @@ public class TestField extends LuceneTestCase {
       w.addDocument(doc);
       try (IndexReader r = DirectoryReader.open(w)) {
         ByteVectorValues binary = r.leaves().get(0).reader().getByteVectorValues("binary");
-        ByteVectorValues.Bytes vectors = binary.values();
+        ByteVectorValues.Bytes vectors = binary.vectors();
         assertEquals(1, binary.size());
         KnnVectorValues.DocIndexIterator iterator = binary.iterator();
         assertNotEquals(NO_MORE_DOCS, iterator.nextDoc());
@@ -727,10 +727,10 @@ public class TestField extends LuceneTestCase {
         assertEquals(1, floatValues.size());
         KnnVectorValues.DocIndexIterator iterator1 = floatValues.iterator();
         assertNotEquals(NO_MORE_DOCS, iterator1.nextDoc());
-        assertEquals(vector.length, floatValues.values().get(0).length);
-        assertEquals(vector[0], floatValues.values().get(0)[0], 0);
+        assertEquals(vector.length, floatValues.vectors().get(0).length);
+        assertEquals(vector[0], floatValues.vectors().get(0)[0], 0);
         assertEquals(NO_MORE_DOCS, iterator1.nextDoc());
-        expectThrows(IOException.class, () -> floatValues.values().get(1));
+        expectThrows(IOException.class, () -> floatValues.vectors().get(1));
       }
     }
   }

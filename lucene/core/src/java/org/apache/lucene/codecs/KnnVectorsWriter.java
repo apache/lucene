@@ -61,7 +61,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<byte[]>) addField(fieldInfo);
         ByteVectorValues mergedBytes =
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-        ByteVectorValues.Bytes values = mergedBytes.values();
+        ByteVectorValues.Bytes values = mergedBytes.vectors();
         KnnVectorValues.DocIndexIterator iter = mergedBytes.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
           byteWriter.addValue(doc, values.get(iter.index()));
@@ -72,7 +72,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
             MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-        FloatVectorValues.Floats values = mergedFloats.values();
+        FloatVectorValues.Floats values = mergedFloats.vectors();
         KnnVectorValues.DocIndexIterator iter = mergedFloats.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
           floatWriter.addValue(doc, values.get(iter.index()));
@@ -117,13 +117,13 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   /** Tracks state of one sub-reader that we are merging */
   private static class FloatVectorValuesSub extends DocIDMerger.Sub {
 
-    final FloatVectorValues values;
+    final FloatVectorValues vectorValues;
     final KnnVectorValues.DocIndexIterator iterator;
 
-    FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) throws IOException {
+    FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues vectorValues) throws IOException {
       super(docMap);
-      this.values = values;
-      this.iterator = values.iterator();
+      this.vectorValues = vectorValues;
+      this.iterator = vectorValues.iterator();
       assert iterator.docID() == -1;
     }
 
@@ -139,13 +139,13 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
   private static class ByteVectorValuesSub extends DocIDMerger.Sub {
 
-    final ByteVectorValues values;
+    final ByteVectorValues vectorValues;
     final KnnVectorValues.DocIndexIterator iterator;
 
-    ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues values) throws IOException {
+    ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues vectorValues) throws IOException {
       super(docMap);
-      this.values = values;
-      iterator = values.iterator();
+      this.vectorValues = vectorValues;
+      iterator = vectorValues.iterator();
       assert iterator.docID() == -1;
     }
 
@@ -310,7 +310,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
         int totalSize = 0;
         for (FloatVectorValuesSub sub : subs) {
-          totalSize += sub.values.size();
+          totalSize += sub.vectorValues.size();
         }
         size = totalSize;
       }
@@ -357,7 +357,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public Floats values() {
+      public Floats vectors() {
         return new Floats() {
           FloatVectorValues currentValues = null;
           Floats currentFloats = null;
@@ -371,9 +371,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
                       + ", lastOrd="
                       + lastOrd);
             }
-            if (currentValues != current.values) {
-              currentValues = current.values;
-              currentFloats = current.values.values();
+            if (currentValues != current.vectorValues) {
+              currentValues = current.vectorValues;
+              currentFloats = current.vectorValues.vectors();
             }
             return currentFloats.get(current.index());
           }
@@ -387,7 +387,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public int dimension() {
-        return subs.get(0).values.dimension();
+        return subs.get(0).vectorValues.dimension();
       }
 
       @Override
@@ -416,13 +416,13 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
         int totalSize = 0;
         for (ByteVectorValuesSub sub : subs) {
-          totalSize += sub.values.size();
+          totalSize += sub.vectorValues.size();
         }
         size = totalSize;
       }
 
       @Override
-      public Bytes values() {
+      public Bytes vectors() {
         return new Bytes() {
           ByteVectorValues currentValues = null;
           Bytes currentBytes = null;
@@ -436,9 +436,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
                       + ", lastOrd="
                       + lastOrd);
             }
-            if (currentValues != current.values) {
-              currentValues = current.values;
-              currentBytes = current.values.values();
+            if (currentValues != current.vectorValues) {
+              currentValues = current.vectorValues;
+              currentBytes = current.vectorValues.vectors();
             }
             return currentBytes.get(current.index());
           }
@@ -493,7 +493,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public int dimension() {
-        return subs.get(0).values.dimension();
+        return subs.get(0).vectorValues.dimension();
       }
 
       @Override

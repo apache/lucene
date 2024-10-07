@@ -68,7 +68,7 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
       this.query = query;
       this.bitDimensions = vectorValues.dimension() * Byte.SIZE;
       this.vectorValues = vectorValues;
-      vectors = vectorValues.values();
+      vectors = vectorValues.vectors();
     }
 
     @Override
@@ -99,7 +99,7 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
 
     public BitRandomVectorScorerSupplier(ByteVectorValues vectorValues) throws IOException {
       this.vectorValues = vectorValues;
-      this.vectors = vectorValues.values();
+      this.vectors = vectorValues.vectors();
     }
 
     @Override

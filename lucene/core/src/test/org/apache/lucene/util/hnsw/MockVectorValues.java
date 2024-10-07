@@ -50,7 +50,7 @@ class MockVectorValues extends FloatVectorValues {
   }
 
   @Override
-  public Floats values() {
+  public Floats vectors() {
     return new Floats() {
       float[] scratch = new float[dimension];
 

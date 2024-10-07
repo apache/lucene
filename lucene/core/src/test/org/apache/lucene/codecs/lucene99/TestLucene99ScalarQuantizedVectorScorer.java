@@ -118,7 +118,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
               }
 
               @Override
-              public QuantizedBytes values() {
+              public QuantizedBytes vectors() {
                 return new QuantizedBytes() {
                   @Override
                   public byte[] get(int ord) {

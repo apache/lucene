@@ -44,7 +44,7 @@ public abstract class FloatVectorValues extends KnnVectorValues {
   }
 
   /** Returns a random access (lookup by ord) provider of the vector values */
-  public abstract Floats values() throws IOException;
+  public abstract Floats vectors() throws IOException;
 
   /**
    * Checks the Vector Encoding of a field
@@ -103,7 +103,7 @@ public abstract class FloatVectorValues extends KnnVectorValues {
       }
 
       @Override
-      public Floats values() {
+      public Floats vectors() {
         return new Floats() {
           @Override
           public float[] get(int ord) throws IOException {

@@ -50,7 +50,7 @@ public class Word2VecModel extends FloatVectorValues {
   }
 
   @Override
-  public Floats values() {
+  public Floats vectors() {
     return new Floats() {
       @Override
       public float[] get(int targetOrd) {

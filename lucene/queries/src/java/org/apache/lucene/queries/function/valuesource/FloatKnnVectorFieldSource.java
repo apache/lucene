@@ -64,7 +64,7 @@ public class FloatKnnVectorFieldSource extends ValueSource {
 
     return new VectorFieldFunction(this) {
       KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-      FloatVectorValues.Floats values = vectorValues.values();
+      FloatVectorValues.Floats values = vectorValues.vectors();
 
       @Override
       public float[] floatVectorVal(int doc) throws IOException {

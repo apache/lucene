@@ -63,7 +63,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
   }
 
   @Override
-  public Bytes values() throws IOException {
+  public Bytes vectors() throws IOException {
     return new Bytes() {
       IndexInput input = slice.clone();
       ByteBuffer byteBuffer = ByteBuffer.allocate(byteSize);
@@ -134,7 +134,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     @Override
     public VectorScorer scorer(byte[] query) throws IOException {
       DocIndexIterator iterator = iterator();
-      Bytes vectors = values();
+      Bytes vectors = vectors();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -211,7 +211,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     @Override
     public VectorScorer scorer(byte[] query) throws IOException {
       return new VectorScorer() {
-        ByteVectorValues.Bytes vectors = values();
+        ByteVectorValues.Bytes vectors = vectors();
         IndexedDISI disi = createDISI();
 
         @Override
@@ -244,7 +244,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues {
     }
 
     @Override
-    public Bytes values() {
+    public Bytes vectors() {
       return Bytes.EMPTY;
     }
 

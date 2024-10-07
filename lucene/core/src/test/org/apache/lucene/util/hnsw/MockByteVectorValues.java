@@ -55,7 +55,7 @@ class MockByteVectorValues extends ByteVectorValues {
   }
 
   @Override
-  public Bytes values() {
+  public Bytes vectors() {
     return new Bytes() {
       byte[] scratch = new byte[dimension];
 

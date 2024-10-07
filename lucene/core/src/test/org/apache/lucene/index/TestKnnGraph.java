@@ -414,7 +414,7 @@ public class TestKnnGraph extends LuceneTestCase {
         int nextDocWithVectors = 0;
         StoredFields storedFields = reader.storedFields();
         KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-        FloatVectorValues.Floats dict = vectorValues.values();
+        FloatVectorValues.Floats vectors = vectorValues.vectors();
         for (int i = 0; i < reader.maxDoc(); i++) {
           nextDocWithVectors = iterator.advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
@@ -428,7 +428,7 @@ public class TestKnnGraph extends LuceneTestCase {
           }
           int id = Integer.parseInt(storedFields.document(i).get("id"));
           // documents with KnnGraphValues have the expected vectors
-          float[] scratch = dict.get(iterator.index());
+          float[] scratch = vectors.get(iterator.index());
           assertArrayEquals(
               "vector did not match for doc " + i + ", id=" + id + ": " + Arrays.toString(scratch),
               values[id],

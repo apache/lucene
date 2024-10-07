@@ -110,7 +110,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   @Override
   MockByteVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     ByteVectorValues vectorValues = reader.getByteVectorValues(fieldName);
-    ByteVectorValues.Bytes byteVectors = vectorValues.values();
+    ByteVectorValues.Bytes byteVectors = vectorValues.vectors();
     byte[][] vectors = new byte[reader.maxDoc()][];
     for (int i = 0; i < vectorValues.size(); i++) {
       vectors[vectorValues.ordToDoc(i)] =

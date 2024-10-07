@@ -52,7 +52,7 @@ public abstract class ByteVectorValues extends KnnVectorValues {
   }
 
   /** Returns a random access (lookup by ord) provider of the vector values */
-  public abstract Bytes values() throws IOException;
+  public abstract Bytes vectors() throws IOException;
 
   /**
    * Checks the Vector Encoding of a field
@@ -110,7 +110,7 @@ public abstract class ByteVectorValues extends KnnVectorValues {
       }
 
       @Override
-      public Bytes values() {
+      public Bytes vectors() {
         return new Bytes() {
           @Override
           public byte[] get(int targetOrd) {

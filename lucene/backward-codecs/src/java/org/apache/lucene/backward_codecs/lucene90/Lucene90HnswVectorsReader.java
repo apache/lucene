@@ -388,7 +388,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public Floats values() {
+    public Floats vectors() {
       return new Floats() {
         @Override
         public float[] get(int targetOrd) throws IOException {
@@ -418,7 +418,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       if (size() == 0) {
         return null;
       }
-      FloatVectorValues.Floats values = values();
+      FloatVectorValues.Floats values = vectors();
       DocIndexIterator iterator = iterator();
       return new VectorScorer() {
         @Override

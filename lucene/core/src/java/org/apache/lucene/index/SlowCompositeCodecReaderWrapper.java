@@ -883,7 +883,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       }
 
       @Override
-      public Floats values() {
+      public Floats vectors() {
         return new Floats() {
           int lastSubIndex = -1;
           Floats subValues;
@@ -897,7 +897,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
             if (newSubIndex != lastSubIndex) {
               lastSubIndex = newSubIndex;
               assert subs.get(lastSubIndex).sub != null;
-              subValues = subs.get(lastSubIndex).sub.values();
+              subValues = subs.get(lastSubIndex).sub.vectors();
             }
             return subValues.get(ord - subs.get(lastSubIndex).ordStart);
           }
@@ -961,7 +961,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       }
 
       @Override
-      public Bytes values() {
+      public Bytes vectors() {
         return new Bytes() {
           int lastSubIndex = -1;
           Bytes subValues;
@@ -976,7 +976,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
             if (newSubIndex != lastSubIndex) {
               lastSubIndex = newSubIndex;
               assert subs.get(lastSubIndex).sub != null;
-              subValues = subs.get(lastSubIndex).sub.values();
+              subValues = subs.get(lastSubIndex).sub.vectors();
             }
             return subValues.get(ord - subs.get(lastSubIndex).ordStart);
           }

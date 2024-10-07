@@ -99,8 +99,8 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      ByteVectorValues.Bytes vectors1 = vectorValues.values();
-      ByteVectorValues.Bytes vectors2 = vectorValues.values();
+      ByteVectorValues.Bytes vectors1 = vectorValues.vectors();
+      ByteVectorValues.Bytes vectors2 = vectorValues.vectors();
       return new RandomVectorScorer.AbstractRandomVectorScorer(vectorValues) {
         @Override
         public float score(int node) throws IOException {
@@ -128,8 +128,8 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      FloatVectorValues.Floats vectors1 = vectorValues.values();
-      FloatVectorValues.Floats vectors2 = vectorValues.values();
+      FloatVectorValues.Floats vectors1 = vectorValues.vectors();
+      FloatVectorValues.Floats vectors2 = vectorValues.vectors();
       return new RandomVectorScorer.AbstractRandomVectorScorer(vectorValues) {
         @Override
         public float score(int node) throws IOException {
@@ -151,10 +151,10 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     private final VectorSimilarityFunction similarityFunction;
 
     public FloatVectorScorer(
-        FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction)
+        FloatVectorValues vectorValues, float[] query, VectorSimilarityFunction similarityFunction)
         throws IOException {
-      super(values);
-      this.vectors = values.values();
+      super(vectorValues);
+      this.vectors = vectorValues.vectors();
       this.query = query;
       this.similarityFunction = similarityFunction;
     }
@@ -172,10 +172,10 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     private final VectorSimilarityFunction similarityFunction;
 
     public ByteVectorScorer(
-        ByteVectorValues values, byte[] query, VectorSimilarityFunction similarityFunction)
+        ByteVectorValues vectorValues, byte[] query, VectorSimilarityFunction similarityFunction)
         throws IOException {
-      super(values);
-      vectors = values.values();
+      super(vectorValues);
+      vectors = vectorValues.vectors();
       this.query = query;
       this.similarityFunction = similarityFunction;
     }

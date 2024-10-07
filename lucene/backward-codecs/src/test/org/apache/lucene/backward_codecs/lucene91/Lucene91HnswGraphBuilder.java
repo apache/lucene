@@ -91,8 +91,8 @@ public final class Lucene91HnswGraphBuilder {
       long seed)
       throws IOException {
     this.vectors = vectors;
-    vectorValues = vectors.values();
-    buildVectors = vectors.values();
+    vectorValues = vectorValues.vectors();
+    buildVectors = vectorValues.vectors();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -122,7 +122,7 @@ public final class Lucene91HnswGraphBuilder {
    *     accessor for the vectors
    */
   public Lucene91OnHeapHnswGraph build(FloatVectorValues vectors) throws IOException {
-    FloatVectorValues.Floats values = vectors.values();
+    FloatVectorValues.Floats values = vectorValues.vectors();
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
     }

@@ -729,7 +729,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                 quantizedByteVectorValues.dimension(), bits)
             : null;
     KnnVectorValues.DocIndexIterator iter = quantizedByteVectorValues.iterator();
-    QuantizedByteVectorValues.QuantizedBytes vectors = quantizedByteVectorValues.values();
+    QuantizedByteVectorValues.QuantizedBytes vectors = quantizedByteVectorValues.vectors();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
       byte[] binaryValue = vectors.get(iter.index());
@@ -869,7 +869,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public Floats values() {
+    public Floats vectors() {
       return new Floats() {
         @Override
         public float[] get(int ord) throws IOException {
@@ -888,16 +888,16 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
-    private final QuantizedByteVectorValues values;
+    private final QuantizedByteVectorValues vectorValues;
     private final QuantizedByteVectorValues.QuantizedBytes vectors;
     private final KnnVectorValues.DocIndexIterator iterator;
 
-    QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values)
+    QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues vectorValues)
         throws IOException {
       super(docMap);
-      this.values = values;
-      iterator = values.iterator();
-      vectors = values.values();
+      this.vectorValues = vectorValues;
+      iterator = vectorValues.iterator();
+      vectors = vectorValues.vectors();
       assert iterator.docID() == -1;
     }
 
@@ -972,13 +972,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
       int totalSize = 0;
       for (QuantizedByteVectorValueSub sub : subs) {
-        totalSize += sub.values.size();
+        totalSize += sub.vectorValues.size();
       }
       size = totalSize;
     }
 
     @Override
-    public QuantizedBytes values() throws IOException {
+    public QuantizedBytes vectors() throws IOException {
       return new QuantizedBytes() {
         @Override
         public byte[] get(int ord) throws IOException {
@@ -1004,7 +1004,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public int dimension() {
-      return subs.get(0).values.dimension();
+      return subs.get(0).vectorValues.dimension();
     }
 
     private class CompositeIterator extends DocIndexIterator {
@@ -1052,36 +1052,36 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
-    private final FloatVectorValues values;
+    private final FloatVectorValues vectorValues;
     private final ScalarQuantizer quantizer;
 
     private final VectorSimilarityFunction vectorSimilarityFunction;
 
     public QuantizedFloatVectorValues(
-        FloatVectorValues values,
+        FloatVectorValues vectorValues,
         VectorSimilarityFunction vectorSimilarityFunction,
         ScalarQuantizer quantizer)
         throws IOException {
-      this.values = values;
+      this.vectorValues = vectorValues;
       this.quantizer = quantizer;
       this.vectorSimilarityFunction = vectorSimilarityFunction;
     }
 
     @Override
     public int dimension() {
-      return values.dimension();
+      return vectorValues.dimension();
     }
 
     @Override
     public int size() {
-      return values.size();
+      return vectorValues.size();
     }
 
     @Override
-    public QuantizedBytes values() throws IOException {
+    public QuantizedBytes vectors() throws IOException {
       return new QuantizedBytes() {
-        FloatVectorValues.Floats vectors = values.values();
-        byte[] quantizedVector = new byte[values.dimension()];
+        FloatVectorValues.Floats vectors = vectorValues.vectors();
+        byte[] quantizedVector = new byte[vectorValues.dimension()];
         float offsetValue = 0f;
         int lastOrd = -1;
 
@@ -1119,12 +1119,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public int ordToDoc(int ord) {
-      return values.ordToDoc(ord);
+      return vectorValues.ordToDoc(ord);
     }
 
     @Override
     public DocIndexIterator iterator() throws IOException {
-      return values.iterator();
+      return vectorValues.iterator();
     }
   }
 
@@ -1176,9 +1176,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public QuantizedBytes values() throws IOException {
+    public QuantizedBytes vectors() throws IOException {
       return new QuantizedBytes() {
-        Bytes vectors = in.values();
+        Bytes vectors = in.vectors();
 
         @Override
         public byte[] get(int ord) throws IOException {
@@ -1215,32 +1215,32 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static final class NormalizedFloatVectorValues extends FloatVectorValues {
-    private final FloatVectorValues values;
+    private final FloatVectorValues vectorValues;
     private final Floats floats;
 
-    public NormalizedFloatVectorValues(FloatVectorValues values) throws IOException {
-      this.values = values;
-      floats = values.values();
+    public NormalizedFloatVectorValues(FloatVectorValues vectorValues) throws IOException {
+      this.vectorValues = vectorValues;
+      floats = vectorValues.vectors();
     }
 
     @Override
     public int dimension() {
-      return values.dimension();
+      return vectorValues.dimension();
     }
 
     @Override
     public int size() {
-      return values.size();
+      return vectorValues.size();
     }
 
     @Override
     public int ordToDoc(int ord) {
-      return values.ordToDoc(ord);
+      return vectorValues.ordToDoc(ord);
     }
 
     @Override
-    public Floats values() {
-      float[] normalizedVector = new float[values.dimension()];
+    public Floats vectors() {
+      float[] normalizedVector = new float[vectorValues.dimension()];
       return new Floats() {
         @Override
         public float[] get(int ord) throws IOException {
@@ -1253,7 +1253,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public DocIndexIterator iterator() throws IOException {
-      return values.iterator();
+      return vectorValues.iterator();
     }
   }
 }

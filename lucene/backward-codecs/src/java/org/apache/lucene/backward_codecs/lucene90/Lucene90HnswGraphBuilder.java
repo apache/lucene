@@ -81,8 +81,8 @@ public final class Lucene90HnswGraphBuilder {
       long seed)
       throws IOException {
     this.vectorValues = vectors;
-    this.vectors = vectors.values();
-    buildVectors = vectors.values();
+    this.vectors = vectorValues.vectors();
+    buildVectors = vectorValues.vectors();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -112,7 +112,7 @@ public final class Lucene90HnswGraphBuilder {
     }
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
-    FloatVectorValues.Floats values = vectors.values();
+    FloatVectorValues.Floats values = vectorValues.vectors();
     for (int node = 1; node < vectors.size(); node++) {
       addGraphNode(values.get(node));
       if (node % 10000 == 0) {

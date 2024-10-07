@@ -2301,7 +2301,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public Floats values() {
+    public Floats vectors() {
       return new Floats() {
         @Override
         public float[] get(int ord) {
@@ -2330,7 +2330,7 @@ public class MemoryIndex {
       }
       MemoryFloatVectorValues vectorValues = new MemoryFloatVectorValues(info);
       DocIndexIterator iterator = vectorValues.iterator();
-      FloatVectorValues.Floats floats = vectorValues.values();
+      FloatVectorValues.Floats floats = vectorValues.vectors();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -2364,7 +2364,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public Bytes values() {
+    public Bytes vectors() {
       return new Bytes() {
         @Override
         public byte[] get(int ord) {
@@ -2392,7 +2392,7 @@ public class MemoryIndex {
                 + info.fieldInfo.getVectorDimension());
       }
       MemoryByteVectorValues vectorValues = new MemoryByteVectorValues(info);
-      ByteVectorValues.Bytes vectors = vectorValues.values();
+      ByteVectorValues.Bytes vectors = vectorValues.vectors();
       DocIndexIterator iterator = vectorValues.iterator();
       return new VectorScorer() {
         @Override

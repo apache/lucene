@@ -306,7 +306,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
 
     @Override
-    public Floats values() {
+    public Floats vectors() {
       return new Floats() {
         @Override
         public float[] get(int ord) throws IOException {

@@ -121,7 +121,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   }
 
   @Override
-  public QuantizedBytes values() throws IOException {
+  public QuantizedBytes vectors() throws IOException {
     return new QuantizedBytes() {
       ByteBuffer byteBuffer = ByteBuffer.allocate(dimension);
       byte[] binaryValue = byteBuffer.array();
@@ -350,7 +350,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public QuantizedBytes values() {
+    public QuantizedBytes vectors() {
       return QuantizedBytes.EMPTY;
     }
 

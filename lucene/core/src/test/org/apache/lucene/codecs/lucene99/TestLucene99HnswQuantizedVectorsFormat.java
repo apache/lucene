@@ -312,7 +312,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
             QuantizedByteVectorValues quantizedByteVectorValues =
                 hnswReader.getQuantizedVectorValues("f");
             QuantizedByteVectorValues.QuantizedBytes byteVectors =
-                quantizedByteVectorValues.values();
+                quantizedByteVectorValues.vectors();
             for (int ord = 0; ord < quantizedByteVectorValues.size(); ord++) {
               byte[] vector = byteVectors.get(ord);
               float offset = byteVectors.getScoreCorrectionConstant(ord);

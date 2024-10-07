@@ -65,7 +65,7 @@ public class ByteKnnVectorFieldSource extends ValueSource {
 
     return new VectorFieldFunction(this) {
       KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-      ByteVectorValues.Bytes vectors = vectorValues.values();
+      ByteVectorValues.Bytes vectors = vectorValues.vectors();
 
       @Override
       public byte[] byteVectorVal(int doc) throws IOException {

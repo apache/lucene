@@ -79,9 +79,9 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
-    FloatVectorValues.Floats valuesDict = floatVectorValues.values();
+    FloatVectorValues.Floats vectors = floatVectorValues.vectors();
     for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
-      writeFloatVectorValue(valuesDict, floatVectorValues.dimension(), iter.index());
+      writeFloatVectorValue(vectors, floatVectorValues.dimension(), iter.index());
       docIds.add(docId);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
@@ -103,7 +103,7 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     KnnVectorValues.DocIndexIterator it = byteVectorValues.iterator();
-    ByteVectorValues.Bytes vectors = byteVectorValues.values();
+    ByteVectorValues.Bytes vectors = byteVectorValues.vectors();
     for (int docV = it.nextDoc(); docV != NO_MORE_DOCS; docV = it.nextDoc()) {
       writeByteVectorValue(vectors, it.index(), byteVectorValues.dimension());
       docIds.add(docV);

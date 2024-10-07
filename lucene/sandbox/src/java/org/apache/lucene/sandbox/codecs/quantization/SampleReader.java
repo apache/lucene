@@ -53,8 +53,8 @@ public class SampleReader extends FloatVectorValues implements HasIndexSlice {
   }
 
   @Override
-  public Floats values() throws IOException {
-    Floats originValues = origin.values();
+  public Floats vectors() throws IOException {
+    Floats originValues = origin.vectors();
     return new Floats() {
       @Override
       public float[] get(int targetOrd) throws IOException {

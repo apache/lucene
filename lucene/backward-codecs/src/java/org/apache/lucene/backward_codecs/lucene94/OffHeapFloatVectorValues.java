@@ -61,9 +61,9 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
   }
 
   @Override
-  public Floats values() {
+  public Floats vectors() {
     return new Floats() {
-      final IndexInput dictionarySlice = slice.clone();
+      final IndexInput vectorSlice = slice.clone();
       int lastOrd = -1;
       float[] value = new float[dimension];
 
@@ -72,8 +72,8 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
         if (lastOrd == targetOrd) {
           return value;
         }
-        dictionarySlice.seek((long) targetOrd * byteSize);
-        dictionarySlice.readFloats(value, 0, value.length);
+        vectorSlice.seek((long) targetOrd * byteSize);
+        vectorSlice.readFloats(value, 0, value.length);
         lastOrd = targetOrd;
         return value;
       }
@@ -129,7 +129,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      Floats floats = values();
+      Floats floats = vectors();
       DocIndexIterator iterator = iterator();
 
       return new VectorScorer() {
@@ -208,7 +208,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       IndexedDISI disi = createDISI();
-      Floats values = values();
+      Floats values = vectors();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -240,7 +240,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    public Floats values() {
+    public Floats vectors() {
       return new Floats() {
         @Override
         public float[] get(int targetOrd) {
