@@ -184,18 +184,18 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
-  private static DocsWithFieldSet writeVectorData(IndexOutput output, FloatVectorValues vectors)
-      throws IOException {
+  private static DocsWithFieldSet writeVectorData(
+      IndexOutput output, FloatVectorValues vectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     ByteBuffer binaryVector =
-        ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    KnnVectorValues.DocIndexIterator iterator = vectors.iterator();
-    FloatVectorValues.Floats values = vectorValues.vectors();
+        ByteBuffer.allocate(vectorValues.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
+    FloatVectorValues.Floats vectors = vectorValues.vectors();
     for (int docV = iterator.nextDoc();
         docV != DocIdSetIterator.NO_MORE_DOCS;
         docV = iterator.nextDoc()) {
       // write vector
-      binaryVector.asFloatBuffer().put(values.get(iterator.index()));
+      binaryVector.asFloatBuffer().put(vectors.get(iterator.index()));
       output.writeBytes(binaryVector.array(), binaryVector.limit());
       docsWithField.add(docV);
     }

@@ -92,8 +92,9 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     private final VectorSimilarityFunction similarityFunction;
 
     private ByteScoringSupplier(
-        ByteVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
-      vectorValues = vectors;
+        ByteVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      this.vectorValues = vectorValues;
       this.similarityFunction = similarityFunction;
     }
 
@@ -121,8 +122,9 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     private final VectorSimilarityFunction similarityFunction;
 
     private FloatScoringSupplier(
-        FloatVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
-      vectorValues = vectors;
+        FloatVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      this.vectorValues = vectorValues;
       this.similarityFunction = similarityFunction;
     }
 

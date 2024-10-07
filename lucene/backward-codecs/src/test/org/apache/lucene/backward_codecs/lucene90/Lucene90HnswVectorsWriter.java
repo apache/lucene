@@ -182,13 +182,13 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
    * IDs. The length of the returned array matches the total number of documents with a vector
    * (which excludes deleted documents), so it may be less than {@link FloatVectorValues#size()}.
    */
-  private static int[] writeVectorData(IndexOutput output, FloatVectorValues vectors)
+  private static int[] writeVectorData(IndexOutput output, FloatVectorValues vectorValues)
       throws IOException {
-    int[] docIds = new int[vectors.size()];
+    int[] docIds = new int[vectorValues.size()];
     int count = 0;
     ByteBuffer binaryVector =
-        ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    KnnVectorValues.DocIndexIterator iter = vectors.iterator();
+        ByteBuffer.allocate(vectorValues.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    KnnVectorValues.DocIndexIterator iter = vectorValues.iterator();
     FloatVectorValues.Floats values = vectorValues.vectors();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector

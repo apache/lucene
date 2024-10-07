@@ -474,10 +474,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       // test vector values
       int cnt = 0;
       for (LeafReaderContext ctx : reader.leaves()) {
-        FloatVectorValues values = ctx.reader().getFloatVectorValues(KNN_VECTOR_FIELD);
-        if (values != null) {
-          assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
-          KnnVectorValues.DocIndexIterator it = values.iterator();
+        FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(KNN_VECTOR_FIELD);
+        if (vectorValues != null) {
+          assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), vectorValues.dimension());
+          KnnVectorValues.DocIndexIterator it = vectorValues.iterator();
           FloatVectorValues.Floats vectors = vectorValues.vectors();
           for (int doc = it.nextDoc(); doc != NO_MORE_DOCS; doc = it.nextDoc()) {
             float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};

@@ -50,7 +50,7 @@ public class KMeans {
   /**
    * Cluster vectors into a given number of clusters
    *
-   * @param vectors float vectors
+   * @param vectorValues float vectors
    * @param similarityFunction vector similarity function. For COSINE similarity, vectors must be
    *     normalized.
    * @param numClusters number of cluster to cluster vector into
@@ -58,10 +58,10 @@ public class KMeans {
    * @throws IOException when if there is an error accessing vectors
    */
   public static Results cluster(
-      FloatVectorValues vectors, VectorSimilarityFunction similarityFunction, int numClusters)
+      FloatVectorValues vectorValues, VectorSimilarityFunction similarityFunction, int numClusters)
       throws IOException {
     return cluster(
-        vectors,
+        vectorValues,
         numClusters,
         true,
         42L,
@@ -75,7 +75,7 @@ public class KMeans {
   /**
    * Expert: Cluster vectors into a given number of clusters
    *
-   * @param vectors float vectors
+   * @param vectorValues float vectors
    * @param numClusters number of cluster to cluster vector into
    * @param assignCentroidsToVectors if {@code true} assign centroids for all vectors. Centroids are
    *     computed on a sample of vectors. If this parameter is {@code true}, in results also return
@@ -92,7 +92,7 @@ public class KMeans {
    * @throws IOException if there is error accessing vectors
    */
   public static Results cluster(
-      FloatVectorValues vectors,
+      FloatVectorValues vectorValues,
       int numClusters,
       boolean assignCentroidsToVectors,
       long seed,
@@ -102,7 +102,7 @@ public class KMeans {
       int iters,
       int sampleSize)
       throws IOException {
-    if (vectors.size() == 0) {
+    if (vectorValues.size() == 0) {
       return null;
     }
     if (numClusters < 1 || numClusters > MAX_NUM_CENTROIDS) {
@@ -111,8 +111,8 @@ public class KMeans {
     }
     // adjust sampleSize and numClusters
     sampleSize = Math.max(sampleSize, 100 * numClusters);
-    if (sampleSize > vectors.size()) {
-      sampleSize = vectors.size();
+    if (sampleSize > vectorValues.size()) {
+      sampleSize = vectorValues.size();
       // Decrease the number of clusters if needed
       int maxNumClusters = Math.max(1, sampleSize / 100);
       numClusters = Math.min(numClusters, maxNumClusters);
@@ -121,10 +121,12 @@ public class KMeans {
     Random random = new Random(seed);
     float[][] centroids;
     if (numClusters == 1) {
-      centroids = new float[1][vectors.dimension()];
+      centroids = new float[1][vectorValues.dimension()];
     } else {
       FloatVectorValues sampleVectors =
-          vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
+          vectorValues.size() <= sampleSize
+              ? vectorValues
+              : createSampleReader(vectorValues, sampleSize, seed);
       KMeans kmeans =
           new KMeans(sampleVectors, numClusters, random, initializationMethod, restarts, iters);
       centroids = kmeans.computeCentroids(normalizeCenters);
@@ -133,9 +135,9 @@ public class KMeans {
     short[] vectorCentroids = null;
     // Assign each vector to the nearest centroid and update the centres
     if (assignCentroidsToVectors) {
-      vectorCentroids = new short[vectors.size()];
+      vectorCentroids = new short[vectorValues.size()];
       // Use kahan summation to get more precise results
-      KMeans.runKMeansStep(vectors, centroids, vectorCentroids, true, normalizeCenters);
+      KMeans.runKMeansStep(vectorValues, centroids, vectorCentroids, true, normalizeCenters);
     }
     return new Results(centroids, vectorCentroids);
   }
@@ -268,7 +270,7 @@ public class KMeans {
   /**
    * Run kmeans step
    *
-   * @param vectors float vectors
+   * @param vectorValues float vectors
    * @param centroids centroids, new calculated centroids are written here
    * @param docCentroids for each document which centroid it belongs to, results will be written
    *     here

@@ -65,7 +65,7 @@ public final class Lucene90HnswGraphBuilder {
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
-   * @param vectors the vectors whose relations are represented by the graph - must provide a
+   * @param vectorValues the vectors whose relations are represented by the graph - must provide a
    *     different view over those vectors than the one used to add via addGraphNode.
    * @param maxConn the number of connections to make when adding a new graph node; roughly speaking
    *     the graph fanout.
@@ -74,13 +74,13 @@ public final class Lucene90HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene90HnswGraphBuilder(
-      FloatVectorValues vectors,
+      FloatVectorValues vectorValues,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
       long seed)
       throws IOException {
-    this.vectorValues = vectors;
+    this.vectorValues = vectorValues;
     this.vectors = vectorValues.vectors();
     buildVectors = vectorValues.vectors();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
@@ -103,17 +103,18 @@ public final class Lucene90HnswGraphBuilder {
    * enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
-   * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
-   *     accessor for the vectors
+   * @param vectorValues the vectors for which to build a nearest neighbors graph. Must be an
+   *     independet accessor for the vectors
    */
-  public Lucene90OnHeapHnswGraph build(FloatVectorValues vectors) throws IOException {
+  public Lucene90OnHeapHnswGraph build(FloatVectorValues vectorValues) throws IOException {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
+      infoStream.message(
+          HNSW_COMPONENT, "build graph from " + vectorValues.size() + " vectorValues");
     }
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     FloatVectorValues.Floats values = vectorValues.vectors();
-    for (int node = 1; node < vectors.size(); node++) {
+    for (int node = 1; node < vectorValues.size(); node++) {
       addGraphNode(values.get(node));
       if (node % 10000 == 0) {
         if (infoStream.isEnabled(HNSW_COMPONENT)) {
