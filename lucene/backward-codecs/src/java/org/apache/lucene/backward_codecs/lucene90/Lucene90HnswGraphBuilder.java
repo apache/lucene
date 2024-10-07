@@ -222,8 +222,7 @@ public final class Lucene90HnswGraphBuilder {
    * @param score the score of the new candidate and node n, to be compared with scores of the
    *     candidate and n's neighbors
    * @param neighbors the neighbors selected so far
-   * @param vectorValues source of values used for making comparisons between candidate and existing
-   *     neighbors
+   * @param vectors used for making comparisons between candidate and existing neighbors
    * @return whether the candidate is diverse given the existing neighbors
    */
   private boolean diversityCheck(
