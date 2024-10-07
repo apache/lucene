@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -444,14 +443,16 @@ public class DocIdEncodingBenchmark {
       try {
 
         if (inputFilePath != null && !inputFilePath.isEmpty()) {
-          DOC_ID_SEQUENCES = docIdProvider.getDocIds(new FileInputStream(inputFilePath));
+          DOC_ID_SEQUENCES =
+              docIdProvider.getDocIds(
+                  Files.newInputStream(Path.of(inputFilePath), StandardOpenOption.READ));
         } else {
           DOC_ID_SEQUENCES =
               docIdProvider.getDocIds(
                   DocIdEncodingBenchmark.class.getResourceAsStream(
                       "/org.apache.lucene.benchmark.jmh/docIds_bpv21.txt"));
         }
-      } catch (FileNotFoundException e) {
+      } catch (IOException e) {
         throw new RuntimeException(e);
       }
     }
