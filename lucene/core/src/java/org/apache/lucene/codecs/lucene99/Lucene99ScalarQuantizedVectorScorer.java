@@ -122,7 +122,8 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       throws IOException {
     QuantizedByteVectorValues.QuantizedBytes vectors = vectorValues.vectors();
     if (vectorValues.getScalarQuantizer().getBits() <= 4) {
-      if (vectorValues.getVectorByteLength() != vectorValues.dimension() && vectors.getSlice() != null) {
+      if (vectorValues.getVectorByteLength() != vectorValues.dimension()
+          && vectors.getSlice() != null) {
         return new CompressedInt4DotProduct(
             vectorValues, constMultiplier, targetBytes, offsetCorrection, scoreAdjustmentFunction);
       }
@@ -138,7 +139,8 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     private final byte[] targetBytes;
     private final QuantizedByteVectorValues.QuantizedBytes vectors;
 
-    private Euclidean(QuantizedByteVectorValues vectorValues, float constMultiplier, byte[] targetBytes)
+    private Euclidean(
+        QuantizedByteVectorValues vectorValues, float constMultiplier, byte[] targetBytes)
         throws IOException {
       super(vectorValues);
       vectors = vectorValues.vectors();
@@ -221,7 +223,9 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     public float score(int vectorOrdinal) throws IOException {
       // get compressed vector, in Lucene99, vector values are stored and have a single value for
       // offset correction
-      vectors.getSlice().seek((long) vectorOrdinal * (vectorValues.getVectorByteLength() + Float.BYTES));
+      vectors
+          .getSlice()
+          .seek((long) vectorOrdinal * (vectorValues.getVectorByteLength() + Float.BYTES));
       vectors.getSlice().readBytes(compressedVector, 0, compressedVector.length);
       float vectorOffset = vectors.getScoreCorrectionConstant(vectorOrdinal);
       int dotProduct = VectorUtil.int4DotProductPacked(targetBytes, compressedVector);

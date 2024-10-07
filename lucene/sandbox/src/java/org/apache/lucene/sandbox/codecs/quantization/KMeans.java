@@ -173,7 +173,8 @@ public class KMeans {
           };
       double prevSquaredDist = Double.MAX_VALUE;
       for (int iter = 0; iter < iters; iter++) {
-        squaredDist = runKMeansStep(vectorValues, centroids, vectorCentroids, false, normalizeCenters);
+        squaredDist =
+            runKMeansStep(vectorValues, centroids, vectorCentroids, false, normalizeCenters);
         // Check for convergence
         if (prevSquaredDist <= (squaredDist + 1e-6)) {
           break;

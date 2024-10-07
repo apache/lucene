@@ -120,7 +120,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     final FloatVectorValues vectorValues;
     final KnnVectorValues.DocIndexIterator iterator;
 
-    FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues vectorValues) throws IOException {
+    FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues vectorValues)
+        throws IOException {
       super(docMap);
       this.vectorValues = vectorValues;
       this.iterator = vectorValues.iterator();
@@ -142,7 +143,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     final ByteVectorValues vectorValues;
     final KnnVectorValues.DocIndexIterator iterator;
 
-    ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues vectorValues) throws IOException {
+    ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues vectorValues)
+        throws IOException {
       super(docMap);
       this.vectorValues = vectorValues;
       iterator = vectorValues.iterator();
