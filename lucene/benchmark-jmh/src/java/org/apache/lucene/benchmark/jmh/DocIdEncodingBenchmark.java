@@ -79,8 +79,6 @@ public class DocIdEncodingBenchmark {
 
   private IndexInput in;
 
-  private IndexOutput out;
-
   private final int[] scratch = new int[512];
 
   private String decoderInputFile;
