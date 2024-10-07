@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.RandomAccess;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
@@ -70,6 +71,19 @@ public final class MaxScoreCache {
   }
 
   private float computeMaxScore(List<Impact> impacts) {
+    if (impacts instanceof RandomAccess) {
+      float maxScore = 0;
+      var scorer = this.scorer;
+      for (int i = 0, length = impacts.size(); i < length; i++) {
+        Impact impact = impacts.get(i);
+        maxScore = Math.max(scorer.score(impact.freq, impact.norm), maxScore);
+      }
+      return maxScore;
+    }
+    return maxScoreSlowList(impacts);
+  }
+
+  private float maxScoreSlowList(List<Impact> impacts) {
     float maxScore = 0;
     for (Impact impact : impacts) {
       maxScore = Math.max(scorer.score(impact.freq, impact.norm), maxScore);
