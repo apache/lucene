@@ -18,8 +18,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -31,6 +29,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
@@ -159,19 +158,7 @@ public final class TaskExecutor {
 
   private static class Task<T> extends FutureTask<T> {
 
-    @SuppressWarnings("unused") // only accessed via #STARTED_OR_CANCELLED
-    private volatile boolean startedOrCancelled;
-
-    private static final VarHandle STARTED_OR_CANCELLED;
-
-    static {
-      try {
-        STARTED_OR_CANCELLED =
-            MethodHandles.lookup().findVarHandle(Task.class, "startedOrCancelled", boolean.class);
-      } catch (Exception e) {
-        throw new ExceptionInInitializerError(e);
-      }
-    }
+    private final AtomicBoolean startedOrCancelled = new AtomicBoolean(false);
 
     private final Collection<? extends Future<T>> futures;
 
@@ -182,7 +169,7 @@ public final class TaskExecutor {
 
     @Override
     public void run() {
-      if (STARTED_OR_CANCELLED.compareAndSet(this, false, true)) {
+      if (startedOrCancelled.compareAndSet(false, true)) {
         super.run();
       }
     }
@@ -203,7 +190,7 @@ public final class TaskExecutor {
       wait for them to finish instead of throwing CancellationException. A cleaner way would have been to override FutureTask#get and
       make it wait for cancelled tasks, but FutureTask#awaitDone is private. Tasks that are cancelled before they are started will be no-op.
        */
-      if (STARTED_OR_CANCELLED.compareAndSet(this, false, true)) {
+      if (startedOrCancelled.compareAndSet(false, true)) {
         // task is cancelled hence it has no results to return. That's fine: they would be
         // ignored anyway.
         set(null);
