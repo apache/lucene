@@ -104,7 +104,7 @@ public final class Lucene90HnswGraphBuilder {
    * returned values.
    *
    * @param vectorValues the vectors for which to build a nearest neighbors graph. Must be an
-   *     independet accessor for the vectors
+   *     independent accessor for the vectors
    */
   public Lucene90OnHeapHnswGraph build(FloatVectorValues vectorValues) throws IOException {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
@@ -113,9 +113,9 @@ public final class Lucene90HnswGraphBuilder {
     }
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
-    FloatVectorValues.Floats values = vectorValues.vectors();
+    FloatVectorValues.Floats vectors = vectorValues.vectors();
     for (int node = 1; node < vectorValues.size(); node++) {
-      addGraphNode(values.get(node));
+      addGraphNode(vectors.get(node));
       if (node % 10000 == 0) {
         if (infoStream.isEnabled(HNSW_COMPONENT)) {
           long now = System.nanoTime();
@@ -230,12 +230,12 @@ public final class Lucene90HnswGraphBuilder {
       float[] candidate,
       float score,
       Lucene90NeighborArray neighbors,
-      FloatVectorValues.Floats vectorValues)
+      FloatVectorValues.Floats vectors)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
-          similarityFunction.compare(candidate, vectorValues.get(neighbors.node()[i]));
+          similarityFunction.compare(candidate, vectors.get(neighbors.node()[i]));
       if (bound.check(neighborSimilarity) == false) {
         return false;
       }
