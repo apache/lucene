@@ -885,7 +885,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       @Override
       public Floats vectors() {
         return new Floats() {
-          int lastSubIndex = -1;
+          int lastSubIndex = 0;
           Floats subValues;
 
           @Override
