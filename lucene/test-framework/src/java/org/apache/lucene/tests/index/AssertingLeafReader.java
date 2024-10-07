@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.RandomAccess;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipIndexType;
@@ -700,7 +701,10 @@ public class AssertingLeafReader extends FilterLeafReader {
     public List<Impact> getImpacts(int level) {
       assert validFor == Math.max(impactsEnum.docID(), impactsEnum.lastShallowTarget)
           : "Cannot reuse impacts after advancing the iterator";
-      return in.getImpacts(level);
+      List<Impact> impacts = in.getImpacts(level);
+      assert impacts.size() <= 1 || impacts instanceof RandomAccess
+          : "impact lists longer than 1 should implement RandomAccess but saw impacts = " + impacts;
+      return impacts;
     }
   }
 
