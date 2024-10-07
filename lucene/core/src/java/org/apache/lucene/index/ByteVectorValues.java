@@ -42,6 +42,7 @@ public abstract class ByteVectorValues extends KnnVectorValues {
      */
     public abstract byte[] get(int ord) throws IOException;
 
+    /** A Bytes containing no vectors. Throws UnsupportedOperationException if get() is called. */
     public static final Bytes EMPTY =
         new Bytes() {
           @Override

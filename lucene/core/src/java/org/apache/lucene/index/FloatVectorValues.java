@@ -41,6 +41,15 @@ public abstract class FloatVectorValues extends KnnVectorValues {
      * @return the vector value
      */
     public abstract float[] get(int ord) throws IOException;
+
+    /** A Floats containing no vectors. Throws UnsupportedOperationException if get() is called. */
+    public static final Floats EMPTY =
+        new Floats() {
+          @Override
+          public float[] get(int ord) {
+            throw new UnsupportedOperationException();
+          }
+        };
   }
 
   /** Returns a random access (lookup by ord) provider of the vector values */

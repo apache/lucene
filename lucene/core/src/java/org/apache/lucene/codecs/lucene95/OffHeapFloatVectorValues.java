@@ -277,12 +277,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
 
     @Override
     public Floats vectors() {
-      return new Floats() {
-        @Override
-        public float[] get(int ord) {
-          throw new UnsupportedOperationException();
-        }
-      };
+      return Floats.EMPTY;
     }
 
     @Override

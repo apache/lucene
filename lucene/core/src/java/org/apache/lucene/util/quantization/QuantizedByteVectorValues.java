@@ -62,6 +62,10 @@ public abstract class QuantizedByteVectorValues extends ByteVectorValues {
       return null;
     }
 
+    /**
+     * A QuantizedBytes containing no vectors. Throws UnsupportedOperationException if its methods
+     * is called.
+     */
     public static final QuantizedBytes EMPTY =
         new QuantizedBytes() {
           @Override
