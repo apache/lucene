@@ -459,12 +459,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       if (size == 0) {
         return null;
       }
-      Floats values = vectors();
+      Floats vectors = vectors();
       DocIndexIterator iterator = iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return similarityFunction.compare(values.get(iterator.index()), target);
+          return similarityFunction.compare(vectors.get(iterator.index()), target);
         }
 
         @Override

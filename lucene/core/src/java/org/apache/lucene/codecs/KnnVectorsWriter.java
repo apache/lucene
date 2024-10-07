@@ -61,10 +61,10 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<byte[]>) addField(fieldInfo);
         ByteVectorValues mergedBytes =
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-        ByteVectorValues.Bytes values = mergedBytes.vectors();
+        ByteVectorValues.Bytes vectors = mergedBytes.vectors();
         KnnVectorValues.DocIndexIterator iter = mergedBytes.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-          byteWriter.addValue(doc, values.get(iter.index()));
+          byteWriter.addValue(doc, vectors.get(iter.index()));
         }
       }
       case FLOAT32 -> {
@@ -72,10 +72,10 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
             MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-        FloatVectorValues.Floats values = mergedFloats.vectors();
+        FloatVectorValues.Floats vectors = mergedFloats.vectors();
         KnnVectorValues.DocIndexIterator iter = mergedFloats.iterator();
         for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-          floatWriter.addValue(doc, values.get(iter.index()));
+          floatWriter.addValue(doc, vectors.get(iter.index()));
         }
       }
     }

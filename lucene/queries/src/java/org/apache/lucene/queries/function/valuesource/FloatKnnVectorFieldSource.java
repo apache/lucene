@@ -64,12 +64,12 @@ public class FloatKnnVectorFieldSource extends ValueSource {
 
     return new VectorFieldFunction(this) {
       KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-      FloatVectorValues.Floats values = vectorValues.vectors();
+      FloatVectorValues.Floats vectors = vectorValues.vectors();
 
       @Override
       public float[] floatVectorVal(int doc) throws IOException {
         if (exists(doc)) {
-          return values.get(iterator.index());
+          return vectors.get(iterator.index());
         } else {
           return null;
         }

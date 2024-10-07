@@ -87,12 +87,12 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
               scalarQuantizer.getConstantMultiplier(),
               scalarQuantizer.getBits());
       return new RandomVectorScorer.AbstractRandomVectorScorer(quantizedByteVectorValues) {
-        QuantizedByteVectorValues.QuantizedBytes values = quantizedByteVectorValues.vectors();
+        QuantizedByteVectorValues.QuantizedBytes vectors = quantizedByteVectorValues.vectors();
 
         @Override
         public float score(int node) throws IOException {
-          byte[] nodeVector = values.get(node);
-          float nodeOffset = values.getScoreCorrectionConstant(node);
+          byte[] nodeVector = vectors.get(node);
+          float nodeOffset = vectors.getScoreCorrectionConstant(node);
           return scalarQuantizedVectorSimilarity.score(
               targetBytes, offsetCorrection, nodeVector, nodeOffset);
         }

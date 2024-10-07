@@ -363,10 +363,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     KnnVectorValues.DocIndexIterator iter = byteVectorValues.iterator();
-    ByteVectorValues.Bytes values = byteVectorValues.vectors();
+    ByteVectorValues.Bytes vectors = byteVectorValues.vectors();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = values.get(iter.index());
+      byte[] binaryValue = vectors.get(iter.index());
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);

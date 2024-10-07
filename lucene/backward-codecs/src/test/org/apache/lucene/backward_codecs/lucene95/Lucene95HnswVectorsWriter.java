@@ -656,10 +656,10 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
     KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
-    FloatVectorValues.Floats values = floatVectorValues.vectors();
+    FloatVectorValues.Floats vectors = floatVectorValues.vectors();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      buffer.asFloatBuffer().put(values.get(iter.index()));
+      buffer.asFloatBuffer().put(vectors.get(iter.index()));
       output.writeBytes(buffer.array(), buffer.limit());
       docsWithField.add(docV);
     }

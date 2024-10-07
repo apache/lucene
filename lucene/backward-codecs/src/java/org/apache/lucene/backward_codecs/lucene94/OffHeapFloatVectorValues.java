@@ -208,11 +208,11 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       IndexedDISI disi = createDISI();
-      Floats values = vectors();
+      Floats vectors = vectors();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorSimilarityFunction.compare(values.get(disi.index()), query);
+          return vectorSimilarityFunction.compare(vectors.get(disi.index()), query);
         }
 
         @Override

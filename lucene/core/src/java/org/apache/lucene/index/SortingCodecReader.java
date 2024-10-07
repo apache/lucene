@@ -359,11 +359,11 @@ public final class SortingCodecReader extends FilterCodecReader {
     @Override
     public Bytes vectors() throws IOException {
       return new Bytes() {
-        Bytes values = delegate.vectors();
+        Bytes vectors = delegate.vectors();
 
         @Override
         public byte[] get(int ord) throws IOException {
-          return values.get(ord);
+          return vectors.get(ord);
         }
       };
     }

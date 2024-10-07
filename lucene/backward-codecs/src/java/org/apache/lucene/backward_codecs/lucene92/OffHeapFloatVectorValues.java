@@ -118,12 +118,12 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      FloatVectorValues.Floats values = vectors();
+      FloatVectorValues.Floats vectors = vectors();
       DocIndexIterator iterator = iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorSimilarityFunction.compare(values.get(iterator.index()), query);
+          return vectorSimilarityFunction.compare(vectors.get(iterator.index()), query);
         }
 
         @Override
@@ -194,12 +194,12 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      FloatVectorValues.Floats values = vectors();
+      FloatVectorValues.Floats vectors = vectors();
       IndexedDISI disi = createDISI();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorSimilarityFunction.compare(values.get(disi.index()), query);
+          return vectorSimilarityFunction.compare(vectors.get(disi.index()), query);
         }
 
         @Override
