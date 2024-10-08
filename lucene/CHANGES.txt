@@ -45,12 +45,17 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
 
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
   when they were not sorted by startOffset. (Seunghan Jung)
+
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.8.  (Uwe Schindler)
 
 Other
 ---------------------
