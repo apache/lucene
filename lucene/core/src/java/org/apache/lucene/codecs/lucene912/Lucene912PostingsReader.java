@@ -1498,12 +1498,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             level--;
           }
 
-          if (level1LastDocID != NO_MORE_DOCS) {
-            if (level == 0) {
-              return level1LastDocID;
-            }
+          if (level1LastDocID != NO_MORE_DOCS && level == 0) {
+            return level1LastDocID;
           }
-
           return NO_MORE_DOCS;
         }
 
@@ -1518,12 +1515,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             level--;
           }
 
-          if (level1LastDocID != NO_MORE_DOCS) {
-            if (level == 0) {
-              scratch.reset(level1SerializedImpacts.bytes, 0, level1SerializedImpacts.length);
-              readImpacts(scratch, level1Impacts);
-              return level1Impacts;
-            }
+          if (level1LastDocID != NO_MORE_DOCS && level == 0) {
+            scratch.reset(level1SerializedImpacts.bytes, 0, level1SerializedImpacts.length);
+            readImpacts(scratch, level1Impacts);
+            return level1Impacts;
           }
 
           return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
@@ -1834,10 +1829,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             level--;
           }
 
-          if (level1LastDocID != NO_MORE_DOCS) {
-            if (level == 0) {
-              return level1LastDocID;
-            }
+          if (level1LastDocID != NO_MORE_DOCS && level == 0) {
+            return level1LastDocID;
           }
 
           return NO_MORE_DOCS;
@@ -1854,12 +1847,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             level--;
           }
 
-          if (level1LastDocID != NO_MORE_DOCS) {
-            if (level == 0) {
-              scratch.reset(level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
-              readImpacts(scratch, level1Impacts);
-              return level1Impacts;
-            }
+          if (level1LastDocID != NO_MORE_DOCS && level == 0) {
+            scratch.reset(level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
+            readImpacts(scratch, level1Impacts);
+            return level1Impacts;
           }
 
           return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
