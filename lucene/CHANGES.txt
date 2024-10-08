@@ -19,7 +19,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
 
 Bug Fixes
 ---------------------
