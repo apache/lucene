@@ -20,8 +20,8 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.GroupVIntUtil;
-import org.apache.lucene.util.UnicodeUtil;
 
 /**
  * Abstract base class for performing write operations of Lucene's low-level data types.
@@ -269,10 +269,9 @@ public abstract class DataOutput {
    * @see DataInput#readString()
    */
   public void writeString(String s) throws IOException {
-    final byte[] utf8Result = new byte[UnicodeUtil.calcUTF16toUTF8Length(s, 0, s.length())];
-    UnicodeUtil.UTF16toUTF8(s, 0, s.length(), utf8Result);
+    final BytesRef utf8Result = new BytesRef(s);
     writeVInt(utf8Result.length);
-    writeBytes(utf8Result, 0, utf8Result.length);
+    writeBytes(utf8Result.bytes, utf8Result.offset, utf8Result.length);
   }
 
   private static int COPY_BUFFER_SIZE = 16384;
