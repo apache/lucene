@@ -57,7 +57,6 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
     super(version, pattern);
   }
 
-  /** Provides all sorted versions to the test-framework */
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     return allVersion(INDEX_NAME, SUFFIX);
@@ -108,7 +107,6 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
         assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
       }
     }
-    // This will confirm the docs are really sorted
     TestUtil.checkIndex(directory);
   }
 
@@ -117,7 +115,7 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setMaxBufferedDocs(10)
-            .setCodec(TestUtil.getDefaultCodec())
+            .setCodec(getCodec())
             .setMergePolicy(NoMergePolicy.INSTANCE);
     try (IndexWriter writer = new IndexWriter(dir, conf)) {
       for (int i = 0; i < DOC_COUNT; i++) {

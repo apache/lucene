@@ -106,7 +106,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
    * This is a base constructor for parameterized BWC tests. The constructor arguments are provided
    * by {@link com.carrotsearch.randomizedtesting.RandomizedRunner} during test execution. A {@link
    * com.carrotsearch.randomizedtesting.annotations.ParametersFactory} specified in a subclass
-   * provides a list lists of arguments for the tests and RandomizedRunner will execute the test for
+   * provides a list of arguments for the tests and RandomizedRunner will execute the test for
    * each of the argument list.
    *
    * @param version the version this test should run for
