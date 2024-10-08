@@ -45,7 +45,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
 
 Bug Fixes
 ---------------------
@@ -264,8 +264,6 @@ Optimizations
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
 * GITHUB#13672: Leverage doc value skip lists in DocValuesRewriteMethod if indexed. (Greg Miller)
-
-* GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
 
 Bug Fixes
 ---------------------
