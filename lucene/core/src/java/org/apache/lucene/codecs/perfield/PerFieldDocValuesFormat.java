@@ -254,7 +254,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
   }
 
-  private class FieldsReader extends DocValuesProducer {
+  private static class FieldsReader extends DocValuesProducer {
 
     private final Map<String, DocValuesProducer> fields = new HashMap<>();
     private final Map<String, DocValuesProducer> formats = new HashMap<>();
