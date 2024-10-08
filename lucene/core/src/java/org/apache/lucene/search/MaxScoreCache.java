@@ -71,7 +71,9 @@ public final class MaxScoreCache {
 
   private float computeMaxScore(List<Impact> impacts) {
     float maxScore = 0;
-    for (Impact impact : impacts) {
+    var scorer = this.scorer;
+    for (int i = 0, length = impacts.size(); i < length; i++) {
+      Impact impact = impacts.get(i);
       maxScore = Math.max(scorer.score(impact.freq, impact.norm), maxScore);
     }
     return maxScore;
