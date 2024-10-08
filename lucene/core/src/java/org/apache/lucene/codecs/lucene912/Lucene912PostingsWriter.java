@@ -342,7 +342,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   }
 
   @Override
-  public void finishDoc() throws IOException {
+  public void finishDoc() {
     docBufferUpto++;
     docCount++;
 
@@ -443,7 +443,6 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
 
   private void writeLevel1SkipData() throws IOException {
     docOut.writeVInt(docID - level1LastDocID);
-    long numImpactBytes = scratchOutput.size();
     final long level1End;
     if (writeFreqs) {
       List<Impact> impacts = level1CompetitiveFreqNormAccumulator.getCompetitiveFreqNormPairs();
@@ -451,7 +450,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         maxNumImpactsAtLevel1 = impacts.size();
       }
       writeImpacts(impacts, scratchOutput);
-      numImpactBytes = scratchOutput.size();
+      long numImpactBytes = scratchOutput.size();
       if (numImpactBytes > maxImpactNumBytesAtLevel1) {
         maxImpactNumBytesAtLevel1 = Math.toIntExact(numImpactBytes);
       }
