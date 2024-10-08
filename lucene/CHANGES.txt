@@ -9,6 +9,9 @@ API Changes
 ---------------------
 * GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
 
+* GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
+
+
 New Features
 ---------------------
 (No changes)
