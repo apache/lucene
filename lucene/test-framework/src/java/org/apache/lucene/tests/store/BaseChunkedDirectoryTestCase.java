@@ -33,6 +33,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Base class for Directories that "chunk" the input into blocks.
@@ -77,7 +78,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          two.readGroupVInts(values, values.length);
+          GroupVIntUtil.readGroupVInts(two, values, values.length);
         });
     assertEquals(5, three.readVInt());
     one.close();
@@ -105,7 +106,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          one.readGroupVInts(values, values.length);
+          GroupVIntUtil.readGroupVInts(one, values, values.length);
         });
     assertEquals(2, two.readInt());
     // reopen a new slice "another":

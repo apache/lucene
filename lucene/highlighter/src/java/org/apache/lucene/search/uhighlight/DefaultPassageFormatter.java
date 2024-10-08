@@ -64,7 +64,7 @@ public class DefaultPassageFormatter extends PassageFormatter {
     int pos = 0;
     for (Passage passage : passages) {
       // don't add ellipsis if its the first one, or if its connected.
-      if (passage.getStartOffset() > pos && pos > 0) {
+      if (!sb.isEmpty() && passage.getStartOffset() != pos) {
         sb.append(ellipsis);
       }
       pos = passage.getStartOffset();

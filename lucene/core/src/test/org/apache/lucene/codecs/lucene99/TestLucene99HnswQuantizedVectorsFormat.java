@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static java.lang.String.format;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -29,7 +28,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene912.Lucene912Codec;
+import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -75,7 +74,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
 
   @Override
   protected Codec getCodec() {
-    return new Lucene912Codec() {
+    return new Lucene100Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return format;
@@ -107,7 +106,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
               dir,
               newIndexWriterConfig()
                   .setCodec(
-                      new Lucene912Codec() {
+                      new Lucene100Codec() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                           return getKnnFormat(4);
@@ -127,7 +126,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
               dir,
               newIndexWriterConfig()
                   .setCodec(
-                      new Lucene912Codec() {
+                      new Lucene100Codec() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                           return getKnnFormat(7);
@@ -164,7 +163,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
               dir,
               newIndexWriterConfig()
                   .setCodec(
-                      new Lucene912Codec() {
+                      new Lucene100Codec() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                           return new Lucene99HnswVectorsFormat();
@@ -184,7 +183,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
               dir,
               newIndexWriterConfig()
                   .setCodec(
-                      new Lucene912Codec() {
+                      new Lucene100Codec() {
                         @Override
                         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                           return getKnnFormat(7);
@@ -217,7 +216,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 dir,
                 newIndexWriterConfig()
                     .setCodec(
-                        new Lucene912Codec() {
+                        new Lucene100Codec() {
                           @Override
                           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                             return new Lucene99HnswScalarQuantizedVectorsFormat(
@@ -312,14 +311,13 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
             assertNotNull(hnswReader.getQuantizationState("f"));
             QuantizedByteVectorValues quantizedByteVectorValues =
                 hnswReader.getQuantizedVectorValues("f");
-            int docId = -1;
-            while ((docId = quantizedByteVectorValues.nextDoc()) != NO_MORE_DOCS) {
-              byte[] vector = quantizedByteVectorValues.vectorValue();
-              float offset = quantizedByteVectorValues.getScoreCorrectionConstant();
+            for (int ord = 0; ord < quantizedByteVectorValues.size(); ord++) {
+              byte[] vector = quantizedByteVectorValues.vectorValue(ord);
+              float offset = quantizedByteVectorValues.getScoreCorrectionConstant(ord);
               for (int i = 0; i < dim; i++) {
-                assertEquals(vector[i], expectedVectors[docId][i]);
+                assertEquals(vector[i], expectedVectors[ord][i]);
               }
-              assertEquals(offset, expectedCorrections[docId], 0.00001f);
+              assertEquals(offset, expectedCorrections[ord], 0.00001f);
             }
           } else {
             fail("reader is not Lucene99HnswVectorsReader");

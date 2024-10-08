@@ -272,14 +272,27 @@ public class TestScalarQuantizer extends LuceneTestCase {
   static class TestSimpleFloatVectorValues extends FloatVectorValues {
     protected final float[][] floats;
     protected final Set<Integer> deletedVectors;
+    protected final int[] ordToDoc;
     protected final int numLiveVectors;
-    protected int curDoc = -1;
 
     TestSimpleFloatVectorValues(float[][] values, Set<Integer> deletedVectors) {
       this.floats = values;
       this.deletedVectors = deletedVectors;
-      this.numLiveVectors =
+      numLiveVectors =
           deletedVectors == null ? values.length : values.length - deletedVectors.size();
+      ordToDoc = new int[numLiveVectors];
+      if (deletedVectors == null) {
+        for (int i = 0; i < numLiveVectors; i++) {
+          ordToDoc[i] = i;
+        }
+      } else {
+        int ord = 0;
+        for (int doc = 0; doc < values.length; doc++) {
+          if (!deletedVectors.contains(doc)) {
+            ordToDoc[ord++] = doc;
+          }
+        }
+      }
     }
 
     @Override
@@ -293,40 +306,64 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      if (curDoc == -1 || curDoc >= floats.length) {
-        throw new IOException("Current doc not set or too many iterations");
-      }
-      return floats[curDoc];
+    public float[] vectorValue(int ord) throws IOException {
+      return floats[ordToDoc(ord)];
     }
 
     @Override
-    public int docID() {
-      if (curDoc >= floats.length) {
-        return NO_MORE_DOCS;
-      }
-      return curDoc;
+    public int ordToDoc(int ord) {
+      return ordToDoc[ord];
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      while (++curDoc < floats.length) {
-        if (deletedVectors == null || !deletedVectors.contains(curDoc)) {
-          return curDoc;
+    public DocIndexIterator iterator() {
+      return new DocIndexIterator() {
+
+        int ord = -1;
+        int doc = -1;
+
+        @Override
+        public int docID() {
+          return doc;
         }
-      }
-      return docID();
-    }
 
-    @Override
-    public int advance(int target) throws IOException {
-      curDoc = target - 1;
-      return nextDoc();
+        @Override
+        public int nextDoc() throws IOException {
+          while (doc < floats.length - 1) {
+            ++doc;
+            if (deletedVectors == null || !deletedVectors.contains(doc)) {
+              ++ord;
+              return doc;
+            }
+          }
+          return doc = NO_MORE_DOCS;
+        }
+
+        @Override
+        public int index() {
+          return ord;
+        }
+
+        @Override
+        public long cost() {
+          return floats.length - deletedVectors.size();
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          throw new UnsupportedOperationException();
+        }
+      };
     }
 
     @Override
     public VectorScorer scorer(float[] target) {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public TestSimpleFloatVectorValues copy() {
+      return this;
     }
   }
 }

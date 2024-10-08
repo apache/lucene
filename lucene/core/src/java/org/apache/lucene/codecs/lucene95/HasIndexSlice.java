@@ -14,23 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.quantization;
+package org.apache.lucene.codecs.lucene95;
 
-import java.io.IOException;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.store.IndexInput;
 
 /**
- * Random access values for <code>byte[]</code>, but also includes accessing the score correction
- * constant for the current vector in the buffer.
- *
- * @lucene.experimental
+ * Implementors can return the IndexInput from which their values are read. For use by vector
+ * quantizers.
  */
-public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues.Bytes {
+public interface HasIndexSlice {
 
-  ScalarQuantizer getScalarQuantizer();
-
-  float getScoreCorrectionConstant(int vectorOrd) throws IOException;
-
-  @Override
-  RandomAccessQuantizedByteVectorValues copy() throws IOException;
+  /** Returns an IndexInput from which to read this instance's values. */
+  IndexInput getSlice();
 }

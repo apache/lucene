@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -32,10 +33,11 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -206,121 +208,175 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
-  private static class SortingFloatVectorValues extends FloatVectorValues {
-    final int size;
-    final int dimension;
-    final FixedBitSet docsWithField;
-    final float[][] vectors;
+  /**
+   * Factory for SortingValuesIterator. This enables us to create new iterators as needed without
+   * recomputing the sorting mappings.
+   */
+  static class SortingIteratorSupplier implements Supplier<SortingValuesIterator> {
+    private final FixedBitSet docBits;
+    private final int[] docToOrd;
+    private final int size;
 
-    private int docId = -1;
+    SortingIteratorSupplier(FixedBitSet docBits, int[] docToOrd, int size) {
+      this.docBits = docBits;
+      this.docToOrd = docToOrd;
+      this.size = size;
+    }
 
-    SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.size = delegate.size();
-      this.dimension = delegate.dimension();
-      docsWithField = new FixedBitSet(sortMap.size());
-      vectors = new float[sortMap.size()][];
-      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
-        int newDocID = sortMap.oldToNew(doc);
-        docsWithField.set(newDocID);
-        vectors[newDocID] = delegate.vectorValue().clone();
+    @Override
+    public SortingValuesIterator get() {
+      return new SortingValuesIterator(docBits, docToOrd, size);
+    }
+
+    public int size() {
+      return size;
+    }
+  }
+
+  /**
+   * Creates a factory for SortingValuesIterator. Does the work of computing the (new docId to old
+   * ordinal) mapping, and caches the result, enabling it to create new iterators cheaply.
+   *
+   * @param values the values over which to iterate
+   * @param docMap the mapping from "old" docIds to "new" (sorted) docIds.
+   */
+  public static SortingIteratorSupplier iteratorSupplier(
+      KnnVectorValues values, Sorter.DocMap docMap) throws IOException {
+
+    final int[] docToOrd = new int[docMap.size()];
+    final FixedBitSet docBits = new FixedBitSet(docMap.size());
+    int count = 0;
+    // Note: docToOrd will contain zero for docids that have no vector. This is OK though
+    // because the iterator cannot be positioned on such docs
+    KnnVectorValues.DocIndexIterator iter = values.iterator();
+    for (int doc = iter.nextDoc(); doc != NO_MORE_DOCS; doc = iter.nextDoc()) {
+      int newDocId = docMap.oldToNew(doc);
+      if (newDocId != -1) {
+        docToOrd[newDocId] = iter.index();
+        docBits.set(newDocId);
+        ++count;
       }
+    }
+    return new SortingIteratorSupplier(docBits, docToOrd, count);
+  }
+
+  /**
+   * Iterator over KnnVectorValues accepting a mapping to differently-sorted docs. Consequently
+   * index() may skip around, not increasing monotonically as iteration proceeds.
+   */
+  public static class SortingValuesIterator extends KnnVectorValues.DocIndexIterator {
+    private final FixedBitSet docBits;
+    private final DocIdSetIterator docsWithValues;
+    private final int[] docToOrd;
+
+    int doc = -1;
+
+    SortingValuesIterator(FixedBitSet docBits, int[] docToOrd, int size) {
+      this.docBits = docBits;
+      this.docToOrd = docToOrd;
+      docsWithValues = new BitSetIterator(docBits, size);
     }
 
     @Override
     public int docID() {
-      return docId;
+      return doc;
+    }
+
+    @Override
+    public int index() {
+      assert docBits.get(doc);
+      return docToOrd[doc];
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return advance(docId + 1);
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      return vectors[docId];
-    }
-
-    @Override
-    public int dimension() {
-      return dimension;
-    }
-
-    @Override
-    public int size() {
-      return size;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= docsWithField.length()) {
-        return NO_MORE_DOCS;
+      if (doc != NO_MORE_DOCS) {
+        doc = docsWithValues.nextDoc();
       }
-      return docId = docsWithField.nextSetBit(target);
+      return doc;
     }
 
     @Override
-    public VectorScorer scorer(float[] target) {
+    public long cost() {
+      return docBits.cardinality();
+    }
+
+    @Override
+    public int advance(int target) {
       throw new UnsupportedOperationException();
     }
   }
 
-  private static class SortingByteVectorValues extends ByteVectorValues {
-    final int size;
-    final int dimension;
-    final FixedBitSet docsWithField;
-    final byte[][] vectors;
+  /** Sorting FloatVectorValues that maps ordinals using the provided sortMap */
+  private static class SortingFloatVectorValues extends FloatVectorValues {
+    final FloatVectorValues delegate;
+    final SortingIteratorSupplier iteratorSupplier;
 
-    private int docId = -1;
-
-    SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.size = delegate.size();
-      this.dimension = delegate.dimension();
-      docsWithField = new FixedBitSet(sortMap.size());
-      vectors = new byte[sortMap.size()][];
-      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
-        int newDocID = sortMap.oldToNew(doc);
-        docsWithField.set(newDocID);
-        vectors[newDocID] = delegate.vectorValue().clone();
-      }
+    SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+      this.delegate = delegate;
+      // SortingValuesIterator consumes the iterator and records the docs and ord mapping
+      iteratorSupplier = iteratorSupplier(delegate, sortMap);
     }
 
     @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
-    }
-
-    @Override
-    public byte[] vectorValue() throws IOException {
-      return vectors[docId];
+    public float[] vectorValue(int ord) throws IOException {
+      // ords are interpreted in the delegate's ord-space.
+      return delegate.vectorValue(ord);
     }
 
     @Override
     public int dimension() {
-      return dimension;
+      return delegate.dimension();
     }
 
     @Override
     public int size() {
-      return size;
+      return iteratorSupplier.size();
     }
 
     @Override
-    public int advance(int target) throws IOException {
-      if (target >= docsWithField.length()) {
-        return NO_MORE_DOCS;
-      }
-      return docId = docsWithField.nextSetBit(target);
+    public FloatVectorValues copy() {
+      throw new UnsupportedOperationException();
     }
 
     @Override
-    public VectorScorer scorer(byte[] target) {
+    public DocIndexIterator iterator() {
+      return iteratorSupplier.get();
+    }
+  }
+
+  private static class SortingByteVectorValues extends ByteVectorValues {
+    final ByteVectorValues delegate;
+    final SortingIteratorSupplier iteratorSupplier;
+
+    SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+      this.delegate = delegate;
+      // SortingValuesIterator consumes the iterator and records the docs and ord mapping
+      iteratorSupplier = iteratorSupplier(delegate, sortMap);
+    }
+
+    @Override
+    public byte[] vectorValue(int ord) throws IOException {
+      return delegate.vectorValue(ord);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return iteratorSupplier.get();
+    }
+
+    @Override
+    public int dimension() {
+      return delegate.dimension();
+    }
+
+    @Override
+    public int size() {
+      return iteratorSupplier.size();
+    }
+
+    @Override
+    public ByteVectorValues copy() {
       throw new UnsupportedOperationException();
     }
   }
