@@ -1498,7 +1498,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             level--;
           }
 
-          if (level1LastDocID != NO_MORE_DOCS && level == 0) {
+          if (level == 0) {
             return level1LastDocID;
           }
           return NO_MORE_DOCS;
