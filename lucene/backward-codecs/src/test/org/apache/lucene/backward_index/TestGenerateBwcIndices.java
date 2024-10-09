@@ -39,7 +39,7 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
   // To generate backcompat indexes with the current default codec, run the following gradle
   // command:
   //  gradlew test -Ptests.bwcdir=/path/to/store/indexes -Ptests.codec=default
-  //               -Ptests.useSecurityManager=false --tests TestGenerateBwcIndices
+  //               -Ptests.useSecurityManager=false --tests TestGenerateBwcIndices --max-workers=1
   //
   // Also add testmethod with one of the index creation methods below, for example:
   //    -Ptestmethod=testCreateCFS
@@ -80,6 +80,16 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
                 TestIndexSortBackwardsCompatibility.INDEX_NAME,
                 TestIndexSortBackwardsCompatibility.SUFFIX));
     sortedTest.createBWCIndex();
+  }
+
+  public void testCreateInt7HNSWIndices() throws IOException {
+    TestInt7HnswBackwardsCompatibility int7HnswBackwardsCompatibility =
+        new TestInt7HnswBackwardsCompatibility(
+            Version.LATEST,
+            createPattern(
+                TestInt7HnswBackwardsCompatibility.INDEX_NAME,
+                TestInt7HnswBackwardsCompatibility.SUFFIX));
+    int7HnswBackwardsCompatibility.createBWCIndex();
   }
 
   private boolean isInitialMajorVersionRelease() {

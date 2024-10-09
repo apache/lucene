@@ -511,7 +511,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     }
   }
 
-  private static ScoreDoc[] assertKNNSearch(
+  static ScoreDoc[] assertKNNSearch(
       IndexSearcher searcher,
       float[] queryVector,
       int k,
