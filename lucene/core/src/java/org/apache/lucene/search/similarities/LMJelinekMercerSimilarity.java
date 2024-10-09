@@ -43,7 +43,13 @@ public class LMJelinekMercerSimilarity extends LMSimilarity {
 
   /** Instantiates with the specified collectionModel and &lambda; parameter. */
   public LMJelinekMercerSimilarity(CollectionModel collectionModel, float lambda) {
-    super(collectionModel);
+    this(collectionModel, true, lambda);
+  }
+
+  /** Instantiates with the specified collectionModel and parameters. */
+  public LMJelinekMercerSimilarity(
+      CollectionModel collectionModel, boolean discountOverlaps, float lambda) {
+    super(collectionModel, discountOverlaps);
     if (Float.isNaN(lambda) || lambda <= 0 || lambda > 1) {
       throw new IllegalArgumentException("lambda must be in the range (0 .. 1]");
     }

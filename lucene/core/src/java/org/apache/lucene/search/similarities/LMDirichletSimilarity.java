@@ -39,7 +39,13 @@ public class LMDirichletSimilarity extends LMSimilarity {
 
   /** Instantiates the similarity with the provided &mu; parameter. */
   public LMDirichletSimilarity(CollectionModel collectionModel, float mu) {
-    super(collectionModel);
+    this(collectionModel, true, mu);
+  }
+
+  /** Instantiates the similarity with the provided parameters. */
+  public LMDirichletSimilarity(
+      CollectionModel collectionModel, boolean discountOverlaps, float mu) {
+    super(collectionModel, discountOverlaps);
     if (Float.isFinite(mu) == false || mu < 0) {
       throw new IllegalArgumentException(
           "illegal mu value: " + mu + ", must be a non-negative finite value");

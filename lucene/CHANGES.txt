@@ -127,6 +127,8 @@ API Changes
   unifies Byte/FloatVectorValues incorporating RandomAccess* API and introduces
   DocIndexIterator for iterative access in place of direct inheritance from DISI. (Michael Sokolov)
 
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
 New Features
 ---------------------
 
@@ -322,6 +324,9 @@ API Changes
 
 * GITHUB#13568, GITHUB#13750: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
+
+* GITHUB#13757: For similarities, provide default computeNorm implementation and remove remaining discountOverlaps setters.
+  (Christine Poerschke, Adrien Grand, Robert Muir)
 
 New Features
 ---------------------
