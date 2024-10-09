@@ -23,17 +23,22 @@ import java.io.IOException;
 import org.apache.lucene.backward_codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
@@ -41,6 +46,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
@@ -143,6 +149,31 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
       IndexSearcher searcher = new IndexSearcher(reader);
       assertKNNSearch(searcher, KNN_VECTOR, 1000, DOC_COUNT, "0");
       assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
+    }
+  }
+
+  // #13880: make sure the BWC index really contains quantized HNSW not float32
+  public void testIndexIsReallyQuantized() throws Exception {
+    try (DirectoryReader reader = DirectoryReader.open(directory)) {
+      for (LeafReaderContext leafContext : reader.leaves()) {
+        KnnVectorsReader knnVectorsReader = ((CodecReader) leafContext.reader()).getVectorReader();
+        assertTrue(
+            "expected PerFieldKnnVectorsFormat.FieldsReader but got: " + knnVectorsReader,
+            knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader);
+
+        KnnVectorsReader forField =
+            ((PerFieldKnnVectorsFormat.FieldsReader) knnVectorsReader)
+                .getFieldReader(KNN_VECTOR_FIELD);
+
+        assertTrue(forField instanceof Lucene99HnswVectorsReader);
+
+        QuantizedByteVectorValues quantized =
+            ((Lucene99HnswVectorsReader) forField).getQuantizedVectorValues(KNN_VECTOR_FIELD);
+
+        assertNotNull(
+            "KnnVectorsReader should have quantized interface for field " + KNN_VECTOR_FIELD,
+            quantized);
+      }
     }
   }
 }
