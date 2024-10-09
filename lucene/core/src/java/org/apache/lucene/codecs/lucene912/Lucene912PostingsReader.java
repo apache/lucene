@@ -67,6 +67,12 @@ import org.apache.lucene.util.IOUtils;
 public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
+  // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
+  // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
+  // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
+  // less than 128 docs left to evaluate anyway.
+  private static final List<Impact> DUMMY_IMPACTS =
+      Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -1520,7 +1526,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               return level1Impacts;
             }
 
-            return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+            return DUMMY_IMPACTS;
           }
         };
 
@@ -1855,7 +1861,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               return level1Impacts;
             }
 
-            return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+            return DUMMY_IMPACTS;
           }
         };
 
