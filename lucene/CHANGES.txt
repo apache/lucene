@@ -3,7 +3,19 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================== Lucene 9.12.1 =======================
+
+Bug Fixes
+---------------------
+(No changes)
+
 ======================== Lucene 9.12.0 =======================
+
+Security Fixes
+---------------------
+
+* Deserialization of Untrusted Data vulnerability in Apache Lucene Replicator - CVE-2024-45772
+ (Summ3r from Vidar-Team, Robert Muir, Paul Irwin)
 
 API Changes
 ---------------------
@@ -209,6 +221,8 @@ Other
 
 * GITHUB#13720: Add float comparison based on unit of least precision and use it to stop test failures caused by float
   summation not being associative in IEEE 754. (Alex Herbert, Stefan Vodita)
+
+* Remove code triggering forbidden-apis regarding Java serialization. (Uwe Schindler, Robert Muir)
 
 ======================== Lucene 9.11.1 =======================
 
