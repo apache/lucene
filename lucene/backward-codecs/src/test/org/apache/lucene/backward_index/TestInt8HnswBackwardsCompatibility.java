@@ -42,18 +42,18 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
 
-public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTestBase {
+public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
-  static final String INDEX_NAME = "int7_hnsw";
+  static final String INDEX_NAME = "int8_hnsw";
   static final String SUFFIX = "";
-  private static final Version FIRST_INT7_HNSW_VERSION = Version.LUCENE_9_10_0;
+  private static final Version FIRST_INT8_HNSW_VERSION = Version.LUCENE_9_10_0;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final int DOC_COUNT = 30;
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
       KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
-  public TestInt7HnswBackwardsCompatibility(Version version, String pattern) {
+  public TestInt8HnswBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
 
@@ -75,7 +75,7 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
 
   @Override
   protected boolean supportsVersion(Version version) {
-    return version.onOrAfter(FIRST_INT7_HNSW_VERSION);
+    return version.onOrAfter(FIRST_INT8_HNSW_VERSION);
   }
 
   @Override
@@ -83,7 +83,7 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
     // We don't use the default codec
   }
 
-  public void testInt7HnswIndexAndSearch() throws Exception {
+  public void testInt8HnswIndexAndSearch() throws Exception {
     IndexWriterConfig indexWriterConfig =
         newIndexWriterConfig(new MockAnalyzer(random()))
             .setOpenMode(IndexWriterConfig.OpenMode.APPEND)

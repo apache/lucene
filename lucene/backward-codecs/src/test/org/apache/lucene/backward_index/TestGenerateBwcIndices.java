@@ -82,14 +82,14 @@ public class TestGenerateBwcIndices extends LuceneTestCase {
     sortedTest.createBWCIndex();
   }
 
-  public void testCreateInt7HNSWIndices() throws IOException {
-    TestInt7HnswBackwardsCompatibility int7HnswBackwardsCompatibility =
-        new TestInt7HnswBackwardsCompatibility(
+  public void testCreateInt8HNSWIndices() throws IOException {
+    TestInt8HnswBackwardsCompatibility int8HnswBackwardsCompatibility =
+        new TestInt8HnswBackwardsCompatibility(
             Version.LATEST,
             createPattern(
-                TestInt7HnswBackwardsCompatibility.INDEX_NAME,
-                TestInt7HnswBackwardsCompatibility.SUFFIX));
-    int7HnswBackwardsCompatibility.createBWCIndex();
+                TestInt8HnswBackwardsCompatibility.INDEX_NAME,
+                TestInt8HnswBackwardsCompatibility.SUFFIX));
+    int8HnswBackwardsCompatibility.createBWCIndex();
   }
 
   private boolean isInitialMajorVersionRelease() {
