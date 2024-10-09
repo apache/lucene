@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -593,8 +591,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     map.put(key1, value1);
     map.put(key2, value2);
     map.put(key3, value2);
-    MatcherAssert.assertThat(
-        toList(map.values()), Matchers.containsInAnyOrder(value1, value2, value2));
+    assertSortedListEquals(toList(map.values()), value1, value2, value2);
   }
 
   private static <T> List<T> toList(Iterable<ObjectCursor<T>> values) {
