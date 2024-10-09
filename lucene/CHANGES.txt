@@ -34,6 +34,9 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
+
+
 New Features
 ---------------------
 (No changes)
