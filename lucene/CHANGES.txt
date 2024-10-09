@@ -223,6 +223,8 @@ Bug Fixes
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
 
+* GITHUB#13498: Avoid performance regression by constructing lazily the PointTree in NumericComparator, (Ignacio Vera)
+
 Changes in Runtime Behavior
 ---------------------
 
