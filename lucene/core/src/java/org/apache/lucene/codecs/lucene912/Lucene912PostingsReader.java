@@ -1221,8 +1221,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
 
-    private final ByteArrayDataInput scratch = new ByteArrayDataInput();
-
     // level 0 skip data
     private int level0LastDocID;
     private long level0DocEndFP;
@@ -1470,60 +1468,65 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       return doc;
     }
 
+    private final Impacts impacts =
+        new Impacts() {
+
+          private final ByteArrayDataInput scratch = new ByteArrayDataInput();
+
+          @Override
+          public int numLevels() {
+            int numLevels = 0;
+            if (level0LastDocID != NO_MORE_DOCS) {
+              numLevels++;
+            }
+            if (level1LastDocID != NO_MORE_DOCS) {
+              numLevels++;
+            }
+            if (numLevels == 0) {
+              numLevels++;
+            }
+            return numLevels;
+          }
+
+          @Override
+          public int getDocIdUpTo(int level) {
+            if (level0LastDocID != NO_MORE_DOCS) {
+              if (level == 0) {
+                return level0LastDocID;
+              }
+              level--;
+            }
+
+            if (level == 0) {
+              return level1LastDocID;
+            }
+            return NO_MORE_DOCS;
+          }
+
+          @Override
+          public List<Impact> getImpacts(int level) {
+            if (level0LastDocID != NO_MORE_DOCS) {
+              if (level == 0) {
+                scratch.reset(level0SerializedImpacts.bytes, 0, level0SerializedImpacts.length);
+                readImpacts(scratch, level0Impacts);
+                return level0Impacts;
+              }
+              level--;
+            }
+
+            if (level1LastDocID != NO_MORE_DOCS && level == 0) {
+              scratch.reset(level1SerializedImpacts.bytes, 0, level1SerializedImpacts.length);
+              readImpacts(scratch, level1Impacts);
+              return level1Impacts;
+            }
+
+            return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+          }
+        };
+
     @Override
     public Impacts getImpacts() {
-      return new Impacts() {
-
-        @Override
-        public int numLevels() {
-          int numLevels = 0;
-          if (level0LastDocID != NO_MORE_DOCS) {
-            numLevels++;
-          }
-          if (level1LastDocID != NO_MORE_DOCS) {
-            numLevels++;
-          }
-          if (numLevels == 0) {
-            numLevels++;
-          }
-          return numLevels;
-        }
-
-        @Override
-        public int getDocIdUpTo(int level) {
-          if (level0LastDocID != NO_MORE_DOCS) {
-            if (level == 0) {
-              return level0LastDocID;
-            }
-            level--;
-          }
-
-          if (level == 0) {
-            return level1LastDocID;
-          }
-          return NO_MORE_DOCS;
-        }
-
-        @Override
-        public List<Impact> getImpacts(int level) {
-          if (level0LastDocID != NO_MORE_DOCS) {
-            if (level == 0) {
-              scratch.reset(level0SerializedImpacts.bytes, 0, level0SerializedImpacts.length);
-              readImpacts(scratch, level0Impacts);
-              return level0Impacts;
-            }
-            level--;
-          }
-
-          if (level1LastDocID != NO_MORE_DOCS && level == 0) {
-            scratch.reset(level1SerializedImpacts.bytes, 0, level1SerializedImpacts.length);
-            readImpacts(scratch, level1Impacts);
-            return level1Impacts;
-          }
-
-          return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
-        }
-      };
+      return impacts;
     }
 
     @Override
@@ -1574,8 +1577,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
-
-    private final ByteArrayDataInput scratch = new ByteArrayDataInput();
 
     // level 0 skip data
     private int level0LastDocID;
@@ -1801,61 +1802,66 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       }
     }
 
+    private final Impacts impacts =
+        new Impacts() {
+
+          private final ByteArrayDataInput scratch = new ByteArrayDataInput();
+
+          @Override
+          public int numLevels() {
+            int numLevels = 0;
+            if (level0LastDocID != NO_MORE_DOCS) {
+              numLevels++;
+            }
+            if (level1LastDocID != NO_MORE_DOCS) {
+              numLevels++;
+            }
+            if (numLevels == 0) {
+              numLevels++;
+            }
+            return numLevels;
+          }
+
+          @Override
+          public int getDocIdUpTo(int level) {
+            if (level0LastDocID != NO_MORE_DOCS) {
+              if (level == 0) {
+                return level0LastDocID;
+              }
+              level--;
+            }
+
+            if (level1LastDocID != NO_MORE_DOCS && level == 0) {
+              return level1LastDocID;
+            }
+
+            return NO_MORE_DOCS;
+          }
+
+          @Override
+          public List<Impact> getImpacts(int level) {
+            if (level0LastDocID != NO_MORE_DOCS) {
+              if (level == 0) {
+                scratch.reset(level0SerializedImpacts.bytes(), 0, level0SerializedImpacts.length());
+                readImpacts(scratch, level0Impacts);
+                return level0Impacts;
+              }
+              level--;
+            }
+
+            if (level1LastDocID != NO_MORE_DOCS && level == 0) {
+              scratch.reset(level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
+              readImpacts(scratch, level1Impacts);
+              return level1Impacts;
+            }
+
+            return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+          }
+        };
+
     @Override
     public Impacts getImpacts() {
-      return new Impacts() {
-
-        @Override
-        public int numLevels() {
-          int numLevels = 0;
-          if (level0LastDocID != NO_MORE_DOCS) {
-            numLevels++;
-          }
-          if (level1LastDocID != NO_MORE_DOCS) {
-            numLevels++;
-          }
-          if (numLevels == 0) {
-            numLevels++;
-          }
-          return numLevels;
-        }
-
-        @Override
-        public int getDocIdUpTo(int level) {
-          if (level0LastDocID != NO_MORE_DOCS) {
-            if (level == 0) {
-              return level0LastDocID;
-            }
-            level--;
-          }
-
-          if (level1LastDocID != NO_MORE_DOCS && level == 0) {
-            return level1LastDocID;
-          }
-
-          return NO_MORE_DOCS;
-        }
-
-        @Override
-        public List<Impact> getImpacts(int level) {
-          if (level0LastDocID != NO_MORE_DOCS) {
-            if (level == 0) {
-              scratch.reset(level0SerializedImpacts.bytes(), 0, level0SerializedImpacts.length());
-              readImpacts(scratch, level0Impacts);
-              return level0Impacts;
-            }
-            level--;
-          }
-
-          if (level1LastDocID != NO_MORE_DOCS && level == 0) {
-            scratch.reset(level1SerializedImpacts.bytes(), 0, level1SerializedImpacts.length());
-            readImpacts(scratch, level1Impacts);
-            return level1Impacts;
-          }
-
-          return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
-        }
-      };
+      return impacts;
     }
 
     @Override
