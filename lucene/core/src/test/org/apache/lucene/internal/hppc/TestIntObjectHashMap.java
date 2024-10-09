@@ -70,7 +70,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
 
   /** Check if the array's content is identical to a given sequence of elements. */
   private static void assertSortedListEquals(List<Object> array, Object... elements) {
-    Assert.assertEquals(array.stream().sorted().toList(), Arrays.asList(elements));
+    Assert.assertEquals(Arrays.asList(elements), array.stream().sorted().toList());
   }
 
   private final int value0 = vcast(0);
