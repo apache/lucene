@@ -115,7 +115,6 @@ dependencies {
 // if the build file is incorrectly written and evaluates something
 // eagerly).
 apply from: file('gradle/conventions.gradle')
-apply from: file('gradle/reproducible-builds.gradle')
 apply from: file('gradle/generation/local-settings.gradle')
 
 // Make sure the build environment is consistent.
