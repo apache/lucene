@@ -19,14 +19,16 @@ package org.apache.lucene.util.fst;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestNodeHash extends LuceneTestCase {
+public class TestFSTSuffixNodeCache extends LuceneTestCase {
 
   public void testCopyFallbackNodeBytes() {
     // we don't need the FSTCompiler in this test
-    NodeHash<Object> nodeHash = new NodeHash<>(null, 1);
+    FSTSuffixNodeCache<Object> suffixCache = new FSTSuffixNodeCache<>(null, 1);
 
-    NodeHash<Object>.PagedGrowableHash primaryHashTable = nodeHash.new PagedGrowableHash();
-    NodeHash<Object>.PagedGrowableHash fallbackHashTable = nodeHash.new PagedGrowableHash();
+    FSTSuffixNodeCache<Object>.PagedGrowableHash primaryHashTable =
+        suffixCache.new PagedGrowableHash();
+    FSTSuffixNodeCache<Object>.PagedGrowableHash fallbackHashTable =
+        suffixCache.new PagedGrowableHash();
     int nodeLength = atLeast(500);
     long fallbackHashSlot = 1;
     byte[] fallbackBytes = RandomBytes.randomBytesOfLength(random(), nodeLength);
