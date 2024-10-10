@@ -40,6 +40,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
   // Index of the first scorer that is required, this scorer and all following scorers are required
   // for a document to match.
   int firstRequiredScorer;
+  // The minimum value of minCompetitiveScore that would produce a more favorable partitioning.
+  float nextMinCompetitiveScore;
   private final long cost;
   float minCompetitiveScore;
   private final Score scorable = new Score();
@@ -114,9 +116,14 @@ final class MaxScoreBulkScorer extends BulkScorer {
       while (top.doc < outerWindowMax) {
         scoreInnerWindow(collector, acceptDocs, outerWindowMax);
         top = essentialQueue.top();
+        if (minCompetitiveScore >= nextMinCompetitiveScore) {
+          // The minimum competitive score increased substantially, so we can now partition scorers
+          // in a more favorable way.
+          break;
+        }
       }
 
-      outerWindowMin = outerWindowMax;
+      outerWindowMin = Math.min(top.doc, outerWindowMax);
     }
 
     return nextCandidate(max);
@@ -337,6 +344,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         });
     double maxScoreSum = 0;
     firstEssentialScorer = 0;
+    nextMinCompetitiveScore = Float.POSITIVE_INFINITY;
     for (int i = 0; i < allScorers.length; ++i) {
       final DisiWrapper w = scratch[i];
       double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
@@ -349,6 +357,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         firstEssentialScorer++;
       } else {
         allScorers[allScorers.length - 1 - (i - firstEssentialScorer)] = w;
+        nextMinCompetitiveScore = Math.min(maxScoreSumFloat, nextMinCompetitiveScore);
       }
     }
 
