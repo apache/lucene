@@ -344,11 +344,33 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     return new SlowImpactsEnum(postings(fieldInfo, state, null, flags));
   }
 
-  final class BlockDocsEnum extends PostingsEnum {
+  private abstract static class Lucene912PostingsEnum extends PostingsEnum {
 
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    private ForDeltaUtil forDeltaUtil;
+    private PForUtil pforUtil;
 
+    protected Lucene912PostingsEnum() {}
+
+    protected PForUtil pForUtil() {
+      var pforUtil = this.pforUtil;
+      if (pforUtil == null) {
+        pforUtil = new PForUtil(new ForUtil());
+        this.pforUtil = pforUtil;
+      }
+      return pforUtil;
+    }
+
+    protected ForDeltaUtil forDeltaUtil() {
+      var forDeltaUtil = this.forDeltaUtil;
+      if (forDeltaUtil == null) {
+        forDeltaUtil = new ForDeltaUtil();
+        this.forDeltaUtil = forDeltaUtil;
+      }
+      return forDeltaUtil;
+    }
+  }
+
+  final class BlockDocsEnum extends Lucene912PostingsEnum {
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
 
@@ -377,7 +399,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
     private long freqFP;
 
-    public BlockDocsEnum(FieldInfo fieldInfo) {
+    private BlockDocsEnum(FieldInfo fieldInfo) {
       this.docIn = null;
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasPos =
@@ -450,7 +472,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     public int freq() throws IOException {
       if (freqFP != -1) {
         docIn.seek(freqFP);
-        pforUtil.decode(docInUtil, freqBuffer);
+        pForUtil().decode(docInUtil, freqBuffer);
         freqFP = -1;
       }
 
@@ -485,7 +507,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     private void refillFullBlock() throws IOException {
       assert docFreq - docCountUpto >= BLOCK_SIZE;
 
-      forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
+      forDeltaUtil().decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
 
       if (indexHasFreq) {
         if (needsFreq) {
@@ -625,10 +647,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
   }
 
-  final class EverythingEnum extends PostingsEnum {
-
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+  final class EverythingEnum extends Lucene912PostingsEnum {
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE + 1];
@@ -699,7 +718,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
-    public EverythingEnum(FieldInfo fieldInfo) throws IOException {
+    private EverythingEnum(FieldInfo fieldInfo) throws IOException {
       this.docIn = null;
       indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasOffsets =
@@ -830,8 +849,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       assert left >= 0;
 
       if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
-        pforUtil.decode(docInUtil, freqBuffer);
+        forDeltaUtil().decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
+        pForUtil().decode(docInUtil, freqBuffer);
         docCountUpto += BLOCK_SIZE;
       } else if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
@@ -1109,6 +1128,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
         payloadByteUpto = 0;
       } else {
+        var pforUtil = pForUtil();
         pforUtil.decode(posInUtil, posDeltaBuffer);
 
         if (indexHasPayloads) {
