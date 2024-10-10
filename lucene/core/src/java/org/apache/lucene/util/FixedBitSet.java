@@ -368,7 +368,7 @@ public final class FixedBitSet extends BitSet {
 
   /** this = this XOR other */
   public void xor(FixedBitSet other) {
-    xor(other.bits, other.numWords);
+    VectorUtil.xorLongArray(this.bits, other.bits);
   }
 
   /** Does in-place XOR of the bits provided by the iterator. */
@@ -406,18 +406,7 @@ public final class FixedBitSet extends BitSet {
 
   /** this = this AND other */
   public void and(FixedBitSet other) {
-    and(other.bits, other.numWords);
-  }
-
-  private void and(final long[] otherArr, final int otherNumWords) {
-    final long[] thisArr = this.bits;
-    int pos = Math.min(this.numWords, otherNumWords);
-    while (--pos >= 0) {
-      thisArr[pos] &= otherArr[pos];
-    }
-    if (this.numWords > otherNumWords) {
-      Arrays.fill(thisArr, otherNumWords, this.numWords, 0L);
-    }
+    VectorUtil.andLongArray(this.bits, other.bits);
   }
 
   public void andNot(DocIdSetIterator iter) throws IOException {

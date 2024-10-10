@@ -44,4 +44,8 @@ public interface VectorUtilSupport {
 
   /** Returns the sum of squared differences of the two byte vectors. */
   int squareDistance(byte[] a, byte[] b);
+
+  void andLongArray(long[] a, long[] b);
+
+  void xorLongArray(long[] a, long[] b);
 }
