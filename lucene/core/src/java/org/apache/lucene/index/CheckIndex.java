@@ -2755,21 +2755,20 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkFloatVectorValues(
-      FloatVectorValues values,
+      FloatVectorValues vectorValues,
       FieldInfo fieldInfo,
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
       throws IOException {
     int count = 0;
-    int everyNdoc = Math.max(values.size() / 64, 1);
-    while (count < values.size()) {
+    int everyNdoc = Math.max(vectorValues.size() / 64, 1);
+    FloatVectorValues.Floats vectors = vectorValues.vectors();
+    while (count < vectorValues.size()) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (values.ordToDoc(count) % everyNdoc == 0) {
+      if (vectorValues.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
-          codecReader
-              .getVectorReader()
-              .search(fieldInfo.name, values.vectorValue(count), collector, null);
+          codecReader.getVectorReader().search(fieldInfo.name, vectors.get(count), collector, null);
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -2777,7 +2776,7 @@ public final class CheckIndex implements Closeable {
           }
         }
       }
-      int valueLength = values.vectorValue(count).length;
+      int valueLength = vectors.get(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2789,12 +2788,12 @@ public final class CheckIndex implements Closeable {
       }
       ++count;
     }
-    if (count != values.size()) {
+    if (count != vectorValues.size()) {
       throw new CheckIndexException(
           "Field \""
               + fieldInfo.name
               + "\" has size="
-              + values.size()
+              + vectorValues.size()
               + " but when iterated, returns "
               + count
               + " docs with values");
@@ -2803,28 +2802,27 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkByteVectorValues(
-      ByteVectorValues values,
+      ByteVectorValues vectorValues,
       FieldInfo fieldInfo,
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
       throws IOException {
     int count = 0;
-    int everyNdoc = Math.max(values.size() / 64, 1);
+    int everyNdoc = Math.max(vectorValues.size() / 64, 1);
     boolean supportsSearch = vectorsReaderSupportsSearch(codecReader, fieldInfo.name);
-    while (count < values.size()) {
+    ByteVectorValues.Bytes vectors = vectorValues.vectors();
+    while (count < vectorValues.size()) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (supportsSearch && values.ordToDoc(count) % everyNdoc == 0) {
+      if (supportsSearch && vectorValues.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader
-            .getVectorReader()
-            .search(fieldInfo.name, values.vectorValue(count), collector, null);
+        codecReader.getVectorReader().search(fieldInfo.name, vectors.get(count), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
         }
       }
-      int valueLength = values.vectorValue(count).length;
+      int valueLength = vectors.get(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2836,12 +2834,12 @@ public final class CheckIndex implements Closeable {
       }
       ++count;
     }
-    if (count != values.size()) {
+    if (count != vectorValues.size()) {
       throw new CheckIndexException(
           "Field \""
               + fieldInfo.name
               + "\" has size="
-              + values.size()
+              + vectorValues.size()
               + " but when iterated, returns "
               + count
               + " docs with values");

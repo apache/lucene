@@ -14,15 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
 
-package org.apache.lucene.util.hnsw;
-
-import java.io.Closeable;
+import java.io.IOException;
 
 /**
- * A supplier that creates {@link RandomVectorScorer} from an ordinal. Caller should be sure to
- * close after use.
+ * A BiFunction that may throw an IOException
+ *
+ * @see java.util.function.Function
+ * @param <T> the type of the input to the function
+ * @param <R> the type of the result of the function
  */
-public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVectorScorerSupplier {
-  int totalVectorCount();
+@FunctionalInterface
+public interface IOBiFunction<S, T, R> {
+  /**
+   * Applies this function to the given argument.
+   *
+   * @param s the first function argument
+   * @param t the second function argument
+   * @return the function result
+   * @throws IOException if producing the result throws an {@link IOException}
+   */
+  R apply(S s, T t) throws IOException;
 }

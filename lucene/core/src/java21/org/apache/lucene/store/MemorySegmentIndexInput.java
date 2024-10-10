@@ -191,7 +191,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
         offset += curAvail;
         curSegmentIndex++;
         if (curSegmentIndex >= segments.length) {
-          throw new EOFException("read past EOF: " + this);
+          throw new EOFException("read past EOF: " + this + " curSegIndex=" + curSegmentIndex);
         }
         curSegment = segments[curSegmentIndex];
         curPosition = 0L;

@@ -37,6 +37,9 @@ API Changes
 * GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
 
 
+* GITHUB#13831: Complete refactoring of random-access vector API, eliminating copy() method. Now random-access vectors
+  are accessed by calling Byte/FloatVectorValues.vectors().get(int).
+
 New Features
 ---------------------
 (No changes)

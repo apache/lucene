@@ -35,10 +35,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
   protected final int size;
   protected final IndexInput slice;
   protected final int byteSize;
-  protected int lastOrd = -1;
-  protected final float[] value;
   protected final VectorSimilarityFunction vectorSimilarityFunction;
-  ;
 
   OffHeapFloatVectorValues(
       int dimension,
@@ -49,7 +46,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     this.size = size;
     this.slice = slice;
     byteSize = Float.BYTES * dimension;
-    value = new float[dimension];
     this.vectorSimilarityFunction = vectorSimilarityFunction;
   }
 
@@ -64,14 +60,23 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return value;
-    }
-    slice.seek((long) targetOrd * byteSize);
-    slice.readFloats(value, 0, value.length);
-    lastOrd = targetOrd;
-    return value;
+  public Floats vectors() throws IOException {
+    return new Floats() {
+      final IndexInput vectorSlice = slice.clone();
+      int lastOrd = -1;
+      float[] value = new float[dimension];
+
+      @Override
+      public float[] get(int targetOrd) throws IOException {
+        if (lastOrd == targetOrd) {
+          return value;
+        }
+        vectorSlice.seek((long) targetOrd * byteSize);
+        vectorSlice.readFloats(value, 0, value.length);
+        lastOrd = targetOrd;
+        return value;
+      }
+    };
   }
 
   static OffHeapFloatVectorValues load(
@@ -102,11 +107,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    public DenseOffHeapVectorValues copy() throws IOException {
-      return new DenseOffHeapVectorValues(dimension, size, vectorSimilarityFunction, slice.clone());
-    }
-
-    @Override
     public DocIndexIterator iterator() {
       return createDenseIterator();
     }
@@ -118,13 +118,12 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      DenseOffHeapVectorValues values = this.copy();
-      DocIndexIterator iterator = values.iterator();
+      FloatVectorValues.Floats vectors = vectors();
+      DocIndexIterator iterator = iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.vectorSimilarityFunction.compare(
-              values.vectorValue(iterator.index()), query);
+          return vectorSimilarityFunction.compare(vectors.get(iterator.index()), query);
         }
 
         @Override
@@ -137,8 +136,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
   private static class SparseOffHeapVectorValues extends OffHeapFloatVectorValues {
     private final DirectMonotonicReader ordToDoc;
-    private final IndexedDISI disi;
-    // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
     private final Lucene92HnswVectorsReader.FieldEntry fieldEntry;
 
@@ -150,30 +147,26 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
         throws IOException {
 
       super(fieldEntry.dimension(), fieldEntry.size(), vectorSimilarityFunction, slice);
-      this.fieldEntry = fieldEntry;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(fieldEntry.addressesOffset(), fieldEntry.addressesLength());
-      this.dataIn = dataIn;
       this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta(), addressesData);
-      this.disi =
-          new IndexedDISI(
-              dataIn,
-              fieldEntry.docsWithFieldOffset(),
-              fieldEntry.docsWithFieldLength(),
-              fieldEntry.jumpTableEntryCount(),
-              fieldEntry.denseRankPower(),
-              fieldEntry.size());
+      this.dataIn = dataIn;
+      this.fieldEntry = fieldEntry;
+    }
+
+    private IndexedDISI createDISI() throws IOException {
+      return new IndexedDISI(
+          dataIn.clone(),
+          fieldEntry.docsWithFieldOffset(),
+          fieldEntry.docsWithFieldLength(),
+          fieldEntry.jumpTableEntryCount(),
+          fieldEntry.denseRankPower(),
+          fieldEntry.size());
     }
 
     @Override
-    public SparseOffHeapVectorValues copy() throws IOException {
-      return new SparseOffHeapVectorValues(
-          fieldEntry, dataIn, vectorSimilarityFunction, slice.clone());
-    }
-
-    @Override
-    public DocIndexIterator iterator() {
-      return IndexedDISI.asDocIndexIterator(disi);
+    public DocIndexIterator iterator() throws IOException {
+      return IndexedDISI.asDocIndexIterator(createDISI());
     }
 
     @Override
@@ -201,18 +194,17 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
-      SparseOffHeapVectorValues values = this.copy();
-      DocIndexIterator iterator = values.iterator();
+      FloatVectorValues.Floats vectors = vectors();
+      IndexedDISI disi = createDISI();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.vectorSimilarityFunction.compare(
-              values.vectorValue(iterator.index()), query);
+          return vectorSimilarityFunction.compare(vectors.get(disi.index()), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return iterator;
+          return disi;
         }
       };
     }
@@ -235,13 +227,8 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    public OffHeapFloatVectorValues copy() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
+    public Floats vectors() {
+      return Floats.EMPTY;
     }
 
     @Override

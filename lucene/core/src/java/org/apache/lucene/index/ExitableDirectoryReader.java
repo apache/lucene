@@ -441,8 +441,14 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public float[] vectorValue(int ord) throws IOException {
-        return vectorValues.vectorValue(ord);
+      public Floats vectors() throws IOException {
+        Floats vectors = vectorValues.vectors();
+        return new Floats() {
+          @Override
+          public float[] get(int ord) throws IOException {
+            return vectors.get(ord);
+          }
+        };
       }
 
       @Override
@@ -456,18 +462,13 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public DocIndexIterator iterator() {
+      public DocIndexIterator iterator() throws IOException {
         return createExitableIterator(vectorValues.iterator(), queryTimeout);
       }
 
       @Override
       public VectorScorer scorer(float[] target) throws IOException {
         return vectorValues.scorer(target);
-      }
-
-      @Override
-      public FloatVectorValues copy() {
-        throw new UnsupportedOperationException();
       }
     }
 
@@ -489,8 +490,15 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public byte[] vectorValue(int ord) throws IOException {
-        return vectorValues.vectorValue(ord);
+      public Bytes vectors() throws IOException {
+        return new Bytes() {
+          Bytes vectors = vectorValues.vectors();
+
+          @Override
+          public byte[] get(int ord) throws IOException {
+            return vectors.get(ord);
+          }
+        };
       }
 
       @Override
@@ -499,18 +507,13 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public DocIndexIterator iterator() {
+      public DocIndexIterator iterator() throws IOException {
         return createExitableIterator(vectorValues.iterator(), queryTimeout);
       }
 
       @Override
       public VectorScorer scorer(byte[] target) throws IOException {
         return vectorValues.scorer(target);
-      }
-
-      @Override
-      public ByteVectorValues copy() {
-        throw new UnsupportedOperationException();
       }
     }
   }

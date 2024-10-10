@@ -58,6 +58,7 @@ public final class Lucene91HnswGraphBuilder {
   private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
   private final VectorSimilarityFunction similarityFunction;
   private final FloatVectorValues vectorValues;
+  private final FloatVectorValues.Floats vectors;
   private final SplittableRandom random;
   private final Lucene91BoundsChecker bound;
   private final HnswGraphSearcher graphSearcher;
@@ -68,14 +69,13 @@ public final class Lucene91HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private FloatVectorValues buildVectors;
+  private FloatVectorValues.Floats buildVectors;
 
   /**
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
-   * @param vectors the vectors whose relations are represented by the graph - must provide a
-   *     different view over those vectors than the one used to add via addGraphNode.
+   * @param vectorValues the vectors whose relations are represented by the graph.
    * @param maxConn the number of connections to make when adding a new graph node; roughly speaking
    *     the graph fanout.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
@@ -83,14 +83,15 @@ public final class Lucene91HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene91HnswGraphBuilder(
-      FloatVectorValues vectors,
+      FloatVectorValues vectorValues,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
       long seed)
       throws IOException {
-    vectorValues = vectors.copy();
-    buildVectors = vectors.copy();
+    this.vectorValues = vectorValues;
+    vectors = vectorValues.vectors();
+    buildVectors = vectorValues.vectors();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -117,21 +118,18 @@ public final class Lucene91HnswGraphBuilder {
    * enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
-   * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independent
-   *     accessor for the vectors
+   * @param vectorValues the vectors for which to build a nearest neighbors graph. Must be an
+   *     independent accessor for the vectors
    */
-  public Lucene91OnHeapHnswGraph build(FloatVectorValues vectors) throws IOException {
-    if (vectors == vectorValues) {
-      throw new IllegalArgumentException(
-          "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
-    }
+  public Lucene91OnHeapHnswGraph build(FloatVectorValues vectorValues) throws IOException {
+    FloatVectorValues.Floats vectors = vectorValues.vectors();
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
+      infoStream.message(HNSW_COMPONENT, "build graph from " + vectorValues.size() + " vectors");
     }
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
-    for (int node = 1; node < vectors.size(); node++) {
-      addGraphNode(node, vectors.vectorValue(node));
+    for (int node = 1; node < vectorValues.size(); node++) {
+      addGraphNode(node, vectors.get(node));
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
       }
@@ -224,7 +222,7 @@ public final class Lucene91HnswGraphBuilder {
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
       assert cNode < hnsw.size();
-      if (diversityCheck(vectorValues.vectorValue(cNode), cScore, neighbors, buildVectors)) {
+      if (diversityCheck(vectors.get(cNode), cScore, neighbors, buildVectors)) {
         neighbors.add(cNode, cScore);
       }
     }
@@ -246,7 +244,7 @@ public final class Lucene91HnswGraphBuilder {
    * @param score the score of the new candidate and node n, to be compared with scores of the
    *     candidate and n's neighbors
    * @param neighbors the neighbors selected so far
-   * @param vectorValues source of values used for making comparisons between candidate and existing
+   * @param vectors source of values used for making comparisons between candidate and existing
    *     neighbors
    * @return whether the candidate is diverse given the existing neighbors
    */
@@ -254,12 +252,12 @@ public final class Lucene91HnswGraphBuilder {
       float[] candidate,
       float score,
       Lucene91NeighborArray neighbors,
-      FloatVectorValues vectorValues)
+      FloatVectorValues.Floats vectors)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
-          similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
+          similarityFunction.compare(candidate, vectors.get(neighbors.node[i]));
       if (bound.check(neighborSimilarity) == false) {
         return false;
       }
@@ -293,10 +291,10 @@ public final class Lucene91HnswGraphBuilder {
       // them, drop it
       int neighborId = neighbors.node[i];
       bound.set(neighbors.score[i]);
-      float[] neighborVector = vectorValues.vectorValue(neighborId);
+      float[] neighborVector = vectors.get(neighborId);
       for (int j = maxConn; j > i; j--) {
         float neighborSimilarity =
-            similarityFunction.compare(neighborVector, buildVectors.vectorValue(neighbors.node[j]));
+            similarityFunction.compare(neighborVector, buildVectors.get(neighbors.node[j]));
         if (bound.check(neighborSimilarity) == false) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]
