@@ -18,10 +18,11 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.DocValuesProducer;
-import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.store.Directory;
 
@@ -31,7 +32,7 @@ import org.apache.lucene.store.Directory;
 // producer?
 class SegmentDocValuesProducer extends DocValuesProducer {
 
-  final IntObjectHashMap<DocValuesProducer> dvProducersByField = new IntObjectHashMap<>();
+  final Map<String, DocValuesProducer> dvProducersByField = new HashMap<>();
   final Set<DocValuesProducer> dvProducers =
       Collections.newSetFromMap(new IdentityHashMap<DocValuesProducer, Boolean>());
   final LongArrayList dvGens = new LongArrayList();
@@ -66,7 +67,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
             dvGens.add(docValuesGen);
             dvProducers.add(baseProducer);
           }
-          dvProducersByField.put(fi.number, baseProducer);
+          dvProducersByField.put(fi.name, baseProducer);
         } else {
           assert !dvGens.contains(docValuesGen);
           // otherwise, producer sees only the one fieldinfo it wrote
@@ -75,7 +76,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
                   docValuesGen, si, dir, new FieldInfos(new FieldInfo[] {fi}));
           dvGens.add(docValuesGen);
           dvProducers.add(dvp);
-          dvProducersByField.put(fi.number, dvp);
+          dvProducersByField.put(fi.name, dvp);
         }
       }
     } catch (Throwable t) {
@@ -90,42 +91,42 @@ class SegmentDocValuesProducer extends DocValuesProducer {
 
   @Override
   public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-    DocValuesProducer dvProducer = dvProducersByField.get(field.number);
+    DocValuesProducer dvProducer = dvProducersByField.get(field.name);
     assert dvProducer != null;
     return dvProducer.getNumeric(field);
   }
 
   @Override
   public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-    DocValuesProducer dvProducer = dvProducersByField.get(field.number);
+    DocValuesProducer dvProducer = dvProducersByField.get(field.name);
     assert dvProducer != null;
     return dvProducer.getBinary(field);
   }
 
   @Override
   public SortedDocValues getSorted(FieldInfo field) throws IOException {
-    DocValuesProducer dvProducer = dvProducersByField.get(field.number);
+    DocValuesProducer dvProducer = dvProducersByField.get(field.name);
     assert dvProducer != null;
     return dvProducer.getSorted(field);
   }
 
   @Override
   public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-    DocValuesProducer dvProducer = dvProducersByField.get(field.number);
+    DocValuesProducer dvProducer = dvProducersByField.get(field.name);
     assert dvProducer != null;
     return dvProducer.getSortedNumeric(field);
   }
 
   @Override
   public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
-    DocValuesProducer dvProducer = dvProducersByField.get(field.number);
+    DocValuesProducer dvProducer = dvProducersByField.get(field.name);
     assert dvProducer != null;
     return dvProducer.getSortedSet(field);
   }
 
   @Override
   public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
-    DocValuesProducer dvProducer = dvProducersByField.get(field.number);
+    DocValuesProducer dvProducer = dvProducersByField.get(field.name);
     assert dvProducer != null;
     return dvProducer.getSkipper(field);
   }

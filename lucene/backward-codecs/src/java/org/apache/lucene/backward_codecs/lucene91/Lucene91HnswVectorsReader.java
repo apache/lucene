@@ -46,7 +46,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
@@ -398,8 +397,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues.Floats {
+  static class OffHeapFloatVectorValues extends FloatVectorValues {
 
     private final int dimension;
     private final int size;
@@ -409,9 +407,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     private final int byteSize;
     private final float[] value;
     private final VectorSimilarityFunction similarityFunction;
-
-    private int ord = -1;
-    private int doc = -1;
 
     OffHeapFloatVectorValues(
         int dimension,
@@ -440,49 +435,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      dataIn.seek((long) ord * byteSize);
-      dataIn.readFloats(value, 0, value.length);
-      return value;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() {
-      if (++ord >= size) {
-        doc = NO_MORE_DOCS;
-      } else {
-        doc = ordToDocOperator.applyAsInt(ord);
-      }
-      return doc;
-    }
-
-    @Override
-    public int advance(int target) {
-      assert docID() < target;
-
-      if (ordToDoc == null) {
-        ord = target;
-      } else {
-        ord = Arrays.binarySearch(ordToDoc, ord + 1, ordToDoc.length, target);
-        if (ord < 0) {
-          ord = -(ord + 1);
-        }
-      }
-
-      if (ord < size) {
-        doc = ordToDocOperator.applyAsInt(ord);
-      } else {
-        doc = NO_MORE_DOCS;
-      }
-      return doc;
-    }
-
-    @Override
     public OffHeapFloatVectorValues copy() {
       return new OffHeapFloatVectorValues(
           dimension, size, ordToDoc, similarityFunction, dataIn.clone());
@@ -496,20 +448,31 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int ordToDoc(int ord) {
+      return ordToDocOperator.applyAsInt(ord);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createSparseIterator();
+    }
+
+    @Override
     public VectorScorer scorer(float[] target) {
       if (size == 0) {
         return null;
       }
       OffHeapFloatVectorValues values = this.copy();
+      DocIndexIterator iterator = values.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.similarityFunction.compare(values.vectorValue(), target);
+          return values.similarityFunction.compare(values.vectorValue(iterator.index()), target);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return values;
+          return iterator;
         }
       };
     }

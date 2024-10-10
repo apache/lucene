@@ -438,7 +438,10 @@ public class TieredMergePolicy extends MergePolicy {
     }
     // allowedSegCount may occasionally be less than segsPerTier
     // if segment sizes are below the floor size
-    allowedSegCount = Math.max(allowedSegCount, Math.max(segsPerTier, targetSearchConcurrency));
+    allowedSegCount = Math.max(allowedSegCount, segsPerTier);
+    // No need to merge if the total number of segments (including too big segments) is less than or
+    // equal to the target search concurrency.
+    allowedSegCount = Math.max(allowedSegCount, targetSearchConcurrency - tooBigCount);
     int allowedDocCount = getMaxAllowedDocs(totalMaxDoc, totalDelDocs);
 
     if (verbose(mergeContext) && tooBigCount > 0) {

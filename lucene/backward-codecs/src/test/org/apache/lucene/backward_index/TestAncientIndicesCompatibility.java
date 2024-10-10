@@ -198,7 +198,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (version.startsWith("8.")) {
+      if (version.startsWith("8.") || version.startsWith("9.")) {
         assertTrue(indexStatus.clean);
       } else {
         assertFalse(indexStatus.clean);
@@ -219,10 +219,11 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
   // #12895: test on a carefully crafted 9.8.0 index (from a small contiguous subset
   // of wikibigall unique terms) that shows the read-time exception of
   // IntersectTermsEnum (used by WildcardQuery)
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/13847")
   public void testWildcardQueryExceptions990() throws IOException {
     Path path = createTempDir("12895");
 
-    String name = "index.12895.9.8.0.zip";
+    String name = "unsupported.12895.9.8.0.zip";
     InputStream resource = TestAncientIndicesCompatibility.class.getResourceAsStream(name);
     assertNotNull("missing zip file to reproduce #12895", resource);
     TestUtil.unzip(resource, path);

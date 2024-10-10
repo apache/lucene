@@ -31,7 +31,6 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.UnicodeUtil;
 
@@ -415,12 +414,17 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   @Override
   public void writeString(String v) {
     try {
-      if (v.length() <= MAX_CHARS_PER_WINDOW) {
-        final BytesRef utf8 = new BytesRef(v);
-        writeVInt(utf8.length);
-        writeBytes(utf8.bytes, utf8.offset, utf8.length);
+      final int charCount = v.length();
+      final int byteLen = UnicodeUtil.calcUTF16toUTF8Length(v, 0, charCount);
+      writeVInt(byteLen);
+      ByteBuffer currentBlock = this.currentBlock;
+      if (currentBlock.hasArray() && currentBlock.remaining() >= byteLen) {
+        int startingPos = currentBlock.position();
+        UnicodeUtil.UTF16toUTF8(
+            v, 0, charCount, currentBlock.array(), currentBlock.arrayOffset() + startingPos);
+        currentBlock.position(startingPos + byteLen);
       } else {
-        writeLongString(v);
+        writeLongString(byteLen, v);
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -541,9 +545,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   }
 
   /** Writes a long string in chunks */
-  private void writeLongString(final String s) throws IOException {
-    final int byteLen = UnicodeUtil.calcUTF16toUTF8Length(s, 0, s.length());
-    writeVInt(byteLen);
+  private void writeLongString(int byteLen, final String s) throws IOException {
     final byte[] buf =
         new byte[Math.min(byteLen, UnicodeUtil.MAX_UTF8_BYTES_PER_CHAR * MAX_CHARS_PER_WINDOW)];
     for (int i = 0, end = s.length(); i < end; ) {

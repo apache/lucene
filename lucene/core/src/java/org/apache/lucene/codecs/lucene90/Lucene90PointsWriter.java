@@ -253,7 +253,7 @@ public class Lucene90PointsWriter extends PointsWriter {
                 FieldInfos readerFieldInfos = mergeState.fieldInfos[i];
                 FieldInfo readerFieldInfo = readerFieldInfos.fieldInfo(fieldInfo.name);
                 if (readerFieldInfo != null && readerFieldInfo.getPointDimensionCount() > 0) {
-                  PointValues aPointValues = reader90.readers.get(readerFieldInfo.number);
+                  PointValues aPointValues = reader90.getValues(readerFieldInfo.name);
                   if (aPointValues != null) {
                     pointValues.add(aPointValues);
                     docMaps.add(mergeState.docMaps[i]);

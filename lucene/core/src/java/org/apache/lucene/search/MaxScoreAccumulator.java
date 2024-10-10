@@ -35,8 +35,8 @@ final class MaxScoreAccumulator {
   }
 
   /**
-   * Return the max encoded DocAndScore in a way that is consistent with {@link
-   * DocAndScore#compareTo}.
+   * Return the max encoded docId and score found in the two longs, following the encoding in {@link
+   * #accumulate}.
    */
   private static long maxEncode(long v1, long v2) {
     float score1 = Float.intBitsToFloat((int) (v1 >> 32));
@@ -57,26 +57,15 @@ final class MaxScoreAccumulator {
     acc.accumulate(encode);
   }
 
-  DocAndScore get() {
-    long value = acc.get();
-    if (value == Long.MIN_VALUE) {
-      return null;
-    }
-    float score = Float.intBitsToFloat((int) (value >> 32));
-    int docId = (int) value;
-    return new DocAndScore(docId, score);
+  public static float toScore(long value) {
+    return Float.intBitsToFloat((int) (value >> 32));
   }
 
-  record DocAndScore(int docId, float score) implements Comparable<DocAndScore> {
+  public static int docId(long value) {
+    return (int) value;
+  }
 
-    @Override
-    public int compareTo(DocAndScore o) {
-      int cmp = Float.compare(score, o.score);
-      if (cmp == 0) {
-        // tie-break on doc id, lower id has the priority
-        return Integer.compare(o.docId, docId);
-      }
-      return cmp;
-    }
+  long getRaw() {
+    return acc.get();
   }
 }
