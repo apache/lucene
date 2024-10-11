@@ -69,13 +69,6 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     assertArrayEquals(elements, array);
   }
 
-  /** Check if the array's content is identical to a given sequence of elements. */
-  private static void assertSortedListEquals(Object[] array, Object... elements) {
-    assertEquals(elements.length, array.length);
-    Arrays.sort(array);
-    assertArrayEquals(elements, array);
-  }
-
   private final int value0 = vcast(0);
   private final int value1 = vcast(1);
   private final int value2 = vcast(2);
