@@ -594,7 +594,7 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     assertSortedListEquals(toList(map.values()), value1, value2, value2);
   }
 
-  private static <T> List<T> toList(Iterable<ObjectCursor<T>> values) {
+  static <T> List<T> toList(Iterable<ObjectCursor<T>> values) {
     ArrayList<T> list = new ArrayList<>();
     for (var c : values) {
       list.add(c.value);
