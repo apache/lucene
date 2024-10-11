@@ -198,7 +198,7 @@ PARSER_END(StandardSyntaxParser)
     | <RANGEIN_END:  "]"> : DEFAULT
     | <RANGEEX_END:  "}"> : DEFAULT
     | <RANGE_QUOTED: "\"" (~["\""] | "\\\"")+ "\"">
-    | <RANGE_GOOP:   (~[ " ", "]", "}" ])+ >
+    | <RANGE_GOOP:   (~[ "\\", " ", "]", "}" ] | "\\" ~[])+ >
 }
 
 
