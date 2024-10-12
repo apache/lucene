@@ -827,11 +827,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData, merging);
         return new DenseBinaryDocValues(maxDoc) {
           final BytesRef bytes = new BytesRef(new byte[entry.maxLength], 0, entry.maxLength);
+          final LongValues.Twin twin = new LongValues.Twin();
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            long startOffset = addresses.get(doc);
-            bytes.length = (int) (addresses.get(doc + 1L) - startOffset);
+            addresses.get(doc, twin);
+            long startOffset = twin.first;
+            bytes.length = (int) (twin.second - startOffset);
             bytesSlice.seek(startOffset);
             bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
             return bytes;
@@ -874,12 +876,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData);
         return new SparseBinaryDocValues(disi) {
           final BytesRef bytes = new BytesRef(new byte[entry.maxLength], 0, entry.maxLength);
+          final LongValues.Twin twin = new LongValues.Twin();
 
           @Override
           public BytesRef binaryValue() throws IOException {
             final int index = disi.index();
-            long startOffset = addresses.get(index);
-            bytes.length = (int) (addresses.get(index + 1L) - startOffset);
+            addresses.get(index, twin);
+            long startOffset = twin.first;
+            bytes.length = (int) (twin.second - startOffset);
             bytesSlice.seek(startOffset);
             bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
             return bytes;
@@ -1396,6 +1400,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         int doc = -1;
         long start, end;
         int count;
+        final LongValues.Twin twin = new LongValues.Twin();
 
         @Override
         public int nextDoc() throws IOException {
@@ -1417,16 +1422,18 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           if (target >= maxDoc) {
             return doc = NO_MORE_DOCS;
           }
-          start = addresses.get(target);
-          end = addresses.get(target + 1L);
+          addresses.get(target, twin);
+          start = twin.first;
+          end = twin.second;
           count = (int) (end - start);
           return doc = target;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
-          start = addresses.get(target);
-          end = addresses.get(target + 1L);
+          addresses.get(target, twin);
+          start = twin.first;
+          end = twin.second;
           count = (int) (end - start);
           doc = target;
           return true;
@@ -1457,6 +1464,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         boolean set;
         long start, end;
         int count;
+        private final LongValues.Twin twin = new LongValues.Twin();
 
         @Override
         public int nextDoc() throws IOException {
@@ -1501,8 +1509,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         private void set() {
           if (set == false) {
             final int index = disi.index();
-            start = addresses.get(index);
-            end = addresses.get(index + 1L);
+            addresses.get(index, twin);
+            start = twin.first;
+            end = twin.second;
             count = (int) (end - start);
             set = true;
           }

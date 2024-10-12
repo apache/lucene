@@ -139,6 +139,24 @@ public final class DirectMonotonicReader extends LongValues {
     return mins[block] + (long) (avgs[block] * blockIndex) + delta;
   }
 
+  @Override
+  public void get(long index, Twin twin) {
+    int block = (int) (index >>> blockShift);
+    long blockIndex = index & blockMask;
+    if (blockIndex == blockMask) {
+      twin.first = readers[block].get(blockIndex) + mins[block] + (long) (avgs[block] * blockIndex);
+      block++;
+      twin.second = readers[block].get(0) + mins[block];
+    } else {
+      readers[block].get(blockIndex, twin);
+      long min = mins[block];
+      float avg = avgs[block];
+      twin.first = twin.first + min + (long) (avg * blockIndex);
+      twin.second = twin.second + min + (long) (avg * (blockIndex + 1));
+    }
+    assert twinImplementIsRight(index, twin);
+  }
+
   /** Get lower/upper bounds for the value at a given index without hitting the direct reader. */
   private long[] getBounds(long index) {
     final int block = Math.toIntExact(index >>> blockShift);
