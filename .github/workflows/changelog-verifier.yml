@@ -1,0 +1,15 @@
+name: "Changelog Verifier"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+jobs:
+  changelog:
+    if: github.repository == 'prudhvigodithi/lucene'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dangoslen/changelog-enforcer@v3
+        id: verify-changelog
+        with:
+          skipLabels: "skip-changelog"
+          changeLogPath: 'lucene/CHANGES.txt'
