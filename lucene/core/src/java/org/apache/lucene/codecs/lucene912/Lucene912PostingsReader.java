@@ -36,7 +36,15 @@ import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.IntBlockTermState;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.Impacts;
+import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -1220,14 +1228,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     private BlockImpactsEnum(IntBlockTermState termState) throws IOException {
       this.docFreq = termState.docFreq;
-      if (docFreq > 1) {
-        this.docIn = Lucene912PostingsReader.this.docIn.clone();
-        this.docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
-        prefetchPostings(docIn, termState);
-      } else {
-        this.docIn = null;
-        this.docInUtil = null;
-      }
+      this.docIn = Lucene912PostingsReader.this.docIn.clone();
+      this.docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
+      prefetchPostings(docIn, termState);
       level0SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel0);
       level1SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel1);
       level0Impacts = new MutableImpactList(maxNumImpactsAtLevel0);
