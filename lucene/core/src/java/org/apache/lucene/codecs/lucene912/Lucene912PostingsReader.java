@@ -346,8 +346,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   final class BlockDocsEnum extends PostingsEnum {
 
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    private ForDeltaUtil forDeltaUtil;
+    private PForUtil pforUtil;
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -410,6 +410,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
       docFreq = termState.docFreq;
+      if (pforUtil == null && docFreq >= BLOCK_SIZE) {
+        pforUtil = new PForUtil(new ForUtil());
+        forDeltaUtil = new ForDeltaUtil();
+      }
       totalTermFreq = indexHasFreq ? termState.totalTermFreq : docFreq;
       singletonDocID = termState.singletonDocID;
       if (docFreq > 1) {
@@ -627,8 +631,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   final class EverythingEnum extends PostingsEnum {
 
-    final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    private ForDeltaUtil forDeltaUtil;
+    private PForUtil pforUtil;
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE + 1];
@@ -756,12 +760,18 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
       docFreq = termState.docFreq;
+      if (forDeltaUtil == null && docFreq >= BLOCK_SIZE) {
+        forDeltaUtil = new ForDeltaUtil();
+      }
       // Where this term's postings start in the .pos file:
       final long posTermStartFP = termState.posStartFP;
       // Where this term's payloads/offsets start in the .pay
       // file:
       final long payTermStartFP = termState.payStartFP;
       totalTermFreq = termState.totalTermFreq;
+      if (pforUtil == null && totalTermFreq >= BLOCK_SIZE) {
+        pforUtil = new PForUtil(new ForUtil());
+      }
       singletonDocID = termState.singletonDocID;
       if (docFreq > 1) {
         if (docIn == null) {
