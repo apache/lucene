@@ -1281,17 +1281,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
           @Override
           public int numLevels() {
-            int numLevels = 0;
-            if (level0LastDocID != NO_MORE_DOCS) {
-              numLevels++;
-            }
-            if (level1LastDocID != NO_MORE_DOCS) {
-              numLevels++;
-            }
-            if (numLevels == 0) {
-              numLevels++;
-            }
-            return numLevels;
+            return level1LastDocID == NO_MORE_DOCS ? 1 : 2;
           }
 
           @Override
@@ -1307,7 +1297,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
             if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
               return readImpacts(level0SerializedImpacts, level0Impacts);
             }
-            if (level == 1 && level1LastDocID != NO_MORE_DOCS) {
+            if (level == 1) {
               return readImpacts(level1SerializedImpacts, level1Impacts);
             }
             return DUMMY_IMPACTS;
