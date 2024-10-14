@@ -374,7 +374,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       return doc;
     }
 
-    protected void startReset(IntBlockTermState termState) throws IOException {
+    protected void resetIndexInput(IntBlockTermState termState) throws IOException {
       docFreq = termState.docFreq;
       singletonDocID = termState.singletonDocID;
       if (docFreq > 1) {
@@ -387,7 +387,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       }
     }
 
-    protected PostingsEnum finishReset(IntBlockTermState termState) throws IOException {
+    protected PostingsEnum resetIdsAndLevelParams(IntBlockTermState termState) throws IOException {
       doc = -1;
       prevDocID = -1;
       docCountUpto = 0;
@@ -425,7 +425,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
-      startReset(termState);
+      resetIndexInput(termState);
       if (pforUtil == null && docFreq >= BLOCK_SIZE) {
         pforUtil = new PForUtil(new ForUtil());
         forDeltaUtil = new ForDeltaUtil();
@@ -439,7 +439,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         Arrays.fill(freqBuffer, 0, Math.min(ForUtil.BLOCK_SIZE, docFreq), 1);
       }
       freqFP = -1;
-      return finishReset(termState);
+      return resetIdsAndLevelParams(termState);
     }
 
     @Override
@@ -721,7 +721,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
-      startReset(termState);
+      resetIndexInput(termState);
       if (forDeltaUtil == null && docFreq >= BLOCK_SIZE) {
         forDeltaUtil = new ForDeltaUtil();
       }
@@ -761,7 +761,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       level0BlockPayUpto = 0;
       posBufferUpto = BLOCK_SIZE;
 
-      return finishReset(termState);
+      return resetIdsAndLevelParams(termState);
     }
 
     @Override
