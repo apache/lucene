@@ -24,6 +24,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.StringHelper;
 
 /**
  * A class used to represent a set of many, potentially large, values (e.g. many long strings such
@@ -53,7 +54,6 @@ public class FuzzySet implements Accountable {
     NO
   };
 
-  private HashFunction hashFunction;
   private FixedBitSet filter;
   private int bloomSize;
   private final int hashCount;
@@ -138,7 +138,6 @@ public class FuzzySet implements Accountable {
     super();
     this.filter = filter;
     this.bloomSize = bloomSize;
-    this.hashFunction = MurmurHash64.INSTANCE;
     this.hashCount = hashCount;
   }
 
@@ -150,11 +149,12 @@ public class FuzzySet implements Accountable {
    * @return NO or MAYBE
    */
   public ContainsResult contains(BytesRef value) {
-    long hash = hashFunction.hash(value);
-    int msb = (int) (hash >>> Integer.SIZE);
-    int lsb = (int) hash;
+    long[] hash = StringHelper.murmurhash3_x64_128(value);
+
+    long msb = hash[0];
+    long lsb = hash[1];
     for (int i = 0; i < hashCount; i++) {
-      int bloomPos = (lsb + i * msb);
+      int bloomPos = ((int) (lsb + i * msb)) & bloomSize;
       if (!mayContainValue(bloomPos)) {
         return ContainsResult.NO;
       }
@@ -216,15 +216,14 @@ public class FuzzySet implements Accountable {
    * is modulo n'd where n is the chosen size of the internal bitset.
    *
    * @param value the key value to be hashed
-   * @throws IOException If there is a low-level I/O error
    */
-  public void addValue(BytesRef value) throws IOException {
-    long hash = hashFunction.hash(value);
-    int msb = (int) (hash >>> Integer.SIZE);
-    int lsb = (int) hash;
+  public void addValue(BytesRef value) {
+    long[] hash = StringHelper.murmurhash3_x64_128(value);
+    long msb = hash[0];
+    long lsb = hash[1];
     for (int i = 0; i < hashCount; i++) {
       // Bitmasking using bloomSize is effectively a modulo operation.
-      int bloomPos = (lsb + i * msb) & bloomSize;
+      int bloomPos = ((int) (lsb + i * msb)) & bloomSize;
       filter.set(bloomPos);
     }
   }
@@ -302,9 +301,7 @@ public class FuzzySet implements Accountable {
   @Override
   public String toString() {
     return getClass().getSimpleName()
-        + "(hash="
-        + hashFunction
-        + ", k="
+        + "(k="
         + hashCount
         + ", bits="
         + filter.cardinality()
