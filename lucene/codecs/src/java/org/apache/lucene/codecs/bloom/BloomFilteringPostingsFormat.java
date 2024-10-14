@@ -54,8 +54,9 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  *
  * <p>A choice of {@link BloomFilterFactory} can be passed to tailor Bloom Filter settings on a
  * per-field basis. The default configuration is {@link DefaultBloomFilterFactory} which allocates a
- * ~8mb bitset and hashes values using {@link MurmurHash64}. This should be suitable for most
- * purposes.
+ * ~8mb bitset and hashes values using {@link
+ * org.apache.lucene.util.StringHelper#murmurhash3_x64_128(BytesRef)}. This should be suitable for
+ * most purposes.
  *
  * <p>The format of the blm file is as follows:
  *
