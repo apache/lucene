@@ -43,6 +43,12 @@ public abstract class LMSimilarity extends SimilarityBase {
 
   /** Creates a new instance with the specified collection language model. */
   public LMSimilarity(CollectionModel collectionModel) {
+    this(collectionModel, true);
+  }
+
+  /** Creates a new instance with the specified collection language model and discountOverlaps. */
+  public LMSimilarity(CollectionModel collectionModel, boolean discountOverlaps) {
+    super(discountOverlaps);
     this.collectionModel = collectionModel;
   }
 

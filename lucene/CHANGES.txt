@@ -9,6 +9,11 @@ Bug Fixes
 ---------------------
 (No changes)
 
+API Changes
+---------------------
+
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
 ======================== Lucene 9.12.0 =======================
 
 Security Fixes
@@ -46,6 +51,9 @@ API Changes
   major version. Replace usages with the latter, providing 0 as min and DocIdSetIterator.NO_MORE_DOCS as max in case
   the entire segment should be scored. Subclasses that override the method should instead override its replacement.
   (Luca Cavanna)
+
+* GITHUB#13757: For similarities, provide default computeNorm implementation and remove remaining discountOverlaps setters.
+  (Christine Poerschke, Adrien Grand, Robert Muir)
 
 New Features
 ---------------------
