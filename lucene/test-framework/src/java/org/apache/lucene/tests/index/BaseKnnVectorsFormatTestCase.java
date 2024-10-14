@@ -16,15 +16,21 @@
  */
 package org.apache.lucene.tests.index;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -70,6 +76,10 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -1905,5 +1915,123 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
 
     IOUtils.close(reader, w2, dir1, dir2);
+  }
+
+  /**
+   * Test that the query is a viable approximation to exact search. This test is designed to uncover
+   * gross failures only, not to represent the true expected recall.
+   */
+  public void testRecall() throws IOException {
+    VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    int dim = 16;
+    try (Directory indexStore = getKnownIndexStore("field", dim, vectorSimilarityFunction);
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      float[] queryEmbedding = new float[dim];
+      String queryString = "Apache License";
+      computeLineEmbedding(queryString, queryEmbedding);
+      // computeLineEmbedding("   END OF TERMS AND CONDITIONS", queryEmbedding);
+      // pass match-all "filter" to force full traversal, bypassing graph
+      KnnFloatVectorQuery exactQuery =
+          new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
+      // indexed 421 lines from LICENSE.txt
+      // indexed 157 lines from NOTICE.txt
+      assertEquals(578, searcher.count(exactQuery)); // Same for exact search
+      KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, 10);
+      assertEquals(10, searcher.count(query)); // Expect some results without timeout
+      TopDocs results = searcher.search(query, 10);
+      Set<Integer> resultDocs = new HashSet<>();
+      for (ScoreDoc scoreDoc : results.scoreDocs) {
+        /*
+        System.out.println(
+            "result " + i++ + ": " + reader.storedFields().document(scoreDoc.doc) + " " + scoreDoc);
+        */
+        resultDocs.add(scoreDoc.doc);
+      }
+      TopDocs expected = searcher.search(exactQuery, 10);
+      // int i = 0;
+      int recalled = 0;
+      for (ScoreDoc scoreDoc : expected.scoreDocs) {
+        /*
+        System.out.println(
+            "expected "
+                + i++
+                + ": "
+                + reader.storedFields().document(scoreDoc.doc)
+                + " "
+                + scoreDoc);
+        */
+        if (resultDocs.contains(scoreDoc.doc)) {
+          ++recalled;
+        }
+      }
+      assertTrue("recall should be at least 5/10, got " + recalled, recalled >= 5);
+      /*
+      assertEquals(queryString, reader.storedFields().document(results.scoreDocs[0].doc).get("text"));
+      assertEquals("Copyright (c) 2006 Dawid Weiss", reader.storedFields().document(results.scoreDocs[1].doc).get("text"));
+      assertEquals(queryString, reader.storedFields().document(expected.scoreDocs[0].doc).get("text"));
+      assertEquals("Copyright (c) 2006 Dawid Weiss", reader.storedFields().document(expected.scoreDocs[1].doc).get("text"));
+      */
+    }
+  }
+
+  /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
+  Directory getKnownIndexStore(
+      String field, int dimension, VectorSimilarityFunction vectorSimilarityFunction)
+      throws IOException {
+    Directory indexStore = newDirectory(random());
+    IndexWriter writer = new IndexWriter(indexStore, newIndexWriterConfig());
+    float[] scratch = new float[dimension];
+    for (String file : List.of("LICENSE.txt", "NOTICE.txt")) {
+      try (InputStream in = BaseKnnVectorsFormatTestCase.class.getResourceAsStream(file);
+          BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8))) {
+        String line;
+        int lineNo = -1;
+        while ((line = reader.readLine()) != null) {
+          line = line.strip();
+          if (line.isEmpty()) {
+            continue;
+          }
+          ++lineNo;
+          Document doc = new Document();
+          doc.add(
+              new KnnFloatVectorField(
+                  field, computeLineEmbedding(line, scratch), vectorSimilarityFunction));
+          doc.add(new StoredField("text", line));
+          doc.add(new StringField("id", file + "." + lineNo, Field.Store.YES));
+          writer.addDocument(doc);
+          if (random().nextBoolean()) {
+            // Add some documents without a vector
+            addDocuments(writer, "id" + lineNo + ".", randomIntBetween(1, 5));
+          }
+        }
+        // System.out.println("indexed " + (lineNo + 1) + " lines from " + file);
+      }
+    }
+    // Add some documents without a vector nor an id
+    addDocuments(writer, null, 5);
+    writer.close();
+    return indexStore;
+  }
+
+  private float[] computeLineEmbedding(String line, float[] vector) {
+    Arrays.fill(vector, 0);
+    for (int i = 0; i < line.length(); i++) {
+      char c = line.charAt(i);
+      vector[i % vector.length] += c / ((float) (i + 1) / vector.length);
+    }
+    VectorUtil.l2normalize(vector, false);
+    return vector;
+  }
+
+  private void addDocuments(IndexWriter writer, String idBase, int count) throws IOException {
+    for (int i = 0; i < count; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("other", "value", Field.Store.NO));
+      if (idBase != null) {
+        doc.add(new StringField("id", idBase + i, Field.Store.YES));
+      }
+      writer.addDocument(doc);
+    }
   }
 }
