@@ -30,12 +30,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.Constants;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -66,7 +68,7 @@ public class DocIdEncodingBenchmark {
     parseInput();
   }
 
-  @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder", "Bit32Encoder"})
+  @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder", "Bit21HybridEncoder"})
   String encoderName;
 
   @Param({"encode", "decode"})
@@ -123,45 +125,23 @@ public class DocIdEncodingBenchmark {
     } else if (methodName.equalsIgnoreCase("decode")) {
       try (Directory dir = FSDirectory.open(tmpDir)) {
         in = dir.openInput(decoderInputFile, IOContext.DEFAULT);
-        decode(in, docIdEncoder, DOC_ID_SEQUENCES, INPUT_SCALE_FACTOR, scratch);
+        for (int[] docIdSequence : DOC_ID_SEQUENCES) {
+          for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
+            docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
+          }
+        }
       }
     } else {
       throw new IllegalArgumentException("Unknown method: " + methodName);
     }
   }
 
-  public void encode(
+  private void encode(
       IndexOutput out, DocIdEncoder docIdEncoder, List<int[]> docIdSequences, int inputScaleFactor)
       throws IOException {
     for (int[] docIdSequence : docIdSequences) {
       for (int i = 1; i <= inputScaleFactor; i++) {
         docIdEncoder.encode(out, 0, docIdSequence.length, docIdSequence);
-      }
-    }
-  }
-
-  public void decode(
-      IndexInput in,
-      DocIdEncoder docIdEncoder,
-      List<int[]> docIdSequences,
-      int inputScaleFactor,
-      int[] scratch)
-      throws IOException {
-    for (int[] docIdSequence : docIdSequences) {
-      for (int i = 1; i <= inputScaleFactor; i++) {
-        docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
-        // TODO Use a unit test with a DocIdProvider that generates a few random sequences based on
-        // given BPV.
-        // Uncomment to test the output of Encoder
-        //            if (!Arrays.equals(
-        //                docIdSequence, Arrays.copyOfRange(scratch, 0, docIdSequence.length)))
-        // {
-        //              throw new RuntimeException(
-        //                  String.format(
-        //                      "Error for Encoder %s with sequence Expected %s Got %s",
-        //                      encoderName, Arrays.toString(docIdSequence),
-        // Arrays.toString(scratch)));
-        //            }
       }
     }
   }
@@ -178,18 +158,29 @@ public class DocIdEncodingBenchmark {
 
     class SingletonFactory {
 
-      static final Map<String, DocIdEncoder> ENCODER_NAME_TO_INSTANCE_MAPPING = new HashMap<>();
+      private static final Map<String, DocIdEncoder> ENCODER_NAME_TO_INSTANCE_MAPPING =
+          new HashMap<>();
+
+      private static final Set<Class<? extends DocIdEncoder>> EXCLUDED_ENCODERS =
+          Set.of(Bit21HybridEncoder.class);
 
       static {
+        initialiseEncoders();
+      }
+
+      private static String parsedClazzName(Class<?> clazz) {
+        return clazz.getSimpleName().toLowerCase(Locale.ROOT);
+      }
+
+      private static void initialiseEncoders() {
         Class<?>[] allImplementations = DocIdEncoder.class.getDeclaredClasses();
         for (Class<?> clazz : allImplementations) {
           boolean isADocIdEncoder =
               Arrays.asList(clazz.getInterfaces()).contains(DocIdEncoder.class);
-          if (isADocIdEncoder) {
+          if (isADocIdEncoder && !EXCLUDED_ENCODERS.contains(clazz)) {
             try {
               ENCODER_NAME_TO_INSTANCE_MAPPING.put(
-                  clazz.getSimpleName().toLowerCase(Locale.ROOT),
-                  (DocIdEncoder) clazz.getConstructor().newInstance());
+                  parsedClazzName(clazz), (DocIdEncoder) clazz.getConstructor().newInstance());
             } catch (InstantiationException
                 | IllegalAccessException
                 | InvocationTargetException
@@ -198,15 +189,50 @@ public class DocIdEncodingBenchmark {
             }
           }
         }
+
+        // Adding the encoders with custom constructors
+        // @Bit21HybridEncoder
+        if (Constants.OS_ARCH.equals("aarch64")) {
+          ENCODER_NAME_TO_INSTANCE_MAPPING.put(
+              parsedClazzName(Bit21HybridEncoder.class),
+              new Bit21HybridEncoder(
+                  SingletonFactory.fromClazz(Bit21With2StepsEncoder.class),
+                  SingletonFactory.fromClazz(Bit21With3StepsEncoder.class)));
+        } else if (Constants.OS_ARCH.equals("x86")) {
+          ENCODER_NAME_TO_INSTANCE_MAPPING.put(
+              parsedClazzName(Bit21HybridEncoder.class),
+              new Bit21HybridEncoder(
+                  SingletonFactory.fromClazz(Bit21With3StepsEncoder.class),
+                  SingletonFactory.fromClazz(Bit21With2StepsEncoder.class)));
+        } else {
+          throw new UnsupportedOperationException("Unsupported architecture: " + Constants.OS_ARCH);
+        }
+      }
+
+      private static DocIdEncoder getInternal(String parsedEncoderName) {
+        if (ENCODER_NAME_TO_INSTANCE_MAPPING.containsKey(parsedEncoderName)) {
+          return ENCODER_NAME_TO_INSTANCE_MAPPING.get(parsedEncoderName);
+        } else {
+          throw new IllegalArgumentException(
+              String.format("Unknown DocIdEncoder [%s]", parsedEncoderName));
+        }
       }
 
       public static DocIdEncoder fromName(String encoderName) {
         String parsedEncoderName = encoderName.trim().toLowerCase(Locale.ROOT);
-        if (ENCODER_NAME_TO_INSTANCE_MAPPING.containsKey(parsedEncoderName)) {
-          return ENCODER_NAME_TO_INSTANCE_MAPPING.get(parsedEncoderName);
-        } else {
-          throw new IllegalArgumentException("Unknown DocIdEncoder " + encoderName);
-        }
+        return getInternal(parsedEncoderName);
+      }
+
+      public static List<DocIdEncoder> getAllExcept(
+          List<Class<? extends DocIdEncoder>> excludeClasses) {
+        return ENCODER_NAME_TO_INSTANCE_MAPPING.values().stream()
+            .filter(x -> !excludeClasses.contains(x.getClass()))
+            .toList();
+      }
+
+      public static DocIdEncoder fromClazz(Class<? extends DocIdEncoder> clazz) {
+        String parsedEncoderName = parsedClazzName(clazz);
+        return getInternal(parsedEncoderName);
       }
     }
 
@@ -361,6 +387,27 @@ public class DocIdEncodingBenchmark {
       }
     }
 
+    class Bit21HybridEncoder implements DocIdEncoder {
+
+      private final DocIdEncoder encoder;
+      private final DocIdEncoder decoder;
+
+      public Bit21HybridEncoder(DocIdEncoder encoder, DocIdEncoder decoder) {
+        this.encoder = encoder;
+        this.decoder = decoder;
+      }
+
+      @Override
+      public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
+        encoder.encode(out, start, count, docIds);
+      }
+
+      @Override
+      public void decode(IndexInput in, int start, int count, int[] docIds) throws IOException {
+        decoder.decode(in, start, count, docIds);
+      }
+    }
+
     class Bit32Encoder implements DocIdEncoder {
 
       @Override
@@ -382,9 +429,12 @@ public class DocIdEncodingBenchmark {
   interface DocIdProvider {
     /**
      * We want to load all the docId sequences completely in memory to avoid including the time
-     * spent in fetching from disk. <br>
+     * spent in fetching from disk in every iteration unless we can consistently prove otherwise.
+     * <br>
      *
-     * @return: All the docId sequences or empty list.
+     * @param args : Data about the source of docId sequences depending on the underlying provider
+     *     like a file or randomly generated sequences given size.
+     * @return : Loaded docIds
      */
     List<int[]> getDocIds(Object... args);
   }
