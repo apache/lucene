@@ -76,15 +76,14 @@ final class PendingSoftDeletes extends PendingDeletes {
     hardDeletes.onNewReader(reader, info);
     // only re-calculate this if we haven't seen this generation
     if (dvGeneration < info.getDocValuesGen()) {
-      final DocIdSetIterator iterator =
-          FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
-      int newDelCount;
-      if (iterator
-          != null) { // nothing is deleted we don't have a soft deletes field in this segment
-        assert info.info.maxDoc() > 0 : "maxDoc is 0";
+      final int newDelCount;
+      var iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
+      if (iterator != null && iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
         newDelCount = applySoftDeletes(iterator, getMutableBits());
         assert newDelCount >= 0 : " illegal pending delete count: " + newDelCount;
       } else {
+        // nothing is deleted we don't have a soft deletes field in this segment
         newDelCount = 0;
       }
       assert info.getSoftDelCount() == newDelCount
