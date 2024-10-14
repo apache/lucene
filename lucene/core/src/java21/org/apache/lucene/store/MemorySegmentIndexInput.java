@@ -530,7 +530,29 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
   @Override
   public final MemorySegmentIndexInput clone() {
-    final MemorySegmentIndexInput clone = buildSlice((String) null, 0L, this.length);
+    ensureOpen();
+    ensureAccessible();
+    final MemorySegmentIndexInput clone;
+    if (segments.length == 1) {
+      clone =
+          new SingleSegmentImpl(
+              toString(),
+              null, // clones don't have an Arena, as they can't close)
+              segments[0],
+              length,
+              chunkSizePower,
+              confined);
+    } else {
+      clone =
+          new MultiSegmentImpl(
+              toString(),
+              null, // clones don't have an Arena, as they can't close)
+              segments,
+              ((MultiSegmentImpl) this).offset,
+              length,
+              chunkSizePower,
+              confined);
+    }
     try {
       clone.seek(getFilePointer());
     } catch (IOException ioe) {
