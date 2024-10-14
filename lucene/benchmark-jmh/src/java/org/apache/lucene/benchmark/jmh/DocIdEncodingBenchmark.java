@@ -204,7 +204,7 @@ public class DocIdEncodingBenchmark {
               parsedClazzName(Bit21HybridEncoder.class),
               new Bit21HybridEncoder(
                   SingletonFactory.fromClazz(Bit21With3StepsEncoder.class),
-                  SingletonFactory.fromClazz(Bit21With2StepsEncoder.class)));
+                  SingletonFactory.fromClazz(Bit21With3StepsEncoder.class)));
         } else {
           throw new UnsupportedOperationException("Unsupported architecture: " + Constants.OS_ARCH);
         }
@@ -393,7 +393,16 @@ public class DocIdEncodingBenchmark {
       private final DocIdEncoder encoder;
       private final DocIdEncoder decoder;
 
+      private final Set<Class<? extends DocIdEncoder>> VALID_BPV_21_ENCODER_CLASSES =
+          Set.of(Bit21With2StepsEncoder.class, Bit21With3StepsEncoder.class);
+
       public Bit21HybridEncoder(DocIdEncoder encoder, DocIdEncoder decoder) {
+        if (!VALID_BPV_21_ENCODER_CLASSES.contains(encoder.getClass())) {
+          throw new IllegalArgumentException("Illegal encoder " + encoder.getClass());
+        }
+        if (!VALID_BPV_21_ENCODER_CLASSES.contains(decoder.getClass())) {
+          throw new IllegalArgumentException("Illegal decoder " + decoder.getClass());
+        }
         this.encoder = encoder;
         this.decoder = decoder;
       }
