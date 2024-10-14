@@ -161,6 +161,7 @@ public class DocIdEncodingBenchmark {
       private static final Map<String, DocIdEncoder> ENCODER_NAME_TO_INSTANCE_MAPPING =
           new HashMap<>();
 
+      /** Add all the encoders that have custom constructors. */
       private static final Set<Class<? extends DocIdEncoder>> EXCLUDED_ENCODERS =
           Set.of(Bit21HybridEncoder.class);
 
@@ -198,7 +199,7 @@ public class DocIdEncodingBenchmark {
               new Bit21HybridEncoder(
                   SingletonFactory.fromClazz(Bit21With2StepsEncoder.class),
                   SingletonFactory.fromClazz(Bit21With3StepsEncoder.class)));
-        } else if (Constants.OS_ARCH.equals("x86")) {
+        } else if (Constants.OS_ARCH.equals("amd64")) {
           ENCODER_NAME_TO_INSTANCE_MAPPING.put(
               parsedClazzName(Bit21HybridEncoder.class),
               new Bit21HybridEncoder(
@@ -214,7 +215,7 @@ public class DocIdEncodingBenchmark {
           return ENCODER_NAME_TO_INSTANCE_MAPPING.get(parsedEncoderName);
         } else {
           throw new IllegalArgumentException(
-              String.format("Unknown DocIdEncoder [%s]", parsedEncoderName));
+              String.format(Locale.ROOT, "Unknown DocIdEncoder [%s]", parsedEncoderName));
         }
       }
 
