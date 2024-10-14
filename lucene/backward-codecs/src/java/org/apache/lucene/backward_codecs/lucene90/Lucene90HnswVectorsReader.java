@@ -260,7 +260,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       int node = results.topNode();
       float minSimilarity = results.topScore();
       results.pop();
-      knnCollector.collect(node, minSimilarity);
+      knnCollector.collect(vectorValues.ordToDoc(node), minSimilarity);
     }
   }
 
