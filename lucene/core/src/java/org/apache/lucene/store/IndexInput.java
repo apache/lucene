@@ -127,6 +127,9 @@ public abstract class IndexInput extends DataInput implements Closeable {
    * CompoundFormat} implementations to honor the {@link ReadAdvice} of each file within the
    * compound file.
    *
+   * <p><b>NOTE</b>: it is only legal to call this method on {@link IndexInput}s that have been open
+   * with {@link ReadAdvice#NORMAL}.
+   *
    * <p>The default implementation delegates to {@link #slice(String, long, long)} and ignores the
    * {@link ReadAdvice}.
    */

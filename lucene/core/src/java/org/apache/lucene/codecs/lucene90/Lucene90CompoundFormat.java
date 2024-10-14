@@ -82,9 +82,8 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
   public Lucene90CompoundFormat() {}
 
   @Override
-  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si, IOContext context)
-      throws IOException {
-    return new Lucene90CompoundReader(dir, si, context);
+  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si) throws IOException {
+    return new Lucene90CompoundReader(dir, si);
   }
 
   @Override
