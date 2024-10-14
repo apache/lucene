@@ -563,6 +563,13 @@ abstract class MemorySegmentIndexInput extends IndexInput
     return buildSlice(sliceDescription, offset, length);
   }
 
+  public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
+    if (offset == 0 && length == this.length) {
+      return this;
+    }
+    return slice("randomaccess", offset, length);
+  }
+
   @Override
   public final MemorySegmentIndexInput slice(
       String sliceDescription, long offset, long length, ReadAdvice advice) throws IOException {
@@ -583,26 +590,30 @@ abstract class MemorySegmentIndexInput extends IndexInput
   MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
     ensureOpen();
     ensureAccessible();
+    final MemorySegment[] slices;
+    final boolean isClone = offset == 0 && length == this.length;
+    if (isClone) {
+      slices = segments;
+    } else {
+      final long sliceEnd = offset + length;
+      final int startIndex = (int) (offset >>> chunkSizePower);
+      final int endIndex = (int) (sliceEnd >>> chunkSizePower);
+      // we always allocate one more slice, the last one may be a 0 byte one after truncating with
+      // asSlice():
+      slices = ArrayUtil.copyOfSubArray(segments, startIndex, endIndex + 1);
 
-    final long sliceEnd = offset + length;
-    final int startIndex = (int) (offset >>> chunkSizePower);
-    final int endIndex = (int) (sliceEnd >>> chunkSizePower);
+      // set the last segment's limit for the sliced view.
+      slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
 
-    // we always allocate one more slice, the last one may be a 0 byte one after truncating with
-    // asSlice():
-    final MemorySegment slices[] = ArrayUtil.copyOfSubArray(segments, startIndex, endIndex + 1);
-
-    // set the last segment's limit for the sliced view.
-    slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
-
-    offset = offset & chunkSizeMask;
+      offset = offset & chunkSizeMask;
+    }
 
     final String newResourceDescription = getFullSliceDescription(sliceDescription);
     if (slices.length == 1) {
       return new SingleSegmentImpl(
           newResourceDescription,
           null, // clones don't have an Arena, as they can't close)
-          slices[0].asSlice(offset, length),
+          isClone ? slices[0] : slices[0].asSlice(offset, length),
           length,
           chunkSizePower,
           confined);
