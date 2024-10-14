@@ -63,7 +63,8 @@ Build
 
 Other
 ---------------------
-(No changes)
+
+* Add GitHub action to verify that PRs have a changelog entry. (Prudhvi Godithi, Stefan Vodita)
 
 ======================= Lucene 10.0.0 =======================
 
