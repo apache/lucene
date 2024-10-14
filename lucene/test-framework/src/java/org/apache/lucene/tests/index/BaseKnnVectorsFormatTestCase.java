@@ -21,12 +21,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1943,22 +1945,23 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     IOUtils.close(reader, w2, dir1, dir2);
   }
 
-  /** Test that the query is a viable approximation to exact search. This test is designed to
-   uncover gross failures only, not to represent the true expected recall.
+  /**
+   * Test that the query is a viable approximation to exact search. This test is designed to uncover
+   * gross failures only, not to represent the true expected recall.
    */
   public void testRecall() throws IOException {
-    // TODO: vary the function randomly
     VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     int dim = 16;
     try (Directory indexStore = getKnownIndexStore("field", dim, vectorSimilarityFunction);
-         IndexReader reader = DirectoryReader.open(indexStore)) {
+        IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       float[] queryEmbedding = new float[dim];
       String queryString = "Apache License";
       computeLineEmbedding(queryString, queryEmbedding);
-      //computeLineEmbedding("   END OF TERMS AND CONDITIONS", queryEmbedding);
+      // computeLineEmbedding("   END OF TERMS AND CONDITIONS", queryEmbedding);
       // pass match-all "filter" to force full traversal, bypassing graph
-      KnnFloatVectorQuery exactQuery = new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
+      KnnFloatVectorQuery exactQuery =
+          new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
       // indexed 421 lines from LICENSE.txt
       // indexed 157 lines from NOTICE.txt
       assertEquals(578, searcher.count(exactQuery)); // Same for exact search
@@ -1966,16 +1969,26 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       assertEquals(10, searcher.count(query)); // Expect some results without timeout
       TopDocs results = searcher.search(query, 10);
       Set<Integer> resultDocs = new HashSet<>();
-      int i = 0;
       for (ScoreDoc scoreDoc : results.scoreDocs) {
-        System.out.println("result " + i++ + ": " + reader.storedFields().document(scoreDoc.doc) + " " + scoreDoc);
+        /*
+        System.out.println(
+            "result " + i++ + ": " + reader.storedFields().document(scoreDoc.doc) + " " + scoreDoc);
+        */
         resultDocs.add(scoreDoc.doc);
       }
       TopDocs expected = searcher.search(exactQuery, 10);
-      i = 0;
+      // int i = 0;
       int recalled = 0;
       for (ScoreDoc scoreDoc : expected.scoreDocs) {
-        System.out.println("expected " + i++ + ": " + reader.storedFields().document(scoreDoc.doc) + " " + scoreDoc);
+        /*
+        System.out.println(
+            "expected "
+                + i++
+                + ": "
+                + reader.storedFields().document(scoreDoc.doc)
+                + " "
+                + scoreDoc);
+        */
         if (resultDocs.contains(scoreDoc.doc)) {
           ++recalled;
         }
@@ -1991,14 +2004,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
-  Directory getKnownIndexStore(String field, int dimension, VectorSimilarityFunction vectorSimilarityFunction) throws IOException {
+  Directory getKnownIndexStore(
+      String field, int dimension, VectorSimilarityFunction vectorSimilarityFunction)
+      throws IOException {
     Directory indexStore = newDirectory(random());
     IndexWriter writer = new IndexWriter(indexStore, newIndexWriterConfig());
     float[] scratch = new float[dimension];
     for (String file : List.of("LICENSE.txt", "NOTICE.txt")) {
       try (InputStream in = BaseKnnVectorsFormatTestCase.class.getResourceAsStream(file);
-           BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8))) {
-        List<String> lines = new ArrayList<>();
+          BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8))) {
         String line;
         int lineNo = -1;
         while ((line = reader.readLine()) != null) {
@@ -2008,7 +2022,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           }
           ++lineNo;
           Document doc = new Document();
-          doc.add(new KnnFloatVectorField(field, computeLineEmbedding(line, scratch), vectorSimilarityFunction));
+          doc.add(
+              new KnnFloatVectorField(
+                  field, computeLineEmbedding(line, scratch), vectorSimilarityFunction));
           doc.add(new StoredField("text", line));
           doc.add(new StringField("id", file + "." + lineNo, Field.Store.YES));
           writer.addDocument(doc);
@@ -2017,7 +2033,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             addDocuments(writer, "id" + lineNo + ".", randomIntBetween(1, 5));
           }
         }
-        //System.out.println("indexed " + (lineNo + 1) + " lines from " + file);
+        // System.out.println("indexed " + (lineNo + 1) + " lines from " + file);
       }
     }
     // Add some documents without a vector nor an id
@@ -2030,7 +2046,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     Arrays.fill(vector, 0);
     for (int i = 0; i < line.length(); i++) {
       char c = line.charAt(i);
-      vector[i % vector.length] += (c << (i * 8 / vector.length));
+      vector[i % vector.length] += c / ((float) (i + 1) / vector.length);
     }
     VectorUtil.l2normalize(vector, false);
     return vector;
@@ -2046,5 +2062,4 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       writer.addDocument(doc);
     }
   }
-
 }
