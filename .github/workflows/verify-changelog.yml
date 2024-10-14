@@ -1,0 +1,22 @@
+name: Verify Changelog
+
+on:
+  # Run on new PRs
+  pull_request:
+    types: [opened]
+  # Or run on demand
+  workflow_dispatch:
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: dangoslen/changelog-enforcer@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          changeLogPath: 'lucene/CHANGES.txt'
