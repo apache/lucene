@@ -158,8 +158,7 @@ final class PosixNativeAccess extends NativeAccess {
 
   private Integer mapReadAdvice(ReadAdvice readAdvice) {
     return switch (readAdvice) {
-      // NORMAL is the OS' default, so no need to explicitly call madvise on the memory segment
-      case NORMAL -> null;
+      case NORMAL -> POSIX_MADV_NORMAL;
       case RANDOM -> POSIX_MADV_RANDOM;
       case SEQUENTIAL -> POSIX_MADV_SEQUENTIAL;
       case RANDOM_PRELOAD -> POSIX_MADV_NORMAL;
