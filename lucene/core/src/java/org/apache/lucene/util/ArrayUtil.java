@@ -615,6 +615,42 @@ public final class ArrayUtil {
     }.select(from, to, k);
   }
 
+  /**
+   * Reorganize {@code arr[from:to[} so that the elements at the offsets included in {@code k} are at the same position as if
+   * {@code arr[from:to]} was sorted, and all elements on their left are less than or equal to them, and
+   * all elements on their right are greater than or equal to them.
+   *
+   * <p>This runs in linear time on average and in {@code n log(n)} time in the worst case.
+   *
+   * @param arr Array to be re-organized.
+   * @param from Starting index for re-organization. Elements before this index will be left as is.
+   * @param to Ending index. Elements after this index will be left as is.
+   * @param k Array containing the Indexes of elements to sort from. Values must be less than 'to' and greater than or equal to 'from'. This list will be sorted during the call.
+   * @param comparator Comparator to use for sorting
+   */
+  public static <T> void multiSelect(
+      T[] arr, int from, int to, int[] k, Comparator<? super T> comparator) {
+    new IntroSelector() {
+
+      T pivot;
+
+      @Override
+      protected void swap(int i, int j) {
+        ArrayUtil.swap(arr, i, j);
+      }
+
+      @Override
+      protected void setPivot(int i) {
+        pivot = arr[i];
+      }
+
+      @Override
+      protected int comparePivot(int j) {
+        return comparator.compare(pivot, arr[j]);
+      }
+    }.multiSelect(from, to, k);
+  }
+
   /** Copies an array into a new array. */
   public static byte[] copyArray(byte[] array) {
     return copyOfSubArray(array, 0, array.length);

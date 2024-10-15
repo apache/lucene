@@ -23,7 +23,7 @@ import java.util.Arrays;
  * Radix selector.
  *
  * <p>This implementation works similarly to a MSB radix sort except that it only recurses into the
- * sub partition that contains the desired value.
+ * sub partition that contains the desired value(s).
  *
  * @lucene.internal
  */
