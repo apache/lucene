@@ -45,6 +45,12 @@ public abstract class IntroSelector extends Selector {
     select(from, to, k, 2 * MathUtil.log(to - from, 2));
   }
 
+  @Override
+  public final void select(int from, int to, int[] k) {
+    checkArgs(from, to, k);
+    select(from, to, k, 0, k.length, 2 * MathUtil.log(to - from, 2));
+  }
+
   // Visible for testing.
   void select(int from, int to, int k, int maxDepth) {
     // This code is inspired from IntroSorter#sort, adapted to loop on a single partition.
@@ -130,6 +136,126 @@ public abstract class IntroSelector extends Selector {
         from = i;
       } else {
         return;
+      }
+    }
+
+    // Sort the final tiny range (3 entries or less) with a very specialized sort.
+    switch (size) {
+      case 2:
+        if (compare(from, from + 1) > 0) {
+          swap(from, from + 1);
+        }
+        break;
+      case 3:
+        sort3(from);
+        break;
+    }
+  }
+
+  // Visible for testing.
+  void select(int from, int to, int[] k, int kFrom, int kTo, int maxDepth) {
+    // If there is only 1 k value to select in this group, then use the single-k select method
+    if (kTo - kFrom == 1) {
+      select(from, to, k[kFrom], maxDepth);
+      return;
+    }
+
+    // This code is inspired from IntroSorter#sort, adapted to loop on a single partition.
+
+    // For efficiency, we must enter the loop with at least 4 entries to be able to skip
+    // some boundary tests during the 3-way partitioning.
+    int size;
+    if ((size = to - from) > 3) {
+
+      if (--maxDepth == -1) {
+        // Max recursion depth exceeded: shuffle (only once) and continue.
+        shuffle(from, to);
+      }
+
+      // Pivot selection based on medians.
+      int last = to - 1;
+      int mid = (from + last) >>> 1;
+      int pivot;
+      if (size <= IntroSorter.SINGLE_MEDIAN_THRESHOLD) {
+        // Select the pivot with a single median around the middle element.
+        // Do not take the median between [from, mid, last] because it hurts performance
+        // if the order is descending in conjunction with the 3-way partitioning.
+        int range = size >> 2;
+        pivot = median(mid - range, mid, mid + range);
+      } else {
+        // Select the pivot with a variant of the Tukey's ninther median of medians.
+        // If k is close to the boundaries, select either the lowest or highest median (this variant
+        // is inspired from the interpolation search).
+        int range = size >> 3;
+        int doubleRange = range << 1;
+        int medianFirst = median(from, from + range, from + doubleRange);
+        int medianMiddle = median(mid - range, mid, mid + range);
+        int medianLast = median(last - doubleRange, last - range, last);
+        int middleK = k[(kFrom + kTo - 1) >> 1];
+        if (middleK - from < range) {
+          // k is close to 'from': select the lowest median.
+          pivot = min(medianFirst, medianMiddle, medianLast);
+        } else if (to - middleK <= range) {
+          // k is close to 'to': select the highest median.
+          pivot = max(medianFirst, medianMiddle, medianLast);
+        } else {
+          // Otherwise select the median of medians.
+          pivot = median(medianFirst, medianMiddle, medianLast);
+        }
+      }
+
+      // Bentley-McIlroy 3-way partitioning.
+      setPivot(pivot);
+      swap(from, pivot);
+      int i = from;
+      int j = to;
+      int p = from + 1;
+      int q = last;
+      while (true) {
+        int leftCmp, rightCmp;
+        while ((leftCmp = comparePivot(++i)) > 0) {}
+        while ((rightCmp = comparePivot(--j)) < 0) {}
+        if (i >= j) {
+          if (i == j && rightCmp == 0) {
+            swap(i, p);
+          }
+          break;
+        }
+        swap(i, j);
+        if (rightCmp == 0) {
+          swap(i, p++);
+        }
+        if (leftCmp == 0) {
+          swap(j, q--);
+        }
+      }
+      i = j + 1;
+      for (int l = from; l < p; ) {
+        swap(l++, j--);
+      }
+      for (int l = last; l > q; ) {
+        swap(l--, i++);
+      }
+
+      // Select the K values contained in the bottom and top partitions.
+      int topKFrom = kTo;
+      int bottomKTo = kFrom;
+      for (int ki = kTo-1; ki >= kFrom; ki--) {
+        if (k[ki] >= i) {
+          topKFrom = ki;
+        }
+        if (k[ki] <= j) {
+          bottomKTo = ki + 1;
+          break;
+        }
+      }
+      // Recursively select the relevant k-values from the bottom group, if there are any k-values to select there
+      if (bottomKTo > kFrom) {
+        select(from, j + 1, k, kFrom, bottomKTo, maxDepth);
+      }
+      // Recursively select the relevant k-values from the top group, if there are any k-values to select there
+      if (topKFrom < kTo) {
+        select(i, to, k, topKFrom, kTo, maxDepth);
       }
     }
 

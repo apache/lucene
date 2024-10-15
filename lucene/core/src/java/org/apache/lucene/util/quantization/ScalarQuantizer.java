@@ -439,11 +439,10 @@ public class ScalarQuantizer {
       double[] lowerSum) {
     assert confidenceIntervals.length == upperSum.length
         && confidenceIntervals.length == lowerSum.length;
+    float[][] upperAndLowerQuantiles = getUpperAndLowerQuantiles(quantileGatheringScratch, confidenceIntervals);
     for (int i = 0; i < confidenceIntervals.length; i++) {
-      float[] upperAndLower =
-          getUpperAndLowerQuantile(quantileGatheringScratch, confidenceIntervals[i]);
-      upperSum[i] += upperAndLower[1];
-      lowerSum[i] += upperAndLower[0];
+      upperSum[i] += upperAndLowerQuantiles[i][1];
+      lowerSum[i] += upperAndLowerQuantiles[i][0];
     }
   }
 
@@ -568,29 +567,34 @@ public class ScalarQuantizer {
    * and `95`.
    *
    * @param arr array of floats
-   * @param confidenceInterval the configured confidence interval
+   * @param confidenceIntervals the configured confidence intervals
    * @return lower and upper quantile values
    */
-  static float[] getUpperAndLowerQuantile(float[] arr, float confidenceInterval) {
+  static float[][] getUpperAndLowerQuantiles(float[] arr, float[] confidenceIntervals) {
     assert arr.length > 0;
+    float[][] minAndMaxPerInterval = new float[confidenceIntervals.length][2];
     // If we have 1 or 2 values, we can't calculate the quantiles, simply return the min and max
     if (arr.length <= 2) {
       Arrays.sort(arr);
-      return new float[] {arr[0], arr[arr.length - 1]};
+      Arrays.fill(minAndMaxPerInterval, new float[] {arr[0], arr[arr.length - 1]});
+      return minAndMaxPerInterval;
     }
-    int selectorIndex = (int) (arr.length * (1f - confidenceInterval) / 2f + 0.5f);
-    if (selectorIndex > 0) {
-      Selector selector = new FloatSelector(arr);
-      selector.select(0, arr.length, arr.length - selectorIndex);
-      selector.select(0, arr.length - selectorIndex, selectorIndex);
+    // Collect all quantile values to select for together
+    int[] selectorIndexes = new int[confidenceIntervals.length * 2];
+    for (int i = 0; i < confidenceIntervals.length; i++) {
+      int selectorIndex = (int) (arr.length * (1f - confidenceIntervals[i]) / 2f + 0.5f);
+      selectorIndexes[2 * i] = selectorIndex;
+      selectorIndexes[2 * i + 1] = arr.length - selectorIndex - 1;
     }
-    float min = Float.POSITIVE_INFINITY;
-    float max = Float.NEGATIVE_INFINITY;
-    for (int i = selectorIndex; i < arr.length - selectorIndex; i++) {
-      min = Math.min(arr[i], min);
-      max = Math.max(arr[i], max);
+    Selector selector = new FloatSelector(arr);
+    selector.select(0, arr.length, selectorIndexes);
+
+    // After the selection process, pick out the given quantile values
+    for (int i = 0; i < confidenceIntervals.length; i++) {
+      minAndMaxPerInterval[i][0] = arr[selectorIndexes[2*i]];
+      minAndMaxPerInterval[i][1] = arr[selectorIndexes[2*i + 1]];
     }
-    return new float[] {min, max};
+    return minAndMaxPerInterval;
   }
 
   private static class FloatSelector extends IntroSelector {
