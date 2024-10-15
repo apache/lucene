@@ -39,6 +39,9 @@ public abstract class Selector {
    * contains elements that are greater than or equal to {@code k[n]}.
    */
   public void multiSelect(int from, int to, int[] k) {
+    // k needs to be sorted, so copy the array
+    k = Arrays.copyOf(k, k.length);
+    checkMultiArgs(from, to, k);
     multiSelect(from, to, k, 0, k.length);
   }
 
@@ -48,12 +51,11 @@ public abstract class Selector {
    * only contains elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only
    * contains elements that are greater than or equal to {@code k[n]}.
    *
-   * <p>The array {@code k} will be sorted, so {@code kFrom} and {@code kTo} must be referring to
+   * <p>The array {@code k} must be sorted, and {@code kFrom} and {@code kTo} must be referring to
    * the sorted order.
    */
-  public void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
+  protected void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
     // Default implementation only uses select(), so it is not optimal
-    checkMultiArgs(from, to, k, kFrom, kTo);
     int nextFrom = from;
     for (int i = kFrom; i < kTo; i++) {
       int currentK = k[i];
@@ -75,18 +77,14 @@ public abstract class Selector {
     }
   }
 
-  void checkMultiArgs(int from, int to, int[] k, int kFrom, int kTo) {
-    if (kFrom < 0) {
-      throw new IllegalArgumentException("kFrom must be >= 0");
+  void checkMultiArgs(int from, int to, int[] k) {
+    if (k.length == 0) {
+      throw new IllegalArgumentException("k must not be empty");
     }
-    if (kTo > k.length) {
-      throw new IllegalArgumentException("kFrom must be <= k.length");
-    }
-    Arrays.sort(k);
-    if (k[kFrom] < from) {
+    if (k[0] < from) {
       throw new IllegalArgumentException("All k must be >= from");
     }
-    if (k[kTo - 1] >= to) {
+    if (k[k.length - 1] >= to) {
       throw new IllegalArgumentException("All k must be < to");
     }
   }

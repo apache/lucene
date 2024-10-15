@@ -46,8 +46,7 @@ public abstract class IntroSelector extends Selector {
   }
 
   @Override
-  public final void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
-    checkMultiArgs(from, to, k, kFrom, kTo);
+  protected final void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
     multiSelect(from, to, k, kFrom, kTo, 2 * MathUtil.log(to - from, 2));
   }
 

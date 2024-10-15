@@ -126,8 +126,7 @@ public abstract class RadixSelector extends Selector {
   }
 
   @Override
-  public void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
-    checkMultiArgs(from, to, k, kFrom, kTo);
+  protected void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
     multiSelect(from, to, k, kFrom, kTo, 0, 0);
   }
 
