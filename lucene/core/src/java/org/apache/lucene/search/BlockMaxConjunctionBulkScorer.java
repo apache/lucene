@@ -85,9 +85,20 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
     int windowMin = Math.max(lead1.docID(), min);
     while (windowMin < max) {
-      // Use impacts of the least costly scorer to compute windows
-      // NOTE: windowMax is inclusive
-      int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
+      // Use impacts of the least costly scorer to compute windows to keep the per-block overhead
+      // under control.
+      // NOTE: windowMax is inclusive.
+      int windowMax = scorer1.advanceShallow(windowMin);
+      if (windowMax == DocIdSetIterator.NO_MORE_DOCS) {
+        // If the query doesn't have impacts anymore, or has a single block for the whole doc ID
+        // space (e.g. ConstantScoreQuery), then we try to create a block that has ~128 docs of the
+        // leading clause. This gives us higher chances to exit early based on the maximum scores of
+        // other clauses.
+        long windowSize = 128L * maxDoc / Math.max(1, lead1.cost());
+        windowSize = Math.max(windowSize, 128L);
+        windowMax = (int) Math.min(Integer.MAX_VALUE, windowMin + windowSize);
+      }
+      windowMax = Math.min(windowMax, max - 1);
 
       float maxWindowScore = Float.POSITIVE_INFINITY;
       if (0 < scorable.minCompetitiveScore) {
