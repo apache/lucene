@@ -35,10 +35,12 @@ public class TestDocIdEncoding extends LuceneTestCase {
 
     @Override
     public List<int[]> getDocIds(Object... args) {
+
       DocIdEncodingBenchmark.DocIdEncoder encoder = (DocIdEncodingBenchmark.DocIdEncoder) args[0];
       int capacity = (int) args[1];
       int low = (int) args[2];
       int high = (int) args[3];
+
       List<int[]> docIdSequences = new ArrayList<>(capacity);
 
       for (int i = 1; i <= capacity; i++) {
@@ -68,7 +70,7 @@ public class TestDocIdEncoding extends LuceneTestCase {
 
       for (DocIdEncodingBenchmark.DocIdEncoder encoder : encoders) {
 
-        List<int[]> docIdSequences = docIdProvider.getDocIds(encoder, 50, 100, 512);
+        List<int[]> docIdSequences = docIdProvider.getDocIds(encoder, 100, 100, 512);
 
         String encoderFileName = "Encoder_" + encoder.getClass().getSimpleName();
 
