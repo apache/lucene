@@ -23,17 +23,22 @@ import java.io.IOException;
 import org.apache.lucene.backward_codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
@@ -41,23 +46,23 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
-public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTestBase {
+public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
-  static final String INDEX_NAME = "int8_hnsw";
+  static final String INDEX_NAME = "int7_hnsw";
   static final String SUFFIX = "";
-  private static final Version FIRST_INT8_HNSW_VERSION = Version.fromBits(9, 10, 0);
+  private static final Version FIRST_INT7_HNSW_VERSION = Version.fromBits(9, 10, 0);
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final int DOC_COUNT = 30;
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
       KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
-  public TestInt8HnswBackwardsCompatibility(Version version, String pattern) {
+  public TestInt7HnswBackwardsCompatibility(Version version, String pattern) {
     super(version, pattern);
   }
 
-  /** Provides all sorted versions to the test-framework */
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     return allVersion(INDEX_NAME, SUFFIX);
@@ -76,7 +81,7 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
 
   @Override
   protected boolean supportsVersion(Version version) {
-    return version.onOrAfter(FIRST_INT8_HNSW_VERSION);
+    return version.onOrAfter(FIRST_INT7_HNSW_VERSION);
   }
 
   @Override
@@ -84,7 +89,7 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
     // We don't use the default codec
   }
 
-  public void testInt8HnswIndexAndSearch() throws Exception {
+  public void testInt7HnswIndexAndSearch() throws Exception {
     IndexWriterConfig indexWriterConfig =
         newIndexWriterConfig(new MockAnalyzer(random()))
             .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
@@ -108,7 +113,6 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
         assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
       }
     }
-    // This will confirm the docs are really sorted
     TestUtil.checkIndex(directory);
   }
 
@@ -117,7 +121,7 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setMaxBufferedDocs(10)
-            .setCodec(TestUtil.getDefaultCodec())
+            .setCodec(getCodec())
             .setMergePolicy(NoMergePolicy.INSTANCE);
     try (IndexWriter writer = new IndexWriter(dir, conf)) {
       for (int i = 0; i < DOC_COUNT; i++) {
@@ -145,6 +149,31 @@ public class TestInt8HnswBackwardsCompatibility extends BackwardsCompatibilityTe
       IndexSearcher searcher = new IndexSearcher(reader);
       assertKNNSearch(searcher, KNN_VECTOR, 1000, DOC_COUNT, "0");
       assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
+    }
+  }
+
+  // #13880: make sure the BWC index really contains quantized HNSW not float32
+  public void testIndexIsReallyQuantized() throws Exception {
+    try (DirectoryReader reader = DirectoryReader.open(directory)) {
+      for (LeafReaderContext leafContext : reader.leaves()) {
+        KnnVectorsReader knnVectorsReader = ((CodecReader) leafContext.reader()).getVectorReader();
+        assertTrue(
+            "expected PerFieldKnnVectorsFormat.FieldsReader but got: " + knnVectorsReader,
+            knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader);
+
+        KnnVectorsReader forField =
+            ((PerFieldKnnVectorsFormat.FieldsReader) knnVectorsReader)
+                .getFieldReader(KNN_VECTOR_FIELD);
+
+        assertTrue(forField instanceof Lucene99HnswVectorsReader);
+
+        QuantizedByteVectorValues quantized =
+            ((Lucene99HnswVectorsReader) forField).getQuantizedVectorValues(KNN_VECTOR_FIELD);
+
+        assertNotNull(
+            "KnnVectorsReader should have quantized interface for field " + KNN_VECTOR_FIELD,
+            quantized);
+      }
     }
   }
 }
