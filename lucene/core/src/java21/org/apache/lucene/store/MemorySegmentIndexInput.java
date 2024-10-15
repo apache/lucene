@@ -585,13 +585,6 @@ abstract class MemorySegmentIndexInput extends IndexInput
     return buildSlice(sliceDescription, offset, length);
   }
 
-  public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
-    if (offset == 0 && length == this.length) {
-      return this;
-    }
-    return slice("randomaccess", offset, length);
-  }
-
   @Override
   public final MemorySegmentIndexInput slice(
       String sliceDescription, long offset, long length, ReadAdvice advice) throws IOException {
