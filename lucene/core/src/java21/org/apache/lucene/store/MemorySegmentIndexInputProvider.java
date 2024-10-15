@@ -129,9 +129,7 @@ final class MemorySegmentIndexInputProvider
       // internal FileChannel logic)
       if (preload) {
         segment.load();
-      } else if (readAdvice != ReadAdvice.NORMAL
-          && nativeAccess.filter(na -> segment.address() % na.getPageSize() == 0).isPresent()) {
-        // No need to madvise with ReadAdvice.NORMAL since it is the OS' default read advice.
+      } else if (nativeAccess.filter(na -> segment.address() % na.getPageSize() == 0).isPresent()) {
         nativeAccess.get().madvise(segment, readAdvice);
       }
       segments[segNr] = segment;
