@@ -1,13 +1,27 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
@@ -17,42 +31,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDocIdEncoding extends LuceneTestCase {
 
-  private static final Map<Class<? extends DocIdEncodingBenchmark.DocIdEncoder>, Integer>
-      ENCODER_TO_BPV_MAPPING =
-          Map.of(
-              DocIdEncodingBenchmark.DocIdEncoder.Bit21With2StepsEncoder.class, 21,
-              DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoder.class, 21,
-              DocIdEncodingBenchmark.DocIdEncoder.Bit21HybridEncoder.class, 21,
-              DocIdEncodingBenchmark.DocIdEncoder.Bit24Encoder.class, 24,
-              DocIdEncodingBenchmark.DocIdEncoder.Bit32Encoder.class, 32);
-
   @Override
   public void setUp() throws Exception {
     super.setUp();
-  }
-
-  static class FixedBPVRandomDocIdProvider implements DocIdEncodingBenchmark.DocIdProvider {
-
-    @Override
-    public List<int[]> getDocIds(Object... args) {
-
-      DocIdEncodingBenchmark.DocIdEncoder encoder = (DocIdEncodingBenchmark.DocIdEncoder) args[0];
-      int capacity = (int) args[1];
-      int low = (int) args[2];
-      int high = (int) args[3];
-
-      List<int[]> docIdSequences = new ArrayList<>(capacity);
-
-      for (int i = 1; i <= capacity; i++) {
-        docIdSequences.add(
-            random()
-                .ints(0, (int) Math.pow(2, ENCODER_TO_BPV_MAPPING.get(encoder.getClass())) - 1)
-                .distinct()
-                .limit(random().nextInt(low, high))
-                .toArray());
-      }
-      return docIdSequences;
-    }
   }
 
   public void testBPV21AndAbove() {
@@ -62,7 +43,8 @@ public class TestDocIdEncoding extends LuceneTestCase {
 
     final int[] scratch = new int[512];
 
-    DocIdEncodingBenchmark.DocIdProvider docIdProvider = new FixedBPVRandomDocIdProvider();
+    DocIdEncodingBenchmark.DocIdProvider docIdProvider =
+        new DocIdEncodingBenchmark.FixedBPVRandomDocIdProvider();
 
     try {
 
@@ -70,7 +52,7 @@ public class TestDocIdEncoding extends LuceneTestCase {
 
       for (DocIdEncodingBenchmark.DocIdEncoder encoder : encoders) {
 
-        List<int[]> docIdSequences = docIdProvider.getDocIds(encoder, 100, 100, 512);
+        List<int[]> docIdSequences = docIdProvider.getDocIds(encoder.getClass(), 100, 100, 512);
 
         String encoderFileName = "Encoder_" + encoder.getClass().getSimpleName();
 

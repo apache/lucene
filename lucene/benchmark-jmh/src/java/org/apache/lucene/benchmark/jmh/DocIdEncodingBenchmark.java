@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -437,6 +438,15 @@ public class DocIdEncodingBenchmark {
   }
 
   interface DocIdProvider {
+
+    Map<Class<? extends DocIdEncodingBenchmark.DocIdEncoder>, Integer> ENCODER_TO_BPV_MAPPING =
+        Map.of(
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21With2StepsEncoder.class, 21,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoder.class, 21,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21HybridEncoder.class, 21,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit24Encoder.class, 24,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit32Encoder.class, 32);
+
     /**
      * We want to load all the docId sequences completely in memory to avoid including the time
      * spent in fetching from disk in every iteration unless we can consistently prove otherwise.
@@ -468,6 +478,32 @@ public class DocIdEncodingBenchmark {
         }
       }
       return docIds;
+    }
+  }
+
+  static class FixedBPVRandomDocIdProvider implements DocIdEncodingBenchmark.DocIdProvider {
+
+    private final Random random = new Random();
+
+    @Override
+    public List<int[]> getDocIds(Object... args) {
+
+      Class<? extends DocIdEncoder> encoderClass = (Class<? extends DocIdEncoder>) args[0];
+      int capacity = (int) args[1];
+      int low = (int) args[2];
+      int high = (int) args[3];
+
+      List<int[]> docIdSequences = new ArrayList<>(capacity);
+
+      for (int i = 1; i <= capacity; i++) {
+        docIdSequences.add(
+            random
+                .ints(0, (int) Math.pow(2, ENCODER_TO_BPV_MAPPING.get(encoderClass)) - 1)
+                .distinct()
+                .limit(random.nextInt(low, high))
+                .toArray());
+      }
+      return docIdSequences;
     }
   }
 
@@ -508,9 +544,7 @@ public class DocIdEncodingBenchmark {
                   Files.newInputStream(Path.of(inputFilePath), StandardOpenOption.READ));
         } else {
           DOC_ID_SEQUENCES =
-              docIdProvider.getDocIds(
-                  DocIdEncodingBenchmark.class.getResourceAsStream(
-                      "/org.apache.lucene.benchmark.jmh/docIds_bpv21.txt"));
+              docIdProvider.getDocIds(DocIdEncoder.Bit21With3StepsEncoder.class, 100, 100, 512);
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
