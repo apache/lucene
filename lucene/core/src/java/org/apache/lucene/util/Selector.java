@@ -33,22 +33,23 @@ public abstract class Selector {
   public abstract void select(int from, int to, int k);
 
   /**
-   * Reorder elements so that the elements at all positions in {@code k} are the same as if all elements were
-   * sorted and all other elements are partitioned around it: {@code [from, k[n])} only contains
-   * elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only contains elements
-   * that are greater than or equal to {@code k[n]}.
+   * Reorder elements so that the elements at all positions in {@code k} are the same as if all
+   * elements were sorted and all other elements are partitioned around it: {@code [from, k[n])}
+   * only contains elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only
+   * contains elements that are greater than or equal to {@code k[n]}.
    */
   public void multiSelect(int from, int to, int[] k) {
     multiSelect(from, to, k, 0, k.length);
   }
 
   /**
-   * Reorder elements so that the elements at all positions in {@code k} are the same as if all elements were
-   * sorted and all other elements are partitioned around it: {@code [from, k[n])} only contains
-   * elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only contains elements
-   * that are greater than or equal to {@code k[n]}.
+   * Reorder elements so that the elements at all positions in {@code k} are the same as if all
+   * elements were sorted and all other elements are partitioned around it: {@code [from, k[n])}
+   * only contains elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only
+   * contains elements that are greater than or equal to {@code k[n]}.
    *
-   * The array {@code k} will be sorted, so {@code kFrom} and {@code kTo} must be referring to the sorted order.
+   * <p>The array {@code k} will be sorted, so {@code kFrom} and {@code kTo} must be referring to
+   * the sorted order.
    */
   public void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
     // Default implementation only uses select(), so it is not optimal

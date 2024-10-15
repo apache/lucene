@@ -224,12 +224,14 @@ public abstract class RadixSelector extends Selector {
       }
       final int bucketTo = bucketFrom + histogram[bucket];
       int bucketKTo = bucketKFrom;
-      // Move the right-side of the k-window up until the k-value is no longer in the current histogram bucket
+      // Move the right-side of the k-window up until the k-value is no longer in the current
+      // histogram bucket
       while (bucketKTo < kTo && k[bucketKTo] < bucketTo) {
         bucketKTo++;
       }
 
-      // If there are any k-values captured in this histogram, continue down this path with those k-values
+      // If there are any k-values captured in this histogram, continue down this path with those
+      // k-values
       if (bucketKFrom < bucketKTo) {
         partition(from, to, bucket, bucketFrom, bucketTo, d);
 

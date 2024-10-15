@@ -616,16 +616,17 @@ public final class ArrayUtil {
   }
 
   /**
-   * Reorganize {@code arr[from:to[} so that the elements at the offsets included in {@code k} are at the same position as if
-   * {@code arr[from:to]} was sorted, and all elements on their left are less than or equal to them, and
-   * all elements on their right are greater than or equal to them.
+   * Reorganize {@code arr[from:to[} so that the elements at the offsets included in {@code k} are
+   * at the same position as if {@code arr[from:to]} was sorted, and all elements on their left are
+   * less than or equal to them, and all elements on their right are greater than or equal to them.
    *
    * <p>This runs in linear time on average and in {@code n log(n)} time in the worst case.
    *
    * @param arr Array to be re-organized.
    * @param from Starting index for re-organization. Elements before this index will be left as is.
    * @param to Ending index. Elements after this index will be left as is.
-   * @param k Array containing the Indexes of elements to sort from. Values must be less than 'to' and greater than or equal to 'from'. This list will be sorted during the call.
+   * @param k Array containing the Indexes of elements to sort from. Values must be less than 'to'
+   *     and greater than or equal to 'from'. This list will be sorted during the call.
    * @param comparator Comparator to use for sorting
    */
   public static <T> void multiSelect(

@@ -125,22 +125,23 @@ public class TestScalarQuantizer extends LuceneTestCase {
       percs[i] = (float) i;
     }
     shuffleArray(percs);
-    float[][] upperAndLower = ScalarQuantizer.getUpperAndLowerQuantiles(percs, new float[]{0.9f});
+    float[][] upperAndLower = ScalarQuantizer.getUpperAndLowerQuantiles(percs, new float[] {0.9f});
     assertEquals(50f, upperAndLower[0][0], 1e-7);
     assertEquals(949f, upperAndLower[0][1], 1e-7);
     shuffleArray(percs);
-    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantiles(percs, new float[]{0.95f});
+    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantiles(percs, new float[] {0.95f});
     assertEquals(25f, upperAndLower[0][0], 1e-7);
     assertEquals(974f, upperAndLower[0][1], 1e-7);
     shuffleArray(percs);
-    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantiles(percs, new float[]{0.99f});
+    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantiles(percs, new float[] {0.99f});
     assertEquals(5f, upperAndLower[0][0], 1e-7);
     assertEquals(994f, upperAndLower[0][1], 1e-7);
   }
 
   public void testEdgeCase() {
     float[][] upperAndLower =
-        ScalarQuantizer.getUpperAndLowerQuantiles(new float[] {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, new float[]{0.9f});
+        ScalarQuantizer.getUpperAndLowerQuantiles(
+            new float[] {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, new float[] {0.9f});
     assertEquals(1f, upperAndLower[0][0], 1e-7f);
     assertEquals(1f, upperAndLower[0][1], 1e-7f);
   }
@@ -194,7 +195,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
   public void testFromVectorsAutoInterval4Bit() throws IOException {
     int dims = 128;
-    int numVecs = 100;
+    int numVecs = 1000;
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
 
     float[][] floats = randomFloats(numVecs, dims);

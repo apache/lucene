@@ -439,7 +439,8 @@ public class ScalarQuantizer {
       double[] lowerSum) {
     assert confidenceIntervals.length == upperSum.length
         && confidenceIntervals.length == lowerSum.length;
-    float[][] upperAndLowerQuantiles = getUpperAndLowerQuantiles(quantileGatheringScratch, confidenceIntervals);
+    float[][] upperAndLowerQuantiles =
+        getUpperAndLowerQuantiles(quantileGatheringScratch, confidenceIntervals);
     for (int i = 0; i < confidenceIntervals.length; i++) {
       upperSum[i] += upperAndLowerQuantiles[i][1];
       lowerSum[i] += upperAndLowerQuantiles[i][0];
@@ -591,8 +592,8 @@ public class ScalarQuantizer {
 
     // After the selection process, pick out the given quantile values
     for (int i = 0; i < confidenceIntervals.length; i++) {
-      minAndMaxPerInterval[i][0] = arr[selectorIndexes[2*i]];
-      minAndMaxPerInterval[i][1] = arr[selectorIndexes[2*i + 1]];
+      minAndMaxPerInterval[i][0] = arr[selectorIndexes[2 * i]];
+      minAndMaxPerInterval[i][1] = arr[selectorIndexes[2 * i + 1]];
     }
     return minAndMaxPerInterval;
   }
