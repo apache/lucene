@@ -545,6 +545,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
               .suffixRAMLimitMB(0d)
               .dataOutput(getOnHeapReaderWriter(pageBits))
               .setVersion(fstVersion)
+              .setInitLength(prefix.length + 1)
               .build();
       // if (DEBUG) {
       //  System.out.println("  compile index for prefix=" + prefix);
