@@ -28,7 +28,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.InPlaceMergeSorter;
+import org.apache.lucene.util.WeightedSelector;
 
 /**
  * Methods to create dynamic ranges for numeric fields.
@@ -66,6 +66,7 @@ public final class DynamicRangeUtil {
         matchingDocsList.stream().mapToInt(FacetsCollector.MatchingDocs::totalHits).sum();
     long[] values = new long[totalDoc];
     long[] weights = new long[totalDoc];
+    long totalValue = 0;
     long totalWeight = 0;
     int overallLength = 0;
 
@@ -107,6 +108,7 @@ public final class DynamicRangeUtil {
       assert curSegmentOutput.values.length == curSegmentOutput.weights.length;
 
       try {
+        totalValue = Math.addExact(curSegmentOutput.segmentTotalValue, totalValue);
         totalWeight = Math.addExact(curSegmentOutput.segmentTotalWeight, totalWeight);
       } catch (ArithmeticException ae) {
         throw new IllegalArgumentException(
@@ -118,7 +120,8 @@ public final class DynamicRangeUtil {
       System.arraycopy(curSegmentOutput.weights, 0, weights, overallLength, currSegmentLen);
       overallLength += currSegmentLen;
     }
-    return computeDynamicNumericRanges(values, weights, overallLength, totalWeight, topN);
+    return computeDynamicNumericRanges(
+        values, weights, overallLength, totalValue, totalWeight, topN);
   }
 
   private static class SegmentTask implements Callable<Void> {
@@ -165,6 +168,8 @@ public final class DynamicRangeUtil {
         segmentOutput.values[segmentOutput.segmentIdx] = curValue;
         segmentOutput.weights[segmentOutput.segmentIdx] = curWeight;
         try {
+          segmentOutput.segmentTotalValue =
+              Math.addExact(segmentOutput.segmentTotalValue, curValue);
           segmentOutput.segmentTotalWeight =
               Math.addExact(segmentOutput.segmentTotalWeight, curWeight);
         } catch (ArithmeticException ae) {
@@ -180,6 +185,7 @@ public final class DynamicRangeUtil {
   private static final class SegmentOutput {
     private final long[] values;
     private final long[] weights;
+    private long segmentTotalValue;
     private long segmentTotalWeight;
     private int segmentIdx;
 
@@ -202,7 +208,7 @@ public final class DynamicRangeUtil {
    *     is used to compute the equi-weight per bin.
    */
   public static List<DynamicRangeInfo> computeDynamicNumericRanges(
-      long[] values, long[] weights, int len, long totalWeight, int topN) {
+      long[] values, long[] weights, int len, long totalValue, long totalWeight, int topN) {
     assert values.length == weights.length && len <= values.length && len >= 0;
     assert topN >= 0;
     List<DynamicRangeInfo> dynamicRangeResult = new ArrayList<>();
@@ -210,58 +216,75 @@ public final class DynamicRangeUtil {
       return dynamicRangeResult;
     }
 
-    new InPlaceMergeSorter() {
-      @Override
-      protected int compare(int index1, int index2) {
-        int cmp = Long.compare(values[index1], values[index2]);
-        if (cmp == 0) {
-          // If the values are equal, sort based on the weights.
-          // Any weight order is correct as long as it's deterministic.
-          return Long.compare(weights[index1], weights[index2]);
-        }
-        return cmp;
-      }
+    double rangeWeightTarget = (double) totalWeight / topN;
+    double[] kWeights = new double[topN];
+    for (int i = 0; i < topN; i++) {
+      kWeights[i] = (i == 0 ? 0 : kWeights[i - 1]) + rangeWeightTarget;
+    }
 
-      @Override
-      protected void swap(int index1, int index2) {
-        long tmp = values[index1];
-        values[index1] = values[index2];
-        values[index2] = tmp;
-        tmp = weights[index1];
-        weights[index1] = weights[index2];
-        weights[index2] = tmp;
-      }
-    }.sort(0, len);
+    WeightedSelector.WeightRangeInfo[] kIndexResults =
+        new WeightedSelector() {
+          private long pivotValue;
+          private long pivotWeight;
 
-    long accuWeight = 0;
-    long valueSum = 0;
-    int count = 0;
-    int minIdx = 0;
+          @Override
+          protected long getWeight(int i) {
+            return weights[i];
+          }
 
-    double rangeWeightTarget = (double) totalWeight / Math.min(topN, len);
+          @Override
+          protected long getValue(int i) {
+            return values[i];
+          }
 
-    for (int i = 0; i < len; i++) {
-      accuWeight += weights[i];
-      valueSum += values[i];
-      count++;
+          @Override
+          protected void swap(int index1, int index2) {
+            long tmp = values[index1];
+            values[index1] = values[index2];
+            values[index2] = tmp;
+            tmp = weights[index1];
+            weights[index1] = weights[index2];
+            weights[index2] = tmp;
+          }
 
-      if (accuWeight >= rangeWeightTarget) {
+          @Override
+          protected void setPivot(int i) {
+            pivotValue = values[i];
+            pivotWeight = weights[i];
+          }
+
+          @Override
+          protected int comparePivot(int j) {
+            int cmp = Long.compare(pivotValue, values[j]);
+            if (cmp == 0) {
+              // If the values are equal, sort based on the weights.
+              // Any weight order is correct as long as it's deterministic.
+              return Long.compare(pivotWeight, weights[j]);
+            }
+            return cmp;
+          }
+        }.select(0, len, totalValue, 0, totalWeight, 0, kWeights);
+
+    int lastIdx = -1;
+    long lastTotalValue = 0;
+    long lastTotalWeight = 0;
+    for (int kIdx = 0; kIdx < topN; kIdx++) {
+      WeightedSelector.WeightRangeInfo weightRangeInfo = kIndexResults[kIdx];
+      if (weightRangeInfo.index() > -1) {
+        int count = weightRangeInfo.index() - lastIdx;
         dynamicRangeResult.add(
             new DynamicRangeInfo(
-                count, accuWeight, values[minIdx], values[i], (double) valueSum / count));
-        count = 0;
-        accuWeight = 0;
-        valueSum = 0;
-        minIdx = i + 1;
+                count,
+                (weightRangeInfo.runningWeight() - lastTotalWeight),
+                values[lastIdx + 1],
+                values[weightRangeInfo.index()],
+                (double) (weightRangeInfo.runningValueSum() - lastTotalValue) / count));
+        lastIdx = weightRangeInfo.index();
+        lastTotalValue = weightRangeInfo.runningValueSum();
+        lastTotalWeight = weightRangeInfo.runningWeight();
       }
     }
 
-    // capture the remaining values to create the last range
-    if (minIdx < len) {
-      dynamicRangeResult.add(
-          new DynamicRangeInfo(
-              count, accuWeight, values[minIdx], values[len - 1], (double) valueSum / count));
-    }
     return dynamicRangeResult;
   }
 
