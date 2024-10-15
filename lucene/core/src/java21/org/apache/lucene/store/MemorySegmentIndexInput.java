@@ -570,12 +570,20 @@ abstract class MemorySegmentIndexInput extends IndexInput
     if (NATIVE_ACCESS.isPresent() && advice != ReadAdvice.NORMAL) {
       // No need to madvise with a normal advice, since it's the OS' default.
       final NativeAccess nativeAccess = NATIVE_ACCESS.get();
-      slice.advise(
-          0,
-          slice.length,
-          segment -> {
-            nativeAccess.madvise(segment, advice);
-          });
+      if (length >= nativeAccess.getPageSize()) {
+        // Only set the read advice if the inner file is large enough. Otherwise the cons are likely
+        // outweighing the pros as we're:
+        //  - potentially overriding the advice of other files that share the same pages,
+        //  - paying the cost of a madvise system call for little value.
+        // We could align inner files with the page size to avoid the first issue, but again the
+        // pros don't clearly overweigh the cons.
+        slice.advise(
+            0,
+            slice.length,
+            segment -> {
+              nativeAccess.madvise(segment, advice);
+            });
+      }
     }
     return slice;
   }
