@@ -46,9 +46,9 @@ public abstract class IntroSelector extends Selector {
   }
 
   @Override
-  public final void select(int from, int to, int[] k) {
-    checkArgs(from, to, k);
-    select(from, to, k, 0, k.length, 2 * MathUtil.log(to - from, 2));
+  public final void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
+    checkMultiArgs(from, to, k, kFrom, kTo);
+    multiSelect(from, to, k, kFrom, kTo, 2 * MathUtil.log(to - from, 2));
   }
 
   // Visible for testing.
@@ -153,8 +153,8 @@ public abstract class IntroSelector extends Selector {
   }
 
   // Visible for testing.
-  void select(int from, int to, int[] k, int kFrom, int kTo, int maxDepth) {
-    // If there is only 1 k value to select in this group, then use the single-k select method
+  void multiSelect(int from, int to, int[] k, int kFrom, int kTo, int maxDepth) {
+    // If there is only 1 k value to select in this group, then use the single-k select method, which does not do recursion
     if (kTo - kFrom == 1) {
       select(from, to, k[kFrom], maxDepth);
       return;
@@ -251,11 +251,11 @@ public abstract class IntroSelector extends Selector {
       }
       // Recursively select the relevant k-values from the bottom group, if there are any k-values to select there
       if (bottomKTo > kFrom) {
-        select(from, j + 1, k, kFrom, bottomKTo, maxDepth);
+        multiSelect(from, j + 1, k, kFrom, bottomKTo, maxDepth);
       }
       // Recursively select the relevant k-values from the top group, if there are any k-values to select there
       if (topKFrom < kTo) {
-        select(i, to, k, topKFrom, kTo, maxDepth);
+        multiSelect(i, to, k, topKFrom, kTo, maxDepth);
       }
     }
 

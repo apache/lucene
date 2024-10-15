@@ -38,8 +38,31 @@ public abstract class Selector {
    * elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only contains elements
    * that are greater than or equal to {@code k[n]}.
    */
-  public void select(int from, int to, int[] k) {
-    select(from, to, k[0]);
+  public void multiSelect(int from, int to, int[] k) {
+    multiSelect(from, to, k, 0, k.length);
+  }
+
+  /**
+   * Reorder elements so that the elements at all positions in {@code k} are the same as if all elements were
+   * sorted and all other elements are partitioned around it: {@code [from, k[n])} only contains
+   * elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only contains elements
+   * that are greater than or equal to {@code k[n]}.
+   *
+   * The array {@code k} will be sorted, so {@code kFrom} and {@code kTo} must be referring to the sorted order.
+   */
+  public void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
+    // Default implementation only uses select(), so it is not optimal
+    checkMultiArgs(from, to, k, kFrom, kTo);
+    int nextFrom = from;
+    for (int i = kFrom; i < kTo; i++) {
+      int currentK = k[i];
+      if (currentK < nextFrom) {
+        // This is a duplicate k
+        continue;
+      }
+      select(nextFrom, to, currentK);
+      nextFrom = currentK + 1;
+    }
   }
 
   void checkArgs(int from, int to, int k) {
@@ -51,15 +74,18 @@ public abstract class Selector {
     }
   }
 
-  void checkArgs(int from, int to, int[] k) {
-    if (k.length < 1) {
-      throw new IllegalArgumentException("There must be at least one k to select, none given");
+  void checkMultiArgs(int from, int to, int[] k, int kFrom, int kTo) {
+    if (kFrom < 0) {
+      throw new IllegalArgumentException("kFrom must be >= 0");
+    }
+    if (kTo > k.length) {
+      throw new IllegalArgumentException("kFrom must be <= k.length");
     }
     Arrays.sort(k);
-    if (k[0] < from) {
+    if (k[kFrom] < from) {
       throw new IllegalArgumentException("All k must be >= from");
     }
-    if (k[k.length - 1] >= to) {
+    if (k[kTo - 1] >= to) {
       throw new IllegalArgumentException("All k must be < to");
     }
   }

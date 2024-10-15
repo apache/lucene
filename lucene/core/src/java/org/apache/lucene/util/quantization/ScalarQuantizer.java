@@ -587,7 +587,7 @@ public class ScalarQuantizer {
       selectorIndexes[2 * i + 1] = arr.length - selectorIndex - 1;
     }
     Selector selector = new FloatSelector(arr);
-    selector.select(0, arr.length, selectorIndexes);
+    selector.multiSelect(0, arr.length, selectorIndexes);
 
     // After the selection process, pick out the given quantile values
     for (int i = 0; i < confidenceIntervals.length; i++) {

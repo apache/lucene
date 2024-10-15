@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -124,11 +125,33 @@ public abstract class RadixSelector extends Selector {
     select(from, to, k, 0, 0);
   }
 
+  @Override
+  public void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
+    checkMultiArgs(from, to, k, kFrom, kTo);
+    multiSelect(from, to, k, kFrom, kTo, 0, 0);
+  }
+
   private void select(int from, int to, int k, int d, int l) {
     if (to - from <= LENGTH_THRESHOLD || l >= LEVEL_THRESHOLD) {
       getFallbackSelector(d).select(from, to, k);
     } else {
       radixSelect(from, to, k, d, l);
+    }
+  }
+
+  private void multiSelect(int from, int to, int[] k, int kFrom, int kTo, int d, int l) {
+    if (to - from <= LENGTH_THRESHOLD || l >= LEVEL_THRESHOLD) {
+      if (kTo - kFrom == 1) {
+        getFallbackSelector(d).select(from, to, k[kFrom]);
+      } else {
+        getFallbackSelector(d).multiSelect(from, to, k, kFrom, kTo);
+      }
+    } else {
+      if (kTo - kFrom == 1) {
+        radixSelect(from, to, k[kFrom], d, l);
+      } else {
+        radixMultiSelect(from, to, k, kFrom, kTo, d, l);
+      }
     }
   }
 
@@ -170,6 +193,61 @@ public abstract class RadixSelector extends Selector {
     }
     throw new AssertionError("Unreachable code");
   }
+
+  /**
+   * @param d the character number to compare
+   * @param l the level of recursion
+   */
+  private void radixMultiSelect(int from, int to, int[] k, int kFrom, int kTo, int d, int l) {
+    final int[] histogram = this.histogram;
+    Arrays.fill(histogram, 0);
+
+    final int commonPrefixLength =
+        computeCommonPrefixLengthAndBuildHistogram(from, to, d, histogram);
+    if (commonPrefixLength > 0) {
+      // if there are no more chars to compare or if all entries fell into the
+      // first bucket (which means strings are shorter than d) then we are done
+      // otherwise recurse
+      if (d + commonPrefixLength < maxLength && histogram[0] < to - from) {
+        radixMultiSelect(from, to, k, kFrom, kTo, d + commonPrefixLength, l);
+      }
+      return;
+    }
+    assert assertHistogram(commonPrefixLength, histogram);
+
+    int bucketFrom = from;
+    int bucketKFrom = kFrom;
+    ArrayList<Bucket> bucketsToRecurse = new ArrayList<>(kTo - kFrom);
+    for (int bucket = 0; bucket < HISTOGRAM_SIZE && bucketKFrom < kTo; ++bucket) {
+      if (histogram[bucket] == 0) {
+        continue;
+      }
+      final int bucketTo = bucketFrom + histogram[bucket];
+      int bucketKTo = bucketKFrom;
+      // Move the right-side of the k-window up until the k-value is no longer in the current histogram bucket
+      while (bucketKTo < kTo && k[bucketKTo] < bucketTo) {
+        bucketKTo++;
+      }
+
+      // If there are any k-values captured in this histogram, continue down this path with those k-values
+      if (bucketKFrom < bucketKTo) {
+        partition(from, to, bucket, bucketFrom, bucketTo, d);
+
+        // all elements in bucket 0 are equal so we only need to recurse if bucket != 0
+        if (bucket != 0 && d + 1 < maxLength) {
+          // Recurse after the loop, so that we do not override the histogram
+          bucketsToRecurse.add(new Bucket(bucketFrom, bucketTo, bucketKFrom, bucketKTo));
+        }
+      }
+      bucketFrom = bucketTo;
+      bucketKFrom = bucketKTo;
+    }
+    for (Bucket b : bucketsToRecurse) {
+      multiSelect(b.from, b.to, k, b.kFrom, b.kTo, d + 1, l + 1);
+    }
+  }
+
+  private record Bucket(int from, int to, int kFrom, int kTo) {}
 
   // only used from assert
   private boolean assertHistogram(int commonPrefixLength, int[] histogram) {
