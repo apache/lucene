@@ -47,13 +47,18 @@ Improvements
 
 Optimizations
 ---------------------
+
 * GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
+
+* GITHUB#13800: MaxScoreBulkScorer now recomputes scorer partitions when the
+  minimum competitive allows for a more favorable partitioning. (Adrien Grand)
 
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
   when they were not sorted by startOffset. (Seunghan Jung)
 * GITHUB#13884: Remove broken .toArray from Long/CharObjectHashMap entirely. (Pan Guixin)
+* GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
 
 Build
 ---------------------
@@ -63,6 +68,12 @@ Build
 Other
 ---------------------
 (No changes)
+
+======================== Lucene 10.0.1 =======================
+
+Bug Fixes
+---------------------
+
 
 ======================= Lucene 10.0.0 =======================
 
