@@ -52,6 +52,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
@@ -102,7 +103,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
     TermInSetQuery query = new TermInSetQuery(field, queryTerms);
     TopDocs topDocs = searcher.search(query, numDocs);
-    assertEquals(numDocs, topDocs.totalHits.value);
+    assertEquals(numDocs, topDocs.totalHits.value());
 
     reader.close();
     dir.close();
@@ -283,7 +284,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (scores) {
@@ -526,5 +527,20 @@ public class TestTermInSetQuery extends LuceneTestCase {
             }
           }
         });
+  }
+
+  public void testTermsIterator() throws IOException {
+    TermInSetQuery empty = new TermInSetQuery("field", Collections.emptyList());
+    BytesRefIterator it = empty.getBytesRefIterator();
+    assertNull(it.next());
+
+    TermInSetQuery query =
+        new TermInSetQuery(
+            "field", List.of(newBytesRef("term1"), newBytesRef("term2"), newBytesRef("term3")));
+    it = query.getBytesRefIterator();
+    assertEquals(newBytesRef("term1"), it.next());
+    assertEquals(newBytesRef("term2"), it.next());
+    assertEquals(newBytesRef("term3"), it.next());
+    assertNull(it.next());
   }
 }

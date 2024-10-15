@@ -23,7 +23,6 @@ import static org.apache.lucene.codecs.lucene912.ForUtil.*;
 import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -280,11 +279,6 @@ public final class ForDeltaUtil {
     } else {
       decodeAndPrefixSum(bitsPerValue, pdu, base, longs);
     }
-  }
-
-  void skip(IndexInput in) throws IOException {
-    final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
-    in.skipBytes(numBytes(bitsPerValue));
   }
 
   /** Delta-decode 128 integers into {@code longs}. */

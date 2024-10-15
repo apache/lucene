@@ -77,10 +77,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     return new FieldsWriter(state);
   }
 
-  static class ConsumerAndSuffix implements Closeable {
-    DocValuesConsumer consumer;
-    int suffix;
-
+  record ConsumerAndSuffix(DocValuesConsumer consumer, int suffix) implements Closeable {
     @Override
     public void close() throws IOException {
       consumer.close();
@@ -221,10 +218,10 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
         final String segmentSuffix =
             getFullSegmentSuffix(
                 segmentWriteState.segmentSuffix, getSuffix(formatName, Integer.toString(suffix)));
-        consumer = new ConsumerAndSuffix();
-        consumer.consumer =
-            format.fieldsConsumer(new SegmentWriteState(segmentWriteState, segmentSuffix));
-        consumer.suffix = suffix;
+        consumer =
+            new ConsumerAndSuffix(
+                format.fieldsConsumer(new SegmentWriteState(segmentWriteState, segmentSuffix)),
+                suffix);
         formats.put(format, consumer);
       } else {
         // we've already seen this format, so just grab its suffix
@@ -257,7 +254,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
   }
 
-  private class FieldsReader extends DocValuesProducer {
+  private static class FieldsReader extends DocValuesProducer {
 
     private final Map<String, DocValuesProducer> fields = new HashMap<>();
     private final Map<String, DocValuesProducer> formats = new HashMap<>();

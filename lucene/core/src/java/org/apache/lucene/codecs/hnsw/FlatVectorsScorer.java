@@ -18,8 +18,8 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
@@ -40,7 +40,19 @@ public interface FlatVectorsScorer {
    * @throws IOException if an I/O error occurs
    */
   RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-      VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues) throws IOException;
+
+  /**
+   * Returns a {@link RandomVectorScorer} for the given set of vectors and target vector.
+   *
+   * @param similarityFunction the similarity function to use
+   * @param vectorValues the vector values to score
+   * @param target the target vector
+   * @return a {@link RandomVectorScorer} for the given field and target vector.
+   * @throws IOException if an I/O error occurs when reading from the index.
+   */
+  RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException;
 
   /**
@@ -53,23 +65,6 @@ public interface FlatVectorsScorer {
    * @throws IOException if an I/O error occurs when reading from the index.
    */
   RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      float[] target)
-      throws IOException;
-
-  /**
-   * Returns a {@link RandomVectorScorer} for the given set of vectors and target vector.
-   *
-   * @param similarityFunction the similarity function to use
-   * @param vectorValues the vector values to score
-   * @param target the target vector
-   * @return a {@link RandomVectorScorer} for the given field and target vector.
-   * @throws IOException if an I/O error occurs when reading from the index.
-   */
-  RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      byte[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException;
 }

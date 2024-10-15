@@ -29,6 +29,7 @@ import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -192,7 +193,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
       byte type = meta.readByte();
-      if (info.hasDocValuesSkipIndex()) {
+      if (info.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
         skippers.put(info.name, readDocValueSkipperMeta(meta));
       }
       if (type == Lucene90DocValuesFormat.NUMERIC) {
@@ -791,7 +792,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.emptyBinary();
     }
 
-    final IndexInput bytesSlice = data.slice("fixed-binary", entry.dataOffset, entry.dataLength);
+    final RandomAccessInput bytesSlice = data.randomAccessSlice(entry.dataOffset, entry.dataLength);
     // Prefetch the first page of data. Following pages are expected to get prefetched through
     // read-ahead.
     if (bytesSlice.length() > 0) {
@@ -808,8 +809,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.seek((long) doc * length);
-            bytesSlice.readBytes(bytes.bytes, 0, length);
+            bytesSlice.readBytes((long) doc * length, bytes.bytes, 0, length);
             return bytes;
           }
         };
@@ -831,8 +831,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public BytesRef binaryValue() throws IOException {
             long startOffset = addresses.get(doc);
             bytes.length = (int) (addresses.get(doc + 1L) - startOffset);
-            bytesSlice.seek(startOffset);
-            bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
+            bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
             return bytes;
           }
         };
@@ -855,8 +854,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.seek((long) disi.index() * length);
-            bytesSlice.readBytes(bytes.bytes, 0, length);
+            bytesSlice.readBytes((long) disi.index() * length, bytes.bytes, 0, length);
             return bytes;
           }
         };
@@ -879,8 +877,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             final int index = disi.index();
             long startOffset = addresses.get(index);
             bytes.length = (int) (addresses.get(index + 1L) - startOffset);
-            bytesSlice.seek(startOffset);
-            bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
+            bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
             return bytes;
           }
         };
@@ -1124,7 +1121,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final IndexInput bytes;
     final long blockMask;
     final LongValues indexAddresses;
-    final IndexInput indexBytes;
+    final RandomAccessInput indexBytes;
     final BytesRef term;
     long ord = -1;
 
@@ -1146,7 +1143,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       indexAddresses =
           DirectMonotonicReader.getInstance(
               entry.termsIndexAddressesMeta, indexAddressesSlice, merging);
-      indexBytes = data.slice("terms-index", entry.termsIndexOffset, entry.termsIndexLength);
+      indexBytes = data.randomAccessSlice(entry.termsIndexOffset, entry.termsIndexLength);
       term = new BytesRef(entry.maxTermLength);
 
       // add the max term length for the dictionary
@@ -1204,8 +1201,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       assert index >= 0 && index <= (entry.termsDictSize - 1) >>> entry.termsDictIndexShift;
       final long start = indexAddresses.get(index);
       term.length = (int) (indexAddresses.get(index + 1) - start);
-      indexBytes.seek(start);
-      indexBytes.readBytes(term.bytes, 0, term.length);
+      indexBytes.readBytes(start, term.bytes, 0, term.length);
       return term;
     }
 

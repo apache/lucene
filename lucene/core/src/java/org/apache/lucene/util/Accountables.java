@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -98,14 +97,7 @@ public class Accountables {
     for (Map.Entry<?, ? extends Accountable> kv : in.entrySet()) {
       resources.add(namedAccountable(prefix + " '" + kv.getKey() + "'", kv.getValue()));
     }
-    Collections.sort(
-        resources,
-        new Comparator<Accountable>() {
-          @Override
-          public int compare(Accountable o1, Accountable o2) {
-            return o1.toString().compareTo(o2.toString());
-          }
-        });
+    resources.sort((o1, o2) -> o1.toString().compareTo(o2.toString()));
     return Collections.unmodifiableList(resources);
   }
 

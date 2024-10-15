@@ -68,7 +68,7 @@ final class MappingMultiPostingsEnum extends PostingsEnum {
     int count = postingsEnum.getNumSubs();
     subs.clear();
     for (int i = 0; i < count; i++) {
-      MappingPostingsSub sub = allSubs[subsArray[i].slice.readerIndex];
+      MappingPostingsSub sub = allSubs[subsArray[i].slice.readerIndex()];
       sub.postings = subsArray[i].postingsEnum;
       subs.add(sub);
     }

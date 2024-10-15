@@ -235,7 +235,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
           lookup.getClass().getSimpleName(),
           input.size(),
           result.average,
-          input.size() / result.average.avg);
+          input.size() / result.average.avg());
     }
   }
 

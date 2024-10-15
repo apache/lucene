@@ -1138,6 +1138,46 @@ public class TestIntervals extends LuceneTestCase {
     checkVisits(source, 1);
   }
 
+  public void testOpenEndedRange() throws IOException {
+    {
+      IntervalsSource source = Intervals.range(new BytesRef("porridge"), null, false, false);
+      checkIntervals(
+          source,
+          "field1",
+          5,
+          new int[][] {
+            {3, 3},
+            {9, 9, 10, 10, 14, 14, 18, 18, 22, 22, 26, 26, 27, 27},
+            {9, 9, 10, 10, 11, 11, 14, 14, 18, 18, 22, 22, 26, 26},
+            {8, 8},
+            {9, 9, 10, 10, 12, 12, 14, 14, 18, 18, 21, 21},
+            {}
+          });
+      MatchesIterator mi = getMatches(source, 3, "field1");
+      assertNotNull(mi);
+      assertMatch(mi, 8, 8, 37, 41);
+    }
+
+    {
+      IntervalsSource source = Intervals.range(null, new BytesRef("anyone"), false, true);
+      checkIntervals(
+          source,
+          "field1",
+          1,
+          new int[][] {
+            {4, 4},
+            {},
+            {},
+            {},
+            {},
+            {}
+          });
+      MatchesIterator mi = getMatches(source, 0, "field1");
+      assertNotNull(mi);
+      assertMatch(mi, 4, 4, 23, 29);
+    }
+  }
+
   public void testWrappedFilters() throws IOException {
     IntervalsSource source =
         Intervals.or(

@@ -24,7 +24,6 @@ import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.search.FieldValueHitQueue.Entry;
-import org.apache.lucene.search.MaxScoreAccumulator.DocAndScore;
 import org.apache.lucene.search.TotalHits.Relation;
 
 /**
@@ -54,7 +53,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       // as all segments are sorted in the same way, enough to check only the 1st segment for
       // indexSort
       if (searchSortPartOfIndexSort == null) {
-        final Sort indexSort = context.reader().getMetaData().getSort();
+        final Sort indexSort = context.reader().getMetaData().sort();
         searchSortPartOfIndexSort = canEarlyTerminate(sort, indexSort);
         if (searchSortPartOfIndexSort) {
           firstComparator.disableSkipping();
@@ -366,10 +365,12 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       // we can start checking the global maximum score even
       // if the local queue is not full because the threshold
       // is reached.
-      DocAndScore maxMinScore = minScoreAcc.get();
-      if (maxMinScore != null && maxMinScore.score > minCompetitiveScore) {
-        scorer.setMinCompetitiveScore(maxMinScore.score);
-        minCompetitiveScore = maxMinScore.score;
+      long maxMinScore = minScoreAcc.getRaw();
+      float score;
+      if (maxMinScore != Long.MIN_VALUE
+          && (score = MaxScoreAccumulator.toScore(maxMinScore)) > minCompetitiveScore) {
+        scorer.setMinCompetitiveScore(score);
+        minCompetitiveScore = score;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
       }
     }

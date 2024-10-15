@@ -96,8 +96,8 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public boolean hasDocValuesSkipIndex() {
-            return false;
+          public DocValuesSkipIndexType docValuesSkipIndexType() {
+            return DocValuesSkipIndexType.NONE;
           }
 
           @Override
@@ -284,7 +284,7 @@ public class TestIndexableField extends LuceneTestCase {
       }
 
       final TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       final int docID = hits.scoreDocs[0].doc;
       final Document doc = storedFields.document(docID);
       final int endCounter = counter + fieldsPerDoc[id];
@@ -354,14 +354,14 @@ public class TestIndexableField extends LuceneTestCase {
           bq.add(new TermQuery(new Term("id", "" + id)), BooleanClause.Occur.MUST);
           bq.add(new TermQuery(new Term(name, "text")), BooleanClause.Occur.MUST);
           final TopDocs hits2 = s.search(bq.build(), 1);
-          assertEquals(1, hits2.totalHits.value);
+          assertEquals(1, hits2.totalHits.value());
           assertEquals(docID, hits2.scoreDocs[0].doc);
 
           bq = new BooleanQuery.Builder();
           bq.add(new TermQuery(new Term("id", "" + id)), BooleanClause.Occur.MUST);
           bq.add(new TermQuery(new Term(name, "" + counter)), BooleanClause.Occur.MUST);
           final TopDocs hits3 = s.search(bq.build(), 1);
-          assertEquals(1, hits3.totalHits.value);
+          assertEquals(1, hits3.totalHits.value());
           assertEquals(docID, hits3.scoreDocs[0].doc);
         }
 

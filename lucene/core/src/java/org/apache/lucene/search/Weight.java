@@ -113,7 +113,8 @@ public abstract class Weight implements SegmentCacheable {
    * Optional method that delegates to scorerSupplier.
    *
    * <p>Returns a {@link Scorer} which can iterate in order over all matching documents and assign
-   * them a score.
+   * them a score. A scorer for the same {@link LeafReaderContext} instance may be requested
+   * multiple times as part of a single search call.
    *
    * <p><b>NOTE:</b> null can be returned if no documents will be scored by this query.
    *
@@ -135,7 +136,8 @@ public abstract class Weight implements SegmentCacheable {
 
   /**
    * Get a {@link ScorerSupplier}, which allows knowing the cost of the {@link Scorer} before
-   * building it.
+   * building it. A scorer supplier for the same {@link LeafReaderContext} instance may be requested
+   * multiple times as part of a single search call.
    *
    * <p><strong>Note:</strong> It must return null if the scorer is null.
    *
@@ -161,6 +163,9 @@ public abstract class Weight implements SegmentCacheable {
    * scorerSupplier.setTopLevelScoringClause();
    * return scorerSupplier.bulkScorer();
    * </pre>
+   *
+   * A bulk scorer for the same {@link LeafReaderContext} instance may be requested multiple times
+   * as part of a single search call.
    */
   public final BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
     ScorerSupplier scorerSupplier = scorerSupplier(context);

@@ -44,7 +44,7 @@ public class TestProfilerCollector extends LuceneTestCase {
   public void testCollector() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    final int numDocs = TestUtil.nextInt(random(), 1, 20);
+    final int numDocs = TestUtil.nextInt(random(), 1, 100);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
       doc.add(new StringField("foo", "bar", Store.NO));
@@ -53,19 +53,21 @@ public class TestProfilerCollector extends LuceneTestCase {
     IndexReader reader = w.getReader();
     w.close();
 
-    ProfilerCollector collector =
-        new ProfilerCollector(new TotalHitCountCollector(), "total_hits", List.of());
-    IndexSearcher searcher = new IndexSearcher(reader);
-    Query query = new TermQuery(new Term("foo", "bar"));
-    searcher.search(query, collector);
+    IndexSearcher searcher = newSearcher(reader);
 
-    MatcherAssert.assertThat(collector.getReason(), equalTo("total_hits"));
-    MatcherAssert.assertThat(collector.getName(), equalTo("TotalHitCountCollector"));
-    ProfilerCollectorResult profileResult = collector.getProfileResult();
+    ProfilerCollectorManager profilerCollectorManager =
+        new ProfilerCollectorManager("total_hits") {
+          @Override
+          protected Collector createCollector() {
+            return new TotalHitCountCollector();
+          }
+        };
+    Query query = new TermQuery(new Term("foo", "bar"));
+    ProfilerCollectorResult profileResult = searcher.search(query, profilerCollectorManager);
+
     MatcherAssert.assertThat(profileResult.getReason(), equalTo("total_hits"));
     MatcherAssert.assertThat(profileResult.getName(), equalTo("TotalHitCountCollector"));
     MatcherAssert.assertThat(profileResult.getTime(), greaterThan(0L));
-    MatcherAssert.assertThat(profileResult.getTime(), equalTo(collector.getTime()));
 
     reader.close();
     dir.close();

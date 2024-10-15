@@ -38,6 +38,7 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
@@ -216,7 +217,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       Query filter = new TermQuery(new Term("id", "id2"));
       Query kvq = getKnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
-      assertEquals(1, topDocs.totalHits.value);
+      assertEquals(1, topDocs.totalHits.value());
       assertIdMatches(reader, "id2", topDocs.scoreDocs[0]);
     }
   }
@@ -230,7 +231,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       Query filter = new TermQuery(new Term("other", "value"));
       Query kvq = getKnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
-      assertEquals(0, topDocs.totalHits.value);
+      assertEquals(0, topDocs.totalHits.value());
     }
   }
 
@@ -510,7 +511,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           // test that
           assert reader.hasDeletions() == false;
           assertEquals(expected, results.scoreDocs.length);
-          assertTrue(results.totalHits.value >= results.scoreDocs.length);
+          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
           float last = Float.MAX_VALUE;
           for (ScoreDoc scoreDoc : results.scoreDocs) {
@@ -554,8 +555,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           TopDocs results =
               searcher.search(
                   getKnnVectorQuery("field", randomVector(dimension), 10, filter1), numDocs);
-          assertEquals(9, results.totalHits.value);
-          assertEquals(results.totalHits.value, results.scoreDocs.length);
+          assertEquals(9, results.totalHits.value());
+          assertEquals(results.totalHits.value(), results.scoreDocs.length);
           expectThrows(
               UnsupportedOperationException.class,
               () ->
@@ -568,8 +569,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           results =
               searcher.search(
                   getKnnVectorQuery("field", randomVector(dimension), 5, filter2), numDocs);
-          assertEquals(5, results.totalHits.value);
-          assertEquals(results.totalHits.value, results.scoreDocs.length);
+          assertEquals(5, results.totalHits.value());
+          assertEquals(results.totalHits.value(), results.scoreDocs.length);
           expectThrows(
               UnsupportedOperationException.class,
               () ->
@@ -584,8 +585,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                   getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
                   numDocs,
                   new Sort(new SortField("tag", SortField.Type.INT)));
-          assertEquals(5, results.totalHits.value);
-          assertEquals(results.totalHits.value, results.scoreDocs.length);
+          assertEquals(5, results.totalHits.value());
+          assertEquals(results.totalHits.value(), results.scoreDocs.length);
 
           for (ScoreDoc scoreDoc : results.scoreDocs) {
             FieldDoc fieldDoc = (FieldDoc) scoreDoc;
@@ -740,7 +741,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         FieldInfo fi = leafReader.getFieldInfos().fieldInfo("field");
         assertNotNull(fi);
-        DocIdSetIterator vectorValues;
+        KnnVectorValues vectorValues;
         switch (fi.getVectorEncoding()) {
           case BYTE:
             vectorValues = leafReader.getByteVectorValues("field");
@@ -752,7 +753,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             throw new AssertionError();
         }
         assertNotNull(vectorValues);
-        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        assertEquals(NO_MORE_DOCS, vectorValues.iterator().nextDoc());
       }
     }
   }
@@ -838,7 +839,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       // Check that results are complete
       TopDocs noTimeoutTopDocs = noTimeoutCollector.topDocs();
-      assertEquals(TotalHits.Relation.EQUAL_TO, noTimeoutTopDocs.totalHits.relation);
+      assertEquals(TotalHits.Relation.EQUAL_TO, noTimeoutTopDocs.totalHits.relation());
       assertEquals(1, noTimeoutTopDocs.scoreDocs.length);
 
       // A collector manager that immediately times out
@@ -854,7 +855,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       // Check that partial results are returned
       TopDocs timeoutTopDocs = timeoutCollector.topDocs();
-      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, timeoutTopDocs.totalHits.relation);
+      assertEquals(
+          TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, timeoutTopDocs.totalHits.relation());
       assertEquals(1, timeoutTopDocs.scoreDocs.length);
     }
   }

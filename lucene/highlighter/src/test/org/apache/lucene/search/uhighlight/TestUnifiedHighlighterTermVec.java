@@ -96,7 +96,7 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
               .add(new TermQuery(new Term("body", bbb)), BooleanClause.Occur.MUST)
               .build();
       TopDocs topDocs = searcher.search(query, 10);
-      assertEquals(1, topDocs.totalHits.value);
+      assertEquals(1, topDocs.totalHits.value());
       UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
       String[] snippets = highlighter.highlight("body", query, topDocs, 2);
       assertEquals(1, snippets.length);
@@ -142,7 +142,7 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     }
     BooleanQuery query = queryBuilder.build();
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-    assertEquals(numDocs, topDocs.totalHits.value);
+    assertEquals(numDocs, topDocs.totalHits.value());
     Map<String, String[]> fieldToSnippets =
         highlighter.highlightFields(fields.toArray(new String[numTvFields]), query, topDocs);
     String[] expectedSnippetsByDoc = new String[numDocs];

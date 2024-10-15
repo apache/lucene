@@ -510,6 +510,7 @@ public class CompiledAutomaton implements Accountable {
     final int prime = 31;
     int result = 1;
     result = prime * result + ((runAutomaton == null) ? 0 : runAutomaton.hashCode());
+    result = prime * result + ((nfaRunAutomaton == null) ? 0 : nfaRunAutomaton.hashCode());
     result = prime * result + ((term == null) ? 0 : term.hashCode());
     result = prime * result + ((type == null) ? 0 : type.hashCode());
     return result;
@@ -538,6 +539,7 @@ public class CompiledAutomaton implements Accountable {
         + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(commonSuffixRef)
         + RamUsageEstimator.sizeOfObject(runAutomaton)
+        + RamUsageEstimator.sizeOfObject(nfaRunAutomaton)
         + RamUsageEstimator.sizeOfObject(term)
         + RamUsageEstimator.sizeOfObject(transition);
   }

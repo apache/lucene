@@ -55,20 +55,6 @@ abstract class TaxonomyFacets extends Facets {
     }
   }
 
-  private static final Comparator<FacetResult> BY_VALUE_THEN_DIM =
-      new Comparator<FacetResult>() {
-        @Override
-        public int compare(FacetResult a, FacetResult b) {
-          if (a.value.doubleValue() > b.value.doubleValue()) {
-            return -1;
-          } else if (b.value.doubleValue() > a.value.doubleValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        }
-      };
-
   /** Index field name provided to the constructor. */
   final String indexFieldName;
 
@@ -128,8 +114,8 @@ abstract class TaxonomyFacets extends Facets {
     int maxDoc = 0;
     int sumTotalHits = 0;
     for (FacetsCollector.MatchingDocs docs : fc.getMatchingDocs()) {
-      sumTotalHits += docs.totalHits;
-      maxDoc += docs.context.reader().maxDoc();
+      sumTotalHits += docs.totalHits();
+      maxDoc += docs.context().reader().maxDoc();
     }
 
     // if our result set is < 10% of the index, we collect sparsely (use hash map):
@@ -591,7 +577,16 @@ abstract class TaxonomyFacets extends Facets {
     }
 
     // Sort by highest value, tie break by dim:
-    results.sort(BY_VALUE_THEN_DIM);
+    results.sort(
+        (a, b) -> {
+          if (a.value.doubleValue() > b.value.doubleValue()) {
+            return -1;
+          } else if (b.value.doubleValue() > a.value.doubleValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
+          }
+        });
     return results;
   }
 

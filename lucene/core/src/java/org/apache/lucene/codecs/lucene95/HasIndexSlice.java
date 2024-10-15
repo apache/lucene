@@ -14,24 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.bloom;
+package org.apache.lucene.codecs.lucene95;
 
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.store.IndexInput;
 
 /**
- * Base class for hashing functions that can be referred to by name. Subclasses are expected to
- * provide threadsafe implementations of the hash function on the range of bytes referenced in the
- * provided {@link BytesRef}
- *
- * @lucene.experimental
+ * Implementors can return the IndexInput from which their values are read. For use by vector
+ * quantizers.
  */
-public abstract class HashFunction {
+public interface HasIndexSlice {
 
-  /**
-   * Hashes the contents of the referenced bytes
-   *
-   * @param bytes the data to be hashed
-   * @return the hash of the bytes referenced by bytes.offset and length bytes.length
-   */
-  public abstract long hash(BytesRef bytes);
+  /** Returns an IndexInput from which to read this instance's values. */
+  IndexInput getSlice();
 }

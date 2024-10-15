@@ -170,14 +170,14 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
           if (decompound != null) {
             int offset = 0;
             for (KoMorphData.Morpheme morph : decompound) {
-              assertTrue(UnicodeUtil.validUTF16String(morph.surfaceForm));
-              assertFalse(morph.surfaceForm.isEmpty());
-              assertEquals(morph.surfaceForm.trim(), morph.surfaceForm);
+              assertTrue(UnicodeUtil.validUTF16String(morph.surfaceForm()));
+              assertFalse(morph.surfaceForm().isEmpty());
+              assertEquals(morph.surfaceForm().trim(), morph.surfaceForm());
               if (type != POS.Type.INFLECT) {
                 assertEquals(
-                    morph.surfaceForm,
-                    surfaceForm.substring(offset, offset + morph.surfaceForm.length()));
-                offset += morph.surfaceForm.length();
+                    morph.surfaceForm(),
+                    surfaceForm.substring(offset, offset + morph.surfaceForm().length()));
+                offset += morph.surfaceForm().length();
               }
             }
             assertTrue(offset <= surfaceForm.length());

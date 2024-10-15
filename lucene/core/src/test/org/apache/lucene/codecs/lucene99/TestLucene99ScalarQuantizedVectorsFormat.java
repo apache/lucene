@@ -28,7 +28,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene912.Lucene912Codec;
+import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -37,6 +37,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -62,13 +63,14 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
       confidenceInterval = 0f;
     }
     format =
-        new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, random().nextBoolean());
+        new Lucene99ScalarQuantizedVectorsFormat(
+            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false);
     super.setUp();
   }
 
   @Override
   protected Codec getCodec() {
-    return new Lucene912Codec() {
+    return new Lucene100Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return format;
@@ -172,9 +174,10 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
             QuantizedByteVectorValues quantizedByteVectorValues =
                 quantizedReader.getQuantizedVectorValues("f");
             int docId = -1;
-            while ((docId = quantizedByteVectorValues.nextDoc()) != NO_MORE_DOCS) {
-              byte[] vector = quantizedByteVectorValues.vectorValue();
-              float offset = quantizedByteVectorValues.getScoreCorrectionConstant();
+            KnnVectorValues.DocIndexIterator iter = quantizedByteVectorValues.iterator();
+            for (docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+              byte[] vector = quantizedByteVectorValues.vectorValue(iter.index());
+              float offset = quantizedByteVectorValues.getScoreCorrectionConstant(iter.index());
               for (int i = 0; i < dim; i++) {
                 assertEquals(vector[i], expectedVectors[docId][i]);
               }
