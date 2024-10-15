@@ -485,6 +485,7 @@ public class DocIdEncodingBenchmark {
 
     private final Random random = new Random();
 
+    @SuppressWarnings("unchecked")
     @Override
     public List<int[]> getDocIds(Object... args) {
 
