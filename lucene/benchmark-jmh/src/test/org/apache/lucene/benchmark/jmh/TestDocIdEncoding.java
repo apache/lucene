@@ -28,6 +28,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 
 public class TestDocIdEncoding extends LuceneTestCase {
 
@@ -67,7 +68,7 @@ public class TestDocIdEncoding extends LuceneTestCase {
             IndexInput in = inDir.openInput(encoderFileName, IOContext.DEFAULT)) {
           for (int[] sequence : docIdSequences) {
             encoder.decode(in, 0, sequence.length, scratch);
-            assertArrayEquals(sequence, Arrays.copyOf(scratch, sequence.length));
+            assertArrayEquals(sequence, ArrayUtil.copyOfSubArray(scratch, 0, sequence.length));
           }
         }
       }

@@ -515,7 +515,7 @@ public class DocIdEncodingBenchmark {
     if (inputScaleFactor != null && !inputScaleFactor.isEmpty()) {
       INPUT_SCALE_FACTOR = Integer.parseInt(inputScaleFactor);
     } else {
-      INPUT_SCALE_FACTOR = 2_00_000;
+      INPUT_SCALE_FACTOR = 10;
     }
 
     String docProviderFQDN = System.getProperty("docIdEncoding.docIdProviderFQDN");
