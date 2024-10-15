@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import java.util.Arrays;
-
 /**
  * An implementation of a selection algorithm, ie. computing the k-th greatest value from a
  * collection.
@@ -40,7 +38,7 @@ public abstract class Selector {
    */
   public void multiSelect(int from, int to, int[] k) {
     // k needs to be sorted, so copy the array
-    k = Arrays.copyOf(k, k.length);
+    k = ArrayUtil.copyArray(k);
     checkMultiArgs(from, to, k);
     multiSelect(from, to, k, 0, k.length);
   }
