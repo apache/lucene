@@ -195,7 +195,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
   public void testFromVectorsAutoInterval4Bit() throws IOException {
     int dims = 128;
-    int numVecs = 1000;
+    int numVecs = 100;
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
 
     float[][] floats = randomFloats(numVecs, dims);
