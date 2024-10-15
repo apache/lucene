@@ -210,15 +210,6 @@ public class DocIdEncodingBenchmark {
         }
       }
 
-      private static DocIdEncoder getInternal(String parsedEncoderName) {
-        if (ENCODER_NAME_TO_INSTANCE_MAPPING.containsKey(parsedEncoderName)) {
-          return ENCODER_NAME_TO_INSTANCE_MAPPING.get(parsedEncoderName);
-        } else {
-          throw new IllegalArgumentException(
-              String.format(Locale.ROOT, "Unknown DocIdEncoder [%s]", parsedEncoderName));
-        }
-      }
-
       public static DocIdEncoder fromName(String encoderName) {
         String parsedEncoderName = encoderName.trim().toLowerCase(Locale.ROOT);
         return getInternal(parsedEncoderName);
@@ -234,6 +225,15 @@ public class DocIdEncodingBenchmark {
       public static DocIdEncoder fromClazz(Class<? extends DocIdEncoder> clazz) {
         String parsedEncoderName = parsedClazzName(clazz);
         return getInternal(parsedEncoderName);
+      }
+
+      private static DocIdEncoder getInternal(String parsedEncoderName) {
+        if (ENCODER_NAME_TO_INSTANCE_MAPPING.containsKey(parsedEncoderName)) {
+          return ENCODER_NAME_TO_INSTANCE_MAPPING.get(parsedEncoderName);
+        } else {
+          throw new IllegalArgumentException(
+              String.format(Locale.ROOT, "Unknown DocIdEncoder [%s]", parsedEncoderName));
+        }
       }
     }
 
