@@ -57,18 +57,18 @@ public class KMeans {
    * @throws IOException when if there is an error accessing vectors
    */
   public static Results cluster(
-    FloatVectorValues vectors, VectorSimilarityFunction similarityFunction, int numClusters)
-    throws IOException {
+      FloatVectorValues vectors, VectorSimilarityFunction similarityFunction, int numClusters)
+      throws IOException {
     return cluster(
-      vectors,
-      numClusters,
-      true,
-      42L,
-      KmeansInitializationMethod.PLUS_PLUS,
-      similarityFunction == VectorSimilarityFunction.COSINE,
-      DEFAULT_RESTARTS,
-      DEFAULT_ITRS,
-      DEFAULT_SAMPLE_SIZE);
+        vectors,
+        numClusters,
+        true,
+        42L,
+        KmeansInitializationMethod.PLUS_PLUS,
+        similarityFunction == VectorSimilarityFunction.COSINE,
+        DEFAULT_RESTARTS,
+        DEFAULT_ITRS,
+        DEFAULT_SAMPLE_SIZE);
   }
 
   /**
@@ -91,22 +91,22 @@ public class KMeans {
    * @throws IOException if there is error accessing vectors
    */
   public static Results cluster(
-    FloatVectorValues vectors,
-    int numClusters,
-    boolean assignCentroidsToVectors,
-    long seed,
-    KmeansInitializationMethod initializationMethod,
-    boolean normalizeCenters,
-    int restarts,
-    int iters,
-    int sampleSize)
-    throws IOException {
+      FloatVectorValues vectors,
+      int numClusters,
+      boolean assignCentroidsToVectors,
+      long seed,
+      KmeansInitializationMethod initializationMethod,
+      boolean normalizeCenters,
+      int restarts,
+      int iters,
+      int sampleSize)
+      throws IOException {
     if (vectors.size() == 0) {
       return null;
     }
     if (numClusters < 1 || numClusters > MAX_NUM_CENTROIDS) {
       throw new IllegalArgumentException(
-        "[numClusters] must be between [1] and [" + MAX_NUM_CENTROIDS + "]");
+          "[numClusters] must be between [1] and [" + MAX_NUM_CENTROIDS + "]");
     }
     // adjust sampleSize and numClusters
     sampleSize = Math.max(sampleSize, 100 * numClusters);
@@ -123,9 +123,9 @@ public class KMeans {
       centroids = new float[1][vectors.dimension()];
     } else {
       FloatVectorValues sampleVectors =
-        vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
+          vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
       KMeans kmeans =
-        new KMeans(sampleVectors, numClusters, random, initializationMethod, restarts, iters);
+          new KMeans(sampleVectors, numClusters, random, initializationMethod, restarts, iters);
       centroids = kmeans.computeCentroids(normalizeCenters);
     }
 
@@ -140,12 +140,12 @@ public class KMeans {
   }
 
   private KMeans(
-    FloatVectorValues vectors,
-    int numCentroids,
-    Random random,
-    KmeansInitializationMethod initializationMethod,
-    int restarts,
-    int iters) {
+      FloatVectorValues vectors,
+      int numCentroids,
+      Random random,
+      KmeansInitializationMethod initializationMethod,
+      int restarts,
+      int iters) {
     this.vectors = vectors;
     this.numVectors = vectors.size();
     this.numCentroids = numCentroids;
@@ -163,11 +163,11 @@ public class KMeans {
 
     for (int restart = 0; restart < restarts; restart++) {
       float[][] centroids =
-        switch (initializationMethod) {
-          case FORGY -> initializeForgy();
-          case RESERVOIR_SAMPLING -> initializeReservoirSampling();
-          case PLUS_PLUS -> initializePlusPlus();
-        };
+          switch (initializationMethod) {
+            case FORGY -> initializeForgy();
+            case RESERVOIR_SAMPLING -> initializeReservoirSampling();
+            case PLUS_PLUS -> initializePlusPlus();
+          };
       double prevSquaredDist = Double.MAX_VALUE;
       for (int iter = 0; iter < iters; iter++) {
         squaredDist = runKMeansStep(vectors, centroids, vectorCentroids, false, normalizeCenters);
@@ -274,12 +274,12 @@ public class KMeans {
    * @throws IOException if there is an error accessing vector values
    */
   private static double runKMeansStep(
-    FloatVectorValues vectors,
-    float[][] centroids,
-    short[] docCentroids,
-    boolean useKahanSummation,
-    boolean normalizeCentroids)
-    throws IOException {
+      FloatVectorValues vectors,
+      float[][] centroids,
+      short[] docCentroids,
+      boolean useKahanSummation,
+      boolean normalizeCentroids)
+      throws IOException {
     short numCentroids = (short) centroids.length;
 
     float[][] newCentroids = new float[numCentroids][centroids[0].length];
@@ -346,8 +346,8 @@ public class KMeans {
    * descending distance to the current centroid set
    */
   static void assignCentroids(
-    FloatVectorValues vectors, float[][] centroids, List<Integer> unassignedCentroidsIdxs)
-    throws IOException {
+      FloatVectorValues vectors, float[][] centroids, List<Integer> unassignedCentroidsIdxs)
+      throws IOException {
     int[] assignedCentroidsIdxs = new int[centroids.length - unassignedCentroidsIdxs.size()];
     int assignedIndex = 0;
     for (int i = 0; i < centroids.length; i++) {

@@ -45,22 +45,22 @@ public class TestKMeans extends LuceneTestCase {
       boolean assignCentroidsToVectors = random().nextBoolean();
       int randIdx2 = random().nextInt(KMeans.KmeansInitializationMethod.values().length);
       KMeans.KmeansInitializationMethod initializationMethod =
-        KMeans.KmeansInitializationMethod.values()[randIdx2];
+          KMeans.KmeansInitializationMethod.values()[randIdx2];
       int restarts = random().nextInt(1, 6);
       int iters = random().nextInt(1, 10);
       int sampleSize = random().nextInt(10, nVectors * 2);
 
       KMeans.Results results =
-        KMeans.cluster(
-          vectors,
-          nClusters,
-          assignCentroidsToVectors,
-          random().nextLong(),
-          initializationMethod,
-          similarityFunction == VectorSimilarityFunction.COSINE,
-          restarts,
-          iters,
-          sampleSize);
+          KMeans.cluster(
+              vectors,
+              nClusters,
+              assignCentroidsToVectors,
+              random().nextLong(),
+              initializationMethod,
+              similarityFunction == VectorSimilarityFunction.COSINE,
+              restarts,
+              iters,
+              sampleSize);
       assertEquals(nClusters, results.centroids().length);
       if (assignCentroidsToVectors) {
         assertEquals(nVectors, results.vectorCentroids().length);
@@ -77,7 +77,7 @@ public class TestKMeans extends LuceneTestCase {
       int nVectors = 10;
       FloatVectorValues vectors = generateData(nVectors, 5, nClusters);
       KMeans.Results results =
-        KMeans.cluster(vectors, VectorSimilarityFunction.EUCLIDEAN, nClusters);
+          KMeans.cluster(vectors, VectorSimilarityFunction.EUCLIDEAN, nClusters);
       // assert that we get 1 centroid, as nClusters will be adjusted
       assertEquals(1, results.centroids().length);
       assertEquals(nVectors, results.vectorCentroids().length);
@@ -89,18 +89,18 @@ public class TestKMeans extends LuceneTestCase {
       int nVectors = 300;
       FloatVectorValues vectors = generateData(nVectors, 5, nClusters);
       KMeans.KmeansInitializationMethod initializationMethod =
-        KMeans.KmeansInitializationMethod.PLUS_PLUS;
+          KMeans.KmeansInitializationMethod.PLUS_PLUS;
       KMeans.Results results =
-        KMeans.cluster(
-          vectors,
-          nClusters,
-          true,
-          random().nextLong(),
-          initializationMethod,
-          false,
-          1,
-          2,
-          sampleSize);
+          KMeans.cluster(
+              vectors,
+              nClusters,
+              true,
+              random().nextLong(),
+              initializationMethod,
+              false,
+              1,
+              2,
+              sampleSize);
       assertEquals(nClusters, results.centroids().length);
       assertEquals(nVectors, results.vectorCentroids().length);
     }
@@ -110,7 +110,7 @@ public class TestKMeans extends LuceneTestCase {
       int nVectors = 400;
       FloatVectorValues vectors = generateData(nVectors, 5, nClusters);
       KMeans.Results results =
-        KMeans.cluster(vectors, VectorSimilarityFunction.EUCLIDEAN, nClusters);
+          KMeans.cluster(vectors, VectorSimilarityFunction.EUCLIDEAN, nClusters);
       float[][] centroids = results.centroids();
       List<Integer> unassignedIdxs = List.of(0, 3);
       KMeans.assignCentroids(vectors, centroids, unassignedIdxs);
