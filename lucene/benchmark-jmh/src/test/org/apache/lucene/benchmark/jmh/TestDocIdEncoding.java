@@ -36,7 +36,7 @@ public class TestDocIdEncoding extends LuceneTestCase {
     super.setUp();
   }
 
-  public void testBPV21AndAbove() {
+  public void testBPV21AndAbove() throws IOException {
 
     List<DocIdEncodingBenchmark.DocIdEncoder> encoders =
         DocIdEncodingBenchmark.DocIdEncoder.SingletonFactory.getAllExcept(Collections.emptyList());
@@ -46,9 +46,11 @@ public class TestDocIdEncoding extends LuceneTestCase {
     DocIdEncodingBenchmark.DocIdProvider docIdProvider =
         new DocIdEncodingBenchmark.FixedBPVRandomDocIdProvider();
 
+    Path tempDir = null;
+
     try {
 
-      Path tempDir = Files.createTempDirectory("DocIdEncoding_testBPV21AndAbove_");
+      tempDir = Files.createTempDirectory("DocIdEncoding_testBPV21AndAbove_");
 
       for (DocIdEncodingBenchmark.DocIdEncoder encoder : encoders) {
 
@@ -69,10 +71,14 @@ public class TestDocIdEncoding extends LuceneTestCase {
             encoder.decode(in, 0, sequence.length, scratch);
             assertArrayEquals(sequence, ArrayUtil.copyOfSubArray(scratch, 0, sequence.length));
           }
+        } finally {
+          Files.delete(tempDir.resolve(encoderFileName));
         }
       }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    } finally {
+      if (tempDir != null) {
+        Files.delete(tempDir);
+      }
     }
   }
 }

@@ -41,7 +41,6 @@ final class DocIdsWriter {
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
 
   private static final long BPV_21_MASK = 0x1FFFFFL;
-
   private static final boolean IS_ARCH_64 = Constants.OS_ARCH.equals("aarch64");
 
   private final int[] scratch;
@@ -312,8 +311,7 @@ final class DocIdsWriter {
     // over
     // org.apache.lucene.benchmark.jmh.DocIdEncodingBenchmark.DocIdEncoder.Bit21With2StepsEncoder
     // for decoding irrespective of architecture
-    // due to it's better performance in benchmarks over nyc taxis, big5, http_logs and other
-    // popular search workloads.
+    // due to it's better performance in benchmarks like nyc taxis, big5, http_logs.
     for (; i < count - 8; i += 9) {
       long l1 = in.readLong();
       long l2 = in.readLong();

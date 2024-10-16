@@ -456,8 +456,8 @@ public class DocIdEncodingBenchmark {
 
     /**
      * We want to load all the docId sequences completely in memory to avoid including the time
-     * spent in fetching from disk in every iteration unless we can consistently prove otherwise.
-     * <br>
+     * spent in fetching from disk or any other source in every iteration unless we can consistently
+     * prove otherwise. <br>
      *
      * @param args : Data about the source of docId sequences depending on the underlying provider
      *     like a file or randomly generated sequences given size.
