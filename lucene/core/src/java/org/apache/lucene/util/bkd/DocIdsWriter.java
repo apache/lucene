@@ -23,6 +23,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.DocBaseBitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
@@ -38,6 +39,10 @@ final class DocIdsWriter {
   private static final byte BPV_32 = (byte) 32;
   // These signs are legacy, should no longer be used in the writing side.
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
+
+  private static final long BPV_21_MASK = 0x1FFFFFL;
+
+  private static final boolean IS_ARCH_64 = Constants.OS_ARCH.equals("aarch64");
 
   private final int[] scratch;
   private final LongsRef scratchLongs = new LongsRef();
@@ -116,28 +121,32 @@ final class DocIdsWriter {
       if (max <= 0x001FFFFF) {
         out.writeByte(BPV_21);
         int i = 0;
-        for (; i < count - 8; i += 9) {
-          long l1 =
-              ((docIds[i] & 0x001FFFFFL) << 42)
-                  | ((docIds[i + 1] & 0x001FFFFFL) << 21)
-                  | (docIds[i + 2] & 0x001FFFFFL);
-          long l2 =
-              ((docIds[i + 3] & 0x001FFFFFL) << 42)
-                  | ((docIds[i + 4] & 0x001FFFFFL) << 21)
-                  | (docIds[i + 5] & 0x001FFFFFL);
-          long l3 =
-              ((docIds[i + 6] & 0x001FFFFFL) << 42)
-                  | ((docIds[i + 7] & 0x001FFFFFL) << 21)
-                  | (docIds[i + 8] & 0x001FFFFFL);
-          out.writeLong(l1);
-          out.writeLong(l2);
-          out.writeLong(l3);
+        // See
+        // @org.apache.lucene.benchmark.jmh.DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoder
+        if (!IS_ARCH_64) {
+          for (; i < count - 8; i += 9) {
+            long l1 =
+                ((docIds[i] & BPV_21_MASK) << 42)
+                    | ((docIds[i + 1] & BPV_21_MASK) << 21)
+                    | (docIds[i + 2] & BPV_21_MASK);
+            long l2 =
+                ((docIds[i + 3] & BPV_21_MASK) << 42)
+                    | ((docIds[i + 4] & BPV_21_MASK) << 21)
+                    | (docIds[i + 5] & BPV_21_MASK);
+            long l3 =
+                ((docIds[i + 6] & BPV_21_MASK) << 42)
+                    | ((docIds[i + 7] & BPV_21_MASK) << 21)
+                    | (docIds[i + 8] & BPV_21_MASK);
+            out.writeLong(l1);
+            out.writeLong(l2);
+            out.writeLong(l3);
+          }
         }
         for (; i < count - 2; i += 3) {
           long packedLong =
-              ((docIds[i] & 0x001FFFFFL) << 42)
-                  | ((docIds[i + 1] & 0x001FFFFFL) << 21)
-                  | (docIds[i + 2] & 0x001FFFFFL);
+              ((docIds[i] & BPV_21_MASK) << 42)
+                  | ((docIds[i + 1] & BPV_21_MASK) << 21)
+                  | (docIds[i + 2] & BPV_21_MASK);
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
@@ -298,25 +307,32 @@ final class DocIdsWriter {
 
   private void readInts21(IndexInput in, int count, int[] docIDs) throws IOException {
     int i = 0;
+    // We are always using
+    // org.apache.lucene.benchmark.jmh.DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoder
+    // over
+    // org.apache.lucene.benchmark.jmh.DocIdEncodingBenchmark.DocIdEncoder.Bit21With2StepsEncoder
+    // for decoding irrespective of architecture
+    // due to it's better performance in benchmarks over nyc taxis, big5, http_logs and other
+    // popular search workloads.
     for (; i < count - 8; i += 9) {
       long l1 = in.readLong();
       long l2 = in.readLong();
       long l3 = in.readLong();
       docIDs[i] = (int) (l1 >>> 42);
-      docIDs[i + 1] = (int) ((l1 & 0x000003FFFFE00000L) >>> 21);
-      docIDs[i + 2] = (int) (l1 & 0x001FFFFFL);
+      docIDs[i + 1] = (int) ((l1 >>> 21) & BPV_21_MASK);
+      docIDs[i + 2] = (int) (l1 & BPV_21_MASK);
       docIDs[i + 3] = (int) (l2 >>> 42);
-      docIDs[i + 4] = (int) ((l2 & 0x000003FFFFE00000L) >>> 21);
-      docIDs[i + 5] = (int) (l2 & 0x001FFFFFL);
+      docIDs[i + 4] = (int) ((l2 >>> 21) & BPV_21_MASK);
+      docIDs[i + 5] = (int) (l2 & BPV_21_MASK);
       docIDs[i + 6] = (int) (l3 >>> 42);
-      docIDs[i + 7] = (int) ((l3 & 0x000003FFFFE00000L) >>> 21);
-      docIDs[i + 8] = (int) (l3 & 0x001FFFFFL);
+      docIDs[i + 7] = (int) ((l3 >>> 21) & BPV_21_MASK);
+      docIDs[i + 8] = (int) (l3 & BPV_21_MASK);
     }
     for (; i < count - 2; i += 3) {
       long packedLong = in.readLong();
       docIDs[i] = (int) (packedLong >>> 42);
-      docIDs[i + 1] = (int) ((packedLong & 0x000003FFFFE00000L) >>> 21);
-      docIDs[i + 2] = (int) (packedLong & 0x001FFFFFL);
+      docIDs[i + 1] = (int) ((packedLong >>> 21) & BPV_21_MASK);
+      docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
     }
     for (; i < count; i++) {
       docIDs[i] = in.readInt();
