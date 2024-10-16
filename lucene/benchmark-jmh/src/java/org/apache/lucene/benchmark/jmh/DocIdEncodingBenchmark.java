@@ -518,38 +518,20 @@ public class DocIdEncodingBenchmark {
       INPUT_SCALE_FACTOR = 10;
     }
 
-    String docProviderFQDN = System.getProperty("docIdEncoding.docIdProviderFQDN");
+    String inputFilePath = System.getProperty("docIdEncoding.inputFile");
 
-    DocIdProvider docIdProvider = new DocIdsFromLocalFS();
-
-    if (docProviderFQDN != null && !docProviderFQDN.isEmpty()) {
-      try {
-        docIdProvider =
-            (DocIdProvider) Class.forName(docProviderFQDN).getConstructor().newInstance();
-      } catch (InstantiationException
-          | IllegalAccessException
-          | InvocationTargetException
-          | NoSuchMethodException
-          | ClassNotFoundException e) {
-        throw new RuntimeException(e);
+    try {
+      if (inputFilePath != null && !inputFilePath.isEmpty()) {
+        DOC_ID_SEQUENCES =
+            new DocIdsFromLocalFS()
+                .getDocIds(Files.newInputStream(Path.of(inputFilePath), StandardOpenOption.READ));
+      } else {
+        DOC_ID_SEQUENCES =
+            new FixedBPVRandomDocIdProvider()
+                .getDocIds(DocIdEncoder.Bit21With3StepsEncoder.class, 100, 100, 512);
       }
-    }
-
-    if (docIdProvider instanceof DocIdsFromLocalFS) {
-      String inputFilePath = System.getProperty("docIdEncoding.inputFile");
-      try {
-
-        if (inputFilePath != null && !inputFilePath.isEmpty()) {
-          DOC_ID_SEQUENCES =
-              docIdProvider.getDocIds(
-                  Files.newInputStream(Path.of(inputFilePath), StandardOpenOption.READ));
-        } else {
-          DOC_ID_SEQUENCES =
-              docIdProvider.getDocIds(DocIdEncoder.Bit21With3StepsEncoder.class, 100, 100, 512);
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }
