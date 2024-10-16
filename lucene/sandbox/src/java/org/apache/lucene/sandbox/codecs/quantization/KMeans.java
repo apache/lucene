@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.quantization;
+package org.apache.lucene.sandbox.codecs.quantization;
 
-import static org.apache.lucene.util.quantization.SampleReader.createSampleReader;
+import static org.apache.lucene.sandbox.codecs.quantization.SampleReader.createSampleReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,11 +25,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /** KMeans clustering algorithm for vectors */
 public class KMeans {
@@ -38,7 +38,7 @@ public class KMeans {
   public static final int DEFAULT_ITRS = 10;
   public static final int DEFAULT_SAMPLE_SIZE = 100_000;
 
-  private final RandomAccessVectorValues.Floats vectors;
+  private final FloatVectorValues vectors;
   private final int numVectors;
   private final int numCentroids;
   private final Random random;
@@ -57,20 +57,18 @@ public class KMeans {
    * @throws IOException when if there is an error accessing vectors
    */
   public static Results cluster(
-      RandomAccessVectorValues.Floats vectors,
-      VectorSimilarityFunction similarityFunction,
-      int numClusters)
-      throws IOException {
+    FloatVectorValues vectors, VectorSimilarityFunction similarityFunction, int numClusters)
+    throws IOException {
     return cluster(
-        vectors,
-        numClusters,
-        true,
-        42L,
-        KmeansInitializationMethod.PLUS_PLUS,
-        similarityFunction == VectorSimilarityFunction.COSINE,
-        DEFAULT_RESTARTS,
-        DEFAULT_ITRS,
-        DEFAULT_SAMPLE_SIZE);
+      vectors,
+      numClusters,
+      true,
+      42L,
+      KmeansInitializationMethod.PLUS_PLUS,
+      similarityFunction == VectorSimilarityFunction.COSINE,
+      DEFAULT_RESTARTS,
+      DEFAULT_ITRS,
+      DEFAULT_SAMPLE_SIZE);
   }
 
   /**
@@ -93,22 +91,22 @@ public class KMeans {
    * @throws IOException if there is error accessing vectors
    */
   public static Results cluster(
-      RandomAccessVectorValues.Floats vectors,
-      int numClusters,
-      boolean assignCentroidsToVectors,
-      long seed,
-      KmeansInitializationMethod initializationMethod,
-      boolean normalizeCenters,
-      int restarts,
-      int iters,
-      int sampleSize)
-      throws IOException {
+    FloatVectorValues vectors,
+    int numClusters,
+    boolean assignCentroidsToVectors,
+    long seed,
+    KmeansInitializationMethod initializationMethod,
+    boolean normalizeCenters,
+    int restarts,
+    int iters,
+    int sampleSize)
+    throws IOException {
     if (vectors.size() == 0) {
       return null;
     }
     if (numClusters < 1 || numClusters > MAX_NUM_CENTROIDS) {
       throw new IllegalArgumentException(
-          "[numClusters] must be between [1] and [" + MAX_NUM_CENTROIDS + "]");
+        "[numClusters] must be between [1] and [" + MAX_NUM_CENTROIDS + "]");
     }
     // adjust sampleSize and numClusters
     sampleSize = Math.max(sampleSize, 100 * numClusters);
@@ -121,15 +119,13 @@ public class KMeans {
 
     Random random = new Random(seed);
     float[][] centroids;
-    if (numClusters == 1 && assignCentroidsToVectors) {
+    if (numClusters == 1) {
       centroids = new float[1][vectors.dimension()];
     } else {
-      restarts = numClusters == 1 ? 1 : restarts;
-      iters = numClusters == 1 ? 1 : iters;
-      RandomAccessVectorValues.Floats sampleVectors =
-          vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
+      FloatVectorValues sampleVectors =
+        vectors.size() <= sampleSize ? vectors : createSampleReader(vectors, sampleSize, seed);
       KMeans kmeans =
-          new KMeans(sampleVectors, numClusters, random, initializationMethod, restarts, iters);
+        new KMeans(sampleVectors, numClusters, random, initializationMethod, restarts, iters);
       centroids = kmeans.computeCentroids(normalizeCenters);
     }
 
@@ -144,12 +140,12 @@ public class KMeans {
   }
 
   private KMeans(
-      RandomAccessVectorValues.Floats vectors,
-      int numCentroids,
-      Random random,
-      KmeansInitializationMethod initializationMethod,
-      int restarts,
-      int iters) {
+    FloatVectorValues vectors,
+    int numCentroids,
+    Random random,
+    KmeansInitializationMethod initializationMethod,
+    int restarts,
+    int iters) {
     this.vectors = vectors;
     this.numVectors = vectors.size();
     this.numCentroids = numCentroids;
@@ -167,11 +163,11 @@ public class KMeans {
 
     for (int restart = 0; restart < restarts; restart++) {
       float[][] centroids =
-          switch (initializationMethod) {
-            case FORGY -> initializeForgy();
-            case RESERVOIR_SAMPLING -> initializeReservoirSampling();
-            case PLUS_PLUS -> initializePlusPlus();
-          };
+        switch (initializationMethod) {
+          case FORGY -> initializeForgy();
+          case RESERVOIR_SAMPLING -> initializeReservoirSampling();
+          case PLUS_PLUS -> initializePlusPlus();
+        };
       double prevSquaredDist = Double.MAX_VALUE;
       for (int iter = 0; iter < iters; iter++) {
         squaredDist = runKMeansStep(vectors, centroids, vectorCentroids, false, normalizeCenters);
@@ -278,12 +274,12 @@ public class KMeans {
    * @throws IOException if there is an error accessing vector values
    */
   private static double runKMeansStep(
-      RandomAccessVectorValues.Floats vectors,
-      float[][] centroids,
-      short[] docCentroids,
-      boolean useKahanSummation,
-      boolean normalizeCentroids)
-      throws IOException {
+    FloatVectorValues vectors,
+    float[][] centroids,
+    short[] docCentroids,
+    boolean useKahanSummation,
+    boolean normalizeCentroids)
+    throws IOException {
     short numCentroids = (short) centroids.length;
 
     float[][] newCentroids = new float[numCentroids][centroids[0].length];
@@ -350,10 +346,8 @@ public class KMeans {
    * descending distance to the current centroid set
    */
   static void assignCentroids(
-      RandomAccessVectorValues.Floats vectors,
-      float[][] centroids,
-      List<Integer> unassignedCentroidsIdxs)
-      throws IOException {
+    FloatVectorValues vectors, float[][] centroids, List<Integer> unassignedCentroidsIdxs)
+    throws IOException {
     int[] assignedCentroidsIdxs = new int[centroids.length - unassignedCentroidsIdxs.size()];
     int assignedIndex = 0;
     for (int i = 0; i < centroids.length; i++) {
@@ -392,35 +386,5 @@ public class KMeans {
    *     expect less than {@code MAX_NUM_CENTROIDS} which is equal to 32767 centroids. Can be {@code
    *     null} if they were not computed.
    */
-  public record Results(float[][] centroids, short[] vectorCentroids) {
-    @Override
-    public String toString() {
-      // print to string, note that centroids is an array of float arrays
-      return "Results{"
-          + "centroids="
-          // map arrays to string over the float arrays
-          + Arrays.stream(centroids)
-              .map(Arrays::toString)
-              .collect(java.util.stream.Collectors.joining("\n"))
-          + ", vectorCentroids="
-          + Arrays.toString(vectorCentroids)
-          + '}';
-    }
-
-    public static int nearestCentroid(float[] vector, float[][] centroids) {
-      if (centroids.length == 1) {
-        return 0;
-      }
-      float minDist = Float.MAX_VALUE;
-      int nearest = -1;
-      for (int i = 0; i < centroids.length; i++) {
-        float dist = VectorUtil.squareDistance(centroids[i], vector);
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = i;
-        }
-      }
-      return nearest;
-    }
-  }
+  public record Results(float[][] centroids, short[] vectorCentroids) {}
 }

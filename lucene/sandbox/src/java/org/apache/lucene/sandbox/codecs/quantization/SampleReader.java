@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.quantization;
+package org.apache.lucene.sandbox.codecs.quantization;
 
 import java.io.IOException;
 import java.util.Random;
