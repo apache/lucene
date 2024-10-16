@@ -53,10 +53,6 @@ Optimizations
 * GITHUB#13800: MaxScoreBulkScorer now recomputes scorer partitions when the
   minimum competitive allows for a more favorable partitioning. (Adrien Grand)
 
-* GITHUB#13904: BlockMaxConjunctionBulkScorer can now early exit when the
-  leading clause has a single impact block (e.g. ConstantScoreQuery).
-  (Adrien Grand)
-
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
