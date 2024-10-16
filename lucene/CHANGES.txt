@@ -57,6 +57,8 @@ Optimizations
   leading clause has a single impact block (e.g. ConstantScoreQuery).
   (Adrien Grand)
 
+* GITHUB#13763: Replace Map<String,Object> with IntObjectHashMap for KnnVectorsReader (Pan Guixin)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
