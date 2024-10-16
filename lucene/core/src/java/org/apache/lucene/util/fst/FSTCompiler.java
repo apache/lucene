@@ -828,7 +828,7 @@ public class FSTCompiler<T> {
       // FSTEnum, Util, etc., have trouble w/ non-final
       // dead-end states:
 
-      // TODO: is node.numArcs == 0 always false?  we no longer prune any nodes from FST:
+      // node.numArcs == 0 happens on last node, but it is final.
       final boolean isFinal = node.isFinal || node.numArcs == 0;
 
       // this node makes it and we now compile it.  first,
