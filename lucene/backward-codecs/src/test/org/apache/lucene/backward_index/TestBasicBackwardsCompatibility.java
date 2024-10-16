@@ -832,7 +832,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
           expectThrows(IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w, reader));
       assertEquals(
           e.getMessage(),
-          "Cannot merge a segment that has been created with major version 9 into this index which has been created by major version 10");
+          "Cannot merge a segment that has been created with major version 10 into this index which has been created by major version 11");
       w.close();
       targetDir2.close();
 
