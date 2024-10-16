@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene100;
 
 import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
@@ -37,6 +37,7 @@ import org.apache.lucene.codecs.lucene90.Lucene90NormsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90TermVectorsFormat;
+import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat;
 import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99SegmentInfoFormat;
@@ -45,14 +46,14 @@ import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
 /**
- * Implements the Lucene 9.12 index format
+ * Implements the Lucene 10.0 index format
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *
- * @see org.apache.lucene.codecs.lucene99 package documentation for file format details.
+ * @see org.apache.lucene.codecs.lucene100 package documentation for file format details.
  * @lucene.experimental
  */
-public class Lucene912Codec extends Codec {
+public class Lucene100Codec extends Codec {
 
   /** Configuration option for the codec. */
   public enum Mode {
@@ -80,7 +81,7 @@ public class Lucene912Codec extends Codec {
       new PerFieldPostingsFormat() {
         @Override
         public PostingsFormat getPostingsFormatForField(String field) {
-          return Lucene912Codec.this.getPostingsFormatForField(field);
+          return Lucene100Codec.this.getPostingsFormatForField(field);
         }
       };
 
@@ -89,7 +90,7 @@ public class Lucene912Codec extends Codec {
       new PerFieldDocValuesFormat() {
         @Override
         public DocValuesFormat getDocValuesFormatForField(String field) {
-          return Lucene912Codec.this.getDocValuesFormatForField(field);
+          return Lucene100Codec.this.getDocValuesFormatForField(field);
         }
       };
 
@@ -98,14 +99,14 @@ public class Lucene912Codec extends Codec {
       new PerFieldKnnVectorsFormat() {
         @Override
         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-          return Lucene912Codec.this.getKnnVectorsFormatForField(field);
+          return Lucene100Codec.this.getKnnVectorsFormatForField(field);
         }
       };
 
   private final StoredFieldsFormat storedFieldsFormat;
 
   /** Instantiates a new codec. */
-  public Lucene912Codec() {
+  public Lucene100Codec() {
     this(Mode.BEST_SPEED);
   }
 
@@ -114,8 +115,8 @@ public class Lucene912Codec extends Codec {
    *
    * @param mode stored fields compression mode to use for newly flushed/merged segments.
    */
-  public Lucene912Codec(Mode mode) {
-    super("Lucene912");
+  public Lucene100Codec(Mode mode) {
+    super("Lucene100");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene912PostingsFormat();

@@ -10,7 +10,7 @@ on:
   push:
     branches:
       - 'main'
-      - 'branch_9x'
+      - 'branch_10x'
 
 env:
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}

@@ -30,6 +30,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CodecReader;
@@ -46,6 +47,7 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -1407,5 +1409,81 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
         return docCount;
       }
     };
+  }
+
+  public void testMismatchedFields() throws Exception {
+    Directory dir1 = newDirectory();
+    IndexWriter w1 = new IndexWriter(dir1, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new LongPoint("f", 1L));
+    doc.add(new LongPoint("g", 42L, 43L));
+    w1.addDocument(doc);
+
+    Directory dir2 = newDirectory();
+    IndexWriter w2 =
+        new IndexWriter(dir2, newIndexWriterConfig().setMergeScheduler(new SerialMergeScheduler()));
+    w2.addDocument(doc);
+    w2.commit();
+
+    DirectoryReader reader = DirectoryReader.open(w1);
+    w1.close();
+    w2.addIndexes(new MismatchedCodecReader((CodecReader) getOnlyLeafReader(reader), random()));
+    reader.close();
+    w2.forceMerge(1);
+    reader = DirectoryReader.open(w2);
+    w2.close();
+
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    assertEquals(2, leafReader.maxDoc());
+
+    PointValues fPoints = leafReader.getPointValues("f");
+    assertEquals(2, fPoints.size());
+    fPoints.intersect(
+        new IntersectVisitor() {
+
+          int expectedDoc = 0;
+
+          @Override
+          public void visit(int docID, byte[] packedValue) throws IOException {
+            assertEquals(LongPoint.pack(1L), new BytesRef(packedValue));
+            assertEquals(expectedDoc++, docID);
+          }
+
+          @Override
+          public void visit(int docID) throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_CROSSES_QUERY;
+          }
+        });
+
+    PointValues gPoints = leafReader.getPointValues("g");
+    assertEquals(2, fPoints.size());
+    gPoints.intersect(
+        new IntersectVisitor() {
+
+          int expectedDoc = 0;
+
+          @Override
+          public void visit(int docID, byte[] packedValue) throws IOException {
+            assertEquals(LongPoint.pack(42L, 43L), new BytesRef(packedValue));
+            assertEquals(expectedDoc++, docID);
+          }
+
+          @Override
+          public void visit(int docID) throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_CROSSES_QUERY;
+          }
+        });
+
+    IOUtils.close(reader, w2, dir1, dir2);
   }
 }

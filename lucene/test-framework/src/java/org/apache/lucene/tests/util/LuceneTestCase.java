@@ -182,6 +182,7 @@ import org.apache.lucene.tests.index.AssertingLeafReader;
 import org.apache.lucene.tests.index.FieldFilterLeafReader;
 import org.apache.lucene.tests.index.MergingCodecReader;
 import org.apache.lucene.tests.index.MergingDirectoryReaderWrapper;
+import org.apache.lucene.tests.index.MismatchedCodecReader;
 import org.apache.lucene.tests.index.MismatchedDirectoryReader;
 import org.apache.lucene.tests.index.MismatchedLeafReader;
 import org.apache.lucene.tests.index.MockIndexWriterEventListener;
@@ -865,6 +866,18 @@ public abstract class LuceneTestCase extends Assert {
 
   public static void assumeNoException(String msg, Exception e) {
     RandomizedTest.assumeNoException(msg, e);
+  }
+
+  public static void assertFloatUlpEquals(final float x, final float y, final short maxUlps) {
+    assertTrue(
+        x + " and " + y + " are not within " + maxUlps + " ULPs of each other",
+        TestUtil.floatUlpEquals(x, y, maxUlps));
+  }
+
+  public static void assertDoubleUlpEquals(final double x, final double y, final int maxUlps) {
+    assertTrue(
+        x + " and " + y + " are not within " + maxUlps + " ULPs of each other",
+        TestUtil.doubleUlpEquals(x, y, maxUlps));
   }
 
   /**
@@ -1734,12 +1747,14 @@ public abstract class LuceneTestCase extends Assert {
             System.out.println(
                 "NOTE: LuceneTestCase.wrapReader: wrapping previous reader="
                     + r
-                    + " with MismatchedLeaf/DirectoryReader");
+                    + " with MismatchedLeaf/Directory/CodecReader");
           }
           if (r instanceof LeafReader) {
             r = new MismatchedLeafReader((LeafReader) r, random);
           } else if (r instanceof DirectoryReader) {
             r = new MismatchedDirectoryReader((DirectoryReader) r, random);
+          } else if (r instanceof CodecReader) {
+            r = new MismatchedCodecReader((CodecReader) r, random);
           }
           break;
         case 4:

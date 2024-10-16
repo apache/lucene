@@ -33,9 +33,28 @@ public final class GroupVIntUtil {
   private static final long[] MASKS = new long[] {0xFFL, 0xFFFFL, 0xFFFFFFL, 0xFFFFFFFFL};
 
   /**
-   * Default implementation of read single group, for optimal performance, you should use {@link
-   * DataInput#readGroupVInts(long[], int)} instead.
+   * Read all the group varints, including the tail vints. we need a long[] because this is what
+   * postings are using, all longs are actually required to be integers.
    *
+   * @param dst the array to read ints into.
+   * @param limit the number of int values to read.
+   * @lucene.experimental
+   */
+  public static void readGroupVInts(DataInput in, long[] dst, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      in.readGroupVInt(dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = in.readVInt() & 0xFFFFFFFFL;
+    }
+  }
+
+  /**
+   * Default implementation of read single group, for optimal performance, you should use {@link
+   * GroupVIntUtil#readGroupVInts(DataInput, long[], int)} instead.
+   *
+   * @param in the input to use to read data.
    * @param dst the array to read ints into.
    * @param offset the offset in the array to start storing ints.
    */

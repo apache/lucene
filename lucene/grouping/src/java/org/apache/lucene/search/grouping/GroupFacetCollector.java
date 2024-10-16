@@ -18,7 +18,6 @@ package org.apache.lucene.search.grouping;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NavigableSet;
@@ -126,28 +125,6 @@ public abstract class GroupFacetCollector extends SimpleCollector {
    */
   public static class GroupedFacetResult {
 
-    private static final Comparator<FacetEntry> orderByCountAndValue =
-        new Comparator<FacetEntry>() {
-
-          @Override
-          public int compare(FacetEntry a, FacetEntry b) {
-            int cmp = b.count - a.count; // Highest count first!
-            if (cmp != 0) {
-              return cmp;
-            }
-            return a.value.compareTo(b.value);
-          }
-        };
-
-    private static final Comparator<FacetEntry> orderByValue =
-        new Comparator<FacetEntry>() {
-
-          @Override
-          public int compare(FacetEntry a, FacetEntry b) {
-            return a.value.compareTo(b.value);
-          }
-        };
-
     private final int maxSize;
     private final NavigableSet<FacetEntry> facetEntries;
     private final int totalMissingCount;
@@ -157,7 +134,17 @@ public abstract class GroupFacetCollector extends SimpleCollector {
 
     public GroupedFacetResult(
         int size, int minCount, boolean orderByCount, int totalCount, int totalMissingCount) {
-      this.facetEntries = new TreeSet<>(orderByCount ? orderByCountAndValue : orderByValue);
+      this.facetEntries =
+          new TreeSet<>(
+              orderByCount
+                  ? (a, b) -> {
+                    int cmp = b.count - a.count; // Highest count first!
+                    if (cmp != 0) {
+                      return cmp;
+                    }
+                    return a.value.compareTo(b.value);
+                  }
+                  : (a, b) -> a.value.compareTo(b.value));
       this.totalMissingCount = totalMissingCount;
       this.totalCount = totalCount;
       maxSize = size;

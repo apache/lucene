@@ -96,8 +96,8 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public boolean hasDocValuesSkipIndex() {
-            return false;
+          public DocValuesSkipIndexType docValuesSkipIndexType() {
+            return DocValuesSkipIndexType.NONE;
           }
 
           @Override

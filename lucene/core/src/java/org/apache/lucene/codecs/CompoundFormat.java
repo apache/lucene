@@ -35,8 +35,8 @@ public abstract class CompoundFormat {
   // we can add 'producer' classes.
 
   /** Returns a Directory view (read-only) for the compound files in this segment */
-  public abstract CompoundDirectory getCompoundReader(
-      Directory dir, SegmentInfo si, IOContext context) throws IOException;
+  public abstract CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si)
+      throws IOException;
 
   /**
    * Packs the provided segment's files into a compound format. All files referenced by the provided

@@ -120,8 +120,8 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
   @Test
   public void normalizedVector_shouldReturnModule1() {
     TermAndVector synonymTerm = new TermAndVector(new BytesRef("a"), new float[] {10, 10});
-    synonymTerm.normalizeVector();
-    float[] vector = synonymTerm.getVector();
+    synonymTerm = synonymTerm.normalizeVector();
+    float[] vector = synonymTerm.vector();
     float len = 0;
     for (int i = 0; i < vector.length; i++) {
       len += vector[i] * vector[i];

@@ -615,7 +615,7 @@ public class FreeTextSuggester extends Lookup {
           // Must do num+seen.size() for queue depth because we may
           // reject up to seen.size() paths in acceptResult():
           Util.TopNSearcher<Long> searcher =
-              new Util.TopNSearcher<Long>(fst, num, num + seen.size(), weightComparator) {
+              new Util.TopNSearcher<>(fst, num, num + seen.size(), Comparator.naturalOrder()) {
 
                 BytesRefBuilder scratchBytes = new BytesRefBuilder();
 
@@ -702,19 +702,15 @@ public class FreeTextSuggester extends Lookup {
         backoff *= ALPHA;
       }
 
-      Collections.sort(
-          results,
-          new Comparator<LookupResult>() {
-            @Override
-            public int compare(LookupResult a, LookupResult b) {
-              if (a.value > b.value) {
-                return -1;
-              } else if (a.value < b.value) {
-                return 1;
-              } else {
-                // Tie break by UTF16 sort order:
-                return ((String) a.key).compareTo((String) b.key);
-              }
+      results.sort(
+          (a, b) -> {
+            if (a.value > b.value) {
+              return -1;
+            } else if (a.value < b.value) {
+              return 1;
+            } else {
+              // Tie break by UTF16 sort order:
+              return ((String) a.key).compareTo((String) b.key);
             }
           });
 
@@ -760,14 +756,6 @@ public class FreeTextSuggester extends Lookup {
 
     return output;
   }
-
-  static final Comparator<Long> weightComparator =
-      new Comparator<Long>() {
-        @Override
-        public int compare(Long left, Long right) {
-          return left.compareTo(right);
-        }
-      };
 
   /** Returns the weight associated with an input string, or null if it does not exist. */
   public Object get(CharSequence key) {

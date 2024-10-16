@@ -1313,7 +1313,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 fi.getDocValuesType(),
-                fi.hasDocValuesSkipIndex(),
+                fi.docValuesSkipIndexType(),
                 fi.getDocValuesGen(),
                 fi.attributes(),
                 0,

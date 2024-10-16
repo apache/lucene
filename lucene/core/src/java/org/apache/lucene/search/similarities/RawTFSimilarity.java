@@ -14,23 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.quantization;
+package org.apache.lucene.search.similarities;
 
-import java.io.IOException;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.TermStatistics;
 
-/**
- * Random access values for <code>byte[]</code>, but also includes accessing the score correction
- * constant for the current vector in the buffer.
- *
- * @lucene.experimental
- */
-public interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues.Bytes {
+/** Similarity that returns the raw TF as score. */
+public class RawTFSimilarity extends Similarity {
 
-  ScalarQuantizer getScalarQuantizer();
+  /** Default constructor: parameter-free */
+  public RawTFSimilarity() {
+    super();
+  }
 
-  float getScoreCorrectionConstant(int vectorOrd) throws IOException;
+  /** Primary constructor. */
+  public RawTFSimilarity(boolean discountOverlaps) {
+    super(discountOverlaps);
+  }
 
   @Override
-  RandomAccessQuantizedByteVectorValues copy() throws IOException;
+  public SimScorer scorer(
+      float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+    return new SimScorer() {
+      @Override
+      public float score(float freq, long norm) {
+        return boost * freq;
+      }
+    };
+  }
 }

@@ -17,13 +17,16 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocBaseBitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.LongsRef;
 
 final class DocIdsWriter {
 
@@ -36,6 +39,7 @@ final class DocIdsWriter {
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
 
   private final int[] scratch;
+  private final LongsRef scratchLongs = new LongsRef();
 
   /**
    * IntsRef to be used to iterate over the scratch buffer. A single instance is reused to avoid
@@ -205,12 +209,17 @@ final class DocIdsWriter {
     }
   }
 
-  private static DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
+  private DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
     int offsetWords = in.readVInt();
     int longLen = in.readVInt();
-    long[] bits = new long[longLen];
-    in.readLongs(bits, 0, longLen);
-    FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
+    scratchLongs.longs = ArrayUtil.growNoCopy(scratchLongs.longs, longLen);
+    in.readLongs(scratchLongs.longs, 0, longLen);
+    // make ghost bits clear for FixedBitSet.
+    if (longLen < scratchLongs.length) {
+      Arrays.fill(scratchLongs.longs, longLen, scratchLongs.longs.length, 0);
+    }
+    scratchLongs.length = longLen;
+    FixedBitSet bitSet = new FixedBitSet(scratchLongs.longs, longLen << 6);
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
@@ -230,7 +239,7 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
+  private void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
     DocIdSetIterator iterator = readBitSetIterator(in, count);
     int docId, pos = 0;
     while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -307,8 +316,7 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
+  private void readBitSet(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     DocIdSetIterator bitSetIterator = readBitSetIterator(in, count);
     visitor.visit(bitSetIterator);
   }

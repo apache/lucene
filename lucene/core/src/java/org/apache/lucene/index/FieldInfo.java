@@ -37,7 +37,7 @@ public final class FieldInfo {
 
   private DocValuesType docValuesType = DocValuesType.NONE;
 
-  private final boolean docValuesSkipIndex;
+  private final DocValuesSkipIndexType docValuesSkipIndex;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -83,7 +83,7 @@ public final class FieldInfo {
       boolean storePayloads,
       IndexOptions indexOptions,
       DocValuesType docValues,
-      boolean hasDocValuesSkipIndex,
+      DocValuesSkipIndexType docValuesSkipIndex,
       long dvGen,
       Map<String, String> attributes,
       int pointDimensionCount,
@@ -99,7 +99,7 @@ public final class FieldInfo {
     this.docValuesType =
         Objects.requireNonNull(
             docValues, "DocValuesType must not be null (field: \"" + name + "\")");
-    this.docValuesSkipIndex = hasDocValuesSkipIndex;
+    this.docValuesSkipIndex = docValuesSkipIndex;
     this.indexOptions =
         Objects.requireNonNull(
             indexOptions, "IndexOptions must not be null (field: \"" + name + "\")");
@@ -157,11 +157,13 @@ public final class FieldInfo {
     if (docValuesType == null) {
       throw new IllegalArgumentException("DocValuesType must not be null (field: '" + name + "')");
     }
-    if (docValuesType.supportsSkipIndex == false && docValuesSkipIndex) {
+    if (docValuesSkipIndex.isCompatibleWith(docValuesType) == false) {
       throw new IllegalArgumentException(
           "field '"
               + name
-              + "' cannot have docValuesSkipIndex set to true with doc values type "
+              + "' cannot have docValuesSkipIndexType="
+              + docValuesSkipIndex
+              + " with doc values type "
               + docValuesType);
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
@@ -308,14 +310,16 @@ public final class FieldInfo {
    * @throws IllegalArgumentException if they are not the same
    */
   static void verifySameDocValuesSkipIndex(
-      String fieldName, boolean hasDocValuesSkipIndex1, boolean hasDocValuesSkipIndex2) {
+      String fieldName,
+      DocValuesSkipIndexType hasDocValuesSkipIndex1,
+      DocValuesSkipIndexType hasDocValuesSkipIndex2) {
     if (hasDocValuesSkipIndex1 != hasDocValuesSkipIndex2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
-              + "\" from docValuesSkipIndex="
+              + "\" from docValuesSkipIndexType="
               + hasDocValuesSkipIndex1
-              + " to inconsistent docValuesSkipIndex="
+              + " to inconsistent docValuesSkipIndexType="
               + hasDocValuesSkipIndex2);
     }
   }
@@ -589,7 +593,7 @@ public final class FieldInfo {
   }
 
   /** Returns true if, and only if, this field has a skip index. */
-  public boolean hasDocValuesSkipIndex() {
+  public DocValuesSkipIndexType docValuesSkipIndexType() {
     return docValuesSkipIndex;
   }
 

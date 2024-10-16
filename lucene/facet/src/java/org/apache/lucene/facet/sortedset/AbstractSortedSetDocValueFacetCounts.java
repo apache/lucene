@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,20 +38,6 @@ import org.apache.lucene.util.PriorityQueue;
 
 /** Base class for SSDV faceting implementations. */
 abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
-
-  private static final Comparator<FacetResult> FACET_RESULT_COMPARATOR =
-      new Comparator<>() {
-        @Override
-        public int compare(FacetResult a, FacetResult b) {
-          if (a.value.intValue() > b.value.intValue()) {
-            return -1;
-          } else if (b.value.intValue() > a.value.intValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        }
-      };
 
   final SortedSetDocValuesReaderState state;
   final FacetsConfig stateConfig;
@@ -140,7 +125,16 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
 
     // Sort by highest count:
-    results.sort(FACET_RESULT_COMPARATOR);
+    results.sort(
+        (a, b) -> {
+          if (a.value.intValue() > b.value.intValue()) {
+            return -1;
+          } else if (b.value.intValue() > a.value.intValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
+          }
+        });
     return results;
   }
 

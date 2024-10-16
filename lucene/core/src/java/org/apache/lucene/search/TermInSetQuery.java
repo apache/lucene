@@ -27,13 +27,7 @@ import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.AttributeSource;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.BytesRefComparator;
-import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.StringSorter;
+import org.apache.lucene.util.*;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -139,6 +133,16 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   @Override
   public long getTermsCount() {
     return termData.size();
+  }
+
+  /**
+   * Get an iterator over the encoded terms for query inspection.
+   *
+   * @lucene.experimental
+   */
+  public BytesRefIterator getBytesRefIterator() {
+    final TermIterator iterator = this.termData.iterator();
+    return () -> iterator.next();
   }
 
   @Override

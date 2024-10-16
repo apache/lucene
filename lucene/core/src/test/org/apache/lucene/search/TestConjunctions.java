@@ -29,12 +29,11 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.RawTFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -67,7 +66,7 @@ public class TestConjunctions extends LuceneTestCase {
     reader = writer.getReader();
     writer.close();
     searcher = newSearcher(reader);
-    searcher.setSimilarity(new TFSimilarity());
+    searcher.setSimilarity(new RawTFSimilarity());
   }
 
   static Document doc(String v1, String v2) {
@@ -91,26 +90,6 @@ public class TestConjunctions extends LuceneTestCase {
     reader.close();
     dir.close();
     super.tearDown();
-  }
-
-  // Similarity that returns the TF as score
-  private static class TFSimilarity extends Similarity {
-
-    @Override
-    public long computeNorm(FieldInvertState state) {
-      return 1; // we dont care
-    }
-
-    @Override
-    public SimScorer scorer(
-        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
-      return new SimScorer() {
-        @Override
-        public float score(float freq, long norm) {
-          return freq;
-        }
-      };
-    }
   }
 
   public void testScorerGetChildren() throws Exception {
