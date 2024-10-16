@@ -18,8 +18,6 @@ package org.apache.lucene.search.vectorhighlight;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -377,16 +375,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
     for (List<WeightedFragInfo> weightedFragInfos : fieldNameToFragInfos.values()) {
       result.addAll(weightedFragInfos);
     }
-    Collections.sort(
-        result,
-        new Comparator<WeightedFragInfo>() {
-
-          @Override
-          public int compare(
-              FieldFragList.WeightedFragInfo info1, FieldFragList.WeightedFragInfo info2) {
-            return info1.getStartOffset() - info2.getStartOffset();
-          }
-        });
+    result.sort((info1, info2) -> info1.getStartOffset() - info2.getStartOffset());
 
     return result;
   }

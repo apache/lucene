@@ -35,8 +35,8 @@ final class MaxScoreAccumulator {
   }
 
   /**
-   * Return the max encoded DocAndScore in a way that is consistent with {@link
-   * DocAndScore#compareTo}.
+   * Return the max encoded docId and score found in the two longs, following the encoding in {@link
+   * #accumulate}.
    */
   private static long maxEncode(long v1, long v2) {
     float score1 = Float.intBitsToFloat((int) (v1 >> 32));
@@ -51,38 +51,21 @@ final class MaxScoreAccumulator {
     return v2;
   }
 
-  void accumulate(int docBase, float score) {
-    assert docBase >= 0 && score >= 0;
-    long encode = (((long) Float.floatToIntBits(score)) << 32) | docBase;
+  void accumulate(int docId, float score) {
+    assert docId >= 0 && score >= 0;
+    long encode = (((long) Float.floatToIntBits(score)) << 32) | docId;
     acc.accumulate(encode);
   }
 
-  DocAndScore get() {
-    long value = acc.get();
-    if (value == Long.MIN_VALUE) {
-      return null;
-    }
-    float score = Float.intBitsToFloat((int) (value >> 32));
-    int docBase = (int) value;
-    return new DocAndScore(docBase, score);
+  public static float toScore(long value) {
+    return Float.intBitsToFloat((int) (value >> 32));
   }
 
-  record DocAndScore(int docBase, float score) implements Comparable<DocAndScore> {
+  public static int docId(long value) {
+    return (int) value;
+  }
 
-    @Override
-    public int compareTo(DocAndScore o) {
-      int cmp = Float.compare(score, o.score);
-      if (cmp == 0) {
-        // tie-break on the minimum doc base
-        // For a given minimum competitive score, we want to know the first segment
-        // where this score occurred, hence the reverse order here.
-        // On segments with a lower docBase, any document whose score is greater
-        // than or equal to this score would be competitive, while on segments with a
-        // higher docBase, documents need to have a strictly greater score to be
-        // competitive since we tie break on doc ID.
-        return Integer.compare(o.docBase, docBase);
-      }
-      return cmp;
-    }
+  long getRaw() {
+    return acc.get();
   }
 }

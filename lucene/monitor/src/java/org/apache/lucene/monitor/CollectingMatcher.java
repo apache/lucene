@@ -18,6 +18,7 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
@@ -38,9 +39,29 @@ abstract class CollectingMatcher<T extends QueryMatch> extends CandidateMatcher<
   @Override
   public void matchQuery(final String queryId, Query matchQuery, Map<String, String> metadata)
       throws IOException {
+    MatchCollector matchCollector = new MatchCollector(queryId, scoreMode);
     searcher.search(
         matchQuery,
-        CollectorManager.forSequentialExecution(new MatchCollector(queryId, scoreMode)));
+        new CollectorManager<MatchCollector, Void>() {
+          boolean newCollectorInvoked = false;
+
+          @Override
+          public MatchCollector newCollector() {
+            if (newCollectorInvoked) {
+              throw new IllegalStateException(
+                  "newCollector should be invoked at most once. Ensure your IndexSearcher has been created without an Executor.");
+            }
+            newCollectorInvoked = true;
+            return matchCollector;
+          }
+
+          @Override
+          public Void reduce(Collection<MatchCollector> collectors) {
+            assert collectors.size() == 1
+                : "collectors should contain exactly one collector instance";
+            return null;
+          }
+        });
   }
 
   /**

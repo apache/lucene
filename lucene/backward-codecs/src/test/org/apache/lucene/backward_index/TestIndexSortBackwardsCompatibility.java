@@ -55,7 +55,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
   static final String INDEX_NAME = "sorted";
   static final String SUFFIX = "";
-  private static final Version FIRST_PARENT_DOC_VERSION = Version.LUCENE_9_11_0;
+  private static final Version FIRST_PARENT_DOC_VERSION = Version.fromBits(9, 11, 0);
   private static final String PARENT_FIELD_NAME = "___parent";
 
   public TestIndexSortBackwardsCompatibility(Version version, String pattern) {

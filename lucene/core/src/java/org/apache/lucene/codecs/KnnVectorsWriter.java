@@ -30,6 +30,7 @@ import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
@@ -55,28 +56,26 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   @SuppressWarnings("unchecked")
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     switch (fieldInfo.getVectorEncoding()) {
-      case BYTE:
+      case BYTE -> {
         KnnFieldVectorsWriter<byte[]> byteWriter =
             (KnnFieldVectorsWriter<byte[]>) addField(fieldInfo);
         ByteVectorValues mergedBytes =
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-        for (int doc = mergedBytes.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = mergedBytes.nextDoc()) {
-          byteWriter.addValue(doc, mergedBytes.vectorValue());
+        KnnVectorValues.DocIndexIterator iter = mergedBytes.iterator();
+        for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
+          byteWriter.addValue(doc, mergedBytes.vectorValue(iter.index()));
         }
-        break;
-      case FLOAT32:
+      }
+      case FLOAT32 -> {
         KnnFieldVectorsWriter<float[]> floatWriter =
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
             MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-        for (int doc = mergedFloats.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = mergedFloats.nextDoc()) {
-          floatWriter.addValue(doc, mergedFloats.vectorValue());
+        KnnVectorValues.DocIndexIterator iter = mergedFloats.iterator();
+        for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
+          floatWriter.addValue(doc, mergedFloats.vectorValue(iter.index()));
         }
-        break;
+      }
     }
   }
 
@@ -117,32 +116,44 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   private static class FloatVectorValuesSub extends DocIDMerger.Sub {
 
     final FloatVectorValues values;
+    final KnnVectorValues.DocIndexIterator iterator;
 
     FloatVectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) {
       super(docMap);
       this.values = values;
-      assert values.docID() == -1;
+      this.iterator = values.iterator();
+      assert iterator.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return values.nextDoc();
+      return iterator.nextDoc();
+    }
+
+    public int index() {
+      return iterator.index();
     }
   }
 
   private static class ByteVectorValuesSub extends DocIDMerger.Sub {
 
     final ByteVectorValues values;
+    final KnnVectorValues.DocIndexIterator iterator;
 
     ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues values) {
       super(docMap);
       this.values = values;
-      assert values.docID() == -1;
+      iterator = values.iterator();
+      assert iterator.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return values.nextDoc();
+      return iterator.nextDoc();
+    }
+
+    int index() {
+      return iterator.index();
     }
   }
 
@@ -287,7 +298,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private final List<FloatVectorValuesSub> subs;
       private final DocIDMerger<FloatVectorValuesSub> docIdMerger;
       private final int size;
-      private int docId;
+      private int docId = -1;
+      private int lastOrd = -1;
       FloatVectorValuesSub current;
 
       private MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
@@ -299,33 +311,59 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           totalSize += sub.values.size();
         }
         size = totalSize;
-        docId = -1;
       }
 
       @Override
-      public int docID() {
-        return docId;
+      public DocIndexIterator iterator() {
+        return new DocIndexIterator() {
+          private int index = -1;
+
+          @Override
+          public int docID() {
+            return docId;
+          }
+
+          @Override
+          public int index() {
+            return index;
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            current = docIdMerger.next();
+            if (current == null) {
+              docId = NO_MORE_DOCS;
+              index = NO_MORE_DOCS;
+            } else {
+              docId = current.mappedDocID;
+              ++lastOrd;
+              ++index;
+            }
+            return docId;
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public long cost() {
+            return size;
+          }
+        };
       }
 
       @Override
-      public int nextDoc() throws IOException {
-        current = docIdMerger.next();
-        if (current == null) {
-          docId = NO_MORE_DOCS;
-        } else {
-          docId = current.mappedDocID;
+      public float[] vectorValue(int ord) throws IOException {
+        if (ord != lastOrd) {
+          throw new IllegalStateException(
+              "only supports forward iteration with a single iterator: ord="
+                  + ord
+                  + ", lastOrd="
+                  + lastOrd);
         }
-        return docId;
-      }
-
-      @Override
-      public float[] vectorValue() throws IOException {
-        return current.values.vectorValue();
-      }
-
-      @Override
-      public int advance(int target) {
-        throw new UnsupportedOperationException();
+        return current.values.vectorValue(current.index());
       }
 
       @Override
@@ -339,7 +377,17 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
+      public int ordToDoc(int ord) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
       public VectorScorer scorer(float[] target) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public FloatVectorValues copy() {
         throw new UnsupportedOperationException();
       }
     }
@@ -349,7 +397,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private final DocIDMerger<ByteVectorValuesSub> docIdMerger;
       private final int size;
 
-      private int docId;
+      private int lastOrd = -1;
+      private int docId = -1;
       ByteVectorValuesSub current;
 
       private MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
@@ -361,33 +410,57 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           totalSize += sub.values.size();
         }
         size = totalSize;
-        docId = -1;
       }
 
       @Override
-      public byte[] vectorValue() throws IOException {
-        return current.values.vectorValue();
-      }
-
-      @Override
-      public int docID() {
-        return docId;
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        current = docIdMerger.next();
-        if (current == null) {
-          docId = NO_MORE_DOCS;
+      public byte[] vectorValue(int ord) throws IOException {
+        if (ord != lastOrd + 1) {
+          throw new IllegalStateException(
+              "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
         } else {
-          docId = current.mappedDocID;
+          lastOrd = ord;
         }
-        return docId;
+        return current.values.vectorValue(current.index());
       }
 
       @Override
-      public int advance(int target) {
-        throw new UnsupportedOperationException();
+      public DocIndexIterator iterator() {
+        return new DocIndexIterator() {
+          private int index = -1;
+
+          @Override
+          public int docID() {
+            return docId;
+          }
+
+          @Override
+          public int index() {
+            return index;
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            current = docIdMerger.next();
+            if (current == null) {
+              docId = NO_MORE_DOCS;
+              index = NO_MORE_DOCS;
+            } else {
+              docId = current.mappedDocID;
+              ++index;
+            }
+            return docId;
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public long cost() {
+            return size;
+          }
+        };
       }
 
       @Override
@@ -401,7 +474,17 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
+      public int ordToDoc(int ord) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
       public VectorScorer scorer(byte[] target) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public ByteVectorValues copy() {
         throw new UnsupportedOperationException();
       }
     }

@@ -357,7 +357,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             proto.hasPayloads(),
             proto.getIndexOptions(),
             proto.getDocValuesType(),
-            proto.hasDocValuesSkipIndex(),
+            proto.docValuesSkipIndexType(),
             proto.getDocValuesGen(),
             new HashMap<>(),
             proto.getPointDimensionCount(),

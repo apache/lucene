@@ -308,11 +308,6 @@ public final class ForDeltaUtil {
     }
   }
 
-  void skip(IndexInput in) throws IOException {
-    final int bitsPerValue = Byte.toUnsignedInt(in.readByte());
-    in.skipBytes(numBytes(bitsPerValue));
-  }
-
 """
 
 def primitive_size_for_bpv(bpv):

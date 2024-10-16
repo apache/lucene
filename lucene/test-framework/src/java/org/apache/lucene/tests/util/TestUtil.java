@@ -55,8 +55,8 @@ import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
+import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
@@ -462,6 +462,90 @@ public final class TestUtil {
           throw new AssertionError();
       }
     }
+  }
+
+  /**
+   * Returns true if the arguments are equal or within the range of allowed error (inclusive).
+   * Returns {@code false} if either of the arguments is NaN.
+   *
+   * <p>Two float numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
+   * floating point numbers between them, i.e. two adjacent floating point numbers are considered
+   * equal.
+   *
+   * <p>Adapted from org.apache.commons.numbers.core.Precision
+   *
+   * <p>github: https://github.com/apache/commons-numbers release 1.2
+   *
+   * @param x first value
+   * @param y second value
+   * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
+   *     and {@code y}.
+   * @return {@code true} if there are fewer than {@code maxUlps} floating point values between
+   *     {@code x} and {@code y}.
+   */
+  public static boolean floatUlpEquals(final float x, final float y, final short maxUlps) {
+    final int xInt = Float.floatToRawIntBits(x);
+    final int yInt = Float.floatToRawIntBits(y);
+
+    if ((xInt ^ yInt) < 0) {
+      // Numbers have opposite signs, take care of overflow.
+      // Remove the sign bit to obtain the absolute ULP above zero.
+      final int deltaPlus = xInt & Integer.MAX_VALUE;
+      final int deltaMinus = yInt & Integer.MAX_VALUE;
+
+      // Note:
+      // If either value is NaN, the exponent bits are set to (255 << 23) and the
+      // distance above 0.0 is always above a short ULP error. So omit the test
+      // for NaN and return directly.
+
+      // Avoid possible overflow from adding the deltas by splitting the comparison
+      return deltaPlus <= maxUlps && deltaMinus <= (maxUlps - deltaPlus);
+    }
+
+    // Numbers have same sign, there is no risk of overflow.
+    return Math.abs(xInt - yInt) <= maxUlps && !Float.isNaN(x) && !Float.isNaN(y);
+  }
+
+  /**
+   * Returns true if the arguments are equal or within the range of allowed error (inclusive).
+   * Returns {@code false} if either of the arguments is NaN.
+   *
+   * <p>Two double numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
+   * floating point numbers between them, i.e. two adjacent floating point numbers are considered
+   * equal.
+   *
+   * <p>Adapted from org.apache.commons.numbers.core.Precision
+   *
+   * <p>github: https://github.com/apache/commons-numbers release 1.2
+   *
+   * @param x first value
+   * @param y second value
+   * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
+   *     and {@code y}.
+   * @return {@code true} if there are fewer than {@code maxUlps} floating point values between
+   *     {@code x} and {@code y}.
+   */
+  public static boolean doubleUlpEquals(final double x, final double y, final int maxUlps) {
+    final long xInt = Double.doubleToRawLongBits(x);
+    final long yInt = Double.doubleToRawLongBits(y);
+
+    if ((xInt ^ yInt) < 0) {
+      // Numbers have opposite signs, take care of overflow.
+      // Remove the sign bit to obtain the absolute ULP above zero.
+      final long deltaPlus = xInt & Long.MAX_VALUE;
+      final long deltaMinus = yInt & Long.MAX_VALUE;
+
+      // Note:
+      // If either value is NaN, the exponent bits are set to (2047L << 52) and the
+      // distance above 0.0 is always above an integer ULP error. So omit the test
+      // for NaN and return directly.
+
+      // Avoid possible overflow from adding the deltas by splitting the comparison
+      return deltaPlus <= maxUlps && deltaMinus <= (maxUlps - deltaPlus);
+    }
+
+    // Numbers have same sign, there is no risk of overflow.
+    return Math.abs(xInt - yInt) <= maxUlps && !Double.isNaN(x) && !Double.isNaN(y);
   }
 
   /** start and end are BOTH inclusive */
@@ -1231,7 +1315,7 @@ public final class TestUtil {
    * different from {@link Codec#getDefault()} because that is randomized.
    */
   public static Codec getDefaultCodec() {
-    return new Lucene912Codec();
+    return new Lucene100Codec();
   }
 
   /**

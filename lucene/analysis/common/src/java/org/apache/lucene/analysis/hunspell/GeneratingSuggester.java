@@ -61,8 +61,7 @@ class GeneratingSuggester {
 
   private List<Weighted<Root<String>>> findSimilarDictionaryEntries(
       String word, WordCase originalCase) {
-    Comparator<Weighted<Root<String>>> natural = Comparator.naturalOrder();
-    PriorityQueue<Weighted<Root<String>>> roots = new PriorityQueue<>(natural.reversed());
+    PriorityQueue<Weighted<Root<String>>> roots = new PriorityQueue<>(Comparator.reverseOrder());
 
     char[] excludeFlags = dictionary.allNonSuggestibleFlags();
     FlagEnumerator.Lookup flagLookup = dictionary.flagLookup;

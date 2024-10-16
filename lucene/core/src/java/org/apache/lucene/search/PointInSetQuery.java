@@ -181,7 +181,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             @Override
             public Scorer get(long leadCost) throws IOException {
               DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
-              values.intersect(new MergePointVisitor(sortedPackedPoints, result));
+              values.intersect(new MergePointVisitor(sortedPackedPoints.iterator(), result));
               DocIdSetIterator iterator = result.build().iterator();
               return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
@@ -192,7 +192,9 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                 if (cost == -1) {
                   // Computing the cost may be expensive, so only do it if necessary
                   DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
-                  cost = values.estimateDocCount(new MergePointVisitor(sortedPackedPoints, result));
+                  cost =
+                      values.estimateDocCount(
+                          new MergePointVisitor(sortedPackedPoints.iterator(), result));
                   assert cost >= 0;
                 }
                 return cost;
@@ -260,18 +262,15 @@ public abstract class PointInSetQuery extends Query implements Accountable {
   private class MergePointVisitor implements IntersectVisitor {
 
     private final DocIdSetBuilder result;
-    private TermIterator iterator;
+    private final TermIterator iterator;
     private BytesRef nextQueryPoint;
     private final ByteArrayComparator comparator;
-    private final PrefixCodedTerms sortedPackedPoints;
     private DocIdSetBuilder.BulkAdder adder;
 
-    public MergePointVisitor(PrefixCodedTerms sortedPackedPoints, DocIdSetBuilder result)
-        throws IOException {
+    public MergePointVisitor(TermIterator iterator, DocIdSetBuilder result) throws IOException {
       this.result = result;
-      this.sortedPackedPoints = sortedPackedPoints;
       this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
-      this.iterator = this.sortedPackedPoints.iterator();
+      this.iterator = iterator;
       nextQueryPoint = iterator.next();
     }
 

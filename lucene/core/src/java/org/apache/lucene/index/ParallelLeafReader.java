@@ -48,6 +48,7 @@ import org.apache.lucene.util.Version;
  * behavior</em>.
  */
 public class ParallelLeafReader extends LeafReader {
+
   private final FieldInfos fieldInfos;
   private final LeafReader[] parallelReaders, storedFieldsReaders;
   private final Set<LeafReader> completeReaderSet =
@@ -325,14 +326,32 @@ public class ParallelLeafReader extends LeafReader {
   @Override
   public TermVectors termVectors() throws IOException {
     ensureOpen();
-    // TODO: optimize
+
+    Map<LeafReader, TermVectors> readerToTermVectors = new IdentityHashMap<>();
+    for (LeafReader reader : parallelReaders) {
+      if (reader.getFieldInfos().hasTermVectors()) {
+        TermVectors termVectors = reader.termVectors();
+        readerToTermVectors.put(reader, termVectors);
+      }
+    }
+
     return new TermVectors() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        // Prefetch all vectors. Note that this may be wasteful if the consumer doesn't need to read
+        // all the fields but we have no way to know what fields the consumer needs.
+        for (TermVectors termVectors : readerToTermVectors.values()) {
+          termVectors.prefetch(docID);
+        }
+      }
+
       @Override
       public Fields get(int docID) throws IOException {
         ParallelFields fields = null;
         for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
           String fieldName = ent.getKey();
-          Terms vector = ent.getValue().termVectors().get(docID, fieldName);
+          TermVectors termVectors = readerToTermVectors.get(ent.getValue());
+          Terms vector = termVectors.get(docID, fieldName);
           if (vector != null) {
             if (fields == null) {
               fields = new ParallelFields();

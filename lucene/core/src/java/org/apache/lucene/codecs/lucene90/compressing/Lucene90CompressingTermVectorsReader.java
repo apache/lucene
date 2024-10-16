@@ -31,6 +31,7 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingT
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -77,6 +78,9 @@ import org.apache.lucene.util.packed.PackedInts;
  */
 public final class Lucene90CompressingTermVectorsReader extends TermVectorsReader {
 
+  private static final int PREFETCH_CACHE_SIZE = 1 << 4;
+  private static final int PREFETCH_CACHE_MASK = PREFETCH_CACHE_SIZE - 1;
+
   private final FieldInfos fieldInfos;
   final FieldsIndex indexReader;
   final IndexInput vectorsStream;
@@ -93,6 +97,11 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private final long maxPointer; // end of the data section
   private BlockState blockState = new BlockState(-1, -1, 0);
+  // Cache of recently prefetched block IDs. This helps reduce chances of prefetching the same block
+  // multiple times, which is otherwise likely due to index sorting or recursive graph bisection
+  // clustering similar documents together. NOTE: this cache must be small since it's fully scanned.
+  private final long[] prefetchedBlockIDCache;
+  private int prefetchedBlockIDCacheIndex;
 
   // used by clone
   private Lucene90CompressingTermVectorsReader(Lucene90CompressingTermVectorsReader reader) {
@@ -111,6 +120,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     this.numDirtyChunks = reader.numDirtyChunks;
     this.numDirtyDocs = reader.numDirtyDocs;
     this.maxPointer = reader.maxPointer;
+    this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
+    Arrays.fill(prefetchedBlockIDCache, -1);
     this.closed = false;
   }
 
@@ -211,6 +222,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
       CodecUtil.checkFooter(metaIn, null);
       metaIn.close();
+
+      this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
+      Arrays.fill(prefetchedBlockIDCache, -1);
 
       success = true;
     } catch (Throwable t) {
@@ -326,6 +340,23 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   }
 
   private record BlockState(long startPointer, int docBase, int chunkDocs) {}
+
+  @Override
+  public void prefetch(int docID) throws IOException {
+    final long blockID = indexReader.getBlockID(docID);
+
+    for (long prefetchedBlockID : prefetchedBlockIDCache) {
+      if (prefetchedBlockID == blockID) {
+        return;
+      }
+    }
+
+    final long blockStartPointer = indexReader.getBlockStartPointer(blockID);
+    final long blockLength = indexReader.getBlockLength(blockID);
+    vectorsStream.prefetch(blockStartPointer, blockLength);
+
+    prefetchedBlockIDCache[prefetchedBlockIDCacheIndex++ & PREFETCH_CACHE_MASK] = blockID;
+  }
 
   @Override
   public Fields get(int doc) throws IOException {

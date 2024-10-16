@@ -775,10 +775,11 @@ public final class Util {
 
   /** Just takes unsigned byte values from the BytesRef and converts into an IntsRef. */
   public static IntsRef toIntsRef(BytesRef input, IntsRefBuilder scratch) {
-    scratch.clear();
+    scratch.growNoCopy(input.length);
     for (int i = 0; i < input.length; i++) {
-      scratch.append(input.bytes[i + input.offset] & 0xFF);
+      scratch.setIntAt(i, input.bytes[i + input.offset] & 0xFF);
     }
+    scratch.setLength(input.length);
     return scratch.get();
   }
 

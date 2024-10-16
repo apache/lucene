@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -31,22 +32,26 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
@@ -831,5 +836,75 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     long minValue() throws IOException;
 
     int docID();
+  }
+
+  public void testMismatchedFields() throws Exception {
+    Directory dir1 = newDirectory();
+    IndexWriter w1 = new IndexWriter(dir1, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new BinaryDocValuesField("binary", new BytesRef("lucene")));
+    doc.add(new NumericDocValuesField("numeric", 0L));
+    doc.add(new SortedDocValuesField("sorted", new BytesRef("search")));
+    doc.add(new SortedNumericDocValuesField("sorted_numeric", 1L));
+    doc.add(new SortedSetDocValuesField("sorted_set", new BytesRef("engine")));
+    w1.addDocument(doc);
+
+    Directory dir2 = newDirectory();
+    IndexWriter w2 =
+        new IndexWriter(dir2, newIndexWriterConfig().setMergeScheduler(new SerialMergeScheduler()));
+    w2.addDocument(doc);
+    w2.commit();
+
+    DirectoryReader reader = DirectoryReader.open(w1);
+    w1.close();
+    w2.addIndexes(new MismatchedCodecReader((CodecReader) getOnlyLeafReader(reader), random()));
+    reader.close();
+    w2.forceMerge(1);
+    reader = DirectoryReader.open(w2);
+    w2.close();
+
+    LeafReader leafReader = getOnlyLeafReader(reader);
+
+    BinaryDocValues bdv = leafReader.getBinaryDocValues("binary");
+    assertNotNull(bdv);
+    assertEquals(0, bdv.nextDoc());
+    assertEquals(new BytesRef("lucene"), bdv.binaryValue());
+    assertEquals(1, bdv.nextDoc());
+    assertEquals(new BytesRef("lucene"), bdv.binaryValue());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bdv.nextDoc());
+
+    NumericDocValues ndv = leafReader.getNumericDocValues("numeric");
+    assertNotNull(ndv);
+    assertEquals(0, ndv.nextDoc());
+    assertEquals(0, ndv.longValue());
+    assertEquals(1, ndv.nextDoc());
+    assertEquals(0, ndv.longValue());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, ndv.nextDoc());
+
+    SortedDocValues sdv = leafReader.getSortedDocValues("sorted");
+    assertNotNull(sdv);
+    assertEquals(0, sdv.nextDoc());
+    assertEquals(new BytesRef("search"), sdv.lookupOrd(sdv.ordValue()));
+    assertEquals(1, sdv.nextDoc());
+    assertEquals(new BytesRef("search"), sdv.lookupOrd(sdv.ordValue()));
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, sdv.nextDoc());
+
+    SortedNumericDocValues sndv = leafReader.getSortedNumericDocValues("sorted_numeric");
+    assertNotNull(sndv);
+    assertEquals(0, sndv.nextDoc());
+    assertEquals(1, sndv.nextValue());
+    assertEquals(1, sndv.nextDoc());
+    assertEquals(1, sndv.nextValue());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, sndv.nextDoc());
+
+    SortedSetDocValues ssdv = leafReader.getSortedSetDocValues("sorted_set");
+    assertNotNull(ssdv);
+    assertEquals(0, ssdv.nextDoc());
+    assertEquals(new BytesRef("engine"), ssdv.lookupOrd(ssdv.nextOrd()));
+    assertEquals(1, ssdv.nextDoc());
+    assertEquals(new BytesRef("engine"), ssdv.lookupOrd(ssdv.nextOrd()));
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, ssdv.nextDoc());
+
+    IOUtils.close(reader, w2, dir1, dir2);
   }
 }

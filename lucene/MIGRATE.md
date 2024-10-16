@@ -19,6 +19,12 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### Changes to DataInput.readGroupVInt and readGroupVInts methods 
+
+As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInput.readGroupVInts 
+to be public and not-final, allowing subclasses to override it. This change also removes the protected
+DataInput.readGroupVInt method: subclasses should delegate or reimplement it entirely.
+
 ### OpenNLP dependency upgrade
 
 [Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
@@ -194,6 +200,7 @@ access the members using method calls instead of field accesses. Affected classe
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 - `BooleanClause` (GITHUB#13261)
 - `TotalHits` (GITHUB#13762)
+- `TermAndVector` (GITHUB#13772)
 - Many basic Lucene classes, including `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
 ### Boolean flags on IOContext replaced with a new ReadAdvice enum.
@@ -858,7 +865,7 @@ Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need
 
 ### Signature of static IndexSearch#slices method changed
 
-The static `IndexSearcher#sslices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
+The static `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
 method now supports an additional 4th and last argument to optionally enable creating segment partitions:
 `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice, boolean allowSegmentPartitions)`
 
@@ -867,3 +874,27 @@ method now supports an additional 4th and last argument to optionally enable cre
 `TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`, 
 is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can 
 optimize the type of collectors it creates and exposes via `newCollector`.
+
+### `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` removed
+
+The protected `IndexSearcher#search(List<LeafReaderContext> leaves, Weight weight, Collector collector)` method has been 
+removed in favour of the newly introduced `search(LeafReaderContextPartition[] partitions, Weight weight, Collector collector)`.
+`IndexSearcher` subclasses that override this method need to instead override the new method.
+
+### Indexing vectors with 8 bit scalar quantization is no longer supported but 7 and 4 bit quantization still work (GITHUB#13519)
+
+8 bit scalar vector quantization is no longer supported: it was buggy
+starting in 9.11 (GITHUB#13197).  4 and 7 bit quantization are still
+supported.  Existing (9.11) Lucene indices that previously used 8 bit
+quantization can still be read/searched but the results from
+`KNN*VectorQuery` are silently buggy.  Further 8 bit quantized vector
+indexing into such (9.11) indices is not permitted, so your path
+forward if you wish to continue using the same 9.11 index is to index
+additional vectors into the same field with either 4 or 7 bit
+quantization (or no quantization), and ensure all older (9.x written)
+segments are rewritten either via `IndexWriter.forceMerge` or
+`IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
+
+### Vector values APIs switched to primarily random-access
+
+`{Byte/Float}VectorValues` no longer inherit from `DocIdSetIterator`. Rather they extend a common class, `KnnVectorValues`, that provides a random access API (previously provided by `RandomAccessVectorValues`, now removed), and an `iterator()` method for retrieving `DocIndexIterator`: an iterator which is a DISI that also provides an `index()` method. Therefore, any iteration over vector values must now be performed using the values' `iterator()`. Random access works as before, but does not require casting to `RandomAccessVectorValues`.

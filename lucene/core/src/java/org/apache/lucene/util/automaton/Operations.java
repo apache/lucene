@@ -159,6 +159,37 @@ public final class Operations {
    * <p>Complexity: linear in number of states.
    */
   public static Automaton optional(Automaton a) {
+    if (a.isAccept(0)) {
+      // If the initial state is accepted, then the empty string is already accepted.
+      return a;
+    }
+
+    boolean hasTransitionsToInitialState = false;
+    Transition t = new Transition();
+    outer:
+    for (int state = 0; state < a.getNumStates(); ++state) {
+      int count = a.initTransition(state, t);
+      for (int i = 0; i < count; ++i) {
+        a.getNextTransition(t);
+        if (t.dest == 0) {
+          hasTransitionsToInitialState = true;
+          break outer;
+        }
+      }
+    }
+
+    if (hasTransitionsToInitialState == false) {
+      // If the automaton has no transition to the initial state, we can simply mark the initial
+      // state as accepted.
+      Automaton result = new Automaton();
+      result.copy(a);
+      if (result.getNumStates() == 0) {
+        result.createState();
+      }
+      result.setAccept(0, true);
+      return result;
+    }
+
     Automaton result = new Automaton();
     result.createState();
     result.setAccept(0, true);

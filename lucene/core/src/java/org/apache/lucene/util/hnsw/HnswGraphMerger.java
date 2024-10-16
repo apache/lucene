@@ -18,8 +18,8 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
 
@@ -45,12 +45,12 @@ public interface HnswGraphMerger {
   /**
    * Merge and produce the on heap graph
    *
-   * @param mergedVectorIterator iterator over the vectors in the merged segment
+   * @param mergedVectorValues view of the vectors in the merged segment
    * @param infoStream optional info stream to set to builder
    * @param maxOrd max number of vectors that will be added to the graph
    * @return merged graph
    * @throws IOException during merge
    */
-  OnHeapHnswGraph merge(DocIdSetIterator mergedVectorIterator, InfoStream infoStream, int maxOrd)
+  OnHeapHnswGraph merge(KnnVectorValues mergedVectorValues, InfoStream infoStream, int maxOrd)
       throws IOException;
 }

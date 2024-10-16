@@ -46,7 +46,7 @@ public class TestPForUtil extends LuceneTestCase {
     final PForUtil pforUtil = new PForUtil(forUtil);
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {
-        pforUtil.skip(in);
+        PForUtil.skip(in);
         continue;
       }
       final long[] restored = new long[ForUtil.BLOCK_SIZE];
