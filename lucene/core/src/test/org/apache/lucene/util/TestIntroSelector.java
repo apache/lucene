@@ -80,5 +80,30 @@ public class TestIntroSelector extends LuceneTestCase {
         assertTrue(actual[i] >= actual[k]);
       }
     }
+
+    final int[] kArr = new int[TestUtil.nextInt(random, 1, 10)];
+    for (int i = 0; i < kArr.length; i++) {
+      kArr[i] = TestUtil.nextInt(random, from, to - 1);
+    }
+    selector.multiSelect(from, to, kArr);
+
+    int nextKIdx = 0;
+    Arrays.sort(kArr);
+    for (int i = 0; i < actual.length; ++i) {
+      if (i < from || i >= to) {
+        assertSame(arr[i], actual[i]);
+      } else if (nextKIdx < kArr.length) {
+        if (i == kArr[nextKIdx]) {
+          assertEquals(expected[i], actual[i]);
+          while (nextKIdx < kArr.length && i == kArr[nextKIdx]) {
+            nextKIdx++;
+          }
+        } else {
+          assertTrue(actual[i].compareTo(expected[kArr[nextKIdx]]) <= 0);
+        }
+      } else {
+        assertTrue(actual[i].compareTo(expected[kArr[kArr.length - 1]]) >= 0);
+      }
+    }
   }
 }
