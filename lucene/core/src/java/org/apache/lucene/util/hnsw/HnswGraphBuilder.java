@@ -555,7 +555,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       return queue.nodes();
     }
 
-    float minimumScore() {
+    public float minimumScore() {
       return queue.topScore();
     }
 
