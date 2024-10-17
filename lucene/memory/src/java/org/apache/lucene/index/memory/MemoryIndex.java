@@ -2301,12 +2301,17 @@ public class MemoryIndex {
     }
 
     @Override
-    public float[] vectorValue(int ord) {
-      if (ord == 0) {
-        return info.floatVectorValues[0];
-      } else {
-        return null;
-      }
+    public Floats vectors() {
+      return new Floats() {
+        @Override
+        public float[] get(int ord) {
+          if (ord == 0) {
+            return info.floatVectorValues[0];
+          } else {
+            return null;
+          }
+        }
+      };
     }
 
     @Override
@@ -2325,13 +2330,12 @@ public class MemoryIndex {
       }
       MemoryFloatVectorValues vectorValues = new MemoryFloatVectorValues(info);
       DocIndexIterator iterator = vectorValues.iterator();
+      FloatVectorValues.Floats floats = vectorValues.vectors();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
           assert iterator.docID() == 0;
-          return info.fieldInfo
-              .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(0), query);
+          return info.fieldInfo.getVectorSimilarityFunction().compare(floats.get(0), query);
         }
 
         @Override
@@ -2339,11 +2343,6 @@ public class MemoryIndex {
           return iterator;
         }
       };
-    }
-
-    @Override
-    public MemoryFloatVectorValues copy() {
-      return this;
     }
   }
 
@@ -2365,12 +2364,17 @@ public class MemoryIndex {
     }
 
     @Override
-    public byte[] vectorValue(int ord) {
-      if (ord == 0) {
-        return info.byteVectorValues[0];
-      } else {
-        return null;
-      }
+    public Bytes vectors() {
+      return new Bytes() {
+        @Override
+        public byte[] get(int ord) {
+          if (ord == 0) {
+            return info.byteVectorValues[0];
+          } else {
+            return null;
+          }
+        }
+      };
     }
 
     @Override
@@ -2379,7 +2383,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public VectorScorer scorer(byte[] query) {
+    public VectorScorer scorer(byte[] query) throws IOException {
       if (query.length != info.fieldInfo.getVectorDimension()) {
         throw new IllegalArgumentException(
             "query vector dimension "
@@ -2388,14 +2392,13 @@ public class MemoryIndex {
                 + info.fieldInfo.getVectorDimension());
       }
       MemoryByteVectorValues vectorValues = new MemoryByteVectorValues(info);
+      ByteVectorValues.Bytes vectors = vectorValues.vectors();
       DocIndexIterator iterator = vectorValues.iterator();
       return new VectorScorer() {
         @Override
-        public float score() {
+        public float score() throws IOException {
           assert iterator.docID() == 0;
-          return info.fieldInfo
-              .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(0), query);
+          return info.fieldInfo.getVectorSimilarityFunction().compare(vectors.get(0), query);
         }
 
         @Override
@@ -2403,11 +2406,6 @@ public class MemoryIndex {
           return iterator;
         }
       };
-    }
-
-    @Override
-    public MemoryByteVectorValues copy() {
-      return this;
     }
   }
 }

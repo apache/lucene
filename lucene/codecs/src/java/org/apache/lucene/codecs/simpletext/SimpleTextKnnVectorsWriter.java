@@ -79,18 +79,20 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+    FloatVectorValues.Floats vectors = floatVectorValues.vectors();
     for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
-      writeFloatVectorValue(floatVectorValues, iter.index());
+      writeFloatVectorValue(vectors, floatVectorValues.dimension(), iter.index());
       docIds.add(docId);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeFloatVectorValue(FloatVectorValues vectors, int ord) throws IOException {
+  private void writeFloatVectorValue(FloatVectorValues.Floats vectors, int dim, int ord)
+      throws IOException {
     // write vector value
-    float[] value = vectors.vectorValue(ord);
-    assert value.length == vectors.dimension();
+    float[] value = vectors.get(ord);
+    assert value.length == dim;
     write(vectorData, Arrays.toString(value));
     newline(vectorData);
   }
@@ -101,18 +103,20 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     KnnVectorValues.DocIndexIterator it = byteVectorValues.iterator();
+    ByteVectorValues.Bytes vectors = byteVectorValues.vectors();
     for (int docV = it.nextDoc(); docV != NO_MORE_DOCS; docV = it.nextDoc()) {
-      writeByteVectorValue(byteVectorValues, it.index());
+      writeByteVectorValue(vectors, it.index(), byteVectorValues.dimension());
       docIds.add(docV);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeByteVectorValue(ByteVectorValues vectors, int ord) throws IOException {
+  private void writeByteVectorValue(ByteVectorValues.Bytes vectors, int ord, int dim)
+      throws IOException {
     // write vector value
-    byte[] value = vectors.vectorValue(ord);
-    assert value.length == vectors.dimension();
+    byte[] value = vectors.get(ord);
+    assert value.length == dim;
     write(vectorData, Arrays.toString(value));
     newline(vectorData);
   }
