@@ -1969,37 +1969,32 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       assertEquals(10, searcher.count(query)); // Expect some results without timeout
       TopDocs results = searcher.search(query, 10);
       Set<Integer> resultDocs = new HashSet<>();
+      int i = 0;
       for (ScoreDoc scoreDoc : results.scoreDocs) {
-        /*
-        System.out.println(
-            "result " + i++ + ": " + reader.storedFields().document(scoreDoc.doc) + " " + scoreDoc);
-        */
+        if (VERBOSE) {
+          System.out.println(
+                             "result " + i++ + ": " + reader.storedFields().document(scoreDoc.doc) + " " + scoreDoc);
+        }
         resultDocs.add(scoreDoc.doc);
       }
       TopDocs expected = searcher.search(exactQuery, 10);
-      // int i = 0;
       int recalled = 0;
+      i = 0;
       for (ScoreDoc scoreDoc : expected.scoreDocs) {
-        /*
-        System.out.println(
-            "expected "
-                + i++
-                + ": "
-                + reader.storedFields().document(scoreDoc.doc)
-                + " "
-                + scoreDoc);
-        */
+        if (VERBOSE) {
+          System.out.println(
+                             "expected "
+                             + i++
+                             + ": "
+                             + reader.storedFields().document(scoreDoc.doc)
+                             + " "
+                             + scoreDoc);
+        }
         if (resultDocs.contains(scoreDoc.doc)) {
           ++recalled;
         }
       }
       assertTrue("recall should be at least 5/10, got " + recalled, recalled >= 5);
-      /*
-      assertEquals(queryString, reader.storedFields().document(results.scoreDocs[0].doc).get("text"));
-      assertEquals("Copyright (c) 2006 Dawid Weiss", reader.storedFields().document(results.scoreDocs[1].doc).get("text"));
-      assertEquals(queryString, reader.storedFields().document(expected.scoreDocs[0].doc).get("text"));
-      assertEquals("Copyright (c) 2006 Dawid Weiss", reader.storedFields().document(expected.scoreDocs[1].doc).get("text"));
-      */
     }
   }
 

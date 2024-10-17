@@ -563,7 +563,6 @@ public class TestKnnGraph extends LuceneTestCase {
     String idString = Integer.toString(id);
     doc.add(new StringField("id", idString, Field.Store.YES));
     doc.add(new SortedDocValuesField("id", new BytesRef(idString)));
-    // System.out.println("add " + idString + " " + Arrays.toString(vector));
     iw.updateDocument(new Term("id", idString), doc);
   }
 }
