@@ -158,7 +158,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
+        IteratorAndCount itAndCount =
+            getDocIdSetIteratorOrNull(context, (pointValues, missingLongValue) -> true);
         if (itAndCount != null) {
           DocIdSetIterator disi = itAndCount.it;
           return new ScorerSupplier() {
@@ -186,7 +187,15 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public int count(LeafReaderContext context) throws IOException {
         if (context.reader().hasDeletions() == false) {
-          IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
+          CountValidation countValidation =
+              (pointValues, missingLongValue) -> {
+                if (pointValues != null && pointValues.getDocCount() == context.reader().maxDoc())
+                  return true;
+                if (missingLongValue != null)
+                  return (missingLongValue < lowerValue || missingLongValue > upperValue);
+                return false;
+              };
+          IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context, countValidation);
           if (itAndCount != null && itAndCount.count != -1) {
             return itAndCount.count;
           }
@@ -397,7 +406,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   private IteratorAndCount getDocIdSetIteratorOrNullFromBkd(
-      LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
+      LeafReaderContext context, DocIdSetIterator delegate, CountValidation countValidation)
+      throws IOException {
     Sort indexSort = context.reader().getMetaData().sort();
     if (indexSort == null
         || indexSort.getSort().length == 0
@@ -409,6 +419,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
     PointValues points = context.reader().getPointValues(field);
     if (points == null) {
+      return null;
+    }
+    if (countValidation.isCountValid(points, null) == false) {
       return null;
     }
 
@@ -485,7 +498,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
   }
 
-  private IteratorAndCount getDocIdSetIteratorOrNull(LeafReaderContext context) throws IOException {
+  private IteratorAndCount getDocIdSetIteratorOrNull(
+      LeafReaderContext context, CountValidation countValidation) throws IOException {
     if (lowerValue > upperValue) {
       return IteratorAndCount.empty();
     }
@@ -494,7 +508,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
     if (numericValues != null) {
-      IteratorAndCount itAndCount = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
+      IteratorAndCount itAndCount =
+          getDocIdSetIteratorOrNullFromBkd(context, numericValues, countValidation);
       if (itAndCount != null) {
         return itAndCount;
       }
@@ -507,7 +522,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         final SortField.Type sortFieldType = getSortFieldType(sortField);
         // The index sort optimization is only supported for Type.INT and Type.LONG
         if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
-          return getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
+          return getDocIdSetIterator(
+              sortField, sortFieldType, context, numericValues, countValidation);
         }
       }
     }
@@ -530,12 +546,19 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       SortField sortField,
       SortField.Type sortFieldType,
       LeafReaderContext context,
-      DocIdSetIterator delegate)
+      DocIdSetIterator delegate,
+      CountValidation countValidation)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
     long upper = sortField.getReverse() ? lowerValue : upperValue;
-    int maxDoc = context.reader().maxDoc();
-
+    LeafReader reader = context.reader();
+    int maxDoc = reader.maxDoc();
+    Object missingValue = sortField.getMissingValue();
+    final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+    PointValues pointValues = reader.getPointValues(field);
+    if (countValidation.isCountValid(pointValues, missingLongValue) == false) {
+      return null;
+    }
     // Perform a binary search to find the first document with value >= lower.
     ValueComparator comparator = loadComparator(sortField, sortFieldType, lower, context);
     int low = 0;
@@ -575,10 +598,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       return IteratorAndCount.empty();
     }
 
-    Object missingValue = sortField.getMissingValue();
-    LeafReader reader = context.reader();
-    PointValues pointValues = reader.getPointValues(field);
-    final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
     // all documents have docValues or missing value falls outside the range
     if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
         || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
@@ -586,6 +605,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     } else {
       return IteratorAndCount.sparseRange(firstDocIdInclusive, lastDocIdExclusive, delegate);
     }
+  }
+
+  /** Can an accurate count be obtained? */
+  private interface CountValidation {
+    boolean isCountValid(PointValues pointValues, Long missingValue) throws IOException;
   }
 
   /** Compares the given document's value with a stored reference value. */
