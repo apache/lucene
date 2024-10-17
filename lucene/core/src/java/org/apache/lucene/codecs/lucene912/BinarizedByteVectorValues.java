@@ -35,9 +35,6 @@ public abstract class BinarizedByteVectorValues extends ByteVectorValues {
 
   public abstract float[] getCorrectiveTerms(int vectorOrd) throws IOException;
 
-  /** Return the dimension of the vectors */
-  public abstract int dimension();
-
   /** Returns the centroid distance for the vector */
   public abstract float getCentroidDistance(int vectorOrd) throws IOException;
 
@@ -65,13 +62,6 @@ public abstract class BinarizedByteVectorValues extends ByteVectorValues {
   public abstract BinaryQuantizer getQuantizer();
 
   public abstract float[] getCentroid() throws IOException;
-
-  /**
-   * Return the number of vectors for this field.
-   *
-   * @return the number of vectors returned by this iterator
-   */
-  public abstract int size();
 
   int discretizedDimensions() {
     return BQVectorUtils.discretize(dimension(), 64);

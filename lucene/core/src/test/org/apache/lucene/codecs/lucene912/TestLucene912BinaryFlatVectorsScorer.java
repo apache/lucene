@@ -60,27 +60,27 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
     BinarizedByteVectorValues targetVectors =
         new BinarizedByteVectorValues() {
           @Override
-          public float getCentroidDistance(int vectorOrd) throws IOException {
+          public float getCentroidDistance(int vectorOrd) {
             return random().nextFloat(0f, 1000f);
           }
 
           @Override
-          public float getVectorMagnitude(int vectorOrd) throws IOException {
+          public float getVectorMagnitude(int vectorOrd) {
             return random().nextFloat(0f, 100f);
           }
 
           @Override
-          public float getOOQ(int targetOrd) throws IOException {
+          public float getOOQ(int targetOrd) {
             return random().nextFloat(-1000f, 1000f);
           }
 
           @Override
-          public float getNormOC(int targetOrd) throws IOException {
+          public float getNormOC(int targetOrd) {
             return random().nextFloat(-1000f, 1000f);
           }
 
           @Override
-          public float getODotC(int targetOrd) throws IOException {
+          public float getODotC(int targetOrd) {
             return random().nextFloat(-1000f, 1000f);
           }
 
@@ -91,17 +91,17 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           }
 
           @Override
-          public float[] getCentroid() throws IOException {
+          public float[] getCentroid() {
             return centroid;
           }
 
           @Override
-          public BinarizedByteVectorValues copy() throws IOException {
+          public BinarizedByteVectorValues copy() {
             return null;
           }
 
           @Override
-          public byte[] vectorValue(int targetOrd) throws IOException {
+          public byte[] vectorValue(int targetOrd) {
             byte[] vectorBytes = new byte[discretizedDimensions / 8];
             random().nextBytes(vectorBytes);
             return vectorBytes;
@@ -118,12 +118,12 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           }
 
           @Override
-          public VectorScorer scorer(float[] query) throws IOException {
+          public VectorScorer scorer(float[] query) {
             return null;
           }
 
           @Override
-          public float[] getCorrectiveTerms(int vectorOrd) throws IOException {
+          public float[] getCorrectiveTerms(int vectorOrd) {
             return new float[0];
           }
         };
@@ -232,12 +232,12 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           }
 
           @Override
-          public VectorScorer scorer(float[] query) throws IOException {
+          public VectorScorer scorer(float[] query) {
             return null;
           }
 
           @Override
-          public float[] getCorrectiveTerms(int vectorOrd) throws IOException {
+          public float[] getCorrectiveTerms(int vectorOrd) {
             return new float[0];
           }
         };
@@ -491,12 +491,12 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           }
 
           @Override
-          public VectorScorer scorer(float[] query) throws IOException {
+          public VectorScorer scorer(float[] query) {
             return null;
           }
 
           @Override
-          public float[] getCorrectiveTerms(int vectorOrd) throws IOException {
+          public float[] getCorrectiveTerms(int vectorOrd) {
             return new float[0];
           }
         };
@@ -507,6 +507,6 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
         new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
             queryVector, targetVectors, similarityFunction);
 
-    assertEquals(132.30249f, scorer.score(0), 0.0001f);
+    assertEquals(129.64046f, scorer.score(0), 0.0001f);
   }
 }

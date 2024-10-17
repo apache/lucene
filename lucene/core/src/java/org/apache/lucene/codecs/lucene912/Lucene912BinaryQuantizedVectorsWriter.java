@@ -129,6 +129,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
+  @Override
   public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     FlatFieldVectorsWriter<?> rawVectorDelegate = this.rawVectorDelegate.addField(fieldInfo);
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
@@ -212,8 +213,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] v = fieldData.getVectors().get(i);
       float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusterCenter);
       binarizedVectorData.writeBytes(vector, vector.length);
-      for (int j = 0; j < corrections.length; j++) {
-        correctionsBuffer.putFloat(corrections[j]);
+      for (float correction : corrections) {
+        correctionsBuffer.putFloat(correction);
       }
       binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
       correctionsBuffer.rewind();
@@ -261,8 +262,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] v = fieldData.getVectors().get(ordinal);
       float[] corrections = scalarQuantizer.quantizeForIndex(v, vector, clusterCenter);
       binarizedVectorData.writeBytes(vector, vector.length);
-      for (int i = 0; i < corrections.length; i++) {
-        correctionsBuffer.putFloat(corrections[i]);
+      for (float correction : corrections) {
+        correctionsBuffer.putFloat(correction);
       }
       binarizedVectorData.writeBytes(correctionsBuffer.array(), correctionsBuffer.array().length);
       correctionsBuffer.rewind();
@@ -386,8 +387,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
               floatVectorValues.vectorValue(iterator.index()), toIndex, toQuery, centroid);
       binarizedVectorData.writeBytes(toIndex, toIndex.length);
       float[] corrections = r.indexFeatures();
-      for (int i = 0; i < corrections.length; i++) {
-        binarizedVectorData.writeInt(Float.floatToIntBits(corrections[i]));
+      for (float correction : corrections) {
+        binarizedVectorData.writeInt(Float.floatToIntBits(correction));
       }
       docsWithField.add(docV);
 
@@ -422,8 +423,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       byte[] binaryValue = binarizedByteVectorValues.vectorValue(iterator.index());
       output.writeBytes(binaryValue, binaryValue.length);
       float[] corrections = binarizedByteVectorValues.getCorrectiveTerms(iterator.index());
-      for (int i = 0; i < corrections.length; i++) {
-        output.writeInt(Float.floatToIntBits(corrections[i]));
+      for (float correction : corrections) {
+        output.writeInt(Float.floatToIntBits(correction));
       }
       docsWithField.add(docV);
     }
@@ -899,27 +900,27 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public float getCentroidDistance(int vectorOrd) throws IOException {
+    public float getCentroidDistance(int vectorOrd) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public float getVectorMagnitude(int vectorOrd) throws IOException {
+    public float getVectorMagnitude(int vectorOrd) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public float getOOQ(int targetOrd) throws IOException {
+    public float getOOQ(int targetOrd) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public float getNormOC(int targetOrd) throws IOException {
+    public float getNormOC(int targetOrd) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public float getODotC(int targetOrd) throws IOException {
+    public float getODotC(int targetOrd) {
       throw new UnsupportedOperationException();
     }
 

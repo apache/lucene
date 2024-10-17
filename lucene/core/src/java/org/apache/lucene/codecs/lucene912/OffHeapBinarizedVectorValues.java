@@ -411,8 +411,6 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   private static class EmptyOffHeapVectorValues extends OffHeapBinarizedVectorValues {
-    private int doc = -1;
-
     EmptyOffHeapVectorValues(
         int dimension,
         VectorSimilarityFunction similarityFunction,
@@ -436,7 +434,7 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
 
     @Override
-    public VectorScorer scorer(float[] target) throws IOException {
+    public VectorScorer scorer(float[] target) {
       return null;
     }
   }

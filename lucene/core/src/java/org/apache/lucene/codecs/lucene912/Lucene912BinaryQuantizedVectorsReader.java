@@ -422,7 +422,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
       return quantizedVectorValues.scorer(query);
     }
 
-    protected BinarizedByteVectorValues getQuantizedVectorValues() throws IOException {
+    BinarizedByteVectorValues getQuantizedVectorValues() {
       return quantizedVectorValues;
     }
   }
