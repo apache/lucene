@@ -552,8 +552,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       // indexBuilder.DEBUG = false;
       final byte[] bytes = scratchBytes.toArrayCopy();
       assert bytes.length > 0;
-      fstCompiler.add(Util.toIntsRef(prefix, scratchIntsRef), new BytesRef(bytes, 0, bytes.length));
       scratchBytes.reset();
+      fstCompiler.add(Util.toIntsRef(prefix, scratchIntsRef), new BytesRef(bytes, 0, bytes.length));
 
       // Copy over index for all sub-blocks
       for (PendingBlock block : blocks) {
