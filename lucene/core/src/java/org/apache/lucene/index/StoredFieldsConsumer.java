@@ -93,9 +93,8 @@ class StoredFieldsConsumer {
 
   void finish(int maxDoc) throws IOException {
     while (lastDoc < maxDoc - 1) {
-      startDocument(lastDoc);
+      startDocument(lastDoc + 1);
       finishDocument();
-      ++lastDoc;
     }
   }
 
