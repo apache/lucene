@@ -41,6 +41,7 @@ import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
@@ -55,7 +56,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.BQSpaceUtils;
@@ -75,7 +75,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter> fields = new ArrayList<>();
   private final IndexOutput meta, binarizedVectorData;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final BinaryFlatVectorsScorer vectorsScorer;
+  private final Lucene912BinaryFlatVectorsScorer vectorsScorer;
   private boolean finished;
 
   /**
@@ -84,7 +84,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
    * @param vectorsScorer the scorer to use for scoring vectors
    */
   protected Lucene912BinaryQuantizedVectorsWriter(
-      BinaryFlatVectorsScorer vectorsScorer,
+      Lucene912BinaryFlatVectorsScorer vectorsScorer,
       FlatVectorsWriter rawVectorDelegate,
       SegmentWriteState state)
       throws IOException {
@@ -129,7 +129,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  @Override
   public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     FlatFieldVectorsWriter<?> rawVectorDelegate = this.rawVectorDelegate.addField(fieldInfo);
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
@@ -322,52 +321,41 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       final float[] centroid;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+      // Don't need access to the random vectors, we can just use the merged
+      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+      centroid = mergedCentroid;
+      if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
+        segmentWriteState.infoStream.message(
+            BINARIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
+      }
+      int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
+      FloatVectorValues floatVectorValues =
+          KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        VectorUtil.l2normalize(mergedCentroid);
+        floatVectorValues = new NormalizedFloatVectorValues(floatVectorValues);
       }
-      boolean success = false;
-      try {
-        // Don't need access to the random vectors, we can just use the merged
-        rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
-        centroid = mergedCentroid;
-        if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
-          segmentWriteState.infoStream.message(
-              BINARIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
-        }
-        int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
-        FloatVectorValues floatVectorValues =
-            KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-        if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-          floatVectorValues = new NormalizedFloatVectorValues(floatVectorValues);
-        }
-        BinarizedFloatVectorValues binarizedVectorValues =
-            new BinarizedFloatVectorValues(
-                floatVectorValues,
-                new BinaryQuantizer(
-                    fieldInfo.getVectorDimension(),
-                    descritizedDimension,
-                    fieldInfo.getVectorSimilarityFunction()),
-                centroid);
-        long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
-        DocsWithFieldSet docsWithField =
-            writeBinarizedVectorData(binarizedVectorData, binarizedVectorValues);
-        long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
-        float centroidDp =
-            docsWithField.cardinality() > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
-        writeMeta(
-            fieldInfo,
-            segmentWriteState.segmentInfo.maxDoc(),
-            vectorDataOffset,
-            vectorDataLength,
-            centroid,
-            centroidDp,
-            docsWithField);
-        success = true;
-      } finally {
-        if (success == false) {
-          IOUtils.deleteFilesIgnoringExceptions(segmentWriteState.directory);
-        }
-      }
+      BinarizedFloatVectorValues binarizedVectorValues =
+          new BinarizedFloatVectorValues(
+              floatVectorValues,
+              new BinaryQuantizer(
+                  fieldInfo.getVectorDimension(),
+                  descritizedDimension,
+                  fieldInfo.getVectorSimilarityFunction()),
+              centroid);
+      long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
+      DocsWithFieldSet docsWithField =
+          writeBinarizedVectorData(binarizedVectorData, binarizedVectorValues);
+      long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
+      float centroidDp =
+          docsWithField.cardinality() > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
+      writeMeta(
+          fieldInfo,
+          segmentWriteState.segmentInfo.maxDoc(),
+          vectorDataOffset,
+          vectorDataLength,
+          centroid,
+          centroidDp,
+          docsWithField);
     } else {
       rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
     }
@@ -390,13 +378,12 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     final ByteBuffer queryCorrectionsBuffer =
         ByteBuffer.allocate(Float.BYTES * queryCorrectionCount + Short.BYTES)
             .order(ByteOrder.LITTLE_ENDIAN);
-    for (int docV = floatVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = floatVectorValues.nextDoc()) {
+    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
+    for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
       // write index vector
       BinaryQuantizer.QueryAndIndexResults r =
           binaryQuantizer.quantizeQueryAndIndex(
-              floatVectorValues.vectorValue(), toIndex, toQuery, centroid);
+              floatVectorValues.vectorValue(iterator.index()), toIndex, toQuery, centroid);
       binarizedVectorData.writeBytes(toIndex, toIndex.length);
       float[] corrections = r.indexFeatures();
       for (int i = 0; i < corrections.length; i++) {
@@ -429,13 +416,12 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   static DocsWithFieldSet writeBinarizedVectorData(
       IndexOutput output, BinarizedByteVectorValues binarizedByteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    for (int docV = binarizedByteVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = binarizedByteVectorValues.nextDoc()) {
+    KnnVectorValues.DocIndexIterator iterator = binarizedByteVectorValues.iterator();
+    for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
       // write vector
-      byte[] binaryValue = binarizedByteVectorValues.vectorValue();
+      byte[] binaryValue = binarizedByteVectorValues.vectorValue(iterator.index());
       output.writeBytes(binaryValue, binaryValue.length);
-      float[] corrections = binarizedByteVectorValues.getCorrectiveTerms();
+      float[] corrections = binarizedByteVectorValues.getCorrectiveTerms(iterator.index());
       for (int i = 0; i < corrections.length; i++) {
         output.writeInt(Float.floatToIntBits(corrections[i]));
       }
@@ -452,9 +438,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       final float cDotC;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
-      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        VectorUtil.l2normalize(mergedCentroid);
-      }
 
       // Don't need access to the random vectors, we can just use the merged
       rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
@@ -642,10 +625,11 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       if (vectorValues == null) {
         continue;
       }
-      for (int doc = vectorValues.nextDoc();
+      KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
+      for (int doc = iterator.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = vectorValues.nextDoc()) {
-        float[] vector = vectorValues.vectorValue();
+          doc = iterator.nextDoc()) {
+        float[] vector = vectorValues.vectorValue(iterator.index());
         // TODO Panama sum
         for (int j = 0; j < vector.length; j++) {
           centroid[j] += vector[j];
@@ -751,13 +735,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       long size = SHALLOW_SIZE;
       size += flatFieldVectorsWriter.ramBytesUsed();
       size += RamUsageEstimator.sizeOf(dimensionSums);
+      size += magnitudes.ramBytesUsed();
       return size;
     }
   }
 
   // When accessing vectorValue method, targerOrd here means a row ordinal.
-  static class OffHeapBinarizedQueryVectorValues
-      implements RandomAccessBinarizedQueryByteVectorValues {
+  static class OffHeapBinarizedQueryVectorValues {
     private final IndexInput slice;
     private final int dimension;
     private final int size;
@@ -788,7 +772,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       this.byteSize = binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES;
     }
 
-    @Override
     public float getCentroidDistance(int targetOrd) throws IOException {
       if (lastOrd == targetOrd) {
         return correctiveValues[0];
@@ -797,7 +780,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       return correctiveValues[0];
     }
 
-    @Override
     public float getLower(int targetOrd) throws IOException {
       if (lastOrd == targetOrd) {
         return correctiveValues[1];
@@ -806,7 +788,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       return correctiveValues[1];
     }
 
-    @Override
     public float getWidth(int targetOrd) throws IOException {
       if (lastOrd == targetOrd) {
         return correctiveValues[2];
@@ -815,7 +796,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       return correctiveValues[2];
     }
 
-    @Override
     public float getNormVmC(int targetOrd) throws IOException {
       if (lastOrd == targetOrd) {
         return correctiveValues[3];
@@ -824,7 +804,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       return correctiveValues[3];
     }
 
-    @Override
     public float getVDotC(int targetOrd) throws IOException {
       if (lastOrd == targetOrd) {
         return correctiveValues[4];
@@ -838,7 +817,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       vectorValue(targetOrd);
     }
 
-    @Override
     public int sumQuantizedValues(int targetOrd) throws IOException {
       if (lastOrd == targetOrd) {
         return sumQuantizationValues;
@@ -848,17 +826,14 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       return sumQuantizationValues;
     }
 
-    @Override
     public int size() {
       return size;
     }
 
-    @Override
     public int dimension() {
       return dimension;
     }
 
-    @Override
     public OffHeapBinarizedQueryVectorValues copy() throws IOException {
       return new OffHeapBinarizedQueryVectorValues(
           slice.clone(), dimension, size, vectorSimilarityFunction);
@@ -868,7 +843,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       return slice;
     }
 
-    @Override
     public byte[] vectorValue(int targetOrd) throws IOException {
       if (lastOrd == targetOrd) {
         return binaryValue;
@@ -888,7 +862,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     private final float[] centroid;
     private final FloatVectorValues values;
     private final BinaryQuantizer quantizer;
-    private int lastDoc;
+    private int lastOrd = -1;
 
     BinarizedFloatVectorValues(
         FloatVectorValues delegate, BinaryQuantizer quantizer, float[] centroid) {
@@ -896,16 +870,26 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       this.quantizer = quantizer;
       this.binarized = new byte[BQVectorUtils.discretize(delegate.dimension(), 64) / 8];
       this.centroid = centroid;
-      lastDoc = -1;
     }
 
     @Override
-    public float[] getCorrectiveTerms() {
+    public float[] getCorrectiveTerms(int ord) {
+      if (ord != lastOrd) {
+        throw new IllegalStateException(
+            "attempt to retrieve corrective terms for different ord "
+                + ord
+                + " than the quantization was done for: "
+                + lastOrd);
+      }
       return corrections;
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorValue(int ord) throws IOException {
+      if (ord != lastOrd) {
+        binarize(ord);
+        lastOrd = ord;
+      }
       return binarized;
     }
 
@@ -915,33 +899,43 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
+    public float getCentroidDistance(int vectorOrd) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public float getVectorMagnitude(int vectorOrd) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public float getOOQ(int targetOrd) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public float getNormOC(int targetOrd) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public float getODotC(int targetOrd) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public BinaryQuantizer getQuantizer() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public float[] getCentroid() throws IOException {
+      return centroid;
+    }
+
+    @Override
     public int size() {
       return values.size();
-    }
-
-    @Override
-    public int docID() {
-      return values.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      int doc = values.nextDoc();
-      if (doc != NO_MORE_DOCS) {
-        binarize();
-      }
-      lastDoc = doc;
-      return doc;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      int doc = values.advance(target);
-      if (doc != NO_MORE_DOCS) {
-        binarize();
-      }
-      lastDoc = doc;
-      return doc;
     }
 
     @Override
@@ -949,22 +943,34 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throw new UnsupportedOperationException();
     }
 
-    private void binarize() throws IOException {
-      if (lastDoc == docID()) return;
-      corrections = quantizer.quantizeForIndex(values.vectorValue(), binarized, centroid);
+    @Override
+    public BinarizedByteVectorValues copy() throws IOException {
+      return new BinarizedFloatVectorValues(values.copy(), quantizer, centroid);
+    }
+
+    private void binarize(int ord) throws IOException {
+      corrections = quantizer.quantizeForIndex(values.vectorValue(ord), binarized, centroid);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return values.iterator();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return values.ordToDoc(ord);
     }
   }
 
   static class BinarizedCloseableRandomVectorScorerSupplier
       implements CloseableRandomVectorScorerSupplier {
     private final RandomVectorScorerSupplier supplier;
-    private final RandomAccessVectorValues vectorValues;
+    private final KnnVectorValues vectorValues;
     private final Closeable onClose;
 
     BinarizedCloseableRandomVectorScorerSupplier(
-        RandomVectorScorerSupplier supplier,
-        RandomAccessVectorValues vectorValues,
-        Closeable onClose) {
+        RandomVectorScorerSupplier supplier, KnnVectorValues vectorValues, Closeable onClose) {
       this.supplier = supplier;
       this.onClose = onClose;
       this.vectorValues = vectorValues;
@@ -989,19 +995,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     public int totalVectorCount() {
       return vectorValues.size();
     }
-
-    @Override
-    public RandomAccessVectorValues vectors() {
-      return vectorValues;
-    }
   }
 
   static final class NormalizedFloatVectorValues extends FloatVectorValues {
     private final FloatVectorValues values;
     private final float[] normalizedVector;
-    int curDoc = -1;
 
-    public NormalizedFloatVectorValues(FloatVectorValues values) {
+    NormalizedFloatVectorValues(FloatVectorValues values) {
       this.values = values;
       this.normalizedVector = new float[values.dimension()];
     }
@@ -1017,38 +1017,25 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public float[] vectorValue() {
+    public int ordToDoc(int ord) {
+      return values.ordToDoc(ord);
+    }
+
+    @Override
+    public float[] vectorValue(int ord) throws IOException {
+      System.arraycopy(values.vectorValue(ord), 0, normalizedVector, 0, normalizedVector.length);
+      VectorUtil.l2normalize(normalizedVector);
       return normalizedVector;
     }
 
     @Override
-    public VectorScorer scorer(float[] query) {
-      throw new UnsupportedOperationException();
+    public DocIndexIterator iterator() {
+      return values.iterator();
     }
 
     @Override
-    public int docID() {
-      return values.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      curDoc = values.nextDoc();
-      if (curDoc != NO_MORE_DOCS) {
-        System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
-        VectorUtil.l2normalize(normalizedVector);
-      }
-      return curDoc;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      curDoc = values.advance(target);
-      if (curDoc != NO_MORE_DOCS) {
-        System.arraycopy(values.vectorValue(), 0, normalizedVector, 0, normalizedVector.length);
-        VectorUtil.l2normalize(normalizedVector);
-      }
-      return curDoc;
+    public NormalizedFloatVectorValues copy() throws IOException {
+      return new NormalizedFloatVectorValues(values.copy());
     }
   }
 }

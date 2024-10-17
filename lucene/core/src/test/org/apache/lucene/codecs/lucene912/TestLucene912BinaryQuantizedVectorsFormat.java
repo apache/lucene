@@ -26,6 +26,7 @@ import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -33,6 +34,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
@@ -49,7 +51,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
 
   @Override
   protected Codec getCodec() {
-    return new Lucene912Codec() {
+    return new Lucene100Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene912BinaryQuantizedVectorsFormat();
@@ -140,7 +142,7 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           LeafReader r = getOnlyLeafReader(reader);
           FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
           assertEquals(vectorValues.size(), numVectors);
-          OffHeapBinarizedVectorValues qvectorValues =
+          BinarizedByteVectorValues qvectorValues =
               ((Lucene912BinaryQuantizedVectorsReader.BinarizedVectorValues) vectorValues)
                   .getQuantizedVectorValues();
           float[] centroid = qvectorValues.getCentroid();
@@ -155,13 +157,21 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
                 new Lucene912BinaryQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
           }
 
-          while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+          KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
+
+          while (docIndexIterator.nextDoc() != NO_MORE_DOCS) {
             float[] corrections =
-                quantizer.quantizeForIndex(vectorValues.vectorValue(), expectedVector, centroid);
-            assertArrayEquals(expectedVector, qvectorValues.vectorValue());
-            assertEquals(corrections.length, qvectorValues.getCorrectiveTerms().length);
+                quantizer.quantizeForIndex(
+                    vectorValues.vectorValue(docIndexIterator.index()), expectedVector, centroid);
+            assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
+            assertEquals(
+                corrections.length,
+                qvectorValues.getCorrectiveTerms(docIndexIterator.index()).length);
             for (int i = 0; i < corrections.length; i++) {
-              assertEquals(corrections[i], qvectorValues.getCorrectiveTerms()[i], 0.00001f);
+              assertEquals(
+                  corrections[i],
+                  qvectorValues.getCorrectiveTerms(docIndexIterator.index())[i],
+                  0.00001f);
             }
           }
         }

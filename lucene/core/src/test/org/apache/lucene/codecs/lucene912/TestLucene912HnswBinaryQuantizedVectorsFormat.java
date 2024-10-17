@@ -26,6 +26,7 @@ import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -33,6 +34,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TopDocs;
@@ -44,7 +46,7 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
 
   @Override
   protected Codec getCodec() {
-    return new Lucene912Codec() {
+    return new Lucene100Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene912HnswBinaryQuantizedVectorsFormat();
@@ -83,9 +85,10 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
         try (IndexReader reader = DirectoryReader.open(w)) {
           LeafReader r = getOnlyLeafReader(reader);
           FloatVectorValues vectorValues = r.getFloatVectorValues("f");
+          KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
           assert (vectorValues.size() == 1);
-          while (vectorValues.nextDoc() != NO_MORE_DOCS) {
-            assertArrayEquals(vector, vectorValues.vectorValue(), 0.00001f);
+          while (docIndexIterator.nextDoc() != NO_MORE_DOCS) {
+            assertArrayEquals(vector, vectorValues.vectorValue(docIndexIterator.index()), 0.00001f);
           }
           TopDocs td =
               r.searchNearestVectors("f", randomVector(vector.length), 1, null, Integer.MAX_VALUE);

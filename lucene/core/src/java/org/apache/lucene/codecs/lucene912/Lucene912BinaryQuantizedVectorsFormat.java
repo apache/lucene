@@ -95,7 +95,7 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private final BinaryFlatVectorsScorer scorer =
+  private final Lucene912BinaryFlatVectorsScorer scorer =
       new Lucene912BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** Creates a new instance with the default number of vectors per cluster. */

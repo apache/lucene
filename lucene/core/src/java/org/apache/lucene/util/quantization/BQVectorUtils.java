@@ -21,9 +21,15 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.VectorUtil;
 
 /** Utility class for vector quantization calculations */
-
-// FIXME: move these to VectorUtils?
 public class BQVectorUtils {
+
+  public static double sqrtNewtonRaphson(double x, double curr, double prev) {
+    return (curr == prev) ? curr : sqrtNewtonRaphson(x, 0.5 * (curr + x / curr), curr);
+  }
+
+  public static double constSqrt(double x) {
+    return x >= 0 && Double.isInfinite(x) == false ? sqrtNewtonRaphson(x, x, 0) : Double.NaN;
+  }
 
   public static int discretize(int value, int bucket) {
     return ((value + (bucket - 1)) / bucket) * bucket;
@@ -43,8 +49,13 @@ public class BQVectorUtils {
     return ArrayUtil.growExact(vector, dimensions);
   }
 
+  /**
+   * Copied from Lucene, replace with Lucene's implementation sometime after Lucene 10
+   *
+   * @param d the byte array to count the number of set bits in
+   * @return count of flipped bits in the byte array
+   */
   public static int popcount(byte[] d) {
-    // TODO: can this be vectorized even better?
     int r = 0;
     int cnt = 0;
     for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
@@ -56,7 +67,6 @@ public class BQVectorUtils {
     return cnt;
   }
 
-  // TODO: move to VectorUtil & vectorize?
   public static void divideInPlace(float[] a, float b) {
     for (int j = 0; j < a.length; j++) {
       a[j] /= b;
@@ -73,11 +83,10 @@ public class BQVectorUtils {
     subtract(target, other, target);
   }
 
-  private static float[] subtract(float[] a, float[] b, float[] result) {
+  private static void subtract(float[] a, float[] b, float[] result) {
     for (int j = 0; j < a.length; j++) {
       result[j] = a[j] - b[j];
     }
-    return result;
   }
 
   public static float norm(float[] vector) {

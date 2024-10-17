@@ -22,10 +22,10 @@ import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRO
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.BQSpaceUtils;
@@ -33,7 +33,7 @@ import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 /** Vector scorer over binarized vector values */
-public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer {
+public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
   public Lucene912BinaryFlatVectorsScorer(FlatVectorsScorer nonQuantizedDelegate) {
@@ -42,9 +42,9 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-      VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    if (vectorValues instanceof RandomAccessBinarizedByteVectorValues) {
+    if (vectorValues instanceof BinarizedByteVectorValues) {
       throw new UnsupportedOperationException(
           "getRandomVectorScorerSupplier(VectorSimilarityFunction,RandomAccessVectorValues) not implemented for binarized format");
     }
@@ -53,11 +53,9 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      float[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    if (vectorValues instanceof RandomAccessBinarizedByteVectorValues binarizedVectors) {
+    if (vectorValues instanceof BinarizedByteVectorValues binarizedVectors) {
       BinaryQuantizer quantizer = binarizedVectors.getQuantizer();
       float[] centroid = binarizedVectors.getCentroid();
       // FIXME: precompute this once?
@@ -78,19 +76,15 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      byte[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
-  @Override
-  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+  RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
-      RandomAccessBinarizedQueryByteVectorValues scoringVectors,
-      RandomAccessBinarizedByteVectorValues targetVectors)
-      throws IOException {
+      Lucene912BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues scoringVectors,
+      BinarizedByteVectorValues targetVectors) {
     return new BinarizedRandomVectorScorerSupplier(
         scoringVectors, targetVectors, similarityFunction);
   }
@@ -101,14 +95,15 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
   }
 
   /** Vector scorer supplier over binarized vector values */
-  public static class BinarizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
-    private final RandomAccessBinarizedQueryByteVectorValues queryVectors;
-    private final RandomAccessBinarizedByteVectorValues targetVectors;
+  static class BinarizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
+    private final Lucene912BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues
+        queryVectors;
+    private final BinarizedByteVectorValues targetVectors;
     private final VectorSimilarityFunction similarityFunction;
 
-    public BinarizedRandomVectorScorerSupplier(
-        RandomAccessBinarizedQueryByteVectorValues queryVectors,
-        RandomAccessBinarizedByteVectorValues targetVectors,
+    BinarizedRandomVectorScorerSupplier(
+        Lucene912BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues queryVectors,
+        BinarizedByteVectorValues targetVectors,
         VectorSimilarityFunction similarityFunction) {
       this.queryVectors = queryVectors;
       this.targetVectors = targetVectors;
@@ -150,38 +145,27 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
   public static class BinarizedRandomVectorScorer
       extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final BinaryQueryVector queryVector;
-    private final RandomAccessBinarizedByteVectorValues targetVectors;
+    private final BinarizedByteVectorValues targetVectors;
     private final VectorSimilarityFunction similarityFunction;
 
     private final float sqrtDimensions;
+    private final float maxX1;
 
     public BinarizedRandomVectorScorer(
         BinaryQueryVector queryVectors,
-        RandomAccessBinarizedByteVectorValues targetVectors,
+        BinarizedByteVectorValues targetVectors,
         VectorSimilarityFunction similarityFunction) {
       super(targetVectors);
       this.queryVector = queryVectors;
       this.targetVectors = targetVectors;
       this.similarityFunction = similarityFunction;
       // FIXME: precompute this once?
-      this.sqrtDimensions = (float) Utils.constSqrt(targetVectors.dimension());
-    }
-
-    // FIXME: utils class; pull this out
-    private class Utils {
-      public static double sqrtNewtonRaphson(double x, double curr, double prev) {
-        return (curr == prev) ? curr : sqrtNewtonRaphson(x, 0.5 * (curr + x / curr), curr);
-      }
-
-      public static double constSqrt(double x) {
-        return x >= 0 && !Double.isInfinite(x) ? sqrtNewtonRaphson(x, x, 0) : Double.NaN;
-      }
+      this.sqrtDimensions = targetVectors.sqrtDimensions();
+      this.maxX1 = targetVectors.maxX1();
     }
 
     @Override
     public float score(int targetOrd) throws IOException {
-      // FIXME: implement fastscan in the future?
-
       byte[] quantizedQuery = queryVector.vector();
       int quantizedSum = queryVector.factors().quantizedSum();
       float lower = queryVector.factors().lower();
@@ -209,7 +193,7 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
 
       // FIXME: pre-compute these only once for each target vector
-      //  ... pull this out or use a similar cache mechanism as do in score
+      // ... pull this out or use a similar cache mechanism as do in score
       float xbSum = (float) BQVectorUtils.popcount(binaryCode);
       final float dist;
       // If ||o-c|| == 0, so, it's ok to throw the rest of the equation away
@@ -229,17 +213,13 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       }
       assert Float.isFinite(dist);
 
-      // TODO: this is useful for mandatory rescoring by accounting for bias
-      //   However, for just oversampling & rescoring, it isn't strictly useful.
-      //   We should consider utilizing this bias in the future to determine which vectors need to
-      // be rescored
-      // float ooqSqr = (float) Math.pow(ooq, 2);
-      // float errorBound = (float) (normVmC * normOC * (maxX1 * Math.sqrt((1 - ooqSqr) / ooqSqr)));
-      // float score = dist - errorBound;
+      float ooqSqr = (float) Math.pow(ooq, 2);
+      float errorBound = (float) (vmC * normOC * (maxX1 * Math.sqrt((1 - ooqSqr) / ooqSqr)));
+      float score = Float.isFinite(errorBound) ? dist - errorBound : dist;
       if (similarityFunction == MAXIMUM_INNER_PRODUCT) {
-        return VectorUtil.scaleMaxInnerProductScore(dist);
+        return VectorUtil.scaleMaxInnerProductScore(score);
       }
-      return Math.max((1f + dist) / 2f, 0);
+      return Math.max((1f + score) / 2f, 0);
     }
 
     private float euclideanScore(
@@ -267,23 +247,18 @@ public class Lucene912BinaryFlatVectorsScorer implements BinaryFlatVectorsScorer
       float factorIP = (float) (-2.0 / sqrtDimensions * xX0);
 
       long qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
-      float dist =
+      float score =
           sqrX
               + distanceToCentroid
               + factorPPC * lower
               + (qcDist * 2 - quantizedSum) * factorIP * width;
-      float score = dist;
-      // TODO: this is useful for mandatory rescoring by accounting for bias
-      //   However, for just oversampling & rescoring, it isn't strictly useful.
-      //   We should consider utilizing this bias in the future to determine which vectors need to
-      // be rescored
-      // float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
-      // float error = 2.0f * maxX1 * projectionDist;
-      // float y = (float) Math.sqrt(distanceToCentroid);
-      // float errorBound = y * error;
-      // if (Float.isFinite(errorBound)) {
-      //  score = dist + errorBound;
-      // }
+      float projectionDist = (float) Math.sqrt(xX0 * xX0 - targetDistToC * targetDistToC);
+      float error = 2.0f * maxX1 * projectionDist;
+      float y = (float) Math.sqrt(distanceToCentroid);
+      float errorBound = y * error;
+      if (Float.isFinite(errorBound)) {
+        score = score + errorBound;
+      }
       return Math.max(1 / (1f + score), 0);
     }
   }

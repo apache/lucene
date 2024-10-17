@@ -54,19 +54,18 @@ import org.apache.lucene.util.quantization.BinaryQuantizer;
  * @lucene.experimental
  */
 public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
-
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene912BinaryQuantizedVectorsReader.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
-  private final BinaryFlatVectorsScorer vectorScorer;
+  private final Lucene912BinaryFlatVectorsScorer vectorScorer;
 
   public Lucene912BinaryQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      BinaryFlatVectorsScorer vectorsScorer)
+      Lucene912BinaryFlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
@@ -226,6 +225,12 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
   }
 
   @Override
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+      throws IOException {
+    rawVectorsReader.search(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     if (knnCollector.k() == 0) return;
@@ -369,10 +374,10 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
   /** Binarized vector values holding row and quantized vector values */
   protected static final class BinarizedVectorValues extends FloatVectorValues {
     private final FloatVectorValues rawVectorValues;
-    private final OffHeapBinarizedVectorValues quantizedVectorValues;
+    private final BinarizedByteVectorValues quantizedVectorValues;
 
     BinarizedVectorValues(
-        FloatVectorValues rawVectorValues, OffHeapBinarizedVectorValues quantizedVectorValues) {
+        FloatVectorValues rawVectorValues, BinarizedByteVectorValues quantizedVectorValues) {
       this.rawVectorValues = rawVectorValues;
       this.quantizedVectorValues = quantizedVectorValues;
     }
@@ -388,29 +393,28 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      return rawVectorValues.vectorValue();
+    public float[] vectorValue(int ord) throws IOException {
+      return rawVectorValues.vectorValue(ord);
     }
 
     @Override
-    public int docID() {
-      return rawVectorValues.docID();
+    public BinarizedVectorValues copy() throws IOException {
+      return new BinarizedVectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      int rawDocId = rawVectorValues.nextDoc();
-      int quantizedDocId = quantizedVectorValues.nextDoc();
-      assert rawDocId == quantizedDocId;
-      return quantizedDocId;
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      return rawVectorValues.getAcceptOrds(acceptDocs);
     }
 
     @Override
-    public int advance(int target) throws IOException {
-      int rawDocId = rawVectorValues.advance(target);
-      int quantizedDocId = quantizedVectorValues.advance(target);
-      assert rawDocId == quantizedDocId;
-      return quantizedDocId;
+    public int ordToDoc(int ord) {
+      return rawVectorValues.ordToDoc(ord);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return rawVectorValues.iterator();
     }
 
     @Override
@@ -418,7 +422,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
       return quantizedVectorValues.scorer(query);
     }
 
-    protected OffHeapBinarizedVectorValues getQuantizedVectorValues() throws IOException {
+    protected BinarizedByteVectorValues getQuantizedVectorValues() throws IOException {
       return quantizedVectorValues;
     }
   }

@@ -28,6 +28,4 @@ import java.io.Closeable;
  */
 public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVectorScorerSupplier {
   int totalVectorCount();
-
-  RandomAccessVectorValues vectors();
 }

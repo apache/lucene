@@ -36,7 +36,6 @@ public class BQSpaceUtils {
    * @param quantQueryByte the byte array to store the transposed query vector
    */
   public static void transposeBin(byte[] q, int dimensions, byte[] quantQueryByte) {
-    // TODO: rewrite this in Panama Vector API
     int qOffset = 0;
     final byte[] v1 = new byte[4];
     final byte[] v = new byte[32];
