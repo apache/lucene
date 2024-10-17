@@ -231,6 +231,11 @@ public final class TermStates {
     return docFreq;
   }
 
+  /** Explicitly return needStats flag */
+  public boolean hasStats() {
+    return term == null;
+  }
+
   /**
    * Returns the accumulated term frequency of all {@link TermState} instances passed to {@link
    * #register(TermState, int, int, long)}.
