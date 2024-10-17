@@ -19,7 +19,7 @@
 allprojects {
   plugins.withType(JavaPlugin) {
     sourceSets {
-      main.java.srcDirs = ['src/java']
+      main.java.srcDirs = ['src/java', 'src/java21']
       main.resources.srcDirs = ['src/resources']
       test.java.srcDirs = ['src/test']
       test.resources.srcDirs = ['src/test-files']
