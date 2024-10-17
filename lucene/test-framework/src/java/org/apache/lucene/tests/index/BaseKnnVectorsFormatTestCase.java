@@ -1950,51 +1950,64 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
    * gross failures only, not to represent the true expected recall.
    */
   public void testRecall() throws IOException {
-    VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    int dim = 16;
-    try (Directory indexStore = getKnownIndexStore("field", dim, vectorSimilarityFunction);
-        IndexReader reader = DirectoryReader.open(indexStore)) {
-      IndexSearcher searcher = newSearcher(reader);
-      float[] queryEmbedding = new float[dim];
-      String queryString = "Apache License";
-      computeLineEmbedding(queryString, queryEmbedding);
-      // computeLineEmbedding("   END OF TERMS AND CONDITIONS", queryEmbedding);
-      // pass match-all "filter" to force full traversal, bypassing graph
-      KnnFloatVectorQuery exactQuery =
-          new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
-      // indexed 421 lines from LICENSE.txt
-      // indexed 157 lines from NOTICE.txt
-      assertEquals(578, searcher.count(exactQuery)); // Same for exact search
-      KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, 10);
-      assertEquals(10, searcher.count(query)); // Expect some results without timeout
-      TopDocs results = searcher.search(query, 10);
-      Set<Integer> resultDocs = new HashSet<>();
-      int i = 0;
-      for (ScoreDoc scoreDoc : results.scoreDocs) {
-        if (VERBOSE) {
-          System.out.println(
-                             "result " + i++ + ": " + reader.storedFields().document(scoreDoc.doc) + " " + scoreDoc);
-        }
-        resultDocs.add(scoreDoc.doc);
-      }
-      TopDocs expected = searcher.search(exactQuery, 10);
+    VectorSimilarityFunction[] functions = { VectorSimilarityFunction.EUCLIDEAN, VectorSimilarityFunction.COSINE, VectorSimilarityFunction.DOT_PRODUCT, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT };
+    for (VectorSimilarityFunction vectorSimilarityFunction : functions) {
+      int dim = 16;
       int recalled = 0;
-      i = 0;
-      for (ScoreDoc scoreDoc : expected.scoreDocs) {
-        if (VERBOSE) {
-          System.out.println(
-                             "expected "
-                             + i++
-                             + ": "
-                             + reader.storedFields().document(scoreDoc.doc)
-                             + " "
-                             + scoreDoc);
+      try (Directory indexStore = getKnownIndexStore("field", dim, vectorSimilarityFunction);
+           IndexReader reader = DirectoryReader.open(indexStore)) {
+        IndexSearcher searcher = newSearcher(reader);
+        float[] queryEmbedding = new float[dim];
+        // indexed 421 lines from LICENSE.txt
+        // indexed 157 lines from NOTICE.txt
+        int numQueries = 578;
+        String[] testQueries = { "Apache Lucene", "Apache License", "TERMS AND CONDITIONS",
+                                 "Copyright 2001", "Permission is hereby", "Copyright © 2003",
+                                 "The dictionary comes from Morfologik project",
+                                 "The levenshtein automata tables"
+        };
+        for (String queryString : testQueries) {
+          computeLineEmbedding(queryString, queryEmbedding);
+
+          // pass match-all "filter" to force full traversal, bypassing graph
+          KnnFloatVectorQuery exactQuery =
+            new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
+          assertEquals(numQueries, searcher.count(exactQuery)); // Same for exact search
+
+          KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, 10);
+          assertEquals(10, searcher.count(query)); // Expect some results without timeout
+          TopDocs results = searcher.search(query, 10);
+          Set<Integer> resultDocs = new HashSet<>();
+          int i = 0;
+          for (ScoreDoc scoreDoc : results.scoreDocs) {
+            if (VERBOSE) {
+              System.out.println(
+                                 "result " + i++ + ": " + reader.storedFields().document(scoreDoc.doc) + " " + scoreDoc);
+            }
+            resultDocs.add(scoreDoc.doc);
+          }
+          TopDocs expected = searcher.search(exactQuery, 10);
+          i = 0;
+          for (ScoreDoc scoreDoc : expected.scoreDocs) {
+            if (VERBOSE) {
+              System.out.println(
+                                 "expected "
+                                 + i++
+                                 + ": "
+                                 + reader.storedFields().document(scoreDoc.doc)
+                                 + " "
+                                 + scoreDoc);
+            }
+            if (resultDocs.contains(scoreDoc.doc)) {
+              ++recalled;
+            }
+          }
         }
-        if (resultDocs.contains(scoreDoc.doc)) {
-          ++recalled;
-        }
+        assertTrue("Average recall for " + vectorSimilarityFunction +
+                   " should be at least " + (testQueries.length * 5) + " / " +
+                   (testQueries.length * 10) + ", got " + recalled,
+                   recalled >= testQueries.length * 5);
       }
-      assertTrue("recall should be at least 5/10, got " + recalled, recalled >= 5);
     }
   }
 
