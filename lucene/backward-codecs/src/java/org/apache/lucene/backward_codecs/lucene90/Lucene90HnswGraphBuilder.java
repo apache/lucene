@@ -49,7 +49,6 @@ public final class Lucene90HnswGraphBuilder {
   private final Lucene90NeighborArray scratch;
 
   private final VectorSimilarityFunction similarityFunction;
-  private final FloatVectorValues vectorValues;
   private final FloatVectorValues.Floats vectors;
   private final SplittableRandom random;
   private final Lucene90BoundsChecker bound;
@@ -80,8 +79,7 @@ public final class Lucene90HnswGraphBuilder {
       int beamWidth,
       long seed)
       throws IOException {
-    this.vectorValues = vectorValues;
-    this.vectors = vectorValues.vectors();
+    vectors = vectorValues.vectors();
     buildVectors = vectorValues.vectors();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
@@ -113,7 +111,6 @@ public final class Lucene90HnswGraphBuilder {
     }
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
-    FloatVectorValues.Floats vectors = vectorValues.vectors();
     for (int node = 1; node < vectorValues.size(); node++) {
       addGraphNode(vectors.get(node));
       if (node % 10000 == 0) {
@@ -147,7 +144,7 @@ public final class Lucene90HnswGraphBuilder {
             value,
             beamWidth,
             beamWidth,
-            vectorValues,
+            buildVectors,
             similarityFunction,
             hnsw,
             null,
