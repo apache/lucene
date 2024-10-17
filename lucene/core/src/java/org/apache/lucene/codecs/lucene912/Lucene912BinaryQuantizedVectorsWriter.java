@@ -750,7 +750,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     protected final ByteBuffer byteBuffer;
     private final int byteSize;
     protected final float[] correctiveValues;
-    private int sumQuantizationValues;
     private int lastOrd = -1;
     private final int correctiveValuesSize;
     private final VectorSimilarityFunction vectorSimilarityFunction;
@@ -769,62 +768,17 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
       this.binaryValue = byteBuffer.array();
-      this.correctiveValues = new float[correctiveValuesSize];
+      // + 1 for the quantized sum
+      this.correctiveValues = new float[correctiveValuesSize + 1];
       this.byteSize = binaryDimensions + Float.BYTES * correctiveValuesSize + Short.BYTES;
     }
 
-    public float getCentroidDistance(int targetOrd) throws IOException {
+    public float[] getCorrectiveTerms(int targetOrd) throws IOException {
       if (lastOrd == targetOrd) {
-        return correctiveValues[0];
+        return correctiveValues;
       }
-      readCorrectiveValues(targetOrd);
-      return correctiveValues[0];
-    }
-
-    public float getLower(int targetOrd) throws IOException {
-      if (lastOrd == targetOrd) {
-        return correctiveValues[1];
-      }
-      readCorrectiveValues(targetOrd);
-      return correctiveValues[1];
-    }
-
-    public float getWidth(int targetOrd) throws IOException {
-      if (lastOrd == targetOrd) {
-        return correctiveValues[2];
-      }
-      readCorrectiveValues(targetOrd);
-      return correctiveValues[2];
-    }
-
-    public float getNormVmC(int targetOrd) throws IOException {
-      if (lastOrd == targetOrd) {
-        return correctiveValues[3];
-      }
-      readCorrectiveValues(targetOrd);
-      return correctiveValues[3];
-    }
-
-    public float getVDotC(int targetOrd) throws IOException {
-      if (lastOrd == targetOrd) {
-        return correctiveValues[4];
-      }
-      readCorrectiveValues(targetOrd);
-      return correctiveValues[4];
-    }
-
-    private void readCorrectiveValues(int targetOrd) throws IOException {
-      // load values
       vectorValue(targetOrd);
-    }
-
-    public int sumQuantizedValues(int targetOrd) throws IOException {
-      if (lastOrd == targetOrd) {
-        return sumQuantizationValues;
-      }
-      // load values
-      vectorValue(targetOrd);
-      return sumQuantizationValues;
+      return correctiveValues;
     }
 
     public int size() {
@@ -851,7 +805,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       slice.seek((long) targetOrd * byteSize);
       slice.readBytes(binaryValue, 0, binaryValue.length);
       slice.readFloats(correctiveValues, 0, correctiveValuesSize);
-      sumQuantizationValues = Short.toUnsignedInt(slice.readShort());
+      correctiveValues[correctiveValuesSize] = Short.toUnsignedInt(slice.readShort());
       lastOrd = targetOrd;
       return binaryValue;
     }
@@ -897,31 +851,6 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public int dimension() {
       return values.dimension();
-    }
-
-    @Override
-    public float getCentroidDistance(int vectorOrd) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public float getVectorMagnitude(int vectorOrd) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public float getOOQ(int targetOrd) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public float getNormOC(int targetOrd) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public float getODotC(int targetOrd) {
-      throw new UnsupportedOperationException();
     }
 
     @Override

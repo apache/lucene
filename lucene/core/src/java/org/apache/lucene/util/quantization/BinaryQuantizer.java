@@ -320,7 +320,7 @@ public class BinaryQuantizer {
 
   /** Factors for quantizing query */
   public record QueryFactors(
-      int quantizedSum, float distToC, float lower, float width, float normVmC, float vDotC) {}
+      float quantizedSum, float distToC, float lower, float width, float normVmC, float vDotC) {}
 
   public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);

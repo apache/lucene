@@ -138,56 +138,6 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
   }
 
   @Override
-  public float getCentroidDistance(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return correctiveValues[0];
-    }
-    slice.seek(((long) targetOrd * byteSize) + numBytes);
-    slice.readFloats(correctiveValues, 0, correctionsCount);
-    return correctiveValues[0];
-  }
-
-  @Override
-  public float getVectorMagnitude(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return correctiveValues[1];
-    }
-    slice.seek(((long) targetOrd * byteSize) + numBytes);
-    slice.readFloats(correctiveValues, 0, correctionsCount);
-    return correctiveValues[1];
-  }
-
-  @Override
-  public float getOOQ(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return correctiveValues[0];
-    }
-    slice.seek(((long) targetOrd * byteSize) + numBytes);
-    slice.readFloats(correctiveValues, 0, correctionsCount);
-    return correctiveValues[0];
-  }
-
-  @Override
-  public float getNormOC(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return correctiveValues[1];
-    }
-    slice.seek(((long) targetOrd * byteSize) + numBytes);
-    slice.readFloats(correctiveValues, 0, correctionsCount);
-    return correctiveValues[1];
-  }
-
-  @Override
-  public float getODotC(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return correctiveValues[2];
-    }
-    slice.seek(((long) targetOrd * byteSize) + numBytes);
-    slice.readFloats(correctiveValues, 0, correctionsCount);
-    return correctiveValues[2];
-  }
-
-  @Override
   public BinaryQuantizer getQuantizer() {
     return binaryQuantizer;
   }

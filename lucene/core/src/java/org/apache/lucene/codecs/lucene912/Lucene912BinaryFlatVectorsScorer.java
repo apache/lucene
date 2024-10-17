@@ -113,15 +113,20 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
       byte[] vector = queryVectors.vectorValue(ord);
-      int quantizedSum = queryVectors.sumQuantizedValues(ord);
-      float distanceToCentroid = queryVectors.getCentroidDistance(ord);
-      float lower = queryVectors.getLower(ord);
-      float width = queryVectors.getWidth(ord);
+      float[] correctiveTerms = queryVectors.getCorrectiveTerms(ord);
+      assert correctiveTerms.length == (similarityFunction != EUCLIDEAN ? 6 : 4);
+      float distanceToCentroid = correctiveTerms[0];
+      float lower = correctiveTerms[1];
+      float width = correctiveTerms[2];
+      final float quantizedSum;
       float normVmC = 0f;
       float vDotC = 0f;
       if (similarityFunction != EUCLIDEAN) {
-        normVmC = queryVectors.getNormVmC(ord);
-        vDotC = queryVectors.getVDotC(ord);
+        normVmC = correctiveTerms[3];
+        vDotC = correctiveTerms[4];
+        quantizedSum = correctiveTerms[5];
+      } else {
+        quantizedSum = correctiveTerms[3];
       }
       BinaryQueryVector binaryQueryVector =
           new BinaryQueryVector(
@@ -167,7 +172,7 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
     @Override
     public float score(int targetOrd) throws IOException {
       byte[] quantizedQuery = queryVector.vector();
-      int quantizedSum = queryVector.factors().quantizedSum();
+      float quantizedSum = queryVector.factors().quantizedSum();
       float lower = queryVector.factors().lower();
       float width = queryVector.factors().width();
       float distanceToCentroid = queryVector.factors().distToC();
@@ -186,14 +191,14 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
       float vDotC = queryVector.factors().vDotC();
       float cDotC = targetVectors.getCentroidDP();
       byte[] binaryCode = targetVectors.vectorValue(targetOrd);
-      float ooq = targetVectors.getOOQ(targetOrd);
-      float normOC = targetVectors.getNormOC(targetOrd);
-      float oDotC = targetVectors.getODotC(targetOrd);
+      float[] correctiveTerms = targetVectors.getCorrectiveTerms(targetOrd);
+      assert correctiveTerms.length == 3;
+      float ooq = correctiveTerms[0];
+      float normOC = correctiveTerms[1];
+      float oDotC = correctiveTerms[2];
 
       float qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
 
-      // FIXME: pre-compute these only once for each target vector
-      // ... pull this out or use a similar cache mechanism as do in score
       float xbSum = (float) BQVectorUtils.popcount(binaryCode);
       final float dist;
       // If ||o-c|| == 0, so, it's ok to throw the rest of the equation away
@@ -228,19 +233,18 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
         byte[] quantizedQuery,
         float distanceToCentroid,
         float lower,
-        int quantizedSum,
+        float quantizedSum,
         float width)
         throws IOException {
       byte[] binaryCode = targetVectors.vectorValue(targetOrd);
+      float[] correctiveTerms = targetVectors.getCorrectiveTerms(targetOrd);
+      assert correctiveTerms.length == 2;
 
-      // FIXME: pre-compute these only once for each target vector
-      // .. not sure how to enumerate the target ordinals but that's what we did in PoC
-      float targetDistToC = targetVectors.getCentroidDistance(targetOrd);
-      float x0 = targetVectors.getVectorMagnitude(targetOrd);
+      float targetDistToC = correctiveTerms[0];
+      float x0 = correctiveTerms[1];
       float sqrX = targetDistToC * targetDistToC;
       double xX0 = targetDistToC / x0;
 
-      // TODO maybe store?
       float xbSum = (float) BQVectorUtils.popcount(binaryCode);
       float factorPPC =
           (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - targetVectors.dimension()));

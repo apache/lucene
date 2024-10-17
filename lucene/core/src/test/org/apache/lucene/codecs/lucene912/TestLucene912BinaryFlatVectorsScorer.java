@@ -59,30 +59,6 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
     BinarizedByteVectorValues targetVectors =
         new BinarizedByteVectorValues() {
-          @Override
-          public float getCentroidDistance(int vectorOrd) {
-            return random().nextFloat(0f, 1000f);
-          }
-
-          @Override
-          public float getVectorMagnitude(int vectorOrd) {
-            return random().nextFloat(0f, 100f);
-          }
-
-          @Override
-          public float getOOQ(int targetOrd) {
-            return random().nextFloat(-1000f, 1000f);
-          }
-
-          @Override
-          public float getNormOC(int targetOrd) {
-            return random().nextFloat(-1000f, 1000f);
-          }
-
-          @Override
-          public float getODotC(int targetOrd) {
-            return random().nextFloat(-1000f, 1000f);
-          }
 
           @Override
           public BinaryQuantizer getQuantizer() {
@@ -124,7 +100,14 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
           @Override
           public float[] getCorrectiveTerms(int vectorOrd) {
-            return new float[0];
+            if (similarityFunction == VectorSimilarityFunction.EUCLIDEAN) {
+              return new float[] {random().nextFloat(0f, 1000f), random().nextFloat(0f, 100f)};
+            }
+            return new float[] {
+              random().nextFloat(-1000f, 1000f),
+              random().nextFloat(-1000f, 1000f),
+              random().nextFloat(-1000f, 1000f)
+            };
           }
         };
 
@@ -158,31 +141,6 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
     BinarizedByteVectorValues targetVectors =
         new BinarizedByteVectorValues() {
-          @Override
-          public float getCentroidDistance(int vectorOrd) {
-            return 355.78073f;
-          }
-
-          @Override
-          public float getVectorMagnitude(int vectorOrd) {
-            return 0.7636705f;
-          }
-
-          @Override
-          public float getOOQ(int targetOrd) {
-            return 0;
-          }
-
-          @Override
-          public float getNormOC(int targetOrd) {
-            return 0;
-          }
-
-          @Override
-          public float getODotC(int targetOrd) {
-            return 0;
-          }
-
           @Override
           public BinaryQuantizer getQuantizer() {
             int dimensions = 128;
@@ -238,7 +196,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
           @Override
           public float[] getCorrectiveTerms(int vectorOrd) {
-            return new float[0];
+            return new float[] {355.78073f, 0.7636705f};
           }
         };
 
@@ -292,34 +250,10 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
     BinarizedByteVectorValues targetVectors =
         new BinarizedByteVectorValues() {
-          @Override
-          public float getCentroidDistance(int vectorOrd) {
-            return 0f;
-          }
 
           @Override
           public float getCentroidDP() {
             return cDotC;
-          }
-
-          @Override
-          public float getVectorMagnitude(int vectorOrd) {
-            return 0f;
-          }
-
-          @Override
-          public float getOOQ(int targetOrd) {
-            return 0.7882396f;
-          }
-
-          @Override
-          public float getNormOC(int targetOrd) {
-            return 5.0889387f;
-          }
-
-          @Override
-          public float getODotC(int targetOrd) {
-            return 131.485660f;
           }
 
           @Override
@@ -497,7 +431,7 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
           @Override
           public float[] getCorrectiveTerms(int vectorOrd) {
-            return new float[0];
+            return new float[] {0.7882396f, 5.0889387f, 131.485660f};
           }
         };
 

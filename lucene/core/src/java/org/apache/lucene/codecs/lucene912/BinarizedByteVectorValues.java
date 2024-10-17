@@ -33,28 +33,28 @@ import org.apache.lucene.util.quantization.BinaryQuantizer;
  */
 public abstract class BinarizedByteVectorValues extends ByteVectorValues {
 
+  /**
+   * Retrieve the corrective terms for the given vector ordinal. For the dot-product family of
+   * distances, the corrective terms are, in order
+   *
+   * <ul>
+   *   <li>the dot-product of the normalized, centered vector with its binarized self
+   *   <li>the norm of the centered vector
+   *   <li>the dot-product of the vector with the centroid
+   * </ul>
+   *
+   * For euclidean:
+   *
+   * <ul>
+   *   <li>The euclidean distance to the centroid
+   *   <li>The sum of the dimensions divided by the vector norm
+   * </ul>
+   *
+   * @param vectorOrd the vector ordinal
+   * @return the corrective terms
+   * @throws IOException if an I/O error occurs
+   */
   public abstract float[] getCorrectiveTerms(int vectorOrd) throws IOException;
-
-  /** Returns the centroid distance for the vector */
-  public abstract float getCentroidDistance(int vectorOrd) throws IOException;
-
-  /** Returns the vector magnitude for the vector */
-  public abstract float getVectorMagnitude(int vectorOrd) throws IOException;
-
-  /** Returns OOQ corrective factor for the given vector ordinal */
-  public abstract float getOOQ(int targetOrd) throws IOException;
-
-  /**
-   * Returns the norm of the target vector w the centroid corrective factor for the given vector
-   * ordinal
-   */
-  public abstract float getNormOC(int targetOrd) throws IOException;
-
-  /**
-   * Returns the target vector dot product the centroid corrective factor for the given vector
-   * ordinal
-   */
-  public abstract float getODotC(int targetOrd) throws IOException;
 
   /**
    * @return the quantizer used to quantize the vectors
