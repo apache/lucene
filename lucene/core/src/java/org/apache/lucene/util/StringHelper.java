@@ -28,7 +28,9 @@ import java.util.Properties;
  *
  * @lucene.internal
  */
-public abstract class StringHelper {
+public final class StringHelper {
+
+  private StringHelper() {}
 
   /**
    * Compares two {@link BytesRef}, element by element, and returns the number of elements common to
@@ -62,8 +64,6 @@ public abstract class StringHelper {
   public static int sortKeyLength(final BytesRef priorTerm, final BytesRef currentTerm) {
     return bytesDifference(priorTerm, currentTerm) + 1;
   }
-
-  private StringHelper() {}
 
   /**
    * Returns <code>true</code> iff the ref starts with the given prefix. Otherwise <code>false
