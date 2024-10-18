@@ -33,7 +33,9 @@ Other
 
 API Changes
 ---------------------
-* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
+* GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
+
 
 * GITHUB#13831: Complete refactoring of random-access vector API, eliminating copy() method. Now random-access vectors
   are accessed by calling Byte/FloatVectorValues.vectors().get(int).
@@ -48,12 +50,18 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
+
+* GITHUB#13800: MaxScoreBulkScorer now recomputes scorer partitions when the
+  minimum competitive allows for a more favorable partitioning. (Adrien Grand)
 
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
   when they were not sorted by startOffset. (Seunghan Jung)
+* GITHUB#13884: Remove broken .toArray from Long/CharObjectHashMap entirely. (Pan Guixin)
+* GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
 
 Build
 ---------------------
@@ -63,6 +71,12 @@ Build
 Other
 ---------------------
 (No changes)
+
+======================== Lucene 10.0.1 =======================
+
+Bug Fixes
+---------------------
+
 
 ======================= Lucene 10.0.0 =======================
 
@@ -187,6 +201,11 @@ API Changes
 * GITHUB#13779:  First-class random access API for KnnVectorValues
   unifies Byte/FloatVectorValues incorporating RandomAccess* API and introduces
   DocIndexIterator for iterative access in place of direct inheritance from DISI. (Michael Sokolov)
+
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
+* GITHUB#13820, GITHUB#13825, GITHUB#13830: Corrects DataInput.readGroupVInts to be public and not-final, removes the protected
+  DataInput.readGroupVInt method. (Zhang Chao, Robert Muir, Uwe Schindler, Dawid Weiss)
 
 New Features
 ---------------------

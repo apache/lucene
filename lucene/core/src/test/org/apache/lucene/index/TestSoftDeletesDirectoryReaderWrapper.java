@@ -306,6 +306,12 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
                   softDeletesField, MatchNoDocsQuery::new, mergePolicy));
       writer.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        for (LeafReaderContext leafContext : reader.leaves()) {
+          assertThat(leafContext.reader(), instanceOf(SegmentReader.class));
+          SegmentReader segmentReader = (SegmentReader) leafContext.reader();
+          assertNull(segmentReader.getLiveDocs());
+          assertNull(segmentReader.getHardLiveDocs());
+        }
         SoftDeletesDirectoryReaderWrapper wrapped =
             new SoftDeletesDirectoryReaderWrapper(reader, softDeletesField);
         assertEquals(numDocs, wrapped.numDocs());
