@@ -19,6 +19,7 @@
 allprojects {
   tasks.withType(AbstractArchiveTask).configureEach { task ->
     duplicatesStrategy = DuplicatesStrategy.FAIL
+    preserveFileTimestamps = false
     reproducibleFileOrder = true
     dirPermissions {
       it.unix(0755)

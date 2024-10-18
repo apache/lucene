@@ -18,8 +18,10 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
@@ -34,24 +36,26 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-      VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    if (vectorValues instanceof RandomAccessVectorValues.Floats floatVectorValues) {
-      return new FloatScoringSupplier(floatVectorValues, similarityFunction);
-    } else if (vectorValues instanceof RandomAccessVectorValues.Bytes byteVectorValues) {
-      return new ByteScoringSupplier(byteVectorValues, similarityFunction);
+    switch (vectorValues.getEncoding()) {
+      case FLOAT32 -> {
+        return new FloatScoringSupplier((FloatVectorValues) vectorValues, similarityFunction);
+      }
+      case BYTE -> {
+        return new ByteScoringSupplier((ByteVectorValues) vectorValues, similarityFunction);
+      }
     }
     throw new IllegalArgumentException(
-        "vectorValues must be an instance of RandomAccessVectorValues.Floats or RandomAccessVectorValues.Bytes");
+        "vectorValues must be an instance of FloatVectorValues or ByteVectorValues, got a "
+            + vectorValues.getClass().getName());
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      float[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    assert vectorValues instanceof RandomAccessVectorValues.Floats;
+    assert vectorValues instanceof FloatVectorValues;
     if (target.length != vectorValues.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
@@ -59,17 +63,14 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
               + " differs from field dimension: "
               + vectorValues.dimension());
     }
-    return new FloatVectorScorer(
-        (RandomAccessVectorValues.Floats) vectorValues, target, similarityFunction);
+    return new FloatVectorScorer((FloatVectorValues) vectorValues, target, similarityFunction);
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      byte[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
-    assert vectorValues instanceof RandomAccessVectorValues.Bytes;
+    assert vectorValues instanceof ByteVectorValues;
     if (target.length != vectorValues.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
@@ -77,8 +78,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
               + " differs from field dimension: "
               + vectorValues.dimension());
     }
-    return new ByteVectorScorer(
-        (RandomAccessVectorValues.Bytes) vectorValues, target, similarityFunction);
+    return new ByteVectorScorer((ByteVectorValues) vectorValues, target, similarityFunction);
   }
 
   @Override
@@ -88,14 +88,13 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** RandomVectorScorerSupplier for bytes vector */
   private static final class ByteScoringSupplier implements RandomVectorScorerSupplier {
-    private final RandomAccessVectorValues.Bytes vectors;
-    private final RandomAccessVectorValues.Bytes vectors1;
-    private final RandomAccessVectorValues.Bytes vectors2;
+    private final ByteVectorValues vectors;
+    private final ByteVectorValues vectors1;
+    private final ByteVectorValues vectors2;
     private final VectorSimilarityFunction similarityFunction;
 
     private ByteScoringSupplier(
-        RandomAccessVectorValues.Bytes vectors, VectorSimilarityFunction similarityFunction)
-        throws IOException {
+        ByteVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
       this.vectors = vectors;
       vectors1 = vectors.copy();
       vectors2 = vectors.copy();
@@ -125,14 +124,13 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** RandomVectorScorerSupplier for Float vector */
   private static final class FloatScoringSupplier implements RandomVectorScorerSupplier {
-    private final RandomAccessVectorValues.Floats vectors;
-    private final RandomAccessVectorValues.Floats vectors1;
-    private final RandomAccessVectorValues.Floats vectors2;
+    private final FloatVectorValues vectors;
+    private final FloatVectorValues vectors1;
+    private final FloatVectorValues vectors2;
     private final VectorSimilarityFunction similarityFunction;
 
     private FloatScoringSupplier(
-        RandomAccessVectorValues.Floats vectors, VectorSimilarityFunction similarityFunction)
-        throws IOException {
+        FloatVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
       this.vectors = vectors;
       vectors1 = vectors.copy();
       vectors2 = vectors.copy();
@@ -162,14 +160,12 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** A {@link RandomVectorScorer} for float vectors. */
   private static class FloatVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
-    private final RandomAccessVectorValues.Floats values;
+    private final FloatVectorValues values;
     private final float[] query;
     private final VectorSimilarityFunction similarityFunction;
 
     public FloatVectorScorer(
-        RandomAccessVectorValues.Floats values,
-        float[] query,
-        VectorSimilarityFunction similarityFunction) {
+        FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction) {
       super(values);
       this.values = values;
       this.query = query;
@@ -184,14 +180,12 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** A {@link RandomVectorScorer} for byte vectors. */
   private static class ByteVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
-    private final RandomAccessVectorValues.Bytes values;
+    private final ByteVectorValues values;
     private final byte[] query;
     private final VectorSimilarityFunction similarityFunction;
 
     public ByteVectorScorer(
-        RandomAccessVectorValues.Bytes values,
-        byte[] query,
-        VectorSimilarityFunction similarityFunction) {
+        ByteVectorValues values, byte[] query, VectorSimilarityFunction similarityFunction) {
       super(values);
       this.values = values;
       this.query = query;

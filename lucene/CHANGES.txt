@@ -3,6 +3,78 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene 11.0.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
+======================= Lucene 10.1.0 =======================
+
+API Changes
+---------------------
+
+* GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
+
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+
+* GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
+
+* GITHUB#13800: MaxScoreBulkScorer now recomputes scorer partitions when the
+  minimum competitive allows for a more favorable partitioning. (Adrien Grand)
+
+Bug Fixes
+---------------------
+* GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
+  when they were not sorted by startOffset. (Seunghan Jung)
+* GITHUB#13884: Remove broken .toArray from Long/CharObjectHashMap entirely. (Pan Guixin)
+* GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
+
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.8.  (Uwe Schindler)
+
+Other
+---------------------
+(No changes)
+
+======================== Lucene 10.0.1 =======================
+
+Bug Fixes
+---------------------
+
+
 ======================= Lucene 10.0.0 =======================
 
 API Changes
@@ -48,9 +120,9 @@ API Changes
 
 * GITHUB#12296: Make IndexReader and IndexReaderContext classes explicitly sealed.
   They have already been runtime-checked to only be implemented by the specific classes
-  so this is effectively a non-breaking change.
+  so this is effectively a non-breaking change. (Petr Portnov)
 
-* GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton
+* GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton. (Michael McCandless)
 
 * GITHUB#12321: Reduced visibility of StringsToAutomaton. Please use Automata#makeStringUnion instead. (Greg Miller)
 
@@ -120,8 +192,17 @@ API Changes
 
 * GITHUB#13328: Convert many basic Lucene classes to record classes, including CollectionStatistics, TermStatistics and LeafMetadata. (Shubham Chaudhary)
 
-* GITHUB#13780: Remove `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` in favour of the newly
-  introduced `IndexSearcher#search(LeafReaderContextPartition[], Weight, Collector)`
+* GITHUB#13780: Remove IndexSearcher#search(List<LeafReaderContext>, Weight, Collector) in favour of the newly
+  introduced IndexSearcher#search(LeafReaderContextPartition[], Weight, Collector). (Luca Cavanna)
+
+* GITHUB#13779:  First-class random access API for KnnVectorValues
+  unifies Byte/FloatVectorValues incorporating RandomAccess* API and introduces
+  DocIndexIterator for iterative access in place of direct inheritance from DISI. (Michael Sokolov)
+
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
+* GITHUB#13820, GITHUB#13825, GITHUB#13830: Corrects DataInput.readGroupVInts to be public and not-final, removes the protected
+  DataInput.readGroupVInt method. (Zhang Chao, Robert Muir, Uwe Schindler, Dawid Weiss)
 
 New Features
 ---------------------
@@ -209,7 +290,7 @@ Bug Fixes
 * LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
   they reach the maximum merge size. (Adrien Grand)
 
-* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end. (Peter Gromov)
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
@@ -292,8 +373,16 @@ Build
 
 ======================== Lucene 9.12.0 =======================
 
+Security Fixes
+---------------------
+
+* Deserialization of Untrusted Data vulnerability in Apache Lucene Replicator - CVE-2024-45772
+ (Summ3r from Vidar-Team, Robert Muir, Paul Irwin)
+
 API Changes
 ---------------------
+
+* GITHUB#13806: Add TermInSetQuery#getBytesRefIterator to be able to iterate over query terms. (Christoph Büscher)
 
 * GITHUB#13469: Expose FlatVectorsFormat as a first-class format; can be configured using a custom Codec. (Michael Sokolov)
 
@@ -310,6 +399,9 @@ API Changes
 
 * GITHUB#13568, GITHUB#13750: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
+
+* GITHUB#13757: For similarities, provide default computeNorm implementation and remove remaining discountOverlaps setters.
+  (Christine Poerschke, Adrien Grand, Robert Muir)
 
 New Features
 ---------------------
@@ -418,8 +510,6 @@ Optimizations
 
 * GITHUB#13742: Reorder checks in LRUQueryCache#count (Shubham Chaudhary)
 
-* GITHUB#13686: Replace Map<String,Object> with IntObjectHashMap for DV producer (Pan Guixin)
-
 * GITHUB#13697: Add a bulk scorer to ToParentBlockJoinQuery, which delegates to the bulk scorer of the child query.
  This should speed up query evaluation when the child query has a specialized bulk scorer, such as disjunctive queries.
  (Mike Pellegrini)
@@ -470,6 +560,8 @@ Bug Fixes
   `IndexWriter.forceMerge` or
   `IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
 
+* GITHUB#13799: Disable intra-merge parallelism for all structures but kNN vectors. (Ben Trent)
+
 Build
 ---------------------
 
@@ -481,6 +573,8 @@ Other
 
 * GITHUB#13720: Add float comparison based on unit of least precision and use it to stop test failures caused by float
   summation not being associative in IEEE 754. (Alex Herbert, Stefan Vodita)
+
+* Remove code triggering forbidden-apis regarding Java serialization. (Uwe Schindler, Robert Muir)
 
 ======================== Lucene 9.11.1 =======================
 

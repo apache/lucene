@@ -18,13 +18,13 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -60,9 +60,9 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-      VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    if (vectorValues instanceof RandomAccessQuantizedByteVectorValues quantizedByteVectorValues) {
+    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
       return new ScalarQuantizedRandomVectorScorerSupplier(
           similarityFunction,
           quantizedByteVectorValues.getScalarQuantizer(),
@@ -74,11 +74,9 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      float[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    if (vectorValues instanceof RandomAccessQuantizedByteVectorValues quantizedByteVectorValues) {
+    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
       ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
       byte[] targetBytes = new byte[target.length];
       float offsetCorrection =
@@ -104,9 +102,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      RandomAccessVectorValues vectorValues,
-      byte[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
@@ -124,14 +120,14 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public static class ScalarQuantizedRandomVectorScorerSupplier
       implements RandomVectorScorerSupplier {
 
-    private final RandomAccessQuantizedByteVectorValues values;
+    private final QuantizedByteVectorValues values;
     private final ScalarQuantizedVectorSimilarity similarity;
     private final VectorSimilarityFunction vectorSimilarityFunction;
 
     public ScalarQuantizedRandomVectorScorerSupplier(
         VectorSimilarityFunction similarityFunction,
         ScalarQuantizer scalarQuantizer,
-        RandomAccessQuantizedByteVectorValues values) {
+        QuantizedByteVectorValues values) {
       this.similarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
               similarityFunction,
@@ -144,7 +140,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     private ScalarQuantizedRandomVectorScorerSupplier(
         ScalarQuantizedVectorSimilarity similarity,
         VectorSimilarityFunction vectorSimilarityFunction,
-        RandomAccessQuantizedByteVectorValues values) {
+        QuantizedByteVectorValues values) {
       this.similarity = similarity;
       this.values = values;
       this.vectorSimilarityFunction = vectorSimilarityFunction;
@@ -152,7 +148,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      final RandomAccessQuantizedByteVectorValues vectorsCopy = values.copy();
+      final QuantizedByteVectorValues vectorsCopy = values.copy();
       final byte[] queryVector = values.vectorValue(ord);
       final float queryOffset = values.getScoreCorrectionConstant(ord);
       return new RandomVectorScorer.AbstractRandomVectorScorer(vectorsCopy) {

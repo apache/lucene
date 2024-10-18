@@ -28,8 +28,6 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.Bits;
 
 /**
  * Shuffles field numbers around to try to trip bugs where field numbers are assumed to always be
@@ -55,7 +53,7 @@ public class MismatchedLeafReader extends FilterLeafReader {
     return new StoredFields() {
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-        inStoredFields.document(docID, new MismatchedVisitor(visitor));
+        inStoredFields.document(docID, new MismatchedVisitor(visitor, shuffled));
       }
     };
   }
@@ -68,18 +66,6 @@ public class MismatchedLeafReader extends FilterLeafReader {
   @Override
   public CacheHelper getReaderCacheHelper() {
     return in.getReaderCacheHelper();
-  }
-
-  @Override
-  public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
-    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
-  }
-
-  @Override
-  public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
-    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   static FieldInfos shuffleInfos(FieldInfos infos, Random random) {
@@ -124,11 +110,13 @@ public class MismatchedLeafReader extends FilterLeafReader {
   /** StoredFieldsVisitor that remaps actual field numbers to our new shuffled ones. */
   // TODO: its strange this part of our IR api exposes FieldInfo,
   // no other "user-accessible" codec apis do this?
-  class MismatchedVisitor extends StoredFieldVisitor {
+  static class MismatchedVisitor extends StoredFieldVisitor {
     final StoredFieldVisitor in;
+    final FieldInfos shuffled;
 
-    MismatchedVisitor(StoredFieldVisitor in) {
+    MismatchedVisitor(StoredFieldVisitor in, FieldInfos shuffled) {
       this.in = in;
+      this.shuffled = shuffled;
     }
 
     @Override

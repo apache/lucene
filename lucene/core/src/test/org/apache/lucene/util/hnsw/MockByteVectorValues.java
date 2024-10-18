@@ -17,11 +17,17 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
 
-class MockByteVectorValues extends AbstractMockVectorValues<byte[]>
-    implements RandomAccessVectorValues.Bytes {
+class MockByteVectorValues extends ByteVectorValues {
+  private final int dimension;
+  private final byte[][] denseValues;
+  protected final byte[][] values;
+  private final int numVectors;
+  private final BytesRef binaryValue;
   private final byte[] scratch;
 
   static MockByteVectorValues fromValues(byte[][] values) {
@@ -43,8 +49,24 @@ class MockByteVectorValues extends AbstractMockVectorValues<byte[]>
   }
 
   MockByteVectorValues(byte[][] values, int dimension, byte[][] denseValues, int numVectors) {
-    super(values, dimension, denseValues, numVectors);
+    this.dimension = dimension;
+    this.values = values;
+    this.denseValues = denseValues;
+    this.numVectors = numVectors;
+    // used by tests that build a graph from bytes rather than floats
+    binaryValue = new BytesRef(dimension);
+    binaryValue.length = dimension;
     scratch = new byte[dimension];
+  }
+
+  @Override
+  public int size() {
+    return values.length;
+  }
+
+  @Override
+  public int dimension() {
+    return dimension;
   }
 
   @Override
@@ -55,20 +77,20 @@ class MockByteVectorValues extends AbstractMockVectorValues<byte[]>
 
   @Override
   public byte[] vectorValue(int ord) {
-    return values[ord];
-  }
-
-  @Override
-  public byte[] vectorValue() {
     if (LuceneTestCase.random().nextBoolean()) {
-      return values[pos];
+      return values[ord];
     } else {
       // Sometimes use the same scratch array repeatedly, mimicing what the codec will do.
       // This should help us catch cases of aliasing where the same ByteVectorValues source is used
       // twice in a
       // single computation.
-      System.arraycopy(values[pos], 0, scratch, 0, dimension);
+      System.arraycopy(values[ord], 0, scratch, 0, dimension);
       return scratch;
     }
+  }
+
+  @Override
+  public DocIndexIterator iterator() {
+    return createDenseIterator();
   }
 }
