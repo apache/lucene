@@ -39,7 +39,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *       precision (normalized to the centroid) and then compared directly against the single bit
  *       quantized vectors in the index.
  *   <li>Transforming the half-byte quantized query vectors in such a way that the comparison with
- *       single bit vectors can be done with hamming distance.
+ *       single bit vectors can be done with bit arithmetic.
  *   <li>Utilizing an error bias calculation enabled by the centroid normalization. This allows for
  *       dynamic rescoring of vectors that fall outside a certain error threshold.
  * </ul>
@@ -65,7 +65,7 @@ import org.apache.lucene.index.SegmentWriteState;
  * <h2>.vemb (vector metadata) file</h2>
  *
  * <p>Stores the metadata for the vectors. This includes the number of vectors, the number of
- * dimensions, centroids and file offset information.
+ * dimensions, and file offset information.
  *
  * <ul>
  *   <li><b>int</b> the field number
@@ -75,7 +75,6 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li><b>vlong</b> the offset to the vector data in the .veb file
  *   <li><b>vlong</b> the length of the vector data in the .veb file
  *   <li><b>vint</b> the number of vectors
- *   <li><b>[float]</b> the centroid of the vectors
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
  */

@@ -38,7 +38,7 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.12 vector format, which encodes numeric vector values into an associated graph
+ * Lucene 10.1 vector format, which encodes numeric vector values into an associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
  * consists of two files, and uses {@link Lucene101BinaryQuantizedVectorsFormat} to store the actual
  * vectors: For details on graph storage and file extensions, see {@link Lucene99HnswVectorsFormat}.
