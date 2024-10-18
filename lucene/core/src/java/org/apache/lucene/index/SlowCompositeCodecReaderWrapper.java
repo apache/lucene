@@ -887,6 +887,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         return new Floats() {
           int lastSubIndex = 0;
           Floats subValues;
+          // TODO: cache the subValues so we only need to create each one once (same in Bytes below)
 
           @Override
           public float[] get(int ord) throws IOException {
@@ -894,7 +895,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
             // We need to implement fully random-access API here in order to support callers like
             // SortingCodecReader that rely on it.
             int newSubIndex = findSub(ord, lastSubIndex, starts);
-            if (newSubIndex != lastSubIndex) {
+            if (newSubIndex != lastSubIndex || subValues == null) {
               lastSubIndex = newSubIndex;
               assert subs.get(lastSubIndex).sub != null;
               subValues = subs.get(lastSubIndex).sub.vectors();
@@ -963,7 +964,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       @Override
       public Bytes vectors() {
         return new Bytes() {
-          int lastSubIndex = -1;
+          int lastSubIndex = 0;
           Bytes subValues;
 
           @Override
@@ -973,7 +974,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
             // SortingCodecReader that rely on it.  We maintain lastSubIndex since we expect some
             // repetition.
             int newSubIndex = findSub(ord, lastSubIndex, starts);
-            if (newSubIndex != lastSubIndex) {
+            if (newSubIndex != lastSubIndex || subValues == null) {
               lastSubIndex = newSubIndex;
               assert subs.get(lastSubIndex).sub != null;
               subValues = subs.get(lastSubIndex).sub.vectors();
