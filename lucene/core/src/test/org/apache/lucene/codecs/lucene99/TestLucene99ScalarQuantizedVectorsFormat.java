@@ -102,6 +102,11 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     }
   }
 
+  @Override
+  public void testRecall() {
+    // ignore this test since this class always returns no results from search
+  }
+
   public void testQuantizedVectorsWriteAndRead() throws Exception {
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
