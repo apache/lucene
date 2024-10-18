@@ -1041,8 +1041,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             assertTrue(score >= 0f);
             assertEquals(iterator.docID(), valuesIterator.docID());
           }
-          System.out.println("values=" + vectorValues);
-          System.out.println("scorer=" + scorer);
           // verify that a new scorer can be obtained after iteration
           VectorScorer newScorer = vectorValues.scorer(vectorToScore);
           assertNotNull(newScorer);
