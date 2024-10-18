@@ -30,6 +30,8 @@ import java.util.Properties;
  */
 public final class StringHelper {
 
+  private StringHelper() {}
+
   /**
    * Compares two {@link BytesRef}, element by element, and returns the number of elements common to
    * both arrays (from the start of each). This method assumes currentTerm comes after priorTerm.
@@ -62,8 +64,6 @@ public final class StringHelper {
   public static int sortKeyLength(final BytesRef priorTerm, final BytesRef currentTerm) {
     return bytesDifference(priorTerm, currentTerm) + 1;
   }
-
-  private StringHelper() {}
 
   /**
    * Returns <code>true</code> iff the ref starts with the given prefix. Otherwise <code>false
