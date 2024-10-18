@@ -28,7 +28,7 @@ import java.util.Properties;
  *
  * @lucene.internal
  */
-public abstract class StringHelper {
+public final class StringHelper {
 
   /**
    * Compares two {@link BytesRef}, element by element, and returns the number of elements common to
