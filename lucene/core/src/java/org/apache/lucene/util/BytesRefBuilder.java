@@ -100,8 +100,10 @@ public class BytesRefBuilder {
    * #clear()} and then {@link #append(byte[], int, int)}.
    */
   public void copyBytes(byte[] b, int off, int len) {
-    clear();
-    append(b, off, len);
+    assert ref.offset == 0;
+    ref.length = len;
+    growNoCopy(len);
+    System.arraycopy(b, off, ref.bytes, 0, len);
   }
 
   /**
@@ -109,8 +111,7 @@ public class BytesRefBuilder {
    * #clear()} and then {@link #append(BytesRef)}.
    */
   public void copyBytes(BytesRef ref) {
-    clear();
-    append(ref);
+    copyBytes(ref.bytes, ref.offset, ref.length);
   }
 
   /**
@@ -118,8 +119,7 @@ public class BytesRefBuilder {
    * #clear()} and then {@link #append(BytesRefBuilder)}.
    */
   public void copyBytes(BytesRefBuilder builder) {
-    clear();
-    append(builder);
+    copyBytes(builder.get());
   }
 
   /**
@@ -135,7 +135,7 @@ public class BytesRefBuilder {
    * text.
    */
   public void copyChars(CharSequence text, int off, int len) {
-    grow(UnicodeUtil.maxUTF8Length(len));
+    growNoCopy(UnicodeUtil.maxUTF8Length(len));
     ref.length = UnicodeUtil.UTF16toUTF8(text, off, len, ref.bytes);
   }
 
@@ -144,7 +144,7 @@ public class BytesRefBuilder {
    * text.
    */
   public void copyChars(char[] text, int off, int len) {
-    grow(UnicodeUtil.maxUTF8Length(len));
+    growNoCopy(UnicodeUtil.maxUTF8Length(len));
     ref.length = UnicodeUtil.UTF16toUTF8(text, off, len, ref.bytes);
   }
 
