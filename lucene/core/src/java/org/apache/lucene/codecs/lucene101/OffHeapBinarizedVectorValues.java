@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
-import static org.apache.lucene.util.quantization.BQVectorUtils.constSqrt;
+import static org.apache.lucene.util.quantization.BQSpaceUtils.constSqrt;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,7 +31,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.quantization.BQVectorUtils;
+import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 /** Binarized vector values loaded from off-heap */
@@ -73,14 +73,14 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     this.slice = slice;
     this.centroid = centroid;
     this.centroidDp = centroidDp;
-    this.numBytes = BQVectorUtils.discretize(dimension, 64) / 8;
+    this.numBytes = BQSpaceUtils.discretize(dimension, 64) / 8;
     this.correctionsCount = similarityFunction != EUCLIDEAN ? 3 : 2;
     this.correctiveValues = new float[this.correctionsCount];
     this.byteSize = numBytes + (Float.BYTES * correctionsCount);
     this.byteBuffer = ByteBuffer.allocate(numBytes);
     this.binaryValue = byteBuffer.array();
     this.binaryQuantizer = quantizer;
-    this.discretizedDimensions = BQVectorUtils.discretize(dimension, 64);
+    this.discretizedDimensions = BQSpaceUtils.discretize(dimension, 64);
     this.sqrtDimensions = (float) constSqrt(dimension);
     this.maxX1 = (float) (1.9 / constSqrt(discretizedDimensions - 1.0));
   }

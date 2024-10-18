@@ -26,7 +26,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
 
   public void testQuantizeForIndex() {
     int dimensions = random().nextInt(1, 4097);
-    int discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
+    int discretizedDimensions = BQSpaceUtils.discretize(dimensions, 64);
 
     int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
@@ -67,7 +67,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
 
   public void testQuantizeForQuery() {
     int dimensions = random().nextInt(1, 4097);
-    int discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
+    int discretizedDimensions = BQSpaceUtils.discretize(dimensions, 64);
 
     int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];

@@ -16,12 +16,40 @@
  */
 package org.apache.lucene.util.quantization;
 
+import org.apache.lucene.util.ArrayUtil;
+
 /** Utility class for quantization calculations */
 public class BQSpaceUtils {
 
   public static final short B_QUERY = 4;
   // the first four bits masked
   private static final int B_QUERY_MASK = 15;
+
+  public static double sqrtNewtonRaphson(double x, double curr, double prev) {
+    return (curr == prev) ? curr : sqrtNewtonRaphson(x, 0.5 * (curr + x / curr), curr);
+  }
+
+  public static double constSqrt(double x) {
+    return x >= 0 && Double.isInfinite(x) == false ? sqrtNewtonRaphson(x, x, 0) : Double.NaN;
+  }
+
+  public static int discretize(int value, int bucket) {
+    return ((value + (bucket - 1)) / bucket) * bucket;
+  }
+
+  public static float[] pad(float[] vector, int dimensions) {
+    if (vector.length >= dimensions) {
+      return vector;
+    }
+    return ArrayUtil.growExact(vector, dimensions);
+  }
+
+  public static byte[] pad(byte[] vector, int dimensions) {
+    if (vector.length >= dimensions) {
+      return vector;
+    }
+    return ArrayUtil.growExact(vector, dimensions);
+  }
 
   /**
    * Transpose the query vector into a byte array allowing for efficient bitwise operations with the

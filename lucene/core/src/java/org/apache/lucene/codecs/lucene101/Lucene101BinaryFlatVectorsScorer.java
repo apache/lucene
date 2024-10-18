@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
@@ -29,14 +29,13 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.BQSpaceUtils;
-import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 /** Vector scorer over binarized vector values */
-public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
+public class Lucene101BinaryFlatVectorsScorer implements FlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
-  public Lucene912BinaryFlatVectorsScorer(FlatVectorsScorer nonQuantizedDelegate) {
+  public Lucene101BinaryFlatVectorsScorer(FlatVectorsScorer nonQuantizedDelegate) {
     this.nonQuantizedDelegate = nonQuantizedDelegate;
   }
 
@@ -59,7 +58,7 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
       BinaryQuantizer quantizer = binarizedVectors.getQuantizer();
       float[] centroid = binarizedVectors.getCentroid();
       // FIXME: precompute this once?
-      int discretizedDimensions = BQVectorUtils.discretize(target.length, 64);
+      int discretizedDimensions = BQSpaceUtils.discretize(target.length, 64);
       if (similarityFunction == COSINE) {
         float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
         VectorUtil.l2normalize(copy);
@@ -83,7 +82,7 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
 
   RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
-      Lucene912BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues scoringVectors,
+      Lucene101BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues scoringVectors,
       BinarizedByteVectorValues targetVectors) {
     return new BinarizedRandomVectorScorerSupplier(
         scoringVectors, targetVectors, similarityFunction);
@@ -91,18 +90,18 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
 
   @Override
   public String toString() {
-    return "Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
+    return "Lucene101BinaryFlatVectorsScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
   }
 
   /** Vector scorer supplier over binarized vector values */
   static class BinarizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
-    private final Lucene912BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues
+    private final Lucene101BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues
         queryVectors;
     private final BinarizedByteVectorValues targetVectors;
     private final VectorSimilarityFunction similarityFunction;
 
     BinarizedRandomVectorScorerSupplier(
-        Lucene912BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues queryVectors,
+        Lucene101BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues queryVectors,
         BinarizedByteVectorValues targetVectors,
         VectorSimilarityFunction similarityFunction) {
       this.queryVectors = queryVectors;
@@ -199,7 +198,7 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
 
       float qcDist = VectorUtil.ipByteBinByte(quantizedQuery, binaryCode);
 
-      float xbSum = (float) BQVectorUtils.popcount(binaryCode);
+      float xbSum = (float) VectorUtil.popCount(binaryCode);
       final float dist;
       // If ||o-c|| == 0, so, it's ok to throw the rest of the equation away
       // and simply use `oDotC + vDotC - cDotC` as centroid == doc vector
@@ -245,7 +244,7 @@ public class Lucene912BinaryFlatVectorsScorer implements FlatVectorsScorer {
       float sqrX = targetDistToC * targetDistToC;
       double xX0 = targetDistToC / x0;
 
-      float xbSum = (float) BQVectorUtils.popcount(binaryCode);
+      float xbSum = (float) VectorUtil.popCount(binaryCode);
       float factorPPC =
           (float) (-2.0 / sqrtDimensions * xX0 * (xbSum * 2.0 - targetVectors.dimension()));
       float factorIP = (float) (-2.0 / sqrtDimensions * xX0);

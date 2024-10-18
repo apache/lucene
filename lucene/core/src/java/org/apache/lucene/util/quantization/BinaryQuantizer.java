@@ -93,13 +93,13 @@ public class BinaryQuantizer {
   private SubspaceOutput generateSubSpace(
       float[] vector, float[] centroid, byte[] quantizedVector) {
     // typically no-op if dimensions/64
-    float[] paddedCentroid = BQVectorUtils.pad(centroid, discretizedDimensions);
-    float[] paddedVector = BQVectorUtils.pad(vector, discretizedDimensions);
+    float[] paddedCentroid = BQSpaceUtils.pad(centroid, discretizedDimensions);
+    float[] paddedVector = BQSpaceUtils.pad(vector, discretizedDimensions);
 
-    BQVectorUtils.subtractInPlace(paddedVector, paddedCentroid);
+    VectorUtil.subtract(paddedVector, paddedCentroid);
 
     // The inner product between the data vector and the quantized data vector
-    float norm = BQVectorUtils.norm(paddedVector);
+    float norm = VectorUtil.l2Norm(paddedVector);
 
     packAsBinary(paddedVector, quantizedVector);
 
@@ -115,15 +115,15 @@ public class BinaryQuantizer {
       float[] vector, float[] centroid, byte[] quantizedVector) {
 
     // typically no-op if dimensions/64
-    float[] paddedCentroid = BQVectorUtils.pad(centroid, discretizedDimensions);
-    float[] paddedVector = BQVectorUtils.pad(vector, discretizedDimensions);
+    float[] paddedCentroid = BQSpaceUtils.pad(centroid, discretizedDimensions);
+    float[] paddedVector = BQSpaceUtils.pad(vector, discretizedDimensions);
 
     float oDotC = VectorUtil.dotProduct(paddedVector, paddedCentroid);
-    BQVectorUtils.subtractInPlace(paddedVector, paddedCentroid);
+    VectorUtil.subtract(paddedVector, paddedCentroid);
 
-    float normOC = BQVectorUtils.norm(paddedVector);
+    float normOC = VectorUtil.l2Norm(paddedVector);
     packAsBinary(paddedVector, quantizedVector);
-    BQVectorUtils.divideInPlace(paddedVector, normOC); // OmC / norm(OmC)
+    VectorUtil.divide(paddedVector, normOC); // OmC / norm(OmC)
 
     float OOQ = computerOOQ(vector.length, paddedVector, quantizedVector);
 
@@ -164,12 +164,12 @@ public class BinaryQuantizer {
       float[] vector, byte[] indexDestination, byte[] queryDestination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
-    assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
+    assert this.discretizedDimensions == BQSpaceUtils.discretize(vector.length, 64);
 
     if (this.discretizedDimensions != indexDestination.length * 8) {
       throw new IllegalArgumentException(
           "vector and quantized vector destination must be compatible dimensions: "
-              + BQVectorUtils.discretize(vector.length, 64)
+              + BQSpaceUtils.discretize(vector.length, 64)
               + " [ "
               + this.discretizedDimensions
               + " ]"
@@ -202,13 +202,13 @@ public class BinaryQuantizer {
     float distToC = VectorUtil.squareDistance(vector, centroid);
     // only need vdotc for dot-products similarity, but not for euclidean
     float vDotC = similarityFunction != EUCLIDEAN ? VectorUtil.dotProduct(vector, centroid) : 0f;
-    BQVectorUtils.subtractInPlace(vector, centroid);
+    VectorUtil.subtract(vector, centroid);
     // both euclidean and dot-product need the norm of the vector, just at different times
-    float normVmC = BQVectorUtils.norm(vector);
+    float normVmC = VectorUtil.l2Norm(vector);
     // quantize for index
-    packAsBinary(BQVectorUtils.pad(vector, discretizedDimensions), indexDestination);
+    packAsBinary(BQSpaceUtils.pad(vector, discretizedDimensions), indexDestination);
     if (similarityFunction != EUCLIDEAN) {
-      BQVectorUtils.divideInPlace(vector, normVmC);
+      VectorUtil.divide(vector, normVmC);
     }
 
     // Quantize for query
@@ -224,7 +224,7 @@ public class BinaryQuantizer {
     // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
     // q¯ is an approximation of q′  (scalar quantized approximation)
     // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal
-    byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
+    byteQuery = BQSpaceUtils.pad(byteQuery, discretizedDimensions);
     BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, queryDestination);
     QueryFactors factors =
         new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC);
@@ -246,12 +246,12 @@ public class BinaryQuantizer {
   public float[] quantizeForIndex(float[] vector, byte[] destination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
-    assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
+    assert this.discretizedDimensions == BQSpaceUtils.discretize(vector.length, 64);
 
     if (this.discretizedDimensions != destination.length * 8) {
       throw new IllegalArgumentException(
           "vector and quantized vector destination must be compatible dimensions: "
-              + BQVectorUtils.discretize(vector.length, 64)
+              + BQSpaceUtils.discretize(vector.length, 64)
               + " [ "
               + this.discretizedDimensions
               + " ]"
@@ -325,7 +325,7 @@ public class BinaryQuantizer {
   public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
-    assert this.discretizedDimensions == BQVectorUtils.discretize(vector.length, 64);
+    assert this.discretizedDimensions == BQSpaceUtils.discretize(vector.length, 64);
 
     if (this.discretizedDimensions != (destination.length * 8) / BQSpaceUtils.B_QUERY) {
       throw new IllegalArgumentException(
@@ -352,13 +352,14 @@ public class BinaryQuantizer {
 
     // FIXME: make a copy of vector so we don't overwrite it here?
     //  ... (could subtractInPlace but the passed vector is modified) <<---
-    float[] vmC = BQVectorUtils.subtract(vector, centroid);
+    float[] vmC = ArrayUtil.copyArray(vector);
+    VectorUtil.subtract(vmC, centroid);
 
     // FIXME: should other similarity functions behave like MIP on query like COSINE
     float normVmC = 0f;
     if (similarityFunction != EUCLIDEAN) {
-      normVmC = BQVectorUtils.norm(vmC);
-      BQVectorUtils.divideInPlace(vmC, normVmC);
+      normVmC = VectorUtil.l2Norm(vmC);
+      VectorUtil.divide(vmC, normVmC);
     }
     float[] range = range(vmC);
     float lower = range[0];
@@ -372,7 +373,7 @@ public class BinaryQuantizer {
     // q¯ = Δ · q¯𝑢 + 𝑣𝑙 · 1𝐷
     // q¯ is an approximation of q′  (scalar quantized approximation)
     // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal
-    byteQuery = BQVectorUtils.pad(byteQuery, discretizedDimensions);
+    byteQuery = BQSpaceUtils.pad(byteQuery, discretizedDimensions);
     BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
 
     QueryFactors factors;

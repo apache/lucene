@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
@@ -79,15 +79,15 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
  */
-public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
+public class Lucene101BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
 
   public static final String BINARIZED_VECTOR_COMPONENT = "BVEC";
-  public static final String NAME = "Lucene912BinaryQuantizedVectorsFormat";
+  public static final String NAME = "Lucene101BinaryQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
-  static final String META_CODEC_NAME = "Lucene912BinaryQuantizedVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene912BinaryQuantizedVectorsFormatData";
+  static final String META_CODEC_NAME = "Lucene101BinaryQuantizedVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene101BinaryQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemb";
   static final String VECTOR_DATA_EXTENSION = "veb";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
@@ -95,29 +95,29 @@ public class Lucene912BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private final Lucene912BinaryFlatVectorsScorer scorer =
-      new Lucene912BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+  private final Lucene101BinaryFlatVectorsScorer scorer =
+      new Lucene101BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** Creates a new instance with the default number of vectors per cluster. */
-  public Lucene912BinaryQuantizedVectorsFormat() {
+  public Lucene101BinaryQuantizedVectorsFormat() {
     super(NAME);
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene912BinaryQuantizedVectorsWriter(
+    return new Lucene101BinaryQuantizedVectorsWriter(
         scorer, rawVectorFormat.fieldsWriter(state), state);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene912BinaryQuantizedVectorsReader(
+    return new Lucene101BinaryQuantizedVectorsReader(
         state, rawVectorFormat.fieldsReader(state), scorer);
   }
 
   @Override
   public String toString() {
-    return "Lucene912BinaryQuantizedVectorsFormat(name="
+    return "Lucene101BinaryQuantizedVectorsFormat(name="
         + NAME
         + ", flatVectorScorer="
         + scorer

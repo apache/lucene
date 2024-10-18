@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
-import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.BINARIZED_VECTOR_COMPONENT;
-import static org.apache.lucene.codecs.lucene912.Lucene912BinaryQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene101.Lucene101BinaryQuantizedVectorsFormat.BINARIZED_VECTOR_COMPONENT;
+import static org.apache.lucene.codecs.lucene101.Lucene101BinaryQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -59,7 +59,6 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.BQSpaceUtils;
-import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 /**
@@ -67,15 +66,15 @@ import org.apache.lucene.util.quantization.BinaryQuantizer;
  *
  * @lucene.experimental
  */
-public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
+public class Lucene101BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
-      shallowSizeOfInstance(Lucene912BinaryQuantizedVectorsWriter.class);
+      shallowSizeOfInstance(Lucene101BinaryQuantizedVectorsWriter.class);
 
   private final SegmentWriteState segmentWriteState;
   private final List<FieldWriter> fields = new ArrayList<>();
   private final IndexOutput meta, binarizedVectorData;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final Lucene912BinaryFlatVectorsScorer vectorsScorer;
+  private final Lucene101BinaryFlatVectorsScorer vectorsScorer;
   private boolean finished;
 
   /**
@@ -83,8 +82,8 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
    *
    * @param vectorsScorer the scorer to use for scoring vectors
    */
-  protected Lucene912BinaryQuantizedVectorsWriter(
-      Lucene912BinaryFlatVectorsScorer vectorsScorer,
+  protected Lucene101BinaryQuantizedVectorsWriter(
+      Lucene101BinaryFlatVectorsScorer vectorsScorer,
       FlatVectorsWriter rawVectorDelegate,
       SegmentWriteState state)
       throws IOException {
@@ -95,13 +94,13 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene912BinaryQuantizedVectorsFormat.META_EXTENSION);
+            Lucene101BinaryQuantizedVectorsFormat.META_EXTENSION);
 
     String binarizedVectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene912BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
+            Lucene101BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
     this.rawVectorDelegate = rawVectorDelegate;
     boolean success = false;
     try {
@@ -111,14 +110,14 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene912BinaryQuantizedVectorsFormat.META_CODEC_NAME,
-          Lucene912BinaryQuantizedVectorsFormat.VERSION_CURRENT,
+          Lucene101BinaryQuantizedVectorsFormat.META_CODEC_NAME,
+          Lucene101BinaryQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           binarizedVectorData,
-          Lucene912BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene912BinaryQuantizedVectorsFormat.VERSION_CURRENT,
+          Lucene101BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene101BinaryQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;
@@ -166,7 +165,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         segmentWriteState.infoStream.message(
             BINARIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
       }
-      int descritizedDimension = BQVectorUtils.discretize(field.fieldInfo.getVectorDimension(), 64);
+      int descritizedDimension = BQSpaceUtils.discretize(field.fieldInfo.getVectorDimension(), 64);
       BinaryQuantizer quantizer =
           new BinaryQuantizer(
               field.fieldInfo.getVectorDimension(),
@@ -205,7 +204,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldWriter fieldData, float[] clusterCenter, BinaryQuantizer scalarQuantizer)
       throws IOException {
     byte[] vector =
-        new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
+        new byte[BQSpaceUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
     int correctionsCount = scalarQuantizer.getSimilarity() != EUCLIDEAN ? 3 : 2;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
@@ -254,7 +253,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldWriter fieldData, float[] clusterCenter, int[] ordMap, BinaryQuantizer scalarQuantizer)
       throws IOException {
     byte[] vector =
-        new byte[BQVectorUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
+        new byte[BQSpaceUtils.discretize(fieldData.fieldInfo.getVectorDimension(), 64) / 8];
     int correctionsCount = scalarQuantizer.getSimilarity() != EUCLIDEAN ? 3 : 2;
     final ByteBuffer correctionsBuffer =
         ByteBuffer.allocate(Float.BYTES * correctionsCount).order(ByteOrder.LITTLE_ENDIAN);
@@ -329,7 +328,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         segmentWriteState.infoStream.message(
             BINARIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
       }
-      int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
+      int descritizedDimension = BQSpaceUtils.discretize(fieldInfo.getVectorDimension(), 64);
       FloatVectorValues floatVectorValues =
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
@@ -370,10 +369,10 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       BinaryQuantizer binaryQuantizer)
       throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    byte[] toIndex = new byte[BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8];
+    byte[] toIndex = new byte[BQSpaceUtils.discretize(floatVectorValues.dimension(), 64) / 8];
     byte[] toQuery =
         new byte
-            [(BQVectorUtils.discretize(floatVectorValues.dimension(), 64) / 8)
+            [(BQSpaceUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
     int queryCorrectionCount = binaryQuantizer.getSimilarity() != EUCLIDEAN ? 5 : 3;
     final ByteBuffer queryCorrectionsBuffer =
@@ -470,7 +469,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     IndexInput binarizedDataInput = null;
     IndexInput binarizedScoreDataInput = null;
     boolean success = false;
-    int descritizedDimension = BQVectorUtils.discretize(fieldInfo.getVectorDimension(), 64);
+    int descritizedDimension = BQSpaceUtils.discretize(fieldInfo.getVectorDimension(), 64);
     BinaryQuantizer quantizer =
         new BinaryQuantizer(
             fieldInfo.getVectorDimension(),
@@ -567,7 +566,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
       vectorsReader = candidateReader.getFieldReader(fieldName);
     }
-    if (vectorsReader instanceof Lucene912BinaryQuantizedVectorsReader reader) {
+    if (vectorsReader instanceof Lucene101BinaryQuantizedVectorsReader reader) {
       return reader.getCentroid(fieldName);
     }
     return null;
@@ -765,7 +764,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       this.vectorSimilarityFunction = vectorSimilarityFunction;
       this.correctiveValuesSize = vectorSimilarityFunction != EUCLIDEAN ? 5 : 3;
       // 4x the quantized binary dimensions
-      int binaryDimensions = (BQVectorUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
+      int binaryDimensions = (BQSpaceUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
       this.binaryValue = byteBuffer.array();
       // + 1 for the quantized sum
@@ -823,7 +822,7 @@ public class Lucene912BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         FloatVectorValues delegate, BinaryQuantizer quantizer, float[] centroid) {
       this.values = delegate;
       this.quantizer = quantizer;
-      this.binarized = new byte[BQVectorUtils.discretize(delegate.dimension(), 64) / 8];
+      this.binarized = new byte[BQSpaceUtils.discretize(delegate.dimension(), 64) / 8];
       this.centroid = centroid;
     }
 

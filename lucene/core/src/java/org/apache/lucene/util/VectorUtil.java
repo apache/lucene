@@ -123,6 +123,16 @@ public final class VectorUtil {
     return v;
   }
 
+  /**
+   * Return the l2Norm of the vector.
+   *
+   * @param v the vector
+   * @return the l2Norm of the vector
+   */
+  public static float l2Norm(float[] v) {
+    return (float) Math.sqrt(IMPL.dotProduct(v, v));
+  }
+
   public static boolean isUnitVector(float[] v) {
     double l1norm = IMPL.dotProduct(v, v);
     return Math.abs(l1norm - 1.0d) <= EPSILON;
@@ -165,6 +175,30 @@ public final class VectorUtil {
   public static void add(float[] u, float[] v) {
     for (int i = 0; i < u.length; i++) {
       u[i] += v[i];
+    }
+  }
+
+  /**
+   * Subtracts the second argument from the first
+   *
+   * @param u the destination
+   * @param v the vector to subtract from the destination
+   */
+  public static void subtract(float[] u, float[] v) {
+    for (int i = 0; i < u.length; i++) {
+      u[i] -= v[i];
+    }
+  }
+
+  /**
+   * Divides the first argument by the second
+   *
+   * @param u the destination
+   * @param v to divide the destination by
+   */
+  public static void divide(float[] u, float v) {
+    for (int i = 0; i < u.length; i++) {
+      u[i] /= v;
     }
   }
 
@@ -266,6 +300,44 @@ public final class VectorUtil {
       distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
     }
     return distance;
+  }
+
+  /**
+   * The popCount for the given byte array.
+   *
+   * @param v the byte array
+   * @return the number of set bits in the byte array
+   */
+  public static int popCount(byte[] v) {
+    if (XOR_BIT_COUNT_STRIDE_AS_INT) {
+      return popCountInt(v);
+    } else {
+      return popCountLong(v);
+    }
+  }
+
+  static int popCountInt(byte[] d) {
+    int r = 0;
+    int cnt = 0;
+    for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
+      cnt += Integer.bitCount((int) BitUtil.VH_NATIVE_INT.get(d, r));
+    }
+    for (; r < d.length; r++) {
+      cnt += Integer.bitCount(d[r] & 0xFF);
+    }
+    return cnt;
+  }
+
+  static int popCountLong(byte[] d) {
+    int r = 0;
+    int cnt = 0;
+    for (final int upperBound = d.length & -Long.BYTES; r < upperBound; r += Long.BYTES) {
+      cnt += Long.bitCount((long) BitUtil.VH_NATIVE_LONG.get(d, r));
+    }
+    for (; r < d.length; r++) {
+      cnt += Integer.bitCount(d[r] & 0xFF);
+    }
+    return cnt;
   }
 
   /**

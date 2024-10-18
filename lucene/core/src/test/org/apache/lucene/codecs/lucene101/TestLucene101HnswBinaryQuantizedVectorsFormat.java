@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import static java.lang.String.format;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -42,14 +42,14 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.util.SameThreadExecutorService;
 
-public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene101HnswBinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   @Override
   protected Codec getCodec() {
     return new Lucene100Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene912HnswBinaryQuantizedVectorsFormat();
+        return new Lucene101HnswBinaryQuantizedVectorsFormat();
       }
     };
   }
@@ -59,13 +59,13 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene912HnswBinaryQuantizedVectorsFormat(10, 20, 1, null);
+            return new Lucene101HnswBinaryQuantizedVectorsFormat(10, 20, 1, null);
           }
         };
     String expectedPattern =
-        "Lucene912HnswBinaryQuantizedVectorsFormat(name=Lucene912HnswBinaryQuantizedVectorsFormat, maxConn=10, beamWidth=20,"
-            + " flatVectorFormat=Lucene912BinaryQuantizedVectorsFormat(name=Lucene912BinaryQuantizedVectorsFormat,"
-            + " flatVectorScorer=Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=%s())))";
+        "Lucene101HnswBinaryQuantizedVectorsFormat(name=Lucene101HnswBinaryQuantizedVectorsFormat, maxConn=10, beamWidth=20,"
+            + " flatVectorFormat=Lucene101BinaryQuantizedVectorsFormat(name=Lucene101BinaryQuantizedVectorsFormat,"
+            + " flatVectorScorer=Lucene101BinaryFlatVectorsScorer(nonQuantizedDelegate=%s())))";
 
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
     var memSegScorer =
@@ -102,24 +102,24 @@ public class TestLucene912HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
   public void testLimits() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene912HnswBinaryQuantizedVectorsFormat(-1, 20));
+        () -> new Lucene101HnswBinaryQuantizedVectorsFormat(-1, 20));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene912HnswBinaryQuantizedVectorsFormat(0, 20));
+        IllegalArgumentException.class, () -> new Lucene101HnswBinaryQuantizedVectorsFormat(0, 20));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene912HnswBinaryQuantizedVectorsFormat(20, 0));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new Lucene912HnswBinaryQuantizedVectorsFormat(20, -1));
+        IllegalArgumentException.class, () -> new Lucene101HnswBinaryQuantizedVectorsFormat(20, 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene912HnswBinaryQuantizedVectorsFormat(512 + 1, 20));
+        () -> new Lucene101HnswBinaryQuantizedVectorsFormat(20, -1));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene912HnswBinaryQuantizedVectorsFormat(20, 3201));
+        () -> new Lucene101HnswBinaryQuantizedVectorsFormat(512 + 1, 20));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene101HnswBinaryQuantizedVectorsFormat(20, 3201));
     expectThrows(
         IllegalArgumentException.class,
         () ->
-            new Lucene912HnswBinaryQuantizedVectorsFormat(
+            new Lucene101HnswBinaryQuantizedVectorsFormat(
                 20, 100, 1, new SameThreadExecutorService()));
   }
 

@@ -14,15 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
-import static org.apache.lucene.util.quantization.BQVectorUtils.constSqrt;
+import static org.apache.lucene.util.quantization.BQSpaceUtils.constSqrt;
 
 import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.quantization.BQVectorUtils;
+import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 /**
@@ -64,7 +64,7 @@ public abstract class BinarizedByteVectorValues extends ByteVectorValues {
   public abstract float[] getCentroid() throws IOException;
 
   int discretizedDimensions() {
-    return BQVectorUtils.discretize(dimension(), 64);
+    return BQSpaceUtils.discretize(dimension(), 64);
   }
 
   float sqrtDimensions() {

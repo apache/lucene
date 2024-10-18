@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import static java.lang.String.format;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -44,17 +44,17 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.util.quantization.BQVectorUtils;
+import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
-public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene101BinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   @Override
   protected Codec getCodec() {
     return new Lucene100Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene912BinaryQuantizedVectorsFormat();
+        return new Lucene101BinaryQuantizedVectorsFormat();
       }
     };
   }
@@ -95,11 +95,11 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene912BinaryQuantizedVectorsFormat();
+            return new Lucene101BinaryQuantizedVectorsFormat();
           }
         };
     String expectedPattern =
-        "Lucene912BinaryQuantizedVectorsFormat(name=Lucene912BinaryQuantizedVectorsFormat, flatVectorScorer=Lucene912BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()))";
+        "Lucene101BinaryQuantizedVectorsFormat(name=Lucene101BinaryQuantizedVectorsFormat, flatVectorScorer=Lucene101BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()))";
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
     var memSegScorer =
         format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
@@ -143,18 +143,18 @@ public class TestLucene912BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
           assertEquals(vectorValues.size(), numVectors);
           BinarizedByteVectorValues qvectorValues =
-              ((Lucene912BinaryQuantizedVectorsReader.BinarizedVectorValues) vectorValues)
+              ((Lucene101BinaryQuantizedVectorsReader.BinarizedVectorValues) vectorValues)
                   .getQuantizedVectorValues();
           float[] centroid = qvectorValues.getCentroid();
           assertEquals(centroid.length, dims);
 
-          int descritizedDimension = BQVectorUtils.discretize(dims, 64);
+          int descritizedDimension = BQSpaceUtils.discretize(dims, 64);
           BinaryQuantizer quantizer =
               new BinaryQuantizer(dims, descritizedDimension, similarityFunction);
-          byte[] expectedVector = new byte[BQVectorUtils.discretize(dims, 64) / 8];
+          byte[] expectedVector = new byte[BQSpaceUtils.discretize(dims, 64) / 8];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
             vectorValues =
-                new Lucene912BinaryQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
+                new Lucene101BinaryQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
           }
 
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();

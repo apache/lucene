@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
@@ -45,7 +45,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
-import org.apache.lucene.util.quantization.BQVectorUtils;
+import org.apache.lucene.util.quantization.BQSpaceUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
 /**
@@ -53,19 +53,19 @@ import org.apache.lucene.util.quantization.BinaryQuantizer;
  *
  * @lucene.experimental
  */
-public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
+public class Lucene101BinaryQuantizedVectorsReader extends FlatVectorsReader {
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene912BinaryQuantizedVectorsReader.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene101BinaryQuantizedVectorsReader.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
-  private final Lucene912BinaryFlatVectorsScorer vectorScorer;
+  private final Lucene101BinaryFlatVectorsScorer vectorScorer;
 
-  public Lucene912BinaryQuantizedVectorsReader(
+  public Lucene101BinaryQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene912BinaryFlatVectorsScorer vectorsScorer)
+      Lucene101BinaryFlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
@@ -75,7 +75,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene912BinaryQuantizedVectorsFormat.META_EXTENSION);
+            Lucene101BinaryQuantizedVectorsFormat.META_EXTENSION);
     boolean success = false;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
@@ -83,9 +83,9 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene912BinaryQuantizedVectorsFormat.META_CODEC_NAME,
-                Lucene912BinaryQuantizedVectorsFormat.VERSION_START,
-                Lucene912BinaryQuantizedVectorsFormat.VERSION_CURRENT,
+                Lucene101BinaryQuantizedVectorsFormat.META_CODEC_NAME,
+                Lucene101BinaryQuantizedVectorsFormat.VERSION_START,
+                Lucene101BinaryQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -98,8 +98,8 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene912BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene912BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene101BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene101BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
               // Quantized vectors are accessed randomly from their node ID stored in the HNSW
               // graph.
               state.context.withReadAdvice(ReadAdvice.RANDOM));
@@ -135,7 +135,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
               + fieldEntry.dimension);
     }
 
-    int binaryDims = BQVectorUtils.discretize(dimension, 64) / 8;
+    int binaryDims = BQSpaceUtils.discretize(dimension, 64) / 8;
     int correctionsCount =
         fieldEntry.similarityFunction != VectorSimilarityFunction.EUCLIDEAN ? 3 : 2;
     long numQuantizedVectorBytes =
@@ -286,8 +286,8 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene912BinaryQuantizedVectorsFormat.VERSION_START,
-              Lucene912BinaryQuantizedVectorsFormat.VERSION_CURRENT,
+              Lucene101BinaryQuantizedVectorsFormat.VERSION_START,
+              Lucene101BinaryQuantizedVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -361,7 +361,7 @@ public class Lucene912BinaryQuantizedVectorsReader extends FlatVectorsReader {
           similarityFunction,
           vectorEncoding,
           dimension,
-          BQVectorUtils.discretize(dimension, 64),
+          BQSpaceUtils.discretize(dimension, 64),
           vectorDataOffset,
           vectorDataLength,
           size,

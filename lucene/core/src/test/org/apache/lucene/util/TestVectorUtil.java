@@ -135,6 +135,45 @@ public class TestVectorUtil extends LuceneTestCase {
     }
   }
 
+  public void testPopCount() {
+    assertEquals(0, VectorUtil.popCount(new byte[] {}));
+    assertEquals(1, VectorUtil.popCount(new byte[] {1}));
+    assertEquals(2, VectorUtil.popCount(new byte[] {2, 1}));
+    assertEquals(2, VectorUtil.popCount(new byte[] {8, 0, 1}));
+    assertEquals(4, VectorUtil.popCount(new byte[] {7, 1}));
+
+    int iterations = atLeast(50);
+    for (int i = 0; i < iterations; i++) {
+      int size = random().nextInt(5000);
+      var a = new byte[size];
+      random().nextBytes(a);
+      assertEquals(popcount(a, 0, a, size), VectorUtil.popCount(a));
+    }
+  }
+
+  public void testNorm() {
+    assertEquals(3.0f, VectorUtil.l2Norm(new float[] {3}), DELTA);
+    assertEquals(5.0f, VectorUtil.l2Norm(new float[] {5}), DELTA);
+    assertEquals(4.0f, VectorUtil.l2Norm(new float[] {2, 2, 2, 2}), DELTA);
+    assertEquals(9.0f, VectorUtil.l2Norm(new float[] {3, 3, 3, 3, 3, 3, 3, 3, 3}), DELTA);
+  }
+
+  public void testSubtract() {
+    var a = new float[] {3};
+    VectorUtil.subtract(a, new float[] {2});
+    assertArrayEquals(new float[] {1}, a, (float) DELTA);
+    a = new float[] {3, 3, 3};
+    VectorUtil.subtract(a, new float[] {1, 2, 3});
+    assertArrayEquals(new float[] {2, 1, 0}, a, (float) DELTA);
+  }
+
+  public void testL2Norm() {
+    assertEquals(3.0f, VectorUtil.l2Norm(new float[] {3}), DELTA);
+    assertEquals(5.0f, VectorUtil.l2Norm(new float[] {5}), DELTA);
+    assertEquals(4.0f, VectorUtil.l2Norm(new float[] {2, 2, 2, 2}), DELTA);
+    assertEquals(9.0f, VectorUtil.l2Norm(new float[] {3, 3, 3, 3, 3, 3, 3, 3, 3}), DELTA);
+  }
+
   private static float l2(float[] v) {
     float l2 = 0;
     for (float x : v) {

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -23,14 +23,13 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.BQSpaceUtils;
-import org.apache.lucene.util.quantization.BQVectorUtils;
 import org.apache.lucene.util.quantization.BinaryQuantizer;
 
-public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
+public class TestLucene101BinaryFlatVectorsScorer extends LuceneTestCase {
 
   public void testScore() throws IOException {
     int dimensions = random().nextInt(1, 4097);
-    int discretizedDimensions = BQVectorUtils.discretize(dimensions, 64);
+    int discretizedDimensions = BQSpaceUtils.discretize(dimensions, 64);
 
     int randIdx = random().nextInt(VectorSimilarityFunction.values().length);
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.values()[randIdx];
@@ -51,8 +50,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
     short quantizedSum = (short) random().nextInt(0, 4097);
     float normVmC = random().nextFloat(-1000f, 1000f);
     float vDotC = random().nextFloat(-1000f, 1000f);
-    Lucene912BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
-        new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
+    Lucene101BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
+        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(
             vector,
             new BinaryQuantizer.QueryFactors(
                 quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC));
@@ -111,8 +110,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
           }
         };
 
-    Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
-        new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
+    Lucene101BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
+        new Lucene101BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
             queryVector, targetVectors, similarityFunction);
 
     float score = scorer.score(0);
@@ -134,8 +133,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
     float vl = -57.883f;
     float width = 9.972266f;
     short quantizedSum = 795;
-    Lucene912BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
-        new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
+    Lucene101BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
+        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(
             vector,
             new BinaryQuantizer.QueryFactors(quantizedSum, distanceToCentroid, vl, width, 0f, 0f));
 
@@ -202,8 +201,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
-    Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
-        new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
+    Lucene101BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
+        new Lucene101BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
             queryVector, targetVectors, similarityFunction);
 
     assertEquals(1f / (1f + 245482.47f), scorer.score(0), 0.1f);
@@ -242,8 +241,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
     float normVmC = 9.766797f;
     float vDotC = 133.56123f;
     float cDotC = 132.20227f;
-    Lucene912BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
-        new Lucene912BinaryFlatVectorsScorer.BinaryQueryVector(
+    Lucene101BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
+        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(
             vector,
             new BinaryQuantizer.QueryFactors(
                 quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC));
@@ -437,8 +436,8 @@ public class TestLucene912BinaryFlatVectorsScorer extends LuceneTestCase {
 
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 
-    Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
-        new Lucene912BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
+    Lucene101BinaryFlatVectorsScorer.BinarizedRandomVectorScorer scorer =
+        new Lucene101BinaryFlatVectorsScorer.BinarizedRandomVectorScorer(
             queryVector, targetVectors, similarityFunction);
 
     assertEquals(129.64046f, scorer.score(0), 0.0001f);
