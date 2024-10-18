@@ -309,7 +309,8 @@ public class DocIdEncodingBenchmark {
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
-          out.writeInt(docIds[i]);
+          //out.writeInt(docIds[i]);
+          out.writeLong(docIds[i]);
         }
       }
 
@@ -323,7 +324,8 @@ public class DocIdEncodingBenchmark {
           docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
         }
         for (; i < count; i++) {
-          docIDs[i] = in.readInt();
+          //docIDs[i] = in.readInt();
+          docIDs[i] = (int) in.readLong();
         }
       }
     }
@@ -363,7 +365,8 @@ public class DocIdEncodingBenchmark {
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
-          out.writeInt(docIds[i]);
+          //out.writeInt(docIds[i]);
+          out.writeLong(docIds[i]);
         }
       }
 
@@ -391,7 +394,8 @@ public class DocIdEncodingBenchmark {
           docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
         }
         for (; i < count; i++) {
-          docIDs[i] = in.readInt();
+          //docIDs[i] = in.readInt();
+          docIDs[i] = (int) in.readLong();
         }
       }
     }
@@ -539,5 +543,6 @@ public class DocIdEncodingBenchmark {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+
   }
 }
