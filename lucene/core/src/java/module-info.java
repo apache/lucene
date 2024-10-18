@@ -35,6 +35,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs.lucene99;
   exports org.apache.lucene.codecs.lucene912;
   exports org.apache.lucene.codecs.lucene100;
+  exports org.apache.lucene.codecs.lucene101;
   exports org.apache.lucene.codecs.perfield;
   exports org.apache.lucene.codecs;
   exports org.apache.lucene.document;
@@ -79,7 +80,9 @@ module org.apache.lucene.core {
   provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat,
       org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat,
-      org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat;
+      org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat,
+      org.apache.lucene.codecs.lucene101.Lucene101BinaryQuantizedVectorsFormat,
+      org.apache.lucene.codecs.lucene101.Lucene101HnswBinaryQuantizedVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with
