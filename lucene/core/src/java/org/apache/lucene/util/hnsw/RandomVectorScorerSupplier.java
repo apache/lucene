@@ -29,10 +29,4 @@ public interface RandomVectorScorerSupplier {
    * @return a new {@link RandomVectorScorer}
    */
   RandomVectorScorer scorer(int ord) throws IOException;
-
-  /**
-   * Make a copy of the supplier, which will copy the underlying vectorValues so the copy is safe to
-   * be used in other threads.
-   */
-  RandomVectorScorerSupplier copy() throws IOException;
 }

@@ -635,9 +635,10 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     KnnVectorValues.DocIndexIterator iter = byteVectorValues.iterator();
+    ByteVectorValues.Bytes vectors = byteVectorValues.vectors();
     for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue(iter.index());
+      byte[] binaryValue = vectors.get(iter.index());
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docId);
@@ -655,10 +656,10 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
     KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+    FloatVectorValues.Floats vectors = floatVectorValues.vectors();
     for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] value = floatVectorValues.vectorValue(iter.index());
-      buffer.asFloatBuffer().put(value);
+      buffer.asFloatBuffer().put(vectors.get(iter.index()));
       output.writeBytes(buffer.array(), buffer.limit());
       docsWithField.add(docV);
     }

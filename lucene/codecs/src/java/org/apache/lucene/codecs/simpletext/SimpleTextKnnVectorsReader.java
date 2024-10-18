@@ -182,18 +182,19 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FloatVectorValues values = getFloatVectorValues(field);
-    if (target.length != values.dimension()) {
+    FloatVectorValues vectorValues = getFloatVectorValues(field);
+    if (target.length != vectorValues.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
               + target.length
               + " differs from field dimension: "
-              + values.dimension());
+              + vectorValues.dimension());
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
-    for (int ord = 0; ord < values.size(); ord++) {
-      int doc = values.ordToDoc(ord);
+    FloatVectorValues.Floats vectors = vectorValues.vectors();
+    for (int ord = 0; ord < vectorValues.size(); ord++) {
+      int doc = vectorValues.ordToDoc(ord);
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
         continue;
       }
@@ -202,7 +203,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         break;
       }
 
-      float[] vector = values.vectorValue(ord);
+      float[] vector = vectors.get(ord);
       float score = vectorSimilarity.compare(vector, target);
       knnCollector.collect(doc, score);
       knnCollector.incVisitedCount(1);
@@ -212,19 +213,20 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    ByteVectorValues values = getByteVectorValues(field);
-    if (target.length != values.dimension()) {
+    ByteVectorValues vectorValues = getByteVectorValues(field);
+    if (target.length != vectorValues.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
               + target.length
               + " differs from field dimension: "
-              + values.dimension());
+              + vectorValues.dimension());
     }
+    ByteVectorValues.Bytes vectors = vectorValues.vectors();
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
 
-    for (int ord = 0; ord < values.size(); ord++) {
-      int doc = values.ordToDoc(ord);
+    for (int ord = 0; ord < vectorValues.size(); ord++) {
+      int doc = vectorValues.ordToDoc(ord);
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
         continue;
       }
@@ -233,7 +235,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         break;
       }
 
-      byte[] vector = values.vectorValue(ord);
+      byte[] vector = vectors.get(ord);
       float score = vectorSimilarity.compare(vector, target);
       knnCollector.collect(doc, score);
       knnCollector.incVisitedCount(1);
@@ -299,13 +301,10 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     private final IndexInput in;
     private final float[][] values;
 
-    int curOrd;
-
     SimpleTextFloatVectorValues(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new float[entry.size()][entry.dimension];
-      curOrd = -1;
       readAllVectors();
     }
 
@@ -313,7 +312,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       this.entry = other.entry;
       this.in = other.in.clone();
       this.values = other.values;
-      this.curOrd = other.curOrd;
     }
 
     @Override
@@ -327,8 +325,13 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public float[] vectorValue(int ord) {
-      return values[ord];
+    public Floats vectors() {
+      return new Floats() {
+        @Override
+        public float[] get(int ord) {
+          return values[ord];
+        }
+      };
     }
 
     @Override
@@ -349,13 +352,12 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       SimpleTextFloatVectorValues simpleTextFloatVectorValues =
           new SimpleTextFloatVectorValues(this);
       DocIndexIterator iterator = simpleTextFloatVectorValues.iterator();
+      Floats vectors = simpleTextFloatVectorValues.vectors();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
           int ord = iterator.index();
-          return entry
-              .similarityFunction()
-              .compare(simpleTextFloatVectorValues.vectorValue(ord), target);
+          return entry.similarityFunction().compare(vectors.get(ord), target);
         }
 
         @Override
@@ -382,11 +384,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         value[i] = Float.parseFloat(floatStrings[i]);
       }
     }
-
-    @Override
-    public SimpleTextFloatVectorValues copy() {
-      return this;
-    }
   }
 
   private static class SimpleTextByteVectorValues extends ByteVectorValues {
@@ -394,18 +391,12 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
     private final IndexInput in;
-    private final BytesRef binaryValue;
     private final byte[][] values;
-
-    int curOrd;
 
     SimpleTextByteVectorValues(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new byte[entry.size()][entry.dimension];
-      binaryValue = new BytesRef(entry.dimension);
-      binaryValue.length = binaryValue.bytes.length;
-      curOrd = -1;
       readAllVectors();
     }
 
@@ -413,9 +404,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       this.entry = other.entry;
       this.in = other.in.clone();
       this.values = other.values;
-      this.binaryValue = new BytesRef(entry.dimension);
-      this.binaryValue.length = binaryValue.bytes.length;
-      this.curOrd = other.curOrd;
     }
 
     @Override
@@ -429,9 +417,17 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public byte[] vectorValue(int ord) {
-      binaryValue.bytes = values[ord];
-      return binaryValue.bytes;
+    public Bytes vectors() {
+      BytesRef binaryValue = new BytesRef(entry.dimension);
+      binaryValue.length = binaryValue.bytes.length;
+
+      return new Bytes() {
+        @Override
+        public byte[] get(int ord) {
+          binaryValue.bytes = values[ord];
+          return binaryValue.bytes;
+        }
+      };
     }
 
     @Override
@@ -450,15 +446,14 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         return null;
       }
       SimpleTextByteVectorValues simpleTextByteVectorValues = new SimpleTextByteVectorValues(this);
+      ByteVectorValues.Bytes vectors = simpleTextByteVectorValues.vectors();
       return new VectorScorer() {
         DocIndexIterator it = simpleTextByteVectorValues.iterator();
 
         @Override
         public float score() throws IOException {
           int ord = it.index();
-          return entry
-              .similarityFunction()
-              .compare(simpleTextByteVectorValues.vectorValue(ord), target);
+          return entry.similarityFunction().compare(vectors.get(ord), target);
         }
 
         @Override
@@ -484,11 +479,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       for (int i = 0; i < floatStrings.length; i++) {
         value[i] = (byte) Float.parseFloat(floatStrings[i]);
       }
-    }
-
-    @Override
-    public SimpleTextByteVectorValues copy() {
-      return this;
     }
   }
 
