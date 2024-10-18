@@ -44,7 +44,7 @@ New Features
   `Lucene101BinaryQuantizedVectorsFormat`. This results in a 32x reduction in memory requirements for fast vector search
   while achieving nice recall properties only requiring about 5x oversampling with rescoring on larger dimensional vectors.
   The format is based on the RaBitQ algorithm & paper: https://arxiv.org/abs/2405.12497.
-  (John Wagster, Mayya Sharipova, Chris Hegarty, Ben Trent)
+  (John Wagster, Mayya Sharipova, Chris Hegarty, Tom Veasey, Ben Trent)
 
 Improvements
 ---------------------
