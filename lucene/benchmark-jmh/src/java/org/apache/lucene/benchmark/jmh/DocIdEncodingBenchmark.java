@@ -140,8 +140,8 @@ public class DocIdEncodingBenchmark {
             docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
           }
           count++;
-          if (count % 1_00_000 == 0) {
-            print("Decoded %s docIds", count);
+          if (count % 10_00_000 == 0) {
+            print("Decoded %s million docId sequences", count);
           }
         }
       }
@@ -542,6 +542,7 @@ public class DocIdEncodingBenchmark {
 
     try {
       String inputFilePath = System.getProperty("docIdEncoding.inputFile");
+      print("Loading all docId sequences into memory");
       if (inputFilePath != null && !inputFilePath.isEmpty()) {
         DOC_ID_SEQUENCES =
             new DocIdsFromLocalFS()
@@ -551,6 +552,7 @@ public class DocIdEncodingBenchmark {
             new FixedBPVRandomDocIdProvider()
                 .getDocIds(DocIdEncoder.Bit21With3StepsEncoder.class, 100, 100, 512);
       }
+      print("Loaded all docId sequences of length %s", DOC_ID_SEQUENCES.size());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
