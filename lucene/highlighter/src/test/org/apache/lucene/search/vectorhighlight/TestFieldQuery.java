@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
@@ -36,6 +38,7 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.vectorhighlight.FieldQuery.QueryPhraseMap;
 import org.apache.lucene.search.vectorhighlight.FieldTermStack.TermInfo;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
 
 public class TestFieldQuery extends AbstractTestCase {
@@ -952,5 +955,21 @@ public class TestFieldQuery extends AbstractTestCase {
     Set<Query> flatQueries = new HashSet<>();
     fq.flatten(query, searcher, flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"));
+  }
+
+  public void testTermOrPhraseNumberShouldBeSameAsOriginalQuerySize() throws IOException {
+    // Arrange
+    final String field = "field";
+    final QueryParser queryParser = new QueryParser(field, new MockAnalyzer(random()));
+    final BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+    queryBuilder.add(queryParser.createBooleanQuery(field, "A B"), Occur.SHOULD);
+    queryBuilder.add(queryParser.createPhraseQuery(field, "C B", 0), Occur.SHOULD);
+    queryBuilder.add(queryParser.createPhraseQuery(field, "C B", 2), Occur.SHOULD);
+
+    // Act
+    final FieldQuery fieldQuery = new FieldQuery(queryBuilder.build(), true, true);
+
+    // Assert
+    assertEquals(2, fieldQuery.previousIndex);
   }
 }
