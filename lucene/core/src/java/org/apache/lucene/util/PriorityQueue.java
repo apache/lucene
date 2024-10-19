@@ -117,26 +117,29 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * ArrayIndexOutOfBoundsException} is thrown.
    */
   public void addAll(Collection<T> elements) {
-    if (this.size + elements.size() > this.maxSize) {
+    int s = size;
+    if (s + elements.size() > this.maxSize) {
       throw new ArrayIndexOutOfBoundsException(
           "Cannot add "
               + elements.size()
               + " elements to a queue with remaining capacity: "
-              + (maxSize - size));
+              + (maxSize - s));
     }
 
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
     Iterator<T> iterator = elements.iterator();
+    var heap = this.heap;
     while (iterator.hasNext()) {
-      this.heap[size + 1] = iterator.next();
-      this.size++;
+      heap[s + 1] = iterator.next();
+      s++;
     }
 
     // The loop goes down to 1 as heap is 1-based not 0-based.
-    for (int i = (size >>> 1); i >= 1; i--) {
-      downHeap(i);
+    for (int i = (s >>> 1); i >= 1; i--) {
+      downHeap(i, heap, s);
     }
+    this.size = s;
   }
 
   /**
@@ -156,9 +159,10 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
   public final T add(T element) {
     // don't modify size until we know heap access didn't throw AIOOB.
     int index = size + 1;
+    var heap = this.heap;
     heap[index] = element;
     size = index;
-    upHeap(index);
+    upHeap(index, heap);
     return heap[1];
   }
 
@@ -193,12 +197,15 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   /** Removes and returns the least element of the PriorityQueue in log(size) time. */
   public final T pop() {
-    if (size > 0) {
+    int s = size;
+    if (s > 0) {
+      var heap = this.heap;
       T result = heap[1]; // save first value
-      heap[1] = heap[size]; // move last to first
-      heap[size] = null; // permit GC of objects
-      size--;
-      downHeap(1); // adjust heap
+      heap[1] = heap[s]; // move last to first
+      heap[s] = null; // permit GC of objects
+      s--;
+      size = s;
+      downHeap(1, heap, s); // adjust heap
       return result;
     } else {
       return null;
@@ -225,7 +232,8 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * @return the new 'top' element.
    */
   public final T updateTop() {
-    downHeap(1);
+    var heap = this.heap;
+    downHeap(1, heap, size);
     return heap[1];
   }
 
@@ -242,7 +250,8 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   /** Removes all entries from the PriorityQueue. */
   public final void clear() {
-    for (int i = 0; i <= size; i++) {
+    var heap = this.heap;
+    for (int i = 0, to = size; i <= to; i++) {
       heap[i] = null;
     }
     size = 0;
@@ -254,14 +263,15 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * constant remove time but the trade-off would be extra cost to all additions/insertions)
    */
   public final boolean remove(T element) {
-    for (int i = 1; i <= size; i++) {
+    var heap = this.heap;
+    for (int i = 1, to = size; i <= to; i++) {
       if (heap[i] == element) {
         heap[i] = heap[size];
         heap[size] = null; // permit GC of objects
         size--;
         if (i <= size) {
-          if (!upHeap(i)) {
-            downHeap(i);
+          if (!upHeap(i, heap)) {
+            downHeap(i, heap, size);
           }
         }
         return true;
@@ -270,7 +280,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     return false;
   }
 
-  private final boolean upHeap(int origPos) {
+  private boolean upHeap(int origPos, T[] heap) {
     int i = origPos;
     T node = heap[i]; // save bottom node
     int j = i >>> 1;
@@ -283,7 +293,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     return i != origPos;
   }
 
-  private final void downHeap(int i) {
+  private void downHeap(int i, T[] heap, int size) {
     T node = heap[i]; // save top node
     int j = i << 1; // find smaller child
     int k = j + 1;
@@ -313,7 +323,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   @Override
   public Iterator<T> iterator() {
-    return new Iterator<T>() {
+    return new Iterator<>() {
 
       int i = 1;
 
