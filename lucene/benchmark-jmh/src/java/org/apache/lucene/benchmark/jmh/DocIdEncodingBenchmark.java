@@ -79,7 +79,7 @@ public class DocIdEncodingBenchmark {
   @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder", "Bit21HybridEncoder"})
   String encoderName;
 
-  @Param({"encode", "decode"})
+  @Param({"decode"})
   String methodName;
 
   private DocIdEncoder docIdEncoder;
