@@ -81,8 +81,6 @@ public class DocIdEncodingBenchmark {
 
   private Path tmpDir;
 
-  private IndexInput in;
-
   private final int[] scratch = new int[512];
 
   private String decoderInputFile;
@@ -126,8 +124,8 @@ public class DocIdEncodingBenchmark {
         Files.delete(tmpDir.resolve(outputFile));
       }
     } else if (methodName.equalsIgnoreCase("decode")) {
-      try (Directory dir = FSDirectory.open(tmpDir)) {
-        in = dir.openInput(decoderInputFile, IOContext.DEFAULT);
+      try (Directory dir = FSDirectory.open(tmpDir);
+          IndexInput in = dir.openInput(decoderInputFile, IOContext.DEFAULT)) {
         for (int[] docIdSequence : DOC_ID_SEQUENCES) {
           for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
             docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
@@ -309,7 +307,7 @@ public class DocIdEncodingBenchmark {
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
-          //out.writeInt(docIds[i]);
+          // out.writeInt(docIds[i]);
           out.writeLong(docIds[i]);
         }
       }
@@ -324,7 +322,7 @@ public class DocIdEncodingBenchmark {
           docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
         }
         for (; i < count; i++) {
-          //docIDs[i] = in.readInt();
+          // docIDs[i] = in.readInt();
           docIDs[i] = (int) in.readLong();
         }
       }
@@ -365,7 +363,7 @@ public class DocIdEncodingBenchmark {
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
-          //out.writeInt(docIds[i]);
+          // out.writeInt(docIds[i]);
           out.writeLong(docIds[i]);
         }
       }
@@ -394,7 +392,7 @@ public class DocIdEncodingBenchmark {
           docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
         }
         for (; i < count; i++) {
-          //docIDs[i] = in.readInt();
+          // docIDs[i] = in.readInt();
           docIDs[i] = (int) in.readLong();
         }
       }
@@ -543,6 +541,5 @@ public class DocIdEncodingBenchmark {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-
   }
 }
