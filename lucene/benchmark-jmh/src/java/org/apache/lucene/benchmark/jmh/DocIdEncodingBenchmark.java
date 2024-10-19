@@ -23,6 +23,8 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -65,6 +67,9 @@ public class DocIdEncodingBenchmark {
 
   private static List<int[]> DOC_ID_SEQUENCES = new ArrayList<>();
 
+  private static final DateTimeFormatter DATE_TIME_FORMATTER =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
   private static int INPUT_SCALE_FACTOR;
 
   static {
@@ -87,16 +92,19 @@ public class DocIdEncodingBenchmark {
 
   @Setup(Level.Trial)
   public void init() throws IOException {
+    print("Starting setup of DocId encoding benchmark");
     tmpDir = Files.createTempDirectory("docIdJmh");
     docIdEncoder = DocIdEncoder.SingletonFactory.fromName(encoderName);
     decoderInputFile =
         String.join("_", "docIdJmhData", docIdEncoder.getClass().getSimpleName(), "DecoderInput");
     // Create a file for decoders ( once per trial ) to read in every JMH iteration
     if (methodName.equalsIgnoreCase("decode")) {
+      print("Generating the decoder input file %s", decoderInputFile);
       try (Directory dir = FSDirectory.open(tmpDir);
           IndexOutput out = dir.createOutput(decoderInputFile, IOContext.DEFAULT)) {
         encode(out, docIdEncoder, DOC_ID_SEQUENCES, INPUT_SCALE_FACTOR);
       }
+      print("Generated the decoder input file %s", decoderInputFile);
     }
   }
 
@@ -126,9 +134,14 @@ public class DocIdEncodingBenchmark {
     } else if (methodName.equalsIgnoreCase("decode")) {
       try (Directory dir = FSDirectory.open(tmpDir);
           IndexInput in = dir.openInput(decoderInputFile, IOContext.DEFAULT)) {
+        int count = 0;
         for (int[] docIdSequence : DOC_ID_SEQUENCES) {
           for (int i = 1; i <= INPUT_SCALE_FACTOR; i++) {
             docIdEncoder.decode(in, 0, docIdSequence.length, scratch);
+          }
+          count++;
+          if (count % 1_00_000 == 0) {
+            print("Decoded %s docIds", count);
           }
         }
       }
@@ -541,5 +554,18 @@ public class DocIdEncodingBenchmark {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public static void print(String message, Object... args) {
+    StringBuilder messageToPrint = new StringBuilder();
+    messageToPrint.append("[");
+    messageToPrint.append(LocalDateTime.now().format(DATE_TIME_FORMATTER));
+    messageToPrint.append("] ");
+    if (args != null) {
+      messageToPrint.append(String.format(message, args));
+    } else {
+      messageToPrint.append(message);
+    }
+    System.out.println(messageToPrint);
   }
 }
