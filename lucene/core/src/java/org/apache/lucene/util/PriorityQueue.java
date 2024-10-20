@@ -117,13 +117,13 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * ArrayIndexOutOfBoundsException} is thrown.
    */
   public void addAll(Collection<T> elements) {
-    int s = size;
-    if (s + elements.size() > this.maxSize) {
+    int size = this.size;
+    if (size + elements.size() > this.maxSize) {
       throw new ArrayIndexOutOfBoundsException(
           "Cannot add "
               + elements.size()
               + " elements to a queue with remaining capacity: "
-              + (maxSize - s));
+              + (maxSize - size));
     }
 
     // Heap with size S always takes first S elements of the array,
@@ -131,15 +131,15 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     Iterator<T> iterator = elements.iterator();
     var heap = this.heap;
     while (iterator.hasNext()) {
-      heap[s + 1] = iterator.next();
-      s++;
+      heap[size + 1] = iterator.next();
+      size++;
     }
 
     // The loop goes down to 1 as heap is 1-based not 0-based.
-    for (int i = (s >>> 1); i >= 1; i--) {
-      downHeap(i, heap, s);
+    for (int i = (size >>> 1); i >= 1; i--) {
+      downHeap(i, heap, size);
     }
-    this.size = s;
+    this.size = size;
   }
 
   /**
