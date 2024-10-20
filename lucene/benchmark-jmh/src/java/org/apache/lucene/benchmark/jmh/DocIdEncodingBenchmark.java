@@ -17,14 +17,9 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,9 +27,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
@@ -66,9 +61,6 @@ public class DocIdEncodingBenchmark {
   private static final long BPV_21_MASK = 0x1FFFFFL;
 
   private static List<int[]> DOC_ID_SEQUENCES = new ArrayList<>();
-
-  private static final DateTimeFormatter DATE_TIME_FORMATTER =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   private static int INPUT_SCALE_FACTOR;
 
@@ -477,21 +469,19 @@ public class DocIdEncodingBenchmark {
 
     @Override
     public List<int[]> getDocIds(Object... args) {
-      List<int[]> docIds = new ArrayList<>();
-      InputStream fileContents = (InputStream) args[0];
-      try (Scanner fileReader = new Scanner(fileContents, Charset.defaultCharset())) {
-        while (fileReader.hasNextLine()) {
-          String sequence = fileReader.nextLine().trim();
-          if (!sequence.startsWith("#") && !sequence.isEmpty()) {
-            docIds.add(
-                Arrays.stream(sequence.split(","))
-                    .map(String::trim)
-                    .mapToInt(Integer::parseInt)
-                    .toArray());
-          }
-        }
+      try (Stream<String> lines = Files.lines(Path.of((String) args[0]))) {
+        return lines
+            .parallel()
+            .filter(x -> !x.trim().startsWith("#"))
+            .map(
+                x ->
+                    Arrays.stream(x.split(","))
+                        .mapToInt((y -> Integer.parseInt(y.trim())))
+                        .toArray())
+            .toList();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
-      return docIds;
     }
   }
 
@@ -532,20 +522,13 @@ public class DocIdEncodingBenchmark {
       INPUT_SCALE_FACTOR = 10;
     }
 
-    try {
-      String inputFilePath = System.getProperty("docIdEncoding.inputFile");
-      if (inputFilePath != null && !inputFilePath.isEmpty()) {
-        DOC_ID_SEQUENCES =
-            new DocIdsFromLocalFS()
-                .getDocIds(Files.newInputStream(Path.of(inputFilePath), StandardOpenOption.READ));
-      } else {
-        DOC_ID_SEQUENCES =
-            new FixedBPVRandomDocIdProvider()
-                .getDocIds(DocIdEncoder.Bit21With3StepsEncoder.class, 100, 100, 512);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    String inputFilePath = System.getProperty("docIdEncoding.inputFile");
+    if (inputFilePath != null && !inputFilePath.isEmpty()) {
+      DOC_ID_SEQUENCES = new DocIdsFromLocalFS().getDocIds(inputFilePath);
+    } else {
+      DOC_ID_SEQUENCES =
+          new FixedBPVRandomDocIdProvider()
+              .getDocIds(DocIdEncoder.Bit21With3StepsEncoder.class, 100, 100, 512);
     }
   }
-
 }
