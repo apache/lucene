@@ -38,11 +38,10 @@ final class PForUtil {
     return true;
   }
 
-  private final ForUtil forUtil;
+  private final ForUtil forUtil = new ForUtil();
 
-  PForUtil(ForUtil forUtil) {
+  static {
     assert ForUtil.BLOCK_SIZE <= 256 : "blocksize must fit in one byte. got " + ForUtil.BLOCK_SIZE;
-    this.forUtil = forUtil;
   }
 
   /** Encode 128 integers from {@code longs} into {@code out}. */
@@ -106,17 +105,18 @@ final class PForUtil {
 
   /** Decode 128 integers into {@code ints}. */
   void decode(PostingDecodingUtil pdu, long[] longs) throws IOException {
-    final int token = Byte.toUnsignedInt(pdu.in.readByte());
+    var in = pdu.in;
+    final int token = Byte.toUnsignedInt(in.readByte());
     final int bitsPerValue = token & 0x1f;
-    final int numExceptions = token >>> 5;
     if (bitsPerValue == 0) {
-      Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, pdu.in.readVLong());
+      Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, in.readVLong());
     } else {
       forUtil.decode(bitsPerValue, pdu, longs);
     }
+    final int numExceptions = token >>> 5;
     for (int i = 0; i < numExceptions; ++i) {
-      longs[Byte.toUnsignedInt(pdu.in.readByte())] |=
-          Byte.toUnsignedLong(pdu.in.readByte()) << bitsPerValue;
+      longs[Byte.toUnsignedInt(in.readByte())] |=
+          Byte.toUnsignedLong(in.readByte()) << bitsPerValue;
     }
   }
 

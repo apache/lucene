@@ -427,7 +427,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
       resetIndexInput(termState);
       if (pforUtil == null && docFreq >= BLOCK_SIZE) {
-        pforUtil = new PForUtil(new ForUtil());
+        pforUtil = new PForUtil();
         forDeltaUtil = new ForDeltaUtil();
       }
       totalTermFreq = indexHasFreq ? termState.totalTermFreq : docFreq;
@@ -727,7 +727,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       }
       totalTermFreq = termState.totalTermFreq;
       if (pforUtil == null && totalTermFreq >= BLOCK_SIZE) {
-        pforUtil = new PForUtil(new ForUtil());
+        pforUtil = new PForUtil();
       }
       // Where this term's postings start in the .pos file:
       final long posTermStartFP = termState.posStartFP;
@@ -1142,7 +1142,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   private abstract class BlockImpactsEnum extends ImpactsEnum {
 
     protected final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-    protected final PForUtil pforUtil = new PForUtil(new ForUtil());
+    protected final PForUtil pforUtil = new PForUtil();
 
     protected final long[] docBuffer = new long[BLOCK_SIZE + 1];
     protected final long[] freqBuffer = new long[BLOCK_SIZE];

@@ -291,11 +291,11 @@ public final class ForUtil {
   void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
     switch (bitsPerValue) {
       case 1:
-        decode1(pdu, tmp, longs);
+        decode1(pdu, longs);
         expand8(longs);
         break;
       case 2:
-        decode2(pdu, tmp, longs);
+        decode2(pdu, longs);
         expand8(longs);
         break;
       case 3:
@@ -303,7 +303,7 @@ public final class ForUtil {
         expand8(longs);
         break;
       case 4:
-        decode4(pdu, tmp, longs);
+        decode4(pdu, longs);
         expand8(longs);
         break;
       case 5:
@@ -319,7 +319,7 @@ public final class ForUtil {
         expand8(longs);
         break;
       case 8:
-        decode8(pdu, tmp, longs);
+        decode8(pdu, longs);
         expand8(longs);
         break;
       case 9:
@@ -351,7 +351,7 @@ public final class ForUtil {
         expand16(longs);
         break;
       case 16:
-        decode16(pdu, tmp, longs);
+        decode16(pdu, longs);
         expand16(longs);
         break;
       case 17:
@@ -393,11 +393,11 @@ public final class ForUtil {
     }
   }
 
-  static void decode1(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {
+  static void decode1(PostingDecodingUtil pdu, long[] longs) throws IOException {
     pdu.splitLongs(2, longs, 7, 1, MASK8_1, longs, 14, MASK8_1);
   }
 
-  static void decode2(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {
+  static void decode2(PostingDecodingUtil pdu, long[] longs) throws IOException {
     pdu.splitLongs(4, longs, 6, 2, MASK8_2, longs, 12, MASK8_2);
   }
 
@@ -413,7 +413,7 @@ public final class ForUtil {
     }
   }
 
-  static void decode4(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {
+  static void decode4(PostingDecodingUtil pdu, long[] longs) throws IOException {
     pdu.splitLongs(8, longs, 4, 4, MASK8_4, longs, 8, MASK8_4);
   }
 
@@ -457,7 +457,7 @@ public final class ForUtil {
     }
   }
 
-  static void decode8(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {
+  static void decode8(PostingDecodingUtil pdu, long[] longs) throws IOException {
     pdu.in.readLongs(longs, 0, 16);
   }
 
@@ -601,7 +601,7 @@ public final class ForUtil {
     }
   }
 
-  static void decode16(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {
+  static void decode16(PostingDecodingUtil pdu, long[] longs) throws IOException {
     pdu.in.readLongs(longs, 0, 32);
   }
 
