@@ -117,7 +117,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
     @Override
     protected int topDocsSize() {
-      return collectedHits < pq.size() ? collectedHits : pq.size();
+      return Math.min(collectedHits, pq.size());
     }
 
     @Override
@@ -158,26 +158,18 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
             updateGlobalMinCompetitiveScore(scorer);
           }
 
-          if (score > after.score || (score == after.score && doc <= afterDoc)) {
-            // hit was collected on a previous page
-            if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
-              // we just reached totalHitsThreshold, we can start setting the min
-              // competitive score now
-              updateMinCompetitiveScore(scorer);
-            }
-            return;
-          }
-
-          if (score <= pqTop.score) {
-            if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
-              // we just reached totalHitsThreshold, we can start setting the min
-              // competitive score now
-              updateMinCompetitiveScore(scorer);
-            }
-
-            // Since docs are returned in-order (i.e., increasing doc Id), a document
+          if (score > after.score
+              || (score == after.score && doc <= afterDoc)
+              || score <= pqTop.score) {
+            // Either hit was collected on a previous page or
+            // since docs are returned in-order (i.e., increasing doc Id), a document
             // with equal score to pqTop.score cannot compete since HitQueue favors
             // documents with lower doc Ids. Therefore reject those docs too.
+            if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
+              // we just reached totalHitsThreshold, we can start setting the min
+              // competitive score now
+              updateMinCompetitiveScore(scorer);
+            }
             return;
           }
           collectedHits++;
