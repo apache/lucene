@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
@@ -32,6 +33,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntArrayDocIdSet;
 
@@ -205,7 +207,7 @@ public class TestBooleanOr extends LuceneTestCase {
   }
 
   private static Scorer scorer(int... matches) throws IOException {
-    matches = Arrays.copyOf(matches, matches.length + 1);
+    matches = ArrayUtil.growExact(matches, matches.length + 1);
     matches[matches.length - 1] = DocIdSetIterator.NO_MORE_DOCS;
     DocIdSetIterator it = new IntArrayDocIdSet(matches, matches.length - 1).iterator();
     return new Scorer() {
