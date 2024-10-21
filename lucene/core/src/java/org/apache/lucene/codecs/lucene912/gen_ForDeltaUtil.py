@@ -361,7 +361,10 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
   
 def writeDecode(bpv, f):
   next_primitive = primitive_size_for_bpv(bpv)
-  f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %(bpv, next_primitive))
+  if next_primitive % bpv == 0:
+    f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, long[] longs) throws IOException {\n' %(bpv, next_primitive))
+  else:
+    f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %(bpv, next_primitive))
   if bpv == next_primitive:
     f.write('    pdu.in.readLongs(longs, 0, %d);\n' %(bpv*2))
   else:
@@ -390,9 +393,15 @@ if __name__ == '__main__':
     primitive_size = primitive_size_for_bpv(bpv)
     f.write('    case %d:\n' %bpv)
     if next_primitive(bpv) == primitive_size:
-      f.write('        decode%d(pdu, tmp, longs);\n' %bpv)
+      if primitive_size % bpv == 0:
+        f.write('        decode%d(pdu, longs);\n' %bpv)
+      else:
+        f.write('        decode%d(pdu, tmp, longs);\n' %bpv)
     else:
-      f.write('        decode%dTo%d(pdu, tmp, longs);\n' %(bpv, primitive_size))
+      if primitive_size % bpv == 0:
+        f.write('        decode%dTo%d(pdu, longs);\n' %(bpv, primitive_size))
+      else:
+        f.write('        decode%dTo%d(pdu, tmp, longs);\n' %(bpv, primitive_size))
     f.write('      prefixSum%d(longs, base);\n' %primitive_size)
     f.write('      break;\n')
   f.write('    default:\n')
