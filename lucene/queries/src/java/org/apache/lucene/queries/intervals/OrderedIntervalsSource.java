@@ -163,7 +163,9 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
         final int end = last.end();
         this.end = end;
         int slop = end - start + 1;
-        for (int j = 0; j < subIterators.size(); j++) {
+        // use indexed loop since this is always a random access capable list to avoid allocations
+        // in a hot nested loop
+        for (int j = 0, n = subIterators.size(); j < n; j++) {
           slop -= subIterators.get(j).width();
         }
         this.slop = slop;
