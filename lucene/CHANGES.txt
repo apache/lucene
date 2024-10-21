@@ -53,6 +53,11 @@ Optimizations
 * GITHUB#13800: MaxScoreBulkScorer now recomputes scorer partitions when the
   minimum competitive allows for a more favorable partitioning. (Adrien Grand)
 
+* GITHUB#13931: Refactored `BooleanScorer` to evaluate matches of sub clauses
+  using the `Scorer` abstraction rather than the `BulkScorer` abstraction. This
+  speeds up exhaustive evaluation of disjunctions of term queries.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
