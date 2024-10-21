@@ -101,6 +101,7 @@ public class Lucene99Codec extends Codec {
     this.defaultPostingsFormat = new Lucene99PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
     this.defaultKnnVectorsFormat = new Lucene99HnswVectorsFormat();
+//    this.defaultKnnVectorsFormat = new Lucene99HnswMultiVectorsFormat();
   }
 
   @Override

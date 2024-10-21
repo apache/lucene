@@ -364,21 +364,25 @@ public final class Lucene99FlatMultiVectorsReader extends FlatVectorsReader {
             case BYTE -> Byte.BYTES;
             case FLOAT32 -> Float.BYTES;
           };
-      long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
-      long numBytes = Math.multiplyExact(vectorBytes, size);
-      if (numBytes != vectorDataLength) {
-        throw new IllegalStateException(
-            "Vector data length "
-                + vectorDataLength
-                + " not matching size="
-                + size
-                + " * dim="
-                + dimension
-                + " * byteSize="
-                + byteSize
-                + " = "
-                + numBytes);
-      }
+
+      // With multi-vectors per doc per field, the following invariant doesn't
+      // hold true anymore.
+//      long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
+//      long numBytes = Math.multiplyExact(vectorBytes, size);
+
+//      if (numBytes != vectorDataLength) {
+//        throw new IllegalStateException(
+//            "Vector data length "
+//                + vectorDataLength
+//                + " not matching size="
+//                + size
+//                + " * dim="
+//                + dimension
+//                + " * byteSize="
+//                + byteSize
+//                + " = "
+//                + numBytes);
+//      }
     }
 
     static FieldEntry create(IndexInput input, FieldInfo info) throws IOException {

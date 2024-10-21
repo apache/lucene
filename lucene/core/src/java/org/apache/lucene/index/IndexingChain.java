@@ -782,6 +782,9 @@ final class IndexingChain implements Accountable {
     }
 
     if (fieldType.isMultiVector()) {
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "indexing multi-vector field");
+      }
       indexMultiVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     } else if (fieldType.vectorDimension() != 0) {
       indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);

@@ -78,6 +78,7 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
   public Lucene99FlatMultiVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer)
       throws IOException {
     super(scorer);
+    System.out.println("VIGYA - initializing Flat MV Writer");
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(

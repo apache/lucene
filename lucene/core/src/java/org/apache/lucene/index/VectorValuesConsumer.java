@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
@@ -52,6 +53,7 @@ class VectorValuesConsumer {
   private void initKnnVectorsWriter(String fieldName) throws IOException {
     if (writer == null) {
       KnnVectorsFormat fmt = codec.knnVectorsFormat();
+      System.out.println("VIGYA - KNNVectorsFormat = " + fmt.getName());
       if (fmt == null) {
         throw new IllegalStateException(
             "field=\""
