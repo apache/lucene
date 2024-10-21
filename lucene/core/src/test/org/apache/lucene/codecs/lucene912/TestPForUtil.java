@@ -39,11 +39,10 @@ public class TestPForUtil extends LuceneTestCase {
     final Directory d = new ByteBuffersDirectory();
     final long endPointer = encodeTestData(iterations, values, d);
 
-    ForUtil forUtil = new ForUtil();
     IndexInput in = d.openInput("test.bin", IOContext.READONCE);
     PostingDecodingUtil pdu =
         Lucene912PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
-    final PForUtil pforUtil = new PForUtil(forUtil);
+    final PForUtil pforUtil = new PForUtil();
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {
         PForUtil.skip(in);
@@ -91,7 +90,7 @@ public class TestPForUtil extends LuceneTestCase {
 
   private long encodeTestData(int iterations, int[] values, Directory d) throws IOException {
     IndexOutput out = d.createOutput("test.bin", IOContext.DEFAULT);
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final PForUtil pforUtil = new PForUtil();
 
     for (int i = 0; i < iterations; ++i) {
       long[] source = new long[ForUtil.BLOCK_SIZE];
