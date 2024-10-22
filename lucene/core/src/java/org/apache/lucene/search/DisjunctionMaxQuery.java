@@ -295,24 +295,20 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    */
   @Override
   public String toString(String field) {
-    StringBuilder buffer = new StringBuilder();
-    buffer.append("(");
-    Iterator<Query> it = disjuncts.iterator();
-    for (int i = 0; it.hasNext(); i++) {
-      Query subquery = it.next();
-      if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
-        buffer.append("(");
-        buffer.append(subquery.toString(field));
-        buffer.append(")");
-      } else buffer.append(subquery.toString(field));
-      if (i != disjuncts.size() - 1) buffer.append(" | ");
-    }
-    buffer.append(")");
-    if (tieBreakerMultiplier != 0.0f) {
-      buffer.append("~");
-      buffer.append(tieBreakerMultiplier);
-    }
-    return buffer.toString();
+    return disjuncts.stream()
+            .map(
+                    subquery -> {
+                      if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
+                        return "(" + subquery.toString(field) + ")";
+                      }
+                      return subquery.toString(field);
+                    })
+            .sorted()
+            .collect(
+                    Collectors.joining(
+                            " | ",
+                            "(",
+                            ")" + ((tieBreakerMultiplier != 0.0f) ? "~" + tieBreakerMultiplier : "")));
   }
 
   /**

@@ -489,6 +489,29 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     assertEquals(q1, q2);
   }
 
+  /* Inspired from TestIntervals.testIntervalDisjunctionToStringStability */
+  public void testToStringOrderMatters() {
+    final int clauseNbr =
+            random().nextInt(22) + 4; // ensure a reasonably large minimum number of clauses
+    final String[] terms = new String[clauseNbr];
+    for (int i = 0; i < clauseNbr; i++) {
+      terms[i] = Character.toString((char) ('a' + i));
+    }
+
+    final String expected =
+            Arrays.stream(terms)
+                    .map((term) -> "test:" + term)
+                    .collect(Collectors.joining(" | ", "(", ")~1.0"));
+
+    Collections.shuffle(Arrays.asList(terms), random()); // Disrupt clause order
+
+    DisjunctionMaxQuery source =
+            new DisjunctionMaxQuery(
+                    Arrays.stream(terms).map((term) -> tq("test", term)).toList(), 1.0f);
+
+    assertEquals(expected, source.toString(""));
+  }
+
   public void testRandomTopDocs() throws Exception {
     doTestRandomTopDocs(2, 0.05f, 0.05f);
     doTestRandomTopDocs(2, 1.0f, 0.05f);
