@@ -158,8 +158,20 @@ public class BinaryQuantizer {
   }
 
   /** Results of quantizing a vector for both querying and indexing */
-  public record QueryAndIndexResults(float[] indexFeatures, QueryFactors queryFeatures) {}
+  public record QueryAndIndexResults(float[] indexFeatures, float[] queryFeatures) {}
 
+  /**
+   * Quantizes the given vector to both single bits and int4 precision. Also containes two distinct
+   * float arrays of corrective factors. For details see the individual methods {@link
+   * #quantizeForIndex(float[], byte[], float[])} and {@link #quantizeForQuery(float[], byte[],
+   * float[])}.
+   *
+   * @param vector the vector to quantize
+   * @param indexDestination the destination byte array to store the quantized bit vector
+   * @param queryDestination the destination byte array to store the quantized int4 vector
+   * @param centroid the centroid to use for quantization
+   * @return the corrective factors used for scoring error correction.
+   */
   public QueryAndIndexResults quantizeQueryAndIndex(
       float[] vector, byte[] indexDestination, byte[] queryDestination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
@@ -199,7 +211,9 @@ public class BinaryQuantizer {
               + centroid.length);
     }
     vector = ArrayUtil.copyArray(vector);
-    float distToC = VectorUtil.squareDistance(vector, centroid);
+    // only need distToC for euclidean
+    float distToC =
+        similarityFunction == EUCLIDEAN ? VectorUtil.squareDistance(vector, centroid) : 0f;
     // only need vdotc for dot-products similarity, but not for euclidean
     float vDotC = similarityFunction != EUCLIDEAN ? VectorUtil.dotProduct(vector, centroid) : 0f;
     VectorUtil.subtract(vector, centroid);
@@ -226,23 +240,46 @@ public class BinaryQuantizer {
     // FIXME: vectors need to be padded but that's expensive; update transponseBin to deal
     byteQuery = BQSpaceUtils.pad(byteQuery, discretizedDimensions);
     BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, queryDestination);
-    QueryFactors factors =
-        new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC);
     final float[] indexCorrections;
+    final float[] queryCorrections;
     if (similarityFunction == EUCLIDEAN) {
       indexCorrections = new float[2];
       indexCorrections[0] = (float) Math.sqrt(distToC);
       removeSignAndDivide(vector, sqrtDimensions);
       indexCorrections[1] = sumAndNormalize(vector, normVmC);
+      queryCorrections = new float[] {distToC, lower, width, quantResult.quantizedSum};
     } else {
       indexCorrections = new float[3];
       indexCorrections[0] = computerOOQ(vector.length, vector, indexDestination);
       indexCorrections[1] = normVmC;
       indexCorrections[2] = vDotC;
+      queryCorrections = new float[] {lower, width, normVmC, vDotC, quantResult.quantizedSum};
     }
-    return new QueryAndIndexResults(indexCorrections, factors);
+    return new QueryAndIndexResults(indexCorrections, queryCorrections);
   }
 
+  /**
+   * Quantizes the given vector to single bits and returns an array of corrective factors. For the
+   * dot-product family of distances, the corrective terms are, in order
+   *
+   * <ul>
+   *   <li>the dot-product of the normalized, centered vector with its binarized self
+   *   <li>the norm of the centered vector
+   *   <li>the dot-product of the vector with the centroid
+   * </ul>
+   *
+   * For euclidean:
+   *
+   * <ul>
+   *   <li>The euclidean distance to the centroid
+   *   <li>The sum of the dimensions divided by the vector norm
+   * </ul>
+   *
+   * @param vector the vector to quantize
+   * @param destination the destination byte array to store the quantized vector
+   * @param centroid the centroid to use for quantization
+   * @return the corrective factors used for scoring error correction.
+   */
   public float[] quantizeForIndex(float[] vector, byte[] destination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
@@ -270,8 +307,6 @@ public class BinaryQuantizer {
 
     float[] corrections;
 
-    // FIXME: make a copy of vector so we don't overwrite it here?
-    //  ... (could trade subtractInPlace w subtract in genSubSpace)
     vector = ArrayUtil.copyArray(vector);
 
     switch (similarityFunction) {
@@ -280,7 +315,6 @@ public class BinaryQuantizer {
 
         SubspaceOutput subspaceOutput = generateSubSpace(vector, centroid, destination);
         corrections = new float[2];
-        // FIXME: quantize these values so we are passing back 1 byte values for all three of these
         corrections[0] = distToCentroid;
         corrections[1] = subspaceOutput.projection();
         break;
@@ -289,7 +323,6 @@ public class BinaryQuantizer {
       case DOT_PRODUCT:
         SubspaceOutputMIP subspaceOutputMIP = generateSubSpaceMIP(vector, centroid, destination);
         corrections = new float[3];
-        // FIXME: quantize these values so we are passing back 1 byte values for all three of these
         corrections[0] = subspaceOutputMIP.OOQ();
         corrections[1] = subspaceOutputMIP.normOC();
         corrections[2] = subspaceOutputMIP.oDotC();
@@ -318,11 +351,34 @@ public class BinaryQuantizer {
     return new QuantResult(result, sumQ);
   }
 
-  /** Factors for quantizing query */
-  public record QueryFactors(
-      float quantizedSum, float distToC, float lower, float width, float normVmC, float vDotC) {}
-
-  public QueryFactors quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
+  /**
+   * Quantizes the given vector to int4 precision and returns an array of corrective factors.
+   *
+   * <p>Corrective factors are used for scoring error correction. For the dot-product family of
+   *
+   * <ul>
+   *   <li>The lower bound for the int4 quantized vector
+   *   <li>The width for int4 quantized vector
+   *   <li>The norm of the centroid centered vector
+   *   <li>The dot-product of the vector with the centroid
+   *   <li>The sum of the quantized dimensions
+   * </ul>
+   *
+   * For euclidean:
+   *
+   * <ul>
+   *   <li>The euclidean distance to the centroid
+   *   <li>The lower bound for the int4 quantized vector
+   *   <li>The width for int4 quantized vector
+   *   <li>The sum of the quantized dimensions
+   * </ul>
+   *
+   * @param vector the vector to quantize
+   * @param destination the destination byte array to store the quantized vector
+   * @param centroid the centroid to use for quantization
+   * @return the corrective factors used for scoring error correction.
+   */
+  public float[] quantizeForQuery(float[] vector, byte[] destination, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
     assert this.discretizedDimensions == BQSpaceUtils.discretize(vector.length, 64);
@@ -347,8 +403,6 @@ public class BinaryQuantizer {
               + "!= "
               + centroid.length);
     }
-
-    float distToC = VectorUtil.squareDistance(vector, centroid);
 
     // FIXME: make a copy of vector so we don't overwrite it here?
     //  ... (could subtractInPlace but the passed vector is modified) <<---
@@ -376,16 +430,15 @@ public class BinaryQuantizer {
     byteQuery = BQSpaceUtils.pad(byteQuery, discretizedDimensions);
     BQSpaceUtils.transposeBin(byteQuery, discretizedDimensions, destination);
 
-    QueryFactors factors;
+    final float[] corrections;
     if (similarityFunction != EUCLIDEAN) {
       float vDotC = VectorUtil.dotProduct(vector, centroid);
-      // FIXME: quantize the corrections as well so we store less
-      factors = new QueryFactors(quantResult.quantizedSum, distToC, lower, width, normVmC, vDotC);
+      corrections = new float[] {lower, width, normVmC, vDotC, quantResult.quantizedSum};
     } else {
-      // FIXME: quantize the corrections as well so we store less
-      factors = new QueryFactors(quantResult.quantizedSum, distToC, lower, width, 0f, 0f);
+      float distToCentroid = (float) Math.sqrt(VectorUtil.squareDistance(vector, centroid));
+      corrections = new float[] {distToCentroid, lower, width, quantResult.quantizedSum};
     }
 
-    return factors;
+    return corrections;
   }
 }

@@ -380,10 +380,20 @@ public final class VectorUtil {
     return v;
   }
 
-  // FIXME: allow for a settable B_QUERY of 4 or 2
   public static final short B_QUERY = 4;
 
-  /** Return the .. TODO .. */
+  /**
+   * This does a dot-product between two particularly formatted byte arrays. It is assumed that q is
+   * 4 times the size of d and bits for each individual dimension are packed by their order. An
+   * example encoding for q would be for values 0, 12, 7, 5 which have the binary values of 0000,
+   * 1100, 0111, 0101 the bits would actually be packed as 0011, 0010, 0111, 0100 or the values 3,
+   * 2, 7, 4.
+   *
+   * @param q an int4 encoded byte array, but where the lower level bits are collected are first
+   *     with higher order bits following later
+   * @param d a bit encoded byte array
+   * @return the dot product
+   */
   public static long ipByteBinByte(byte[] q, byte[] d) {
     if (q.length != d.length * B_QUERY) {
       throw new IllegalArgumentException(

@@ -50,11 +50,12 @@ public class TestLucene101BinaryFlatVectorsScorer extends LuceneTestCase {
     short quantizedSum = (short) random().nextInt(0, 4097);
     float normVmC = random().nextFloat(-1000f, 1000f);
     float vDotC = random().nextFloat(-1000f, 1000f);
+    final float[] queryCorrections =
+        similarityFunction != VectorSimilarityFunction.EUCLIDEAN
+            ? new float[] {vl, width, normVmC, vDotC, quantizedSum}
+            : new float[] {distanceToCentroid, vl, width, quantizedSum};
     Lucene101BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
-        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(
-            vector,
-            new BinaryQuantizer.QueryFactors(
-                quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC));
+        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(vector, queryCorrections);
 
     BinarizedByteVectorValues targetVectors =
         new BinarizedByteVectorValues() {
@@ -133,10 +134,9 @@ public class TestLucene101BinaryFlatVectorsScorer extends LuceneTestCase {
     float vl = -57.883f;
     float width = 9.972266f;
     short quantizedSum = 795;
+    float[] queryCorrections = new float[] {distanceToCentroid, vl, width, quantizedSum};
     Lucene101BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
-        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(
-            vector,
-            new BinaryQuantizer.QueryFactors(quantizedSum, distanceToCentroid, vl, width, 0f, 0f));
+        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(vector, queryCorrections);
 
     BinarizedByteVectorValues targetVectors =
         new BinarizedByteVectorValues() {
@@ -234,18 +234,15 @@ public class TestLucene101BinaryFlatVectorsScorer extends LuceneTestCase {
           31, 40, 15, -19, 17, -128, 33, -75, 96, -18, -47, 75, 27, -60, -16, -82, 13, 21, 37, 23,
           70, 9, -39, 16, -127, 35, -78, 64, 99, -46, 1, 28, 65, 125, 14, 42, 26
         };
-    float distanceToCentroid = 95.39032f;
     float vl = -0.10079563f;
     float width = 0.014609014f;
     short quantizedSum = 5306;
     float normVmC = 9.766797f;
     float vDotC = 133.56123f;
     float cDotC = 132.20227f;
+    float[] queryCorrections = new float[] {vl, width, normVmC, vDotC, quantizedSum};
     Lucene101BinaryFlatVectorsScorer.BinaryQueryVector queryVector =
-        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(
-            vector,
-            new BinaryQuantizer.QueryFactors(
-                quantizedSum, distanceToCentroid, vl, width, normVmC, vDotC));
+        new Lucene101BinaryFlatVectorsScorer.BinaryQueryVector(vector, queryCorrections);
 
     BinarizedByteVectorValues targetVectors =
         new BinarizedByteVectorValues() {

@@ -374,7 +374,7 @@ public class Lucene101BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
         new byte
             [(BQSpaceUtils.discretize(floatVectorValues.dimension(), 64) / 8)
                 * BQSpaceUtils.B_QUERY];
-    int queryCorrectionCount = binaryQuantizer.getSimilarity() != EUCLIDEAN ? 5 : 3;
+    int queryCorrectionCount = binaryQuantizer.getSimilarity() != EUCLIDEAN ? 4 : 3;
     final ByteBuffer queryCorrectionsBuffer =
         ByteBuffer.allocate(Float.BYTES * queryCorrectionCount + Short.BYTES)
             .order(ByteOrder.LITTLE_ENDIAN);
@@ -393,18 +393,14 @@ public class Lucene101BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
 
       // write query vector
       binarizedQueryData.writeBytes(toQuery, toQuery.length);
-      BinaryQuantizer.QueryFactors factors = r.queryFeatures();
-      queryCorrectionsBuffer.putFloat(factors.distToC());
-      queryCorrectionsBuffer.putFloat(factors.lower());
-      queryCorrectionsBuffer.putFloat(factors.width());
-
-      if (binaryQuantizer.getSimilarity() != EUCLIDEAN) {
-        queryCorrectionsBuffer.putFloat(factors.normVmC());
-        queryCorrectionsBuffer.putFloat(factors.vDotC());
+      assert r.queryFeatures().length == queryCorrectionCount + 1;
+      float[] queryCorrections = r.queryFeatures();
+      for (int i = 0; i < queryCorrectionCount; i++) {
+        queryCorrectionsBuffer.putFloat(queryCorrections[i]);
       }
-      // ensure we are positive and fit within an unsigned short value.
-      assert factors.quantizedSum() >= 0 && factors.quantizedSum() <= 0xffff;
-      queryCorrectionsBuffer.putShort((short) factors.quantizedSum());
+      assert queryCorrections[queryCorrectionCount] >= 0
+          && queryCorrections[queryCorrectionCount] <= 0xffff;
+      queryCorrectionsBuffer.putShort((short) queryCorrections[queryCorrectionCount]);
 
       binarizedQueryData.writeBytes(
           queryCorrectionsBuffer.array(), queryCorrectionsBuffer.array().length);
@@ -762,7 +758,7 @@ public class Lucene101BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       this.dimension = dimension;
       this.size = size;
       this.vectorSimilarityFunction = vectorSimilarityFunction;
-      this.correctiveValuesSize = vectorSimilarityFunction != EUCLIDEAN ? 5 : 3;
+      this.correctiveValuesSize = vectorSimilarityFunction != EUCLIDEAN ? 4 : 3;
       // 4x the quantized binary dimensions
       int binaryDimensions = (BQSpaceUtils.discretize(dimension, 64) / 8) * BQSpaceUtils.B_QUERY;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
