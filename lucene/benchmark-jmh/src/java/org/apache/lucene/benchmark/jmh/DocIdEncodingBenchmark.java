@@ -358,8 +358,7 @@ public class DocIdEncodingBenchmark {
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
-          // out.writeInt(docIds[i]);
-          out.writeLong(docIds[i]);
+          out.writeInt(docIds[i]);
         }
       }
 
@@ -387,8 +386,7 @@ public class DocIdEncodingBenchmark {
           docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
         }
         for (; i < count; i++) {
-          // docIDs[i] = in.readInt();
-          docIDs[i] = (int) in.readLong();
+          docIDs[i] = in.readInt();
         }
       }
     }
