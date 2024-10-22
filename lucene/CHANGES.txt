@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
 New Features
 ---------------------
