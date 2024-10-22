@@ -69,11 +69,13 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
         // TODO: can we avoid making vector copies?
         List<float[]> outerList = new ArrayList<>();
         List<float[]> innerList = new ArrayList<>();
-        for (int i = 0; i <= outer.length; i += dimension) {
-          outerList.add(ArrayUtil.copyOfSubArray(outer, i, dimension));
+        for (int i = 0; i < outer.length; i += dimension) {
+//          System.out.println("copy subArray - " + i + ":" + i+dimension);
+          outerList.add(ArrayUtil.copyOfSubArray(outer, i, i + dimension));
         }
-        for (int i = 0; i <= inner.length; i += dimension) {
-          innerList.add(ArrayUtil.copyOfSubArray(inner, i, dimension));
+        for (int i = 0; i < inner.length; i += dimension) {
+//          System.out.println("copy subArray - " + i + ":" + i+dimension);
+          innerList.add(ArrayUtil.copyOfSubArray(inner, i, i + dimension));
         }
 
         float result = 0f;
@@ -98,11 +100,15 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
         }
         List<byte[]> outerList = new ArrayList<>();
         List<byte[]> innerList = new ArrayList<>();
-        for (int i = 0; i <= outer.length; i += dimension) {
-          outerList.add(ArrayUtil.copyOfSubArray(outer, i, dimension));
+//        System.out.println("...handling outer list");
+        for (int i = 0; i < outer.length; i += dimension) {
+//          System.out.println("copy subArray - " + i + ":" + dimension);
+          outerList.add(ArrayUtil.copyOfSubArray(outer, i, i + dimension));
         }
-        for (int i = 0; i <= inner.length; i += dimension) {
-          innerList.add(ArrayUtil.copyOfSubArray(inner, i, dimension));
+//        System.out.println("...handling inner list");
+        for (int i = 0; i < inner.length; i += dimension) {
+//          System.out.println("copy subArray - " + i + ":" + dimension);
+          innerList.add(ArrayUtil.copyOfSubArray(inner, i, i + dimension));
         }
 
         float result = 0f;

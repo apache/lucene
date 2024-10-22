@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.index.MultiVectorSimilarityFunction;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -32,6 +33,11 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
 
   public static final DefaultFlatMultiVectorScorer INSTANCE = new DefaultFlatMultiVectorScorer();
+
+  @Override
+  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues) throws IOException {
+    throw new IllegalStateException("getRandomVectorScorerSupplier called on a Multi-Vector scorer. Expected call to getRandomMultiVectorScorerSupplier instead");
+  }
 
   @Override
   public RandomVectorScorerSupplier getRandomMultiVectorScorerSupplier(
