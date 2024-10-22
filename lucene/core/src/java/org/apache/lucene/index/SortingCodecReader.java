@@ -320,14 +320,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public Floats vectors() throws IOException {
-      Floats delegateVectors = delegate.vectors();
-      return new Floats() {
-        @Override
-        public float[] get(int ord) throws IOException {
-          // ords are interpreted in the delegate's ord-space.
-          return delegateVectors.get(ord);
-        }
-      };
+      return delegate.vectors();
     }
 
     @Override
@@ -358,14 +351,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public Bytes vectors() throws IOException {
-      return new Bytes() {
-        Bytes vectors = delegate.vectors();
-
-        @Override
-        public byte[] get(int ord) throws IOException {
-          return vectors.get(ord);
-        }
-      };
+      return delegate.vectors();
     }
 
     @Override

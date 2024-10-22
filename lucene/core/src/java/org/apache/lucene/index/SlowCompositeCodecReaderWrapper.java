@@ -887,6 +887,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         return new Floats() {
           int lastSubIndex = 0;
           Floats subValues;
+
           // TODO: cache the subValues so we only need to create each one once (same in Bytes below)
 
           @Override
