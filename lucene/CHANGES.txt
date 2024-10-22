@@ -34,6 +34,9 @@ Optimizations
   speeds up exhaustive evaluation of disjunctions of term queries.
   (Adrien Grand)
 
+* GITHUB#13941: Optimized computation of top-hits on disjunctive queries with
+  many clauses. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended

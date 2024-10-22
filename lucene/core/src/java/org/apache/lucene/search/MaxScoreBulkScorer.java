@@ -66,6 +66,15 @@ final class MaxScoreBulkScorer extends BulkScorer {
     maxScoreSums = new double[allScorers.length];
   }
 
+  // Number of outer windows that have been evaluated
+  private int numOuterWindows;
+  // Number of candidate matches so far
+  private int numCandidates;
+  // Minimum window size. See #computeOuterWindowMax where we have heuristics that adjust the
+  // minimum window size based on the average number of candidate matches per outer window, to keep
+  // the per-window overhead under control.
+  private int minWindowSize = 1;
+
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
@@ -124,6 +133,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       }
 
       outerWindowMin = Math.min(top.doc, outerWindowMax);
+      ++numOuterWindows;
     }
 
     return nextCandidate(max);
@@ -278,6 +288,23 @@ final class MaxScoreBulkScorer extends BulkScorer {
       windowMax = (int) Math.min(windowMax, upTo + 1L); // upTo is inclusive
     }
 
+    if (allScorers.length - firstWindowLead > 1) {
+      // The more clauses we consider to compute outer windows, the higher chances that one of these
+      // clauses has a block boundary in the next few doc IDs. This situation can result in more
+      // time spent computing maximum scores per outer window than evaluating hits. To avoid such
+      // situations, we target at least 32 candidate matches per clause per outer window on average,
+      // to make sure we amortize the cost of computing maximum scores.
+      long threshold = numOuterWindows * 32L * allScorers.length;
+      if (numCandidates < threshold) {
+        minWindowSize = Math.min(minWindowSize << 1, INNER_WINDOW_SIZE);
+      } else {
+        minWindowSize = 1;
+      }
+
+      int minWindowMax = (int) Math.min(Integer.MAX_VALUE, (long) windowMin + minWindowSize);
+      windowMax = Math.max(windowMax, minWindowMax);
+    }
+
     return windowMax;
   }
 
@@ -300,6 +327,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private void scoreNonEssentialClauses(
       LeafCollector collector, int doc, double essentialScore, int numNonEssentialClauses)
       throws IOException {
+
+    ++numCandidates;
+
     double score = essentialScore;
     for (int i = numNonEssentialClauses - 1; i >= 0; --i) {
       float maxPossibleScore =
