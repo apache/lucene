@@ -116,6 +116,12 @@ import org.apache.lucene.store.IndexOutput;
  *         <li>3: MAXIMUM_INNER_PRODUCT similarity. ({@link
  *             VectorSimilarityFunction#MAXIMUM_INNER_PRODUCT})
  *       </ul>
+ *   <li>Multi-Vector Aggregate: a byte containing the aggregation used for multi-vector similarity
+ *       calculation.
+ *       <ul>
+ *         <li>0: NONE. Multi-Vectors not enabled for this field ({@link MultiVectorSimilarityFunction.Aggregation#NONE})</li>
+ *         <li>1: SUM_MAX: SumMaxSimilarity between two multi-vectors ({@link MultiVectorSimilarityFunction.Aggregation#SUM_MAX})</li>
+ *       </ul>>
  * </ul>
  *
  * @lucene.experimental
@@ -207,6 +213,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           final int vectorDimension = input.readVInt();
           final VectorEncoding vectorEncoding = getVectorEncoding(input, input.readByte());
           final VectorSimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
+          final MultiVectorSimilarityFunction.Aggregation aggregate = getAggregateFunc(input, input.readByte());
 
           try {
             infos[i] =
@@ -227,7 +234,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     vectorDimension,
                     vectorEncoding,
                     vectorDistFunc,
-                    MultiVectorSimilarityFunction.Aggregation.NONE,
+                    aggregate,
                     isSoftDeletesField,
                     isParentField);
             infos[i].checkConsistency();
@@ -333,6 +340,35 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
+  private static MultiVectorSimilarityFunction.Aggregation getAggregateFunc(IndexInput input, byte b) throws IOException {
+    try {
+      return aggOrdToFunc(b);
+    } catch (IllegalArgumentException e) {
+      throw new CorruptIndexException("invalid multi-vector aggregate: " + b, input, e);
+    }
+  }
+
+  static final List<MultiVectorSimilarityFunction.Aggregation> MULTIVECTOR_AGGREGATES =
+    List.of(
+      MultiVectorSimilarityFunction.Aggregation.NONE,
+      MultiVectorSimilarityFunction.Aggregation.SUM_MAX);
+
+  static MultiVectorSimilarityFunction.Aggregation aggOrdToFunc(byte i) {
+    if (i < 0 || i >= MULTIVECTOR_AGGREGATES.size()) {
+      throw new IllegalArgumentException("invalid MultiVectorSimilarityFunction.Aggregation: " + i);
+    }
+    return MULTIVECTOR_AGGREGATES.get(i);
+  }
+
+  static byte aggFuncToOrd(MultiVectorSimilarityFunction.Aggregation aggregation) {
+    for (int i = 0; i < MULTIVECTOR_AGGREGATES.size(); i++) {
+      if (MULTIVECTOR_AGGREGATES.get(i).equals(aggregation)) {
+        return (byte) i;
+      }
+    }
+    throw new IllegalArgumentException("invalid MultiVectorSimilarityFunction.Aggregation: " + aggregation);
+  }
+
   static {
     // We "mirror" IndexOptions enum values with the constants below; let's try to ensure if we add
     // a new IndexOption while this format is
@@ -423,6 +459,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         output.writeVInt(fi.getVectorDimension());
         output.writeByte((byte) fi.getVectorEncoding().ordinal());
         output.writeByte(distFuncToOrd(fi.getVectorSimilarityFunction()));
+        output.writeByte(aggFuncToOrd(fi.getMultiVectorAggregate()));
       }
       CodecUtil.writeFooter(output);
     }
