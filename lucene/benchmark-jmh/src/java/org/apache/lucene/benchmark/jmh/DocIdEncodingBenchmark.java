@@ -304,8 +304,7 @@ public class DocIdEncodingBenchmark {
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
-          // out.writeInt(docIds[i]);
-          out.writeLong(docIds[i]);
+          out.writeInt(docIds[i]);
         }
       }
 
@@ -319,8 +318,7 @@ public class DocIdEncodingBenchmark {
           docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
         }
         for (; i < count; i++) {
-          // docIDs[i] = in.readInt();
-          docIDs[i] = (int) in.readLong();
+          docIDs[i] = in.readInt();
         }
       }
     }
@@ -472,7 +470,8 @@ public class DocIdEncodingBenchmark {
       try (Stream<String> lines = Files.lines(Path.of((String) args[0]))) {
         return lines
             .parallel()
-            .filter(x -> !x.trim().startsWith("#"))
+            .map(String::trim)
+            .filter(x -> !(x.startsWith("#") || x.isEmpty())) // Comments can start with a #
             .map(
                 x ->
                     Arrays.stream(x.split(","))
