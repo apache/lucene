@@ -345,7 +345,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
     scorer.score = 2;
     leafCollector.collect(1);
-    assertNull(scorer.minCompetitiveScore);
+    assertEquals(Math.nextUp(1f), scorer.minCompetitiveScore, 0f);
 
     scorer.score = 3;
     leafCollector.collect(2);
@@ -441,11 +441,11 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
       TopDocs topDocs = collector.topDocs();
       assertEquals(4, topDocs.totalHits.value());
-      assertEquals(totalHitsThreshold < 4, scorer.minCompetitiveScore != null);
+      assertEquals(totalHitsThreshold <= 4, scorer.minCompetitiveScore != null);
       assertEquals(
           new TotalHits(
               4,
-              totalHitsThreshold < 4
+              totalHitsThreshold <= 4
                   ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
                   : TotalHits.Relation.EQUAL_TO),
           topDocs.totalHits);
@@ -468,17 +468,17 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
       try (IndexReader reader = DirectoryReader.open(w)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 10);
+        TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(2, 11);
         TopDocs topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
         assertEquals(10, topDocs.totalHits.value());
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
 
-        collectorManager = new TopScoreDocCollectorManager(2, 2);
+        collectorManager = new TopScoreDocCollectorManager(2, 10);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
         assertTrue(10 >= topDocs.totalHits.value());
         assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
-        collectorManager = new TopScoreDocCollectorManager(10, 2);
+        collectorManager = new TopScoreDocCollectorManager(11, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
         assertEquals(10, topDocs.totalHits.value());
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
