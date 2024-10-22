@@ -208,7 +208,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float width = corrections[2];
     float sumQ = corrections[3];
 
-    assertEquals(729f, sumQ, Float.MIN_VALUE);
+    assertEquals(729f, sumQ, 0);
     assertEquals(-57.883f, lower, 0.001f);
     assertEquals(9.972266f, width, 0.000001f);
     assertArrayEquals(
@@ -303,7 +303,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float vDotC = corrections[3];
     float sumQ = corrections[4];
 
-    assertEquals(5272, sumQ, Float.MIN_VALUE);
+    assertEquals(5272, sumQ, 0);
     assertEquals(-0.08603752f, lower, 0.00000001f);
     assertEquals(0.011431276f, width, 0.00000001f);
     assertEquals(21.847124f, normVmC, 0.00001f);
@@ -400,7 +400,7 @@ public class TestBinaryQuantization extends LuceneTestCase {
     float vDotC = corrections[3];
     float sumQ = corrections[4];
 
-    assertEquals(5277, sumQ, Float.MIN_VALUE);
+    assertEquals(5277, sumQ, 0);
     assertEquals(-0.086002514f, lower, 0.00000001f);
     assertEquals(0.011431345f, width, 0.00000001f);
     assertEquals(1.3955297f, normVmC, 0.00001f);
