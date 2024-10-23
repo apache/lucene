@@ -18,9 +18,10 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 
-/** A per-document numeric value. */
+/** A per-document binary value. */
 public abstract class BinaryDocValues extends DocValuesIterator {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
@@ -33,4 +34,15 @@ public abstract class BinaryDocValues extends DocValuesIterator {
    * @return binary value
    */
   public abstract BytesRef binaryValue() throws IOException;
+
+  /**
+   * Returns the binary value as a {@link RandomAccessInput} for the current document ID. The bytes
+   * start at position 0 up to {@link RandomAccessInput#length()}. It is illegal to call this method
+   * after {@link #advanceExact(int)} returned {@code false}.
+   *
+   * @return the binary value as a {@link RandomAccessInput}
+   */
+  public RandomAccessInput randomAccessInputValue() throws IOException {
+    return binaryValue();
+  }
 }

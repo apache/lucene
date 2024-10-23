@@ -72,6 +72,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 
 // TODO:
@@ -794,7 +795,10 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       BytesRef payload;
       if (payloadsDV != null) {
         if (payloadsDV.advance(fd.doc) == fd.doc) {
-          payload = BytesRef.deepCopyOf(payloadsDV.binaryValue());
+          final RandomAccessInput input = payloadsDV.randomAccessInputValue();
+          final byte[] bytes = new byte[(int) input.length()];
+          input.readBytes(0L, bytes, 0, bytes.length);
+          payload = new BytesRef(bytes, 0, bytes.length);
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
         }

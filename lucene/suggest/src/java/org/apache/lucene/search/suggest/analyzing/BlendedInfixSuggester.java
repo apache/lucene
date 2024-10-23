@@ -40,6 +40,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.suggest.Lookup;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 
 // TODO:
@@ -236,6 +237,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
 
       textDV.advance(fd.doc);
 
+      // TODO: Can we get utf8ToString from randomAccessInput?
       final String text = textDV.binaryValue().utf8ToString();
       long weight = (Long) fd.fields[0];
 
@@ -247,7 +249,10 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
       BytesRef payload;
       if (payloadsDV != null) {
         if (payloadsDV.advance(fd.doc) == fd.doc) {
-          payload = BytesRef.deepCopyOf(payloadsDV.binaryValue());
+          RandomAccessInput input = payloadsDV.randomAccessInputValue();
+          byte[] bytes = new byte[(int) input.length()];
+          input.readBytes(0L, bytes, 0, bytes.length);
+          payload = new BytesRef(bytes, 0, bytes.length);
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
         }

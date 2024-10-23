@@ -75,6 +75,7 @@ public class BytesRefFieldSource extends FieldCacheSource {
           if (value == null || value.length == 0) {
             return false;
           } else {
+            // TODO: can we copy directly from the RandomAccessInput?
             target.copyBytes(value);
             return true;
           }

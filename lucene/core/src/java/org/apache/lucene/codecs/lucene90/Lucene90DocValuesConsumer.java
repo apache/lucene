@@ -49,6 +49,7 @@ import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexOutput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInputDataInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -595,11 +596,13 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     int numDocsWithField = 0;
     int minLength = Integer.MAX_VALUE;
     int maxLength = 0;
+    // use a data input to copy the data directly from a RandomAccessInput
+    final RandomAccessInputDataInput dataInput = new RandomAccessInputDataInput();
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       numDocsWithField++;
-      BytesRef v = values.binaryValue();
-      int length = v.length;
-      data.writeBytes(v.bytes, v.offset, v.length);
+      dataInput.reset(values.randomAccessInputValue());
+      int length = (int) dataInput.length();
+      data.copyBytes(dataInput, length);
       minLength = Math.min(length, minLength);
       maxLength = Math.max(length, maxLength);
     }
@@ -644,7 +647,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       for (int doc = values.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = values.nextDoc()) {
-        addr += values.binaryValue().length;
+        addr += values.randomAccessInputValue().length();
         writer.add(addr);
       }
       writer.finish();

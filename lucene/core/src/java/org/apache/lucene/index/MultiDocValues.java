@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -431,6 +432,11 @@ public class MultiDocValues {
       @Override
       public BytesRef binaryValue() throws IOException {
         return currentValues.binaryValue();
+      }
+
+      @Override
+      public RandomAccessInput randomAccessInputValue() throws IOException {
+        return currentValues.randomAccessInputValue();
       }
 
       @Override

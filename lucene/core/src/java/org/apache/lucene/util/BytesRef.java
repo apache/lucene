@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.store.RandomAccessInput;
 
 /**
  * Represents byte[], as a slice (offset + length) into an existing byte[]. The {@link #bytes}
@@ -32,7 +34,7 @@ import java.util.Arrays;
  * lexicographically, numerically treating elements as unsigned. This is identical to Unicode
  * codepoint order.
  */
-public final class BytesRef implements Comparable<BytesRef>, Cloneable {
+public final class BytesRef implements RandomAccessInput, Comparable<BytesRef>, Cloneable {
   /** An empty byte array for convenience */
   public static final byte[] EMPTY_BYTES = new byte[0];
 
@@ -213,5 +215,35 @@ public final class BytesRef implements Comparable<BytesRef>, Cloneable {
               + bytes.length);
     }
     return true;
+  }
+
+  @Override
+  public long length() {
+    return length;
+  }
+
+  @Override
+  public byte readByte(long pos) throws IOException {
+    return bytes[offset + (int) pos];
+  }
+
+  @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+    System.arraycopy(this.bytes, this.offset + (int) pos, bytes, offset, length);
+  }
+
+  @Override
+  public short readShort(long pos) throws IOException {
+    return (short) BitUtil.VH_LE_SHORT.get(bytes, offset + (int) pos);
+  }
+
+  @Override
+  public int readInt(long pos) throws IOException {
+    return (int) BitUtil.VH_LE_INT.get(bytes, offset + (int) pos);
+  }
+
+  @Override
+  public long readLong(long pos) throws IOException {
+    return (long) BitUtil.VH_LE_LONG.get(bytes, offset + (int) pos);
   }
 }
