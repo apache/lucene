@@ -361,9 +361,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   protected void updateGlobalMinCompetitiveScore(Scorable scorer) throws IOException {
     assert minScoreAcc != null;
     if (canSetMinScore) {
-      // we can start checking the global maximum score even if the local queue or if the threshold
-      // is not reached on the local competitor: the fact that there is a shared min competitive
-      // score implies that one of the collectors hit its totalHitsThreshold already
+      // we can start checking the global maximum score even if the local queue is not full or if
+      // the threshold is not reached on the local competitor: the fact that there is a shared min
+      // competitive score implies that one of the collectors hit its totalHitsThreshold already
       long maxMinScore = minScoreAcc.getRaw();
       float score;
       if (maxMinScore != Long.MIN_VALUE
