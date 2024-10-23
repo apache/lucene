@@ -241,7 +241,7 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
     TopScoreDocCollectorManager c = new TopScoreDocCollectorManager(10, 10);
     TopDocs topDocs = is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), c);
-    assertEquals(10, topDocs.totalHits.value());
+    assertEquals(11, topDocs.totalHits.value());
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
     c = new TopScoreDocCollectorManager(10, 10);
@@ -251,7 +251,7 @@ public class TestConstantScoreScorer extends LuceneTestCase {
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "bar"))), Occur.FILTER)
             .build();
     topDocs = is.search(query, c);
-    assertEquals(10, topDocs.totalHits.value());
+    assertEquals(11, topDocs.totalHits.value());
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
     iw.close();

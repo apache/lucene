@@ -79,7 +79,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           if (score <= pqTop.score) {
             // Note: for queries that match lots of hits, this is the common case: most hits are not
             // competitive.
-            if (totalHits == totalHitsThreshold) {
+            if (totalHits == totalHitsThreshold + 1) {
               // we just reached totalHitsThreshold, we can start setting the min
               // competitive score now
               updateMinCompetitiveScore(scorer);
@@ -173,8 +173,8 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           if (score <= pqTop.score) {
             // Note: for queries that match lots of hits, this is the common case: most hits are not
             // competitive.
-            if (hitCountSoFar == totalHitsThreshold) {
-              // we just reached totalHitsThreshold, we can start setting the min
+            if (hitCountSoFar == totalHitsThreshold + 1) {
+              // we just exceeded totalHitsThreshold, we can start setting the min
               // competitive score now
               updateMinCompetitiveScore(scorer);
             }
@@ -246,7 +246,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   }
 
   protected void updateMinCompetitiveScore(Scorable scorer) throws IOException {
-    if (totalHits >= totalHitsThreshold
+    if (totalHits > totalHitsThreshold
         && pqTop != null
         && pqTop.score != Float.NEGATIVE_INFINITY) { // -Infinity is the score of sentinels
       // since we tie-break on doc id and collect in doc id order, we can require
