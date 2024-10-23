@@ -431,9 +431,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public DataInputDocValues getDataInputDocValues(String field) throws IOException {
+  public RandomAccessInputDocValues getRandomAccesInputDocValues(String field) throws IOException {
     ensureOpen();
-    return in.getDataInputDocValues(field);
+    return in.getRandomAccesInputDocValues(field);
   }
 
   @Override

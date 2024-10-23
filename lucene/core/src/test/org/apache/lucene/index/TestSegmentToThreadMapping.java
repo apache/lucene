@@ -77,7 +77,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public DataInputDocValues getDataInputDocValues(String field) {
+      public RandomAccessInputDocValues getRandomAccesInputDocValues(String field) {
         return null;
       }
 

@@ -43,7 +43,6 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
@@ -53,6 +52,7 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.RandomAccessInputDocValues;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -64,8 +64,8 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
@@ -233,7 +233,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
 
       final BinaryDocValues binary = DocValues.getBinary(reader, "binary");
 
-      final DataInputDocValues dataInput = DocValues.getDataInput(reader, "binary");
+      final RandomAccessInputDocValues dataInput = DocValues.getDataInput(reader, "binary");
 
       final SortedNumericDocValues sortedNumeric =
           DocValues.getSortedNumeric(reader, "sorted_numeric");
@@ -258,9 +258,9 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
           assertTrue(sorted.ordValue() >= 0);
           assertEquals(bytesRef, sorted.lookupOrd(sorted.ordValue()));
           assertEquals(bytesRef, binary.binaryValue());
-          final DataInput dataInputValue = dataInput.dataInputValue();
+          final RandomAccessInput dataInputValue = dataInput.randomAccessInputValue();
           final byte[] bytes = new byte[bytesRef.length];
-          dataInputValue.readBytes(bytes, 0, bytesRef.length);
+          dataInputValue.readBytes(0L, bytes, 0, bytesRef.length);
           assertEquals(new BytesRef(Long.toString(value)), new BytesRef(bytes));
         }
 

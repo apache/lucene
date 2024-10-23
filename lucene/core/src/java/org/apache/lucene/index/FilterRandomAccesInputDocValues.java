@@ -19,15 +19,16 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.store.RandomAccessInput;
 
-/** Delegates all methods to a wrapped {@link DataInputDocValues}. */
-public abstract class FilterDataInputDocValues extends DataInputDocValues {
+/** Delegates all methods to a wrapped {@link RandomAccessInputDocValues}. */
+public abstract class FilterRandomAccesInputDocValues extends RandomAccessInputDocValues {
 
   /** Wrapped values */
-  protected final DataInputDocValues in;
+  protected final RandomAccessInputDocValues in;
 
   /** Sole constructor */
-  protected FilterDataInputDocValues(DataInputDocValues in) {
+  protected FilterRandomAccesInputDocValues(RandomAccessInputDocValues in) {
     Objects.requireNonNull(in);
     this.in = in;
   }
@@ -58,7 +59,7 @@ public abstract class FilterDataInputDocValues extends DataInputDocValues {
   }
 
   @Override
-  public DataInputDocValue dataInputValue() throws IOException {
-    return in.dataInputValue();
+  public RandomAccessInput randomAccessInputValue() throws IOException {
+    return in.randomAccessInputValue();
   }
 }

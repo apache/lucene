@@ -1660,9 +1660,9 @@ public class MemoryIndex {
     }
 
     @Override
-    public DataInputDocValues getDataInputDocValues(String field) {
+    public RandomAccessInputDocValues getRandomAccesInputDocValues(String field) {
       BinaryDocValues binaryDocValues = getBinaryDocValues(field);
-      return DataInputDocValues.fromBinaryDocValues(binaryDocValues);
+      return RandomAccessInputDocValues.fromBinaryDocValues(binaryDocValues);
     }
 
     @Override

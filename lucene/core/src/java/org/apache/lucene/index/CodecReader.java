@@ -166,7 +166,8 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final DataInputDocValues getDataInputDocValues(String field) throws IOException {
+  public final RandomAccessInputDocValues getRandomAccesInputDocValues(String field)
+      throws IOException {
     ensureOpen();
     FieldInfo fi = getDVField(field, DocValuesType.BINARY);
     if (fi == null) {

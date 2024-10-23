@@ -26,7 +26,6 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
-import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -36,6 +35,7 @@ import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.RandomAccessInputDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -119,7 +119,7 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public DataInputDocValues getDataInputDocValues(String field) throws IOException {
+  public RandomAccessInputDocValues getRandomAccesInputDocValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null) {
@@ -257,13 +257,13 @@ class MergeReaderWrapper extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   @Override
   public void searchNearestVectors(
-          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 

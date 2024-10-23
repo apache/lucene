@@ -175,9 +175,9 @@ final class IndexingChain implements Accountable {
       }
 
       @Override
-      public DataInputDocValues getDataInputDocValues(String field) {
+      public RandomAccessInputDocValues getRandomAccesInputDocValues(String field) {
         BinaryDocValues binaryDocValues = getBinaryDocValues(field);
-        return DataInputDocValues.fromBinaryDocValues(binaryDocValues);
+        return RandomAccessInputDocValues.fromBinaryDocValues(binaryDocValues);
       }
 
       @Override
@@ -948,7 +948,7 @@ final class IndexingChain implements Accountable {
             }
 
             @Override
-            public DataInputDocValues getDataInputDocValues(String field) {
+            public RandomAccessInputDocValues getRandomAccesInputDocValues(String field) {
               if (Objects.equals(field, fieldToValidate) && dvType != DocValuesType.BINARY) {
                 throw new IllegalArgumentException(
                     "SortField "
@@ -959,7 +959,7 @@ final class IndexingChain implements Accountable {
                         + dvType
                         + "]");
               }
-              return DocValues.emptyDataInput();
+              return DocValues.emptyRandomAccessInput();
             }
 
             @Override

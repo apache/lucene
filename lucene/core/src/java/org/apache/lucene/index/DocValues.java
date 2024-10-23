@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 
 /** This class contains utility methods and constants for DocValues */
@@ -65,9 +66,9 @@ public final class DocValues {
     };
   }
 
-  /** An empty {@link DataInputDocValues} which returns no documents */
-  public static DataInputDocValues emptyDataInput() {
-    return new DataInputDocValues() {
+  /** An empty {@link RandomAccessInputDocValues} which returns no documents */
+  public static RandomAccessInputDocValues emptyRandomAccessInput() {
+    return new RandomAccessInputDocValues() {
       private int doc = -1;
 
       @Override
@@ -97,7 +98,7 @@ public final class DocValues {
       }
 
       @Override
-      public DataInputDocValue dataInputValue() {
+      public RandomAccessInput randomAccessInputValue() {
         assert false;
         return null;
       }
@@ -300,7 +301,7 @@ public final class DocValues {
   }
 
   /**
-   * Returns DataInputDocValues for the field, or {@link #emptyDataInput()} if it has none.
+   * Returns DataInputDocValues for the field, or {@link #emptyRandomAccessInput()} if it has none.
    *
    * @return docvalues instance, or an empty instance if {@code field} does not exist in this
    *     reader.
@@ -309,12 +310,12 @@ public final class DocValues {
    *     DocValuesType#BINARY}.
    * @throws IOException if an I/O error occurs.
    */
-  public static DataInputDocValues getDataInput(LeafReader reader, String field)
+  public static RandomAccessInputDocValues getDataInput(LeafReader reader, String field)
       throws IOException {
-    DataInputDocValues dv = reader.getDataInputDocValues(field);
+    RandomAccessInputDocValues dv = reader.getRandomAccesInputDocValues(field);
     if (dv == null) {
       checkField(reader, field, DocValuesType.BINARY);
-      return emptyDataInput();
+      return emptyRandomAccessInput();
     }
     return dv;
   }

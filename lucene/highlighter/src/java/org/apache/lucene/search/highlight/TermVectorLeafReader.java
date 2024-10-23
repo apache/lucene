@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
@@ -34,6 +33,7 @@ import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.RandomAccessInputDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -59,25 +59,25 @@ public class TermVectorLeafReader extends LeafReader {
 
   public TermVectorLeafReader(String field, Terms terms) {
     fields =
-            new Fields() {
-              @Override
-              public Iterator<String> iterator() {
-                return Collections.singletonList(field).iterator();
-              }
+        new Fields() {
+          @Override
+          public Iterator<String> iterator() {
+            return Collections.singletonList(field).iterator();
+          }
 
-              @Override
-              public Terms terms(String fld) throws IOException {
-                if (!field.equals(fld)) {
-                  return null;
-                }
-                return terms;
-              }
+          @Override
+          public Terms terms(String fld) throws IOException {
+            if (!field.equals(fld)) {
+              return null;
+            }
+            return terms;
+          }
 
-              @Override
-              public int size() {
-                return 1;
-              }
-            };
+          @Override
+          public int size() {
+            return 1;
+          }
+        };
 
     IndexOptions indexOptions;
     if (!terms.hasFreqs()) {
@@ -90,25 +90,25 @@ public class TermVectorLeafReader extends LeafReader {
       indexOptions = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS;
     }
     FieldInfo fieldInfo =
-            new FieldInfo(
-                    field,
-                    0,
-                    true,
-                    true,
-                    terms.hasPayloads(),
-                    indexOptions,
-                    DocValuesType.NONE,
-                    DocValuesSkipIndexType.NONE,
-                    -1,
-                    Collections.emptyMap(),
-                    0,
-                    0,
-                    0,
-                    0,
-                    VectorEncoding.FLOAT32,
-                    VectorSimilarityFunction.EUCLIDEAN,
-                    false,
-                    false);
+        new FieldInfo(
+            field,
+            0,
+            true,
+            true,
+            terms.hasPayloads(),
+            indexOptions,
+            DocValuesType.NONE,
+            DocValuesSkipIndexType.NONE,
+            -1,
+            Collections.emptyMap(),
+            0,
+            0,
+            0,
+            0,
+            VectorEncoding.FLOAT32,
+            VectorSimilarityFunction.EUCLIDEAN,
+            false,
+            false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
 
@@ -131,7 +131,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public DataInputDocValues getDataInputDocValues(String field) throws IOException {
+  public RandomAccessInputDocValues getRandomAccesInputDocValues(String field) throws IOException {
     return null;
   }
 
@@ -187,11 +187,11 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
   public void searchNearestVectors(
-          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
   public void checkIntegrity() throws IOException {}

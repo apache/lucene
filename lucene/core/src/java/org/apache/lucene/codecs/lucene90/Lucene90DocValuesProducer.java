@@ -20,7 +20,6 @@ import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_IND
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_MAX_LEVEL;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,7 +28,6 @@ import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
@@ -39,6 +37,7 @@ import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.RandomAccessInputDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -887,12 +886,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
   }
 
-  private abstract static class DenseDataInputDocValues extends DataInputDocValues {
+  private abstract static class DenseRandomAccessInputDocValues extends RandomAccessInputDocValues {
 
     final int maxDoc;
     int doc = -1;
 
-    DenseDataInputDocValues(int maxDoc) {
+    DenseRandomAccessInputDocValues(int maxDoc) {
       this.maxDoc = maxDoc;
     }
 
@@ -926,11 +925,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
   }
 
-  private abstract static class SparseDataInputDocValues extends DataInputDocValues {
+  private abstract static class SparseRandomAccessInputDocValues
+      extends RandomAccessInputDocValues {
 
     final IndexedDISI disi;
 
-    SparseDataInputDocValues(IndexedDISI disi) {
+    SparseRandomAccessInputDocValues(IndexedDISI disi) {
       this.disi = disi;
     }
 
@@ -960,83 +960,77 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
   }
 
-  private static class SlicedDataInput extends DataInputDocValues.DataInputDocValue {
+  private static class RandomAccessInputWrapper implements RandomAccessInput {
 
-    private final IndexInput in;
-    private int length;
+    private final RandomAccessInput in;
+    private long length;
     private long offset;
 
-    SlicedDataInput(IndexInput in) {
+    RandomAccessInputWrapper(RandomAccessInput in) {
       this.in = in;
     }
 
-    void init(long offset, int length) throws IOException {
-      in.seek(offset);
+    void reset(long offset, long length) {
       this.length = length;
       this.offset = offset;
     }
 
-    private void checkBounds(int numBytes) throws EOFException {
-      if (Math.toIntExact(getPosition() + numBytes) > length) {
-        throw new EOFException();
-      }
+    @Override
+    public long length() {
+      return length;
     }
 
     @Override
-    public byte readByte() throws IOException {
-      checkBounds(1);
-      return in.readByte();
+    public byte readByte(long pos) throws IOException {
+      assert pos + 1 <= length;
+      return in.readByte(offset + pos);
     }
 
     @Override
-    public void readBytes(byte[] b, int offset, int len) throws IOException {
-      checkBounds(len);
-      in.readBytes(b, offset, len);
+    public void readBytes(long pos, byte[] b, int offset, int len) throws IOException {
+      assert pos + len <= length;
+      in.readBytes(this.offset + pos, b, offset, len);
     }
 
     @Override
-    public void skipBytes(long numBytes) throws IOException {
-      if (numBytes >= length) {
-        throw new EOFException();
-      }
-      checkBounds((int) numBytes);
-      in.seek(in.getFilePointer() + numBytes);
+    public short readShort(long pos) throws IOException {
+      assert pos + Short.BYTES <= length;
+      return in.readShort(offset + pos);
     }
 
     @Override
-    public void setPosition(int pos) throws IOException {
-      if (pos >= length) {
-        throw new EOFException();
-      }
-      in.seek(offset + pos);
+    public int readInt(long pos) throws IOException {
+      assert pos + Integer.BYTES <= length;
+      return in.readInt(offset + pos);
     }
 
     @Override
-    public int getPosition() {
-      return Math.toIntExact(in.getFilePointer() - offset);
+    public long readLong(long pos) throws IOException {
+      assert pos + Long.BYTES <= length;
+      return in.readLong(offset + pos);
     }
   }
 
   @Override
-  public DataInputDocValues getDataInput(FieldInfo field) throws IOException {
+  public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
     BinaryEntry entry = binaries.get(field.name);
 
     if (entry.docsWithFieldOffset == -2) {
-      return DocValues.emptyDataInput();
+      return DocValues.emptyRandomAccessInput();
     }
 
-    final IndexInput bytesSlice = data.slice("fixed-binary", entry.dataOffset, entry.dataLength);
-    final SlicedDataInput dataInput = new SlicedDataInput(bytesSlice);
+    final RandomAccessInputWrapper bytesSlice =
+        new RandomAccessInputWrapper(data.randomAccessSlice(entry.dataOffset, entry.dataLength));
     if (entry.docsWithFieldOffset == -1) {
       // dense
       if (entry.minLength == entry.maxLength) {
         // fixed length
         final int length = entry.maxLength;
-        return new DenseDataInputDocValues(maxDoc) {
+        return new DenseRandomAccessInputDocValues(maxDoc) {
           @Override
-          public DataInputDocValue dataInputValue() throws IOException {
-            dataInput.init((long) doc * length, length);
-            return dataInput;
+          public RandomAccessInput randomAccessInputValue() {
+            bytesSlice.reset((long) doc * length, length);
+            return bytesSlice;
           }
         };
       } else {
@@ -1045,13 +1039,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             this.data.randomAccessSlice(entry.addressesOffset, entry.addressesLength);
         final LongValues addresses =
             DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData, merging);
-        return new DenseDataInputDocValues(maxDoc) {
+        return new DenseRandomAccessInputDocValues(maxDoc) {
 
           @Override
-          public DataInputDocValue dataInputValue() throws IOException {
+          public RandomAccessInput randomAccessInputValue() {
             long startOffset = addresses.get(doc);
-            dataInput.init(startOffset, (int) (addresses.get(doc + 1L) - startOffset));
-            return dataInput;
+            bytesSlice.reset(startOffset, (int) (addresses.get(doc + 1L) - startOffset));
+            return bytesSlice;
           }
         };
       }
@@ -1068,11 +1062,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (entry.minLength == entry.maxLength) {
         // fixed length
         final int length = entry.maxLength;
-        return new SparseDataInputDocValues(disi) {
+        return new SparseRandomAccessInputDocValues(disi) {
           @Override
-          public DataInputDocValue dataInputValue() throws IOException {
-            dataInput.init((long) disi.index() * length, length);
-            return dataInput;
+          public RandomAccessInput randomAccessInputValue() {
+            bytesSlice.reset((long) disi.index() * length, length);
+            return bytesSlice;
           }
         };
       } else {
@@ -1081,13 +1075,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             this.data.randomAccessSlice(entry.addressesOffset, entry.addressesLength);
         final LongValues addresses =
             DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData);
-        return new SparseDataInputDocValues(disi) {
+        return new SparseRandomAccessInputDocValues(disi) {
           @Override
-          public DataInputDocValue dataInputValue() throws IOException {
+          public RandomAccessInput randomAccessInputValue() {
             final int index = disi.index();
             long startOffset = addresses.get(index);
-            dataInput.init(startOffset, (int) (addresses.get(index + 1L) - startOffset));
-            return dataInput;
+            bytesSlice.reset(startOffset, (int) (addresses.get(index + 1L) - startOffset));
+            return bytesSlice;
           }
         };
       }

@@ -188,12 +188,14 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public DataInputDocValues getDataInputDocValues(String field) throws IOException {
-      final DataInputDocValues dataInputDocValues = super.getDataInputDocValues(field);
-      if (dataInputDocValues == null) {
+    public RandomAccessInputDocValues getRandomAccesInputDocValues(String field)
+        throws IOException {
+      final RandomAccessInputDocValues randomAccesInputDocValues =
+          super.getRandomAccesInputDocValues(field);
+      if (randomAccesInputDocValues == null) {
         return null;
       }
-      return new FilterDataInputDocValues(dataInputDocValues) {
+      return new FilterRandomAccesInputDocValues(randomAccesInputDocValues) {
         private int docToCheck = 0;
 
         @Override

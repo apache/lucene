@@ -226,8 +226,8 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public DataInputDocValues getDataInput(FieldInfo field) throws IOException {
-        return reader.getDataInputDocValues(field.name);
+      public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
+        return reader.getRandomAccesInputDocValues(field.name);
       }
 
       @Override

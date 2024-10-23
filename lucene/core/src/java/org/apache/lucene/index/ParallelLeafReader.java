@@ -398,10 +398,10 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public DataInputDocValues getDataInputDocValues(String field) throws IOException {
+  public RandomAccessInputDocValues getRandomAccesInputDocValues(String field) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(field);
-    return reader == null ? null : reader.getDataInputDocValues(field);
+    return reader == null ? null : reader.getRandomAccesInputDocValues(field);
   }
 
   @Override

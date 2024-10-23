@@ -19,12 +19,12 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.RandomAccessInputDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -54,7 +54,7 @@ public abstract class DocValuesProducer implements Closeable {
   public abstract BinaryDocValues getBinary(FieldInfo field) throws IOException;
 
   /**
-   * Returns {@link DataInputDocValues} for this field. The returned instance need not be
+   * Returns {@link RandomAccessInputDocValues} for this field. The returned instance need not be
    * thread-safe: it will only be used by a single thread. The behavior is undefined if the doc
    * values type of the given field is not {@link DocValuesType#BINARY}. The return value is never
    * {@code null}.
@@ -62,9 +62,9 @@ public abstract class DocValuesProducer implements Closeable {
    * <p>The default implementation just wraps the underlaying {@link BinaryDocValues} but
    * implementors might perform it in a much more efficient way.
    */
-  public DataInputDocValues getDataInput(FieldInfo field) throws IOException {
+  public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
     final BinaryDocValues binaryDocValues = getBinary(field);
-    return DataInputDocValues.fromBinaryDocValues(binaryDocValues);
+    return RandomAccessInputDocValues.fromBinaryDocValues(binaryDocValues);
   }
 
   /**
