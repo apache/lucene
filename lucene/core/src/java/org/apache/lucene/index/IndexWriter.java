@@ -462,6 +462,8 @@ public class IndexWriter
         }
       };
 
+  private final IndexWriterRAMManager.PerWriterIndexWriterRAMManager indexWriterRAMManager;
+
   /**
    * Expert: returns a readonly reader, covering all committed as well as un-committed changes to
    * the index. This provides "near real-time" searching, in that changes made during an IndexWriter
@@ -939,11 +941,14 @@ public class IndexWriter
    * @param d the index directory. The index is either created or appended according <code>
    *     conf.getOpenMode()</code>.
    * @param conf the configuration settings according to which IndexWriter should be initialized.
+   * @param indexWriterRAMManager The RAM manager used for multi-tenant RAM management
    * @throws IOException if the directory cannot be read/written to, or if it does not exist and
    *     <code>conf.getOpenMode()</code> is <code>OpenMode.APPEND</code> or if there is any other
    *     low-level IO error
    */
-  public IndexWriter(Directory d, IndexWriterConfig conf) throws IOException {
+  public IndexWriter(
+      Directory d, IndexWriterConfig conf, IndexWriterRAMManager indexWriterRAMManager)
+      throws IOException {
     enableTestPoints = isEnableTestPoints();
     conf.setIndexWriter(this); // prevent reuse by other instances
     config = conf;
@@ -1211,6 +1216,27 @@ public class IndexWriter
         writeLock = null;
       }
     }
+
+    if (indexWriterRAMManager != null) {
+      this.indexWriterRAMManager =
+          new IndexWriterRAMManager.PerWriterIndexWriterRAMManager(this, indexWriterRAMManager);
+    } else {
+      this.indexWriterRAMManager = null;
+    }
+  }
+
+  /**
+   * Constructor for IndexWriter's that don't require multi-tenant RAM management
+   *
+   * @param d the index directory. The index is either created or appended according <code>
+   *     conf.getOpenMode()</code>.
+   * @param conf the configuration settings according to which IndexWriter should be initialized.
+   * @throws IOException if the directory cannot be read/written to, or if it does not exist and
+   *     <code>conf.getOpenMode()</code> is <code>OpenMode.APPEND</code> or if there is any other
+   *     low-level IO error
+   */
+  public IndexWriter(Directory d, IndexWriterConfig conf) throws IOException {
+    this(d, conf, null);
   }
 
   /** Confirms that the incoming index sort (if any) matches the existing index sort (if any). */
@@ -1339,6 +1365,10 @@ public class IndexWriter
         throw t;
       }
       rollbackInternal(); // if we got that far lets rollback and close
+    }
+
+    if (indexWriterRAMManager != null) {
+      indexWriterRAMManager.removeWriter();
     }
   }
 
@@ -6011,6 +6041,9 @@ public class IndexWriter
     if (seqNo < 0) {
       seqNo = -seqNo;
       processEvents(true);
+    }
+    if (indexWriterRAMManager != null) {
+      indexWriterRAMManager.flushIfNecessary();
     }
     return seqNo;
   }
