@@ -186,6 +186,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public int count(LeafReaderContext context) throws IOException {
         if (context.reader().hasDeletions() == false) {
+          if (lowerValue > upperValue) {
+            return 0;
+          }
           IteratorAndCount itAndCount = null;
           LeafReader reader = context.reader();
 
