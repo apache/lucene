@@ -328,9 +328,9 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
+    public RandomAccessInputDocValues getRandomAccessInput(FieldInfo field) throws IOException {
       DocValuesProducer producer = fields.get(field.name);
-      return producer == null ? null : producer.getDataInput(field);
+      return producer == null ? null : producer.getRandomAccessInput(field);
     }
 
     @Override

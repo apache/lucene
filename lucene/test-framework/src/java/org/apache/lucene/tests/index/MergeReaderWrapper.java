@@ -130,7 +130,7 @@ class MergeReaderWrapper extends LeafReader {
       // Field was not indexed with doc values
       return null;
     }
-    return docValues.getDataInput(fi);
+    return docValues.getRandomAccessInput(fi);
   }
 
   @Override

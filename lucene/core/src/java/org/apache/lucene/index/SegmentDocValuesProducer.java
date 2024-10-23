@@ -104,10 +104,10 @@ class SegmentDocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
+  public RandomAccessInputDocValues getRandomAccessInput(FieldInfo field) throws IOException {
     DocValuesProducer dvProducer = dvProducersByField.get(field.name);
     assert dvProducer != null;
-    return dvProducer.getDataInput(field);
+    return dvProducer.getRandomAccessInput(field);
   }
 
   @Override

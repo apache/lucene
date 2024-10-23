@@ -233,7 +233,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
 
       final BinaryDocValues binary = DocValues.getBinary(reader, "binary");
 
-      final RandomAccessInputDocValues dataInput = DocValues.getDataInput(reader, "binary");
+      final RandomAccessInputDocValues dataInput = DocValues.getRandomAccessInput(reader, "binary");
 
       final SortedNumericDocValues sortedNumeric =
           DocValues.getSortedNumeric(reader, "sorted_numeric");

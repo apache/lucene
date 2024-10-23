@@ -1012,7 +1012,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
+  public RandomAccessInputDocValues getRandomAccessInput(FieldInfo field) throws IOException {
     BinaryEntry entry = binaries.get(field.name);
 
     if (entry.docsWithFieldOffset == -2) {

@@ -37,7 +37,7 @@ public abstract class EmptyDocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
+  public RandomAccessInputDocValues getRandomAccessInput(FieldInfo field) throws IOException {
     throw new UnsupportedOperationException();
   }
 

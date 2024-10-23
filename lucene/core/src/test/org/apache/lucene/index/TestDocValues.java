@@ -46,7 +46,7 @@ public class TestDocValues extends LuceneTestCase {
 
     // ok
     assertNotNull(DocValues.getBinary(r, "bogus"));
-    assertNotNull(DocValues.getDataInput(r, "bogus"));
+    assertNotNull(DocValues.getRandomAccessInput(r, "bogus"));
     assertNotNull(DocValues.getNumeric(r, "bogus"));
     assertNotNull(DocValues.getSorted(r, "bogus"));
     assertNotNull(DocValues.getSortedSet(r, "bogus"));
@@ -76,7 +76,7 @@ public class TestDocValues extends LuceneTestCase {
     expectThrows(
         IllegalStateException.class,
         () -> {
-          DocValues.getDataInput(r, "foo");
+          DocValues.getRandomAccessInput(r, "foo");
         });
     expectThrows(
         IllegalStateException.class,
@@ -127,7 +127,7 @@ public class TestDocValues extends LuceneTestCase {
     expectThrows(
         IllegalStateException.class,
         () -> {
-          DocValues.getDataInput(r, "foo");
+          DocValues.getRandomAccessInput(r, "foo");
         });
     expectThrows(
         IllegalStateException.class,
@@ -158,7 +158,7 @@ public class TestDocValues extends LuceneTestCase {
     // ok
     assertNotNull(DocValues.getBinary(r, "foo"));
     // ok
-    assertNotNull(DocValues.getDataInput(r, "foo"));
+    assertNotNull(DocValues.getRandomAccessInput(r, "foo"));
 
     // errors
     expectThrows(
@@ -210,7 +210,7 @@ public class TestDocValues extends LuceneTestCase {
     expectThrows(
         IllegalStateException.class,
         () -> {
-          DocValues.getDataInput(r, "foo");
+          DocValues.getRandomAccessInput(r, "foo");
         });
     expectThrows(
         IllegalStateException.class,
@@ -250,7 +250,7 @@ public class TestDocValues extends LuceneTestCase {
     expectThrows(
         IllegalStateException.class,
         () -> {
-          DocValues.getDataInput(r, "foo");
+          DocValues.getRandomAccessInput(r, "foo");
         });
     expectThrows(
         IllegalStateException.class,
@@ -295,7 +295,7 @@ public class TestDocValues extends LuceneTestCase {
     expectThrows(
         IllegalStateException.class,
         () -> {
-          DocValues.getDataInput(r, "foo");
+          DocValues.getRandomAccessInput(r, "foo");
         });
     expectThrows(
         IllegalStateException.class,

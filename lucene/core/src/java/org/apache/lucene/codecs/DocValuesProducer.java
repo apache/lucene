@@ -59,10 +59,10 @@ public abstract class DocValuesProducer implements Closeable {
    * values type of the given field is not {@link DocValuesType#BINARY}. The return value is never
    * {@code null}.
    *
-   * <p>The default implementation just wraps the underlaying {@link BinaryDocValues} but
+   * <p>The default implementation just wraps the underlying {@link BinaryDocValues} but
    * implementors might perform it in a much more efficient way.
    */
-  public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
+  public RandomAccessInputDocValues getRandomAccessInput(FieldInfo field) throws IOException {
     final BinaryDocValues binaryDocValues = getBinary(field);
     return RandomAccessInputDocValues.fromBinaryDocValues(binaryDocValues);
   }

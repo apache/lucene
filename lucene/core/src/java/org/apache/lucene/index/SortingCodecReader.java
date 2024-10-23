@@ -627,7 +627,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public RandomAccessInputDocValues getDataInput(FieldInfo field) throws IOException {
+      public RandomAccessInputDocValues getRandomAccessInput(FieldInfo field) throws IOException {
         BinaryDocValues binaryDocValues = getBinary(field);
         return RandomAccessInputDocValues.fromBinaryDocValues(binaryDocValues);
       }

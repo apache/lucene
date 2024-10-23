@@ -301,7 +301,8 @@ public final class DocValues {
   }
 
   /**
-   * Returns DataInputDocValues for the field, or {@link #emptyRandomAccessInput()} if it has none.
+   * Returns RandomAccessInputDocValues for the field, or {@link #emptyRandomAccessInput()} if it
+   * has none.
    *
    * @return docvalues instance, or an empty instance if {@code field} does not exist in this
    *     reader.
@@ -310,7 +311,7 @@ public final class DocValues {
    *     DocValuesType#BINARY}.
    * @throws IOException if an I/O error occurs.
    */
-  public static RandomAccessInputDocValues getDataInput(LeafReader reader, String field)
+  public static RandomAccessInputDocValues getRandomAccessInput(LeafReader reader, String field)
       throws IOException {
     RandomAccessInputDocValues dv = reader.getRandomAccesInputDocValues(field);
     if (dv == null) {

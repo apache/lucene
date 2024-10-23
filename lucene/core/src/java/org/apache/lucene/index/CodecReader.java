@@ -173,7 +173,7 @@ public abstract class CodecReader extends LeafReader {
     if (fi == null) {
       return null;
     }
-    return getDocValuesReader().getDataInput(fi);
+    return getDocValuesReader().getRandomAccessInput(fi);
   }
 
   @Override
