@@ -88,6 +88,28 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     }
 
     /**
+     * Add a collection of BooleanClause's to this {@link Builder}. Note that the order in which
+     * clauses are added does not have any impact on matching documents or query performance.
+     *
+     * @throws IndexSearcher.TooManyClauses if the new number of clauses exceeds the maximum clause
+     *     number
+     */
+    public Builder add(Collection<BooleanClause> collection) {
+      // We do the final deep check for max clauses count limit during
+      // <code>IndexSearcher.rewrite</code> but do this check to short
+      // circuit in case a single query holds more than numClauses
+      //
+      // NOTE: this is not just an early check for optimization -- it's
+      // neccessary to prevent run-away 'rewriting' of bad queries from
+      // creating BQ objects that might eat up all the Heap.
+      if ((clauses.size() + collection.size()) > IndexSearcher.maxClauseCount) {
+        throw new IndexSearcher.TooManyClauses();
+      }
+      clauses.addAll(collection);
+      return this;
+    }
+
+    /**
      * Add a new clause to this {@link Builder}. Note that the order in which clauses are added does
      * not have any impact on matching documents or query performance.
      *
@@ -136,7 +158,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   }
 
   /** Return the collection of queries for the given {@link Occur}. */
-  Collection<Query> getClauses(Occur occur) {
+  public Collection<Query> getClauses(Occur occur) {
     return clauseSets.get(occur);
   }
 
@@ -144,12 +166,12 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
    * Whether this query is a pure disjunction, ie. it only has SHOULD clauses and it is enough for a
    * single clause to match for this boolean query to match.
    */
-  boolean isPureDisjunction() {
+  public boolean isPureDisjunction() {
     return clauses.size() == getClauses(Occur.SHOULD).size() && minimumNumberShouldMatch <= 1;
   }
 
   /** Whether this query is a two clause disjunction with two term query clauses. */
-  boolean isTwoClausePureDisjunctionWithTerms() {
+  public boolean isTwoClausePureDisjunctionWithTerms() {
     return clauses.size() == 2
         && isPureDisjunction()
         && clauses.get(0).query() instanceof TermQuery
