@@ -7,7 +7,8 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#13947: Fix ord-to-doc mapping when searching Lucene 9.0.0 hnsw indices (Michael Sokolov, Ben Trent)
 
 ======================== Lucene 9.12.0 =======================
 
