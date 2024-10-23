@@ -36,7 +36,6 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.CodecReader;
-import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.IndexReader;
@@ -45,6 +44,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.RandomAccessInputDocValues;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -60,11 +60,11 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.index.DataInputDocValues;
 
 /**
  * Extends {@link LegacyBaseDocValuesFormatTestCase} and adds checks for {@link DocValuesSkipper}.
@@ -397,50 +397,50 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
   private void doTestNumericDocValuesWithSkipper(int totalDocs) throws Exception {
     assertDocValuesWithSkipper(
-            totalDocs,
-            new TestDocValueSkipper() {
+        totalDocs,
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            doc.add(NumericDocValuesField.indexedField("test", random().nextLong()));
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            NumericDocValues numericDocValues = leafReader.getNumericDocValues("test");
+            return new DocValuesWrapper() {
+
               @Override
-              public void populateDoc(Document doc) {
-                doc.add(NumericDocValuesField.indexedField("test", random().nextLong()));
+              public int advance(int target) throws IOException {
+                return numericDocValues.advance(target);
               }
 
               @Override
-              public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
-                NumericDocValues numericDocValues = leafReader.getNumericDocValues("test");
-                return new DocValuesWrapper() {
-
-                  @Override
-                  public int advance(int target) throws IOException {
-                    return numericDocValues.advance(target);
-                  }
-
-                  @Override
-                  public boolean advanceExact(int target) throws IOException {
-                    return numericDocValues.advanceExact(target);
-                  }
-
-                  @Override
-                  public long maxValue() throws IOException {
-                    return numericDocValues.longValue();
-                  }
-
-                  @Override
-                  public long minValue() throws IOException {
-                    return numericDocValues.longValue();
-                  }
-
-                  @Override
-                  public int docID() {
-                    return numericDocValues.docID();
-                  }
-                };
+              public boolean advanceExact(int target) throws IOException {
+                return numericDocValues.advanceExact(target);
               }
 
               @Override
-              public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
-                return leafReader.getDocValuesSkipper("test");
+              public long maxValue() throws IOException {
+                return numericDocValues.longValue();
               }
-            });
+
+              @Override
+              public long minValue() throws IOException {
+                return numericDocValues.longValue();
+              }
+
+              @Override
+              public int docID() {
+                return numericDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
   }
 
   public void testSortedNumericDocValuesWithSkipperSmall() throws Exception {
@@ -458,73 +458,73 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
   private void doTestSortedNumericDocValuesWithSkipper(int totalDocs) throws Exception {
     assertDocValuesWithSkipper(
-            totalDocs,
-            new TestDocValueSkipper() {
+        totalDocs,
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            for (int j = 0; j < random().nextInt(1, 5); j++) {
+              doc.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
+            }
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedNumericDocValues sortedNumericDocValues =
+                leafReader.getSortedNumericDocValues("test");
+            return new DocValuesWrapper() {
+              long max;
+              long min;
+
               @Override
-              public void populateDoc(Document doc) {
-                for (int j = 0; j < random().nextInt(1, 5); j++) {
-                  doc.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
+              public int advance(int target) throws IOException {
+                int doc = sortedNumericDocValues.advance(target);
+                if (doc != NO_MORE_DOCS) {
+                  readValues();
+                }
+                return doc;
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                if (sortedNumericDocValues.advanceExact(target)) {
+                  readValues();
+                  return true;
+                }
+                return false;
+              }
+
+              private void readValues() throws IOException {
+                max = Long.MIN_VALUE;
+                min = Long.MAX_VALUE;
+                for (int i = 0; i < sortedNumericDocValues.docValueCount(); i++) {
+                  long value = sortedNumericDocValues.nextValue();
+                  max = Math.max(max, value);
+                  min = Math.min(min, value);
                 }
               }
 
               @Override
-              public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
-                SortedNumericDocValues sortedNumericDocValues =
-                        leafReader.getSortedNumericDocValues("test");
-                return new DocValuesWrapper() {
-                  long max;
-                  long min;
-
-                  @Override
-                  public int advance(int target) throws IOException {
-                    int doc = sortedNumericDocValues.advance(target);
-                    if (doc != NO_MORE_DOCS) {
-                      readValues();
-                    }
-                    return doc;
-                  }
-
-                  @Override
-                  public boolean advanceExact(int target) throws IOException {
-                    if (sortedNumericDocValues.advanceExact(target)) {
-                      readValues();
-                      return true;
-                    }
-                    return false;
-                  }
-
-                  private void readValues() throws IOException {
-                    max = Long.MIN_VALUE;
-                    min = Long.MAX_VALUE;
-                    for (int i = 0; i < sortedNumericDocValues.docValueCount(); i++) {
-                      long value = sortedNumericDocValues.nextValue();
-                      max = Math.max(max, value);
-                      min = Math.min(min, value);
-                    }
-                  }
-
-                  @Override
-                  public long maxValue() {
-                    return max;
-                  }
-
-                  @Override
-                  public long minValue() {
-                    return min;
-                  }
-
-                  @Override
-                  public int docID() {
-                    return sortedNumericDocValues.docID();
-                  }
-                };
+              public long maxValue() {
+                return max;
               }
 
               @Override
-              public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
-                return leafReader.getDocValuesSkipper("test");
+              public long minValue() {
+                return min;
               }
-            });
+
+              @Override
+              public int docID() {
+                return sortedNumericDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
   }
 
   public void testSortedDocValuesWithSkipperSmall() throws Exception {
@@ -542,50 +542,50 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
   private void doTestSortedDocValuesWithSkipper(int totalDocs) throws Exception {
     assertDocValuesWithSkipper(
-            totalDocs,
-            new TestDocValueSkipper() {
+        totalDocs,
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            doc.add(SortedDocValuesField.indexedField("test", TestUtil.randomBinaryTerm(random())));
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedDocValues sortedDocValues = leafReader.getSortedDocValues("test");
+            return new DocValuesWrapper() {
+
               @Override
-              public void populateDoc(Document doc) {
-                doc.add(SortedDocValuesField.indexedField("test", TestUtil.randomBinaryTerm(random())));
+              public int advance(int target) throws IOException {
+                return sortedDocValues.advance(target);
               }
 
               @Override
-              public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
-                SortedDocValues sortedDocValues = leafReader.getSortedDocValues("test");
-                return new DocValuesWrapper() {
-
-                  @Override
-                  public int advance(int target) throws IOException {
-                    return sortedDocValues.advance(target);
-                  }
-
-                  @Override
-                  public boolean advanceExact(int target) throws IOException {
-                    return sortedDocValues.advanceExact(target);
-                  }
-
-                  @Override
-                  public long maxValue() throws IOException {
-                    return sortedDocValues.ordValue();
-                  }
-
-                  @Override
-                  public long minValue() throws IOException {
-                    return sortedDocValues.ordValue();
-                  }
-
-                  @Override
-                  public int docID() {
-                    return sortedDocValues.docID();
-                  }
-                };
+              public boolean advanceExact(int target) throws IOException {
+                return sortedDocValues.advanceExact(target);
               }
 
               @Override
-              public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
-                return leafReader.getDocValuesSkipper("test");
+              public long maxValue() throws IOException {
+                return sortedDocValues.ordValue();
               }
-            });
+
+              @Override
+              public long minValue() throws IOException {
+                return sortedDocValues.ordValue();
+              }
+
+              @Override
+              public int docID() {
+                return sortedDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
   }
 
   public void testSortedSetDocValuesWithSkipperSmall() throws Exception {
@@ -603,78 +603,78 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
   private void doTestSortedSetDocValuesWithSkipper(int totalDocs) throws Exception {
     assertDocValuesWithSkipper(
-            totalDocs,
-            new TestDocValueSkipper() {
+        totalDocs,
+        new TestDocValueSkipper() {
+          @Override
+          public void populateDoc(Document doc) {
+            for (int j = 0; j < random().nextInt(1, 5); j++) {
+              doc.add(
+                  SortedSetDocValuesField.indexedField(
+                      "test", TestUtil.randomBinaryTerm(random())));
+            }
+          }
+
+          @Override
+          public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
+            SortedSetDocValues sortedSetDocValues = leafReader.getSortedSetDocValues("test");
+            return new DocValuesWrapper() {
+              long max;
+              long min;
+
               @Override
-              public void populateDoc(Document doc) {
-                for (int j = 0; j < random().nextInt(1, 5); j++) {
-                  doc.add(
-                          SortedSetDocValuesField.indexedField(
-                                  "test", TestUtil.randomBinaryTerm(random())));
+              public int advance(int target) throws IOException {
+                int doc = sortedSetDocValues.advance(target);
+                if (doc != NO_MORE_DOCS) {
+                  readValues();
+                }
+                return doc;
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                if (sortedSetDocValues.advanceExact(target)) {
+                  readValues();
+                  return true;
+                }
+                return false;
+              }
+
+              private void readValues() throws IOException {
+                max = Long.MIN_VALUE;
+                min = Long.MAX_VALUE;
+                for (int i = 0; i < sortedSetDocValues.docValueCount(); i++) {
+                  long value = sortedSetDocValues.nextOrd();
+                  max = Math.max(max, value);
+                  min = Math.min(min, value);
                 }
               }
 
               @Override
-              public DocValuesWrapper docValuesWrapper(LeafReader leafReader) throws IOException {
-                SortedSetDocValues sortedSetDocValues = leafReader.getSortedSetDocValues("test");
-                return new DocValuesWrapper() {
-                  long max;
-                  long min;
-
-                  @Override
-                  public int advance(int target) throws IOException {
-                    int doc = sortedSetDocValues.advance(target);
-                    if (doc != NO_MORE_DOCS) {
-                      readValues();
-                    }
-                    return doc;
-                  }
-
-                  @Override
-                  public boolean advanceExact(int target) throws IOException {
-                    if (sortedSetDocValues.advanceExact(target)) {
-                      readValues();
-                      return true;
-                    }
-                    return false;
-                  }
-
-                  private void readValues() throws IOException {
-                    max = Long.MIN_VALUE;
-                    min = Long.MAX_VALUE;
-                    for (int i = 0; i < sortedSetDocValues.docValueCount(); i++) {
-                      long value = sortedSetDocValues.nextOrd();
-                      max = Math.max(max, value);
-                      min = Math.min(min, value);
-                    }
-                  }
-
-                  @Override
-                  public long maxValue() {
-                    return max;
-                  }
-
-                  @Override
-                  public long minValue() {
-                    return min;
-                  }
-
-                  @Override
-                  public int docID() {
-                    return sortedSetDocValues.docID();
-                  }
-                };
+              public long maxValue() {
+                return max;
               }
 
               @Override
-              public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
-                return leafReader.getDocValuesSkipper("test");
+              public long minValue() {
+                return min;
               }
-            });
+
+              @Override
+              public int docID() {
+                return sortedSetDocValues.docID();
+              }
+            };
+          }
+
+          @Override
+          public DocValuesSkipper docValuesSkipper(LeafReader leafReader) throws IOException {
+            return leafReader.getDocValuesSkipper("test");
+          }
+        });
   }
 
   private void assertDocValuesWithSkipper(int totalDocs, TestDocValueSkipper testDocValueSkipper)
-          throws Exception {
+      throws Exception {
     Supplier<Boolean> booleanSupplier;
     switch (random().nextInt(3)) {
       case 0 -> booleanSupplier = () -> true;
@@ -713,14 +713,14 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         throw new Exception(status.error);
       }
       readDocs +=
-              assertDocValuesSkipSequential(
-                      testDocValueSkipper.docValuesWrapper(reader),
-                      testDocValueSkipper.docValuesSkipper(reader));
+          assertDocValuesSkipSequential(
+              testDocValueSkipper.docValuesWrapper(reader),
+              testDocValueSkipper.docValuesSkipper(reader));
       for (int i = 0; i < 10; i++) {
         assertDocValuesSkipRandom(
-                testDocValueSkipper.docValuesWrapper(reader),
-                testDocValueSkipper.docValuesSkipper(reader),
-                reader.maxDoc());
+            testDocValueSkipper.docValuesWrapper(reader),
+            testDocValueSkipper.docValuesSkipper(reader),
+            reader.maxDoc());
       }
     }
     assertEquals(numDocs, readDocs);
@@ -728,7 +728,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   private int assertDocValuesSkipSequential(DocValuesWrapper iterator, DocValuesSkipper skipper)
-          throws IOException {
+      throws IOException {
     if (skipper == null) {
       return 0;
     }
@@ -747,8 +747,8 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         assertEquals(iterator.docID(), skipper.minDocID(0));
       } else {
         assertTrue(
-                "Expected: " + iterator.docID() + " but got " + skipper.minDocID(0),
-                skipper.minDocID(0) <= iterator.docID());
+            "Expected: " + iterator.docID() + " but got " + skipper.minDocID(0),
+            skipper.minDocID(0) <= iterator.docID());
       }
 
       if (skipper.minDocID(0) == NO_MORE_DOCS) {
@@ -771,19 +771,19 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         assertEquals(maxDoc, skipper.maxDocID(0));
       } else {
         assertTrue(
-                "Expected: " + maxDoc + " but got " + skipper.maxDocID(0),
-                skipper.maxDocID(0) >= maxDoc);
+            "Expected: " + maxDoc + " but got " + skipper.maxDocID(0),
+            skipper.maxDocID(0) >= maxDoc);
       }
       if (skipperHasAccurateValueBounds()) {
         assertEquals(minVal, skipper.minValue(0));
         assertEquals(maxVal, skipper.maxValue(0));
       } else {
         assertTrue(
-                "Expected: " + minVal + " but got " + skipper.minValue(0),
-                minVal >= skipper.minValue(0));
+            "Expected: " + minVal + " but got " + skipper.minValue(0),
+            minVal >= skipper.minValue(0));
         assertTrue(
-                "Expected: " + maxVal + " but got " + skipper.maxValue(0),
-                maxVal <= skipper.maxValue(0));
+            "Expected: " + maxVal + " but got " + skipper.maxValue(0),
+            maxVal <= skipper.maxValue(0));
       }
       docCount += skipper.docCount(0);
       for (int level = 1; level < skipper.numLevels(); level++) {
@@ -800,7 +800,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   private static void assertDocValuesSkipRandom(
-          DocValuesWrapper iterator, DocValuesSkipper skipper, int maxDoc) throws IOException {
+      DocValuesWrapper iterator, DocValuesSkipper skipper, int maxDoc) throws IOException {
     if (skipper == null) {
       return;
     }
@@ -859,7 +859,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     Directory dir2 = newDirectory();
     IndexWriter w2 =
-            new IndexWriter(dir2, newIndexWriterConfig().setMergeScheduler(new SerialMergeScheduler()));
+        new IndexWriter(dir2, newIndexWriterConfig().setMergeScheduler(new SerialMergeScheduler()));
     w2.addDocument(doc);
     w2.commit();
 
@@ -926,9 +926,9 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       output.reset();
-      output.writeVInt(i);
+      output.writeShort((short) i);
       output.writeInt(i);
-      output.writeString(Integer.toString(i));
+      output.writeLong(i);
       // Generate random-sized byte array with random choice of bytes in vocab range
       BytesRef bytesRef = newBytesRef(output.toArrayCopy());
       doc.add(newTextField("id", Integer.toString(i), Field.Store.YES));
@@ -940,7 +940,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     // Now search the index:
     IndexReader ireader =
-            maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
     IndexSearcher isearcher = new IndexSearcher(ireader);
     StoredFields storedFields = isearcher.storedFields();
 
@@ -948,18 +948,19 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
       String id = Integer.toString(i);
       Query query = new TermQuery(new Term("id", id));
       TopDocs hits = isearcher.search(query, 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       // Iterate through the results:
       int hitDocID = hits.scoreDocs[0].doc;
       Document hitDoc = storedFields.document(hitDocID);
       assertEquals(id, hitDoc.get("id"));
       assert ireader.leaves().size() == 1;
-      DataInputDocValues dv = ireader.leaves().get(0).reader().getDataInputDocValues("dv1");
+      RandomAccessInputDocValues dv =
+          ireader.leaves().get(0).reader().getRandomAccesInputDocValues("dv1");
       assertEquals(hitDocID, dv.advance(hitDocID));
-      DataInputDocValues.DataInputDocValue scratch = dv.dataInputValue();
-      assertEquals(i, scratch.readVInt());
-      assertEquals(i, scratch.readInt());
-      assertEquals(id, scratch.readString());
+      RandomAccessInput scratch = dv.randomAccessInputValue();
+      assertEquals(i, scratch.readShort(0));
+      assertEquals(i, scratch.readInt(2));
+      assertEquals(i, scratch.readLong(6));
     }
 
     ireader.close();
