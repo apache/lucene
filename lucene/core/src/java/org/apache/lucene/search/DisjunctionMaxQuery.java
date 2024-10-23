@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -45,6 +46,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
 
   /* The subqueries */
   private final Multiset<Query> disjuncts = new Multiset<>();
+  private final List<Query> orderedQueries; // used for toString()
 
   /* Multiple of the non-max disjunct scores added into our final score.  Non-zero values support tie-breaking. */
   private final float tieBreakerMultiplier;
@@ -66,6 +68,8 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
     }
     this.tieBreakerMultiplier = tieBreakerMultiplier;
     this.disjuncts.addAll(disjuncts);
+    this.orderedQueries = new ArrayList<>(disjuncts);
+    orderedQueries.sort(Comparator.comparing(Query::toString)); // ensure one sort
   }
 
   /**
@@ -296,7 +300,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    */
   @Override
   public String toString(String field) {
-    return disjuncts.stream()
+    return this.orderedQueries.stream()
         .map(
             subquery -> {
               if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
@@ -304,7 +308,6 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
               }
               return subquery.toString(field);
             })
-        .sorted()
         .collect(
             Collectors.joining(
                 " | ",
