@@ -36,15 +36,13 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
   /**
    * Creates a new instance of DisjunctionMaxScorer
    *
-   * @param weight The Weight to be used.
    * @param tieBreakerMultiplier Multiplier applied to non-maximum-scoring subqueries for a document
    *     as they are summed into the result.
    * @param subScorers The sub scorers this Scorer should iterate on
    */
-  DisjunctionMaxScorer(
-      Weight weight, float tieBreakerMultiplier, List<Scorer> subScorers, ScoreMode scoreMode)
+  DisjunctionMaxScorer(float tieBreakerMultiplier, List<Scorer> subScorers, ScoreMode scoreMode)
       throws IOException {
-    super(weight, subScorers, scoreMode);
+    super(subScorers, scoreMode);
     this.subScorers = subScorers;
     this.tieBreakerMultiplier = tieBreakerMultiplier;
     if (tieBreakerMultiplier < 0 || tieBreakerMultiplier > 1) {
@@ -75,7 +73,10 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    return disjunctionBlockPropagator.advanceShallow(target);
+    if (disjunctionBlockPropagator != null) {
+      return disjunctionBlockPropagator.advanceShallow(target);
+    }
+    return super.advanceShallow(target);
   }
 
   @Override
@@ -108,8 +109,9 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
 
   @Override
   public void setMinCompetitiveScore(float minScore) throws IOException {
-    getBlockMaxApprox().setMinCompetitiveScore(minScore);
-    disjunctionBlockPropagator.setMinCompetitiveScore(minScore);
+    if (disjunctionBlockPropagator != null) {
+      disjunctionBlockPropagator.setMinCompetitiveScore(minScore);
+    }
     if (tieBreakerMultiplier == 0) {
       // TODO: we could even remove some scorers from the priority queue?
       for (Scorer scorer : subScorers) {

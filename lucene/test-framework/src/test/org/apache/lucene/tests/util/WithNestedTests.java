@@ -16,17 +16,16 @@
  */
 package org.apache.lucene.tests.util;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.SysGlobals;
 import com.carrotsearch.randomizedtesting.rules.TestRuleAdapter;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
-import org.apache.lucene.util.IOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -57,7 +56,7 @@ public abstract class WithNestedTests {
     }
   }
 
-  private boolean suppressOutputStreams;
+  private final boolean suppressOutputStreams;
 
   protected WithNestedTests(boolean suppressOutputStreams) {
     this.suppressOutputStreams = suppressOutputStreams;
@@ -83,7 +82,7 @@ public abstract class WithNestedTests {
                 // We're running with a complex test filter that is properly handled by classes
                 // which are executed by RandomizedRunner. The "outer" classes testing
                 // LuceneTestCase
-                // itself are executed by the default JUnit runner and would be always executed.
+                // itself are executed by the default JUnit runner and would always be executed.
                 // We thus always skip execution if any filtering is detected.
                 Assume.assumeTrue(false);
               }
@@ -138,14 +137,10 @@ public abstract class WithNestedTests {
       prevSysOut = System.out;
       prevSysErr = System.err;
 
-      try {
-        sysout = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(sysout, true, IOUtils.UTF_8));
-        syserr = new ByteArrayOutputStream();
-        System.setErr(new PrintStream(syserr, true, IOUtils.UTF_8));
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException(e);
-      }
+      sysout = new ByteArrayOutputStream();
+      System.setOut(new PrintStream(sysout, true, UTF_8));
+      syserr = new ByteArrayOutputStream();
+      System.setErr(new PrintStream(syserr, true, UTF_8));
     }
 
     FailureMarker.resetFailures();
@@ -178,7 +173,7 @@ public abstract class WithNestedTests {
               + " but was "
               + result.getFailureCount()
               + ", failures below: "
-              + b.toString(),
+              + b,
           true);
     }
   }
@@ -186,12 +181,12 @@ public abstract class WithNestedTests {
   protected String getSysOut() {
     Assert.assertTrue(suppressOutputStreams);
     System.out.flush();
-    return new String(sysout.toByteArray(), StandardCharsets.UTF_8);
+    return sysout.toString(UTF_8);
   }
 
   protected String getSysErr() {
     Assert.assertTrue(suppressOutputStreams);
     System.err.flush();
-    return new String(syserr.toByteArray(), StandardCharsets.UTF_8);
+    return syserr.toString(UTF_8);
   }
 }

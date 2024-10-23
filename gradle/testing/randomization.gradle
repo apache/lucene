@@ -30,7 +30,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.7.2'
+    classpath deps.randomizedtesting.runner
   }
 }
 
@@ -62,12 +62,13 @@ allprojects {
 // Configure test property defaults and their descriptions.
 allprojects {
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
+      String randomVectorSize = RandomPicks.randomFrom(new Random(projectSeedLong), ["default", "128", "256", "512"])
       testOptions += [
           // seed, repetition and amplification.
           [propName: 'tests.seed', value: { -> rootSeed }, description: "Sets the master randomization seed."],
           [propName: 'tests.iters', value: null, description: "Duplicate (re-run) each test case N times."],
-          [propName: 'tests.multiplier', value: 1, description: "Value multiplier for randomized tests."],
+          [propName: 'tests.multiplier', value: null, description: "Value multiplier for randomized tests."],
           [propName: 'tests.maxfailures', value: null, description: "Skip tests after a given number of failures."],
           [propName: 'tests.timeoutSuite', value: null, description: "Timeout (in millis) for an entire suite."],
           [propName: 'tests.failfast', value: "false", description: "Stop the build early on failure.", buildOnly: true],
@@ -104,6 +105,15 @@ allprojects {
           // miscellaneous; some of them very weird.
           [propName: 'tests.LUCENE_VERSION', value: baseVersion, description: "Base Lucene version."],
           [propName: 'tests.bwcdir', value: null, description: "Data for backward-compatibility indexes."],
+          // vectorization related
+          [propName: 'tests.vectorsize',
+           value: { -> testsDefaultVectorizationRequested() ? 'default' : randomVectorSize },
+           description: "Sets preferred vector size in bits."],
+          [propName: 'tests.forceintegervectors',
+            value: { -> testsDefaultVectorizationRequested() ? false : (randomVectorSize != 'default') },
+            description: "Forces use of integer vectors even when slow."],
+          [propName: 'tests.defaultvectorization', value: false,
+            description: "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize, tests.forceintegervectors)."],
       ]
     }
   }
@@ -112,15 +122,27 @@ allprojects {
 // Resolve test option values after all evaluation is complete.
 allprojects {
   plugins.withType(JavaPlugin) {
+    configurations {
+      secManagerExclusions
+    }
+    dependencies {
+      secManagerExclusions ( deps.randomizedtesting.runner, {
+          exclude group: "junit"
+      })
+      secManagerExclusions ( deps.junit, {
+        exclude group: "org.hamcrest"
+      })
+    }
+
     afterEvaluate {
-      ext.testOptionsResolved = testOptions.findAll { opt ->
+      project.ext.testOptionsResolved = testOptions.findAll { opt ->
         propertyOrDefault(opt.propName, opt.value) != null
       }.collectEntries { opt ->
         [(opt.propName): Objects.toString(resolvedTestOption(opt.propName))]
       }
 
       // Compute the "reproduce with" string.
-      ext.testOptionsForReproduceLine = testOptions.findAll { opt ->
+      project.ext.testOptionsForReproduceLine = testOptions.findAll { opt ->
         if (opt["includeInReproLine"] == false) {
           return false
         }
@@ -137,7 +159,6 @@ allprojects {
          "tests.leaveTemporary",
          "tests.leavetemporary",
          "tests.leavetmpdir",
-         "solr.test.leavetmpdir",
       ].find { prop ->
         def v = Boolean.parseBoolean(propertyOrDefault(prop, "false"))
         if (v) {
@@ -149,11 +170,13 @@ allprojects {
       }
 
       // Append resolved test properties to the test task.
-      tasks.withType(Test) { task ->
+      tasks.withType(Test) { Test task ->
         // TODO: we could remove some options that are only relevant to the build environment
         // and not the test JVM itself.
         systemProperties testOptionsResolved
 
+        jvmArgs Commandline.translateCommandline(testOptionsResolved['tests.jvmargs'])
+      
         if (Boolean.parseBoolean(testOptionsResolved['tests.asserts'])) {
           jvmArgs("-ea", "-esa")
         } else {
@@ -166,13 +189,13 @@ allprojects {
 
         // Enable security manager, if requested. We could move the selection of security manager and security policy
         // to each project's build/ configuration but it seems compact enough to keep it here for now.
-        def securityArgumentProvider = new SecurityArgumentProvider(commonDir: project(":lucene").layout.projectDirectory)
+        def securityArgumentProvider = new SecurityArgumentProvider()
+        securityArgumentProvider.commonDir = project(":lucene").layout.projectDirectory
+        securityArgumentProvider.otherProperties = project.objects.mapProperty(String, String)
+
         if (Boolean.parseBoolean(testOptionsResolved["tests.useSecurityManager"])) {
           if (project.path.endsWith(".tests")) {
             // LUCENE-10301: for now, do not use the security manager for modular tests (test framework is not available).
-          } else if (project.path == ":lucene:replicator") {
-            systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
-            securityArgumentProvider.javaSecurityPolicy = layout.projectDirectory.file("${resources}/policies/replicator-tests.policy")
           } else if (project.path.startsWith(":lucene")) {
             systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
             securityArgumentProvider.javaSecurityPolicy = layout.projectDirectory.file("${resources}/policies/tests.policy")
@@ -183,6 +206,14 @@ allprojects {
           systemProperty 'gradle.lib.dir', Paths.get(project.class.location.toURI()).parent.toAbsolutePath().toString().replace('\\', '/')
           systemProperty 'gradle.worker.jar', Paths.get("${gradleUserHome}/caches/${gradle.gradleVersion}/workerMain/gradle-worker.jar").toAbsolutePath().toString()
           systemProperty 'gradle.user.home', gradleUserHome.toPath().toAbsolutePath().toString()
+
+          securityArgumentProvider.otherProperties.put("randomizedtesting.jar", project.provider { ->
+            return configurations.secManagerExclusions.resolve().find { it.name.startsWith("randomizedtesting-runner-") }.absolutePath
+          })
+          securityArgumentProvider.otherProperties.put("junit.jar", project.provider { ->
+            return configurations.secManagerExclusions.resolve().find { it.name.startsWith("junit-") }.absolutePath
+          })
+          securityArgumentProvider.otherProperties.put("lucene.test.framework", project(":lucene:test-framework").layout.buildDirectory.get().asFile.absolutePath)
         }
 
         doFirst {
@@ -236,12 +267,20 @@ class SecurityArgumentProvider implements CommandLineArgumentProvider {
   @PathSensitive(PathSensitivity.RELATIVE)
   RegularFile javaSecurityPolicy
 
+  @Input
+  MapProperty<String, String> otherProperties
+
   @Override
   Iterable<String> asArguments() {
     def args = ["-Dcommon.dir=${commonDir.getAsFile()}"]
     if (javaSecurityPolicy) {
       args.add("-Djava.security.policy=${javaSecurityPolicy.getAsFile()}")
     }
+
+    otherProperties.getOrElse(Map.of()).forEach { key, value ->
+      args.add("-D${key}=${value}")
+    }
+
     return args
   }
 }

@@ -19,33 +19,47 @@ package org.apache.lucene.codecs.lucene95;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-abstract class OffHeapByteVectorValues extends ByteVectorValues
-    implements RandomAccessVectorValues<byte[]> {
+public abstract class OffHeapByteVectorValues extends ByteVectorValues implements HasIndexSlice {
 
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
+  protected int lastOrd = -1;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
+  protected final VectorSimilarityFunction similarityFunction;
+  protected final FlatVectorsScorer flatVectorsScorer;
 
-  OffHeapByteVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
+  OffHeapByteVectorValues(
+      int dimension,
+      int size,
+      IndexInput slice,
+      int byteSize,
+      FlatVectorsScorer flatVectorsScorer,
+      VectorSimilarityFunction similarityFunction) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
     this.byteSize = byteSize;
     byteBuffer = ByteBuffer.allocate(byteSize);
     binaryValue = byteBuffer.array();
+    this.similarityFunction = similarityFunction;
+    this.flatVectorsScorer = flatVectorsScorer;
   }
 
   @Override
@@ -60,8 +74,16 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
   @Override
   public byte[] vectorValue(int targetOrd) throws IOException {
-    readValue(targetOrd);
+    if (lastOrd != targetOrd) {
+      readValue(targetOrd);
+      lastOrd = targetOrd;
+    }
     return binaryValue;
+  }
+
+  @Override
+  public IndexInput getSlice() {
+    return slice;
   }
 
   private void readValue(int targetOrd) throws IOException {
@@ -69,66 +91,88 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
   }
 
-  static OffHeapByteVectorValues load(
-      Lucene95HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2 || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      return new EmptyOffHeapVectorValues(fieldEntry.dimension);
+  public static OffHeapByteVectorValues load(
+      VectorSimilarityFunction vectorSimilarityFunction,
+      FlatVectorsScorer flatVectorsScorer,
+      OrdToDocDISIReaderConfiguration configuration,
+      VectorEncoding vectorEncoding,
+      int dimension,
+      long vectorDataOffset,
+      long vectorDataLength,
+      IndexInput vectorData)
+      throws IOException {
+    if (configuration.isEmpty() || vectorEncoding != VectorEncoding.BYTE) {
+      return new EmptyOffHeapVectorValues(dimension, flatVectorsScorer, vectorSimilarityFunction);
     }
-    IndexInput bytesSlice =
-        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    int byteSize = fieldEntry.dimension;
-    if (fieldEntry.docsWithFieldOffset == -1) {
+    IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
+    if (configuration.isDense()) {
       return new DenseOffHeapVectorValues(
-          fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
+          dimension,
+          configuration.size,
+          bytesSlice,
+          dimension,
+          flatVectorsScorer,
+          vectorSimilarityFunction);
     } else {
-      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice, byteSize);
+      return new SparseOffHeapVectorValues(
+          configuration,
+          vectorData,
+          bytesSlice,
+          dimension,
+          dimension,
+          flatVectorsScorer,
+          vectorSimilarityFunction);
     }
   }
 
-  abstract Bits getAcceptOrds(Bits acceptDocs);
-
-  static class DenseOffHeapVectorValues extends OffHeapByteVectorValues {
-
-    private int doc = -1;
-
-    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
-      super(dimension, size, slice, byteSize);
+  /**
+   * Dense vector values that are stored off-heap. This is the most common case when every doc has a
+   * vector.
+   */
+  public static class DenseOffHeapVectorValues extends OffHeapByteVectorValues {
+    public DenseOffHeapVectorValues(
+        int dimension,
+        int size,
+        IndexInput slice,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction vectorSimilarityFunction) {
+      super(dimension, size, slice, byteSize, flatVectorsScorer, vectorSimilarityFunction);
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
-      return binaryValue;
+    public DenseOffHeapVectorValues copy() throws IOException {
+      return new DenseOffHeapVectorValues(
+          dimension, size, slice.clone(), byteSize, flatVectorsScorer, similarityFunction);
     }
 
     @Override
-    public int docID() {
-      return doc;
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      if (target >= size) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
-    }
-
-    @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
-      return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
-    }
-
-    @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] query) throws IOException {
+      DenseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
+      RandomVectorScorer scorer =
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return scorer.score(iterator.docID());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+      };
     }
   }
 
@@ -137,57 +181,50 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene95HnswVectorsReader.FieldEntry fieldEntry;
+    private final OrdToDocDISIReaderConfiguration configuration;
 
     public SparseOffHeapVectorValues(
-        Lucene95HnswVectorsReader.FieldEntry fieldEntry,
+        OrdToDocDISIReaderConfiguration configuration,
         IndexInput dataIn,
         IndexInput slice,
-        int byteSize)
+        int dimension,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction vectorSimilarityFunction)
         throws IOException {
 
-      super(fieldEntry.dimension, fieldEntry.size, slice, byteSize);
-      this.fieldEntry = fieldEntry;
+      super(
+          dimension,
+          configuration.size,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          vectorSimilarityFunction);
+      this.configuration = configuration;
       final RandomAccessInput addressesData =
-          dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
+          dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
       this.dataIn = dataIn;
-      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
+      this.ordToDoc = DirectMonotonicReader.getInstance(configuration.meta, addressesData);
       this.disi =
           new IndexedDISI(
               dataIn,
-              fieldEntry.docsWithFieldOffset,
-              fieldEntry.docsWithFieldLength,
-              fieldEntry.jumpTableEntryCount,
-              fieldEntry.denseRankPower,
-              fieldEntry.size);
+              configuration.docsWithFieldOffset,
+              configuration.docsWithFieldLength,
+              configuration.jumpTableEntryCount,
+              configuration.denseRankPower,
+              configuration.size);
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      return disi.advance(target);
-    }
-
-    @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
-      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
+    public SparseOffHeapVectorValues copy() throws IOException {
+      return new SparseOffHeapVectorValues(
+          configuration,
+          dataIn,
+          slice.clone(),
+          dimension,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction);
     }
 
     @Override
@@ -196,7 +233,12 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public DocIndexIterator iterator() {
+      return IndexedDISI.asDocIndexIterator(disi);
+    }
+
+    @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
       if (acceptDocs == null) {
         return null;
       }
@@ -212,15 +254,34 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
         }
       };
     }
+
+    @Override
+    public VectorScorer scorer(byte[] query) throws IOException {
+      SparseOffHeapVectorValues copy = copy();
+      RandomVectorScorer scorer =
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return scorer.score(copy.disi.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return copy.disi;
+        }
+      };
+    }
   }
 
   private static class EmptyOffHeapVectorValues extends OffHeapByteVectorValues {
 
-    public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, null, 0);
+    public EmptyOffHeapVectorValues(
+        int dimension,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction vectorSimilarityFunction) {
+      super(dimension, 0, null, 0, flatVectorsScorer, vectorSimilarityFunction);
     }
-
-    private int doc = -1;
 
     @Override
     public int dimension() {
@@ -233,32 +294,17 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorValue(int ord) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int docID() {
-      return doc;
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return doc = NO_MORE_DOCS;
-    }
-
-    @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public byte[] vectorValue(int targetOrd) throws IOException {
+    public EmptyOffHeapVectorValues copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -268,7 +314,12 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      return null;
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] query) {
       return null;
     }
   }

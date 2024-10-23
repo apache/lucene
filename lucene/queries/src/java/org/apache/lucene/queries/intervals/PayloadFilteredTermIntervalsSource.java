@@ -262,7 +262,7 @@ class PayloadFilteredTermIntervalsSource extends IntervalsSource {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    TermIntervalsSource that = (TermIntervalsSource) o;
+    PayloadFilteredTermIntervalsSource that = (PayloadFilteredTermIntervalsSource) o;
     return Objects.equals(term, that.term);
   }
 

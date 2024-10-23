@@ -34,14 +34,19 @@ public class XYZBounds implements Bounds {
 
   /** Minimum x */
   private Double minX = null;
+
   /** Maximum x */
   private Double maxX = null;
+
   /** Minimum y */
   private Double minY = null;
+
   /** Maximum y */
   private Double maxY = null;
+
   /** Minimum z */
   private Double minZ = null;
+
   /** Maximum z */
   private Double maxZ = null;
 

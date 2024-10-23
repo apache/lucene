@@ -654,7 +654,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   }
 
   private String escapeDateString(String s) {
-    if (s.indexOf(" ") > -1) {
+    if (s.indexOf(' ') > -1) {
       return "\"" + s + "\"";
     } else {
       return s;
@@ -1020,6 +1020,29 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   //    iw.addDocument(d);
   //  }
 
+  public void testParsesBracketsIfQuoted() throws Exception {
+    Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+
+    assertQueryEquals("[\"a[i]\" TO \"b[i]\"]", a, "[a[i] TO b[i]]");
+    assertQueryEquals("{\"a[i]\" TO \"b[i]\"}", a, "{a[i] TO b[i]}");
+    assertQueryEquals("[\"a[i]\" TO \"b[i]\"}", a, "[a[i] TO b[i]}");
+    assertQueryEquals("{\"a[i]\" TO \"b[i]\"]", a, "{a[i] TO b[i]]");
+
+    assertQueryEquals("[\"a[i\\]\" TO \"b[i\\]\"]", a, "[a[i] TO b[i]]");
+    assertQueryEquals("[\"a\\[i\\]\" TO \"b\\[i\\]\"]", a, "[a[i] TO b[i]]");
+
+    assertQueryEquals("[\"a[i][j]\" TO \"b[i][j]\"]", a, "[a[i][j] TO b[i][j]]");
+
+    assertQueryEquals(
+        "[ \"2024-01-01T01:01:01+01:00[Europe/Warsaw]\" TO \"2025-01-01T01:01:01+01:00[Europe/Warsaw]\" ]",
+        null,
+        "[2024-01-01t01:01:01+01:00[europe/warsaw] TO 2025-01-01t01:01:01+01:00[europe/warsaw]]");
+
+    // If the range terms aren't wrapped in quotes, a closing bracket will throw
+    assertParseException("[a[i] TO b[i]]");
+    assertParseException("[a\\[i\\] TO b\\[i\\]]");
+  }
+
   public abstract void testStarParsing() throws Exception;
 
   public void testEscapedWildcard() throws Exception {
@@ -1145,7 +1168,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     BooleanQuery bq = (BooleanQuery) getQuery("+*:* -*:*", qp);
     assertEquals(2, bq.clauses().size());
     for (BooleanClause clause : bq) {
-      assertTrue(clause.getQuery() instanceof MatchAllDocsQuery);
+      assertTrue(clause.query() instanceof MatchAllDocsQuery);
     }
   }
 
@@ -1184,7 +1207,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     IndexSearcher s = newSearcher(r);
 
     Query q = getQuery("\"wizard of ozzy\"", a);
-    assertEquals(1, s.search(q, 1).totalHits.value);
+    assertEquals(1, s.search(q, 1).totalHits.value());
     r.close();
     dir.close();
   }

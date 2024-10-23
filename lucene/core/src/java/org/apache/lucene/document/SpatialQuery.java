@@ -59,6 +59,7 @@ import org.apache.lucene.util.FixedBitSet;
 abstract class SpatialQuery extends Query {
   /** field name */
   final String field;
+
   /**
    * query relation disjoint: {@link QueryRelation#DISJOINT}, intersects: {@link
    * QueryRelation#INTERSECTS}, within: {@link QueryRelation#DISJOINT}, contains: {@link
@@ -149,7 +150,6 @@ abstract class SpatialQuery extends Query {
       LeafReader reader,
       SpatialVisitor spatialVisitor,
       ScoreMode scoreMode,
-      ConstantScoreWeight weight,
       float boost,
       float score)
       throws IOException {
@@ -177,8 +177,7 @@ abstract class SpatialQuery extends Query {
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) {
-          return new ConstantScoreScorer(
-              weight, score, scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+          return new ConstantScoreScorer(score, scoreMode, DocIdSetIterator.all(reader.maxDoc()));
         }
 
         @Override
@@ -199,7 +198,7 @@ abstract class SpatialQuery extends Query {
       return new RelationScorerSupplier(values, spatialVisitor, queryRelation, field) {
         @Override
         public Scorer get(long leadCost) throws IOException {
-          return getScorer(reader, weight, score, scoreMode);
+          return getScorer(reader, score, scoreMode);
         }
       };
     }
@@ -210,19 +209,11 @@ abstract class SpatialQuery extends Query {
     final SpatialQuery query = this;
     final SpatialVisitor spatialVisitor = getSpatialVisitor();
     return new ConstantScoreWeight(query, boost) {
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        final ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final LeafReader reader = context.reader();
-        return getScorerSupplier(reader, spatialVisitor, scoreMode, this, boost, score());
+        return getScorerSupplier(reader, spatialVisitor, scoreMode, boost, score());
       }
 
       @Override
@@ -298,18 +289,17 @@ abstract class SpatialQuery extends Query {
     }
 
     protected Scorer getScorer(
-        final LeafReader reader, final Weight weight, final float boost, final ScoreMode scoreMode)
-        throws IOException {
+        final LeafReader reader, final float boost, final ScoreMode scoreMode) throws IOException {
       switch (queryRelation) {
         case INTERSECTS:
-          return getSparseScorer(reader, weight, boost, scoreMode);
+          return getSparseScorer(reader, boost, scoreMode);
         case CONTAINS:
-          return getContainsDenseScorer(reader, weight, boost, scoreMode);
+          return getContainsDenseScorer(reader, boost, scoreMode);
         case WITHIN:
         case DISJOINT:
           return values.getDocCount() == values.size()
-              ? getSparseScorer(reader, weight, boost, scoreMode)
-              : getDenseScorer(reader, weight, boost, scoreMode);
+              ? getSparseScorer(reader, boost, scoreMode)
+              : getDenseScorer(reader, boost, scoreMode);
         default:
           throw new IllegalArgumentException("Unsupported query type :[" + queryRelation + "]");
       }
@@ -317,8 +307,7 @@ abstract class SpatialQuery extends Query {
 
     /** Scorer used for INTERSECTS and single value points */
     private Scorer getSparseScorer(
-        final LeafReader reader, final Weight weight, final float boost, final ScoreMode scoreMode)
-        throws IOException {
+        final LeafReader reader, final float boost, final ScoreMode scoreMode) throws IOException {
       if (queryRelation == QueryRelation.DISJOINT
           && values.getDocCount() == reader.maxDoc()
           && values.getDocCount() == values.size()
@@ -331,7 +320,7 @@ abstract class SpatialQuery extends Query {
         final long[] cost = new long[] {reader.maxDoc()};
         values.intersect(getInverseDenseVisitor(spatialVisitor, queryRelation, result, cost));
         final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       } else if (values.getDocCount() < (values.size() >>> 2)) {
         // we use a dense structure so we can skip already visited documents
         final FixedBitSet result = new FixedBitSet(reader.maxDoc());
@@ -340,18 +329,17 @@ abstract class SpatialQuery extends Query {
         assert cost[0] > 0 || result.cardinality() == 0;
         final DocIdSetIterator iterator =
             cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       } else {
         final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc(), values, field);
         values.intersect(getSparseVisitor(spatialVisitor, queryRelation, docIdSetBuilder));
         final DocIdSetIterator iterator = docIdSetBuilder.build().iterator();
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       }
     }
 
     /** Scorer used for WITHIN and DISJOINT */
-    private Scorer getDenseScorer(
-        LeafReader reader, Weight weight, final float boost, ScoreMode scoreMode)
+    private Scorer getDenseScorer(LeafReader reader, final float boost, ScoreMode scoreMode)
         throws IOException {
       final FixedBitSet result = new FixedBitSet(reader.maxDoc());
       final long[] cost;
@@ -376,11 +364,10 @@ abstract class SpatialQuery extends Query {
       assert cost[0] > 0 || result.cardinality() == 0;
       final DocIdSetIterator iterator =
           cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-      return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+      return new ConstantScoreScorer(boost, scoreMode, iterator);
     }
 
-    private Scorer getContainsDenseScorer(
-        LeafReader reader, Weight weight, final float boost, ScoreMode scoreMode)
+    private Scorer getContainsDenseScorer(LeafReader reader, final float boost, ScoreMode scoreMode)
         throws IOException {
       final FixedBitSet result = new FixedBitSet(reader.maxDoc());
       final long[] cost = new long[] {0};
@@ -392,7 +379,7 @@ abstract class SpatialQuery extends Query {
       assert cost[0] > 0 || result.cardinality() == 0;
       final DocIdSetIterator iterator =
           cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-      return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+      return new ConstantScoreScorer(boost, scoreMode, iterator);
     }
 
     @Override
@@ -693,7 +680,7 @@ abstract class SpatialQuery extends Query {
       final SpatialVisitor spatialVisitor, QueryRelation queryRelation, final FixedBitSet result) {
     final BiFunction<byte[], byte[], Relation> innerFunction =
         spatialVisitor.getInnerFunction(queryRelation);
-    ;
+
     return new IntersectVisitor() {
 
       @Override

@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.analysis.ja.completion;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 
@@ -39,14 +39,13 @@ import org.apache.lucene.util.CharsRefBuilder;
 public class KatakanaRomanizer {
   private static final String ROMAJI_MAP_FILE = "romaji_map.txt";
 
-  private static KatakanaRomanizer INSTANCE;
+  private static final KatakanaRomanizer INSTANCE;
 
   static {
     // Build romaji-map and keystroke arrays from the pre-defined Katakana-Romaji mapping file.
     try (InputStreamReader is =
             new InputStreamReader(
-                KatakanaRomanizer.class.getResourceAsStream(ROMAJI_MAP_FILE),
-                Charset.forName("UTF-8"));
+                KatakanaRomanizer.class.getResourceAsStream(ROMAJI_MAP_FILE), UTF_8);
         BufferedReader ir = new BufferedReader(is)) {
       Map<CharsRef, List<CharsRef>> romajiMap = new HashMap<>();
       String line;
@@ -118,7 +117,7 @@ public class KatakanaRomanizer {
       List<CharsRef> candidates =
           romajiMap.get(keystrokes[matched.keystrokeLen - 1][matched.keystrokeIndex]);
 
-      if (pendingOutputs.size() == 0) {
+      if (pendingOutputs.isEmpty()) {
         // There is no pending output.
         // Add the matched keystrokes to pending outputs list.
         for (CharsRef cref : candidates) {
@@ -166,7 +165,7 @@ public class KatakanaRomanizer {
         output.append(input.chars, pos, input.length - pos);
       }
     }
-    return pendingOutputs.stream().map(CharsRefBuilder::get).collect(Collectors.toList());
+    return pendingOutputs.stream().map(CharsRefBuilder::get).toList();
   }
 
   private MatchedKeystroke longestKeystrokeMatch(CharsRef input, int inputOffset) {
@@ -181,13 +180,5 @@ public class KatakanaRomanizer {
     return null;
   }
 
-  private static class MatchedKeystroke {
-    final int keystrokeLen;
-    final int keystrokeIndex;
-
-    MatchedKeystroke(int keystrokeLen, int keystrokeIndex) {
-      this.keystrokeLen = keystrokeLen;
-      this.keystrokeIndex = keystrokeIndex;
-    }
-  }
+  private record MatchedKeystroke(int keystrokeLen, int keystrokeIndex) {}
 }

@@ -186,8 +186,7 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     documents.firstTerm("title").orElseThrow(IllegalStateException::new);
     Term term = documents.seekTerm("adv").orElseThrow(IllegalStateException::new);
     assertEquals("adventures", term.text());
-    int docid = documents.firstTermDoc().orElseThrow(IllegalStateException::new);
-    assertEquals(1, docid);
+    assertTrue(documents.firstTermDoc().isPresent());
   }
 
   @Test

@@ -1,0 +1,29 @@
+# This composite action is included in other workflows to have a shared setup
+# for java, gradle, caches, etc.
+
+name: Prepare Lucene build
+
+inputs:
+   java-version:
+     required: false
+     default: 21
+     description: "The default JDK version to set up."
+
+   java-distribution:
+     required: false
+     default: "temurin"
+     description: "The default JDK distribution type"
+
+runs:
+ using: "composite"
+ steps:
+    - name: Set up Java (${{ inputs.java-distribution }}, ${{ inputs.java-version }})"
+      uses: actions/setup-java@v4
+      with:
+        distribution: ${{ inputs.java-distribution }}
+        java-version: ${{ inputs.java-version }}
+        java-package: jdk
+
+    # This includes "smart" caching of the wrapper and dependencies.
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v3

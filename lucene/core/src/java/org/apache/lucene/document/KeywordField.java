@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
@@ -171,7 +172,7 @@ public class KeywordField extends Field {
    * @throws NullPointerException if {@code field} is null.
    * @return a query matching documents with this exact value
    */
-  public static Query newSetQuery(String field, BytesRef... values) {
+  public static Query newSetQuery(String field, Collection<BytesRef> values) {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");
     Query indexQuery = new TermInSetQuery(field, values);

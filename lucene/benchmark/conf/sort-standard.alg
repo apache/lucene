@@ -31,7 +31,8 @@ doc.tokenized=true
 doc.term.vector=false
 log.step=100000
 
-docs.dir=reuters-out
+work.dir=data
+docs.dir=reuters21578
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.SortableSingleDocSource
 

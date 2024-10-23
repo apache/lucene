@@ -60,20 +60,6 @@ public final class FloatField extends Field {
   private final StoredValue storedValue;
 
   /**
-   * Creates a new FloatField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the float value
-   * @throws IllegalArgumentException if the field name or value is null.
-   * @deprecated Use {@link #FloatField(String, float, Field.Store)} with {@link Field.Store#NO}
-   *     instead.
-   */
-  @Deprecated
-  public FloatField(String name, float value) {
-    this(name, value, Field.Store.NO);
-  }
-
-  /**
    * Creates a new FloatField, indexing the provided point, storing it as a DocValue, and optionally
    * storing it as a stored field.
    *

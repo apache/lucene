@@ -44,6 +44,7 @@ public class SentinelIntSet {
 
   public int count;
   public final int emptyVal;
+
   /** the count at which a rehash should be done */
   public int rehashCount;
 

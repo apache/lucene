@@ -23,7 +23,7 @@ import java.util.Objects;
 public class StringUtils {
 
   public static boolean isNullOrEmpty(String s) {
-    return Objects.isNull(s) || s.equals("");
+    return Objects.isNull(s) || s.isEmpty();
   }
 
   private StringUtils() {}

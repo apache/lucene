@@ -25,9 +25,9 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public final class TopKnnCollector extends AbstractKnnCollector {
+public class TopKnnCollector extends AbstractKnnCollector {
 
-  private final NeighborQueue queue;
+  protected final NeighborQueue queue;
 
   /**
    * @param k the number of neighbors to collect
@@ -61,6 +61,11 @@ public final class TopKnnCollector extends AbstractKnnCollector {
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+  }
+
+  @Override
+  public int numCollected() {
+    return queue.size();
   }
 
   @Override

@@ -30,7 +30,8 @@ doc.term.vector.offsets=false
 doc.term.vector.positions=false
 log.step=2000
 
-docs.dir=reuters-out
+work.dir=data
+docs.dir=reuters21578
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource
 

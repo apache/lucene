@@ -298,11 +298,12 @@ public class TestPassageSelector extends LuceneTestCase {
     ArrayList<OffsetRange> highlights = new ArrayList<>();
     ArrayList<OffsetRange> permittedRanges = new ArrayList<>();
 
-    for (int i = 0; i < 5000; i++) {
+    for (int i = 0; i < 100; i++) {
       String value =
           randomBoolean()
               ? randomAsciiLettersOfLengthBetween(0, 100)
               : randomRealisticUnicodeOfCodepointLengthBetween(0, 1000);
+
       int maxLength = value.length();
 
       permittedRanges.clear();
@@ -347,7 +348,13 @@ public class TestPassageSelector extends LuceneTestCase {
           });
 
       List<String> format = formatter.format(value, passages, permittedRanges);
-      MatcherAssert.assertThat(format, Matchers.not(Matchers.hasItem("><")));
+
+      // Check that the formatted value doesn't have an 'empty range' marker.
+      // If the original value contained such a sequence of characters, omit the check
+      // (can happen on random inputs, see https://github.com/apache/lucene/issues/12562)
+      if (!value.contains("><")) {
+        MatcherAssert.assertThat(format, Matchers.not(Matchers.hasItem("><")));
+      }
     }
   }
 

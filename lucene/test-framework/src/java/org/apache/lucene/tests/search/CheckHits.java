@@ -44,11 +44,12 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -416,7 +417,7 @@ public class CheckHits {
     if (descr.startsWith("score based on ") && descr.contains("child docs in range")) {
       assertTrue("Child doc explanations are missing", detail.length > 0);
     }
-    if (detail.length > 0) {
+    if (detail.length > 0 && expl.isMatch()) {
       if (detail.length == 1 && COMPUTED_FROM_PATTERN.matcher(descr).matches() == false) {
         // simple containment, unless it's a freq of: (which lets a query explain how the freq is
         // calculated),
@@ -443,7 +444,7 @@ public class CheckHits {
           int k1 = descr.indexOf("max plus ");
           if (k1 >= 0) {
             k1 += "max plus ".length();
-            int k2 = descr.indexOf(" ", k1);
+            int k2 = descr.indexOf(' ', k1);
             try {
               x = Float.parseFloat(descr.substring(k1, k2).trim());
               if (descr.substring(k2).trim().equals("times others of:")) {
@@ -553,9 +554,9 @@ public class CheckHits {
     }
 
     @Override
-    public void search(Query query, Collector results) throws IOException {
+    public void search(Query query, Collector collector) throws IOException {
       checkExplanations(query);
-      super.search(query, results);
+      super.search(query, collector);
     }
 
     @Override
@@ -653,6 +654,10 @@ public class CheckHits {
     private final Weight weight;
     private LeafReaderContext context;
     int lastCheckedDoc = -1;
+    // with intra-segment concurrency, we may start from a doc id that isn't -1. We need to make
+    // sure that we don't go outside of the bounds of the current slice, meaning -1 can't be
+    // reliably used to signal that we are collecting the first doc for a given segment partition.
+    boolean collectedOnce = false;
 
     public MatchesAsserter(Query query, IndexSearcher searcher) throws IOException {
       this.weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
@@ -670,7 +675,7 @@ public class CheckHits {
       assertNotNull(
           "Unexpected null Matches object in doc" + doc + " for query " + this.weight.getQuery(),
           matches);
-      if (lastCheckedDoc != doc - 1) {
+      if (collectedOnce && lastCheckedDoc != doc - 1) {
         assertNull(
             "Unexpected non-null Matches object in non-matching doc"
                 + doc
@@ -678,6 +683,7 @@ public class CheckHits {
                 + this.weight.getQuery(),
             this.weight.matches(context, doc - 1));
       }
+      collectedOnce = true;
       lastCheckedDoc = doc;
     }
 
@@ -699,13 +705,15 @@ public class CheckHits {
 
   private static void doCheckTopScores(Query query, IndexSearcher searcher, int numHits)
       throws IOException {
-    CollectorManager<TopScoreDocCollector, TopDocs> complete =
-        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
-    ScoreDoc[] completeScoreDocs = searcher.search(query, complete).scoreDocs;
-    CollectorManager<TopScoreDocCollector, TopDocs> topScores =
-        TopScoreDocCollector.createSharedManager(numHits, null, 1);
-    ScoreDoc[] topScoresScoreDocs = searcher.search(query, topScores).scoreDocs;
-    checkEqual(query, completeScoreDocs, topScoresScoreDocs);
+    boolean supportsConcurrency = searcher.getSlices().length > 1;
+    TopScoreDocCollectorManager complete =
+        new TopScoreDocCollectorManager(
+            numHits, null, Integer.MAX_VALUE, supportsConcurrency); // COMPLETE
+    TopScoreDocCollectorManager topScores =
+        new TopScoreDocCollectorManager(numHits, null, 1, supportsConcurrency); // TOP_SCORES
+    TopDocs completeTopDocs = searcher.search(query, complete);
+    TopDocs topScoresTopDocs = searcher.search(query, topScores);
+    checkEqual(query, completeTopDocs.scoreDocs, topScoresTopDocs.scoreDocs);
   }
 
   private static void doCheckMaxScores(Random random, Query query, IndexSearcher searcher)
@@ -717,9 +725,21 @@ public class CheckHits {
     // Check boundaries and max scores when iterating all matches
     for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       Scorer s1 = w1.scorer(ctx);
-      Scorer s2 = w2.scorer(ctx);
+      ScorerSupplier ss2 = w2.scorerSupplier(ctx);
+      Scorer s2;
+      if (ss2 == null) {
+        s2 = null;
+      } else {
+        // We'll call setMinCompetitiveScore on s2
+        ss2.setTopLevelScoringClause();
+        s2 = ss2.get(Long.MAX_VALUE);
+      }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
+        continue;
+      }
+      if (s2 == null) {
+        assertTrue(s1.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
       }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();
@@ -765,9 +785,21 @@ public class CheckHits {
     // Now check advancing
     for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       Scorer s1 = w1.scorer(ctx);
-      Scorer s2 = w2.scorer(ctx);
+      ScorerSupplier ss2 = w2.scorerSupplier(ctx);
+      Scorer s2;
+      if (ss2 == null) {
+        s2 = null;
+      } else {
+        // We'll call setMinCompetitiveScore on s2
+        ss2.setTopLevelScoringClause();
+        s2 = ss2.get(Long.MAX_VALUE);
+      }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
+        continue;
+      }
+      if (s2 == null) {
+        assertTrue(s1.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
       }
       TwoPhaseIterator twoPhase1 = s1.twoPhaseIterator();

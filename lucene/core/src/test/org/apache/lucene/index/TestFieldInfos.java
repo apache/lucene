@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.sameInstance;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -142,7 +139,7 @@ public class TestFieldInfos extends LuceneTestCase {
           assertEquals("testValue2", fi.getAttribute("testKey1"));
           break;
         default:
-          assertFalse("Unknown field", true);
+          fail("Unknown field");
       }
     }
     reader.close();
@@ -188,7 +185,7 @@ public class TestFieldInfos extends LuceneTestCase {
     FieldInfo fi1 = fis.fieldInfo("f1");
     assertEquals("attdoc1", fi1.getAttribute("att1"));
     assertEquals("attdoc1", fi1.getAttribute("att2"));
-    assertEquals(null, fi1.getAttribute("att3"));
+    assertNull(fi1.getAttribute("att3"));
 
     // test that attributes for f2 are introduced by d2
     FieldInfo fi2 = fis.fieldInfo("f2");
@@ -205,9 +202,8 @@ public class TestFieldInfos extends LuceneTestCase {
 
     IndexReader reader = DirectoryReader.open(writer);
     FieldInfos actual = FieldInfos.getMergedFieldInfos(reader);
-    FieldInfos expected = FieldInfos.EMPTY;
 
-    assertThat(actual, sameInstance(expected));
+    assertSame(FieldInfos.EMPTY, actual);
 
     reader.close();
     writer.close();
@@ -234,8 +230,8 @@ public class TestFieldInfos extends LuceneTestCase {
     FieldInfos actual = FieldInfos.getMergedFieldInfos(reader);
     FieldInfos expected = reader.leaves().get(0).reader().getFieldInfos();
 
-    assertThat(reader.leaves().size(), equalTo(1));
-    assertThat(actual, sameInstance(expected));
+    assertEquals(1, reader.leaves().size());
+    assertSame(expected, actual);
 
     reader.close();
     writer.close();
@@ -243,7 +239,7 @@ public class TestFieldInfos extends LuceneTestCase {
   }
 
   public void testFieldNumbersAutoIncrement() {
-    FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes");
+    FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes", "parentDoc");
     for (int i = 0; i < 10; i++) {
       fieldNumbers.addOrGet(
           new FieldInfo(
@@ -254,6 +250,7 @@ public class TestFieldInfos extends LuceneTestCase {
               false,
               IndexOptions.NONE,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -262,6 +259,7 @@ public class TestFieldInfos extends LuceneTestCase {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              false,
               false));
     }
     int idx =
@@ -274,6 +272,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 DocValuesType.NONE,
+                DocValuesSkipIndexType.NONE,
                 -1,
                 new HashMap<>(),
                 0,
@@ -282,6 +281,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
+                false,
                 false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
 
@@ -296,6 +296,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 DocValuesType.NONE,
+                DocValuesSkipIndexType.NONE,
                 -1,
                 new HashMap<>(),
                 0,
@@ -304,6 +305,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
+                false,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);
   }

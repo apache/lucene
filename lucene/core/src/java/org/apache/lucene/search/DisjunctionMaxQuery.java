@@ -127,25 +127,57 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       return MatchesUtils.fromSubMatches(mis);
     }
 
-    /** Create the scorer used to score our associated DisjunctionMaxQuery */
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      List<Scorer> scorers = new ArrayList<>();
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      List<ScorerSupplier> scorerSuppliers = new ArrayList<>();
       for (Weight w : weights) {
-        // we will advance() subscorers
-        Scorer subScorer = w.scorer(context);
-        if (subScorer != null) {
-          scorers.add(subScorer);
+        ScorerSupplier ss = w.scorerSupplier(context);
+        if (ss != null) {
+          scorerSuppliers.add(ss);
         }
       }
-      if (scorers.isEmpty()) {
-        // no sub-scorers had any documents
+
+      if (scorerSuppliers.isEmpty()) {
         return null;
-      } else if (scorers.size() == 1) {
-        // only one sub-scorer in this segment
-        return scorers.get(0);
+      } else if (scorerSuppliers.size() == 1) {
+        return scorerSuppliers.get(0);
       } else {
-        return new DisjunctionMaxScorer(this, tieBreakerMultiplier, scorers, scoreMode);
+        return new ScorerSupplier() {
+
+          private long cost = -1;
+
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            List<Scorer> scorers = new ArrayList<>();
+            for (ScorerSupplier ss : scorerSuppliers) {
+              scorers.add(ss.get(leadCost));
+            }
+            return new DisjunctionMaxScorer(tieBreakerMultiplier, scorers, scoreMode);
+          }
+
+          @Override
+          public long cost() {
+            if (cost == -1) {
+              long cost = 0;
+              for (ScorerSupplier ss : scorerSuppliers) {
+                cost += ss.cost();
+              }
+              this.cost = cost;
+            }
+            return cost;
+          }
+
+          @Override
+          public void setTopLevelScoringClause() throws IOException {
+            if (tieBreakerMultiplier == 0) {
+              for (ScorerSupplier ss : scorerSuppliers) {
+                // sub scorers need to be able to skip too as calls to setMinCompetitiveScore get
+                // propagated
+                ss.setTopLevelScoringClause();
+              }
+            }
+          }
+        };
       }
     }
 
@@ -170,12 +202,13 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       boolean match = false;
       double max = 0;
       double otherSum = 0;
-      List<Explanation> subs = new ArrayList<>();
+      List<Explanation> subsOnMatch = new ArrayList<>();
+      List<Explanation> subsOnNoMatch = new ArrayList<>();
       for (Weight wt : weights) {
         Explanation e = wt.explain(context, doc);
         if (e.isMatch()) {
           match = true;
-          subs.add(e);
+          subsOnMatch.add(e);
           double score = e.getValue().doubleValue();
           if (score >= max) {
             otherSum += max;
@@ -183,6 +216,8 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
           } else {
             otherSum += score;
           }
+        } else if (match == false) {
+          subsOnNoMatch.add(e);
         }
       }
       if (match) {
@@ -191,9 +226,9 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
             tieBreakerMultiplier == 0.0f
                 ? "max of:"
                 : "max plus " + tieBreakerMultiplier + " times others of:";
-        return Explanation.match(score, desc, subs);
+        return Explanation.match(score, desc, subsOnMatch);
       } else {
-        return Explanation.noMatch("No matching clause");
+        return Explanation.noMatch("No matching clause", subsOnNoMatch);
       }
     }
   } // end of DisjunctionMaxWeight inner class

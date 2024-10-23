@@ -31,7 +31,7 @@ import org.apache.lucene.util.ArrayUtil;
  *
  * @lucene.internal
  */
-final class MaxScoreCache {
+public final class MaxScoreCache {
 
   private final ImpactsSource impactsSource;
   private final SimScorer scorer;
@@ -48,6 +48,18 @@ final class MaxScoreCache {
     maxScoreCacheUpTo = new int[0];
   }
 
+  /**
+   * Implement the contract of {@link Scorer#advanceShallow(int)} based on the wrapped {@link
+   * ImpactsSource}.
+   *
+   * @see Scorer#advanceShallow(int)
+   */
+  public int advanceShallow(int target) throws IOException {
+    impactsSource.advanceShallow(target);
+    Impacts impacts = impactsSource.getImpacts();
+    return impacts.getDocIdUpTo(0);
+  }
+
   private void ensureCacheSize(int size) {
     if (maxScoreCache.length < size) {
       int oldLength = maxScoreCache.length;
@@ -59,13 +71,20 @@ final class MaxScoreCache {
 
   private float computeMaxScore(List<Impact> impacts) {
     float maxScore = 0;
-    for (Impact impact : impacts) {
+    var scorer = this.scorer;
+    for (int i = 0, length = impacts.size(); i < length; i++) {
+      Impact impact = impacts.get(i);
       maxScore = Math.max(scorer.score(impact.freq, impact.norm), maxScore);
     }
     return maxScore;
   }
 
-  float getMaxScore(int upTo) throws IOException {
+  /**
+   * Return the maximum score up to upTo included.
+   *
+   * @see Scorer#getMaxScore(int)
+   */
+  public float getMaxScore(int upTo) throws IOException {
     final int level = getLevel(upTo);
     if (level == -1) {
       return globalMaxScore;

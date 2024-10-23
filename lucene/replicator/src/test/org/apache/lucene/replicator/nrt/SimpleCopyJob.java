@@ -66,13 +66,13 @@ class SimpleCopyJob extends CopyJob {
           c.out.writeByte((byte) 0);
           c.out.writeString(current.name);
           c.out.writeVLong(current.getBytesCopied());
-          totBytes += current.metaData.length;
+          totBytes += current.metaData.length();
         }
 
         for (Map.Entry<String, FileMetaData> ent : toCopy) {
           String fileName = ent.getKey();
           FileMetaData metaData = ent.getValue();
-          totBytes += metaData.length;
+          totBytes += metaData.length();
           c.out.writeByte((byte) 0);
           c.out.writeString(fileName);
           c.out.writeVLong(0);
@@ -86,12 +86,12 @@ class SimpleCopyJob extends CopyJob {
           // socket buffering waiting for primary to
           // send us this length:
           long len = c.in.readVLong();
-          if (len != current.metaData.length) {
+          if (len != current.metaData.length()) {
             throw new IllegalStateException(
                 "file "
                     + current.name
                     + ": meta data says length="
-                    + current.metaData.length
+                    + current.metaData.length()
                     + " but c.in says "
                     + len);
           }
@@ -197,12 +197,12 @@ class SimpleCopyJob extends CopyJob {
       FileMetaData metaData = next.getValue();
       String fileName = next.getKey();
       long len = c.in.readVLong();
-      if (len != metaData.length) {
+      if (len != metaData.length()) {
         throw new IllegalStateException(
             "file "
                 + fileName
                 + ": meta data says length="
-                + metaData.length
+                + metaData.length()
                 + " but c.in says "
                 + len);
       }
@@ -271,8 +271,7 @@ class SimpleCopyJob extends CopyJob {
 
   @Override
   public void runBlocking() throws IOException {
-    while (visit() == false)
-      ;
+    while (visit() == false) {}
 
     if (getFailed()) {
       throw new RuntimeException("copy failed: " + cancelReason, exc);

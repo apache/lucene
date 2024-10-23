@@ -28,6 +28,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
+import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.demo.knn.DemoEmbeddings;
@@ -77,7 +78,7 @@ public class IndexFiles implements AutoCloseable {
     String usage =
         "java org.apache.lucene.demo.IndexFiles"
             + " [-index INDEX_PATH] [-docs DOCS_PATH] [-update] [-knn_dict DICT_PATH]\n\n"
-            + "This indexes the documents in DOCS_PATH, creating a Lucene index"
+            + "This indexes the documents in DOCS_PATH, creating a Lucene index "
             + "in INDEX_PATH that can be searched with SearchFiles\n"
             + "IF DICT_PATH contains a KnnVector dictionary, the index will also support KnnVector search";
     String indexPath = "index";
@@ -140,7 +141,7 @@ public class IndexFiles implements AutoCloseable {
       // Optional: for better indexing performance, if you
       // are indexing many documents, increase the RAM
       // buffer.  But if you do this, increase the max heap
-      // size to the JVM (eg add -Xmx512m or -Xmx1g):
+      // size to the JVM (e.g. add -Xmx512m or -Xmx1g):
       //
       // iwc.setRAMBufferSizeMB(256.0);
 
@@ -175,7 +176,8 @@ public class IndexFiles implements AutoCloseable {
                 + " documents in "
                 + (end.getTime() - start.getTime())
                 + " ms");
-        if (reader.numDocs() > 100
+        if (Objects.isNull(vectorDictSource) == false
+            && reader.numDocs() > 100
             && vectorDictSize < 1_000_000
             && System.getProperty("smoketester") == null) {
           throw new RuntimeException(
@@ -239,7 +241,7 @@ public class IndexFiles implements AutoCloseable {
       // Add the last modified date of the file a field named "modified".
       // Use a LongField that is indexed with points and doc values, and is efficient
       // for both filtering (LongField#newRangeQuery) and sorting
-      // (LongField#newSortField).  This indexes to milli-second resolution, which
+      // (LongField#newSortField).  This indexes to millisecond resolution, which
       // is often too fine.  You could instead create a number based on
       // year/month/day/hour/minutes/seconds, down the resolution you require.
       // For example the long value 2011021714 would mean

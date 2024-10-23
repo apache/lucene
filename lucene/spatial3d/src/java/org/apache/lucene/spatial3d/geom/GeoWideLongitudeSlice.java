@@ -28,11 +28,13 @@ import java.io.OutputStream;
 class GeoWideLongitudeSlice extends GeoBaseBBox {
   /** The left longitude */
   protected final double leftLon;
+
   /** The right longitude */
   protected final double rightLon;
 
   /** The left plane */
   protected final SidedPlane leftPlane;
+
   /** The right plane */
   protected final SidedPlane rightPlane;
 

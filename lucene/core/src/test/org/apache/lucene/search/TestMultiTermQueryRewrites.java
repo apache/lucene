@@ -111,7 +111,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
     final BooleanQuery bq = (BooleanQuery) q;
     Term last = null, act;
     for (BooleanClause clause : bq.clauses()) {
-      act = extractTerm(clause.getQuery());
+      act = extractTerm(clause.query());
       if (last != null) {
         assertTrue("sort order of terms in BQ violated", last.compareTo(act) < 0);
       }
@@ -150,7 +150,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
 
   private void checkBooleanQueryBoosts(BooleanQuery bq) {
     for (BooleanClause clause : bq.clauses()) {
-      final BoostQuery boostQ = (BoostQuery) clause.getQuery();
+      final BoostQuery boostQ = (BoostQuery) clause.query();
       final TermQuery mtq = (TermQuery) boostQ.getQuery();
       assertEquals(
           "Parallel sorting of boosts in rewrite mode broken",

@@ -20,11 +20,31 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+
+    includeBuild("build-tools/build-infra")
+}
+
+plugins {
+    id "org.gradle.toolchains.foojay-resolver-convention" version "0.8.0"
+    id 'com.gradle.enterprise' version '3.15.1'
+    id 'com.gradle.common-custom-user-data-gradle-plugin' version '1.11.3'
+}
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        deps {
+            from(files('versions.toml'))
+        }
+    }
+}
+
+if (Boolean.parseBoolean(providers.gradleProperty("gradle.ge").orElse("true").get())) {
+    apply from: file('gradle/ge.gradle')
 }
 
 rootProject.name = "lucene-root"
 
-includeBuild("dev-tools/missing-doclet")
+includeBuild("build-tools/missing-doclet")
 
 include "lucene:analysis:common"
 include "lucene:analysis:icu"
@@ -39,6 +59,7 @@ include "lucene:analysis:stempel"
 include "lucene:analysis.tests"
 include "lucene:backward-codecs"
 include "lucene:benchmark"
+include "lucene:benchmark-jmh"
 include "lucene:classification"
 include "lucene:codecs"
 include "lucene:core"

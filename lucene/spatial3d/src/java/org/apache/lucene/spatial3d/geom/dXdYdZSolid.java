@@ -29,13 +29,16 @@ class dXdYdZSolid extends BaseXYZSolid {
 
   /** X */
   protected final double X;
+
   /** Y */
   protected final double Y;
+
   /** Z */
   protected final double Z;
 
   /** On surface? */
   protected final boolean isOnSurface;
+
   /** The point */
   protected final GeoPoint thePoint;
 

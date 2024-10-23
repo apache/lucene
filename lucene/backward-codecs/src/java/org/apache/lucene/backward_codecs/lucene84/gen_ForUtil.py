@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fractions import gcd
+from math import gcd
 
 """Code generation for ForUtil.java"""
 

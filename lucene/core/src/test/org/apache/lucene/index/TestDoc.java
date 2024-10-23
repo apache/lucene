@@ -45,6 +45,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
@@ -223,6 +224,7 @@ public class TestDoc extends LuceneTestCase {
             merged,
             -1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -235,8 +237,9 @@ public class TestDoc extends LuceneTestCase {
             si,
             InfoStream.getDefault(),
             trackingDir,
-            new FieldInfos.FieldNumbers(null),
-            context);
+            new FieldInfos.FieldNumbers(null, null),
+            context,
+            new SameThreadExecutorService());
 
     merger.merge();
     r1.close();

@@ -18,6 +18,9 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.function.Consumer;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
@@ -26,11 +29,15 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
-import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.IntArrayDocIdSet;
+import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.LSBRadixSorter;
+import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
@@ -43,30 +50,26 @@ import org.apache.lucene.util.DocIdSetBuilder;
  */
 public abstract class NumericComparator<T extends Number> extends FieldComparator<T> {
 
-  // MIN_SKIP_INTERVAL and MAX_SKIP_INTERVAL both should be powers of 2
-  private static final int MIN_SKIP_INTERVAL = 32;
-  private static final int MAX_SKIP_INTERVAL = 8192;
   protected final T missingValue;
+  private final long missingValueAsLong;
   protected final String field;
   protected final boolean reverse;
   private final int bytesCount; // how many bytes are used to encode this number
-  private final ByteArrayComparator bytesComparator;
 
   protected boolean topValueSet;
   protected boolean singleSort; // singleSort is true, if sort is based on a single sort field.
   protected boolean hitsThresholdReached;
   protected boolean queueFull;
-  private boolean canSkipDocuments;
+  protected Pruning pruning;
 
   protected NumericComparator(
-      String field, T missingValue, boolean reverse, boolean enableSkipping, int bytesCount) {
+      String field, T missingValue, boolean reverse, Pruning pruning, int bytesCount) {
     this.field = field;
     this.missingValue = missingValue;
+    this.missingValueAsLong = missingValueAsComparableLong();
     this.reverse = reverse;
-    // skipping functionality is only relevant for primary sort
-    this.canSkipDocuments = enableSkipping;
+    this.pruning = pruning;
     this.bytesCount = bytesCount;
-    this.bytesComparator = ArrayUtil.getUnsignedComparator(bytesCount);
   }
 
   @Override
@@ -81,30 +84,42 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   @Override
   public void disableSkipping() {
-    canSkipDocuments = false;
+    pruning = Pruning.NONE;
   }
+
+  protected abstract long missingValueAsComparableLong();
+
+  /**
+   * Decode sortable bytes to long. It should be consistent with the codec that {@link PointValues}
+   * of this field is using.
+   */
+  protected abstract long sortableBytesToLong(byte[] bytes);
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
+    private static final long MAX_DISJUNCTION_CLAUSE = 128;
+    private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
     // if skipping functionality should be enabled on this segment
     private final boolean enableSkipping;
     private final int maxDoc;
-    private byte[] minValueAsBytes;
-    private byte[] maxValueAsBytes;
+
+    /** According to {@link FieldComparator#setTopValue}, topValueSet is final in leafComparator */
+    private final boolean leafTopSet = topValueSet;
+
+    private long minValueAsLong = Long.MIN_VALUE;
+    private long maxValueAsLong = Long.MAX_VALUE;
+    private Long thresholdAsLong;
 
     private DocIdSetIterator competitiveIterator;
-    private long iteratorCost = -1;
+    private long leadCost = -1;
     private int maxDocVisited = -1;
-    private int updateCounter = 0;
-    private int currentSkipInterval = MIN_SKIP_INTERVAL;
-    // helps to be conservative about increasing the sampling interval
-    private int tryUpdateFailCount = 0;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
+      this.context = context;
       this.docValues = getNumericDocValues(context, field);
-      this.pointValues = canSkipDocuments ? context.reader().getPointValues(field) : null;
+      this.pointValues = pruning != Pruning.NONE ? context.reader().getPointValues(field) : null;
       if (pointValues != null) {
         FieldInfo info = context.reader().getFieldInfos().fieldInfo(field);
         if (info == null || info.getPointDimensionCount() == 0) {
@@ -129,6 +144,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
+        if (leafTopSet) {
+          encodeTop();
+        }
       } else {
         this.enableSkipping = false;
         this.maxDoc = 0;
@@ -165,12 +183,12 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      if (iteratorCost == -1) {
+      if (leadCost == -1) {
         if (scorer instanceof Scorer) {
-          iteratorCost =
+          leadCost =
               ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
         } else {
-          iteratorCost = maxDoc;
+          leadCost = maxDoc;
         }
         updateCompetitiveIterator(); // update an iterator when we have a new segment
       }
@@ -187,146 +205,168 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private void updateCompetitiveIterator() throws IOException {
       if (enableSkipping == false
           || hitsThresholdReached == false
-          || (queueFull == false && topValueSet == false)) return;
+          || (leafTopSet == false && queueFull == false)) return;
       // if some documents have missing points, check that missing values prohibits optimization
-      if ((pointValues.getDocCount() < maxDoc) && isMissingValueCompetitive()) {
+      boolean dense = pointValues.getDocCount() == maxDoc;
+      if (dense == false && isMissingValueCompetitive()) {
         return; // we can't filter out documents, as documents with missing values are competitive
       }
 
-      updateCounter++;
-      // Start sampling if we get called too much
-      if (updateCounter > 256
-          && (updateCounter & (currentSkipInterval - 1)) != currentSkipInterval - 1) {
+      if (competitiveIterator instanceof CompetitiveIterator iter) {
+        if (queueFull) {
+          encodeBottom();
+        }
+        // CompetitiveIterator already built, try to reduce clause.
+        tryReduceDisjunctionClause(iter);
         return;
       }
-      if (reverse == false) {
-        if (queueFull) { // bottom is avilable only when queue is full
-          maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
-          encodeBottom(maxValueAsBytes);
+
+      if (thresholdAsLong == null) {
+        if (dense == false) {
+          competitiveIterator = getNumericDocValues(context, field);
+          leadCost = Math.min(leadCost, competitiveIterator.cost());
         }
-        if (topValueSet) {
-          minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
-          encodeTop(minValueAsBytes);
-        }
-      } else {
-        if (queueFull) { // bottom is avilable only when queue is full
-          minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
-          encodeBottom(minValueAsBytes);
-        }
-        if (topValueSet) {
-          maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
-          encodeTop(maxValueAsBytes);
-        }
+        long threshold = Math.min(leadCost >> 3, maxDoc >> 5);
+        thresholdAsLong = intersectThresholdValue(threshold);
       }
 
-      DocIdSetBuilder result = new DocIdSetBuilder(maxDoc);
-      PointValues.IntersectVisitor visitor =
-          new PointValues.IntersectVisitor() {
-            DocIdSetBuilder.BulkAdder adder;
-
-            @Override
-            public void grow(int count) {
-              adder = result.grow(count);
-            }
-
-            @Override
-            public void visit(int docID) {
-              if (docID <= maxDocVisited) {
-                return; // Already visited or skipped
-              }
-              adder.add(docID);
-            }
-
-            @Override
-            public void visit(int docID, byte[] packedValue) {
-              if (docID <= maxDocVisited) {
-                return; // already visited or skipped
-              }
-              if (maxValueAsBytes != null) {
-                int cmp = bytesComparator.compare(packedValue, 0, maxValueAsBytes, 0);
-                // if doc's value is too high or for single sort even equal, it is not competitive
-                // and the doc can be skipped
-                if (cmp > 0 || (singleSort && cmp == 0)) return;
-              }
-              if (minValueAsBytes != null) {
-                int cmp = bytesComparator.compare(packedValue, 0, minValueAsBytes, 0);
-                // if doc's value is too low or for single sort even equal, it is not competitive
-                // and the doc can be skipped
-                if (cmp < 0 || (singleSort && cmp == 0)) return;
-              }
-              adder.add(docID); // doc is competitive
-            }
-
-            @Override
-            public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              if (maxValueAsBytes != null) {
-                int cmp = bytesComparator.compare(minPackedValue, 0, maxValueAsBytes, 0);
-                if (cmp > 0 || (singleSort && cmp == 0))
-                  return PointValues.Relation.CELL_OUTSIDE_QUERY;
-              }
-              if (minValueAsBytes != null) {
-                int cmp = bytesComparator.compare(maxPackedValue, 0, minValueAsBytes, 0);
-                if (cmp < 0 || (singleSort && cmp == 0))
-                  return PointValues.Relation.CELL_OUTSIDE_QUERY;
-              }
-              if ((maxValueAsBytes != null
-                      && bytesComparator.compare(maxPackedValue, 0, maxValueAsBytes, 0) > 0)
-                  || (minValueAsBytes != null
-                      && bytesComparator.compare(minPackedValue, 0, minValueAsBytes, 0) < 0)) {
-                return PointValues.Relation.CELL_CROSSES_QUERY;
-              }
-              return PointValues.Relation.CELL_INSIDE_QUERY;
-            }
-          };
-      final long threshold = iteratorCost >>> 3;
-      long estimatedNumberOfMatches =
-          pointValues.estimatePointCount(visitor); // runs in O(log(numPoints))
-      if (estimatedNumberOfMatches >= threshold) {
-        // the new range is not selective enough to be worth materializing, it doesn't reduce number
-        // of docs at least 8x
-        updateSkipInterval(false);
-        return;
+      if ((reverse == false && bottomAsComparableLong() <= thresholdAsLong)
+          || (reverse && bottomAsComparableLong() >= thresholdAsLong)) {
+        if (queueFull) {
+          encodeBottom();
+        }
+        DisjunctionBuildVisitor visitor = new DisjunctionBuildVisitor();
+        competitiveIterator = visitor.generateCompetitiveIterator();
       }
-      pointValues.intersect(visitor);
-      competitiveIterator = result.build().iterator();
-      iteratorCost = competitiveIterator.cost();
-      updateSkipInterval(true);
     }
 
-    private void updateSkipInterval(boolean success) {
-      if (updateCounter > 256) {
-        if (success) {
-          currentSkipInterval = Math.max(currentSkipInterval / 2, MIN_SKIP_INTERVAL);
-          tryUpdateFailCount = 0;
-        } else {
-          if (tryUpdateFailCount >= 3) {
-            currentSkipInterval = Math.min(currentSkipInterval * 2, MAX_SKIP_INTERVAL);
-            tryUpdateFailCount = 0;
-          } else {
-            tryUpdateFailCount++;
-          }
+    private void tryReduceDisjunctionClause(CompetitiveIterator iter) {
+      int originalSize = iter.disis.size();
+
+      while (iter.disis.isEmpty() == false
+          && (iter.disis.getFirst().mostCompetitiveValue > maxValueAsLong
+              || iter.disis.getFirst().mostCompetitiveValue < minValueAsLong)) {
+        iter.disis.removeFirst();
+      }
+
+      if (originalSize != iter.disis.size()) {
+        iter.disjunction.clear();
+        iter.disjunction.addAll(iter.disis);
+      }
+    }
+
+    /** Find out the value that threshold docs away from topValue/infinite. */
+    private long intersectThresholdValue(long threshold) throws IOException {
+      long thresholdValuePos;
+      if (leafTopSet) {
+        long topValue = topAsComparableLong();
+        PointValues.IntersectVisitor visitor = new RangeVisitor(Long.MIN_VALUE, topValue, -1);
+        long topValuePos = pointValues.estimatePointCount(visitor);
+        thresholdValuePos = reverse == false ? topValuePos + threshold : topValuePos - threshold;
+      } else {
+        thresholdValuePos = reverse == false ? threshold : pointValues.size() - threshold;
+      }
+      if (thresholdValuePos <= 0) {
+        return sortableBytesToLong(pointValues.getMinPackedValue());
+      } else if (thresholdValuePos >= pointValues.size()) {
+        return sortableBytesToLong(pointValues.getMaxPackedValue());
+      } else {
+        return intersectValueByPos(pointValues.getPointTree(), thresholdValuePos);
+      }
+    }
+
+    /** Get the point value by a left-to-right position. */
+    private long intersectValueByPos(PointValues.PointTree pointTree, long pos) throws IOException {
+      assert pos > 0 : pos;
+      while (pointTree.size() < pos) {
+        pos -= pointTree.size();
+        pointTree.moveToSibling();
+      }
+      if (pointTree.size() == pos) {
+        return sortableBytesToLong(pointTree.getMaxPackedValue());
+      } else if (pos == 0) {
+        return sortableBytesToLong(pointTree.getMinPackedValue());
+      } else if (pointTree.moveToChild()) {
+        return intersectValueByPos(pointTree, pos);
+      } else {
+        return reverse == false
+            ? sortableBytesToLong(pointTree.getMaxPackedValue())
+            : sortableBytesToLong(pointTree.getMinPackedValue());
+      }
+    }
+
+    /**
+     * If {@link NumericComparator#pruning} equals {@link Pruning#GREATER_THAN_OR_EQUAL_TO}, we
+     * could better tune the {@link NumericLeafComparator#maxValueAsLong}/{@link
+     * NumericLeafComparator#minValueAsLong}. For instance, if the sort is ascending and bottom
+     * value is 5, we will use a range on [MIN_VALUE, 4].
+     */
+    private void encodeBottom() {
+      if (reverse == false) {
+        maxValueAsLong = bottomAsComparableLong();
+        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && maxValueAsLong != Long.MIN_VALUE) {
+          maxValueAsLong--;
+        }
+      } else {
+        minValueAsLong = bottomAsComparableLong();
+        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && minValueAsLong != Long.MAX_VALUE) {
+          minValueAsLong++;
+        }
+      }
+    }
+
+    /**
+     * If {@link NumericComparator#pruning} equals {@link Pruning#GREATER_THAN_OR_EQUAL_TO}, we
+     * could better tune the {@link NumericLeafComparator#minValueAsLong}/{@link
+     * NumericLeafComparator#minValueAsLong}. For instance, if the sort is ascending and top value
+     * is 3, we will use a range on [4, MAX_VALUE].
+     */
+    private void encodeTop() {
+      if (reverse == false) {
+        minValueAsLong = topAsComparableLong();
+        if (singleSort
+            && pruning == Pruning.GREATER_THAN_OR_EQUAL_TO
+            && queueFull
+            && minValueAsLong != Long.MAX_VALUE) {
+          minValueAsLong++;
+        }
+      } else {
+        maxValueAsLong = topAsComparableLong();
+        if (singleSort
+            && pruning == Pruning.GREATER_THAN_OR_EQUAL_TO
+            && queueFull
+            && maxValueAsLong != Long.MIN_VALUE) {
+          maxValueAsLong--;
         }
       }
     }
 
     private boolean isMissingValueCompetitive() {
-      // if queue is full, always compare with bottom,
-      // if not, check if we can compare with topValue
+      // if queue is full, compare with bottom first,
+      // if competitive, then check if we can compare with topValue
       if (queueFull) {
-        int result = compareMissingValueWithBottomValue();
+        int result = Long.compare(missingValueAsLong, bottomAsComparableLong());
         // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
         // in asc sort missingValue is competitive when it's smaller or equal to bottom
-        return reverse ? (result >= 0) : (result <= 0);
-      } else if (topValueSet) {
-        int result = compareMissingValueWithTopValue();
+        final boolean competitive =
+            reverse
+                ? (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result > 0 : result >= 0)
+                : (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result < 0 : result <= 0);
+        if (competitive == false) {
+          return false;
+        }
+      }
+
+      if (leafTopSet) {
+        int result = Long.compare(missingValueAsLong, topAsComparableLong());
         // in reverse (desc) sort missingValue is competitive when it's smaller or equal to
         // topValue,
         // in asc sort missingValue is competitive when it's greater or equal to topValue
         return reverse ? (result <= 0) : (result >= 0);
-      } else {
-        // by default competitive
-        return true;
       }
+
+      // by default competitive
+      return true;
     }
 
     @Override
@@ -357,12 +397,279 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       };
     }
 
-    protected abstract int compareMissingValueWithTopValue();
+    protected abstract long bottomAsComparableLong();
 
-    protected abstract int compareMissingValueWithBottomValue();
+    protected abstract long topAsComparableLong();
 
-    protected abstract void encodeBottom(byte[] packedValue);
+    class DisjunctionBuildVisitor extends RangeVisitor {
 
-    protected abstract void encodeTop(byte[] packedValue);
+      final Deque<DisiAndMostCompetitiveValue> disis = new ArrayDeque<>();
+      // most competitive entry stored last.
+      final Consumer<DisiAndMostCompetitiveValue> adder =
+          reverse == false ? disis::addFirst : disis::addLast;
+
+      final int minBlockLength = minBlockLength();
+
+      final LSBRadixSorter sorter = new LSBRadixSorter();
+      int[] docs = IntsRef.EMPTY_INTS;
+      int index = 0;
+      int blockMaxDoc = -1;
+      boolean docsInOrder = true;
+      long blockMinValue = Long.MAX_VALUE;
+      long blockMaxValue = Long.MIN_VALUE;
+
+      private DisjunctionBuildVisitor() {
+        super(minValueAsLong, maxValueAsLong, maxDocVisited);
+      }
+
+      @Override
+      public void grow(int count) {
+        docs = ArrayUtil.grow(docs, index + count + 1);
+      }
+
+      @Override
+      protected void consumeDoc(int doc) {
+        docs[index++] = doc;
+        if (doc >= blockMaxDoc) {
+          blockMaxDoc = doc;
+        } else {
+          docsInOrder = false;
+        }
+      }
+
+      void intersectLeaves(PointValues.PointTree pointTree) throws IOException {
+        PointValues.Relation r =
+            compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+        switch (r) {
+          case CELL_INSIDE_QUERY, CELL_CROSSES_QUERY -> {
+            if (pointTree.moveToChild()) {
+              do {
+                intersectLeaves(pointTree);
+              } while (pointTree.moveToSibling());
+              pointTree.moveToParent();
+            } else {
+              if (r == PointValues.Relation.CELL_CROSSES_QUERY) {
+                pointTree.visitDocValues(this);
+              } else {
+                pointTree.visitDocIDs(this);
+              }
+              updateMinMax(
+                  sortableBytesToLong(pointTree.getMinPackedValue()),
+                  sortableBytesToLong(pointTree.getMaxPackedValue()));
+            }
+          }
+          case CELL_OUTSIDE_QUERY -> {}
+          default -> throw new IllegalStateException("unreachable code");
+        }
+      }
+
+      void updateMinMax(long leafMinValue, long leafMaxValue) throws IOException {
+        this.blockMinValue = Math.min(blockMinValue, leafMinValue);
+        this.blockMaxValue = Math.max(blockMaxValue, leafMaxValue);
+        if (index >= minBlockLength) {
+          update();
+          this.blockMinValue = Long.MAX_VALUE;
+          this.blockMaxValue = Long.MIN_VALUE;
+        }
+      }
+
+      void update() throws IOException {
+        if (blockMinValue > blockMaxValue) {
+          return;
+        }
+        long mostCompetitiveValue =
+            reverse == false
+                ? Math.max(blockMinValue, minValueAsLong)
+                : Math.min(blockMaxValue, maxValueAsLong);
+
+        if (docsInOrder == false) {
+          sorter.sort(PackedInts.bitsRequired(blockMaxDoc), docs, index);
+        }
+        docs[index] = DocIdSetIterator.NO_MORE_DOCS;
+        DocIdSetIterator iter = new IntArrayDocIdSet(docs, index).iterator();
+        adder.accept(new DisiAndMostCompetitiveValue(iter, mostCompetitiveValue));
+        docs = IntsRef.EMPTY_INTS;
+        index = 0;
+        blockMaxDoc = -1;
+        docsInOrder = true;
+      }
+
+      DocIdSetIterator generateCompetitiveIterator() throws IOException {
+        intersectLeaves(pointValues.getPointTree());
+        update();
+
+        if (disis.isEmpty()) {
+          return DocIdSetIterator.empty();
+        }
+        assert assertMostCompetitiveValuesSorted(disis);
+
+        PriorityQueue<DisiAndMostCompetitiveValue> disjunction =
+            new PriorityQueue<>(disis.size()) {
+              @Override
+              protected boolean lessThan(
+                  DisiAndMostCompetitiveValue a, DisiAndMostCompetitiveValue b) {
+                return a.disi.docID() < b.disi.docID();
+              }
+            };
+        disjunction.addAll(disis);
+
+        return new CompetitiveIterator(maxDoc, disis, disjunction);
+      }
+
+      /**
+       * Used for assert. When reverse is false, smaller values are more competitive, so
+       * mostCompetitiveValues should be in desc order.
+       */
+      private boolean assertMostCompetitiveValuesSorted(Deque<DisiAndMostCompetitiveValue> deque) {
+        long lastValue = reverse == false ? Long.MAX_VALUE : Long.MIN_VALUE;
+        for (DisiAndMostCompetitiveValue value : deque) {
+          if (reverse == false) {
+            assert value.mostCompetitiveValue <= lastValue
+                : deque.stream().map(d -> d.mostCompetitiveValue).toList().toString();
+          } else {
+            assert value.mostCompetitiveValue >= lastValue
+                : deque.stream().map(d -> d.mostCompetitiveValue).toList().toString();
+          }
+          lastValue = value.mostCompetitiveValue;
+        }
+        return true;
+      }
+
+      private int minBlockLength() {
+        // bottom value can be much more competitive than thresholdAsLong, recompute the cost.
+        long cost =
+            pointValues.estimatePointCount(new RangeVisitor(minValueAsLong, maxValueAsLong, -1));
+        long disjunctionClause = Math.min(MAX_DISJUNCTION_CLAUSE, cost / 512 + 1);
+        return Math.toIntExact(cost / disjunctionClause);
+      }
+    }
+  }
+
+  private class RangeVisitor implements PointValues.IntersectVisitor {
+
+    private final long minInclusive;
+    private final long maxInclusive;
+    private final int docLowerBound;
+
+    private RangeVisitor(long minInclusive, long maxInclusive, int docLowerBound) {
+      this.minInclusive = minInclusive;
+      this.maxInclusive = maxInclusive;
+      this.docLowerBound = docLowerBound;
+    }
+
+    @Override
+    public void visit(int docID) throws IOException {
+      if (docID <= docLowerBound) {
+        return; // Already visited or skipped
+      }
+      consumeDoc(docID);
+    }
+
+    @Override
+    public void visit(int docID, byte[] packedValue) throws IOException {
+      if (docID <= docLowerBound) {
+        return; // already visited or skipped
+      }
+      long l = sortableBytesToLong(packedValue);
+      if (l >= minInclusive && l <= maxInclusive) {
+        consumeDoc(docID);
+      }
+    }
+
+    @Override
+    public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+      long l = sortableBytesToLong(packedValue);
+      if (l >= minInclusive && l <= maxInclusive) {
+        int doc = docLowerBound >= 0 ? iterator.advance(docLowerBound) : iterator.nextDoc();
+        while (doc != DocIdSetIterator.NO_MORE_DOCS) {
+          consumeDoc(doc);
+          doc = iterator.nextDoc();
+        }
+      }
+    }
+
+    @Override
+    public void visit(DocIdSetIterator iterator) throws IOException {
+      int doc = docLowerBound >= 0 ? iterator.advance(docLowerBound) : iterator.nextDoc();
+      while (doc != DocIdSetIterator.NO_MORE_DOCS) {
+        consumeDoc(doc);
+        doc = iterator.nextDoc();
+      }
+    }
+
+    @Override
+    public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+      long min = sortableBytesToLong(minPackedValue);
+      long max = sortableBytesToLong(maxPackedValue);
+
+      if (min > maxInclusive || max < minInclusive) {
+        // 1. cmp ==0 and pruning==Pruning.GREATER_THAN_OR_EQUAL_TO : if the sort is
+        // ascending then maxValueAsLong is bottom's next less value, so it is competitive
+        // 2. cmp ==0 and pruning==Pruning.GREATER_THAN: maxValueAsLong equals to
+        // bottom, but there are multiple comparators, so it could be competitive
+        return PointValues.Relation.CELL_OUTSIDE_QUERY;
+      }
+
+      if (min < minInclusive || max > maxInclusive) {
+        return PointValues.Relation.CELL_CROSSES_QUERY;
+      }
+      return PointValues.Relation.CELL_INSIDE_QUERY;
+    }
+
+    void consumeDoc(int doc) {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  private record DisiAndMostCompetitiveValue(DocIdSetIterator disi, long mostCompetitiveValue) {}
+
+  private static class CompetitiveIterator extends DocIdSetIterator {
+
+    private final int maxDoc;
+    private int doc = -1;
+    private final Deque<DisiAndMostCompetitiveValue> disis;
+    private final PriorityQueue<DisiAndMostCompetitiveValue> disjunction;
+
+    CompetitiveIterator(
+        int maxDoc,
+        Deque<DisiAndMostCompetitiveValue> disis,
+        PriorityQueue<DisiAndMostCompetitiveValue> disjunction) {
+      this.maxDoc = maxDoc;
+      this.disis = disis;
+      this.disjunction = disjunction;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(docID() + 1);
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target >= maxDoc) {
+        return doc = NO_MORE_DOCS;
+      } else {
+        DisiAndMostCompetitiveValue top = disjunction.top();
+        if (top == null) {
+          // priority queue is empty, none of the remaining documents are competitive
+          return doc = NO_MORE_DOCS;
+        }
+        while (top.disi.docID() < target) {
+          top.disi.advance(target);
+          top = disjunction.updateTop();
+        }
+        return doc = top.disi.docID();
+      }
+    }
+
+    @Override
+    public long cost() {
+      return maxDoc;
+    }
   }
 }

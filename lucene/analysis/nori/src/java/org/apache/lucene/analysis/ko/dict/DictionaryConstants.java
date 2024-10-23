@@ -20,14 +20,19 @@ package org.apache.lucene.analysis.ko.dict;
 final class DictionaryConstants {
   /** Codec header of the dictionary file. */
   public static final String DICT_HEADER = "ko_dict";
+
   /** Codec header of the dictionary mapping file. */
   public static final String TARGETMAP_HEADER = "ko_dict_map";
+
   /** Codec header of the POS dictionary file. */
   public static final String POSDICT_HEADER = "ko_dict_pos";
+
   /** Codec header of the connection costs file. */
   public static final String CONN_COSTS_HEADER = "ko_cc";
+
   /** Codec header of the character definition file */
   public static final String CHARDEF_HEADER = "ko_cd";
+
   /** Codec version of the binary dictionary */
   public static final int VERSION = 1;
 }

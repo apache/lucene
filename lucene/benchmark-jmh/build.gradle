@@ -1,0 +1,107 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+plugins {
+  id "java-library"
+}
+
+description = 'Lucene JMH micro-benchmarking module'
+
+dependencies {
+  moduleImplementation project(':lucene:core')
+  moduleImplementation project(':lucene:expressions')
+
+  moduleImplementation deps.jmh.core
+  annotationProcessor deps.jmh.annprocess
+}
+
+
+// Exclude JMH-generated files and certain classes that require incubating classes
+// from forbiddenapis validation.
+tasks.matching { it.name == "forbiddenApisMain" }.configureEach {
+  patternSet.exclude([
+      "**/jmh_generated/**"
+  ])
+}
+
+
+// Skip certain infrastructure tasks that we can't use or don't care about.
+tasks.matching { it.name in [
+    // Turn off JMH dependency checksums and licensing (it's GPL w/ classpath exception
+    // but this seems fine for test/build only tools).
+    "validateJarChecksums", "validateJarLicenses", "collectJarInfos",
+    // No special javadocs for JMH benchmarks.
+    "renderSiteJavadoc",
+    "renderJavadoc",
+]}.configureEach {
+  it.enabled = false
+}
+
+
+// Assemble benchmark JAR and its dependencies here.
+File dependenciesDir = project.layout.buildDirectory.dir("benchmarks").get().asFile
+def syncDependencies = tasks.register("copyDependencies", Sync, {
+  from configurations.runtimeClasspath
+  from jar
+
+  into dependenciesDir
+})
+
+// Module entry point. For some reason can't be a package from outside the module
+// so I wrote a simple redirecting delegate.
+tasks.compileJava.configure {
+  options.javaModuleMainClass.set("org.apache.lucene.benchmark.jmh.Main")
+}
+
+jar.configure { Jar jarTask ->
+  dependsOn configurations.runtimeClasspath
+
+  manifest {
+    attributes([
+        "Main-Class": "org.apache.lucene.benchmark.jmh.Main",
+        "Class-Path": new Object () {
+          @Override
+          String toString() {
+            return configurations.runtimeClasspath.collect { f -> f.name }.join(" ")
+          }
+        }
+    ])
+  }
+}
+
+assemble {
+  dependsOn syncDependencies
+
+  doLast {
+    logger.lifecycle("""
+JMH benchmarks compiled. Run them with:
+
+java -jar ${rootDir.toPath().relativize(dependenciesDir.toPath().resolve(jar.archiveFile.get().asFile.name))}
+
+or
+
+java --module-path ${rootDir.toPath().relativize(dependenciesDir.toPath())} --module org.apache.lucene.benchmark.jmh
+
+JMH options you can use with the above:
+
+  -h      displays verbose help for all options 
+  -l      list available benchmarks
+  -lp     list benchmarks that pass the filter and their parameters
+  regexp  execute all benchmark containing regexp
+""")
+  }
+}

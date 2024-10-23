@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.index.memory;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.core.StringContains.containsString;
 
 import java.io.IOException;
@@ -45,6 +43,8 @@ import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.InvertableType;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -55,12 +55,15 @@ import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInvertState;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
@@ -70,6 +73,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -78,6 +82,7 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
@@ -86,6 +91,7 @@ import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -105,38 +111,30 @@ public class TestMemoryIndex extends LuceneTestCase {
     MemoryIndex mi = new MemoryIndex();
     mi.addField("f1", "some text", analyzer);
 
-    assertThat(mi.search(new MatchAllDocsQuery()), not(is(0.0f)));
-    assertThat(mi.search(new TermQuery(new Term("f1", "some"))), not(is(0.0f)));
+    assertNotEquals(0.0f, mi.search(new MatchAllDocsQuery()));
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))));
 
     // check we can add a new field after searching
     mi.addField("f2", "some more text", analyzer);
-    assertThat(mi.search(new TermQuery(new Term("f2", "some"))), not(is(0.0f)));
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f2", "some"))));
 
     // freeze!
     mi.freeze();
 
     RuntimeException expected =
-        expectThrows(
-            RuntimeException.class,
-            () -> {
-              mi.addField("f3", "and yet more", analyzer);
-            });
-    assertThat(expected.getMessage(), containsString("frozen"));
+        expectThrows(RuntimeException.class, () -> mi.addField("f3", "and yet more", analyzer));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("frozen"));
 
     expected =
-        expectThrows(
-            RuntimeException.class,
-            () -> {
-              mi.setSimilarity(new BM25Similarity(1, 1));
-            });
-    assertThat(expected.getMessage(), containsString("frozen"));
+        expectThrows(RuntimeException.class, () -> mi.setSimilarity(new BM25Similarity(1, 1)));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("frozen"));
 
-    assertThat(mi.search(new TermQuery(new Term("f1", "some"))), not(is(0.0f)));
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))));
 
     mi.reset();
     mi.addField("f1", "wibble", analyzer);
-    assertThat(mi.search(new TermQuery(new Term("f1", "some"))), is(0.0f));
-    assertThat(mi.search(new TermQuery(new Term("f1", "wibble"))), not(is(0.0f)));
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))), 0);
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "wibble"))));
 
     // check we can set the Similarity again
     mi.setSimilarity(new ClassicSimilarity());
@@ -256,14 +254,14 @@ public class TestMemoryIndex extends LuceneTestCase {
 
     MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer);
 
-    assertThat(mi.search(new TermQuery(new Term("field1", "text"))), not(0.0f));
-    assertThat(mi.search(new TermQuery(new Term("field2", "text"))), is(0.0f));
-    assertThat(mi.search(new TermQuery(new Term("field2", "untokenized text"))), not(0.0f));
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("field1", "text"))));
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("field2", "text"))), 0);
+    assertNotEquals(0.0f, mi.search(new TermQuery(new Term("field2", "untokenized text"))));
 
-    assertThat(mi.search(new TermQuery(new Term("field1", "some more text"))), is(0.0f));
-    assertThat(mi.search(new PhraseQuery("field1", "some", "more", "text")), not(0.0f));
-    assertThat(mi.search(new PhraseQuery("field1", "some", "text")), not(0.0f));
-    assertThat(mi.search(new PhraseQuery("field1", "text", "some")), is(0.0f));
+    assertEquals(0.0f, mi.search(new TermQuery(new Term("field1", "some more text"))), 0);
+    assertNotEquals(0.0f, mi.search(new PhraseQuery("field1", "some", "more", "text")));
+    assertNotEquals(0.0f, mi.search(new PhraseQuery("field1", "some", "text")));
+    assertEquals(0.0f, mi.search(new PhraseQuery("field1", "text", "some")), 0);
   }
 
   public void testDocValues() throws Exception {
@@ -750,6 +748,172 @@ public class TestMemoryIndex extends LuceneTestCase {
         d, "multibinary", new BytesRef[] {new BytesRef("bbar"), new BytesRef("bbaz")});
   }
 
+  public void testKnnFloatVectorOnlyOneVectorAllowed() throws IOException {
+    Document doc = new Document();
+    doc.add(new KnnFloatVectorField("knnFloatA", new float[] {1.0f, 2.0f}));
+    doc.add(new KnnFloatVectorField("knnFloatA", new float[] {3.0f, 4.0f}));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> MemoryIndex.fromDocument(doc, new StandardAnalyzer()));
+  }
+
+  public void testKnnFloatVectors() throws IOException {
+    List<IndexableField> fields = new ArrayList<>();
+    fields.add(new KnnFloatVectorField("knnFloatA", new float[] {1.0f, 2.0f}));
+    fields.add(new KnnFloatVectorField("knnFloatB", new float[] {3.0f, 4.0f, 5.0f, 6.0f}));
+    fields.add(
+        new KnnFloatVectorField(
+            "knnFloatC", new float[] {7.0f, 8.0f, 9.0f}, VectorSimilarityFunction.DOT_PRODUCT));
+    Collections.shuffle(fields, random());
+    Document doc = new Document();
+    for (IndexableField f : fields) {
+      doc.add(f);
+    }
+
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, new StandardAnalyzer());
+    assertFloatVectorValue(mi, "knnFloatA", new float[] {1.0f, 2.0f});
+    assertFloatVectorValue(mi, "knnFloatB", new float[] {3.0f, 4.0f, 5.0f, 6.0f});
+    assertFloatVectorValue(mi, "knnFloatC", new float[] {7.0f, 8.0f, 9.0f});
+
+    assertFloatVectorScore(mi, "knnFloatA", new float[] {1.0f, 1.0f}, 0.5f);
+    assertFloatVectorScore(mi, "knnFloatB", new float[] {3.0f, 3.0f, 3.0f, 3.0f}, 0.06666667f);
+    assertFloatVectorScore(mi, "knnFloatC", new float[] {7.0f, 7.0f, 7.0f}, 84.5f);
+
+    assertNull(
+        mi.createSearcher()
+            .getIndexReader()
+            .leaves()
+            .get(0)
+            .reader()
+            .getFloatVectorValues("knnFloatMissing"));
+    assertNull(
+        mi.createSearcher()
+            .getIndexReader()
+            .leaves()
+            .get(0)
+            .reader()
+            .getByteVectorValues("knnByteVectorValue"));
+  }
+
+  public void testKnnByteVectorOnlyOneVectorAllowed() throws IOException {
+    Document doc = new Document();
+    doc.add(new KnnByteVectorField("knnByteA", new byte[] {1, 2}));
+    doc.add(new KnnByteVectorField("knnByteA", new byte[] {3, 4}));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> MemoryIndex.fromDocument(doc, new StandardAnalyzer()));
+  }
+
+  public void testKnnByteVectors() throws IOException {
+    List<IndexableField> fields = new ArrayList<>();
+    fields.add(new KnnByteVectorField("knnByteA", new byte[] {1, 2}));
+    fields.add(new KnnByteVectorField("knnByteB", new byte[] {3, 4, 5, 6}));
+    fields.add(
+        new KnnByteVectorField(
+            "knnByteC", new byte[] {7, 8, 9}, VectorSimilarityFunction.DOT_PRODUCT));
+    Collections.shuffle(fields, random());
+    Document doc = new Document();
+    for (IndexableField f : fields) {
+      doc.add(f);
+    }
+
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, new StandardAnalyzer());
+    assertByteVectorValue(mi, "knnByteA", new byte[] {1, 2});
+    assertByteVectorValue(mi, "knnByteB", new byte[] {3, 4, 5, 6});
+    assertByteVectorValue(mi, "knnByteC", new byte[] {7, 8, 9});
+
+    assertByteVectorScore(mi, "knnByteA", new byte[] {1, 1}, 0.5f);
+    assertByteVectorScore(mi, "knnByteB", new byte[] {3, 3, 3, 3}, 0.06666667f);
+    assertByteVectorScore(mi, "knnByteC", new byte[] {7, 7, 7}, 0.501709f);
+
+    assertNull(
+        mi.createSearcher()
+            .getIndexReader()
+            .leaves()
+            .get(0)
+            .reader()
+            .getByteVectorValues("knnByteMissing"));
+    assertNull(
+        mi.createSearcher()
+            .getIndexReader()
+            .leaves()
+            .get(0)
+            .reader()
+            .getFloatVectorValues("knnFloatVectorValue"));
+  }
+
+  private static void assertFloatVectorValue(MemoryIndex mi, String fieldName, float[] expected)
+      throws IOException {
+    FloatVectorValues fvv =
+        mi.createSearcher()
+            .getIndexReader()
+            .leaves()
+            .get(0)
+            .reader()
+            .getFloatVectorValues(fieldName);
+    assertNotNull(fvv);
+    KnnVectorValues.DocIndexIterator iterator = fvv.iterator();
+    assertEquals(0, iterator.nextDoc());
+    assertArrayEquals(expected, fvv.vectorValue(0), 1e-6f);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
+  }
+
+  private static void assertFloatVectorScore(
+      MemoryIndex mi, String fieldName, float[] queryVector, float expectedScore)
+      throws IOException {
+    FloatVectorValues fvv =
+        mi.createSearcher()
+            .getIndexReader()
+            .leaves()
+            .get(0)
+            .reader()
+            .getFloatVectorValues(fieldName);
+    assertNotNull(fvv);
+    if (random().nextBoolean()) {
+      fvv.iterator().nextDoc();
+    }
+    VectorScorer scorer = fvv.scorer(queryVector);
+    assertEquals(0, scorer.iterator().nextDoc());
+    assertEquals(expectedScore, scorer.score(), 0.0f);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
+  }
+
+  private static void assertByteVectorValue(MemoryIndex mi, String fieldName, byte[] expected)
+      throws IOException {
+    ByteVectorValues bvv =
+        mi.createSearcher()
+            .getIndexReader()
+            .leaves()
+            .get(0)
+            .reader()
+            .getByteVectorValues(fieldName);
+    assertNotNull(bvv);
+    KnnVectorValues.DocIndexIterator iterator = bvv.iterator();
+    assertEquals(0, iterator.nextDoc());
+    assertArrayEquals(expected, bvv.vectorValue(0));
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
+  }
+
+  private static void assertByteVectorScore(
+      MemoryIndex mi, String fieldName, byte[] queryVector, float expectedScore)
+      throws IOException {
+    ByteVectorValues bvv =
+        mi.createSearcher()
+            .getIndexReader()
+            .leaves()
+            .get(0)
+            .reader()
+            .getByteVectorValues(fieldName);
+    assertNotNull(bvv);
+    if (random().nextBoolean()) {
+      bvv.iterator().nextDoc();
+    }
+    VectorScorer scorer = bvv.scorer(queryVector);
+    assertEquals(0, scorer.iterator().nextDoc());
+    assertEquals(expectedScore, scorer.score(), 0.0f);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
+  }
+
   private static void assertContains(
       Document d, String field, Object expected, Function<IndexableField, Object> value) {
     assertNotNull(d.getField(field));
@@ -849,26 +1013,12 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(50, sndv.nextValue());
   }
 
-  private static class MockIndexableField implements IndexableField {
-
-    private final String field;
-    private final BytesRef value;
-    private final IndexableFieldType fieldType;
-
-    MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType) {
-      this.field = field;
-      this.value = value;
-      this.fieldType = fieldType;
-    }
+  private record MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType)
+      implements IndexableField {
 
     @Override
     public String name() {
       return field;
-    }
-
-    @Override
-    public IndexableFieldType fieldType() {
-      return fieldType;
     }
 
     @Override

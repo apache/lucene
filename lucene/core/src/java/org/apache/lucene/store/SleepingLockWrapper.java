@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -73,6 +74,7 @@ public final class SleepingLockWrapper extends FilterDirectory {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   public Lock obtainLock(String lockName) throws IOException {
     LockObtainFailedException failureReason = null;

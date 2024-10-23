@@ -31,7 +31,7 @@ import org.apache.lucene.analysis.TokenStream;
  *
  * <ul>
  *   <li>form: A <a href="http://unicode.org/reports/tr15/">Unicode Normalization Form</a>, one of
- *       'nfc','nfkc', 'nfkc_cf'. Default is nfkc_cf.
+ *       'nfc','nfkc', 'nfkc_cf', 'nfkc_scf'. Default is nfkc_cf.
  *   <li>mode: Either 'compose' or 'decompose'. Default is compose. Use "decompose" with nfc or
  *       nfkc, to get nfd or nfkd, respectively.
  *   <li>filter: A {@link UnicodeSet} pattern. Codepoints outside the set are always left unchanged.

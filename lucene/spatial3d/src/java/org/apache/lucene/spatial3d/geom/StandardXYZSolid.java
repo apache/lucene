@@ -29,42 +29,58 @@ class StandardXYZSolid extends BaseXYZSolid {
 
   /** Min-X */
   protected final double minX;
+
   /** Max-X */
   protected final double maxX;
+
   /** Min-Y */
   protected final double minY;
+
   /** Max-Y */
   protected final double maxY;
+
   /** Min-Z */
   protected final double minZ;
+
   /** Max-Z */
   protected final double maxZ;
 
   /** Whole world? */
   protected final boolean isWholeWorld;
+
   /** Min-X plane */
   protected final SidedPlane minXPlane;
+
   /** Max-X plane */
   protected final SidedPlane maxXPlane;
+
   /** Min-Y plane */
   protected final SidedPlane minYPlane;
+
   /** Max-Y plane */
   protected final SidedPlane maxYPlane;
+
   /** Min-Z plane */
   protected final SidedPlane minZPlane;
+
   /** Max-Z plane */
   protected final SidedPlane maxZPlane;
 
   /** true if minXPlane intersects globe */
   protected final boolean minXPlaneIntersects;
+
   /** true if maxXPlane intersects globe */
   protected final boolean maxXPlaneIntersects;
+
   /** true if minYPlane intersects globe */
   protected final boolean minYPlaneIntersects;
+
   /** true if maxYPlane intersects globe */
   protected final boolean maxYPlaneIntersects;
+
   /** true if minZPlane intersects globe */
   protected final boolean minZPlaneIntersects;
+
   /** true if maxZPlane intersects globe */
   protected final boolean maxZPlaneIntersects;
 
@@ -78,14 +94,19 @@ class StandardXYZSolid extends BaseXYZSolid {
 
   /** Notable points for minXPlane */
   protected final GeoPoint[] notableMinXPoints;
+
   /** Notable points for maxXPlane */
   protected final GeoPoint[] notableMaxXPoints;
+
   /** Notable points for minYPlane */
   protected final GeoPoint[] notableMinYPoints;
+
   /** Notable points for maxYPlane */
   protected final GeoPoint[] notableMaxYPoints;
+
   /** Notable points for minZPlane */
   protected final GeoPoint[] notableMinZPoints;
+
   /** Notable points for maxZPlane */
   protected final GeoPoint[] notableMaxZPoints;
 

@@ -54,7 +54,7 @@ public class SetPropTask extends PerfTask {
   @Override
   public void setParams(String params) {
     super.setParams(params);
-    int k = params.indexOf(",");
+    int k = params.indexOf(',');
     name = params.substring(0, k).trim();
     value = params.substring(k + 1).trim();
   }

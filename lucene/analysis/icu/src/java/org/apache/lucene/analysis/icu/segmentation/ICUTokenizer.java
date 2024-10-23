@@ -40,10 +40,13 @@ import org.apache.lucene.util.AttributeFactory;
 public final class ICUTokenizer extends Tokenizer {
   private static final int IOBUFFER = 4096;
   private final char[] buffer = new char[IOBUFFER];
+
   /** true length of text in the buffer */
   private int length = 0;
+
   /** length in buffer that can be evaluated safely, up to a safe end point */
   private int usableLength = 0;
+
   /** accumulated offset of previous buffers for this reader, for offsetAtt */
   private int offset = 0;
 

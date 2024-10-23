@@ -412,24 +412,34 @@ public final class ShapeField {
       /** all coordinates are different */
       TRIANGLE
     }
+
     /** x coordinate, vertex one */
     public int aX;
+
     /** y coordinate, vertex one */
     public int aY;
+
     /** x coordinate, vertex two */
     public int bX;
+
     /** y coordinate, vertex two */
     public int bY;
+
     /** x coordinate, vertex three */
     public int cX;
+
     /** y coordinate, vertex three */
     public int cY;
+
     /** represent if edge ab belongs to original shape */
     public boolean ab;
+
     /** represent if edge bc belongs to original shape */
     public boolean bc;
+
     /** represent if edge ca belongs to original shape */
     public boolean ca;
+
     /** triangle type */
     public TYPE type;
 

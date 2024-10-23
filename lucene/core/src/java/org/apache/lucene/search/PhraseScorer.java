@@ -23,6 +23,7 @@ class PhraseScorer extends Scorer {
 
   final DocIdSetIterator approximation;
   final ImpactsDISI impactsApproximation;
+  final MaxScoreCache maxScoreCache;
   final PhraseMatcher matcher;
   final ScoreMode scoreMode;
   private final LeafSimScorer simScorer;
@@ -31,14 +32,14 @@ class PhraseScorer extends Scorer {
   private float minCompetitiveScore = 0;
   private float freq = 0;
 
-  PhraseScorer(Weight weight, PhraseMatcher matcher, ScoreMode scoreMode, LeafSimScorer simScorer) {
-    super(weight);
+  PhraseScorer(PhraseMatcher matcher, ScoreMode scoreMode, LeafSimScorer simScorer) {
     this.matcher = matcher;
     this.scoreMode = scoreMode;
     this.simScorer = simScorer;
     this.matchCost = matcher.getMatchCost();
     this.approximation = matcher.approximation();
     this.impactsApproximation = matcher.impactsApproximation();
+    this.maxScoreCache = impactsApproximation.getMaxScoreCache();
   }
 
   @Override
@@ -94,16 +95,11 @@ class PhraseScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    return impactsApproximation.advanceShallow(target);
+    return maxScoreCache.advanceShallow(target);
   }
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return impactsApproximation.getMaxScore(upTo);
-  }
-
-  @Override
-  public String toString() {
-    return "PhraseScorer(" + weight + ")";
+    return maxScoreCache.getMaxScore(upTo);
   }
 }

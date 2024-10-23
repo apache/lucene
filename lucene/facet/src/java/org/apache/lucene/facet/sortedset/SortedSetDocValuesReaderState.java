@@ -38,19 +38,13 @@ import org.apache.lucene.util.FixedBitSet;
  */
 public abstract class SortedSetDocValuesReaderState implements Accountable {
 
-  /** Holds start/end range of ords, which maps to one dimension. Only used for flat hierarchies. */
-  public static final class OrdRange {
-    /** Start of range, inclusive: */
-    public final int start;
-    /** End of range, inclusive: */
-    public final int end;
-
-    /** Start and end are inclusive. */
-    public OrdRange(int start, int end) {
-      this.start = start;
-      this.end = end;
-    }
-
+  /**
+   * Holds start/end range of ords, which maps to one dimension. Only used for flat hierarchies.
+   *
+   * @param start Start of range, inclusive:
+   * @param end End of range, inclusive:
+   */
+  public record OrdRange(int start, int end) {
     /** Iterates from start to end ord (inclusive) */
     public PrimitiveIterator.OfInt iterator() {
       return new PrimitiveIterator.OfInt() {

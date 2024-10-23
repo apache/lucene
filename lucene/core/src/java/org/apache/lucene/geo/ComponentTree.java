@@ -28,20 +28,26 @@ import org.apache.lucene.util.ArrayUtil;
 final class ComponentTree implements Component2D {
   /** minimum Y of this geometry's bounding box area */
   private double minY;
+
   /** maximum Y of this geometry's bounding box area */
   private double maxY;
+
   /** minimum X of this geometry's bounding box area */
   private double minX;
+
   /** maximum X of this geometry's bounding box area */
   private double maxX;
+
   // child components, or null. Note internal nodes might mot have
   // a consistent bounding box. Internal nodes should not be accessed
   // outside if this class.
   private Component2D left;
   private Component2D right;
+
   /** which dimension was this node split on */
   // TODO: its implicit based on level, but boolean keeps code simple
   private final boolean splitX;
+
   /** root node of edge tree */
   private final Component2D component;
 

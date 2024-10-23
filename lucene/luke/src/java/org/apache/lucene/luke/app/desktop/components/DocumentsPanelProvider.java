@@ -834,7 +834,6 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
   public void displayDoc(int docid) {
     showDoc(docid);
   }
-  ;
 
   private void showDoc(int docid) {
     docNumSpnr.setValue(docid);

@@ -31,6 +31,7 @@ import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.bkd.BKDConfig;
 
 /**
@@ -288,13 +289,24 @@ public abstract class PointValues {
     void visit(int docID) throws IOException;
 
     /**
-     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implements may have
+     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implementations may have
      * their optimizations.
      */
     default void visit(DocIdSetIterator iterator) throws IOException {
       int docID;
       while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         visit(docID);
+      }
+    }
+
+    /**
+     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implements may have
+     * their optimizations. Even if the implementation does the same thing this method, this may be
+     * a speed improvement due to fewer virtual calls.
+     */
+    default void visit(IntsRef ref) throws IOException {
+      for (int i = ref.offset; i < ref.length + ref.offset; i++) {
+        visit(ref.ints[i]);
       }
     }
 
@@ -325,7 +337,6 @@ public abstract class PointValues {
 
     /** Notifies the caller that this many documents are about to be visited */
     default void grow(int count) {}
-    ;
   }
 
   /**
@@ -376,7 +387,7 @@ public abstract class PointValues {
   public final long estimatePointCount(IntersectVisitor visitor) {
     try {
       final PointTree pointTree = getPointTree();
-      final long count = estimatePointCount(visitor, pointTree);
+      final long count = estimatePointCount(visitor, pointTree, Long.MAX_VALUE);
       assert pointTree.moveToParent() == false;
       return count;
     } catch (IOException ioe) {
@@ -384,8 +395,26 @@ public abstract class PointValues {
     }
   }
 
-  private long estimatePointCount(IntersectVisitor visitor, PointTree pointTree)
-      throws IOException {
+  /**
+   * Estimate if the point count that would be matched by {@link #intersect} with the given {@link
+   * IntersectVisitor} is greater than or equal to the upperBound.
+   *
+   * @lucene.internal
+   */
+  public static boolean isEstimatedPointCountGreaterThanOrEqualTo(
+      IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
+    return estimatePointCount(visitor, pointTree, upperBound) >= upperBound;
+  }
+
+  /**
+   * Estimate the number of documents that would be matched by {@link #intersect} with the given
+   * {@link IntersectVisitor}. The estimation will terminate when the point count gets greater than
+   * or equal to the upper bound.
+   *
+   * <p>TODO: will broad-first help estimation terminate earlier?
+   */
+  private static long estimatePointCount(
+      IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
     Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
     switch (r) {
       case CELL_OUTSIDE_QUERY:
@@ -399,8 +428,8 @@ public abstract class PointValues {
         if (pointTree.moveToChild()) {
           long cost = 0;
           do {
-            cost += estimatePointCount(visitor, pointTree);
-          } while (pointTree.moveToSibling());
+            cost += estimatePointCount(visitor, pointTree, upperBound - cost);
+          } while (cost < upperBound && pointTree.moveToSibling());
           pointTree.moveToParent();
           return cost;
         } else {

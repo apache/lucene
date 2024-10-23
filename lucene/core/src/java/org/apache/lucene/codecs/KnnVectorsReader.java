@@ -26,11 +26,10 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 
 /** Reads vectors from an index. */
-public abstract class KnnVectorsReader implements Closeable, Accountable {
+public abstract class KnnVectorsReader implements Closeable {
 
   /** Sole constructor */
   protected KnnVectorsReader() {}

@@ -28,7 +28,7 @@ class CompoundRule {
     StringBuilder parsedFlags = new StringBuilder();
     int pos = 0;
     while (pos < rule.length()) {
-      int lParen = rule.indexOf("(", pos);
+      int lParen = rule.indexOf('(', pos);
       if (lParen < 0) {
         parsedFlags.append(dictionary.flagParsingStrategy.parseFlags(rule.substring(pos)));
         break;

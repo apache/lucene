@@ -69,7 +69,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public abstract BytesRef next();
   }
-  ;
 
   /** The {@code packedPoints} iterator must be in sorted order. */
   protected PointInSetQuery(String field, int numDims, int bytesPerDim, Stream packedPoints) {
@@ -144,19 +143,8 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     // This is an inverted structure and should be used in the first pass:
 
     return new ConstantScoreWeight(this, boost) {
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
-
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Weight weight = this;
         LeafReader reader = context.reader();
 
         PointValues values = reader.getPointValues(field);
@@ -193,9 +181,9 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             @Override
             public Scorer get(long leadCost) throws IOException {
               DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
-              values.intersect(new MergePointVisitor(sortedPackedPoints, result));
+              values.intersect(new MergePointVisitor(sortedPackedPoints.iterator(), result));
               DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override
@@ -204,7 +192,9 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                 if (cost == -1) {
                   // Computing the cost may be expensive, so only do it if necessary
                   DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
-                  cost = values.estimateDocCount(new MergePointVisitor(sortedPackedPoints, result));
+                  cost =
+                      values.estimateDocCount(
+                          new MergePointVisitor(sortedPackedPoints.iterator(), result));
                   assert cost >= 0;
                 }
                 return cost;
@@ -232,7 +222,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                 visitor.setPoint(point);
                 values.intersect(visitor);
               }
-              return new ConstantScoreScorer(weight, score(), scoreMode, result.build().iterator());
+              return new ConstantScoreScorer(score(), scoreMode, result.build().iterator());
             }
 
             @Override
@@ -272,18 +262,15 @@ public abstract class PointInSetQuery extends Query implements Accountable {
   private class MergePointVisitor implements IntersectVisitor {
 
     private final DocIdSetBuilder result;
-    private TermIterator iterator;
+    private final TermIterator iterator;
     private BytesRef nextQueryPoint;
     private final ByteArrayComparator comparator;
-    private final PrefixCodedTerms sortedPackedPoints;
     private DocIdSetBuilder.BulkAdder adder;
 
-    public MergePointVisitor(PrefixCodedTerms sortedPackedPoints, DocIdSetBuilder result)
-        throws IOException {
+    public MergePointVisitor(TermIterator iterator, DocIdSetBuilder result) throws IOException {
       this.result = result;
-      this.sortedPackedPoints = sortedPackedPoints;
       this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
-      this.iterator = this.sortedPackedPoints.iterator();
+      this.iterator = iterator;
       nextQueryPoint = iterator.next();
     }
 

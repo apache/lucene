@@ -133,6 +133,15 @@ specifying the project and test task or a fully qualified task path. Example:
 gradlew -p lucene/core test -Ptests.verbose=true --tests "TestDemo"
 
 
+Larger heap size
+--------------------------
+
+By default tests run with a 512 MB max heap.  But some tests (monster/nightly)
+need more heap.  Use "-Dtests.heapsize" for this:
+
+  gradlew -p lucene/core test --tests "Test2BFST" -Dtests.heapsize=32g
+
+
 Run GUI tests headlessly with Xvfb (Linux only)
 -----------------------------------------------
 

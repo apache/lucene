@@ -38,14 +38,21 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.StringSorter;
 
 /**
  * A {@link TaxonomyReader} which retrieves stored taxonomy information from a {@link Directory}.
@@ -71,6 +78,11 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   private final long taxoEpoch; // used in doOpenIfChanged
   private final DirectoryReader indexReader;
 
+  // We only store the fact that a category exists, not otherwise.
+  // This is required because the caches are shared with new DTR instances
+  // that are allocated from doOpenIfChanged. Therefore, if we only store
+  // information about found categories, we cannot accidentally tell a new
+  // generation of DTR that a category does not exist.
   // TODO: test DoubleBarrelLRUCache and consider using it instead
   private LRUHashMap<FacetLabel, Integer> ordinalCache;
   private LRUHashMap<Integer, FacetLabel> categoryCache;
@@ -233,7 +245,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
    * Expert: returns the underlying {@link DirectoryReader} instance that is used by this {@link
    * TaxonomyReader}.
    */
-  protected DirectoryReader getInternalIndexReader() {
+  public DirectoryReader getInternalIndexReader() {
     ensureOpen();
     return indexReader;
   }
@@ -269,21 +281,22 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
 
     // First try to find the answer in the LRU cache:
+    Integer res;
     synchronized (ordinalCache) {
-      Integer res = ordinalCache.get(cp);
-      if (res != null) {
-        if (res < indexReader.maxDoc()) {
-          // Since the cache is shared with DTR instances allocated from
-          // doOpenIfChanged, we need to ensure that the ordinal is one that
-          // this DTR instance recognizes.
-          return res;
-        } else {
-          // if we get here, it means that the category was found in the cache,
-          // but is not recognized by this TR instance. Therefore, there's no
-          // need to continue search for the path on disk, because we won't find
-          // it there too.
-          return TaxonomyReader.INVALID_ORDINAL;
-        }
+      res = ordinalCache.get(cp);
+    }
+    if (res != null) {
+      if (res < indexReader.maxDoc()) {
+        // Since the cache is shared with DTR instances allocated from
+        // doOpenIfChanged, we need to ensure that the ordinal is one that
+        // this DTR instance recognizes.
+        return res;
+      } else {
+        // if we get here, it means that the category was found in the cache,
+        // but is not recognized by this TR instance. Therefore, there's no
+        // need to continue search for the path on disk, because we won't find
+        // it there too.
+        return TaxonomyReader.INVALID_ORDINAL;
       }
     }
 
@@ -298,18 +311,125 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
             0);
     if (docs != null && docs.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
       ret = docs.docID();
-
-      // We only store the fact that a category exists, not otherwise.
-      // This is required because the caches are shared with new DTR instances
-      // that are allocated from doOpenIfChanged. Therefore, if we only store
-      // information about found categories, we cannot accidentally tell a new
-      // generation of DTR that a category does not exist.
       synchronized (ordinalCache) {
         ordinalCache.put(cp, ret);
       }
     }
 
     return ret;
+  }
+
+  @Override
+  public int[] getBulkOrdinals(FacetLabel... categoryPaths) throws IOException {
+    ensureOpen();
+    if (categoryPaths.length == 0) {
+      return new int[0];
+    }
+    if (categoryPaths.length == 1) {
+      return new int[] {getOrdinal(categoryPaths[0])};
+    }
+    // First try to find results in the cache:
+    int[] result = new int[categoryPaths.length];
+    // Will grow when required, but never beyond categoryPaths.length
+    int[] indexesMissingFromCache = new int[Math.min(10, categoryPaths.length)];
+    int numberOfMissingFromCache = 0;
+    FacetLabel cp;
+    Integer res;
+    for (int i = 0; i < categoryPaths.length; i++) {
+      cp = categoryPaths[i];
+      synchronized (ordinalCache) {
+        res = ordinalCache.get(cp);
+      }
+      if (res != null) {
+        if (res < indexReader.maxDoc()) {
+          // Since the cache is shared with DTR instances allocated from
+          // doOpenIfChanged, we need to ensure that the ordinal is one that
+          // this DTR instance recognizes.
+          result[i] = res;
+        } else {
+          // if we get here, it means that the category was found in the cache,
+          // but is not recognized by this TR instance. Therefore, there's no
+          // need to continue search for the path on disk, because we won't find
+          // it there too.
+          result[i] = TaxonomyReader.INVALID_ORDINAL;
+        }
+      } else {
+        indexesMissingFromCache =
+            ArrayUtil.growInRange(
+                indexesMissingFromCache, numberOfMissingFromCache + 1, categoryPaths.length);
+        indexesMissingFromCache[numberOfMissingFromCache++] = i;
+      }
+    }
+    // all ordinals found in cache
+    if (indexesMissingFromCache.length == 0) {
+      return result;
+    }
+
+    // If we're still here, we have at least one cache miss. We need to fetch the
+    // value from disk, and then also put results in the cache
+
+    // Create array of missing terms, and sort them so that later we scan terms dictionary
+    // forward-only.
+    // Note: similar functionality exists within BytesRefHash and BytesRefArray, but they don't
+    // reuse BytesRefs and assign their own ords. It is cheaper to have custom implementation here.
+    BytesRef[] termsToGet = new BytesRef[numberOfMissingFromCache];
+    for (int i = 0; i < termsToGet.length; i++) {
+      cp = categoryPaths[indexesMissingFromCache[i]];
+      termsToGet[i] = new BytesRef(FacetsConfig.pathToString(cp.components, cp.length));
+    }
+    // sort both terms and their indexes in the input parameter
+    int[] finalMissingFromCache = indexesMissingFromCache;
+
+    new StringSorter(BytesRefComparator.NATURAL) {
+
+      @Override
+      protected void swap(int i, int j) {
+        int tmp = finalMissingFromCache[i];
+        finalMissingFromCache[i] = finalMissingFromCache[j];
+        finalMissingFromCache[j] = tmp;
+        BytesRef tmpBytes = termsToGet[i];
+        termsToGet[i] = termsToGet[j];
+        termsToGet[j] = tmpBytes;
+      }
+
+      @Override
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        BytesRef ref = termsToGet[i];
+        result.offset = ref.offset;
+        result.length = ref.length;
+        result.bytes = ref.bytes;
+      }
+    }.sort(0, numberOfMissingFromCache);
+
+    TermsEnum te = MultiTerms.getTerms(indexReader, Consts.FULL).iterator();
+    PostingsEnum postings = null;
+    int ord;
+    int resIndex;
+    for (int i = 0; i < numberOfMissingFromCache; i++) {
+      resIndex = indexesMissingFromCache[i];
+      if (te.seekExact(termsToGet[i])) {
+        postings = te.postings(postings, 0);
+        if (postings != null && postings.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          ord = postings.docID();
+          result[resIndex] = ord;
+        } else {
+          result[resIndex] = INVALID_ORDINAL;
+        }
+      } else {
+        result[resIndex] = INVALID_ORDINAL;
+      }
+    }
+    // populate cache
+    synchronized (ordinalCache) {
+      for (int i = 0; i < numberOfMissingFromCache; i++) {
+        resIndex = indexesMissingFromCache[i];
+        ord = result[resIndex];
+        if (ord != INVALID_ORDINAL) {
+          ordinalCache.put(categoryPaths[resIndex], ord);
+        }
+      }
+    }
+    return result;
   }
 
   @Override
@@ -431,7 +551,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     LeafReader leafReader;
     LeafReaderContext leafReaderContext;
     BinaryDocValues values = null;
-    List<Integer> uncachedOrdinalPositions = new ArrayList<>();
+    IntArrayList uncachedOrdinalPositions = new IntArrayList();
 
     for (int i = 0; i < ordinalsLength; i++) {
       if (bulkPath[originalPosition[i]] == null) {
@@ -468,9 +588,9 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
 
     if (uncachedOrdinalPositions.isEmpty() == false) {
       synchronized (categoryCache) {
-        for (int i : uncachedOrdinalPositions) {
+        for (IntCursor i : uncachedOrdinalPositions) {
           // add the value to the categoryCache after computation
-          categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+          categoryCache.put(ordinals[i.value], bulkPath[originalPosition[i.value]]);
         }
       }
     }

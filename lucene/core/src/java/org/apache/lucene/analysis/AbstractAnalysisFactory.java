@@ -59,6 +59,7 @@ public abstract class AbstractAnalysisFactory {
 
   /** the luceneVersion arg */
   protected final Version luceneMatchVersion;
+
   /** whether the luceneMatchVersion arg is explicitly specified in the serialized schema */
   private boolean isExplicitLuceneMatchVersion = false;
 

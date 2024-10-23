@@ -83,7 +83,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
- *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
+ *   <li><b>[int]</b> the maximum number of connections (neighbours) that each node can have
  *   <li><b>[int]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level
  *       <ul>
@@ -123,7 +123,7 @@ public class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link #DEFAULT_BEAM_WIDTH}. See {@link HnswGraph} for details.
+   * node. Defaults to {@link #DEFAULT_BEAM_WIDTH}. See {@link HnswGraph} for details.
    */
   final int beamWidth;
 

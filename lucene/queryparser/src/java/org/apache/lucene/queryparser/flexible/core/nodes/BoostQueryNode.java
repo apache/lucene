@@ -30,7 +30,7 @@ import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
  */
 public class BoostQueryNode extends QueryNodeImpl {
 
-  private float value = 0;
+  private float value;
 
   /**
    * Constructs a boost node

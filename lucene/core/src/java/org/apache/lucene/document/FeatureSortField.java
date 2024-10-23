@@ -23,6 +23,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.SimpleFieldComparator;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BytesRef;
@@ -44,7 +45,7 @@ final class FeatureSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
+  public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     return new FeatureComparator(numHits, getField(), featureName);
   }
 

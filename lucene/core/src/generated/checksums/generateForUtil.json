@@ -1,4 +1,4 @@
 {
-    "lucene/core/src/java/org/apache/lucene/codecs/lucene90/ForUtil.java": "f2091e2b7284b70c740052a9b0ee389e67eb48a9",
-    "lucene/core/src/java/org/apache/lucene/codecs/lucene90/gen_ForUtil.py": "7a137c58f88d68247be4368122780fa9cc8dce3e"
+    "lucene/core/src/java/org/apache/lucene/codecs/lucene912/ForUtil.java": "02e0c8c290e65d0314664fde24c9331bdec44925",
+    "lucene/core/src/java/org/apache/lucene/codecs/lucene912/gen_ForUtil.py": "d7850f37e52a16c6592322950d0f6219cad23a33"
 }

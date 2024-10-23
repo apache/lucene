@@ -77,9 +77,14 @@ public class IntsRefBuilder {
     ref.ints = ArrayUtil.grow(ref.ints, newLength);
   }
 
+  /** Grow the reference array without copying the origin data to the new array. */
+  public void growNoCopy(int newLength) {
+    ref.ints = ArrayUtil.growNoCopy(ref.ints, newLength);
+  }
+
   /** Copies the given array into this instance. */
   public void copyInts(int[] otherInts, int otherOffset, int otherLength) {
-    grow(otherLength);
+    growNoCopy(otherLength);
     System.arraycopy(otherInts, otherOffset, ref.ints, 0, otherLength);
     ref.length = otherLength;
   }
@@ -94,7 +99,7 @@ public class IntsRefBuilder {
    * UTF-8 to UTF-32 and then copied into this builder.
    */
   public void copyUTF8Bytes(BytesRef bytes) {
-    grow(bytes.length);
+    growNoCopy(bytes.length);
     ref.length = UnicodeUtil.UTF8toUTF32(bytes, ref.ints);
   }
 

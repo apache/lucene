@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.codecs.CompoundFormat;
 
 /**
  * Abstract base class for input from a file in a {@link Directory}. A random-access input stream.
@@ -122,6 +123,23 @@ public abstract class IndexInput extends DataInput implements Closeable {
       throws IOException;
 
   /**
+   * Create a slice with a specific {@link ReadAdvice}. This is typically used by {@link
+   * CompoundFormat} implementations to honor the {@link ReadAdvice} of each file within the
+   * compound file.
+   *
+   * <p><b>NOTE</b>: it is only legal to call this method if this {@link IndexInput} has been open
+   * with {@link ReadAdvice#NORMAL}. However, this method accepts any {@link ReadAdvice} value but
+   * {@code null} as a read advice for the slice.
+   *
+   * <p>The default implementation delegates to {@link #slice(String, long, long)} and ignores the
+   * {@link ReadAdvice}.
+   */
+  public IndexInput slice(String sliceDescription, long offset, long length, ReadAdvice readAdvice)
+      throws IOException {
+    return slice(sliceDescription, offset, length);
+  }
+
+  /**
    * Subclasses call this to get the String for resourceDescription of a slice of this {@code
    * IndexInput}.
    */
@@ -149,9 +167,21 @@ public abstract class IndexInput extends DataInput implements Closeable {
       // return default impl
       return new RandomAccessInput() {
         @Override
+        public long length() {
+          assert length == slice.length();
+          return slice.length();
+        }
+
+        @Override
         public byte readByte(long pos) throws IOException {
           slice.seek(pos);
           return slice.readByte();
+        }
+
+        @Override
+        public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+          slice.seek(pos);
+          slice.readBytes(bytes, offset, length);
         }
 
         @Override
@@ -173,10 +203,27 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
+        public void prefetch(long offset, long length) throws IOException {
+          slice.prefetch(offset, length);
+        }
+
+        @Override
         public String toString() {
           return "RandomAccessInput(" + IndexInput.this.toString() + ")";
         }
       };
     }
   }
+
+  /**
+   * Optional method: Give a hint to this input that some bytes will be read in the near future.
+   * IndexInput implementations may take advantage of this hint to start fetching pages of data
+   * immediately from storage.
+   *
+   * <p>The default implementation is a no-op.
+   *
+   * @param offset start offset
+   * @param length the number of bytes to prefetch
+   */
+  public void prefetch(long offset, long length) throws IOException {}
 }

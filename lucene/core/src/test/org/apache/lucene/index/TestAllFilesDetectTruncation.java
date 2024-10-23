@@ -152,7 +152,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
           }
 
           try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-              IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+              IndexInput in = dir.openInput(name, IOContext.READONCE)) {
             out.copyBytes(in, victimLength - lostBytes);
           }
         }
@@ -166,7 +166,11 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
       expectThrows(Exception.class, () -> DirectoryReader.open(dirCopy).close());
 
       // CheckIndex should also fail:
-      expectThrows(Exception.class, () -> TestUtil.checkIndex(dirCopy, true, true, true, null));
+      expectThrows(
+          Exception.class,
+          () ->
+              TestUtil.checkIndex(
+                  dirCopy, CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS, true, true, null));
     }
   }
 }

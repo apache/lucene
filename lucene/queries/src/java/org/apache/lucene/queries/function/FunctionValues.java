@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueFloat;
@@ -61,6 +60,7 @@ public abstract class FunctionValues {
   public double doubleVal(int doc) throws IOException {
     throw new UnsupportedOperationException();
   }
+
   // TODO: should we make a termVal, returns BytesRef?
   public String strVal(int doc) throws IOException {
     throw new UnsupportedOperationException();
@@ -203,8 +203,8 @@ public abstract class FunctionValues {
    * Yields a {@link Scorer} that matches all documents, and that which produces scores equal to
    * {@link #floatVal(int)}.
    */
-  public ValueSourceScorer getScorer(Weight weight, LeafReaderContext readerContext) {
-    return new ValueSourceScorer(weight, readerContext, this) {
+  public ValueSourceScorer getScorer(LeafReaderContext readerContext) {
+    return new ValueSourceScorer(readerContext, this) {
       @Override
       public boolean matches(int doc) {
         return true;
@@ -226,7 +226,6 @@ public abstract class FunctionValues {
   // a setup cost - parsing and normalizing params, and doing a binary search on the StringIndex.
   // TODO: change "reader" to LeafReaderContext
   public ValueSourceScorer getRangeScorer(
-      Weight weight,
       LeafReaderContext readerContext,
       String lowerVal,
       String upperVal,
@@ -251,7 +250,7 @@ public abstract class FunctionValues {
     final float u = upper;
 
     if (includeLower && includeUpper) {
-      return new ValueSourceScorer(weight, readerContext, this) {
+      return new ValueSourceScorer(readerContext, this) {
         @Override
         public boolean matches(int doc) throws IOException {
           if (!exists(doc)) return false;
@@ -260,7 +259,7 @@ public abstract class FunctionValues {
         }
       };
     } else if (includeLower && !includeUpper) {
-      return new ValueSourceScorer(weight, readerContext, this) {
+      return new ValueSourceScorer(readerContext, this) {
         @Override
         public boolean matches(int doc) throws IOException {
           if (!exists(doc)) return false;
@@ -269,7 +268,7 @@ public abstract class FunctionValues {
         }
       };
     } else if (!includeLower && includeUpper) {
-      return new ValueSourceScorer(weight, readerContext, this) {
+      return new ValueSourceScorer(readerContext, this) {
         @Override
         public boolean matches(int doc) throws IOException {
           if (!exists(doc)) return false;
@@ -278,7 +277,7 @@ public abstract class FunctionValues {
         }
       };
     } else {
-      return new ValueSourceScorer(weight, readerContext, this) {
+      return new ValueSourceScorer(readerContext, this) {
         @Override
         public boolean matches(int doc) throws IOException {
           if (!exists(doc)) return false;

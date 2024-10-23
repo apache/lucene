@@ -21,6 +21,7 @@ import static org.apache.lucene.tests.util.fst.FSTTester.simpleRandomString;
 import static org.apache.lucene.tests.util.fst.FSTTester.toIntsRef;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -54,11 +55,13 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -79,6 +82,7 @@ import org.apache.lucene.util.fst.FST.Arc;
 import org.apache.lucene.util.fst.FST.BytesReader;
 import org.apache.lucene.util.fst.PairOutputs.Pair;
 import org.apache.lucene.util.fst.Util.Result;
+import org.junit.Ignore;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 public class TestFSTs extends LuceneTestCase {
@@ -138,7 +142,7 @@ public class TestFSTs extends LuceneTestCase {
           pairs.add(new FSTTester.InputOutput<>(term, NO_OUTPUT));
         }
         FSTTester<Object> tester = new FSTTester<>(random(), dir, inputMode, pairs, outputs);
-        FST<Object> fst = tester.doTest(0, 0, false);
+        FST<Object> fst = tester.doTest();
         assertNotNull(fst);
         assertEquals(22, tester.nodeCount);
         assertEquals(27, tester.arcCount);
@@ -152,7 +156,7 @@ public class TestFSTs extends LuceneTestCase {
           pairs.add(new FSTTester.InputOutput<>(terms2[idx], (long) idx));
         }
         FSTTester<Long> tester = new FSTTester<>(random(), dir, inputMode, pairs, outputs);
-        final FST<Long> fst = tester.doTest(0, 0, false);
+        final FST<Long> fst = tester.doTest();
         assertNotNull(fst);
         assertEquals(22, tester.nodeCount);
         assertEquals(27, tester.arcCount);
@@ -167,7 +171,7 @@ public class TestFSTs extends LuceneTestCase {
           pairs.add(new FSTTester.InputOutput<>(terms2[idx], output));
         }
         FSTTester<BytesRef> tester = new FSTTester<>(random(), dir, inputMode, pairs, outputs);
-        final FST<BytesRef> fst = tester.doTest(0, 0, false);
+        final FST<BytesRef> fst = tester.doTest();
         assertNotNull(fst);
         assertEquals(24, tester.nodeCount);
         assertEquals(30, tester.arcCount);
@@ -187,7 +191,7 @@ public class TestFSTs extends LuceneTestCase {
       for (IntsRef term : terms) {
         pairs.add(new FSTTester.InputOutput<>(term, NO_OUTPUT));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
 
     // PositiveIntOutput (ord)
@@ -197,7 +201,7 @@ public class TestFSTs extends LuceneTestCase {
       for (int idx = 0; idx < terms.length; idx++) {
         pairs.add(new FSTTester.InputOutput<>(terms[idx], (long) idx));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
 
     // PositiveIntOutput (random monotonically increasing positive number)
@@ -210,7 +214,7 @@ public class TestFSTs extends LuceneTestCase {
         lastOutput = value;
         pairs.add(new FSTTester.InputOutput<>(term, value));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
 
     // PositiveIntOutput (random positive number)
@@ -221,7 +225,7 @@ public class TestFSTs extends LuceneTestCase {
         pairs.add(
             new FSTTester.InputOutput<>(term, TestUtil.nextLong(random(), 0, Long.MAX_VALUE)));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
 
     // Pair<ord, (random monotonically increasing positive number>
@@ -237,7 +241,7 @@ public class TestFSTs extends LuceneTestCase {
         lastOutput = value;
         pairs.add(new FSTTester.InputOutput<>(terms[idx], outputs.newPair((long) idx, value)));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
 
     // Sequence-of-bytes
@@ -250,7 +254,7 @@ public class TestFSTs extends LuceneTestCase {
             random().nextInt(30) == 17 ? NO_OUTPUT : newBytesRef(Integer.toString(idx));
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
 
     // Sequence-of-ints
@@ -266,7 +270,7 @@ public class TestFSTs extends LuceneTestCase {
         }
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(true);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
   }
 
@@ -333,7 +337,22 @@ public class TestFSTs extends LuceneTestCase {
     writer.close();
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
 
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler.Builder<Long> builder = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs);
+
+    double suffixRAMLimitMB;
+
+    if (random().nextInt(10) == 4) {
+      // no suffix sharing
+      suffixRAMLimitMB = 0;
+    } else if (random().nextInt(10) == 7) {
+      // share all suffixes (minimal FST)
+      suffixRAMLimitMB = Double.POSITIVE_INFINITY;
+    } else {
+      suffixRAMLimitMB = (random().nextDouble() + 0.01) * 10.0;
+    }
+    builder.suffixRAMLimitMB(suffixRAMLimitMB);
+
+    FSTCompiler<Long> fstCompiler = builder.build();
 
     boolean storeOrd = random().nextBoolean();
     if (VERBOSE) {
@@ -388,7 +407,7 @@ public class TestFSTs extends LuceneTestCase {
           System.out.println(ord + " terms...");
         }
       }
-      FST<Long> fst = fstCompiler.compile();
+      FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       if (VERBOSE) {
         System.out.println(
             "FST: "
@@ -502,12 +521,8 @@ public class TestFSTs extends LuceneTestCase {
     private final FSTCompiler<T> fstCompiler;
 
     public VisitTerms(
-        Path dirOut,
-        Path wordsFileIn,
-        int inputMode,
-        int prune,
-        Outputs<T> outputs,
-        boolean noArcArrays) {
+        Path dirOut, Path wordsFileIn, int inputMode, Outputs<T> outputs, boolean noArcArrays)
+        throws IOException {
       this.dirOut = dirOut;
       this.wordsFileIn = wordsFileIn;
       this.inputMode = inputMode;
@@ -516,8 +531,6 @@ public class TestFSTs extends LuceneTestCase {
       fstCompiler =
           new FSTCompiler.Builder<>(
                   inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs)
-              .minSuffixCount2(prune)
-              .shouldShareSuffix(prune == 0)
               .allowFixedLengthArcs(!noArcArrays)
               .build();
     }
@@ -556,15 +569,10 @@ public class TestFSTs extends LuceneTestCase {
         System.out.println(
             ((tMid - tStart) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to add all terms");
 
-        assert fstCompiler.getTermCount() == ord;
-        FST<T> fst = fstCompiler.compile();
+        FST<T> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         long tEnd = System.nanoTime();
         System.out.println(
             ((tEnd - tMid) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to finish/pack");
-        if (fst == null) {
-          System.out.println("FST was fully pruned!");
-          System.exit(0);
-        }
 
         if (dirOut == null) {
           return;
@@ -658,7 +666,6 @@ public class TestFSTs extends LuceneTestCase {
   // java -cp
   // ../build/codecs/classes/java:../test-framework/lib/randomizedtesting-runner-*.jar:../build/core/classes/test:../build/core/classes/test-framework:../build/core/classes/java:../build/test-framework/classes/java:../test-framework/lib/junit-4.10.jar org.apache.lucene.util.fst.TestFSTs /xold/tmp/allTerms3.txt out
   public static void main(String[] args) throws IOException {
-    int prune = 0;
     int limit = Integer.MAX_VALUE;
     int inputMode = 0; // utf8
     boolean storeOrds = false;
@@ -670,10 +677,7 @@ public class TestFSTs extends LuceneTestCase {
 
     int idx = 0;
     while (idx < args.length) {
-      if (args[idx].equals("-prune")) {
-        prune = Integer.parseInt(args[1 + idx]);
-        idx++;
-      } else if (args[idx].equals("-limit")) {
+      if (args[idx].equals("-limit")) {
         limit = Integer.parseInt(args[1 + idx]);
         idx++;
       } else if (args[idx].equals("-utf8")) {
@@ -717,7 +721,7 @@ public class TestFSTs extends LuceneTestCase {
       final PositiveIntOutputs o2 = PositiveIntOutputs.getSingleton();
       final PairOutputs<Long, Long> outputs = new PairOutputs<>(o1, o2);
       new VisitTerms<PairOutputs.Pair<Long, Long>>(
-          dirOut, wordsFileIn, inputMode, prune, outputs, noArcArrays) {
+          dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         Random rand;
 
         @Override
@@ -731,7 +735,7 @@ public class TestFSTs extends LuceneTestCase {
     } else if (storeOrds) {
       // Store only ords
       final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, prune, outputs, noArcArrays) {
+      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         @Override
         public Long getOutput(IntsRef input, int ord) {
           return (long) ord;
@@ -740,7 +744,7 @@ public class TestFSTs extends LuceneTestCase {
     } else if (storeDocFreqs) {
       // Store only docFreq
       final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, prune, outputs, noArcArrays) {
+      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         Random rand;
 
         @Override
@@ -755,7 +759,7 @@ public class TestFSTs extends LuceneTestCase {
       // Store nothing
       final NoOutputs outputs = NoOutputs.getSingleton();
       final Object NO_OUTPUT = outputs.getNoOutput();
-      new VisitTerms<Object>(dirOut, wordsFileIn, inputMode, prune, outputs, noArcArrays) {
+      new VisitTerms<Object>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         @Override
         public Object getOutput(IntsRef input, int ord) {
           return NO_OUTPUT;
@@ -766,10 +770,12 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testSingleString() throws Exception {
     final Outputs<Object> outputs = NoOutputs.getSingleton();
-    final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Object> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     fstCompiler.add(
         Util.toIntsRef(newBytesRef("foobar"), new IntsRefBuilder()), outputs.getNoOutput());
-    final BytesRefFSTEnum<Object> fstEnum = new BytesRefFSTEnum<>(fstCompiler.compile());
+    final BytesRefFSTEnum<Object> fstEnum =
+        new BytesRefFSTEnum<>(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     assertNull(fstEnum.seekFloor(newBytesRef("foo")));
     assertNull(fstEnum.seekCeil(newBytesRef("foobaz")));
   }
@@ -777,12 +783,13 @@ public class TestFSTs extends LuceneTestCase {
   public void testDuplicateFSAString() throws Exception {
     String str = "foobar";
     final Outputs<Object> outputs = NoOutputs.getSingleton();
-    final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Object> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     IntsRefBuilder ints = new IntsRefBuilder();
     for (int i = 0; i < 10; i++) {
       fstCompiler.add(Util.toIntsRef(newBytesRef(str), ints), outputs.getNoOutput());
     }
-    FST<Object> fst = fstCompiler.compile();
+    FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     // count the input paths
     int count = 0;
@@ -846,7 +853,8 @@ public class TestFSTs extends LuceneTestCase {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
 
     // Build an FST mapping BytesRef -> Long
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final BytesRef a = newBytesRef("a");
     final BytesRef b = newBytesRef("b");
@@ -856,7 +864,7 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(b, new IntsRefBuilder()), 42L);
     fstCompiler.add(Util.toIntsRef(c, new IntsRefBuilder()), 13824324872317238L);
 
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     assertEquals(13824324872317238L, (long) Util.get(fst, c));
     assertEquals(42, (long) Util.get(fst, b));
@@ -1085,7 +1093,8 @@ public class TestFSTs extends LuceneTestCase {
       FST<Object> compile(String[] lines) throws IOException {
         final NoOutputs outputs = NoOutputs.getSingleton();
         final Object nothing = outputs.getNoOutput();
-        final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        final FSTCompiler<Object> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
         int line = 0;
         final BytesRefBuilder term = new BytesRefBuilder();
@@ -1099,7 +1108,7 @@ public class TestFSTs extends LuceneTestCase {
           fstCompiler.add(Util.toIntsRef(term.get(), scratchIntsRef), nothing);
         }
 
-        return fstCompiler.compile();
+        return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       }
 
       void generate(ArrayList<String> out, StringBuilder b, char from, char to, int depth) {
@@ -1127,9 +1136,9 @@ public class TestFSTs extends LuceneTestCase {
             int children = verifyStateAndBelow(fst, new FST.Arc<>().copyFrom(arc), depth + 1);
 
             assertEquals(
-                (depth <= FST.FIXED_LENGTH_ARC_SHALLOW_DEPTH
-                        && children >= FST.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
-                    || children >= FST.FIXED_LENGTH_ARC_DEEP_NUM_ARCS,
+                (depth <= FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_DEPTH
+                        && children >= FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
+                    || children >= FSTCompiler.FIXED_LENGTH_ARC_DEEP_NUM_ARCS,
                 expanded);
             if (arc.isLast()) break;
           }
@@ -1141,8 +1150,9 @@ public class TestFSTs extends LuceneTestCase {
     }
 
     // Sanity check.
-    assertTrue(FST.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS < FST.FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
-    assertTrue(FST.FIXED_LENGTH_ARC_SHALLOW_DEPTH >= 0);
+    assertTrue(
+        FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS < FSTCompiler.FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
+    assertTrue(FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_DEPTH >= 0);
 
     SyntheticData s = new SyntheticData();
 
@@ -1156,30 +1166,32 @@ public class TestFSTs extends LuceneTestCase {
     s.verifyStateAndBelow(fst, arc, 1);
   }
 
+  @Ignore("not sure it's possible to get a final state output anymore w/o pruning?")
   public void testFinalOutputOnEndState() throws Exception {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
 
     final FSTCompiler<Long> fstCompiler =
-        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).minSuffixCount1(2).build();
-    fstCompiler.add(Util.toUTF32("stat", new IntsRefBuilder()), 17L);
-    fstCompiler.add(Util.toUTF32("station", new IntsRefBuilder()), 10L);
-    final FST<Long> fst = fstCompiler.compile();
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
+    fstCompiler.add(Util.toUTF32("slat", new IntsRefBuilder()), 10L);
+    fstCompiler.add(Util.toUTF32("st", new IntsRefBuilder()), 17L);
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));
     StringWriter w = new StringWriter();
     Util.toDot(fst, w, false, false);
     w.close();
-    // System.out.println(w.toString());
+    System.out.println(w.toString());
     assertTrue(w.toString().contains("label=\"t/[7]\""));
   }
 
   public void testInternalFinalState() throws Exception {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     fstCompiler.add(
         Util.toIntsRef(newBytesRef("stat"), new IntsRefBuilder()), outputs.getNoOutput());
     fstCompiler.add(
         Util.toIntsRef(newBytesRef("station"), new IntsRefBuilder()), outputs.getNoOutput());
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp/out.dot"));
     Util.toDot(fst, w, false, false);
@@ -1192,13 +1204,55 @@ public class TestFSTs extends LuceneTestCase {
     assertTrue(w.toString().contains("[label=\"n\" style=\"bold\""));
   }
 
+  // https://github.com/apache/lucene/issues/12697
+  // Make sure the FST can be saved and loaded with different DataOutput for metadata
+  public void testSaveDifferentMetaOut() throws Exception {
+    PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
+
+    // first build the FST from scratch
+    final IntsRefBuilder scratch = new IntsRefBuilder();
+    fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), 22L);
+    fstCompiler.add(Util.toIntsRef(newBytesRef("aac"), scratch), 7L);
+    fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), 17L);
+
+    FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
+
+    // save the FST to DataOutput, here it would not matter whether we are saving to different
+    // DataOutput for meta or not
+    ByteArrayOutputStream outOS = new ByteArrayOutputStream();
+    OutputStreamDataOutput out = new OutputStreamDataOutput(outOS);
+    fst.save(out, out);
+
+    // load the FST, which will force it to use FSTStore instead of BytesStore
+    ByteArrayDataInput in = new ByteArrayDataInput(outOS.toByteArray());
+    FST<Long> loadedFST = new FST<>(FST.readMetadata(in, outputs), in);
+
+    // now save the FST again, this time to different DataOutput for meta
+    ByteArrayOutputStream metdataOS = new ByteArrayOutputStream();
+    OutputStreamDataOutput metaOut = new OutputStreamDataOutput(metdataOS);
+    ByteArrayOutputStream dataOS = new ByteArrayOutputStream();
+    OutputStreamDataOutput dataOut = new OutputStreamDataOutput(dataOS);
+    loadedFST.save(metaOut, dataOut);
+
+    // finally load it again
+    ByteArrayDataInput metaIn = new ByteArrayDataInput(metdataOS.toByteArray());
+    ByteArrayDataInput dataIn = new ByteArrayDataInput(dataOS.toByteArray());
+    loadedFST = new FST<>(FST.readMetadata(metaIn, outputs), dataIn);
+
+    assertEquals(22L, Util.get(loadedFST, Util.toIntsRef(newBytesRef("aab"), scratch)).longValue());
+    assertEquals(7L, Util.get(loadedFST, Util.toIntsRef(newBytesRef("aac"), scratch)).longValue());
+    assertEquals(17L, Util.get(loadedFST, Util.toIntsRef(newBytesRef("ax"), scratch)).longValue());
+  }
+
   // Make sure raw FST can differentiate between final vs
   // non-final end nodes
   public void testNonFinalStopNode() throws Exception {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
     final Long nothing = outputs.getNoOutput();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
-    final FST<Long> fst = fstCompiler.fst;
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final FSTCompiler.UnCompiledNode<Long> rootNode =
         new FSTCompiler.UnCompiledNode<>(fstCompiler, 0);
@@ -1210,7 +1264,7 @@ public class TestFSTs extends LuceneTestCase {
       node.isFinal = true;
       rootNode.addArc('a', node);
       final FSTCompiler.CompiledNode frozen = new FSTCompiler.CompiledNode();
-      frozen.node = fst.addNode(fstCompiler, node);
+      frozen.node = fstCompiler.addNode(node);
       rootNode.arcs[0].nextFinalOutput = 17L;
       rootNode.arcs[0].isFinal = true;
       rootNode.arcs[0].output = nothing;
@@ -1223,13 +1277,15 @@ public class TestFSTs extends LuceneTestCase {
           new FSTCompiler.UnCompiledNode<>(fstCompiler, 0);
       rootNode.addArc('b', node);
       final FSTCompiler.CompiledNode frozen = new FSTCompiler.CompiledNode();
-      frozen.node = fst.addNode(fstCompiler, node);
+      frozen.node = fstCompiler.addNode(node);
       rootNode.arcs[1].nextFinalOutput = nothing;
       rootNode.arcs[1].output = 42L;
       rootNode.arcs[1].target = frozen;
     }
 
-    fst.finish(fst.addNode(fstCompiler, rootNode));
+    fstCompiler.finish(fstCompiler.addNode(rootNode));
+
+    final FST<Long> fst = new FST<>(fstCompiler.fst.metadata, fstCompiler.getFSTReader());
 
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));
@@ -1245,7 +1301,7 @@ public class TestFSTs extends LuceneTestCase {
     out.close();
 
     IndexInput in = dir.openInput("fst", IOContext.DEFAULT);
-    final FST<Long> fst2 = new FST<>(in, in, outputs);
+    final FST<Long> fst2 = new FST<>(FST.readMetadata(in, outputs), in);
     checkStopNodes(fst2, outputs);
     in.close();
     dir.close();
@@ -1272,13 +1328,14 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testShortestPaths() throws Exception {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final IntsRefBuilder scratch = new IntsRefBuilder();
     fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), 22L);
     fstCompiler.add(Util.toIntsRef(newBytesRef("aac"), scratch), 7L);
     fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), 17L);
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
     // Util.toDot(fst, w, false, false);
     // w.close();
@@ -1293,19 +1350,20 @@ public class TestFSTs extends LuceneTestCase {
             true);
     assertTrue(res.isComplete);
     assertEquals(3, res.topN.size());
-    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input);
-    assertEquals(7L, res.topN.get(0).output.longValue());
+    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input());
+    assertEquals(7L, res.topN.get(0).output().longValue());
 
-    assertEquals(Util.toIntsRef(newBytesRef("ax"), scratch), res.topN.get(1).input);
-    assertEquals(17L, res.topN.get(1).output.longValue());
+    assertEquals(Util.toIntsRef(newBytesRef("ax"), scratch), res.topN.get(1).input());
+    assertEquals(17L, res.topN.get(1).output().longValue());
 
-    assertEquals(Util.toIntsRef(newBytesRef("aab"), scratch), res.topN.get(2).input);
-    assertEquals(22L, res.topN.get(2).output.longValue());
+    assertEquals(Util.toIntsRef(newBytesRef("aab"), scratch), res.topN.get(2).input());
+    assertEquals(22L, res.topN.get(2).output().longValue());
   }
 
   public void testRejectNoLimits() throws IOException {
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final IntsRefBuilder scratch = new IntsRefBuilder();
     fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), 22L);
@@ -1314,7 +1372,7 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(newBytesRef("adcde"), scratch), 17L);
 
     fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), 17L);
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     final AtomicInteger rejectCount = new AtomicInteger();
     Util.TopNSearcher<Long> searcher =
         new Util.TopNSearcher<>(fst, 2, 6, minLongComparator) {
@@ -1335,8 +1393,8 @@ public class TestFSTs extends LuceneTestCase {
     assertTrue(res.isComplete); // rejected(4) + topN(2) <= maxQueueSize(6)
 
     assertEquals(1, res.topN.size());
-    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input);
-    assertEquals(7L, res.topN.get(0).output.longValue());
+    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input());
+    assertEquals(7L, res.topN.get(0).output().longValue());
     rejectCount.set(0);
     searcher =
         new Util.TopNSearcher<>(fst, 2, 5, minLongComparator) {
@@ -1371,13 +1429,14 @@ public class TestFSTs extends LuceneTestCase {
             );
 
     final FSTCompiler<Pair<Long, Long>> fstCompiler =
-        new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final IntsRefBuilder scratch = new IntsRefBuilder();
     fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), outputs.newPair(22L, 57L));
     fstCompiler.add(Util.toIntsRef(newBytesRef("aac"), scratch), outputs.newPair(7L, 36L));
     fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), outputs.newPair(17L, 85L));
-    final FST<Pair<Long, Long>> fst = fstCompiler.compile();
+    final FST<Pair<Long, Long>> fst =
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
     // Util.toDot(fst, w, false, false);
     // w.close();
@@ -1393,17 +1452,17 @@ public class TestFSTs extends LuceneTestCase {
     assertTrue(res.isComplete);
     assertEquals(3, res.topN.size());
 
-    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input);
-    assertEquals(7L, res.topN.get(0).output.output1.longValue()); // weight
-    assertEquals(36L, res.topN.get(0).output.output2.longValue()); // output
+    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input());
+    assertEquals(7L, res.topN.get(0).output().output1.longValue()); // weight
+    assertEquals(36L, res.topN.get(0).output().output2.longValue()); // output
 
-    assertEquals(Util.toIntsRef(newBytesRef("ax"), scratch), res.topN.get(1).input);
-    assertEquals(17L, res.topN.get(1).output.output1.longValue()); // weight
-    assertEquals(85L, res.topN.get(1).output.output2.longValue()); // output
+    assertEquals(Util.toIntsRef(newBytesRef("ax"), scratch), res.topN.get(1).input());
+    assertEquals(17L, res.topN.get(1).output().output1.longValue()); // weight
+    assertEquals(85L, res.topN.get(1).output().output2.longValue()); // output
 
-    assertEquals(Util.toIntsRef(newBytesRef("aab"), scratch), res.topN.get(2).input);
-    assertEquals(22L, res.topN.get(2).output.output1.longValue()); // weight
-    assertEquals(57L, res.topN.get(2).output.output2.longValue()); // output
+    assertEquals(Util.toIntsRef(newBytesRef("aab"), scratch), res.topN.get(2).input());
+    assertEquals(22L, res.topN.get(2).output().output1.longValue()); // weight
+    assertEquals(57L, res.topN.get(2).output().output2.longValue()); // output
   }
 
   public void testShortestPathsRandom() throws Exception {
@@ -1414,7 +1473,8 @@ public class TestFSTs extends LuceneTestCase {
     final TreeSet<String> allPrefixes = new TreeSet<>();
 
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    final FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     final IntsRefBuilder scratch = new IntsRefBuilder();
 
     for (int i = 0; i < numWords; i++) {
@@ -1435,7 +1495,7 @@ public class TestFSTs extends LuceneTestCase {
       fstCompiler.add(Util.toIntsRef(newBytesRef(e.getKey()), scratch), e.getValue());
     }
 
-    final FST<Long> fst = fstCompiler.compile();
+    final FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // System.out.println("SAVE out.dot");
     // Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
     // Util.toDot(fst, w, false, false);
@@ -1488,24 +1548,20 @@ public class TestFSTs extends LuceneTestCase {
 
       for (int hit = 0; hit < r.topN.size(); hit++) {
         // System.out.println("  check hit " + hit);
-        assertEquals(matches.get(hit).input, r.topN.get(hit).input);
-        assertEquals(matches.get(hit).output, r.topN.get(hit).output);
+        assertEquals(matches.get(hit).input(), r.topN.get(hit).input());
+        assertEquals(matches.get(hit).output(), r.topN.get(hit).output());
       }
     }
   }
 
-  private static class TieBreakByInputComparator<T> implements Comparator<Result<T>> {
-    private final Comparator<T> comparator;
-
-    public TieBreakByInputComparator(Comparator<T> comparator) {
-      this.comparator = comparator;
-    }
+  private record TieBreakByInputComparator<T>(Comparator<T> comparator)
+      implements Comparator<Result<T>> {
 
     @Override
     public int compare(Result<T> a, Result<T> b) {
-      int cmp = comparator.compare(a.output, b.output);
+      int cmp = comparator.compare(a.output(), b.output());
       if (cmp == 0) {
-        return a.input.compareTo(b.input);
+        return a.input().compareTo(b.input());
       } else {
         return cmp;
       }
@@ -1536,7 +1592,7 @@ public class TestFSTs extends LuceneTestCase {
             PositiveIntOutputs.getSingleton() // output
             );
     final FSTCompiler<Pair<Long, Long>> fstCompiler =
-        new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     final IntsRefBuilder scratch = new IntsRefBuilder();
 
     Random random = random();
@@ -1562,7 +1618,8 @@ public class TestFSTs extends LuceneTestCase {
           Util.toIntsRef(newBytesRef(e.getKey()), scratch), outputs.newPair(weight, output));
     }
 
-    final FST<Pair<Long, Long>> fst = fstCompiler.compile();
+    final FST<Pair<Long, Long>> fst =
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     // System.out.println("SAVE out.dot");
     // Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
     // Util.toDot(fst, w, false, false);
@@ -1617,15 +1674,16 @@ public class TestFSTs extends LuceneTestCase {
 
       for (int hit = 0; hit < r.topN.size(); hit++) {
         // System.out.println("  check hit " + hit);
-        assertEquals(matches.get(hit).input, r.topN.get(hit).input);
-        assertEquals(matches.get(hit).output, r.topN.get(hit).output);
+        assertEquals(matches.get(hit).input(), r.topN.get(hit).input());
+        assertEquals(matches.get(hit).output(), r.topN.get(hit).output());
       }
     }
   }
 
   public void testLargeOutputsOnArrayArcs() throws Exception {
     final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
-    final FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<BytesRef> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final byte[] bytes = new byte[300];
     final IntsRefBuilder input = new IntsRefBuilder();
@@ -1637,7 +1695,7 @@ public class TestFSTs extends LuceneTestCase {
       fstCompiler.add(input.get(), newBytesRef(BytesRef.deepCopyOf(output)));
     }
 
-    final FST<BytesRef> fst = fstCompiler.compile();
+    final FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     for (int arc = 0; arc < 6; arc++) {
       input.setIntAt(0, arc);
       final BytesRef result = Util.get(fst, input.get());
@@ -1670,7 +1728,8 @@ public class TestFSTs extends LuceneTestCase {
     Collections.sort(termsList);
 
     ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
-    FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<BytesRef> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     IntsRefBuilder input = new IntsRefBuilder();
     for (BytesRef term : termsList) {
@@ -1678,7 +1737,7 @@ public class TestFSTs extends LuceneTestCase {
       fstCompiler.add(input.get(), term);
     }
 
-    FST<BytesRef> fst = fstCompiler.compile();
+    FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     Arc<BytesRef> arc = new FST.Arc<>();
     fst.getFirstArc(arc);
@@ -1702,7 +1761,8 @@ public class TestFSTs extends LuceneTestCase {
 
   public void testSimpleDepth() throws Exception {
     PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     BytesRef ab = newBytesRef("ab");
     BytesRef ac = newBytesRef("ac");
@@ -1712,7 +1772,7 @@ public class TestFSTs extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(ac, new IntsRefBuilder()), 5L);
     fstCompiler.add(Util.toIntsRef(bd, new IntsRefBuilder()), 7L);
 
-    FST<Long> fst = fstCompiler.compile();
+    FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     assertEquals(3, (long) Util.get(fst, ab));
     assertEquals(5, (long) Util.get(fst, ac));

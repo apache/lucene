@@ -235,7 +235,7 @@ public class TestSimpleFragmentsBuilder extends AbstractTestCase {
       String randomValue;
       do {
         randomValue = TestUtil.randomSimpleString(random());
-      } while ("".equals(randomValue));
+      } while (randomValue.isEmpty());
       randomValues[i] = randomValue;
     }
 
@@ -334,12 +334,5 @@ public class TestSimpleFragmentsBuilder extends AbstractTestCase {
     return value;
   }
 
-  private static class Doc {
-
-    final String[][] fieldValues;
-
-    private Doc(String[][] fieldValues) {
-      this.fieldValues = fieldValues;
-    }
-  }
+  private record Doc(String[][] fieldValues) {}
 }

@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.Matchers.instanceOf;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
@@ -36,6 +36,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 
 public class TestCollectorManager extends LuceneTestCase {
 
@@ -62,7 +63,7 @@ public class TestCollectorManager extends LuceneTestCase {
 
       // Test only wrapping one of the collector managers:
       Object result = collectAll(ctx, expected, cm);
-      assertThat(result, instanceOf(List.class));
+      MatcherAssert.assertThat(result, instanceOf(List.class));
       IntStream intResults = ((List<Integer>) result).stream().mapToInt(i -> i);
       assertArrayEquals(
           IntStream.concat(expectedEven, expectedOdd).sorted().toArray(),
@@ -121,13 +122,8 @@ public class TestCollectorManager extends LuceneTestCase {
     return generated;
   }
 
-  private static final class CompositeCollectorManager
+  private record CompositeCollectorManager(List<Predicate<Integer>> predicates)
       implements CollectorManager<Collector, List<Integer>> {
-    private final List<Predicate<Integer>> predicates;
-
-    CompositeCollectorManager(List<Predicate<Integer>> predicates) {
-      this.predicates = predicates;
-    }
 
     @Override
     public Collector newCollector() throws IOException {

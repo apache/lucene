@@ -134,10 +134,10 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         } else {
           after = null;
         }
-        CollectorManager<TopFieldCollector, TopFieldDocs> manager1 =
-            TopFieldCollector.createSharedManager(sort, numHits, after, Integer.MAX_VALUE);
-        CollectorManager<TopFieldCollector, TopFieldDocs> manager2 =
-            TopFieldCollector.createSharedManager(sort, numHits, after, 1);
+        final TopFieldCollectorManager manager1 =
+            new TopFieldCollectorManager(sort, numHits, after, Integer.MAX_VALUE);
+        final TopFieldCollectorManager manager2 =
+            new TopFieldCollectorManager(sort, numHits, after, 1);
 
         final Query query;
         if (random().nextBoolean()) {
@@ -148,16 +148,16 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         TopDocs td1 = searcher.search(query, manager1);
         TopDocs td2 = searcher.search(query, manager2);
 
-        assertNotEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td1.totalHits.relation);
+        assertNotEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td1.totalHits.relation());
         if (paging == false && maxSegmentSize > numHits && query instanceof MatchAllDocsQuery) {
           // Make sure that we sometimes early terminate
-          assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td2.totalHits.relation);
+          assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td2.totalHits.relation());
         }
-        if (td2.totalHits.relation == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO) {
-          assertTrue(td2.totalHits.value >= td1.scoreDocs.length);
-          assertTrue(td2.totalHits.value <= reader.maxDoc());
+        if (td2.totalHits.relation() == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO) {
+          assertTrue(td2.totalHits.value() >= td1.scoreDocs.length);
+          assertTrue(td2.totalHits.value() <= reader.maxDoc());
         } else {
-          assertEquals(td2.totalHits.value, td1.totalHits.value);
+          assertEquals(td2.totalHits.value(), td1.totalHits.value());
         }
         CheckHits.checkEqual(query, td1.scoreDocs, td2.scoreDocs);
       }

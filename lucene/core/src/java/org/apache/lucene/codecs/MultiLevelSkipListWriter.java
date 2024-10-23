@@ -63,25 +63,24 @@ public abstract class MultiLevelSkipListWriter {
   /** for every skip level a different buffer is used */
   private ByteBuffersDataOutput[] skipBuffer;
 
+  /** Length of the window at which the skips are placed on skip level 1 */
+  private final int windowLength;
+
   /** Creates a {@code MultiLevelSkipListWriter}. */
   protected MultiLevelSkipListWriter(
       int skipInterval, int skipMultiplier, int maxSkipLevels, int df) {
     this.skipInterval = skipInterval;
     this.skipMultiplier = skipMultiplier;
 
-    int numberOfSkipLevels;
     // calculate the maximum number of skip levels for this document frequency
-    if (df <= skipInterval) {
-      numberOfSkipLevels = 1;
+    if (df > skipInterval) {
+      // also make sure it does not exceed maxSkipLevels
+      this.numberOfSkipLevels =
+          Math.min(1 + MathUtil.log(df / skipInterval, skipMultiplier), maxSkipLevels);
     } else {
-      numberOfSkipLevels = 1 + MathUtil.log(df / skipInterval, skipMultiplier);
+      this.numberOfSkipLevels = 1;
     }
-
-    // make sure it does not exceed maxSkipLevels
-    if (numberOfSkipLevels > maxSkipLevels) {
-      numberOfSkipLevels = maxSkipLevels;
-    }
-    this.numberOfSkipLevels = numberOfSkipLevels;
+    this.windowLength = Math.toIntExact(skipInterval * (long) skipMultiplier);
   }
 
   /**
@@ -130,12 +129,16 @@ public abstract class MultiLevelSkipListWriter {
 
     assert df % skipInterval == 0;
     int numLevels = 1;
-    df /= skipInterval;
-
-    // determine max level
-    while ((df % skipMultiplier) == 0 && numLevels < numberOfSkipLevels) {
+    // This optimizes the most common case i.e. numLevels = 1, it does a single modulo check to
+    // catch that case
+    if (df % windowLength == 0) {
       numLevels++;
-      df /= skipMultiplier;
+      df /= windowLength;
+      // determine max level
+      while ((df % skipMultiplier) == 0 && numLevels < numberOfSkipLevels) {
+        numLevels++;
+        df /= skipMultiplier;
+      }
     }
 
     long childPointer = 0;

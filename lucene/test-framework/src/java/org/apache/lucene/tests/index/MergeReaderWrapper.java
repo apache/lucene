@@ -27,6 +27,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DataInputDocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -118,21 +119,6 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public BinaryDocValues getBinaryDocValues(String field) throws IOException {
-    ensureOpen();
-    FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null) {
-      // Field does not exist
-      return null;
-    }
-    if (fi.getDocValuesType() != DocValuesType.BINARY) {
-      // Field was not indexed with doc values
-      return null;
-    }
-    return docValues.getBinary(fi);
-  }
-
-  @Override
   public DataInputDocValues getDataInputDocValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
@@ -145,6 +131,21 @@ class MergeReaderWrapper extends LeafReader {
       return null;
     }
     return docValues.getDataInput(fi);
+  }
+
+  @Override
+  public BinaryDocValues getBinaryDocValues(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null) {
+      // Field does not exist
+      return null;
+    }
+    if (fi.getDocValuesType() != DocValuesType.BINARY) {
+      // Field was not indexed with doc values
+      return null;
+    }
+    return docValues.getBinary(fi);
   }
 
   @Override
@@ -204,6 +205,17 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null) {
+      // Field does not exist
+      return null;
+    }
+    return docValues.getSkipper(fi);
+  }
+
+  @Override
   public FieldInfos getFieldInfos() {
     return in.getFieldInfos();
   }
@@ -245,13 +257,13 @@ class MergeReaderWrapper extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   @Override
   public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 

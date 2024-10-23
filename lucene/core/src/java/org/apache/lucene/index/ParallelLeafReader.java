@@ -48,6 +48,7 @@ import org.apache.lucene.util.Version;
  * behavior</em>.
  */
 public class ParallelLeafReader extends LeafReader {
+
   private final FieldInfos fieldInfos;
   private final LeafReader[] parallelReaders, storedFieldsReaders;
   private final Set<LeafReader> completeReaderSet =
@@ -111,9 +112,15 @@ public class ParallelLeafReader extends LeafReader {
             .filter(Objects::nonNull)
             .findAny()
             .orElse(null);
+    final String parentField =
+        completeReaderSet.stream()
+            .map(r -> r.getFieldInfos().getParentField())
+            .filter(Objects::nonNull)
+            .findAny()
+            .orElse(null);
     // TODO: make this read-only in a cleaner way?
     FieldInfos.Builder builder =
-        new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesField));
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesField, parentField));
 
     Sort indexSort = null;
     int createdVersionMajor = -1;
@@ -122,7 +129,7 @@ public class ParallelLeafReader extends LeafReader {
     for (final LeafReader reader : this.parallelReaders) {
       LeafMetaData leafMetaData = reader.getMetaData();
 
-      Sort leafIndexSort = leafMetaData.getSort();
+      Sort leafIndexSort = leafMetaData.sort();
       if (indexSort == null) {
         indexSort = leafIndexSort;
       } else if (leafIndexSort != null && indexSort.equals(leafIndexSort) == false) {
@@ -134,13 +141,13 @@ public class ParallelLeafReader extends LeafReader {
       }
 
       if (createdVersionMajor == -1) {
-        createdVersionMajor = leafMetaData.getCreatedVersionMajor();
-      } else if (createdVersionMajor != leafMetaData.getCreatedVersionMajor()) {
+        createdVersionMajor = leafMetaData.createdVersionMajor();
+      } else if (createdVersionMajor != leafMetaData.createdVersionMajor()) {
         throw new IllegalArgumentException(
             "cannot combine LeafReaders that have different creation versions: saw both version="
                 + createdVersionMajor
                 + " and "
-                + leafMetaData.getCreatedVersionMajor());
+                + leafMetaData.createdVersionMajor());
       }
 
       final FieldInfos readerFieldInfos = reader.getFieldInfos();
@@ -152,7 +159,7 @@ public class ParallelLeafReader extends LeafReader {
           // only add these if the reader responsible for that field name is the current:
           // TODO consider populating 1st leaf with vectors even if the field name has been seen on
           // a previous leaf
-          if (fieldInfo.hasVectors()) {
+          if (fieldInfo.hasTermVectors()) {
             tvFieldToReader.put(fieldInfo.name, reader);
           }
           // TODO consider populating 1st leaf with terms even if the field name has been seen on a
@@ -169,9 +176,10 @@ public class ParallelLeafReader extends LeafReader {
     }
 
     Version minVersion = Version.LATEST;
+    boolean hasBlocks = false;
     for (final LeafReader reader : this.parallelReaders) {
-      Version leafVersion = reader.getMetaData().getMinVersion();
-
+      Version leafVersion = reader.getMetaData().minVersion();
+      hasBlocks |= reader.getMetaData().hasBlocks();
       if (leafVersion == null) {
         minVersion = null;
         break;
@@ -181,7 +189,7 @@ public class ParallelLeafReader extends LeafReader {
     }
 
     fieldInfos = builder.finish();
-    this.metaData = new LeafMetaData(createdVersionMajor, minVersion, indexSort);
+    this.metaData = new LeafMetaData(createdVersionMajor, minVersion, indexSort, hasBlocks);
 
     // do this finally so any Exceptions occurred before don't affect refcounts:
     for (LeafReader reader : completeReaderSet) {
@@ -274,6 +282,13 @@ public class ParallelLeafReader extends LeafReader {
     }
     return new StoredFields() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        for (StoredFields reader : fields) {
+          reader.prefetch(docID);
+        }
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         for (StoredFields reader : fields) {
           reader.document(docID, visitor);
@@ -311,14 +326,32 @@ public class ParallelLeafReader extends LeafReader {
   @Override
   public TermVectors termVectors() throws IOException {
     ensureOpen();
-    // TODO: optimize
+
+    Map<LeafReader, TermVectors> readerToTermVectors = new IdentityHashMap<>();
+    for (LeafReader reader : parallelReaders) {
+      if (reader.getFieldInfos().hasTermVectors()) {
+        TermVectors termVectors = reader.termVectors();
+        readerToTermVectors.put(reader, termVectors);
+      }
+    }
+
     return new TermVectors() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        // Prefetch all vectors. Note that this may be wasteful if the consumer doesn't need to read
+        // all the fields but we have no way to know what fields the consumer needs.
+        for (TermVectors termVectors : readerToTermVectors.values()) {
+          termVectors.prefetch(docID);
+        }
+      }
+
       @Override
       public Fields get(int docID) throws IOException {
         ParallelFields fields = null;
         for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
           String fieldName = ent.getKey();
-          Terms vector = ent.getValue().termVectors().get(docID, fieldName);
+          TermVectors termVectors = readerToTermVectors.get(ent.getValue());
+          Terms vector = termVectors.get(docID, fieldName);
           if (vector != null) {
             if (fields == null) {
               fields = new ParallelFields();
@@ -390,6 +423,13 @@ public class ParallelLeafReader extends LeafReader {
     ensureOpen();
     LeafReader reader = fieldToReader.get(field);
     return reader == null ? null : reader.getSortedSetDocValues(field);
+  }
+
+  @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(field);
+    return reader == null ? null : reader.getDocValuesSkipper(field);
   }
 
   @Override

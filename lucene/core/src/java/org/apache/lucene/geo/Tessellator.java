@@ -1254,8 +1254,7 @@ public final class Tessellator {
         ++numMerges;
         // step 'insize' places along from p
         q = p;
-        for (i = 0, pSize = 0; i < inSize && q != null; ++i, ++pSize, q = q.nextZ)
-          ;
+        for (i = 0, pSize = 0; i < inSize && q != null; ++i, ++pSize, q = q.nextZ) {}
         // if q hasn't fallen off end, we have two lists to merge
         qSize = inSize;
 

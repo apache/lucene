@@ -18,6 +18,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitCompile(JavascriptParser.CompileContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code conditional} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -26,6 +27,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitConditional(JavascriptParser.ConditionalContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code boolor} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -34,6 +36,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitBoolor(JavascriptParser.BoolorContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code boolcomp} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -42,6 +45,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitBoolcomp(JavascriptParser.BoolcompContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code numeric} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -50,6 +54,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitNumeric(JavascriptParser.NumericContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code addsub} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -58,6 +63,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitAddsub(JavascriptParser.AddsubContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code unary} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -66,6 +72,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitUnary(JavascriptParser.UnaryContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code precedence} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -74,6 +81,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitPrecedence(JavascriptParser.PrecedenceContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code muldiv} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -82,6 +90,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitMuldiv(JavascriptParser.MuldivContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code external} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -90,6 +99,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitExternal(JavascriptParser.ExternalContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code bwshift} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -98,6 +108,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitBwshift(JavascriptParser.BwshiftContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code bwor} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -106,6 +117,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitBwor(JavascriptParser.BworContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code booland} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -114,6 +126,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitBooland(JavascriptParser.BoolandContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code bwxor} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -122,6 +135,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitBwxor(JavascriptParser.BwxorContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code bwand} labeled alternative in {@link
    * JavascriptParser#expression}.
@@ -130,6 +144,7 @@ interface JavascriptVisitor<T> extends ParseTreeVisitor<T> {
    * @return the visitor result
    */
   T visitBwand(JavascriptParser.BwandContext ctx);
+
   /**
    * Visit a parse tree produced by the {@code booleqne} labeled alternative in {@link
    * JavascriptParser#expression}.

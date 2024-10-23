@@ -16,15 +16,22 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import static org.apache.lucene.facet.taxonomy.TaxonomyReader.INVALID_ORDINAL;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.IntStream;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader.ChildrenIterator;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
@@ -41,6 +48,9 @@ import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 public class TestDirectoryTaxonomyReader extends FacetTestCase {
+
+  private static FacetLabel ILLEGAL_PATH =
+      new FacetLabel("PATH_THAT_CAUSED_IllegalArgumentException");
 
   @Test
   public void testCloseAfterIncRef() throws Exception {
@@ -111,11 +121,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     DirectoryTaxonomyReader ltr = new DirectoryTaxonomyReader(dir);
     ltr.close();
-    expectThrows(
-        AlreadyClosedException.class,
-        () -> {
-          ltr.getSize();
-        });
+    expectThrows(AlreadyClosedException.class, ltr::getSize);
 
     dir.close();
   }
@@ -239,11 +245,11 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       // assert categories
       assertEquals(numCategories, reader.getSize());
       int roundOrdinal = reader.getOrdinal(new FacetLabel(Integer.toString(i)));
-      int[] parents = reader.getParallelTaxonomyArrays().parents();
-      assertEquals(0, parents[roundOrdinal]); // round's parent is root
+      ParallelTaxonomyArrays.IntArray parents = reader.getParallelTaxonomyArrays().parents();
+      assertEquals(0, parents.get(roundOrdinal)); // round's parent is root
       for (int j = 0; j < numCats; j++) {
         int ord = reader.getOrdinal(new FacetLabel(Integer.toString(i), Integer.toString(j)));
-        assertEquals(roundOrdinal, parents[ord]); // round's parent is root
+        assertEquals(roundOrdinal, parents.get(ord)); // round's parent is root
       }
     }
 
@@ -277,7 +283,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     TaxonomyReader reader = new DirectoryTaxonomyReader(writer);
     assertEquals(1, reader.getSize());
-    assertEquals(1, reader.getParallelTaxonomyArrays().parents().length);
+    assertEquals(1, reader.getParallelTaxonomyArrays().parents().length());
 
     // add category and call forceMerge -- this should flush IW and merge segments down to 1
     // in ParentArray.initFromReader, this used to fail assuming there are no parents.
@@ -290,7 +296,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     reader.close();
     reader = newtr;
     assertEquals(2, reader.getSize());
-    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length);
+    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length());
 
     reader.close();
     writer.close();
@@ -327,7 +333,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     TaxonomyReader reader = new DirectoryTaxonomyReader(writer);
     assertEquals(2, reader.getSize());
-    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length);
+    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length());
 
     // merge all the segments so that NRT reader thinks there's a change
     iw.forceMerge(1);
@@ -338,7 +344,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     reader.close();
     reader = newtr;
     assertEquals(2, reader.getSize());
-    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length);
+    assertEquals(2, reader.getParallelTaxonomyArrays().parents().length());
 
     reader.close();
     writer.close();
@@ -356,8 +362,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     DirectoryTaxonomyReader r1 = new DirectoryTaxonomyReader(dir);
     // fill r1's caches
-    assertEquals(1, r1.getOrdinal(cp_a));
-    assertEquals(cp_a, r1.getPath(1));
+    assertPathsAndOrdinals(r1, new int[] {1}, new FacetLabel[] {cp_a});
 
     // now recreate, add a different category
     writer = new DirectoryTaxonomyWriter(dir, OpenMode.CREATE);
@@ -369,16 +374,15 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     assertNotNull(r2);
 
     // fill r2's caches
-    assertEquals(1, r2.getOrdinal(cp_b));
-    assertEquals(cp_b, r2.getPath(1));
+    assertPathsAndOrdinals(r2, new int[] {1}, new FacetLabel[] {cp_b});
 
     // check that r1 doesn't see cp_b
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, r1.getOrdinal(cp_b));
-    assertEquals(cp_a, r1.getPath(1));
+    assertGettingOrdinals(r1, new int[] {1, INVALID_ORDINAL}, new FacetLabel[] {cp_a, cp_b});
+    assertGettingPaths(r1, new FacetLabel[] {cp_a, ILLEGAL_PATH}, new int[] {1, 2});
 
     // check that r2 doesn't see cp_a
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, r2.getOrdinal(cp_a));
-    assertEquals(cp_b, r2.getPath(1));
+    assertGettingOrdinals(r2, new int[] {INVALID_ORDINAL, 1}, new FacetLabel[] {cp_a, cp_b});
+    assertGettingPaths(r2, new FacetLabel[] {cp_b, ILLEGAL_PATH}, new int[] {1, 2});
 
     r2.close();
     r1.close();
@@ -399,8 +403,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       DirectoryTaxonomyReader r1 =
           nrt ? new DirectoryTaxonomyReader(writer) : new DirectoryTaxonomyReader(dir);
       // fill r1's caches
-      assertEquals(1, r1.getOrdinal(cp_a));
-      assertEquals(cp_a, r1.getPath(1));
+      assertPathsAndOrdinals(r1, new int[] {1}, new FacetLabel[] {cp_a});
 
       FacetLabel cp_b = new FacetLabel("b");
       writer.addCategory(cp_b);
@@ -410,12 +413,11 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       assertNotNull(r2);
 
       // add r2's categories to the caches
-      assertEquals(2, r2.getOrdinal(cp_b));
-      assertEquals(cp_b, r2.getPath(2));
+      assertPathsAndOrdinals(r2, new int[] {1, 2}, new FacetLabel[] {cp_a, cp_b});
 
       // check that r1 doesn't see cp_b
-      assertEquals(TaxonomyReader.INVALID_ORDINAL, r1.getOrdinal(cp_b));
-      expectThrows(IllegalArgumentException.class, () -> r1.getPath(2));
+      assertGettingOrdinals(r1, new int[] {1, INVALID_ORDINAL}, new FacetLabel[] {cp_a, cp_b});
+      assertGettingPaths(r1, new FacetLabel[] {cp_a, ILLEGAL_PATH}, new int[] {1, 2});
 
       r1.close();
       r2.close();
@@ -445,8 +447,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       DirectoryTaxonomyReader r1 =
           nrt ? new DirectoryTaxonomyReader(writer) : new DirectoryTaxonomyReader(dir);
       // fill r1's caches
-      assertEquals(1, r1.getOrdinal(cp_a));
-      assertEquals(cp_a, r1.getPath(1));
+      assertPathsAndOrdinals(r1, new int[] {1}, new FacetLabel[] {cp_a});
 
       // now replace taxonomy
       writer.replaceTaxonomy(src);
@@ -456,16 +457,15 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       assertNotNull(r2);
 
       // fill r2's caches
-      assertEquals(1, r2.getOrdinal(cp_b));
-      assertEquals(cp_b, r2.getPath(1));
+      assertPathsAndOrdinals(r2, new int[] {1}, new FacetLabel[] {cp_b});
 
       // check that r1 doesn't see cp_b
-      assertEquals(TaxonomyReader.INVALID_ORDINAL, r1.getOrdinal(cp_b));
-      assertEquals(cp_a, r1.getPath(1));
+      assertGettingOrdinals(r1, new int[] {1, INVALID_ORDINAL}, new FacetLabel[] {cp_a, cp_b});
+      assertGettingPaths(r1, new FacetLabel[] {cp_a, ILLEGAL_PATH}, new int[] {1, 2});
 
       // check that r2 doesn't see cp_a
-      assertEquals(TaxonomyReader.INVALID_ORDINAL, r2.getOrdinal(cp_a));
-      assertEquals(cp_b, r2.getPath(1));
+      assertGettingOrdinals(r2, new int[] {INVALID_ORDINAL, 1}, new FacetLabel[] {cp_a, cp_b});
+      assertGettingPaths(r2, new FacetLabel[] {cp_b, ILLEGAL_PATH}, new int[] {1, 2});
 
       r2.close();
       r1.close();
@@ -474,6 +474,86 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     }
 
     src.close();
+  }
+
+  private void assertGettingOrdinals(
+      DirectoryTaxonomyReader reader, int[] expectedOrds, FacetLabel[] sourcePaths)
+      throws IOException {
+    // To exercise mix of cache hit and cache misses for getOrdinal and getBulkOrdinals this method:
+    // 1. Randomly gets a few ords using sequential calls.
+    // 2. Call bulk get method.
+    // 3. Continue sequential calls for the remaining items.
+    assertEquals(expectedOrds.length, sourcePaths.length);
+    int bulkOperationsIteration = random().nextInt(sourcePaths.length);
+    List<Integer> indexesShuffled =
+        new ArrayList<>(IntStream.range(0, sourcePaths.length).boxed().toList());
+    Collections.shuffle(indexesShuffled, random());
+
+    for (int i = 0; i < bulkOperationsIteration; i++) {
+      int nextIndex = indexesShuffled.get(i);
+      assertEquals(expectedOrds[nextIndex], reader.getOrdinal(sourcePaths[nextIndex]));
+    }
+
+    int[] bulkOrdResult = reader.getBulkOrdinals(sourcePaths);
+    assertArrayEquals(expectedOrds, bulkOrdResult);
+
+    for (int i = bulkOperationsIteration; i < sourcePaths.length; i++) {
+      int nextIndex = indexesShuffled.get(i);
+      assertEquals(expectedOrds[nextIndex], reader.getOrdinal(sourcePaths[nextIndex]));
+    }
+  }
+
+  private void assertGettingPaths(
+      DirectoryTaxonomyReader reader, FacetLabel[] expectedPaths, int[] sourceOrds)
+      throws IOException {
+    // To exercise mix of cache hit and cache misses for getPath and getBulkPath this method:
+    // 1. Randomly gets a few paths using sequential calls.
+    // 2. Call bulk get method.
+    // 3. Continue sequential calls for the remaining items.
+    // Note: expectedPaths should refer to ILLEGAL_PATH for ords from sourceOrds that are expected
+    // to throw IllegalArgumentException
+    assertEquals(expectedPaths.length, sourceOrds.length);
+    int bulkOperationsIteration = random().nextInt(sourceOrds.length);
+    List<Integer> indexesShuffled =
+        new ArrayList<>(IntStream.range(0, sourceOrds.length).boxed().toList());
+    Collections.shuffle(indexesShuffled, random());
+
+    boolean illegalPathExceptionIsExpected =
+        Arrays.stream(expectedPaths).anyMatch(x -> x == ILLEGAL_PATH);
+    for (int i = 0; i < bulkOperationsIteration; i++) {
+      int nextIndex = indexesShuffled.get(i);
+      if (expectedPaths[nextIndex] == ILLEGAL_PATH) {
+        expectThrows(IllegalArgumentException.class, () -> reader.getPath(sourceOrds[nextIndex]));
+      } else {
+        assertEquals(expectedPaths[nextIndex], reader.getPath(sourceOrds[nextIndex]));
+      }
+    }
+
+    if (illegalPathExceptionIsExpected) {
+      expectThrows(IllegalArgumentException.class, () -> reader.getBulkPath(sourceOrds));
+    } else {
+      // clone because getBulkPath changes order of param's elements
+      int[] sourceOrdsCopy = sourceOrds.clone();
+      FacetLabel[] bulkPathsResult = reader.getBulkPath(sourceOrdsCopy);
+      assertArrayEquals(expectedPaths, bulkPathsResult);
+    }
+
+    for (int i = bulkOperationsIteration; i < sourceOrds.length; i++) {
+      int nextIndex = indexesShuffled.get(i);
+      if (expectedPaths[nextIndex] == ILLEGAL_PATH) {
+        expectThrows(IllegalArgumentException.class, () -> reader.getPath(sourceOrds[nextIndex]));
+      } else {
+        assertEquals(expectedPaths[nextIndex], reader.getPath(sourceOrds[nextIndex]));
+      }
+    }
+  }
+
+  private void assertPathsAndOrdinals(
+      DirectoryTaxonomyReader reader, int[] ords, FacetLabel[] paths) throws IOException {
+    // use this method to assert "symmetric" ordinals and paths: when source ords and paths match
+    // expected ords and paths. This works for valid ords and paths that exist in the index.
+    assertGettingPaths(reader, paths, ords);
+    assertGettingOrdinals(reader, ords, paths);
   }
 
   @Test
@@ -503,15 +583,15 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     // non existing category
     ChildrenIterator it = taxoReader.getChildren(taxoReader.getOrdinal(new FacetLabel("invalid")));
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, it.next());
+    assertEquals(INVALID_ORDINAL, it.next());
 
     // a category with no children
     it = taxoReader.getChildren(taxoReader.getOrdinal(new FacetLabel("c")));
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, it.next());
+    assertEquals(INVALID_ORDINAL, it.next());
 
     // arbitrary negative ordinal
     it = taxoReader.getChildren(-2);
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, it.next());
+    assertEquals(INVALID_ORDINAL, it.next());
 
     // root's children
     Set<String> roots = new HashSet<>(Arrays.asList("a", "b", "c"));
@@ -521,7 +601,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       assertEquals(1, root.length);
       assertTrue(roots.remove(root.components[0]));
     }
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, it.next());
+    assertEquals(INVALID_ORDINAL, it.next());
 
     for (int i = 0; i < 2; i++) {
       FacetLabel cp = i == 0 ? new FacetLabel("a") : new FacetLabel("b");
@@ -529,7 +609,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       it = taxoReader.getChildren(ordinal);
       int numChildren = 0;
       int child;
-      while ((child = it.next()) != TaxonomyReader.INVALID_ORDINAL) {
+      while ((child = it.next()) != INVALID_ORDINAL) {
         FacetLabel path = taxoReader.getPath(child);
         assertEquals(2, path.length);
         assertEquals(path.components[0], i == 0 ? "a" : "b");
@@ -543,6 +623,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
+  @Test
   public void testAccountable() throws Exception {
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(dir);
@@ -570,16 +651,20 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  public void testCallingBulkPathReturnsCorrectResult() throws Exception {
+  @Test
+  public void testGetPathAndOrdinalsRandomMultithreading() throws Exception {
     Directory src = newDirectory();
     DirectoryTaxonomyWriter w = new DirectoryTaxonomyWriter(src);
-    String randomArray[] = new String[RandomizedTest.randomIntBetween(1, 1000)];
+    final int maxNumberOfLabelsToIndex = 1000;
+    final int maxNumberOfUniqueLabelsToIndex = maxNumberOfLabelsToIndex / 2;
+    final int cacheSize = maxNumberOfUniqueLabelsToIndex / 2; // to cause some cache evictions
+    String[] randomArray = new String[RandomizedTest.randomIntBetween(1, maxNumberOfLabelsToIndex)];
     // adding a smaller bound on ints ensures that we will have some duplicate ordinals in random
     // test cases
-    Arrays.setAll(randomArray, i -> Integer.toString(random().nextInt(500)));
+    Arrays.setAll(
+        randomArray, i -> Integer.toString(random().nextInt(maxNumberOfUniqueLabelsToIndex)));
 
-    FacetLabel allPaths[] = new FacetLabel[randomArray.length];
-    int allOrdinals[] = new int[randomArray.length];
+    FacetLabel[] allPaths = new FacetLabel[randomArray.length];
 
     for (int i = 0; i < randomArray.length; i++) {
       allPaths[i] = new FacetLabel(randomArray[i]);
@@ -593,52 +678,57 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     w.close();
 
     DirectoryTaxonomyReader r1 = new DirectoryTaxonomyReader(src);
+    r1.setCacheSize(cacheSize);
 
-    for (int i = 0; i < allPaths.length; i++) {
-      allOrdinals[i] = r1.getOrdinal(allPaths[i]);
+    int[] allOrdinals = r1.getBulkOrdinals(allPaths);
+
+    // Assert getPath and getBulkPath first, then assert getOrdinal and getBulkOrdinals.
+    // Create multiple threads to check result correctness and thread contention in the cache.
+    for (boolean assertGettingOrdinals : new boolean[] {false, true}) {
+      Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
+      for (int z = 0; z < addThreads.length; z++) {
+        addThreads[z] =
+            new Thread(
+                () -> {
+                  // each thread iterates for numThreadIterations times
+                  int numThreadIterations = random().nextInt(10);
+                  for (int threadIterations = 0;
+                      threadIterations < numThreadIterations;
+                      threadIterations++) {
+
+                    // length of the FacetLabel array that we are going to check
+                    int numOfOrdinalsToCheck =
+                        RandomizedTest.randomIntBetween(1, allOrdinals.length);
+                    int[] ordinals = new int[numOfOrdinalsToCheck];
+                    FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
+
+                    for (int i = 0; i < numOfOrdinalsToCheck; i++) {
+                      // we deliberately allow it to choose repeat indexes as this will exercise the
+                      // cache
+                      int ordinalIndex = random().nextInt(allOrdinals.length);
+                      ordinals[i] = allOrdinals[ordinalIndex];
+                      path[i] = allPaths[ordinalIndex];
+                    }
+
+                    try {
+                      // main check for correctness is done here
+                      if (assertGettingOrdinals) {
+                        assertGettingOrdinals(r1, ordinals, path);
+                      } else {
+                        assertGettingPaths(r1, path, ordinals);
+                      }
+                    } catch (IOException e) {
+                      // this should ideally never occur, but if it does just rethrow the error to
+                      // the
+                      // caller
+                      throw new RuntimeException(e);
+                    }
+                  }
+                });
+      }
+      for (Thread t : addThreads) t.start();
+      for (Thread t : addThreads) t.join();
     }
-
-    // create multiple threads to check result correctness and thread contention in the cache
-    Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
-    for (int z = 0; z < addThreads.length; z++) {
-      addThreads[z] =
-          new Thread() {
-            @Override
-            public void run() {
-              // each thread iterates for numThreadIterations times
-              int numThreadIterations = random().nextInt(10);
-              for (int threadIterations = 0;
-                  threadIterations < numThreadIterations;
-                  threadIterations++) {
-
-                // length of the FacetLabel array that we are going to check
-                int numOfOrdinalsToCheck = random().nextInt(allOrdinals.length);
-                int[] ordinals = new int[numOfOrdinalsToCheck];
-                FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
-
-                for (int i = 0; i < numOfOrdinalsToCheck; i++) {
-                  // we deliberately allow it to choose repeat indexes as this will exercise the
-                  // cache
-                  int ordinalIndex = random().nextInt(allOrdinals.length);
-                  ordinals[i] = allOrdinals[ordinalIndex];
-                  path[i] = allPaths[ordinalIndex];
-                }
-
-                try {
-                  // main check for correctness is done here
-                  assertArrayEquals(path, r1.getBulkPath(ordinals));
-                } catch (IOException e) {
-                  // this should ideally never occur, but if it does just rethrow the error to the
-                  // caller
-                  throw new RuntimeException(e);
-                }
-              }
-            }
-          };
-    }
-
-    for (Thread t : addThreads) t.start();
-    for (Thread t : addThreads) t.join();
 
     r1.close();
     src.close();

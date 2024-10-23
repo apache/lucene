@@ -28,20 +28,25 @@ import java.io.OutputStream;
 class GeoWideDegenerateHorizontalLine extends GeoBaseBBox {
   /** The latitude of the line */
   protected final double latitude;
+
   /** The left longitude cutoff of the line */
   protected final double leftLon;
+
   /** The right longitude cutoff of the line */
   protected final double rightLon;
 
   /** The left end of the line */
   protected final GeoPoint LHC;
+
   /** The right end of the line */
   protected final GeoPoint RHC;
 
   /** The plane the line is in */
   protected final Plane plane;
+
   /** The left cutoff plane */
   protected final SidedPlane leftPlane;
+
   /** The right cutoff plane */
   protected final SidedPlane rightPlane;
 

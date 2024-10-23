@@ -18,12 +18,15 @@ package org.apache.lucene.util.packed;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
@@ -502,7 +505,7 @@ public class TestPackedInts extends LuceneTestCase {
   public void testPackedIntsNull() {
     // must be > 10 for the bulk reads below
     int size = TestUtil.nextInt(random(), 11, 256);
-    Reader packedInts = new PackedInts.NullReader(size);
+    Reader packedInts = PackedInts.NullReader.forCount(size);
     assertEquals(0, packedInts.get(TestUtil.nextInt(random(), 0, size - 1)));
     long[] arr = new long[size + 10];
     int r;
@@ -966,6 +969,18 @@ public class TestPackedInts extends LuceneTestCase {
             .ramBytesUsed());
   }
 
+  private static final class IgnoreNullReaderSingletonAccumulator
+      extends RamUsageTester.Accumulator {
+    @Override
+    public long accumulateObject(
+        Object o, long shallowSize, Map<Field, Object> fieldValues, Collection<Object> queue) {
+      if (o == PackedInts.NullReader.forCount(PackedLongValues.DEFAULT_PAGE_SIZE)) {
+        return 0;
+      }
+      return super.accumulateObject(o, shallowSize, fieldValues, queue);
+    }
+  }
+
   public void testPackedLongValues() {
     final long[] arr =
         new long[RandomNumbers.randomIntBetween(random(), 1, TEST_NIGHTLY ? 1000000 : 10000)];
@@ -1017,7 +1032,8 @@ public class TestPackedInts extends LuceneTestCase {
         for (int i = 0; i < arr.length; ++i) {
           buf.add(arr[i]);
           if (rarely() && !TEST_NIGHTLY) {
-            final long expectedBytesUsed = RamUsageTester.ramUsed(buf);
+            final long expectedBytesUsed =
+                RamUsageTester.ramUsed(buf, new IgnoreNullReaderSingletonAccumulator());
             final long computedBytesUsed = buf.ramBytesUsed();
             assertEquals(expectedBytesUsed, computedBytesUsed);
           }
@@ -1044,7 +1060,8 @@ public class TestPackedInts extends LuceneTestCase {
         }
         assertFalse(it.hasNext());
 
-        final long expectedBytesUsed = RamUsageTester.ramUsed(values);
+        final long expectedBytesUsed =
+            RamUsageTester.ramUsed(values, new IgnoreNullReaderSingletonAccumulator());
         final long computedBytesUsed = values.ramBytesUsed();
         assertEquals(expectedBytesUsed, computedBytesUsed);
       }

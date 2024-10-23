@@ -38,20 +38,24 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -69,15 +73,16 @@ import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 /**
  * Abstract class to do basic tests for a postings format. NOTE: This test focuses on the postings
  * (docs/freqs/positions/payloads/offsets) impl, not the terms dict. The [stretch] goal is for this
- * test to be so thorough in testing a new PostingsFormat that if this test passes, then all
- * Lucene/Solr tests should also pass. Ie, if there is some bug in a given PostingsFormat that this
- * test fails to catch then this test needs to be improved!
+ * test to be so thorough in testing a new PostingsFormat that if this test passes, then all Lucene
+ * tests should also pass. Ie, if there is some bug in a given PostingsFormat that this test fails
+ * to catch then this test needs to be improved!
  */
 
 // TODO can we make it easy for testing to pair up a "random terms dict impl" with your postings
@@ -367,6 +372,97 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     dir.close();
   }
 
+  // Test seek in disorder.
+  public void testDisorder() throws Exception {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = newIndexWriterConfig(null);
+    iwc.setCodec(getCodec());
+    iwc.setMergePolicy(newTieredMergePolicy());
+    IndexWriter iw = new IndexWriter(dir, iwc);
+
+    for (int i = 0; i < 10000; i++) {
+      Document document = new Document();
+      document.add(new StringField("id", i + "", Field.Store.NO));
+      iw.addDocument(document);
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    DirectoryReader reader = DirectoryReader.open(iw);
+    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
+
+    for (int i = 0; i < 20000; i++) {
+      int n = random().nextInt(0, 10000);
+      BytesRef target = new BytesRef(n + "");
+      // seekExact.
+      assertTrue(termsEnum.seekExact(target));
+      assertEquals(termsEnum.term(), target);
+      // seekCeil.
+      assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+      assertEquals(termsEnum.term(), target);
+    }
+
+    reader.close();
+    iw.close();
+    dir.close();
+  }
+
+  protected void subCheckBinarySearch(TermsEnum termsEnum) throws Exception {}
+
+  public void testBinarySearchTermLeaf() throws Exception {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = newIndexWriterConfig(null);
+    iwc.setCodec(getCodec());
+    iwc.setMergePolicy(newTieredMergePolicy());
+    IndexWriter iw = new IndexWriter(dir, iwc);
+
+    for (int i = 100000; i <= 100400; i++) {
+      // only add odd number
+      if (i % 2 == 1) {
+        Document document = new Document();
+        document.add(new StringField("id", i + "", Field.Store.NO));
+        iw.addDocument(document);
+      }
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    DirectoryReader reader = DirectoryReader.open(iw);
+    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
+    // test seekExact
+    for (int i = 100000; i <= 100400; i++) {
+      BytesRef target = new BytesRef(i + "");
+      if (i % 2 == 1) {
+        assertTrue(termsEnum.seekExact(target));
+        assertEquals(termsEnum.term(), target);
+      } else {
+        assertFalse(termsEnum.seekExact(target));
+      }
+    }
+
+    subCheckBinarySearch(termsEnum);
+    // test seekCeil
+    for (int i = 100000; i < 100400; i++) {
+      BytesRef target = new BytesRef(i + "");
+      if (i % 2 == 1) {
+        assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+        assertEquals(termsEnum.term(), target);
+        if (i <= 100397) {
+          assertEquals(new BytesRef(i + 2 + ""), termsEnum.next());
+        }
+      } else {
+        assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(target));
+        assertEquals(new BytesRef(i + 1 + ""), termsEnum.term());
+      }
+    }
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef(100400 + "")));
+    reader.close();
+    iw.close();
+    dir.close();
+  }
+
   // tests that level 2 ghost fields still work
   public void testLevel2Ghosts() throws Exception {
     Directory dir = newDirectory();
@@ -463,7 +559,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
                   public void write(Fields fields, NormsProducer norms) throws IOException {
                     fieldsConsumer.write(fields, norms);
 
-                    boolean isMerge = state.context.context == IOContext.Context.MERGE;
+                    boolean isMerge = state.context.context() == IOContext.Context.MERGE;
 
                     // We only use one thread for flushing
                     // in this test:
@@ -1609,5 +1705,67 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
         doc.add(new Field("f_" + opts, TestUtil.randomSimpleString(random(), 2), ft));
       }
     }
+  }
+
+  /** Test realistic data, which is often better at uncovering real bugs. */
+  @Nightly // this test takes a few seconds
+  public void testLineFileDocs() throws IOException {
+    // Use a FS dir and a non-randomized IWC to not slow down indexing
+    try (Directory dir = newFSDirectory(createTempDir())) {
+      try (LineFileDocs docs = new LineFileDocs(random());
+          IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+        final int numDocs = atLeast(10_000);
+        for (int i = 0; i < numDocs; ++i) {
+          // Only keep the body field, and don't index term vectors on it, we only care about
+          // postings
+          Document doc = docs.nextDoc();
+          IndexableField body = doc.getField("body");
+          assertNotNull(body);
+          assertNotNull(body.stringValue());
+          assertNotEquals(IndexOptions.NONE, body.fieldType().indexOptions());
+          body = new TextField("body", body.stringValue(), Store.NO);
+          w.addDocument(Collections.singletonList(body));
+        }
+        w.forceMerge(1);
+      }
+      TestUtil.checkIndex(dir);
+    }
+  }
+
+  public void testMismatchedFields() throws Exception {
+    Directory dir1 = newDirectory();
+    IndexWriter w1 = new IndexWriter(dir1, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new StringField("f", "a", Store.NO));
+    doc.add(new StringField("g", "b", Store.NO));
+    w1.addDocument(doc);
+
+    Directory dir2 = newDirectory();
+    IndexWriter w2 =
+        new IndexWriter(dir2, newIndexWriterConfig().setMergeScheduler(new SerialMergeScheduler()));
+    w2.addDocument(doc);
+    w2.commit();
+
+    DirectoryReader reader = DirectoryReader.open(w1);
+    w1.close();
+    w2.addIndexes(new MismatchedCodecReader((CodecReader) getOnlyLeafReader(reader), random()));
+    reader.close();
+    w2.forceMerge(1);
+    reader = DirectoryReader.open(w2);
+    w2.close();
+
+    LeafReader leafReader = getOnlyLeafReader(reader);
+
+    TermsEnum te = leafReader.terms("f").iterator();
+    assertEquals("a", te.next().utf8ToString());
+    assertEquals(2, te.docFreq());
+    assertNull(te.next());
+
+    te = leafReader.terms("g").iterator();
+    assertEquals("b", te.next().utf8ToString());
+    assertEquals(2, te.docFreq());
+    assertNull(te.next());
+
+    IOUtils.close(reader, w2, dir1, dir2);
   }
 }

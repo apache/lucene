@@ -1,0 +1,4 @@
+# automate botnet with ansible
+ansible<9
+# aws api
+boto3<2

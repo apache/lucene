@@ -40,6 +40,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -50,6 +51,7 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.BytesRefFSTEnum.InputOutput;
 import org.apache.lucene.util.fst.FST;
+import org.apache.lucene.util.fst.OffHeapFSTStore;
 import org.apache.lucene.util.fst.Outputs;
 import org.apache.lucene.util.fst.Util;
 
@@ -61,9 +63,9 @@ import org.apache.lucene.util.fst.Util;
  * @lucene.experimental
  */
 public class FSTTermsReader extends FieldsProducer {
-  final TreeMap<String, TermsReader> fields = new TreeMap<>();
-  final PostingsReaderBase postingsReader;
-  // static boolean TEST = false;
+  private final TreeMap<String, TermsReader> fields = new TreeMap<>();
+  private final PostingsReaderBase postingsReader;
+  private final IndexInput fstTermsInput;
 
   public FSTTermsReader(SegmentReadState state, PostingsReaderBase postingsReader)
       throws IOException {
@@ -72,7 +74,11 @@ public class FSTTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, FSTTermsWriter.TERMS_EXTENSION);
 
     this.postingsReader = postingsReader;
-    final IndexInput in = state.directory.openInput(termsFileName, state.context);
+    this.fstTermsInput =
+        state.directory.openInput(
+            termsFileName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+
+    IndexInput in = this.fstTermsInput;
 
     boolean success = false;
     try {
@@ -105,9 +111,7 @@ public class FSTTermsReader extends FieldsProducer {
       }
       success = true;
     } finally {
-      if (success) {
-        IOUtils.close(in);
-      } else {
+      if (success == false) {
         IOUtils.closeWhileHandlingException(in);
       }
     }
@@ -163,7 +167,7 @@ public class FSTTermsReader extends FieldsProducer {
   @Override
   public void close() throws IOException {
     try {
-      IOUtils.close(postingsReader);
+      IOUtils.close(postingsReader, fstTermsInput);
     } finally {
       fields.clear();
     }
@@ -191,7 +195,11 @@ public class FSTTermsReader extends FieldsProducer {
       this.sumTotalTermFreq = sumTotalTermFreq;
       this.sumDocFreq = sumDocFreq;
       this.docCount = docCount;
-      this.dict = new FST<>(in, in, new FSTTermOutputs(fieldInfo));
+      FSTTermOutputs outputs = new FSTTermOutputs(fieldInfo);
+      final var fstMetadata = FST.readMetadata(in, outputs);
+      OffHeapFSTStore offHeapFSTStore = new OffHeapFSTStore(in, in.getFilePointer(), fstMetadata);
+      this.dict = FST.fromFSTReader(fstMetadata, offHeapFSTStore);
+      in.skipBytes(offHeapFSTStore.size());
     }
 
     @Override

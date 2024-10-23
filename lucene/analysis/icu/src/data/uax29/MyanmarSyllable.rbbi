@@ -18,10 +18,13 @@
 # Parses Myanmar text, with syllable as token. 
 #
 
-$Cons = [[:Other_Letter:]&[:Myanmar:]];
-$Virama = [\u1039];
-$Asat = [\u103A];
-
+$Consonant            = [:Indic_Syllabic_Category = Consonant:];
+$ConsonantPlaceholder = [:Indic_Syllabic_Category = Consonant_Placeholder:];
+$VowelIndependent     = [:Indic_Syllabic_Category = Vowel_Independent:];
+$Virama               = [:Indic_Syllabic_Category = Invisible_Stacker:];
+$Asat                 = [:Indic_Syllabic_Category = Pure_Killer:];
+# for our purposes, $Cons means 'base'
+$Cons = $Consonant | $ConsonantPlaceholder | $VowelIndependent;
 $WordJoin = [:Line_Break=Word_Joiner:]; 
 
 #

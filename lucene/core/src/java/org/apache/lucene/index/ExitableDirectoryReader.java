@@ -22,6 +22,7 @@ import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -31,8 +32,6 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * {@link QueryTimeout} implementation object to be checked periodically to see if the thread should
  * exit or not. If {@link QueryTimeout#shouldExit()} returns true, an {@link ExitingReaderException}
  * is thrown.
- *
- * @see org.apache.lucene.search.TimeLimitingCollector
  */
 public class ExitableDirectoryReader extends FilterDirectoryReader {
 
@@ -471,37 +470,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     private class ExitableFloatVectorValues extends FloatVectorValues {
-      private int docToCheck;
       private final FloatVectorValues vectorValues;
 
       public ExitableFloatVectorValues(FloatVectorValues vectorValues) {
         this.vectorValues = vectorValues;
-        docToCheck = 0;
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        final int advance = vectorValues.advance(target);
-        if (advance >= docToCheck) {
-          checkAndThrow();
-          docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
-        }
-        return advance;
-      }
-
-      @Override
-      public int docID() {
-        return vectorValues.docID();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        final int nextDoc = vectorValues.nextDoc();
-        if (nextDoc >= docToCheck) {
-          checkAndThrow();
-          docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
-        }
-        return nextDoc;
       }
 
       @Override
@@ -510,8 +482,13 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public float[] vectorValue() throws IOException {
-        return vectorValues.vectorValue();
+      public float[] vectorValue(int ord) throws IOException {
+        return vectorValues.vectorValue(ord);
+      }
+
+      @Override
+      public int ordToDoc(int ord) {
+        return vectorValues.ordToDoc(ord);
       }
 
       @Override
@@ -519,56 +496,27 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
         return vectorValues.size();
       }
 
-      /**
-       * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
-       * if {@link Thread#interrupted()} returns true.
-       */
-      private void checkAndThrow() {
-        if (queryTimeout.shouldExit()) {
-          throw new ExitingReaderException(
-              "The request took too long to iterate over vector values. Timeout: "
-                  + queryTimeout.toString()
-                  + ", FloatVectorValues="
-                  + in);
-        } else if (Thread.interrupted()) {
-          throw new ExitingReaderException(
-              "Interrupted while iterating over vector values. FloatVectorValues=" + in);
-        }
+      @Override
+      public DocIndexIterator iterator() {
+        return createExitableIterator(vectorValues.iterator(), queryTimeout);
+      }
+
+      @Override
+      public VectorScorer scorer(float[] target) throws IOException {
+        return vectorValues.scorer(target);
+      }
+
+      @Override
+      public FloatVectorValues copy() {
+        throw new UnsupportedOperationException();
       }
     }
 
     private class ExitableByteVectorValues extends ByteVectorValues {
-      private int docToCheck;
       private final ByteVectorValues vectorValues;
 
       public ExitableByteVectorValues(ByteVectorValues vectorValues) {
         this.vectorValues = vectorValues;
-        docToCheck = 0;
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        final int advance = vectorValues.advance(target);
-        if (advance >= docToCheck) {
-          checkAndThrow();
-          docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
-        }
-        return advance;
-      }
-
-      @Override
-      public int docID() {
-        return vectorValues.docID();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        final int nextDoc = vectorValues.nextDoc();
-        if (nextDoc >= docToCheck) {
-          checkAndThrow();
-          docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
-        }
-        return nextDoc;
       }
 
       @Override
@@ -582,27 +530,85 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public byte[] vectorValue() throws IOException {
-        return vectorValues.vectorValue();
+      public byte[] vectorValue(int ord) throws IOException {
+        return vectorValues.vectorValue(ord);
       }
 
-      /**
-       * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
-       * if {@link Thread#interrupted()} returns true.
-       */
+      @Override
+      public int ordToDoc(int ord) {
+        return vectorValues.ordToDoc(ord);
+      }
+
+      @Override
+      public DocIndexIterator iterator() {
+        return createExitableIterator(vectorValues.iterator(), queryTimeout);
+      }
+
+      @Override
+      public VectorScorer scorer(byte[] target) throws IOException {
+        return vectorValues.scorer(target);
+      }
+
+      @Override
+      public ByteVectorValues copy() {
+        throw new UnsupportedOperationException();
+      }
+    }
+  }
+
+  private static KnnVectorValues.DocIndexIterator createExitableIterator(
+      KnnVectorValues.DocIndexIterator delegate, QueryTimeout queryTimeout) {
+    return new KnnVectorValues.DocIndexIterator() {
+      private int nextCheck;
+
+      @Override
+      public int index() {
+        return delegate.index();
+      }
+
+      @Override
+      public int docID() {
+        return delegate.docID();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        int doc = delegate.nextDoc();
+        if (doc >= nextCheck) {
+          checkAndThrow();
+          nextCheck = doc + ExitableFilterAtomicReader.DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return doc;
+      }
+
+      @Override
+      public long cost() {
+        return delegate.cost();
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        int doc = delegate.advance(target);
+        if (doc >= nextCheck) {
+          checkAndThrow();
+          nextCheck = doc + ExitableFilterAtomicReader.DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return doc;
+      }
+
       private void checkAndThrow() {
         if (queryTimeout.shouldExit()) {
           throw new ExitingReaderException(
-              "The request took too long to iterate over vector values. Timeout: "
+              "The request took too long to iterate over knn vector values. Timeout: "
                   + queryTimeout.toString()
-                  + ", ByteVectorValues="
-                  + in);
+                  + ", KnnVectorValues="
+                  + delegate);
         } else if (Thread.interrupted()) {
           throw new ExitingReaderException(
-              "Interrupted while iterating over vector values. ByteVectorValues=" + in);
+              "Interrupted while iterating over knn vector values. KnnVectorValues=" + delegate);
         }
       }
-    }
+    };
   }
 
   /** Wrapper class for another PointValues implementation that is used by ExitableFields. */
@@ -715,7 +721,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (queryTimeout.shouldExit()) {
         throw new ExitingReaderException(
             "The request took too long to intersect point values. Timeout: "
-                + queryTimeout.toString()
+                + queryTimeout
                 + ", PointValues="
                 + pointValues);
       } else if (Thread.interrupted()) {
@@ -847,7 +853,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
   /** Wrapper class for another Terms implementation that is used by ExitableFields. */
   public static class ExitableTerms extends FilterTerms {
 
-    private QueryTimeout queryTimeout;
+    private final QueryTimeout queryTimeout;
 
     /** Constructor * */
     public ExitableTerms(Terms terms, QueryTimeout queryTimeout) {

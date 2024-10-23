@@ -486,6 +486,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
     iw.close();
     dir.close();
   }
+
   // TODO: more tests with other possibilities
 
   private void checkTokens(Token[] field1, Token[] field2) throws IOException {

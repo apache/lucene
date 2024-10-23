@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.search.highlight;
+
 /** Lightweight class to hold term and a weight value used for scoring this term */
 public class WeightedTerm {
   float weight; // multiplier

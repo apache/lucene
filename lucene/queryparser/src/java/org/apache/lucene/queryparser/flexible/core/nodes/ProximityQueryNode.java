@@ -57,9 +57,9 @@ public class ProximityQueryNode extends BooleanQueryNode {
 
   /** utility class containing the distance condition and number */
   public static class ProximityType {
-    int pDistance = 0;
+    int pDistance;
 
-    Type pType = null;
+    Type pType;
 
     public ProximityType(Type type) {
       this(type, 0);
@@ -71,10 +71,10 @@ public class ProximityQueryNode extends BooleanQueryNode {
     }
   }
 
-  private Type proximityType = Type.SENTENCE;
+  private Type proximityType;
   private int distance = -1;
-  private boolean inorder = false;
-  private CharSequence field = null;
+  private final boolean inorder;
+  private CharSequence field;
 
   /**
    * @param clauses - QueryNode children

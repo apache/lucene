@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharFilterFactory;
 import org.apache.lucene.analysis.TokenFilterFactory;
@@ -81,19 +80,17 @@ public final class AnalysisImpl implements Analysis {
 
   @Override
   public Collection<String> getAvailableCharFilters() {
-    return CharFilterFactory.availableCharFilters().stream().sorted().collect(Collectors.toList());
+    return CharFilterFactory.availableCharFilters().stream().sorted().toList();
   }
 
   @Override
   public Collection<String> getAvailableTokenizers() {
-    return TokenizerFactory.availableTokenizers().stream().sorted().collect(Collectors.toList());
+    return TokenizerFactory.availableTokenizers().stream().sorted().toList();
   }
 
   @Override
   public Collection<String> getAvailableTokenFilters() {
-    return TokenFilterFactory.availableTokenFilters().stream()
-        .sorted()
-        .collect(Collectors.toList());
+    return TokenFilterFactory.availableTokenFilters().stream().sorted().toList();
   }
 
   @Override
@@ -166,20 +163,20 @@ public final class AnalysisImpl implements Analysis {
           config
               .getConfigDir()
               .map(path -> CustomAnalyzer.builder(FileSystems.getDefault().getPath(path)))
-              .orElse(CustomAnalyzer.builder());
+              .orElseGet(CustomAnalyzer::builder);
 
       // set tokenizer
       builder.withTokenizer(
-          config.getTokenizerConfig().getName(), config.getTokenizerConfig().getParams());
+          config.getTokenizerConfig().name(), config.getTokenizerConfig().params());
 
       // add char filters
       for (CustomAnalyzerConfig.ComponentConfig cfConf : config.getCharFilterConfigs()) {
-        builder.addCharFilter(cfConf.getName(), cfConf.getParams());
+        builder.addCharFilter(cfConf.name(), cfConf.params());
       }
 
       // add token filters
       for (CustomAnalyzerConfig.ComponentConfig tfConf : config.getTokenFilterConfigs()) {
-        builder.addTokenFilter(tfConf.getName(), tfConf.getParams());
+        builder.addTokenFilter(tfConf.name(), tfConf.params());
       }
 
       // build analyzer

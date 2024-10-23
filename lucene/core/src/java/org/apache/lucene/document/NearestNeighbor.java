@@ -20,7 +20,6 @@ import static org.apache.lucene.geo.GeoEncodingUtils.decodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
 
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 import org.apache.lucene.geo.Rectangle;
@@ -28,36 +27,25 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SloppyMath;
 
 /** KNN search on top of 2D lat/lon indexed points. */
 class NearestNeighbor {
 
-  static class Cell implements Comparable<Cell> {
-    final int readerIndex;
-    final byte[] minPacked;
-    final byte[] maxPacked;
-    final PointTree index;
-
-    /**
-     * The closest distance from a point in this cell to the query point, computed as a sort key
-     * through {@link SloppyMath#haversinSortKey}. Note that this is an approximation to the closest
-     * distance, and there could be a point in the cell that is closer.
-     */
-    final double distanceSortKey;
-
-    public Cell(
-        PointTree index,
-        int readerIndex,
-        byte[] minPacked,
-        byte[] maxPacked,
-        double distanceSortKey) {
-      this.index = index;
-      this.readerIndex = readerIndex;
-      this.minPacked = minPacked.clone();
-      this.maxPacked = maxPacked.clone();
-      this.distanceSortKey = distanceSortKey;
+  /**
+   * @param distanceSortKey The closest distance from a point in this cell to the query point,
+   *     computed as a sort key through {@link SloppyMath#haversinSortKey}. Note that this is an
+   *     approximation to the closest distance, and there could be a point in the cell that is
+   *     closer.
+   */
+  record Cell(
+      PointTree index, int readerIndex, byte[] minPacked, byte[] maxPacked, double distanceSortKey)
+      implements Comparable<Cell> {
+    Cell {
+      minPacked = minPacked.clone();
+      maxPacked = maxPacked.clone();
     }
 
     @Override
@@ -240,7 +228,7 @@ class NearestNeighbor {
       double pointLon,
       List<PointValues> readers,
       List<Bits> liveDocs,
-      List<Integer> docBases,
+      IntArrayList docBases,
       final int n)
       throws IOException {
 
@@ -251,18 +239,15 @@ class NearestNeighbor {
     final PriorityQueue<NearestHit> hitQueue =
         new PriorityQueue<>(
             n,
-            new Comparator<NearestHit>() {
-              @Override
-              public int compare(NearestHit a, NearestHit b) {
-                // sort by opposite distanceSortKey natural order
-                int cmp = Double.compare(a.distanceSortKey, b.distanceSortKey);
-                if (cmp != 0) {
-                  return -cmp;
-                }
-
-                // tie-break by higher docID:
-                return b.docID - a.docID;
+            (a, b) -> {
+              // sort by opposite distanceSortKey natural order
+              int cmp = Double.compare(a.distanceSortKey, b.distanceSortKey);
+              if (cmp != 0) {
+                return -cmp;
               }
+
+              // tie-break by higher docID:
+              return b.docID - a.docID;
             });
 
     // Holds all cells, sorted by closest to the point:

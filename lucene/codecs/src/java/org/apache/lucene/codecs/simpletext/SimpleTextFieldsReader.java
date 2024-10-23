@@ -29,7 +29,6 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -51,17 +50,13 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
@@ -600,7 +595,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       SimpleTextUtil.readLine(in, scratch);
       if (StringHelper.startsWith(scratch.get(), PAYLOAD)) {
         final int len = scratch.length() - PAYLOAD.length;
-        scratch2.grow(len);
+        scratch2.growNoCopy(len);
         System.arraycopy(scratch.bytes(), PAYLOAD.length, scratch2.bytes(), 0, len);
         scratch2.setLength(len);
         payload = scratch2.get();
@@ -650,12 +645,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
   }
 
-  private static final long TERMS_BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextTerms.class)
-          + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class)
-          + RamUsageEstimator.shallowSizeOfInstance(CharsRef.class);
-
-  private class SimpleTextTerms extends Terms implements Accountable {
+  private class SimpleTextTerms extends Terms {
     private final long termsStart;
     private final FieldInfo fieldInfo;
     private final int maxDoc;
@@ -683,7 +673,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       final PairOutputs<Long, Long> outputsInner = new PairOutputs<>(posIntOutputs, posIntOutputs);
       final PairOutputs<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> outputs =
           new PairOutputs<>(outputsOuter, outputsInner);
-      fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
       IndexInput in = SimpleTextFieldsReader.this.in.clone();
       in.seek(termsStart);
       final BytesRefBuilder lastTerm = new BytesRefBuilder();
@@ -727,7 +717,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
           }
           lastDocsStart = in.getFilePointer();
           final int len = scratch.length() - TERM.length;
-          lastTerm.grow(len);
+          lastTerm.growNoCopy(len);
           System.arraycopy(scratch.bytes(), TERM.length, lastTerm.bytes(), 0, len);
           lastTerm.setLength(len);
           docFreq = 0;
@@ -738,7 +728,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
         }
       }
       docCount = visitedDocs.cardinality();
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       /*
       PrintStream ps = new PrintStream("out.dot");
       fst.toDot(ps);
@@ -746,23 +736,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
       System.out.println("SAVED out.dot");
       */
       // System.out.println("FST " + fst.sizeInBytes());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return TERMS_BASE_RAM_BYTES_USED
-          + (fst != null ? fst.ramBytesUsed() : 0)
-          + RamUsageEstimator.sizeOf(scratch.bytes())
-          + RamUsageEstimator.sizeOf(scratchUTF16.chars());
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      if (fst == null) {
-        return Collections.emptyList();
-      } else {
-        return Collections.singletonList(Accountables.namedAccountable("term cache", fst));
-      }
     }
 
     @Override

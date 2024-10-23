@@ -18,7 +18,6 @@ package org.apache.lucene.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.security.AccessControlException;
 import java.security.AccessController;
@@ -30,7 +29,6 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.logging.Logger;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Query;
@@ -112,64 +110,16 @@ public final class RamUsageEstimator {
   /** For testing only */
   static final boolean JVM_IS_HOTSPOT_64BIT;
 
-  static final String MANAGEMENT_FACTORY_CLASS = "java.lang.management.ManagementFactory";
-  static final String HOTSPOT_BEAN_CLASS = "com.sun.management.HotSpotDiagnosticMXBean";
-
   /** Initialize constants and try to collect information about the JVM internals. */
   static {
     if (Constants.JRE_IS_64BIT) {
+      JVM_IS_HOTSPOT_64BIT = HotspotVMOptions.IS_HOTSPOT_VM;
       // Try to get compressed oops and object alignment (the default seems to be 8 on Hotspot);
       // (this only works on 64 bit, on 32 bits the alignment and reference size is fixed):
-      boolean compressedOops = false;
-      int objectAlignment = 8;
-      boolean isHotspot = false;
-      try {
-        final Class<?> beanClazz = Class.forName(HOTSPOT_BEAN_CLASS);
-        // we use reflection for this, because the management factory is not part
-        // of Java 8's compact profile:
-        final Object hotSpotBean =
-            Class.forName(MANAGEMENT_FACTORY_CLASS)
-                .getMethod("getPlatformMXBean", Class.class)
-                .invoke(null, beanClazz);
-        if (hotSpotBean != null) {
-          isHotspot = true;
-          final Method getVMOptionMethod = beanClazz.getMethod("getVMOption", String.class);
-          try {
-            final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, "UseCompressedOops");
-            compressedOops =
-                Boolean.parseBoolean(
-                    vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
-          } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
-            isHotspot = false;
-          }
-          try {
-            final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, "ObjectAlignmentInBytes");
-            objectAlignment =
-                Integer.parseInt(
-                    vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
-          } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
-            isHotspot = false;
-          }
-        }
-      } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
-        isHotspot = false;
-        final Logger log = Logger.getLogger(RamUsageEstimator.class.getName());
-        final Module module = RamUsageEstimator.class.getModule();
-        final ModuleLayer layer = module.getLayer();
-        // classpath / unnamed module has no layer, so we need to check:
-        if (layer != null
-            && layer.findModule("jdk.management").map(module::canRead).orElse(false) == false) {
-          log.warning(
-              "Lucene cannot correctly calculate object sizes on 64bit JVMs, unless the 'jdk.management' Java module "
-                  + "is readable [please add 'jdk.management' to modular application either by command line or its module descriptor]");
-        } else {
-          log.warning(
-              "Lucene cannot correctly calculate object sizes on 64bit JVMs that are not based on Hotspot or a compatible implementation.");
-        }
-      }
-      JVM_IS_HOTSPOT_64BIT = isHotspot;
-      COMPRESSED_REFS_ENABLED = compressedOops;
-      NUM_BYTES_OBJECT_ALIGNMENT = objectAlignment;
+      COMPRESSED_REFS_ENABLED =
+          HotspotVMOptions.get("UseCompressedOops").map(Boolean::valueOf).orElse(false);
+      NUM_BYTES_OBJECT_ALIGNMENT =
+          HotspotVMOptions.get("ObjectAlignmentInBytes").map(Integer::valueOf).orElse(8);
       // reference size is 4, if we have compressed oops:
       NUM_BYTES_OBJECT_REF = COMPRESSED_REFS_ENABLED ? 4 : 8;
       // "best guess" based on reference size:

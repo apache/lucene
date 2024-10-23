@@ -32,7 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
@@ -96,14 +97,15 @@ public class LRUQueryCache implements QueryCache, Accountable {
   // mostRecentlyUsedQueries. This is why write operations are performed under a lock
   private final Set<Query> mostRecentlyUsedQueries;
   private final Map<IndexReader.CacheKey, LeafCache> cache;
-  private final ReentrantLock lock;
+  private final ReentrantReadWriteLock.ReadLock readLock;
+  private final ReentrantReadWriteLock.WriteLock writeLock;
   private final float skipCacheFactor;
+  private final LongAdder hitCount;
+  private final LongAdder missCount;
 
   // these variables are volatile so that we do not need to sync reads
   // but increments need to be performed under the lock
   private volatile long ramBytesUsed;
-  private volatile long hitCount;
-  private volatile long missCount;
   private volatile long cacheCount;
   private volatile long cacheSize;
 
@@ -129,11 +131,15 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
     this.skipCacheFactor = skipCacheFactor;
 
-    uniqueQueries = new LinkedHashMap<>(16, 0.75f, true);
+    uniqueQueries = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
     mostRecentlyUsedQueries = uniqueQueries.keySet();
     cache = new IdentityHashMap<>();
-    lock = new ReentrantLock();
+    ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    writeLock = lock.writeLock();
+    readLock = lock.readLock();
     ramBytesUsed = 0;
+    hitCount = new LongAdder();
+    missCount = new LongAdder();
   }
 
   /**
@@ -177,8 +183,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @lucene.experimental
    */
   protected void onHit(Object readerCoreKey, Query query) {
-    assert lock.isHeldByCurrentThread();
-    hitCount += 1;
+    hitCount.add(1);
   }
 
   /**
@@ -188,9 +193,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @lucene.experimental
    */
   protected void onMiss(Object readerCoreKey, Query query) {
-    assert lock.isHeldByCurrentThread();
     assert query != null;
-    missCount += 1;
+    missCount.add(1);
   }
 
   /**
@@ -201,7 +205,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @lucene.experimental
    */
   protected void onQueryCache(Query query, long ramBytesUsed) {
-    assert lock.isHeldByCurrentThread();
+    assert writeLock.isHeldByCurrentThread();
     this.ramBytesUsed += ramBytesUsed;
   }
 
@@ -212,7 +216,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @lucene.experimental
    */
   protected void onQueryEviction(Query query, long ramBytesUsed) {
-    assert lock.isHeldByCurrentThread();
+    assert writeLock.isHeldByCurrentThread();
     this.ramBytesUsed -= ramBytesUsed;
   }
 
@@ -224,7 +228,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @lucene.experimental
    */
   protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {
-    assert lock.isHeldByCurrentThread();
+    assert writeLock.isHeldByCurrentThread();
     cacheSize += 1;
     cacheCount += 1;
     this.ramBytesUsed += ramBytesUsed;
@@ -237,7 +241,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @lucene.experimental
    */
   protected void onDocIdSetEviction(Object readerCoreKey, int numEntries, long sumRamBytesUsed) {
-    assert lock.isHeldByCurrentThread();
+    assert writeLock.isHeldByCurrentThread();
     this.ramBytesUsed -= sumRamBytesUsed;
     cacheSize -= numEntries;
   }
@@ -248,14 +252,14 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @lucene.experimental
    */
   protected void onClear() {
-    assert lock.isHeldByCurrentThread();
+    assert writeLock.isHeldByCurrentThread();
     ramBytesUsed = 0;
     cacheSize = 0;
   }
 
   /** Whether evictions are required. */
   boolean requiresEviction() {
-    assert lock.isHeldByCurrentThread();
+    assert writeLock.isHeldByCurrentThread();
     final int size = mostRecentlyUsedQueries.size();
     if (size == 0) {
       return false;
@@ -265,7 +269,6 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   CacheAndCount get(Query key, IndexReader.CacheHelper cacheHelper) {
-    assert lock.isHeldByCurrentThread();
     assert key instanceof BoostQuery == false;
     assert key instanceof ConstantScoreQuery == false;
     final IndexReader.CacheKey readerKey = cacheHelper.getKey();
@@ -293,16 +296,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
     assert query instanceof BoostQuery == false;
     assert query instanceof ConstantScoreQuery == false;
     // under a lock to make sure that mostRecentlyUsedQueries and cache remain sync'ed
-    lock.lock();
+    writeLock.lock();
     try {
       Query singleton = uniqueQueries.putIfAbsent(query, query);
       if (singleton == null) {
-        if (query instanceof Accountable) {
-          onQueryCache(
-              query, LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + ((Accountable) query).ramBytesUsed());
-        } else {
-          onQueryCache(query, LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + QUERY_DEFAULT_RAM_BYTES_USED);
-        }
+        onQueryCache(query, getRamBytesUsed(query));
       } else {
         query = singleton;
       }
@@ -319,12 +317,12 @@ public class LRUQueryCache implements QueryCache, Accountable {
       leafCache.putIfAbsent(query, cached);
       evictIfNecessary();
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
   }
 
   private void evictIfNecessary() {
-    assert lock.isHeldByCurrentThread();
+    assert writeLock.isHeldByCurrentThread();
     // under a lock to make sure that mostRecentlyUsedQueries and cache keep sync'ed
     if (requiresEviction()) {
 
@@ -352,7 +350,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
   /** Remove all cache entries for the given core cache key. */
   public void clearCoreCacheKey(Object coreKey) {
-    lock.lock();
+    writeLock.lock();
     try {
       final LeafCache leafCache = cache.remove(coreKey);
       if (leafCache != null) {
@@ -366,26 +364,26 @@ public class LRUQueryCache implements QueryCache, Accountable {
         }
       }
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
   }
 
   /** Remove all cache entries for the given query. */
   public void clearQuery(Query query) {
-    lock.lock();
+    writeLock.lock();
     try {
       final Query singleton = uniqueQueries.remove(query);
       if (singleton != null) {
         onEviction(singleton);
       }
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
   }
 
   private void onEviction(Query singleton) {
-    assert lock.isHeldByCurrentThread();
-    onQueryEviction(singleton, LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + QUERY_DEFAULT_RAM_BYTES_USED);
+    assert writeLock.isHeldByCurrentThread();
+    onQueryEviction(singleton, getRamBytesUsed(singleton));
     for (LeafCache leafCache : cache.values()) {
       leafCache.remove(singleton);
     }
@@ -393,7 +391,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
   /** Clear the content of this cache. */
   public void clear() {
-    lock.lock();
+    writeLock.lock();
     try {
       cache.clear();
       // Note that this also clears the uniqueQueries map since mostRecentlyUsedQueries is the
@@ -401,13 +399,20 @@ public class LRUQueryCache implements QueryCache, Accountable {
       mostRecentlyUsedQueries.clear();
       onClear();
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
+  }
+
+  private static long getRamBytesUsed(Query query) {
+    return LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY
+        + (query instanceof Accountable accountableQuery
+            ? accountableQuery.ramBytesUsed()
+            : QUERY_DEFAULT_RAM_BYTES_USED);
   }
 
   // pkg-private for testing
   void assertConsistent() {
-    lock.lock();
+    writeLock.lock();
     try {
       if (requiresEviction()) {
         throw new AssertionError(
@@ -429,11 +434,10 @@ public class LRUQueryCache implements QueryCache, Accountable {
               "One leaf cache contains more keys than the top-level cache: " + keys);
         }
       }
-      long recomputedRamBytesUsed =
-          HASHTABLE_RAM_BYTES_PER_ENTRY * cache.size()
-              + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY * uniqueQueries.size();
-      recomputedRamBytesUsed +=
-          mostRecentlyUsedQueries.size() * (long) QUERY_DEFAULT_RAM_BYTES_USED;
+      long recomputedRamBytesUsed = HASHTABLE_RAM_BYTES_PER_ENTRY * cache.size();
+      for (Query query : mostRecentlyUsedQueries) {
+        recomputedRamBytesUsed += getRamBytesUsed(query);
+      }
       for (LeafCache leafCache : cache.values()) {
         recomputedRamBytesUsed += HASHTABLE_RAM_BYTES_PER_ENTRY * leafCache.cache.size();
         for (CacheAndCount cached : leafCache.cache.values()) {
@@ -454,18 +458,18 @@ public class LRUQueryCache implements QueryCache, Accountable {
             "cacheSize mismatch : " + getCacheSize() + " != " + recomputedCacheSize);
       }
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
   }
 
   // pkg-private for testing
   // return the list of cached queries in LRU order
   List<Query> cachedQueries() {
-    lock.lock();
+    readLock.lock();
     try {
       return new ArrayList<>(mostRecentlyUsedQueries);
     } finally {
-      lock.unlock();
+      readLock.unlock();
     }
   }
 
@@ -485,11 +489,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
   @Override
   public Collection<Accountable> getChildResources() {
-    lock.lock();
+    writeLock.lock();
     try {
       return Accountables.namedAccountables("segment", cache);
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
   }
 
@@ -522,7 +526,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
             bitSet.set(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     return new CacheAndCount(new BitDocIdSet(bitSet, count[0]), count[0]);
   }
 
@@ -540,7 +546,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
             builder.add(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     RoaringDocIdSet cache = builder.build();
     return new CacheAndCount(cache, cache.cardinality());
   }
@@ -567,7 +575,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @see #getMissCount()
    */
   public final long getHitCount() {
-    return hitCount;
+    return hitCount.sum();
   }
 
   /**
@@ -578,7 +586,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * @see #getHitCount()
    */
   public final long getMissCount() {
-    return missCount;
+    return missCount.sum();
   }
 
   /**
@@ -632,11 +640,13 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     private void onDocIdSetCache(long ramBytesUsed) {
+      assert writeLock.isHeldByCurrentThread();
       this.ramBytesUsed += ramBytesUsed;
       LRUQueryCache.this.onDocIdSetCache(key, ramBytesUsed);
     }
 
     private void onDocIdSetEviction(long ramBytesUsed) {
+      assert writeLock.isHeldByCurrentThread();
       this.ramBytesUsed -= ramBytesUsed;
       LRUQueryCache.this.onDocIdSetEviction(key, 1, ramBytesUsed);
     }
@@ -648,6 +658,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     void putIfAbsent(Query query, CacheAndCount cached) {
+      assert writeLock.isHeldByCurrentThread();
       assert query instanceof BoostQuery == false;
       assert query instanceof ConstantScoreQuery == false;
       if (cache.putIfAbsent(query, cached) == null) {
@@ -657,6 +668,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     void remove(Query query) {
+      assert writeLock.isHeldByCurrentThread();
       assert query instanceof BoostQuery == false;
       assert query instanceof ConstantScoreQuery == false;
       CacheAndCount removed = cache.remove(query);
@@ -703,15 +715,6 @@ public class LRUQueryCache implements QueryCache, Accountable {
       return worstCaseRamUsage * 5 < totalRamAvailable;
     }
 
-    private CacheAndCount cache(LeafReaderContext context) throws IOException {
-      final BulkScorer scorer = in.bulkScorer(context);
-      if (scorer == null) {
-        return CacheAndCount.EMPTY;
-      } else {
-        return cacheImpl(scorer, context.reader().maxDoc());
-      }
-    }
-
     /** Check whether this segment is eligible for caching, regardless of the query. */
     private boolean shouldCache(LeafReaderContext context) throws IOException {
       return cacheEntryHasReasonableWorstCaseSize(
@@ -743,7 +746,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       }
 
       // If the lock is already busy, prefer using the uncached version than waiting
-      if (lock.tryLock() == false) {
+      if (readLock.tryLock() == false) {
         return in.scorerSupplier(context);
       }
 
@@ -751,7 +754,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       try {
         cached = get(in.getQuery(), cacheHelper);
       } finally {
-        lock.unlock();
+        readLock.unlock();
       }
 
       if (cached == null) {
@@ -771,9 +774,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
                 return supplier.get(leadCost);
               }
 
-              Scorer scorer = supplier.get(Long.MAX_VALUE);
-              CacheAndCount cached =
-                  cacheImpl(new DefaultBulkScorer(scorer), context.reader().maxDoc());
+              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), context.reader().maxDoc());
               putIfAbsent(in.getQuery(), cached, cacheHelper);
               DocIdSetIterator disi = cached.iterator();
               if (disi == null) {
@@ -782,8 +783,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
                 disi = DocIdSetIterator.empty();
               }
 
-              return new ConstantScoreScorer(
-                  CachingWrapperWeight.this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi);
+              return new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, disi);
             }
 
             @Override
@@ -808,8 +808,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       return new ScorerSupplier() {
         @Override
         public Scorer get(long LeadCost) throws IOException {
-          return new ConstantScoreScorer(
-              CachingWrapperWeight.this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi);
+          return new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, disi);
         }
 
         @Override
@@ -820,25 +819,10 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
-    }
-
-    @Override
     public int count(LeafReaderContext context) throws IOException {
-      // If the wrapped weight can count quickly then use that
-      int innerCount = in.count(context);
-      if (innerCount != -1) {
-        return innerCount;
-      }
-
       // Our cache won't have an accurate count if there are deletions
       if (context.reader().hasDeletions()) {
-        return -1;
+        return in.count(context);
       }
 
       // Otherwise check if the count is in the cache
@@ -848,99 +832,43 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
       if (in.isCacheable(context) == false) {
         // this segment is not suitable for caching
-        return -1;
+        return in.count(context);
       }
 
       // Short-circuit: Check whether this segment is eligible for caching
       // before we take a lock because of #get
       if (shouldCache(context) == false) {
-        return -1;
+        return in.count(context);
       }
 
       final IndexReader.CacheHelper cacheHelper = context.reader().getCoreCacheHelper();
       if (cacheHelper == null) {
         // this reader has no cacheHelper
-        return -1;
+        return in.count(context);
       }
 
       // If the lock is already busy, prefer using the uncached version than waiting
-      if (lock.tryLock() == false) {
-        return -1;
+      if (readLock.tryLock() == false) {
+        return in.count(context);
       }
 
       CacheAndCount cached;
       try {
         cached = get(in.getQuery(), cacheHelper);
       } finally {
-        lock.unlock();
+        readLock.unlock();
       }
-      if (cached == null) {
-        // Not cached
-        return -1;
+      if (cached != null) {
+        // cached
+        return cached.count();
       }
-      return cached.count();
+      // Not cached, check if the wrapped weight can count quickly then use that
+      return in.count(context);
     }
 
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return in.isCacheable(ctx);
-    }
-
-    @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      if (used.compareAndSet(false, true)) {
-        policy.onUse(getQuery());
-      }
-
-      if (in.isCacheable(context) == false) {
-        // this segment is not suitable for caching
-        return in.bulkScorer(context);
-      }
-
-      // Short-circuit: Check whether this segment is eligible for caching
-      // before we take a lock because of #get
-      if (shouldCache(context) == false) {
-        return in.bulkScorer(context);
-      }
-
-      final IndexReader.CacheHelper cacheHelper = context.reader().getCoreCacheHelper();
-      if (cacheHelper == null) {
-        // this reader has no cacheHelper
-        return in.bulkScorer(context);
-      }
-
-      // If the lock is already busy, prefer using the uncached version than waiting
-      if (lock.tryLock() == false) {
-        return in.bulkScorer(context);
-      }
-
-      CacheAndCount cached;
-      try {
-        cached = get(in.getQuery(), cacheHelper);
-      } finally {
-        lock.unlock();
-      }
-
-      if (cached == null) {
-        if (policy.shouldCache(in.getQuery())) {
-          cached = cache(context);
-          putIfAbsent(in.getQuery(), cached, cacheHelper);
-        } else {
-          return in.bulkScorer(context);
-        }
-      }
-
-      assert cached != null;
-      if (cached == CacheAndCount.EMPTY) {
-        return null;
-      }
-      final DocIdSetIterator disi = cached.iterator();
-      if (disi == null) {
-        return null;
-      }
-
-      return new DefaultBulkScorer(
-          new ConstantScoreScorer(this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi));
     }
   }
 

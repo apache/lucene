@@ -20,13 +20,18 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   id "base"
-  id "com.palantir.consistent-versions" version "2.11.0"
-  id "org.owasp.dependencycheck" version "7.2.0"
-  id 'de.thetaphi.forbiddenapis' version '3.5' apply false
-  id "de.undercouch.download" version "5.2.0" apply false
-  id "net.ltgt.errorprone" version "3.0.1" apply false
-  id 'com.diffplug.spotless' version "6.5.2" apply false
-  id 'org.barfuin.gradle.jacocolog' version "3.0.0-RC2" apply false
+  id "lucene.build-infra"
+
+  alias(deps.plugins.dependencychecks)
+  alias(deps.plugins.spotless) apply false
+  alias(deps.plugins.benmanes.versions)
+  alias(deps.plugins.forbiddenapis) apply false
+  alias(deps.plugins.versionCatalogUpdate) apply false
+  alias(deps.plugins.randomizedtesting) apply false
+  alias(deps.plugins.owasp.dependencycheck)
+  alias(deps.plugins.undercouch.download) apply false
+  alias(deps.plugins.errorprone) apply false
+  alias(deps.plugins.jacocolog) apply false
 }
 
 apply from: file('gradle/globals.gradle')
@@ -36,7 +41,7 @@ apply from: file('gradle/globals.gradle')
 // Calculate project version:
 version = {
   // Release manager: update base version here after release:
-  String baseVersion = '10.0.0'
+  String baseVersion = '11.0.0'
 
   // On a release explicitly set release version in one go:
   //  -Dversion.release=x.y.z
@@ -73,7 +78,10 @@ ext {
   }
 
   // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.VERSION_17
+  minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
+
+  // also change this in extractor tool: ExtractForeignAPI
+  vectorIncubatorJavaVersions = [ JavaVersion.VERSION_21, JavaVersion.VERSION_22, JavaVersion.VERSION_23 ] as Set
 
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
@@ -98,22 +106,19 @@ configurations {
 
 dependencies {
   // Use a newer groovy that doesn't have illegal reflective accesses.
-  groovy "org.codehaus.groovy:groovy-all:3.0.12"
+  groovy deps.groovy
 }
-
-apply from: file('buildSrc/scriptDepVersions.gradle')
 
 // Include smaller chunks configuring dedicated build areas.
 // Some of these intersect or add additional functionality.
 // The order of inclusion of these files shouldn't matter (but may
 // if the build file is incorrectly written and evaluates something
 // eagerly).
-
+apply from: file('gradle/conventions.gradle')
 apply from: file('gradle/generation/local-settings.gradle')
 
-// IDE support, settings and specials.
-apply from: file('gradle/ide/intellij-idea.gradle')
-apply from: file('gradle/ide/eclipse.gradle')
+// Make sure the build environment is consistent.
+apply from: file('gradle/validation/check-environment.gradle')
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
@@ -127,6 +132,10 @@ apply from: file('gradle/testing/alternative-jdk-support.gradle')
 apply from: file('gradle/java/jar-manifest.gradle')
 apply from: file('gradle/java/modules.gradle')
 
+// IDE support, settings and specials.
+apply from: file('gradle/ide/intellij-idea.gradle')
+apply from: file('gradle/ide/eclipse.gradle')
+
 // Maven artifact publishing.
 apply from: file('gradle/maven/publications.gradle')
 
@@ -137,14 +146,24 @@ apply from: file('gradle/validation/precommit.gradle')
 apply from: file('gradle/validation/forbidden-apis.gradle')
 apply from: file('gradle/validation/jar-checks.gradle')
 apply from: file('gradle/validation/git-status.gradle')
-apply from: file('gradle/validation/versions-props-sorted.gradle')
 apply from: file('gradle/validation/validate-source-patterns.gradle')
 apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')
 apply from: file('gradle/validation/ecj-lint.gradle')
 apply from: file('gradle/validation/gradlew-scripts-tweaked.gradle')
-
+apply from: file('gradle/validation/dependencies.gradle')
 apply from: file('gradle/validation/spotless.gradle')
+
+// Wire up included builds to some validation tasks.
+rootProject.tasks.named("tidy").configure {
+  dependsOn gradle.includedBuilds*.task(":tidy")
+}
+rootProject.tasks.named("clean").configure {
+  dependsOn gradle.includedBuilds*.task(":clean")
+}
+rootProject.tasks.named("check").configure {
+  dependsOn gradle.includedBuilds*.task(":forbiddenApis")
+}
 
 // Source or data regeneration tasks
 apply from: file('gradle/generation/regenerate.gradle')

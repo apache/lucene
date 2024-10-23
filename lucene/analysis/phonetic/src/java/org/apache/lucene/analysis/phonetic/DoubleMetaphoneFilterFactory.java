@@ -41,8 +41,10 @@ public class DoubleMetaphoneFilterFactory extends TokenFilterFactory {
 
   /** parameter name: true if encoded tokens should be added as synonyms */
   public static final String INJECT = "inject";
+
   /** parameter name: restricts the length of the phonetic code */
   public static final String MAX_CODE_LENGTH = "maxCodeLength";
+
   /** default maxCodeLength if not specified */
   public static final int DEFAULT_MAX_CODE_LENGTH = 4;
 

@@ -18,6 +18,7 @@ package org.apache.lucene.search.suggest.tst;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -92,12 +93,10 @@ public class TSTLookup extends Lookup {
             // difference to match UTF16's sort order:
 
             // NOTE: instead of moving supplementary code points (0xee and 0xef) to the unused 0xfe
-            // and 0xff,
-            // we move them to the unused 0xfc and 0xfd [reserved for future 6-byte character
-            // sequences]
+            // and 0xff, we move them to the unused 0xfc and 0xfd [reserved for future 6-byte
+            // character sequences]
             // this reserves 0xff for preflex's term reordering (surrogate dance), and if unicode
-            // grows such
-            // that 6-byte sequences are needed we have much bigger problems anyway.
+            // grows such that 6-byte sequences are needed we have much bigger problems anyway.
             if (aByte >= 0xee && bByte >= 0xee) {
               if ((aByte & 0xfe) == 0xee) {
                 aByte += 0xe;
@@ -135,7 +134,7 @@ public class TSTLookup extends Lookup {
     while ((spare = iterator.next()) != null) {
       charsSpare.copyUTF8Bytes(spare);
       tokens.add(charsSpare.toString());
-      vals.add(Long.valueOf(iterator.weight()));
+      vals.add(iterator.weight());
       count++;
     }
     autocomplete.balancedTree(tokens.toArray(), vals.toArray(), 0, tokens.size() - 1, root);
@@ -187,7 +186,7 @@ public class TSTLookup extends Lookup {
     }
     List<TernaryTreeNode> list = autocomplete.prefixCompletion(root, key, 0);
     List<LookupResult> res = new ArrayList<>();
-    if (list == null || list.size() == 0) {
+    if (list == null || list.isEmpty()) {
       return res;
     }
     int maxCnt = Math.min(num, list.size());
@@ -197,9 +196,7 @@ public class TSTLookup extends Lookup {
       for (TernaryTreeNode ttn : list) {
         queue.insertWithOverflow(new LookupResult(ttn.token, ((Number) ttn.val).longValue()));
       }
-      for (LookupResult lr : queue.getResults()) {
-        res.add(lr);
-      }
+      Collections.addAll(res, queue.getResults());
     } else {
       for (int i = 0; i < maxCnt; i++) {
         TernaryTreeNode ttn = list.get(i);
@@ -223,7 +220,7 @@ public class TSTLookup extends Lookup {
       node.token = in.readString();
     }
     if ((mask & HAS_VALUE) != 0) {
-      node.val = Long.valueOf(in.readLong());
+      node.val = in.readLong();
     }
     if ((mask & LO_KID) != 0) {
       node.loKid = new TernaryTreeNode();

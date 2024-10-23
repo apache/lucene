@@ -18,8 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -41,6 +39,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
@@ -193,7 +192,7 @@ final class ReadersAndUpdates {
 
   public synchronized boolean delete(int docID) throws IOException {
     if (reader == null && pendingDeletes.mustInitOnDelete()) {
-      getReader(IOContext.READ).decRef(); // pass a reader to initialize the pending deletes
+      getReader(IOContext.DEFAULT).decRef(); // pass a reader to initialize the pending deletes
     }
     return pendingDeletes.delete(docID);
   }
@@ -242,7 +241,7 @@ final class ReadersAndUpdates {
   private synchronized CodecReader getLatestReader() throws IOException {
     if (this.reader == null) {
       // get a reader and dec the ref right away we just make sure we have a reader
-      getReader(IOContext.READ).decRef();
+      getReader(IOContext.DEFAULT).decRef();
     }
     if (pendingDeletes.needsRefresh(reader)) {
       // we have a reader but its live-docs are out of sync. let's create a temporary one that we
@@ -528,7 +527,6 @@ final class ReadersAndUpdates {
       return docIDOut;
     }
   }
-  ;
 
   private synchronized Set<String> writeFieldInfosGen(
       FieldInfos fieldInfos, Directory dir, FieldInfosFormat infosFormat) throws IOException {
@@ -555,8 +553,6 @@ final class ReadersAndUpdates {
     FieldInfos fieldInfos = null;
     boolean any = false;
     for (List<DocValuesFieldUpdates> updates : pendingDVUpdates.values()) {
-      // Sort by increasing delGen:
-      Collections.sort(updates, Comparator.comparingLong(a -> a.delGen));
       for (DocValuesFieldUpdates update : updates) {
         if (update.delGen <= maxDelGen && update.any()) {
           any = true;
@@ -674,11 +670,6 @@ final class ReadersAndUpdates {
     long bytes = ramBytesUsed.addAndGet(-bytesFreed);
     assert bytes >= 0;
 
-    // if there is a reader open, reopen it to reflect the updates
-    if (reader != null) {
-      swapNewReaderWithLatestLiveDocs();
-    }
-
     // writing field updates succeeded
     assert fieldInfosFiles != null;
     info.setFieldInfosFiles(fieldInfosFiles);
@@ -694,6 +685,11 @@ final class ReadersAndUpdates {
       }
     }
     info.setDocValuesUpdatesFiles(newDVFiles);
+
+    // if there is a reader open, reopen it to reflect the updates
+    if (reader != null) {
+      swapNewReaderWithLatestLiveDocs();
+    }
 
     if (infoStream.isEnabled("BD")) {
       infoStream.message(
@@ -712,11 +708,12 @@ final class ReadersAndUpdates {
     return new FieldInfo(
         fi.name,
         fieldNumber,
-        fi.hasVectors(),
+        fi.hasTermVectors(),
         fi.omitsNorms(),
         fi.hasPayloads(),
         fi.getIndexOptions(),
         fi.getDocValuesType(),
+        fi.docValuesSkipIndexType(),
         fi.getDocValuesGen(),
         new HashMap<>(fi.attributes()),
         fi.getPointDimensionCount(),
@@ -725,7 +722,8 @@ final class ReadersAndUpdates {
         fi.getVectorDimension(),
         fi.getVectorEncoding(),
         fi.getVectorSimilarityFunction(),
-        fi.isSoftDeletesField());
+        fi.isSoftDeletesField(),
+        fi.isParentField());
   }
 
   private SegmentReader createNewReaderWithLatestLiveDocs(SegmentReader reader) throws IOException {
@@ -770,7 +768,8 @@ final class ReadersAndUpdates {
   }
 
   /** Returns a reader for merge, with the latest doc values updates and deletions. */
-  synchronized MergePolicy.MergeReader getReaderForMerge(IOContext context) throws IOException {
+  synchronized MergePolicy.MergeReader getReaderForMerge(
+      IOContext context, IOConsumer<MergePolicy.MergeReader> readerConsumer) throws IOException {
 
     // We must carry over any still-pending DV updates because they were not
     // successfully written, e.g. because there was a hole in the delGens,
@@ -786,13 +785,17 @@ final class ReadersAndUpdates {
     }
 
     SegmentReader reader = getReader(context);
-    if (pendingDeletes.needsRefresh(reader)) {
+    if (pendingDeletes.needsRefresh(reader)
+        || reader.getSegmentInfo().getDelGen() != pendingDeletes.info.getDelGen()) {
       // beware of zombies:
       assert pendingDeletes.getLiveDocs() != null;
       reader = createNewReaderWithLatestLiveDocs(reader);
     }
     assert pendingDeletes.verifyDocCounts(reader);
-    return new MergePolicy.MergeReader(reader, pendingDeletes.getHardLiveDocs());
+    MergePolicy.MergeReader mergeReader =
+        new MergePolicy.MergeReader(reader, pendingDeletes.getHardLiveDocs());
+    readerConsumer.accept(mergeReader);
+    return mergeReader;
   }
 
   /**

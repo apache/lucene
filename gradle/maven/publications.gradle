@@ -40,7 +40,9 @@ configure(rootProject) {
           // Exclude the native module.
           ":lucene:misc:native",
           // Exclude test fixtures.
-          ":lucene:spatial-test-fixtures"
+          ":lucene:spatial-test-fixtures",
+          // Exclude JMH benchmarks.
+          ":lucene:benchmarks-jmh",
       ]
 
       // Exclude all subprojects that are modular test projects and those explicitly

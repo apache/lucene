@@ -61,6 +61,7 @@ final class SegmentCoreReaders {
   final KnnVectorsReader knnVectorsReader;
   final CompoundDirectory cfsReader;
   final String segment;
+
   /**
    * fieldinfos for this core: means gen=-1. this is the exact fieldinfos these codec components saw
    * at write. in the case of DV updates, SR may hold a newer version.
@@ -79,7 +80,7 @@ final class SegmentCoreReaders {
 
     try {
       if (si.info.getUseCompoundFile()) {
-        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info, context);
+        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info);
       } else {
         cfsReader = null;
         cfsDir = dir;
@@ -116,7 +117,7 @@ final class SegmentCoreReaders {
               .storedFieldsFormat()
               .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
 
-      if (coreFieldInfos.hasVectors()) { // open term vector files only as needed
+      if (coreFieldInfos.hasTermVectors()) { // open term vector files only as needed
         termVectorsReaderOrig =
             si.info
                 .getCodec()

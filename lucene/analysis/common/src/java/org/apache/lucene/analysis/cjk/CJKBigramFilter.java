@@ -53,15 +53,19 @@ public final class CJKBigramFilter extends TokenFilter {
   // configuration
   /** bigram flag for Han Ideographs */
   public static final int HAN = 1;
+
   /** bigram flag for Hiragana */
   public static final int HIRAGANA = 2;
+
   /** bigram flag for Katakana */
   public static final int KATAKANA = 4;
+
   /** bigram flag for Hangul */
   public static final int HANGUL = 8;
 
   /** when we emit a bigram, it's then marked as this type */
   public static final String DOUBLE_TYPE = "<DOUBLE>";
+
   /** when we emit a unigram, it's then marked as this type */
   public static final String SINGLE_TYPE = "<SINGLE>";
 

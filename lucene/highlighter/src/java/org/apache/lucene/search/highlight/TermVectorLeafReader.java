@@ -22,6 +22,8 @@ import java.util.Iterator;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DataInputDocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -57,25 +59,25 @@ public class TermVectorLeafReader extends LeafReader {
 
   public TermVectorLeafReader(String field, Terms terms) {
     fields =
-        new Fields() {
-          @Override
-          public Iterator<String> iterator() {
-            return Collections.singletonList(field).iterator();
-          }
+            new Fields() {
+              @Override
+              public Iterator<String> iterator() {
+                return Collections.singletonList(field).iterator();
+              }
 
-          @Override
-          public Terms terms(String fld) throws IOException {
-            if (!field.equals(fld)) {
-              return null;
-            }
-            return terms;
-          }
+              @Override
+              public Terms terms(String fld) throws IOException {
+                if (!field.equals(fld)) {
+                  return null;
+                }
+                return terms;
+              }
 
-          @Override
-          public int size() {
-            return 1;
-          }
-        };
+              @Override
+              public int size() {
+                return 1;
+              }
+            };
 
     IndexOptions indexOptions;
     if (!terms.hasFreqs()) {
@@ -88,23 +90,25 @@ public class TermVectorLeafReader extends LeafReader {
       indexOptions = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS;
     }
     FieldInfo fieldInfo =
-        new FieldInfo(
-            field,
-            0,
-            true,
-            true,
-            terms.hasPayloads(),
-            indexOptions,
-            DocValuesType.NONE,
-            -1,
-            Collections.emptyMap(),
-            0,
-            0,
-            0,
-            0,
-            VectorEncoding.FLOAT32,
-            VectorSimilarityFunction.EUCLIDEAN,
-            false);
+            new FieldInfo(
+                    field,
+                    0,
+                    true,
+                    true,
+                    terms.hasPayloads(),
+                    indexOptions,
+                    DocValuesType.NONE,
+                    DocValuesSkipIndexType.NONE,
+                    -1,
+                    Collections.emptyMap(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    VectorEncoding.FLOAT32,
+                    VectorSimilarityFunction.EUCLIDEAN,
+                    false,
+                    false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
 
@@ -147,6 +151,11 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    return null;
+  }
+
+  @Override
   public NumericDocValues getNormValues(String field) throws IOException {
     return null; // Is this needed?  See MemoryIndex for a way to do it.
   }
@@ -178,11 +187,11 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
   public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
   public void checkIntegrity() throws IOException {}
@@ -221,7 +230,7 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public LeafMetaData getMetaData() {
-    return new LeafMetaData(Version.LATEST.major, null, null);
+    return new LeafMetaData(Version.LATEST.major, null, null, false);
   }
 
   @Override

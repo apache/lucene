@@ -32,19 +32,29 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.IntsRef;
+import org.junit.Assert;
 
 public class TestNFARunAutomaton extends LuceneTestCase {
 
   private static final String FIELD = "field";
 
+  public void testRamUsageEstimation() {
+    RegExp regExp = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
+    Automaton nfa = regExp.toAutomaton();
+    NFARunAutomaton runAutomaton = new NFARunAutomaton(nfa);
+    long estimation = runAutomaton.ramBytesUsed();
+    long actual = RamUsageTester.ramUsed(runAutomaton);
+    Assert.assertEquals((double) actual, (double) estimation, (double) actual * 0.3);
+  }
+
   @SuppressWarnings("unused")
   public void testWithRandomRegex() {
     for (int i = 0; i < 100; i++) {
       RegExp regExp = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
-      ;
       Automaton nfa = regExp.toAutomaton();
       if (nfa.isDeterministic()) {
         i--;
@@ -74,6 +84,40 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     }
   }
 
+  public void testRandomAccessTransition() {
+    Automaton nfa = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton();
+    while (nfa.isDeterministic()) {
+      nfa = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton();
+    }
+    NFARunAutomaton runAutomaton1, runAutomaton2;
+    runAutomaton1 = new NFARunAutomaton(nfa);
+    runAutomaton2 = new NFARunAutomaton(nfa);
+    assertRandomAccessTransition(runAutomaton1, runAutomaton2, 0, new HashSet<>());
+  }
+
+  private void assertRandomAccessTransition(
+      NFARunAutomaton automaton1, NFARunAutomaton automaton2, int state, Set<Integer> visited) {
+    if (visited.contains(state)) {
+      return;
+    }
+    visited.add(state);
+
+    Transition t1 = new Transition();
+    Transition t2 = new Transition();
+    automaton1.initTransition(state, t1);
+    if (random().nextBoolean()) {
+      // init is not really necessary for t2
+      automaton2.initTransition(state, t2);
+    }
+    int numStates = automaton2.getNumTransitions(state);
+    for (int i = 0; i < numStates; i++) {
+      automaton1.getNextTransition(t1);
+      automaton2.getTransition(state, i, t2);
+      assertEquals(t1.toString(), t2.toString());
+      assertRandomAccessTransition(automaton1, automaton2, t1.dest, visited);
+    }
+  }
+
   public void testRandomAutomatonQuery() throws IOException {
     final int docNum = 50;
     final int automatonNum = 50;
@@ -87,8 +131,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
       int termNum = random().nextInt(20) + 30;
       while (perDocVocab.size() < termNum) {
         String randomString;
-        while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0)
-          ;
+        while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0) {}
         perDocVocab.add(randomString);
         vocab.add(randomString);
       }
@@ -105,8 +148,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     Set<String> foreignVocab = new HashSet<>();
     while (foreignVocab.size() < vocab.size()) {
       String randomString;
-      while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0)
-        ;
+      while ((randomString = TestUtil.randomUnicodeString(random())).length() == 0) {}
       foreignVocab.add(randomString);
     }
 

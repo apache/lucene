@@ -243,6 +243,7 @@ public class TestMultiAnalyzer extends BaseTokenStreamTestCase {
     public Query getSuperFieldQuery(String f, String t, boolean quoted) throws ParseException {
       return super.getFieldQuery(f, t, quoted);
     }
+
     /** wrap super's version */
     @Override
     protected Query getFieldQuery(String f, String t, boolean quoted) throws ParseException {

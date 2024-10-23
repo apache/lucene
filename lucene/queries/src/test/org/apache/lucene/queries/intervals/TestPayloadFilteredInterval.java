@@ -89,4 +89,14 @@ public class TestPayloadFilteredInterval extends LuceneTestCase {
     reader.close();
     directory.close();
   }
+
+  public void testPayloadFilteredTermIntervalsSourceEquals() {
+    IntervalsSource interval = Intervals.term("test", (payload) -> true);
+    IntervalsSource sameInterval = Intervals.term("test", (payload) -> true);
+    IntervalsSource differentInterval = Intervals.term("test");
+
+    assertTrue(interval.equals(sameInterval));
+    assertFalse(interval.equals(differentInterval));
+    assertFalse(interval.equals(null));
+  }
 }

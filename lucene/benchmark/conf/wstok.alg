@@ -18,7 +18,8 @@
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource
 doc.tokenized=false
 doc.body.tokenized=true
-docs.dir=reuters-out
+work.dir=data
+docs.dir=reuters21578
 
 -AnalyzerFactory(name:WhitespaceTokenizer, WhitespaceTokenizer(rule:java))
 

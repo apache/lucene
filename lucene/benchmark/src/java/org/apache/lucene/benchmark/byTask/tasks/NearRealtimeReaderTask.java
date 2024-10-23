@@ -20,6 +20,7 @@ import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Spawns a BG thread that periodically (defaults to 3.0 seconds, but accepts param in seconds)
@@ -40,6 +41,7 @@ public class NearRealtimeReaderTask extends PerfTask {
     super(runData);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   public int doLogic() throws Exception {
 

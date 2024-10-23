@@ -272,7 +272,8 @@ public class TestFeatureField extends LuceneTestCase {
 
     // Make sure that we create a legal pivot on missing features
     DirectoryReader reader = writer.getReader();
-    float pivot = FeatureField.computePivotFeatureValue(reader, "features", "pagerank");
+    IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
+    float pivot = FeatureField.computePivotFeatureValue(searcher, "features", "pagerank");
     assertTrue(Float.isFinite(pivot));
     assertTrue(pivot > 0);
     reader.close();
@@ -298,7 +299,8 @@ public class TestFeatureField extends LuceneTestCase {
     reader = writer.getReader();
     writer.close();
 
-    pivot = FeatureField.computePivotFeatureValue(reader, "features", "pagerank");
+    searcher = LuceneTestCase.newSearcher(reader);
+    pivot = FeatureField.computePivotFeatureValue(searcher, "features", "pagerank");
     double expected = Math.pow(10 * 100 * 1 * 42, 1 / 4.); // geometric mean
     assertEquals(expected, pivot, 0.1);
 

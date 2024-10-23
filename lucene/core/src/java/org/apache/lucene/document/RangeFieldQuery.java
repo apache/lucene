@@ -47,17 +47,22 @@ import org.apache.lucene.util.DocIdSetBuilder;
 public abstract class RangeFieldQuery extends Query {
   /** field name */
   final String field;
+
   /**
    * query relation intersects: {@code CELL_CROSSES_QUERY}, contains: {@code CELL_CONTAINS_QUERY},
    * within: {@code CELL_WITHIN_QUERY}
    */
   final QueryType queryType;
+
   /** number of dimensions - max 4 */
   final int numDims;
+
   /** ranges encoded as a sortable byte array */
   final byte[] ranges;
+
   /** number of bytes per dimension */
   final int bytesPerDim;
+
   /** ByteArrayComparator selected by bytesPerDim */
   final ByteArrayComparator comparator;
 
@@ -454,13 +459,12 @@ public abstract class RangeFieldQuery extends Query {
           allDocsMatch = true;
         }
 
-        final Weight weight = this;
         if (allDocsMatch) {
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) {
               return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
             }
 
             @Override
@@ -479,7 +483,7 @@ public abstract class RangeFieldQuery extends Query {
             public Scorer get(long leadCost) throws IOException {
               values.intersect(visitor);
               DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override
@@ -493,15 +497,6 @@ public abstract class RangeFieldQuery extends Query {
             }
           };
         }
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override

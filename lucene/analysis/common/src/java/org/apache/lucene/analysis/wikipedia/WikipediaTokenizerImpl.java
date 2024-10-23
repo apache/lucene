@@ -402,8 +402,10 @@ class WikipediaTokenizerImpl {
 
   /** Error code for "Unknown internal scanner error". */
   private static final int ZZ_UNKNOWN_ERROR = 0;
+
   /** Error code for "could not match input". */
   private static final int ZZ_NO_MATCH = 1;
+
   /** Error code for "pushback value was too large". */
   private static final int ZZ_PUSHBACK_2BIG = 2;
 
@@ -899,7 +901,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1; /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 47:
             break;
           case 2:
@@ -907,7 +909,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1;
               return ALPHANUM;
             }
-            // fall through
+          // fall through
           case 48:
             break;
           case 3:
@@ -918,7 +920,7 @@ class WikipediaTokenizerImpl {
               yybegin(EXTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 49:
             break;
           case 4:
@@ -926,7 +928,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1;
               return CJ;
             }
-            // fall through
+          // fall through
           case 50:
             break;
           case 5:
@@ -934,7 +936,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1; /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 51:
             break;
           case 6:
@@ -943,7 +945,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen++;
               return currentTokType;
             }
-            // fall through
+          // fall through
           case 52:
             break;
           case 7:
@@ -952,7 +954,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen++;
               return currentTokType;
             }
-            // fall through
+          // fall through
           case 53:
             break;
           case 8:
@@ -960,7 +962,7 @@ class WikipediaTokenizerImpl {
               /* Break so we don't hit fall-through warning: */
               break; /* ignore */
             }
-            // fall through
+          // fall through
           case 54:
             break;
           case 9:
@@ -976,7 +978,7 @@ class WikipediaTokenizerImpl {
               numLinkToks++;
               return currentTokType;
             }
-            // fall through
+          // fall through
           case 55:
             break;
           case 10:
@@ -986,7 +988,7 @@ class WikipediaTokenizerImpl {
               yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 56:
             break;
           case 11:
@@ -995,7 +997,7 @@ class WikipediaTokenizerImpl {
               yybegin(THREE_SINGLE_QUOTES_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 57:
             break;
           case 12:
@@ -1005,7 +1007,7 @@ class WikipediaTokenizerImpl {
               yybegin(STRING);
               return currentTokType; /*italics*/
             }
-            // fall through
+          // fall through
           case 58:
             break;
           case 13:
@@ -1015,7 +1017,7 @@ class WikipediaTokenizerImpl {
               yybegin(EXTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 59:
             break;
           case 14:
@@ -1024,7 +1026,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen++;
               return currentTokType;
             }
-            // fall through
+          // fall through
           case 60:
             break;
           case 15:
@@ -1034,7 +1036,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen++;
               return currentTokType;
             }
-            // fall through
+          // fall through
           case 61:
             break;
           case 16:
@@ -1044,7 +1046,7 @@ class WikipediaTokenizerImpl {
               yybegin(STRING); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 62:
             break;
           case 17:
@@ -1053,7 +1055,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen = 0;
               return currentTokType;
             }
-            // fall through
+          // fall through
           case 63:
             break;
           case 18:
@@ -1061,7 +1063,7 @@ class WikipediaTokenizerImpl {
               /* Break so we don't hit fall-through warning: */
               break; /* ignore STRING */
             }
-            // fall through
+          // fall through
           case 64:
             break;
           case 19:
@@ -1070,7 +1072,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen++;
               return currentTokType; /* STRING ALPHANUM*/
             }
-            // fall through
+          // fall through
           case 65:
             break;
           case 20:
@@ -1081,7 +1083,7 @@ class WikipediaTokenizerImpl {
               yybegin(EXTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 66:
             break;
           case 21:
@@ -1089,7 +1091,7 @@ class WikipediaTokenizerImpl {
               yybegin(STRING);
               return currentTokType; /*pipe*/
             }
-            // fall through
+          // fall through
           case 67:
             break;
           case 22:
@@ -1104,7 +1106,7 @@ class WikipediaTokenizerImpl {
               } /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 68:
             break;
           case 23:
@@ -1114,7 +1116,7 @@ class WikipediaTokenizerImpl {
               yybegin(DOUBLE_EQUALS_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 69:
             break;
           case 24:
@@ -1125,7 +1127,7 @@ class WikipediaTokenizerImpl {
               yybegin(INTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 70:
             break;
           case 25:
@@ -1136,7 +1138,7 @@ class WikipediaTokenizerImpl {
               yybegin(DOUBLE_BRACE_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 71:
             break;
           case 26:
@@ -1144,7 +1146,7 @@ class WikipediaTokenizerImpl {
               yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 72:
             break;
           case 27:
@@ -1153,7 +1155,7 @@ class WikipediaTokenizerImpl {
               yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 73:
             break;
           case 28:
@@ -1163,7 +1165,7 @@ class WikipediaTokenizerImpl {
               yybegin(INTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 74:
             break;
           case 29:
@@ -1173,7 +1175,7 @@ class WikipediaTokenizerImpl {
               yybegin(INTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 75:
             break;
           case 30:
@@ -1181,7 +1183,7 @@ class WikipediaTokenizerImpl {
               yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 76:
             break;
           case 31:
@@ -1191,7 +1193,7 @@ class WikipediaTokenizerImpl {
               yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
               break; /*end italics*/
             }
-            // fall through
+          // fall through
           case 77:
             break;
           case 32:
@@ -1202,7 +1204,7 @@ class WikipediaTokenizerImpl {
               yybegin(INTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 78:
             break;
           case 33:
@@ -1210,7 +1212,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1;
               return NUM;
             }
-            // fall through
+          // fall through
           case 79:
             break;
           case 34:
@@ -1218,7 +1220,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1;
               return COMPANY;
             }
-            // fall through
+          // fall through
           case 80:
             break;
           case 35:
@@ -1226,7 +1228,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1;
               return APOSTROPHE;
             }
-            // fall through
+          // fall through
           case 81:
             break;
           case 36:
@@ -1234,7 +1236,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1;
               return HOST;
             }
-            // fall through
+          // fall through
           case 82:
             break;
           case 37:
@@ -1243,7 +1245,7 @@ class WikipediaTokenizerImpl {
               yybegin(FIVE_SINGLE_QUOTES_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 83:
             break;
           case 38:
@@ -1253,7 +1255,7 @@ class WikipediaTokenizerImpl {
               yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
               break; /*end bold*/
             }
-            // fall through
+          // fall through
           case 84:
             break;
           case 39:
@@ -1263,7 +1265,7 @@ class WikipediaTokenizerImpl {
               yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
               break; /*end sub header*/
             }
-            // fall through
+          // fall through
           case 85:
             break;
           case 40:
@@ -1271,7 +1273,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1;
               return ACRONYM;
             }
-            // fall through
+          // fall through
           case 86:
             break;
           case 41:
@@ -1279,7 +1281,7 @@ class WikipediaTokenizerImpl {
               positionInc = 1;
               return EMAIL;
             }
-            // fall through
+          // fall through
           case 87:
             break;
           case 42:
@@ -1289,7 +1291,7 @@ class WikipediaTokenizerImpl {
               yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
               break; /*end bold italics*/
             }
-            // fall through
+          // fall through
           case 88:
             break;
           case 43:
@@ -1299,7 +1301,7 @@ class WikipediaTokenizerImpl {
               yybegin(EXTERNAL_LINK_STATE);
               return currentTokType;
             }
-            // fall through
+          // fall through
           case 89:
             break;
           case 44:
@@ -1310,7 +1312,7 @@ class WikipediaTokenizerImpl {
               yybegin(CATEGORY_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 90:
             break;
           case 45:
@@ -1320,7 +1322,7 @@ class WikipediaTokenizerImpl {
               yybegin(CATEGORY_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 91:
             break;
           case 46:
@@ -1331,7 +1333,7 @@ class WikipediaTokenizerImpl {
               yybegin(CATEGORY_STATE); /* Break so we don't hit fall-through warning: */
               break;
             }
-            // fall through
+          // fall through
           case 92:
             break;
           default:

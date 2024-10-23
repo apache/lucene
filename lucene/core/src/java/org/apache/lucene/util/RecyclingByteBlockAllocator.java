@@ -36,12 +36,11 @@ public final class RecyclingByteBlockAllocator extends ByteBlockPool.Allocator {
   /**
    * Creates a new {@link RecyclingByteBlockAllocator}
    *
-   * @param blockSize the block size in bytes
    * @param maxBufferedBlocks maximum number of buffered byte block
    * @param bytesUsed {@link Counter} reference counting internally allocated bytes
    */
-  public RecyclingByteBlockAllocator(int blockSize, int maxBufferedBlocks, Counter bytesUsed) {
-    super(blockSize);
+  public RecyclingByteBlockAllocator(int maxBufferedBlocks, Counter bytesUsed) {
+    super(ByteBlockPool.BYTE_BLOCK_SIZE);
     freeByteBlocks = new byte[maxBufferedBlocks][];
     this.maxBufferedBlocks = maxBufferedBlocks;
     this.bytesUsed = bytesUsed;
@@ -50,11 +49,10 @@ public final class RecyclingByteBlockAllocator extends ByteBlockPool.Allocator {
   /**
    * Creates a new {@link RecyclingByteBlockAllocator}.
    *
-   * @param blockSize the block size in bytes
    * @param maxBufferedBlocks maximum number of buffered byte block
    */
-  public RecyclingByteBlockAllocator(int blockSize, int maxBufferedBlocks) {
-    this(blockSize, maxBufferedBlocks, Counter.newCounter(false));
+  public RecyclingByteBlockAllocator(int maxBufferedBlocks) {
+    this(maxBufferedBlocks, Counter.newCounter(false));
   }
 
   /**
@@ -63,7 +61,7 @@ public final class RecyclingByteBlockAllocator extends ByteBlockPool.Allocator {
    * ({@value #DEFAULT_BUFFERED_BLOCKS}).
    */
   public RecyclingByteBlockAllocator() {
-    this(ByteBlockPool.BYTE_BLOCK_SIZE, 64, Counter.newCounter(false));
+    this(DEFAULT_BUFFERED_BLOCKS, Counter.newCounter(false));
   }
 
   @Override

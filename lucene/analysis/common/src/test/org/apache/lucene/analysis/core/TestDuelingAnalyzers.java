@@ -230,7 +230,6 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
       assertEquals(
           "wrong end offset for input: " + s, leftOffset.endOffset(), rightOffset.endOffset());
     }
-    ;
     assertFalse("wrong number of tokens for input: " + s, right.incrementToken());
     left.end();
     right.end();

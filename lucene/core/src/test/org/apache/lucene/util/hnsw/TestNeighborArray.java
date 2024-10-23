@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.Bits;
 
 public class TestNeighborArray extends LuceneTestCase {
 
@@ -190,7 +191,7 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(7, Float.NaN);
     neighbors.addOutOfOrder(6, Float.NaN);
     neighbors.addOutOfOrder(4, Float.NaN);
-    int[] unchecked = neighbors.sort(nodeId -> 7 - nodeId + 1);
+    int[] unchecked = neighbors.sort((TestRandomVectorScorer) nodeId -> 7 - nodeId + 1);
     assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
@@ -206,7 +207,7 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(17, Float.NaN);
     neighbors.addOutOfOrder(16, Float.NaN);
     neighbors.addOutOfOrder(14, Float.NaN);
-    int[] unchecked = neighbors.sort(nodeId -> 7 - nodeId + 11);
+    int[] unchecked = neighbors.sort((TestRandomVectorScorer) nodeId -> 7 - nodeId + 11);
     assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
     assertNodesEqual(new int[] {11, 12, 13, 14, 15, 16, 17}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
@@ -214,13 +215,30 @@ public class TestNeighborArray extends LuceneTestCase {
 
   private void assertScoresEqual(float[] scores, NeighborArray neighbors) {
     for (int i = 0; i < scores.length; i++) {
-      assertEquals(scores[i], neighbors.score[i], 0.01f);
+      assertEquals(scores[i], neighbors.scores()[i], 0.01f);
     }
   }
 
   private void assertNodesEqual(int[] nodes, NeighborArray neighbors) {
     for (int i = 0; i < nodes.length; i++) {
-      assertEquals(nodes[i], neighbors.node[i]);
+      assertEquals(nodes[i], neighbors.nodes()[i]);
+    }
+  }
+
+  interface TestRandomVectorScorer extends RandomVectorScorer {
+    @Override
+    default int maxOrd() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    default int ordToDoc(int ord) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    default Bits getAcceptOrds(Bits acceptDocs) {
+      throw new UnsupportedOperationException();
     }
   }
 }

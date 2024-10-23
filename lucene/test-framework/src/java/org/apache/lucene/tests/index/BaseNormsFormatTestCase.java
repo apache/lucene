@@ -54,8 +54,8 @@ import org.apache.lucene.util.IOUtils;
 /**
  * Abstract class to do basic tests for a norms format. NOTE: This test focuses on the norms impl,
  * nothing else. The [stretch] goal is for this test to be so thorough in testing a new NormsFormat
- * that if this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some bug
- * in a given NormsFormat that this test fails to catch then this test needs to be improved!
+ * that if this test passes, then all Lucene tests should also pass. Ie, if there is some bug in a
+ * given NormsFormat that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCase {
 

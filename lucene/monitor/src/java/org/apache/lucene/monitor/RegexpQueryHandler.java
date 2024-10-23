@@ -127,9 +127,9 @@ public class RegexpQueryHandler implements CustomQueryHandler {
   }
 
   private static String parseOutRegexp(String rep) {
-    int fieldSepPos = rep.indexOf(":");
-    int firstSlash = rep.indexOf("/", fieldSepPos);
-    int lastSlash = rep.lastIndexOf("/");
+    int fieldSepPos = rep.indexOf(':');
+    int firstSlash = rep.indexOf('/', fieldSepPos);
+    int lastSlash = rep.lastIndexOf('/');
     return rep.substring(firstSlash + 1, lastSlash);
   }
 

@@ -24,10 +24,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -42,13 +42,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -58,22 +52,56 @@ import org.junit.Test;
  * tests pick the offset source at random (to include term vectors) and in-effect test term vectors
  * generally.
  */
-public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
+public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
 
-  private Analyzer indexAnalyzer;
-  private Directory dir;
-
-  @Before
-  public void doBefore() {
-    indexAnalyzer =
-        new MockAnalyzer(
-            random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase
-    dir = newDirectory();
+  public TestUnifiedHighlighterTermVec() {
+    super(randomFieldType(random()));
   }
 
-  @After
-  public void doAfter() throws IOException {
-    dir.close();
+  public void testTermVecButNoPositions1() throws Exception {
+    testTermVecButNoPositions("x", "y", "y x", "<b>y</b> <b>x</b>");
+  }
+
+  public void testTermVecButNoPositions2() throws Exception {
+    testTermVecButNoPositions("y", "x", "y x", "<b>y</b> <b>x</b>");
+  }
+
+  public void testTermVecButNoPositions3() throws Exception {
+    testTermVecButNoPositions("zzz", "yyy", "zzz yyy", "<b>zzz</b> <b>yyy</b>");
+  }
+
+  public void testTermVecButNoPositions4() throws Exception {
+    testTermVecButNoPositions("zzz", "yyy", "yyy zzz", "<b>yyy</b> <b>zzz</b>");
+  }
+
+  public void testTermVecButNoPositions(String aaa, String bbb, String indexed, String expected)
+      throws Exception {
+    final FieldType tvNoPosType = new FieldType(TextField.TYPE_STORED);
+    tvNoPosType.setStoreTermVectors(true);
+    tvNoPosType.setStoreTermVectorOffsets(true);
+    tvNoPosType.freeze();
+
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+
+    Field body = new Field("body", indexed, tvNoPosType);
+    Document document = new Document();
+    document.add(body);
+    iw.addDocument(document);
+    try (IndexReader ir = iw.getReader()) {
+      iw.close();
+      IndexSearcher searcher = newSearcher(ir);
+      BooleanQuery query =
+          new BooleanQuery.Builder()
+              .add(new TermQuery(new Term("body", aaa)), BooleanClause.Occur.MUST)
+              .add(new TermQuery(new Term("body", bbb)), BooleanClause.Occur.MUST)
+              .build();
+      TopDocs topDocs = searcher.search(query, 10);
+      assertEquals(1, topDocs.totalHits.value());
+      UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
+      String[] snippets = highlighter.highlight("body", query, topDocs, 2);
+      assertEquals(1, snippets.length);
+      assertTrue(snippets[0], snippets[0].contains(expected));
+    }
   }
 
   public void testFetchTermVecsOncePerDoc() throws IOException {
@@ -86,16 +114,16 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     List<FieldType> fieldTypes = new ArrayList<>(numTvFields);
     for (int i = 0; i < numTvFields; i++) {
       fields.add("body" + i);
-      fieldTypes.add(UHTestHelper.randomFieldType(random()));
+      fieldTypes.add(randomFieldType(random()));
     }
     // ensure at least one has TVs by setting one randomly to it:
-    fieldTypes.set(random().nextInt(fieldTypes.size()), UHTestHelper.tvType);
+    fieldTypes.set(random().nextInt(fieldTypes.size()), tvType);
 
     final int numDocs = 1 + random().nextInt(3);
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       for (String field : fields) {
-        doc.add(new Field(field, "some test text", UHTestHelper.tvType));
+        doc.add(new Field(field, "some test text", tvType));
       }
       iw.addDocument(doc);
     }
@@ -114,7 +142,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     }
     BooleanQuery query = queryBuilder.build();
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-    assertEquals(numDocs, topDocs.totalHits.value);
+    assertEquals(numDocs, topDocs.totalHits.value());
     Map<String, String[]> fieldToSnippets =
         highlighter.highlightFields(fields.toArray(new String[numTvFields]), query, topDocs);
     String[] expectedSnippetsByDoc = new String[numDocs];
@@ -179,7 +207,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
 
   @Test(expected = IllegalArgumentException.class)
   public void testUserFailedToIndexOffsets() throws IOException {
-    FieldType fieldType = new FieldType(UHTestHelper.tvType); // note: it's indexed too
+    FieldType fieldType = new FieldType(tvType); // note: it's indexed too
     fieldType.setStoreTermVectorPositions(random().nextBoolean());
     fieldType.setStoreTermVectorOffsets(false);
 

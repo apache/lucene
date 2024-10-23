@@ -38,6 +38,7 @@ public class WindowsFS extends HandleTrackingFS {
   // ownership for
   // the path we rename ie. hardlinks will still resolve to the same key
   final Map<Object, Map<Path, Integer>> openFiles = new HashMap<>();
+
   // TODO: try to make this as realistic as possible... it depends e.g. how you
   // open files, if you map them, etc, if you can delete them (Uwe knows the rules)
 

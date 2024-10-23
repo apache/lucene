@@ -190,6 +190,7 @@ public class FieldTermStack {
     void setNext(TermInfo next) {
       this.next = next;
     }
+
     /** Returns the next TermInfo at this same position. This is a circular list! */
     public TermInfo getNext() {
       return next;

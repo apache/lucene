@@ -21,21 +21,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.Outputs;
@@ -81,8 +82,16 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   /** Initial terms format. */
   public static final int VERSION_START = 0;
 
+  /**
+   * Version that encode output as MSB VLong for better outputs sharing in FST, see GITHUB#12620.
+   */
+  public static final int VERSION_MSB_VLONG_OUTPUT = 1;
+
+  /** The version that specialize arc store for continuous label in FST. */
+  public static final int VERSION_FST_CONTINUOUS_ARCS = 2;
+
   /** Current terms format. */
-  public static final int VERSION_CURRENT = VERSION_START;
+  public static final int VERSION_CURRENT = VERSION_FST_CONTINUOUS_ARCS;
 
   /** Extension of terms index file */
   static final String TERMS_INDEX_EXTENSION = "tip";
@@ -105,7 +114,8 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   // produce DocsEnum on demand
   final PostingsReaderBase postingsReader;
 
-  private final Map<String, FieldReader> fieldMap;
+  private final FieldInfos fieldInfos;
+  private final IntObjectHashMap<FieldReader> fieldMap;
   private final List<String> fieldList;
 
   final String segment;
@@ -135,7 +145,9 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
 
       String indexName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
-      indexIn = state.directory.openInput(indexName, IOContext.LOAD);
+      indexIn =
+          state.directory.openInput(
+              indexName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
@@ -147,7 +159,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       // Read per-field details
       String metaName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_META_EXTENSION);
-      Map<String, FieldReader> fieldMap = null;
+      IntObjectHashMap<FieldReader> fieldMap = null;
       Throwable priorE = null;
       long indexLength = -1, termsLength = -1;
       try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
@@ -165,7 +177,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
           if (numFields < 0) {
             throw new CorruptIndexException("invalid numFields: " + numFields, metaIn);
           }
-          fieldMap = CollectionUtil.newHashMap(numFields);
+          fieldMap = new IntObjectHashMap<>(numFields);
           for (int i = 0; i < numFields; ++i) {
             final int field = metaIn.readVInt();
             final long numTerms = metaIn.readVLong();
@@ -188,6 +200,11 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
             final int docCount = metaIn.readVInt();
             BytesRef minTerm = readBytesRef(metaIn);
             BytesRef maxTerm = readBytesRef(metaIn);
+            if (numTerms == 1) {
+              assert maxTerm.equals(minTerm);
+              // save heap for edge case of a single term only so min == max
+              maxTerm = minTerm;
+            }
             if (docCount < 0
                 || docCount > state.segmentInfo.maxDoc()) { // #docs with field must be <= #docs
               throw new CorruptIndexException(
@@ -206,7 +223,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
             final long indexStartFP = metaIn.readVLong();
             FieldReader previous =
                 fieldMap.put(
-                    fieldInfo.name,
+                    fieldInfo.number,
                     new FieldReader(
                         this,
                         fieldInfo,
@@ -240,10 +257,9 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       // correct
       CodecUtil.retrieveChecksum(indexIn, indexLength);
       CodecUtil.retrieveChecksum(termsIn, termsLength);
-      List<String> fieldList = new ArrayList<>(fieldMap.keySet());
-      fieldList.sort(null);
+      fieldInfos = state.fieldInfos;
       this.fieldMap = fieldMap;
-      this.fieldList = Collections.unmodifiableList(fieldList);
+      this.fieldList = sortFieldNames(fieldMap, state.fieldInfos);
       success = true;
     } finally {
       if (!success) {
@@ -259,12 +275,21 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       throw new CorruptIndexException("invalid bytes length: " + numBytes, in);
     }
 
-    BytesRef bytes = new BytesRef();
+    BytesRef bytes = new BytesRef(numBytes);
     bytes.length = numBytes;
-    bytes.bytes = new byte[numBytes];
     in.readBytes(bytes.bytes, 0, numBytes);
 
     return bytes;
+  }
+
+  private static List<String> sortFieldNames(
+      IntObjectHashMap<FieldReader> fieldMap, FieldInfos fieldInfos) {
+    List<String> fieldNames = new ArrayList<>(fieldMap.size());
+    for (IntCursor fieldNumber : fieldMap.keys()) {
+      fieldNames.add(fieldInfos.fieldInfo(fieldNumber.value).name);
+    }
+    fieldNames.sort(null);
+    return Collections.unmodifiableList(fieldNames);
   }
 
   // for debugging
@@ -291,30 +316,13 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   @Override
   public Terms terms(String field) throws IOException {
     assert field != null;
-    return fieldMap.get(field);
+    FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
+    return fieldInfo == null ? null : fieldMap.get(fieldInfo.number);
   }
 
   @Override
   public int size() {
     return fieldMap.size();
-  }
-
-  // for debugging
-  String brToString(BytesRef b) {
-    if (b == null) {
-      return "null";
-    } else {
-      try {
-        return b.utf8ToString() + " " + b;
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable t) {
-        // If BytesRef isn't actually UTF8, or it's eg a
-        // prefix of UTF8 that ends mid-unicode-char, we
-        // fallback to hex:
-        return b.toString();
-      }
-    }
   }
 
   @Override

@@ -19,15 +19,15 @@ package org.apache.lucene.analysis.synonym;
 import java.io.IOException;
 import java.io.Reader;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -48,10 +48,13 @@ import org.apache.lucene.util.fst.Util;
 public class SynonymMap {
   /** for multiword support, you must separate words with this separator */
   public static final char WORD_SEPARATOR = 0;
+
   /** map&lt;input word, list&lt;ord&gt;&gt; */
   public final FST<BytesRef> fst;
+
   /** map&lt;ord, outputword&gt; */
   public final BytesRefHash words;
+
   /** maxHorizontalContext: maximum context we need on the tokenstream */
   public final int maxHorizontalContext;
 
@@ -88,7 +91,7 @@ public class SynonymMap {
     private static class MapEntry {
       boolean includeOrig;
       // we could sort for better sharing ultimately, but it could confuse people
-      ArrayList<Integer> ords = new ArrayList<>();
+      IntArrayList ords = new IntArrayList();
     }
 
     /**
@@ -219,15 +222,16 @@ public class SynonymMap {
     public SynonymMap build() throws IOException {
       ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       // TODO: are we using the best sharing options?
-      FSTCompiler<BytesRef> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE4, outputs);
+      FSTCompiler<BytesRef> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
 
       BytesRefBuilder scratch = new BytesRefBuilder();
       ByteArrayDataOutput scratchOutput = new ByteArrayDataOutput();
 
-      final Set<Integer> dedupSet;
+      final IntHashSet dedupSet;
 
       if (dedup) {
-        dedupSet = new HashSet<>();
+        dedupSet = new IntHashSet();
       } else {
         dedupSet = null;
       }
@@ -256,8 +260,7 @@ public class SynonymMap {
         int count = 0;
         for (int i = 0; i < numEntries; i++) {
           if (dedupSet != null) {
-            // box once
-            final Integer ent = output.ords.get(i);
+            int ent = output.ords.get(i);
             if (dedupSet.contains(ent)) {
               continue;
             }
@@ -287,7 +290,7 @@ public class SynonymMap {
         fstCompiler.add(Util.toUTF32(input, scratchIntsRef), scratch.toBytesRef());
       }
 
-      FST<BytesRef> fst = fstCompiler.compile();
+      FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       return new SynonymMap(fst, words, maxHorizontalContext);
     }
   }

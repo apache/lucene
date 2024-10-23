@@ -241,7 +241,7 @@ public class SortedNumericSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
+  public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     final FieldComparator<?> fieldComparator;
     // we can use sort optimization with points if selector is MIN or MAX,
     // because we can still build successful iterator over points in this case.
@@ -255,7 +255,7 @@ public class SortedNumericSortField extends SortField {
                 getField(),
                 (Integer) missingValue,
                 reverse,
-                enableSkipping && isMinOrMax) {
+                isMinOrMax ? pruning : Pruning.NONE) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {
@@ -273,7 +273,11 @@ public class SortedNumericSortField extends SortField {
       case FLOAT:
         fieldComparator =
             new FloatComparator(
-                numHits, getField(), (Float) missingValue, reverse, enableSkipping && isMinOrMax) {
+                numHits,
+                getField(),
+                (Float) missingValue,
+                reverse,
+                isMinOrMax ? pruning : Pruning.NONE) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {
@@ -291,7 +295,11 @@ public class SortedNumericSortField extends SortField {
       case LONG:
         fieldComparator =
             new LongComparator(
-                numHits, getField(), (Long) missingValue, reverse, enableSkipping && isMinOrMax) {
+                numHits,
+                getField(),
+                (Long) missingValue,
+                reverse,
+                isMinOrMax ? pruning : Pruning.NONE) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {
@@ -309,7 +317,11 @@ public class SortedNumericSortField extends SortField {
       case DOUBLE:
         fieldComparator =
             new DoubleComparator(
-                numHits, getField(), (Double) missingValue, reverse, enableSkipping && isMinOrMax) {
+                numHits,
+                getField(),
+                (Double) missingValue,
+                reverse,
+                isMinOrMax ? pruning : Pruning.NONE) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {

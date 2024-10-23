@@ -39,6 +39,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.geo.Circle;
 import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Polygon;
@@ -78,8 +79,8 @@ import org.apache.lucene.util.bkd.BKDWriter;
  * test focuses on geospatial (distance queries, polygon queries, etc) indexing and search, not any
  * underlying storage format or encoding: it merely supplies two hooks for the encoding so that
  * tests can be exact. The [stretch] goal is for this test to be so thorough in testing a new geo
- * impl that if this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some
- * bug in a given geo impl that this test fails to catch then this test needs to be improved!
+ * impl that if this test passes, then all Lucene tests should also pass. Ie, if there is some bug
+ * in a given geo impl that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
@@ -1642,18 +1643,18 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
   public void testSmallSetRect() throws Exception {
     TopDocs td = searchSmallSet(newRectQuery("point", 32.778, 32.779, -96.778, -96.777), 5);
-    assertEquals(4, td.totalHits.value);
+    assertEquals(4, td.totalHits.value());
   }
 
   public void testSmallSetDateline() throws Exception {
     TopDocs td = searchSmallSet(newRectQuery("point", -45.0, -44.0, 179.0, -179.0), 20);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
   }
 
   public void testSmallSetMultiValued() throws Exception {
     TopDocs td = searchSmallSet(newRectQuery("point", 32.755, 32.776, -96.454, -96.770), 20);
     // 3 single valued docs + 2 multi-valued docs
-    assertEquals(5, td.totalHits.value);
+    assertEquals(5, td.totalHits.value());
   }
 
   public void testSmallSetWholeMap() throws Exception {
@@ -1666,7 +1667,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
                 GeoUtils.MIN_LON_INCL,
                 GeoUtils.MAX_LON_INCL),
             20);
-    assertEquals(24, td.totalHits.value);
+    assertEquals(24, td.totalHits.value());
   }
 
   public void testSmallSetPoly() throws Exception {
@@ -1690,7 +1691,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
                       -96.6041564, -96.7449188, -96.76826477, -96.7682647
                     })),
             5);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
   }
 
   public void testSmallSetPolyWholeMap() throws Exception {
@@ -1714,18 +1715,18 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
                       GeoUtils.MIN_LON_INCL
                     })),
             20);
-    assertEquals("testWholeMap failed", 24, td.totalHits.value);
+    assertEquals("testWholeMap failed", 24, td.totalHits.value());
   }
 
   public void testSmallSetDistance() throws Exception {
     TopDocs td =
         searchSmallSet(newDistanceQuery("point", 32.94823588839368, -96.4538113027811, 6000), 20);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
   }
 
   public void testSmallSetTinyDistance() throws Exception {
     TopDocs td = searchSmallSet(newDistanceQuery("point", 40.720611, -73.998776, 1), 20);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
   }
 
   /** see https://issues.apache.org/jira/browse/LUCENE-6905 */
@@ -1734,7 +1735,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
         searchSmallSet(
             newDistanceQuery("point", -88.56029371730983, -177.23537676036358, 7757.999232959935),
             20);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
   }
 
   /** Explicitly large */
@@ -1742,13 +1743,50 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     TopDocs td =
         searchSmallSet(
             newDistanceQuery("point", 32.94823588839368, -96.4538113027811, 6000000), 20);
-    assertEquals(16, td.totalHits.value);
+    assertEquals(16, td.totalHits.value());
   }
 
   public void testSmallSetDistanceDateline() throws Exception {
     TopDocs td =
         searchSmallSet(
             newDistanceQuery("point", 32.94823588839368, -179.9538113027811, 120000), 20);
-    assertEquals(3, td.totalHits.value);
+    assertEquals(3, td.totalHits.value());
+  }
+
+  public void testNarrowPolygonCloseToNorthPole() throws Exception {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setMergeScheduler(new SerialMergeScheduler());
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, iwc);
+
+    // index point closes to Lat 90
+    Document doc = new Document();
+    final int base = Integer.MAX_VALUE;
+    addPointToDoc(
+        FIELD_NAME,
+        doc,
+        GeoEncodingUtils.decodeLatitude(base - 2),
+        GeoEncodingUtils.decodeLongitude(base - 2));
+    w.addDocument(doc);
+    w.flush();
+
+    // query testing
+    final IndexReader reader = DirectoryReader.open(w);
+    final IndexSearcher s = newSearcher(reader);
+
+    double minLat = GeoEncodingUtils.decodeLatitude(base - 3);
+    double maxLat = GeoEncodingUtils.decodeLatitude(base);
+    double minLon = GeoEncodingUtils.decodeLongitude(base - 3);
+    double maxLon = GeoEncodingUtils.decodeLongitude(base);
+
+    Query query =
+        newPolygonQuery(
+            FIELD_NAME,
+            new Polygon(
+                new double[] {minLat, minLat, maxLat, maxLat, minLat},
+                new double[] {minLon, maxLon, maxLon, minLon, minLon}));
+
+    assertEquals(1, s.count(query));
+    IOUtils.close(w, reader, dir);
   }
 }

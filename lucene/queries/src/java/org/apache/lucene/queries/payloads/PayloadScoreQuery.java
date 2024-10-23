@@ -36,9 +36,14 @@ import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.util.BytesRef;
 
-/** A Query class that uses a {@link PayloadFunction} to modify the score of a wrapped SpanQuery */
+/**
+ * A Query class that uses a {@link PayloadFunction} to modify the score of a wrapped {@link
+ * SpanQuery}. A wrapped span query is used due to the way that payload values are indexed, see
+ * {@link PostingsEnum#PAYLOADS}.
+ */
 public class PayloadScoreQuery extends SpanQuery {
 
   private final SpanQuery wrappedQuery;
@@ -156,17 +161,6 @@ public class PayloadScoreQuery extends SpanQuery {
     }
 
     @Override
-    public SpanScorer scorer(LeafReaderContext context) throws IOException {
-      Spans spans = getSpans(context, Postings.PAYLOADS);
-      if (spans == null) {
-        return null;
-      }
-      LeafSimScorer docScorer = innerWeight.getSimScorer(context);
-      PayloadSpans payloadSpans = new PayloadSpans(spans, decoder);
-      return new PayloadSpanScorer(this, payloadSpans, docScorer);
-    }
-
-    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return innerWeight.isCacheable(ctx);
     }
@@ -181,13 +175,25 @@ public class PayloadScoreQuery extends SpanQuery {
       Explanation payloadExpl = scorer.getPayloadExplanation();
 
       if (includeSpanScore) {
-        SpanWeight innerWeight = ((PayloadSpanWeight) scorer.getWeight()).innerWeight;
+        SpanWeight innerWeight = this.innerWeight;
         Explanation innerExpl = innerWeight.explain(context, doc);
         return Explanation.match(
             scorer.scoreCurrentDoc(), "PayloadSpanQuery, product of:", innerExpl, payloadExpl);
       }
 
       return scorer.getPayloadExplanation();
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      Spans spans = getSpans(context, Postings.PAYLOADS);
+      if (spans == null) {
+        return null;
+      }
+      LeafSimScorer docScorer = innerWeight.getSimScorer(context);
+      PayloadSpans payloadSpans = new PayloadSpans(spans, decoder);
+      final var scorer = new PayloadSpanScorer(payloadSpans, docScorer);
+      return new DefaultScorerSupplier(scorer);
     }
   }
 
@@ -242,9 +248,8 @@ public class PayloadScoreQuery extends SpanQuery {
 
     private final PayloadSpans spans;
 
-    private PayloadSpanScorer(SpanWeight weight, PayloadSpans spans, LeafSimScorer docScorer)
-        throws IOException {
-      super(weight, spans, docScorer);
+    private PayloadSpanScorer(PayloadSpans spans, LeafSimScorer docScorer) throws IOException {
+      super(spans, docScorer);
       this.spans = spans;
     }
 

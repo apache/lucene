@@ -67,7 +67,7 @@ public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
         assertAllBetween(last2, j, bd2, ids);
         last2 = j + 1;
       }
-      assertEquals(j + 1, queue.numGlobalTermDeletes());
+      assertEquals(uniqueValues.size(), queue.numGlobalTermDeletes());
     }
     assertEquals(uniqueValues, bd1.deleteTerms.keySet());
     assertEquals(uniqueValues, bd2.deleteTerms.keySet());
@@ -84,8 +84,7 @@ public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
 
   private void assertAllBetween(int start, int end, BufferedUpdates deletes, Integer[] ids) {
     for (int i = start; i <= end; i++) {
-      assertEquals(
-          Integer.valueOf(end), deletes.deleteTerms.get(new Term("id", ids[i].toString())));
+      assertEquals(end, deletes.deleteTerms.get(new Term("id", ids[i].toString())));
     }
   }
 

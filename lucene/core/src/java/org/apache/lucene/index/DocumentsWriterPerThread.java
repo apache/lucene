@@ -21,14 +21,19 @@ import java.text.NumberFormat;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
@@ -44,7 +49,7 @@ import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
-final class DocumentsWriterPerThread implements Accountable {
+final class DocumentsWriterPerThread implements Accountable, Lock {
 
   private Throwable abortingException;
 
@@ -134,9 +139,11 @@ final class DocumentsWriterPerThread implements Accountable {
   private final ReentrantLock lock = new ReentrantLock();
   private int[] deleteDocIDs = new int[0];
   private int numDeletedDocIds = 0;
+  private final int indexMajorVersionCreated;
+  private final IndexingChain.ReservedField<NumericDocValuesField> parentField;
 
   DocumentsWriterPerThread(
-      int indexVersionCreated,
+      int indexMajorVersionCreated,
       String segmentName,
       Directory directoryOrig,
       Directory directory,
@@ -145,6 +152,7 @@ final class DocumentsWriterPerThread implements Accountable {
       FieldInfos.Builder fieldInfos,
       AtomicLong pendingNumDocs,
       boolean enableTestPoints) {
+    this.indexMajorVersionCreated = indexMajorVersionCreated;
     this.directory = new TrackingDirectoryWrapper(directory);
     this.fieldInfos = fieldInfos;
     this.indexWriterConfig = indexWriterConfig;
@@ -164,6 +172,7 @@ final class DocumentsWriterPerThread implements Accountable {
             segmentName,
             -1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -182,12 +191,19 @@ final class DocumentsWriterPerThread implements Accountable {
     this.enableTestPoints = enableTestPoints;
     indexingChain =
         new IndexingChain(
-            indexVersionCreated,
+            indexMajorVersionCreated,
             segmentInfo,
             this.directory,
             fieldInfos,
             indexWriterConfig,
             this::onAbortingException);
+    if (indexWriterConfig.getParentField() != null) {
+      this.parentField =
+          indexingChain.markAsReserved(
+              new NumericDocValuesField(indexWriterConfig.getParentField(), -1));
+    } else {
+      this.parentField = null;
+    }
   }
 
   final void testPoint(String message) {
@@ -230,7 +246,23 @@ final class DocumentsWriterPerThread implements Accountable {
       final int docsInRamBefore = numDocsInRAM;
       boolean allDocsIndexed = false;
       try {
-        for (Iterable<? extends IndexableField> doc : docs) {
+        final Iterator<? extends Iterable<? extends IndexableField>> iterator = docs.iterator();
+        while (iterator.hasNext()) {
+          Iterable<? extends IndexableField> doc = iterator.next();
+          if (parentField != null) {
+            if (iterator.hasNext() == false) {
+              doc = addParentField(doc, parentField);
+            }
+          } else if (segmentInfo.getIndexSort() != null
+              && iterator.hasNext()
+              && indexMajorVersionCreated >= Version.LUCENE_10_0_0.major) {
+            // sort is configured but parent field is missing, yet we have a doc-block
+            // yet we must not fail if this index was created in an earlier version where this
+            // behavior was permitted.
+            throw new IllegalArgumentException(
+                "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#setParentField");
+          }
+
           // Even on exception, the document is still added (but marked
           // deleted), so we don't need to un-reserve at that point.
           // Aborting exceptions will actually "lose" more than one
@@ -244,6 +276,10 @@ final class DocumentsWriterPerThread implements Accountable {
             onNewDocOnRAM.run();
           }
         }
+        final int numDocs = numDocsInRAM - docsInRamBefore;
+        if (numDocs > 1) {
+          segmentInfo.setHasBlocks();
+        }
         allDocsIndexed = true;
         return finishDocuments(deleteNode, docsInRamBefore);
       } finally {
@@ -256,6 +292,34 @@ final class DocumentsWriterPerThread implements Accountable {
     } finally {
       maybeAbort("updateDocuments", flushNotifications);
     }
+  }
+
+  private Iterable<? extends IndexableField> addParentField(
+      Iterable<? extends IndexableField> doc, IndexableField parentField) {
+    return () -> {
+      final Iterator<? extends IndexableField> first = doc.iterator();
+      return new Iterator<>() {
+        IndexableField additionalField = parentField;
+
+        @Override
+        public boolean hasNext() {
+          return additionalField != null || first.hasNext();
+        }
+
+        @Override
+        public IndexableField next() {
+          if (additionalField != null) {
+            IndexableField field = additionalField;
+            additionalField = null;
+            return field;
+          }
+          if (first.hasNext()) {
+            return first.next();
+          }
+          throw new NoSuchElementException();
+        }
+      };
+    };
   }
 
   private long finishDocuments(DocumentsWriterDeleteQueue.Node<?> deleteNode, int docIdUpTo) {
@@ -423,7 +487,7 @@ final class DocumentsWriterPerThread implements Accountable {
         infoStream.message(
             "DWPT",
             "new segment has "
-                + (flushState.fieldInfos.hasVectors() ? "vectors" : "no vectors")
+                + (flushState.fieldInfos.hasTermVectors() ? "vectors" : "no vectors")
                 + "; "
                 + (flushState.fieldInfos.hasNorms() ? "norms" : "no norms")
                 + "; "
@@ -636,7 +700,7 @@ final class DocumentsWriterPerThread implements Accountable {
     return "DocumentsWriterPerThread [pendingDeletes="
         + pendingUpdates
         + ", segment="
-        + (segmentInfo != null ? segmentInfo.name : "null")
+        + segmentInfo.name
         + ", aborted="
         + aborted
         + ", numDocsInRAM="
@@ -652,6 +716,10 @@ final class DocumentsWriterPerThread implements Accountable {
   /** Returns true iff this DWPT is marked as flush pending */
   boolean isFlushPending() {
     return flushPending.get() == Boolean.TRUE;
+  }
+
+  boolean isQueueAdvanced() {
+    return deleteQueue.isAdvanced();
   }
 
   /** Sets this DWPT as flush pending. This can only be set once. */
@@ -690,23 +758,24 @@ final class DocumentsWriterPerThread implements Accountable {
     return delta;
   }
 
-  /**
-   * Locks this DWPT for exclusive access.
-   *
-   * @see ReentrantLock#lock()
-   */
-  void lock() {
+  @Override
+  public void lock() {
     lock.lock();
   }
 
-  /**
-   * Acquires the DWPT's lock only if it is not held by another thread at the time of invocation.
-   *
-   * @return true if the lock was acquired.
-   * @see ReentrantLock#tryLock()
-   */
-  boolean tryLock() {
+  @Override
+  public void lockInterruptibly() throws InterruptedException {
+    lock.lockInterruptibly();
+  }
+
+  @Override
+  public boolean tryLock() {
     return lock.tryLock();
+  }
+
+  @Override
+  public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+    return lock.tryLock(time, unit);
   }
 
   /**
@@ -718,13 +787,14 @@ final class DocumentsWriterPerThread implements Accountable {
     return lock.isHeldByCurrentThread();
   }
 
-  /**
-   * Unlocks the DWPT's lock
-   *
-   * @see ReentrantLock#unlock()
-   */
-  void unlock() {
+  @Override
+  public void unlock() {
     lock.unlock();
+  }
+
+  @Override
+  public Condition newCondition() {
+    throw new UnsupportedOperationException();
   }
 
   /** Returns <code>true</code> iff this DWPT has been flushed */

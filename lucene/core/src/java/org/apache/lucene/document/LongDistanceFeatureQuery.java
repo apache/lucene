@@ -205,14 +205,12 @@ final class LongDistanceFeatureQuery extends Query {
         final SortedNumericDocValues multiDocValues =
             DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues docValues = selectValues(multiDocValues);
-
-        final Weight weight = this;
         return new ScorerSupplier() {
 
           @Override
           public Scorer get(long leadCost) throws IOException {
             return new DistanceScorer(
-                weight, context.reader().maxDoc(), leadCost, boost, pointValues, docValues);
+                context.reader().maxDoc(), leadCost, boost, pointValues, docValues);
           }
 
           @Override
@@ -220,15 +218,6 @@ final class LongDistanceFeatureQuery extends Query {
             return docValues.cost();
           }
         };
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
     };
   }
@@ -245,13 +234,11 @@ final class LongDistanceFeatureQuery extends Query {
     private long maxDistance = Long.MAX_VALUE;
 
     protected DistanceScorer(
-        Weight weight,
         int maxDoc,
         long leadCost,
         float boost,
         PointValues pointValues,
         NumericDocValues docValues) {
-      super(weight);
       this.maxDoc = maxDoc;
       this.leadCost = leadCost;
       this.boost = boost;
@@ -436,11 +423,10 @@ final class LongDistanceFeatureQuery extends Query {
           };
 
       final long currentQueryCost = Math.min(leadCost, it.cost());
-      final long threshold = currentQueryCost >>> 3;
-      long estimatedNumberOfMatches =
-          pointValues.estimatePointCount(visitor); // runs in O(log(numPoints))
       // TODO: what is the right factor compared to the current disi? Is 8 optimal?
-      if (estimatedNumberOfMatches >= threshold) {
+      final long threshold = currentQueryCost >>> 3;
+      if (PointValues.isEstimatedPointCountGreaterThanOrEqualTo(
+          visitor, pointValues.getPointTree(), threshold)) {
         // the new range is not selective enough to be worth materializing
         return;
       }

@@ -43,6 +43,7 @@ import org.apache.lucene.util.FixedBitSet;
 public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryReader {
   private final String field;
   private final CacheHelper readerCacheHelper;
+
   /**
    * Creates a new soft deletes wrapper.
    *
@@ -140,6 +141,9 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
       bits.set(0, reader.maxDoc());
     }
     int numSoftDeletes = PendingSoftDeletes.applySoftDeletes(iterator, bits);
+    if (numSoftDeletes == 0) {
+      return reader;
+    }
     int numDeletes = reader.numDeletedDocs() + numSoftDeletes;
     int numDocs = reader.maxDoc() - numDeletes;
     assert assertDocCounts(numDocs, numSoftDeletes, reader);

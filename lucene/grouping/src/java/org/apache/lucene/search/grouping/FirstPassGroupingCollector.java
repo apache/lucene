@@ -25,6 +25,7 @@ import java.util.TreeSet;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
@@ -93,7 +94,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
       // use topNGroups + 1 so we have a spare slot to use for comparing (tracked by
       // this.spareSlot):
-      comparators[i] = sortField.getComparator(topNGroups + 1, false);
+      comparators[i] = sortField.getComparator(topNGroups + 1, Pruning.NONE);
       reversed[i] = sortField.getReverse() ? -1 : 1;
     }
 

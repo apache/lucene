@@ -18,14 +18,12 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -46,9 +44,6 @@ class DrillSidewaysScorer extends BulkScorer {
       (a, b) -> Float.compare(a.matchCost, b.matchCost);
 
   // private static boolean DEBUG = false;
-
-  private final Collector drillDownCollector;
-  private LeafCollector drillDownLeafCollector;
 
   private final DocsAndCost[] dims;
 
@@ -71,7 +66,6 @@ class DrillSidewaysScorer extends BulkScorer {
   DrillSidewaysScorer(
       LeafReaderContext context,
       Scorer baseScorer,
-      Collector drillDownCollector,
       DocsAndCost[] dims,
       boolean scoreSubDocsAtOnce) {
     this.dims = dims;
@@ -84,7 +78,6 @@ class DrillSidewaysScorer extends BulkScorer {
     } else {
       this.baseApproximation = baseIterator;
     }
-    this.drillDownCollector = drillDownCollector;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
 
@@ -101,18 +94,6 @@ class DrillSidewaysScorer extends BulkScorer {
     }
     if (maxDoc != Integer.MAX_VALUE) {
       throw new IllegalArgumentException("maxDoc must be Integer.MAX_VALUE");
-    }
-    // if (DEBUG) {
-    //  System.out.println("\nscore: reader=" + context.reader());
-    // }
-    // System.out.println("score r=" + context.reader());
-    if (drillDownCollector != null) {
-      drillDownLeafCollector = drillDownCollector.getLeafCollector(context);
-    } else {
-      drillDownLeafCollector = null;
-    }
-    for (DocsAndCost dim : dims) {
-      dim.sidewaysLeafCollector = dim.sidewaysCollector.getLeafCollector(context);
     }
 
     // some scorers, eg ReqExlScorer, can hit NPE if cost is called after nextDoc
@@ -145,22 +126,30 @@ class DrillSidewaysScorer extends BulkScorer {
     }
     */
 
-    if (scoreSubDocsAtOnce || baseQueryCost < drillDownCost / 10) {
-      // System.out.println("queryFirst: baseScorer=" + baseScorer + " disis.length=" + disis.length
-      // + " bits.length=" + bits.length);
-      // position base scorer to the first matching doc
-      baseApproximation.nextDoc();
-      doQueryFirstScoring(acceptDocs, collector, dims);
-    } else if (numDims > 1 && drillDownAdvancedCost < baseQueryCost / 10) {
-      // System.out.println("drillDownAdvance");
-      // position base scorer to the first matching doc
-      baseIterator.nextDoc();
-      doDrillDownAdvanceScoring(acceptDocs, collector, dims);
-    } else {
-      // System.out.println("union");
-      // position base scorer to the first matching doc
-      baseIterator.nextDoc();
-      doUnionScoring(acceptDocs, collector, dims);
+    try {
+      if (scoreSubDocsAtOnce || baseQueryCost < drillDownCost / 10) {
+        // System.out.println("queryFirst: baseScorer=" + baseScorer + " disis.length=" +
+        // disis.length
+        // + " bits.length=" + bits.length);
+        // position base scorer to the first matching doc
+        baseApproximation.nextDoc();
+        doQueryFirstScoring(acceptDocs, collector, dims);
+      } else if (numDims > 1 && drillDownAdvancedCost < baseQueryCost / 10) {
+        // System.out.println("drillDownAdvance");
+        // position base scorer to the first matching doc
+        baseIterator.nextDoc();
+        doDrillDownAdvanceScoring(acceptDocs, collector, dims);
+      } else {
+        // System.out.println("union");
+        // position base scorer to the first matching doc
+        baseIterator.nextDoc();
+        doUnionScoring(acceptDocs, collector, dims);
+      }
+    } finally {
+      // TODO: What's the right behavior when a collector throws CollectionTerminatedException?
+      // Should we stop scoring immediately (what we're doing now), or should we keep scoring until
+      // all collectors throw? Should users be able to specify somehow?
+      finish(dims);
     }
 
     return Integer.MAX_VALUE;
@@ -199,7 +188,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
       docID = baseApproximation.nextDoc();
     }
-    finish(collector, Collections.singleton(dim));
   }
 
   /**
@@ -337,8 +325,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
       docID = baseApproximation.nextDoc();
     }
-
-    finish(collector, sidewaysDims);
   }
 
   private static int advanceIfBehind(int docID, DocIdSetIterator iterator) throws IOException {
@@ -557,7 +543,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
       nextChunkStart += CHUNK;
     }
-    finish(collector, Arrays.asList(dims));
   }
 
   private void doUnionScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
@@ -712,8 +697,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
       nextChunkStart += CHUNK;
     }
-
-    finish(collector, Arrays.asList(dims));
   }
 
   private void collectHit(LeafCollector collector, DocsAndCost[] dims) throws IOException {
@@ -722,9 +705,6 @@ class DrillSidewaysScorer extends BulkScorer {
     // }
 
     collector.collect(collectDocID);
-    if (drillDownCollector != null) {
-      drillDownLeafCollector.collect(collectDocID);
-    }
 
     // TODO: we could "fix" faceting of the sideways counts
     // to do this "union" (of the drill down hits) in the
@@ -738,9 +718,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void collectHit(LeafCollector collector, DocsAndCost dim) throws IOException {
     collector.collect(collectDocID);
-    if (drillDownCollector != null) {
-      drillDownLeafCollector.collect(collectDocID);
-    }
 
     // Tally sideways count:
     dim.sidewaysLeafCollector.collect(collectDocID);
@@ -748,9 +725,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void collectHit(LeafCollector collector, List<DocsAndCost> dims) throws IOException {
     collector.collect(collectDocID);
-    if (drillDownCollector != null) {
-      drillDownLeafCollector.collect(collectDocID);
-    }
 
     // Tally sideways counts:
     for (DocsAndCost dim : dims) {
@@ -765,11 +739,10 @@ class DrillSidewaysScorer extends BulkScorer {
     sidewaysCollector.collect(collectDocID);
   }
 
-  private void finish(LeafCollector collector, Collection<DocsAndCost> dims) throws IOException {
-    collector.finish();
-    if (drillDownLeafCollector != null) {
-      drillDownLeafCollector.finish();
-    }
+  private void finish(DocsAndCost[] dims) throws IOException {
+    // Note: We _only_ call #finish on the facets collectors we're managing here, but not the
+    // "main" collector. This is because IndexSearcher handles calling #finish on the main
+    // collector.
     for (DocsAndCost dim : dims) {
       dim.sidewaysLeafCollector.finish();
     }
@@ -777,9 +750,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void setScorer(LeafCollector mainCollector, Scorable scorer) throws IOException {
     mainCollector.setScorer(scorer);
-    if (drillDownLeafCollector != null) {
-      drillDownLeafCollector.setScorer(scorer);
-    }
     for (DocsAndCost dim : dims) {
       dim.sidewaysLeafCollector.setScorer(scorer);
     }
@@ -805,10 +775,9 @@ class DrillSidewaysScorer extends BulkScorer {
     // two-phase confirmation, or null if the approximation is accurate
     final TwoPhaseIterator twoPhase;
     final float matchCost;
-    final Collector sidewaysCollector;
-    LeafCollector sidewaysLeafCollector;
+    final LeafCollector sidewaysLeafCollector;
 
-    DocsAndCost(Scorer scorer, Collector sidewaysCollector) {
+    DocsAndCost(Scorer scorer, LeafCollector sidewaysLeafCollector) {
       final TwoPhaseIterator twoPhase = scorer.twoPhaseIterator();
       if (twoPhase == null) {
         this.approximation = scorer.iterator();
@@ -820,7 +789,7 @@ class DrillSidewaysScorer extends BulkScorer {
         this.matchCost = twoPhase.matchCost();
       }
       this.cost = approximation.cost();
-      this.sidewaysCollector = sidewaysCollector;
+      this.sidewaysLeafCollector = sidewaysLeafCollector;
     }
   }
 }

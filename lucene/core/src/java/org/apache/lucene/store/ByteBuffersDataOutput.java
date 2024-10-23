@@ -31,14 +31,13 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.UnicodeUtil;
 
 /** A {@link DataOutput} storing data in a list of {@link ByteBuffer}s. */
 public final class ByteBuffersDataOutput extends DataOutput implements Accountable {
   private static final ByteBuffer EMPTY = ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
-  ;
+
   private static final byte[] EMPTY_BYTE_ARRAY = {};
 
   public static final IntFunction<ByteBuffer> ALLOCATE_BB_ON_HEAP = ByteBuffer::allocate;
@@ -81,11 +80,13 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
 
   /** Default {@code minBitsPerBlock} */
   public static final int DEFAULT_MIN_BITS_PER_BLOCK = 10; // 1024 B
+
   /** Default {@code maxBitsPerBlock} */
   public static final int DEFAULT_MAX_BITS_PER_BLOCK = 26; //   64 MB
 
   /** Smallest {@code minBitsPerBlock} allowed */
   public static final int LIMIT_MIN_BITS_PER_BLOCK = 1;
+
   /** Largest {@code maxBitsPerBlock} allowed */
   public static final int LIMIT_MAX_BITS_PER_BLOCK = 31;
 
@@ -239,7 +240,6 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     } else {
       for (ByteBuffer bb : blocks) {
         bb = bb.asReadOnlyBuffer().flip().order(ByteOrder.LITTLE_ENDIAN);
-        ;
         result.add(bb);
       }
     }
@@ -414,12 +414,17 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   @Override
   public void writeString(String v) {
     try {
-      if (v.length() <= MAX_CHARS_PER_WINDOW) {
-        final BytesRef utf8 = new BytesRef(v);
-        writeVInt(utf8.length);
-        writeBytes(utf8.bytes, utf8.offset, utf8.length);
+      final int charCount = v.length();
+      final int byteLen = UnicodeUtil.calcUTF16toUTF8Length(v, 0, charCount);
+      writeVInt(byteLen);
+      ByteBuffer currentBlock = this.currentBlock;
+      if (currentBlock.hasArray() && currentBlock.remaining() >= byteLen) {
+        int startingPos = currentBlock.position();
+        UnicodeUtil.UTF16toUTF8(
+            v, 0, charCount, currentBlock.array(), currentBlock.arrayOffset() + startingPos);
+        currentBlock.position(startingPos + byteLen);
       } else {
-        writeLongString(v);
+        writeLongString(byteLen, v);
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -499,7 +504,6 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
 
     final int requiredBlockSize = 1 << blockBits;
     currentBlock = blockAllocate.apply(requiredBlockSize).order(ByteOrder.LITTLE_ENDIAN);
-    ;
     assert currentBlock.capacity() == requiredBlockSize;
     blocks.add(currentBlock);
     ramBytesUsed += RamUsageEstimator.NUM_BYTES_OBJECT_REF + currentBlock.capacity();
@@ -541,9 +545,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   }
 
   /** Writes a long string in chunks */
-  private void writeLongString(final String s) throws IOException {
-    final int byteLen = UnicodeUtil.calcUTF16toUTF8Length(s, 0, s.length());
-    writeVInt(byteLen);
+  private void writeLongString(int byteLen, final String s) throws IOException {
     final byte[] buf =
         new byte[Math.min(byteLen, UnicodeUtil.MAX_UTF8_BYTES_PER_CHAR * MAX_CHARS_PER_WINDOW)];
     for (int i = 0, end = s.length(); i < end; ) {

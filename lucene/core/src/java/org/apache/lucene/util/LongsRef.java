@@ -30,8 +30,10 @@ public final class LongsRef implements Comparable<LongsRef>, Cloneable {
 
   /** The contents of the LongsRef. Should never be {@code null}. */
   public long[] longs;
+
   /** Offset of first valid long. */
   public int offset;
+
   /** Length of used longs. */
   public int length;
 

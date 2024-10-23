@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.store.FilterIndexOutput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Intentionally slow IndexOutput for testing. */
@@ -115,6 +116,7 @@ public class ThrottledIndexOutput extends FilterIndexOutput {
     return 0;
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private static void sleep(long ms) {
     if (ms <= 0) {
       return;

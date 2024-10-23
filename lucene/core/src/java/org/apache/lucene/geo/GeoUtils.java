@@ -43,10 +43,13 @@ public final class GeoUtils {
 
   /** min longitude value in radians */
   public static final double MIN_LON_RADIANS = Math.toRadians(MIN_LON_INCL);
+
   /** min latitude value in radians */
   public static final double MIN_LAT_RADIANS = Math.toRadians(MIN_LAT_INCL);
+
   /** max longitude value in radians */
   public static final double MAX_LON_RADIANS = Math.toRadians(MAX_LON_INCL);
+
   /** max latitude value in radians */
   public static final double MAX_LAT_RADIANS = Math.toRadians(MAX_LAT_INCL);
 

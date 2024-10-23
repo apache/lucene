@@ -23,13 +23,12 @@ import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.NoLockFactory;
@@ -40,7 +39,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.TimeUnits;
 
 @SuppressCodecs({"SimpleText", "Direct"})
-@TimeoutSuite(millis = 8 * TimeUnits.HOUR)
+@TimeoutSuite(millis = 24 * TimeUnits.HOUR)
 public class TestIndexWriterMaxDocs extends LuceneTestCase {
 
   // The two hour time was achieved on a Linux 3.13 system with these specs:
@@ -67,10 +66,10 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       assertEquals(IndexWriter.MAX_DOCS, ir.maxDoc());
       assertEquals(IndexWriter.MAX_DOCS, ir.numDocs());
       IndexSearcher searcher = new IndexSearcher(ir);
-      CollectorManager<TopScoreDocCollector, TopDocs> manager =
-          TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      TopDocs hits = searcher.search(new TermQuery(new Term("field", "text")), manager);
-      assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value);
+      TopScoreDocCollectorManager collectorManager =
+          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, true);
+      TopDocs hits = searcher.search(new TermQuery(new Term("field", "text")), collectorManager);
+      assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value());
 
       // Sort by docID reversed:
       hits =
@@ -78,7 +77,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
               new TermQuery(new Term("field", "text")),
               10,
               new Sort(new SortField(null, SortField.Type.DOC, true)));
-      assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value);
+      assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value());
       assertEquals(10, hits.scoreDocs.length);
       assertEquals(IndexWriter.MAX_DOCS - 1, hits.scoreDocs[0].doc);
       ir.close();

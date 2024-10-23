@@ -24,7 +24,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.facet.DrillDownQuery;
+import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
@@ -38,9 +41,12 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BitUtil;
@@ -100,6 +106,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
           doc.add(new FloatAssociationFacetField(0.2f, "float", "b"));
         }
       }
+      doc.add(new TextField("match", "yes", Field.Store.NO));
       writer.addDocument(config.build(taxoWriter, doc));
     }
 
@@ -141,6 +148,17 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         }
       }
 
+      doc.add(new TextField("match", "yes", Field.Store.NO));
+      writer.addDocument(config.build(taxoWriter, doc));
+    }
+
+    // Add more random labels and documents to randomly make the test run on sparse/dense
+    // aggregation values.
+    count = random().nextInt(10_000);
+    for (int i = 0; i < count; i++) {
+      Document doc = new Document();
+      doc.add(new FacetField("random_dim_" + i, "path"));
+      doc.add(new TextField("match", "no", Field.Store.NO));
       writer.addDocument(config.build(taxoWriter, doc));
     }
 
@@ -193,7 +211,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   public void testIntSumAssociation() throws Exception {
 
     IndexSearcher searcher = newSearcher(reader);
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc =
+        searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetIntAssociations(
@@ -207,9 +226,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         new String[0],
         2,
         -1,
-        new LabelAndValue[] {
-          new LabelAndValue("a", 200), new LabelAndValue("b", 150),
-        });
+        Map.of("a", 100, "b", 50),
+        new LabelAndValue("a", 200),
+        new LabelAndValue("b", 150));
     assertEquals(
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
@@ -223,10 +242,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
   public void testIntAssociationRandom() throws Exception {
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc =
+        searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
 
     Map<String, Integer> expected;
     Facets facets;
@@ -274,7 +292,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
   public void testFloatSumAssociation() throws Exception {
     IndexSearcher searcher = newSearcher(reader);
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc =
+        searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetFloatAssociations(
@@ -288,10 +307,10 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         "float",
         new String[0],
         2,
-        -1.0f,
-        new LabelAndValue[] {
-          new LabelAndValue("a", 50.0f), new LabelAndValue("b", 9.999995f),
-        });
+        -1f,
+        Map.of("a", 100, "b", 50),
+        new LabelAndValue("a", 50.0f),
+        new LabelAndValue("b", 9.999995f));
 
     assertEquals(
         "Wrong count for category 'a'!",
@@ -307,15 +326,15 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     // test getAllDims and getTopDims
     List<FacetResult> topDims = facets.getTopDims(10, 10);
     List<FacetResult> allDims = facets.getAllDims(10);
-    assertEquals(topDims, allDims);
+    assertFloatFacetResultsEqual(topDims, allDims);
   }
 
   public void testFloatAssociationRandom() throws Exception {
-
-    FacetsCollector fc = new FacetsCollector();
-
-    IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    // disabling search concurrency because validateFloats relies on ordering which requires
+    // sequential execution
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
+    FacetsCollector fc =
+        searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
 
     Map<String, Float> expected;
     Facets facets;
@@ -339,7 +358,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     // test getAllDims and getTopDims
     List<FacetResult> topDims = facets.getTopDims(10, 10);
     List<FacetResult> allDims = facets.getAllDims(10);
-    assertEquals(topDims, allDims);
+    assertFloatFacetResultsEqual(topDims, allDims);
 
     // MAX:
     facets =
@@ -360,7 +379,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     // test getAllDims and getTopDims
     topDims = facets.getTopDims(10, 10);
     allDims = facets.getAllDims(10);
-    assertEquals(topDims, allDims);
+    assertFloatFacetResultsEqual(topDims, allDims);
   }
 
   /**
@@ -369,7 +388,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
    */
   public void testIntAndFloatAssocation() throws Exception {
     IndexSearcher searcher = newSearcher(reader);
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc =
+        searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetFloatAssociations(
@@ -396,27 +416,16 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
   public void testWrongIndexFieldName() throws Exception {
     IndexSearcher searcher = newSearcher(reader);
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc =
+        searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());
     Facets facets =
         new TaxonomyFacetFloatAssociations(
             "wrong_field", taxoReader, config, fc, AssociationAggregationFunction.SUM);
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getSpecificValue("float");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("float"));
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(10, "float");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(10, "float"));
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllChildren("float");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllChildren("float"));
   }
 
   public void testMixedTypesInSameIndexField() throws Exception {
@@ -431,10 +440,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     doc.add(new IntAssociationFacetField(14, "a", "x"));
     doc.add(new FloatAssociationFacetField(55.0f, "b", "y"));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          writer.addDocument(config.build(taxoWriter, doc));
-        });
+        IllegalArgumentException.class, () -> writer.addDocument(config.build(taxoWriter, doc)));
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
   }
@@ -451,10 +457,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     Document doc = new Document();
     doc.add(new IntAssociationFacetField(14, "a", "x"));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          writer.addDocument(config.build(taxoWriter, doc));
-        });
+        IllegalArgumentException.class, () -> writer.addDocument(config.build(taxoWriter, doc)));
 
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
@@ -472,10 +475,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     Document doc = new Document();
     doc.add(new IntAssociationFacetField(14, "a", "x"));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          writer.addDocument(config.build(taxoWriter, doc));
-        });
+        IllegalArgumentException.class, () -> writer.addDocument(config.build(taxoWriter, doc)));
 
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
@@ -504,14 +504,70 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         new String[0],
         2,
         -1,
-        new LabelAndValue[] {
-          new LabelAndValue("a", 100), new LabelAndValue("b", 150),
-        });
+        new LabelAndValue("a", 100),
+        new LabelAndValue("b", 150));
 
     assertEquals(
         "Wrong count for category 'a'!", 100, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
+  }
+
+  public void testNonPositiveAggregations() throws IOException {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setIndexFieldName("a", "$float_facets");
+    config.setIndexFieldName("b", "$int_facets");
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    Document d;
+
+    d = new Document();
+    // Positive association
+    d.add(new FloatAssociationFacetField(1f, "a", "1"));
+    d.add(new IntAssociationFacetField(1, "b", "1"));
+    writer.addDocument(config.build(taxoWriter, d));
+
+    d = new Document();
+    // Zero association
+    d.add(new FloatAssociationFacetField(0f, "a", "2"));
+    d.add(new IntAssociationFacetField(0, "b", "2"));
+    writer.addDocument(config.build(taxoWriter, d));
+
+    d = new Document();
+    // Negative association
+    d.add(new FloatAssociationFacetField(-1f, "a", "3"));
+    d.add(new IntAssociationFacetField(-1, "b", "3"));
+    writer.addDocument(config.build(taxoWriter, d));
+
+    IndexReader reader = writer.getReader();
+    IOUtils.close(taxoWriter, writer);
+
+    IndexSearcher searcher = newSearcher(reader);
+    Query q = new MatchAllDocsQuery();
+    FacetsCollector fc = searcher.search(q, new FacetsCollectorManager());
+
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+    FloatTaxonomyFacets floatFacets =
+        new TaxonomyFacetFloatAssociations(
+            "$float_facets", taxoReader, config, fc, AssociationAggregationFunction.SUM);
+    IntTaxonomyFacets intFacets =
+        new TaxonomyFacetIntAssociations(
+            "$int_facets", taxoReader, config, fc, AssociationAggregationFunction.SUM);
+
+    // "2" and "3" are included in the result despite having non-positive values associated to them.
+    assertEquals(
+        "dim=a path=[] value=0.0 childCount=3\n  1 (1.0)\n  2 (0.0)\n  3 (-1.0)\n",
+        floatFacets.getTopChildren(10, "a").toString());
+    assertEquals(
+        "dim=b path=[] value=0 childCount=3\n  1 (1)\n  2 (0)\n  3 (-1)\n",
+        intFacets.getTopChildren(10, "b").toString());
+
+    IOUtils.close(taxoReader, reader, taxoDir, dir);
   }
 
   private void validateInts(
@@ -562,7 +618,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       float value = e.getValue();
       // We can expect the floats to be exactly equal here since we're ensuring that we sum them
       // in the same order when determining expected values and when computing facets. See
-      // LUCENE-10530:
+      // LUCENE-10530. This though requires sequential execution.
       assertEquals(value, facets.getSpecificValue(dim, e.getKey()).floatValue(), 0f);
       aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
     }
@@ -586,6 +642,19 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       assertEquals(aggregatedValue, allChildrenResult.value.floatValue(), 1f);
       assertEquals(expected.size(), facetResult.childCount);
       assertEquals(expected.size(), allChildrenResult.childCount);
+    }
+  }
+
+  private void assertFloatFacetResultsEqual(List<FacetResult> expected, List<FacetResult> actual) {
+    assertEquals(expected.size(), actual.size());
+    for (int i = 0; i < expected.size(); i++) {
+      FacetResult expectedResult = expected.get(i);
+      FacetResult actualResult = actual.get(i);
+
+      assertEquals(expectedResult.dim, actualResult.dim);
+      assertArrayEquals(expectedResult.path, actualResult.path);
+      assertFloatUlpEquals((float) expectedResult.value, (float) actualResult.value, (short) 2);
+      assertEquals(expectedResult.childCount, actualResult.childCount);
     }
   }
 

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -103,7 +104,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
             .startsWith(
                 "This builder doesn't allow terms that are larger than "
                     + Automata.MAX_STRING_UNION_TERM_LENGTH
-                    + " characters"));
+                    + " UTF-8 bytes"));
 
     byte[] b1k = ArrayUtil.copyOfSubArray(b10k, 0, 1000);
     build(Collections.singleton(new BytesRef(b1k)), false); // no exception
@@ -158,7 +159,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
   private static void assertSameAutomaton(Automaton a, Automaton b) {
     assertEquals(a.getNumStates(), b.getNumStates());
     assertEquals(a.getNumTransitions(), b.getNumTransitions());
-    assertTrue(Operations.sameLanguage(a, b));
+    assertTrue(AutomatonTestUtil.sameLanguage(a, b));
   }
 
   private List<BytesRef> basicTerms() {

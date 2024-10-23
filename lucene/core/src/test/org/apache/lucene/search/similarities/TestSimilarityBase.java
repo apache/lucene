@@ -69,14 +69,18 @@ import org.apache.lucene.util.Version;
 public class TestSimilarityBase extends LuceneTestCase {
   private static String FIELD_BODY = "body";
   private static String FIELD_ID = "id";
+
   /** The tolerance range for float equality. */
   private static float FLOAT_EPSILON = 1e-5f;
+
   /** The DFR basic models to test. */
   static BasicModel[] BASIC_MODELS = {
     new BasicModelG(), new BasicModelIF(), new BasicModelIn(), new BasicModelIne()
   };
+
   /** The DFR aftereffects to test. */
   static AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
+
   /** The DFR normalizations to test. */
   static Normalization[] NORMALIZATIONS = {
     new NormalizationH1(),
@@ -85,10 +89,13 @@ public class TestSimilarityBase extends LuceneTestCase {
     new NormalizationZ(),
     new Normalization.NoNormalization()
   };
+
   /** The distributions for IB. */
   static Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
+
   /** Lambdas for IB. */
   static Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
+
   /** Independence measures for DFI */
   static Independence[] INDEPENDENCE_MEASURES = {
     new IndependenceStandardized(), new IndependenceSaturated(), new IndependenceChiSquared()
@@ -97,6 +104,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   private IndexSearcher searcher;
   private Directory dir;
   private IndexReader reader;
+
   /** The list of similarities to test. */
   private List<SimilarityBase> sims;
 
@@ -147,12 +155,16 @@ public class TestSimilarityBase extends LuceneTestCase {
 
   /** The default number of documents in the unit tests. */
   private static int NUMBER_OF_DOCUMENTS = 100;
+
   /** The default total number of tokens in the field in the unit tests. */
   private static long NUMBER_OF_FIELD_TOKENS = 5000;
+
   /** The default average field length in the unit tests. */
   private static float AVG_FIELD_LENGTH = 50;
+
   /** The default document frequency in the unit tests. */
   private static int DOC_FREQ = 10;
+
   /**
    * The default total number of occurrences of this term across all documents in the unit tests.
    */
@@ -160,6 +172,7 @@ public class TestSimilarityBase extends LuceneTestCase {
 
   /** The default tf in the unit tests. */
   private static float FREQ = 7;
+
   /** The default document length in the unit tests. */
   private static int DOC_LEN = 40;
 
@@ -194,6 +207,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     return new TermStatistics(
         new BytesRef("spoofyText"), stats.getDocFreq(), stats.getTotalTermFreq());
   }
+
   /**
    * The generic test core called by all unit test methods. It calls the {@link
    * SimilarityBase#score(BasicStats, double, double)} method of all Similarities in {@link #sims}
@@ -485,7 +499,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     for (SimilarityBase sim : sims) {
       searcher.setSimilarity(sim);
       TopDocs topDocs = searcher.search(q, 1000);
-      assertEquals("Failed: " + sim.toString(), 3, topDocs.totalHits.value);
+      assertEquals("Failed: " + sim.toString(), 3, topDocs.totalHits.value());
     }
   }
 
@@ -512,17 +526,17 @@ public class TestSimilarityBase extends LuceneTestCase {
 
   // LUCENE-5221
   public void testDiscountOverlapsBoost() throws IOException {
-    BM25Similarity expected = new BM25Similarity(false);
-    SimilarityBase actual =
-        new DFRSimilarity(new BasicModelIne(), new AfterEffectB(), new NormalizationH2());
-    actual.setDiscountOverlaps(false);
+    final BM25Similarity expected0 = new BM25Similarity(false);
+    final SimilarityBase actual0 =
+        new DFRSimilarity(new BasicModelIne(), new AfterEffectB(), new NormalizationH2(), false);
     FieldInvertState state =
         new FieldInvertState(Version.LATEST.major, "foo", IndexOptions.DOCS_AND_FREQS);
     state.setLength(5);
     state.setNumOverlap(2);
-    assertEquals(expected.computeNorm(state), actual.computeNorm(state));
-    expected = new BM25Similarity();
-    actual.setDiscountOverlaps(true);
-    assertEquals(expected.computeNorm(state), actual.computeNorm(state));
+    assertEquals(expected0.computeNorm(state), actual0.computeNorm(state));
+    final BM25Similarity expected1 = new BM25Similarity(true);
+    final SimilarityBase actual1 =
+        new DFRSimilarity(new BasicModelIne(), new AfterEffectB(), new NormalizationH2(), true);
+    assertEquals(expected1.computeNorm(state), actual1.computeNorm(state));
   }
 }

@@ -20,13 +20,13 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /** Base implementation class for buffered {@link IndexInput}. */
 public abstract class BufferedIndexInput extends IndexInput implements RandomAccessInput {
 
   private static final ByteBuffer EMPTY_BYTEBUFFER =
       ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
-  ;
 
   /** Default buffer size set to {@value #BUFFER_SIZE}. */
   public static final int BUFFER_SIZE = 1024;
@@ -151,6 +151,16 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readGroupVInt(long[] dst, int offset) throws IOException {
+    final int len =
+        GroupVIntUtil.readGroupVInt(
+            this, buffer.remaining(), p -> buffer.getInt((int) p), buffer.position(), dst, offset);
+    if (len > 0) {
+      buffer.position(buffer.position() + len);
+    }
+  }
+
+  @Override
   public final long readLong() throws IOException {
     if (Long.BYTES <= buffer.remaining()) {
       return buffer.getLong();
@@ -249,6 +259,27 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    if (len <= bufferSize) {
+      // the buffer is big enough to satisfy this request
+      if (len > 0) { // to allow b to be null if len is 0...
+        long index = resolvePositionInBuffer(pos, len);
+        buffer.get((int) index, bytes, offset, len);
+      }
+    } else {
+      while (len > bufferSize) {
+        long index = resolvePositionInBuffer(pos, bufferSize);
+        buffer.get((int) index, bytes, offset, bufferSize);
+        len -= bufferSize;
+        offset += bufferSize;
+        pos += bufferSize;
+      }
+      long index = resolvePositionInBuffer(pos, len);
+      buffer.get((int) index, bytes, offset, len);
+    }
+  }
+
+  @Override
   public final short readShort(long pos) throws IOException {
     long index = resolvePositionInBuffer(pos, Short.BYTES);
     return buffer.getShort((int) index);
@@ -338,12 +369,11 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   /** Returns default buffer sizes for the given {@link IOContext} */
   public static int bufferSize(IOContext context) {
-    switch (context.context) {
+    switch (context.context()) {
       case MERGE:
         return MERGE_BUFFER_SIZE;
       case DEFAULT:
       case FLUSH:
-      case READ:
       default:
         return BUFFER_SIZE;
     }

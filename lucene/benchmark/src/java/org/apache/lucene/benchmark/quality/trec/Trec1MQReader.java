@@ -67,7 +67,7 @@ public class Trec1MQReader {
           continue;
         }
         // id
-        int k = line.indexOf(":");
+        int k = line.indexOf(':');
         String id = line.substring(0, k).trim();
         // qtext
         String qtext = line.substring(k + 1).trim();

@@ -19,11 +19,11 @@ package org.apache.lucene.tests.search;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 
@@ -100,11 +100,6 @@ public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
     }
 
     @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      return in.bulkScorer(context);
-    }
-
-    @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
       BrokenExplainTermQuery q = (BrokenExplainTermQuery) this.getQuery();
       Explanation result = in.explain(context, doc);
@@ -123,6 +118,15 @@ public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
         }
       }
       return result;
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final var scorer = in.scorer(context);
+      if (scorer == null) {
+        return null;
+      }
+      return new DefaultScorerSupplier(scorer);
     }
   }
 }

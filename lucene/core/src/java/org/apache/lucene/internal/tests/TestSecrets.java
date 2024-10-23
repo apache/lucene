@@ -23,6 +23,7 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.store.FilterIndexInput;
 
 /**
  * A set of static methods returning accessors for internal, package-private functionality in
@@ -48,12 +49,14 @@ public final class TestSecrets {
     ensureInitialized.accept(ConcurrentMergeScheduler.class);
     ensureInitialized.accept(SegmentReader.class);
     ensureInitialized.accept(IndexWriter.class);
+    ensureInitialized.accept(FilterIndexInput.class);
   }
 
   private static IndexPackageAccess indexPackageAccess;
   private static ConcurrentMergeSchedulerAccess cmsAccess;
   private static SegmentReaderAccess segmentReaderAccess;
   private static IndexWriterAccess indexWriterAccess;
+  private static FilterIndexInputAccess filterIndexInputAccess;
 
   private TestSecrets() {}
 
@@ -81,6 +84,12 @@ public final class TestSecrets {
     return Objects.requireNonNull(indexWriterAccess);
   }
 
+  /** Return the accessor to internal secrets for an {@link FilterIndexInput}. */
+  public static FilterIndexInputAccess getFilterInputIndexAccess() {
+    ensureCaller();
+    return Objects.requireNonNull(filterIndexInputAccess);
+  }
+
   /** For internal initialization only. */
   public static void setIndexWriterAccess(IndexWriterAccess indexWriterAccess) {
     ensureNull(TestSecrets.indexWriterAccess);
@@ -103,6 +112,12 @@ public final class TestSecrets {
   public static void setSegmentReaderAccess(SegmentReaderAccess segmentReaderAccess) {
     ensureNull(TestSecrets.segmentReaderAccess);
     TestSecrets.segmentReaderAccess = segmentReaderAccess;
+  }
+
+  /** For internal initialization only. */
+  public static void setFilterInputIndexAccess(FilterIndexInputAccess filterIndexInputAccess) {
+    ensureNull(TestSecrets.filterIndexInputAccess);
+    TestSecrets.filterIndexInputAccess = filterIndexInputAccess;
   }
 
   private static void ensureNull(Object ob) {

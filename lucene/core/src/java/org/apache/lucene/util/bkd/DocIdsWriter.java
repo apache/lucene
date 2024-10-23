@@ -17,12 +17,16 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocBaseBitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.LongsRef;
 
 final class DocIdsWriter {
 
@@ -35,6 +39,23 @@ final class DocIdsWriter {
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
 
   private final int[] scratch;
+  private final LongsRef scratchLongs = new LongsRef();
+
+  /**
+   * IntsRef to be used to iterate over the scratch buffer. A single instance is reused to avoid
+   * re-allocating the object. The ints and length fields need to be reset each use.
+   *
+   * <p>The main reason for existing is to be able to call the {@link
+   * IntersectVisitor#visit(IntsRef)} method rather than the {@link IntersectVisitor#visit(int)}
+   * method. This seems to make a difference in performance, probably due to fewer virtual calls
+   * then happening (once per read call rather than once per doc).
+   */
+  private final IntsRef scratchIntsRef = new IntsRef();
+
+  {
+    // This is here to not rely on the default constructor of IntsRef to set offset to 0
+    scratchIntsRef.offset = 0;
+  }
 
   DocIdsWriter(int maxPointsInLeaf) {
     scratch = new int[maxPointsInLeaf];
@@ -188,12 +209,17 @@ final class DocIdsWriter {
     }
   }
 
-  private static DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
+  private DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
     int offsetWords = in.readVInt();
     int longLen = in.readVInt();
-    long[] bits = new long[longLen];
-    in.readLongs(bits, 0, longLen);
-    FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
+    scratchLongs.longs = ArrayUtil.growNoCopy(scratchLongs.longs, longLen);
+    in.readLongs(scratchLongs.longs, 0, longLen);
+    // make ghost bits clear for FixedBitSet.
+    if (longLen < scratchLongs.length) {
+      Arrays.fill(scratchLongs.longs, longLen, scratchLongs.longs.length, 0);
+    }
+    scratchLongs.length = longLen;
+    FixedBitSet bitSet = new FixedBitSet(scratchLongs.longs, longLen << 6);
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
@@ -213,13 +239,13 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
+  private void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
     DocIdSetIterator iterator = readBitSetIterator(in, count);
     int docId, pos = 0;
     while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       docIDs[pos++] = docId;
     }
-    assert pos == count : "pos: " + pos + "count: " + count;
+    assert pos == count : "pos: " + pos + ", count: " + count;
   }
 
   private static void readDelta16(IndexInput in, int count, int[] docIDs) throws IOException {
@@ -290,8 +316,7 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
+  private void readBitSet(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     DocIdSetIterator bitSetIterator = readBitSetIterator(in, count);
     visitor.visit(bitSetIterator);
   }
@@ -318,9 +343,9 @@ final class DocIdsWriter {
 
   private void readDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     readDelta16(in, count, scratch);
-    for (int i = 0; i < count; i++) {
-      visitor.visit(scratch[i]);
-    }
+    scratchIntsRef.ints = scratch;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
   }
 
   private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
@@ -346,8 +371,8 @@ final class DocIdsWriter {
 
   private void readInts32(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     in.readInts(scratch, 0, count);
-    for (int i = 0; i < count; i++) {
-      visitor.visit(scratch[i]);
-    }
+    scratchIntsRef.ints = scratch;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
   }
 }

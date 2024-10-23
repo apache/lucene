@@ -125,7 +125,7 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
     // need to check it again.
 
     // All these are required by this class's API - need to return arrays.
-    // Therefore even in the case of a single comparator, create an array
+    // Therefore, even in the case of a single comparator, create an array
     // anyway.
     this.fields = fields;
     int numComparators = fields.length;
@@ -134,7 +134,12 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
     for (int i = 0; i < numComparators; ++i) {
       SortField field = fields[i];
       reverseMul[i] = field.reverse ? -1 : 1;
-      comparators[i] = field.getComparator(size, i == 0);
+      comparators[i] =
+          field.getComparator(
+              size,
+              i == 0
+                  ? (numComparators > 1 ? Pruning.GREATER_THAN : Pruning.GREATER_THAN_OR_EQUAL_TO)
+                  : Pruning.NONE);
     }
   }
 

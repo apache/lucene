@@ -32,7 +32,7 @@ allprojects {
       missingdoclet "org.apache.lucene.tools:missing-doclet"
     }
 
-    ext {
+    project.ext {
       relativeDocPath = project.path.replaceFirst(/:\w+:/, "").replace(':', '/')
     }
 
@@ -53,6 +53,7 @@ allprojects {
       dependsOn sourceSets.main.compileClasspath
       classpath = sourceSets.main.compileClasspath
       srcDirSet = sourceSets.main.java
+      releaseVersion = rootProject.minJavaVersion
 
       outputDir = project.javadoc.destinationDir
     }
@@ -72,6 +73,7 @@ allprojects {
         dependsOn sourceSets.main.compileClasspath
         classpath = sourceSets.main.compileClasspath
         srcDirSet = sourceSets.main.java
+        releaseVersion = rootProject.minJavaVersion
 
         relativeProjectLinks = true
 
@@ -88,14 +90,14 @@ allprojects {
 // Set up titles and link up some offline docs for all documentation
 // (they may be unused but this doesn't do any harm).
 
-def javaJavadocPackages = rootProject.file("${resources}/java11/")
+def javaJavadocPackages = rootProject.file("${resources}/java21/")
 def junitJavadocPackages = rootProject.file("${resources}/junit/")
 allprojects {
   project.tasks.withType(RenderJavadocTask) {
     title = "Lucene ${project.version} ${project.name} API"
 
     offlineLinks += [
-        "https://docs.oracle.com/en/java/javase/11/docs/api/": javaJavadocPackages,
+        "https://docs.oracle.com/en/java/javase/21/docs/api/": javaJavadocPackages,
         "https://junit.org/junit4/javadoc/4.12/": junitJavadocPackages
     ]
 
@@ -280,6 +282,9 @@ class RenderJavadocTask extends DefaultTask {
   @Input
   boolean relativeProjectLinks = false
 
+  @Input
+  JavaVersion releaseVersion
+
   @Internal
   Map<String, File> offlineLinks = [:]
 
@@ -423,7 +428,7 @@ class RenderJavadocTask extends DefaultTask {
       opts << [ '-linkoffline', url, dir ]
     }
 
-    opts << [ '--release', 17 ]
+    opts << [ '--release', releaseVersion.toString() ]
     opts << '-Xdoclint:all,-missing'
 
     // Increase Javadoc's heap.

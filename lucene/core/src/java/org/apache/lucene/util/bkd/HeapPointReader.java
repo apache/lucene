@@ -16,8 +16,7 @@
  */
 package org.apache.lucene.util.bkd;
 
-import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.BytesRef;
+import java.util.function.IntFunction;
 
 /**
  * Utility class to read buffered points from in-heap arrays.
@@ -26,22 +25,13 @@ import org.apache.lucene.util.BytesRef;
  */
 public final class HeapPointReader implements PointReader {
   private int curRead;
-  final byte[] block;
-  final BKDConfig config;
-  final int end;
-  private final HeapPointValue pointValue;
+  private final int end;
+  private final IntFunction<PointValue> points;
 
-  public HeapPointReader(BKDConfig config, byte[] block, int start, int end) {
-    this.block = block;
+  HeapPointReader(IntFunction<PointValue> points, int start, int end) {
     curRead = start - 1;
     this.end = end;
-    this.config = config;
-    if (start < end) {
-      this.pointValue = new HeapPointValue(config, block);
-    } else {
-      // no values
-      this.pointValue = null;
-    }
+    this.points = points;
   }
 
   @Override
@@ -52,46 +42,9 @@ public final class HeapPointReader implements PointReader {
 
   @Override
   public PointValue pointValue() {
-    pointValue.setOffset(curRead * config.bytesPerDoc);
-    return pointValue;
+    return points.apply(curRead);
   }
 
   @Override
   public void close() {}
-
-  /** Reusable implementation for a point value on-heap */
-  static class HeapPointValue implements PointValue {
-
-    final BytesRef packedValue;
-    final BytesRef packedValueDocID;
-    final int packedValueLength;
-
-    HeapPointValue(BKDConfig config, byte[] value) {
-      this.packedValueLength = config.packedBytesLength;
-      this.packedValue = new BytesRef(value, 0, packedValueLength);
-      this.packedValueDocID = new BytesRef(value, 0, config.bytesPerDoc);
-    }
-
-    /** Sets a new value by changing the offset. */
-    public void setOffset(int offset) {
-      packedValue.offset = offset;
-      packedValueDocID.offset = offset;
-    }
-
-    @Override
-    public BytesRef packedValue() {
-      return packedValue;
-    }
-
-    @Override
-    public int docID() {
-      int position = packedValueDocID.offset + packedValueLength;
-      return (int) BitUtil.VH_BE_INT.get(packedValueDocID.bytes, position);
-    }
-
-    @Override
-    public BytesRef packedValueDocIDBytes() {
-      return packedValueDocID;
-    }
-  }
 }

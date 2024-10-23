@@ -28,17 +28,17 @@ import org.apache.lucene.index.SlowImpactsEnum;
  */
 public final class TermScorer extends Scorer {
   private final PostingsEnum postingsEnum;
-  private final ImpactsEnum impactsEnum;
   private final DocIdSetIterator iterator;
   private final LeafSimScorer docScorer;
   private final ImpactsDISI impactsDisi;
+  private final MaxScoreCache maxScoreCache;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
-  public TermScorer(Weight weight, PostingsEnum postingsEnum, LeafSimScorer docScorer) {
-    super(weight);
+  public TermScorer(PostingsEnum postingsEnum, LeafSimScorer docScorer) {
     iterator = this.postingsEnum = postingsEnum;
-    impactsEnum = new SlowImpactsEnum(postingsEnum);
-    impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
+    ImpactsEnum impactsEnum = new SlowImpactsEnum(postingsEnum);
+    maxScoreCache = new MaxScoreCache(impactsEnum, docScorer.getSimScorer());
+    impactsDisi = null;
     this.docScorer = docScorer;
   }
 
@@ -46,11 +46,20 @@ public final class TermScorer extends Scorer {
    * Construct a {@link TermScorer} that will use impacts to skip blocks of non-competitive
    * documents.
    */
-  TermScorer(Weight weight, ImpactsEnum impactsEnum, LeafSimScorer docScorer) {
-    super(weight);
-    postingsEnum = this.impactsEnum = impactsEnum;
-    impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
-    iterator = impactsDisi;
+  public TermScorer(
+      Weight weight,
+      ImpactsEnum impactsEnum,
+      LeafSimScorer docScorer,
+      boolean topLevelScoringClause) {
+    postingsEnum = impactsEnum;
+    maxScoreCache = new MaxScoreCache(impactsEnum, docScorer.getSimScorer());
+    if (topLevelScoringClause) {
+      impactsDisi = new ImpactsDISI(impactsEnum, maxScoreCache);
+      iterator = impactsDisi;
+    } else {
+      impactsDisi = null;
+      iterator = impactsEnum;
+    }
     this.docScorer = docScorer;
   }
 
@@ -82,22 +91,18 @@ public final class TermScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    return impactsDisi.advanceShallow(target);
+    return maxScoreCache.advanceShallow(target);
   }
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return impactsDisi.getMaxScore(upTo);
+    return maxScoreCache.getMaxScore(upTo);
   }
 
   @Override
   public void setMinCompetitiveScore(float minScore) {
-    impactsDisi.setMinCompetitiveScore(minScore);
-  }
-
-  /** Returns a string representation of this <code>TermScorer</code>. */
-  @Override
-  public String toString() {
-    return "scorer(" + weight + ")[" + super.toString() + "]";
+    if (impactsDisi != null) {
+      impactsDisi.setMinCompetitiveScore(minScore);
+    }
   }
 }

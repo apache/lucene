@@ -17,72 +17,46 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.SuppressForbidden;
+
 final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   DefaultVectorUtilSupport() {}
 
+  // the way FMA should work! if available use it, otherwise fall back to mul/add
+  @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
+  private static float fma(float a, float b, float c) {
+    if (Constants.HAS_FAST_SCALAR_FMA) {
+      return Math.fma(a, b, c);
+    } else {
+      return a * b + c;
+    }
+  }
+
   @Override
   public float dotProduct(float[] a, float[] b) {
     float res = 0f;
-    /*
-     * If length of vector is larger than 8, we use unrolled dot product to accelerate the
-     * calculation.
-     */
-    int i;
-    for (i = 0; i < a.length % 8; i++) {
-      res += b[i] * a[i];
+    int i = 0;
+
+    // if the array is big, unroll it
+    if (a.length > 32) {
+      float acc1 = 0;
+      float acc2 = 0;
+      float acc3 = 0;
+      float acc4 = 0;
+      int upperBound = a.length & ~(4 - 1);
+      for (; i < upperBound; i += 4) {
+        acc1 = fma(a[i], b[i], acc1);
+        acc2 = fma(a[i + 1], b[i + 1], acc2);
+        acc3 = fma(a[i + 2], b[i + 2], acc3);
+        acc4 = fma(a[i + 3], b[i + 3], acc4);
+      }
+      res += acc1 + acc2 + acc3 + acc4;
     }
-    if (a.length < 8) {
-      return res;
-    }
-    for (; i + 31 < a.length; i += 32) {
-      res +=
-          b[i + 0] * a[i + 0]
-              + b[i + 1] * a[i + 1]
-              + b[i + 2] * a[i + 2]
-              + b[i + 3] * a[i + 3]
-              + b[i + 4] * a[i + 4]
-              + b[i + 5] * a[i + 5]
-              + b[i + 6] * a[i + 6]
-              + b[i + 7] * a[i + 7];
-      res +=
-          b[i + 8] * a[i + 8]
-              + b[i + 9] * a[i + 9]
-              + b[i + 10] * a[i + 10]
-              + b[i + 11] * a[i + 11]
-              + b[i + 12] * a[i + 12]
-              + b[i + 13] * a[i + 13]
-              + b[i + 14] * a[i + 14]
-              + b[i + 15] * a[i + 15];
-      res +=
-          b[i + 16] * a[i + 16]
-              + b[i + 17] * a[i + 17]
-              + b[i + 18] * a[i + 18]
-              + b[i + 19] * a[i + 19]
-              + b[i + 20] * a[i + 20]
-              + b[i + 21] * a[i + 21]
-              + b[i + 22] * a[i + 22]
-              + b[i + 23] * a[i + 23];
-      res +=
-          b[i + 24] * a[i + 24]
-              + b[i + 25] * a[i + 25]
-              + b[i + 26] * a[i + 26]
-              + b[i + 27] * a[i + 27]
-              + b[i + 28] * a[i + 28]
-              + b[i + 29] * a[i + 29]
-              + b[i + 30] * a[i + 30]
-              + b[i + 31] * a[i + 31];
-    }
-    for (; i + 7 < a.length; i += 8) {
-      res +=
-          b[i + 0] * a[i + 0]
-              + b[i + 1] * a[i + 1]
-              + b[i + 2] * a[i + 2]
-              + b[i + 3] * a[i + 3]
-              + b[i + 4] * a[i + 4]
-              + b[i + 5] * a[i + 5]
-              + b[i + 6] * a[i + 6]
-              + b[i + 7] * a[i + 7];
+
+    for (; i < a.length; i++) {
+      res = fma(a[i], b[i], res);
     }
     return res;
   }
@@ -92,50 +66,80 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     float sum = 0.0f;
     float norm1 = 0.0f;
     float norm2 = 0.0f;
-    int dim = a.length;
+    int i = 0;
 
-    for (int i = 0; i < dim; i++) {
-      float elem1 = a[i];
-      float elem2 = b[i];
-      sum += elem1 * elem2;
-      norm1 += elem1 * elem1;
-      norm2 += elem2 * elem2;
+    // if the array is big, unroll it
+    if (a.length > 32) {
+      float sum1 = 0;
+      float sum2 = 0;
+      float norm1_1 = 0;
+      float norm1_2 = 0;
+      float norm2_1 = 0;
+      float norm2_2 = 0;
+
+      int upperBound = a.length & ~(2 - 1);
+      for (; i < upperBound; i += 2) {
+        // one
+        sum1 = fma(a[i], b[i], sum1);
+        norm1_1 = fma(a[i], a[i], norm1_1);
+        norm2_1 = fma(b[i], b[i], norm2_1);
+
+        // two
+        sum2 = fma(a[i + 1], b[i + 1], sum2);
+        norm1_2 = fma(a[i + 1], a[i + 1], norm1_2);
+        norm2_2 = fma(b[i + 1], b[i + 1], norm2_2);
+      }
+      sum += sum1 + sum2;
+      norm1 += norm1_1 + norm1_2;
+      norm2 += norm2_1 + norm2_2;
+    }
+
+    for (; i < a.length; i++) {
+      sum = fma(a[i], b[i], sum);
+      norm1 = fma(a[i], a[i], norm1);
+      norm2 = fma(b[i], b[i], norm2);
     }
     return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
   }
 
   @Override
   public float squareDistance(float[] a, float[] b) {
-    float squareSum = 0.0f;
-    int dim = a.length;
-    int i;
-    for (i = 0; i + 8 <= dim; i += 8) {
-      squareSum += squareDistanceUnrolled(a, b, i);
-    }
-    for (; i < dim; i++) {
-      float diff = a[i] - b[i];
-      squareSum += diff * diff;
-    }
-    return squareSum;
-  }
+    float res = 0;
+    int i = 0;
 
-  private static float squareDistanceUnrolled(float[] v1, float[] v2, int index) {
-    float diff0 = v1[index + 0] - v2[index + 0];
-    float diff1 = v1[index + 1] - v2[index + 1];
-    float diff2 = v1[index + 2] - v2[index + 2];
-    float diff3 = v1[index + 3] - v2[index + 3];
-    float diff4 = v1[index + 4] - v2[index + 4];
-    float diff5 = v1[index + 5] - v2[index + 5];
-    float diff6 = v1[index + 6] - v2[index + 6];
-    float diff7 = v1[index + 7] - v2[index + 7];
-    return diff0 * diff0
-        + diff1 * diff1
-        + diff2 * diff2
-        + diff3 * diff3
-        + diff4 * diff4
-        + diff5 * diff5
-        + diff6 * diff6
-        + diff7 * diff7;
+    // if the array is big, unroll it
+    if (a.length > 32) {
+      float acc1 = 0;
+      float acc2 = 0;
+      float acc3 = 0;
+      float acc4 = 0;
+
+      int upperBound = a.length & ~(4 - 1);
+      for (; i < upperBound; i += 4) {
+        // one
+        float diff1 = a[i] - b[i];
+        acc1 = fma(diff1, diff1, acc1);
+
+        // two
+        float diff2 = a[i + 1] - b[i + 1];
+        acc2 = fma(diff2, diff2, acc2);
+
+        // three
+        float diff3 = a[i + 2] - b[i + 2];
+        acc3 = fma(diff3, diff3, acc3);
+
+        // four
+        float diff4 = a[i + 3] - b[i + 3];
+        acc4 = fma(diff4, diff4, acc4);
+      }
+      res += acc1 + acc2 + acc3 + acc4;
+    }
+
+    for (; i < a.length; i++) {
+      float diff = a[i] - b[i];
+      res = fma(diff, diff, res);
+    }
+    return res;
   }
 
   @Override
@@ -145,6 +149,25 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       total += a[i] * b[i];
     }
     return total;
+  }
+
+  @Override
+  public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
+    assert (apacked && bpacked) == false;
+    if (apacked || bpacked) {
+      byte[] packed = apacked ? a : b;
+      byte[] unpacked = apacked ? b : a;
+      int total = 0;
+      for (int i = 0; i < packed.length; i++) {
+        byte packedByte = packed[i];
+        byte unpacked1 = unpacked[i];
+        byte unpacked2 = unpacked[i + packed.length];
+        total += (packedByte & 0x0F) * unpacked2;
+        total += ((packedByte & 0xFF) >> 4) * unpacked1;
+      }
+      return total;
+    }
+    return dotProduct(a, b);
   }
 
   @Override

@@ -88,6 +88,13 @@ public abstract class CodecReader extends LeafReader {
     final StoredFields reader = getFieldsReader();
     return new StoredFields() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.prefetch(docID);
+      }
+
+      @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         // Don't trust the codec to do proper checks
         Objects.checkIndex(docID, maxDoc());
@@ -200,6 +207,16 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
+  public final DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE) {
+      return null;
+    }
+    return getDocValuesReader().getSkipper(fi);
+  }
+
+  @Override
   public final NumericDocValues getNormValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
@@ -256,7 +273,9 @@ public abstract class CodecReader extends LeafReader {
       String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       // Field does not exist or does not index vectors
       return;
     }
@@ -268,7 +287,9 @@ public abstract class CodecReader extends LeafReader {
       String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
       // Field does not exist or does not index vectors
       return;
     }

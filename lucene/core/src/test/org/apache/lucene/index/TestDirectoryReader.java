@@ -48,6 +48,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 import org.junit.Assume;
 
@@ -55,7 +56,6 @@ import org.junit.Assume;
 public class TestDirectoryReader extends LuceneTestCase {
 
   public void testDocument() throws IOException {
-    SegmentReader[] readers = new SegmentReader[2];
     Directory dir = newDirectory();
     Document doc1 = new Document();
     Document doc2 = new Document();
@@ -80,8 +80,6 @@ public class TestDirectoryReader extends LuceneTestCase {
     assertNotNull(vector);
 
     reader.close();
-    if (readers[0] != null) readers[0].close();
-    if (readers[1] != null) readers[1].close();
     dir.close();
   }
 
@@ -271,7 +269,7 @@ public class TestDirectoryReader extends LuceneTestCase {
       } else {
         notIndexedFieldNames.add(name);
       }
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         tvFieldNames.add(name);
       }
     }
@@ -482,11 +480,8 @@ public class TestDirectoryReader extends LuceneTestCase {
 
   public void testOpenReaderAfterDelete() throws IOException {
     Path dirFile = createTempDir("deletetest");
-    Directory dir = newFSDirectory(dirFile);
-    if (dir instanceof BaseDirectoryWrapper) {
-      ((BaseDirectoryWrapper) dir)
-          .setCheckIndexOnClose(false); // we will hit NoSuchFileException in MDW since we nuked it!
-    }
+    BaseDirectoryWrapper dir = newFSDirectory(dirFile);
+    dir.setCheckIndexOnClose(false); // we will hit NoSuchFileException in MDW since we nuked it!
     expectThrowsAnyOf(
         Arrays.asList(FileNotFoundException.class, NoSuchFileException.class),
         () -> DirectoryReader.open(dir));
@@ -702,7 +697,7 @@ public class TestDirectoryReader extends LuceneTestCase {
 
     assertEquals(sis.getSegmentsFileName(), c.getSegmentsFileName());
 
-    assertTrue(c.equals(r.getIndexCommit()));
+    assertEquals(c, r.getIndexCommit());
 
     // Change the index
     writer =
@@ -717,8 +712,8 @@ public class TestDirectoryReader extends LuceneTestCase {
 
     DirectoryReader r2 = DirectoryReader.openIfChanged(r);
     assertNotNull(r2);
-    assertFalse(c.equals(r2.getIndexCommit()));
-    assertFalse(r2.getIndexCommit().getSegmentCount() == 1);
+    assertNotEquals(c, r2.getIndexCommit());
+    assertNotEquals(1, r2.getIndexCommit().getSegmentCount());
     r2.close();
 
     writer =
@@ -753,11 +748,7 @@ public class TestDirectoryReader extends LuceneTestCase {
   public void testNoDir() throws Throwable {
     Path tempDir = createTempDir("doesnotexist");
     Directory dir = newFSDirectory(tempDir);
-    expectThrows(
-        IndexNotFoundException.class,
-        () -> {
-          DirectoryReader.open(dir);
-        });
+    expectThrows(IndexNotFoundException.class, () -> DirectoryReader.open(dir));
     dir.close();
   }
 
@@ -779,7 +770,7 @@ public class TestDirectoryReader extends LuceneTestCase {
       Collection<String> files = commit.getFileNames();
       HashSet<String> seen = new HashSet<>();
       for (final String fileName : files) {
-        assertTrue("file " + fileName + " was duplicated", !seen.contains(fileName));
+        assertFalse("file " + fileName + " was duplicated", seen.contains(fileName));
         seen.add(fileName);
       }
     }
@@ -970,13 +961,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     final DirectoryReader reader = DirectoryReader.open(writer);
     final int[] closeCount = new int[1];
-    final IndexReader.ClosedListener listener =
-        new IndexReader.ClosedListener() {
-          @Override
-          public void onClose(IndexReader.CacheKey key) {
-            closeCount[0]++;
-          }
-        };
+    final IndexReader.ClosedListener listener = key -> closeCount[0]++;
 
     reader.getReaderCacheHelper().addClosedListener(listener);
 
@@ -1002,11 +987,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     r.storedFields().document(0);
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          r.storedFields().document(1);
-        });
+    expectThrows(IllegalArgumentException.class, () -> r.storedFields().document(1));
     r.close();
     dir.close();
   }
@@ -1025,6 +1006,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     dir.close();
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testStressTryIncRef() throws IOException, InterruptedException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
@@ -1044,9 +1026,9 @@ public class TestDirectoryReader extends LuceneTestCase {
     r.decRef();
     r.close();
 
-    for (int i = 0; i < threads.length; i++) {
-      threads[i].join();
-      assertNull(threads[i].failed);
+    for (IncThread thread : threads) {
+      thread.join();
+      assertNull(thread.failed);
     }
     assertFalse(r.tryIncRef());
     writer.close();

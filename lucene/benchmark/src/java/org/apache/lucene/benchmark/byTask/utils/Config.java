@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.StringTokenizer;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * Perf run configuration properties.
@@ -150,7 +151,7 @@ public class Config {
     if (sval == null) {
       return null;
     }
-    if (sval.indexOf(":") < 0) {
+    if (sval.indexOf(':') < 0) {
       return sval;
     } else if (sval.indexOf(":\\") >= 0 || sval.indexOf(":/") >= 0) {
       // this previously messed up absolute path names on Windows. Assuming
@@ -158,7 +159,7 @@ public class Config {
       return sval;
     }
     // first time this prop is extracted by round
-    int k = sval.indexOf(":");
+    int k = sval.indexOf(':');
     String colName = sval.substring(0, k);
     sval = sval.substring(k + 1);
     colForValByRound.put(name, colName);
@@ -197,11 +198,11 @@ public class Config {
     }
     // done if not by round
     String sval = props.getProperty(name, "" + dflt);
-    if (sval.indexOf(":") < 0) {
+    if (sval.indexOf(':') < 0) {
       return Integer.parseInt(sval);
     }
     // first time this prop is extracted by round
-    int k = sval.indexOf(":");
+    int k = sval.indexOf(':');
     String colName = sval.substring(0, k);
     sval = sval.substring(k + 1);
     colForValByRound.put(name, colName);
@@ -227,11 +228,11 @@ public class Config {
     }
     // done if not by round
     String sval = props.getProperty(name, "" + dflt);
-    if (sval.indexOf(":") < 0) {
+    if (sval.indexOf(':') < 0) {
       return Double.parseDouble(sval);
     }
     // first time this prop is extracted by round
-    int k = sval.indexOf(":");
+    int k = sval.indexOf(':');
     String colName = sval.substring(0, k);
     sval = sval.substring(k + 1);
     colForValByRound.put(name, colName);
@@ -257,11 +258,11 @@ public class Config {
     }
     // done if not by round
     String sval = props.getProperty(name, "" + dflt);
-    if (sval.indexOf(":") < 0) {
+    if (sval.indexOf(':') < 0) {
       return Boolean.valueOf(sval).booleanValue();
     }
     // first time this prop is extracted by round
-    int k = sval.indexOf(":");
+    int k = sval.indexOf(':');
     String colName = sval.substring(0, k);
     sval = sval.substring(k + 1);
     colForValByRound.put(name, colName);
@@ -319,7 +320,7 @@ public class Config {
   }
 
   private String[] propToStringArray(String s) {
-    if (s.indexOf(":") < 0) {
+    if (s.indexOf(':') < 0) {
       return new String[] {s};
     }
 
@@ -334,26 +335,26 @@ public class Config {
 
   // extract properties to array, e.g. for "10:100:5" return int[]{10,100,5}.
   private int[] propToIntArray(String s) {
-    if (s.indexOf(":") < 0) {
+    if (s.indexOf(':') < 0) {
       return new int[] {Integer.parseInt(s)};
     }
 
-    ArrayList<Integer> a = new ArrayList<>();
+    IntArrayList a = new IntArrayList();
     StringTokenizer st = new StringTokenizer(s, ":");
     while (st.hasMoreTokens()) {
       String t = st.nextToken();
-      a.add(Integer.valueOf(t));
+      a.add(Integer.parseInt(t));
     }
     int[] res = new int[a.size()];
     for (int i = 0; i < a.size(); i++) {
-      res[i] = a.get(i).intValue();
+      res[i] = a.get(i);
     }
     return res;
   }
 
   // extract properties to array, e.g. for "10.7:100.4:-2.3" return int[]{10.7,100.4,-2.3}.
   private double[] propToDoubleArray(String s) {
-    if (s.indexOf(":") < 0) {
+    if (s.indexOf(':') < 0) {
       return new double[] {Double.parseDouble(s)};
     }
 
@@ -372,7 +373,7 @@ public class Config {
 
   // extract properties to array, e.g. for "true:true:false" return boolean[]{true,false,false}.
   private boolean[] propToBooleanArray(String s) {
-    if (s.indexOf(":") < 0) {
+    if (s.indexOf(':') < 0) {
       return new boolean[] {Boolean.valueOf(s).booleanValue()};
     }
 

@@ -23,6 +23,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
@@ -31,8 +32,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
@@ -240,7 +241,7 @@ public class BlockGroupingCollector extends SimpleCollector {
     reversed = new int[sortFields.length];
     for (int i = 0; i < sortFields.length; i++) {
       final SortField sortField = sortFields[i];
-      comparators[i] = sortField.getComparator(topNGroups, false);
+      comparators[i] = sortField.getComparator(topNGroups, Pruning.NONE);
       reversed[i] = sortField.getReverse() ? -1 : 1;
     }
   }
@@ -293,12 +294,15 @@ public class BlockGroupingCollector extends SimpleCollector {
           throw new IllegalArgumentException(
               "cannot sort by relevance within group: needsScores=false");
         }
-        collector = TopScoreDocCollector.create(maxDocsPerGroup, Integer.MAX_VALUE);
+        collector =
+            new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+                .newCollector();
       } else {
         // Sort by fields
         collector =
-            TopFieldCollector.create(
-                withinGroupSort, maxDocsPerGroup, Integer.MAX_VALUE); // TODO: disable exact counts?
+            new TopFieldCollectorManager(
+                    withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+                .newCollector(); // TODO: disable exact counts?
       }
 
       float groupMaxScore = needsScores ? Float.NEGATIVE_INFINITY : Float.NaN;

@@ -175,7 +175,7 @@ public class DocHelper {
   public static Field textUtfField2 =
       new Field(TEXT_FIELD_UTF2_KEY, FIELD_UTF2_TEXT, TEXT_TYPE_STORED_WITH_TVS);
 
-  public static Map<String, Object> nameValues = null;
+  public static Map<String, Object> nameValues;
 
   // ordered list of all the fields...
   // could use LinkedHashMap for this purpose if Java1.4 is OK

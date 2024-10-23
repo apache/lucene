@@ -131,6 +131,7 @@ public abstract class BaseLiveDocsFormatTestCase extends LuceneTestCase {
             "foo",
             maxDoc,
             random().nextBoolean(),
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),

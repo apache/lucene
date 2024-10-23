@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.search.BooleanClause.Occur;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.io.IOException;
 import java.util.List;
@@ -63,32 +62,32 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
       // "foo bar" match
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(2));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(2, doc);
+      assertEquals(1f, scorer.score(), 0);
 
       // should not reset iterator
       scorer.setMinCompetitiveScore(2f);
-      assertThat(scorer.docID(), equalTo(doc));
-      assertThat(scorer.iterator().docID(), equalTo(doc));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(doc, scorer.docID());
+      assertEquals(doc, scorer.iterator().docID());
+      assertEquals(1f, scorer.score(), 0);
 
       // "bar foo" match
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(3));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(3, doc);
+      assertEquals(1f, scorer.score(), 0);
 
       // "foo not bar" match
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(4));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(4, doc);
+      assertEquals(1f, scorer.score(), 0);
 
       // "foo bar foo" match
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(5));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(5, doc);
+      assertEquals(1f, scorer.score(), 0);
 
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(NO_MORE_DOCS));
+      assertEquals(NO_MORE_DOCS, doc);
     }
   }
 
@@ -99,16 +98,16 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
       // "foo bar" match
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(2));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(2, doc);
+      assertEquals(1f, scorer.score(), 0);
 
       scorer.setMinCompetitiveScore(2f);
-      assertThat(scorer.docID(), equalTo(doc));
-      assertThat(scorer.iterator().docID(), equalTo(doc));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(doc, scorer.docID());
+      assertEquals(doc, scorer.iterator().docID());
+      assertEquals(1f, scorer.score(), 0);
 
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(NO_MORE_DOCS));
+      assertEquals(NO_MORE_DOCS, doc);
     }
   }
 
@@ -127,24 +126,24 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
       // "foo bar" match
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(2));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(2, doc);
+      assertEquals(1f, scorer.score(), 0);
 
       // should not reset iterator
       scorer.setMinCompetitiveScore(2f);
-      assertThat(scorer.docID(), equalTo(doc));
-      assertThat(scorer.iterator().docID(), equalTo(doc));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(doc, scorer.docID());
+      assertEquals(doc, scorer.iterator().docID());
+      assertEquals(1f, scorer.score(), 0);
 
       // "foo not bar" will match the approximation but not the two phase iterator
 
       // "foo bar foo" match
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(5));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(5, doc);
+      assertEquals(1f, scorer.score(), 0);
 
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(NO_MORE_DOCS));
+      assertEquals(NO_MORE_DOCS, doc);
     }
   }
 
@@ -156,16 +155,16 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
       // "foo bar" match
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(2));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(2, doc);
+      assertEquals(1f, scorer.score(), 0);
 
       scorer.setMinCompetitiveScore(2f);
-      assertThat(scorer.docID(), equalTo(doc));
-      assertThat(scorer.iterator().docID(), equalTo(doc));
-      assertThat(scorer.score(), equalTo(1f));
+      assertEquals(doc, scorer.docID());
+      assertEquals(doc, scorer.iterator().docID());
+      assertEquals(1f, scorer.score(), 0);
 
       doc = scorer.iterator().nextDoc();
-      assertThat(doc, equalTo(NO_MORE_DOCS));
+      assertEquals(NO_MORE_DOCS, doc);
     }
   }
 
@@ -200,16 +199,15 @@ public class TestConstantScoreScorer extends LuceneTestCase {
       Weight weight = searcher.createWeight(new ConstantScoreQuery(query), scoreMode, 1);
       List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
 
-      assertThat(leaves.size(), equalTo(1));
+      assertEquals(1, leaves.size());
 
       LeafReaderContext context = leaves.get(0);
       Scorer scorer = weight.scorer(context);
 
       if (scorer.twoPhaseIterator() == null) {
-        return new ConstantScoreScorer(scorer.getWeight(), score, scoreMode, scorer.iterator());
+        return new ConstantScoreScorer(score, scoreMode, scorer.iterator());
       } else {
-        return new ConstantScoreScorer(
-            scorer.getWeight(), score, scoreMode, scorer.twoPhaseIterator());
+        return new ConstantScoreScorer(score, scoreMode, scorer.twoPhaseIterator());
       }
     }
 
@@ -241,22 +239,20 @@ public class TestConstantScoreScorer extends LuceneTestCase {
     // Don't use threads so that we can assert on the number of visited hits
     IndexSearcher is = newSearcher(ir, true, true, false);
 
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(10, null, 10);
-    TopDocs topDocs =
-        is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), manager);
-    assertEquals(11, topDocs.totalHits.value);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+    TopScoreDocCollectorManager c = new TopScoreDocCollectorManager(10, 10);
+    TopDocs topDocs = is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), c);
+    assertEquals(11, topDocs.totalHits.value());
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
-    manager = TopScoreDocCollector.createSharedManager(10, null, 10);
+    c = new TopScoreDocCollectorManager(10, 10);
     Query query =
         new BooleanQuery.Builder()
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), Occur.SHOULD)
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "bar"))), Occur.FILTER)
             .build();
-    topDocs = is.search(query, manager);
-    assertEquals(11, topDocs.totalHits.value);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+    topDocs = is.search(query, c);
+    assertEquals(11, topDocs.totalHits.value());
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
     iw.close();
     ir.close();

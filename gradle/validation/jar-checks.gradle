@@ -20,7 +20,9 @@
 // 2) notice file
 // 3) checksum validation/ generation.
 
-import org.apache.commons.codec.digest.DigestUtils
+// WARNING: The tasks in this file share internal state between tasks without using files.
+// Because of this all tasks here must always execute together, so they cannot define task outputs.
+// TODO: Rewrite the internal state to use state files containing the ext.jarInfos and its referencedFiles
 
 // This should be false only for debugging.
 def failOnError = true
@@ -59,6 +61,9 @@ allprojects {
 }
 
 subprojects {
+  // initialize empty, because no checks for benchmark-jmh module.
+  ext.jarInfos = []
+
   // Configure jarValidation configuration for all projects. Any dependency
   // declared on this configuration (or any configuration it extends from) will
   // be verified.
@@ -110,14 +115,21 @@ subprojects {
       }
 
       def visited = new HashSet<>()
+      def seenDeps = new HashSet<>()
       def infos = []
 
       while (!queue.isEmpty()) {
         def dep = queue.removeFirst()
+        seenDeps.add(dep)
 
         // Skip any artifacts from Lucene modules.
         if (!dep.moduleGroup.startsWith("org.apache.lucene")) {
-          queue.addAll(dep.children)
+          // Make sure we don't keep visiting the same children over and over again
+          dep.children.each { child ->
+            if (!seenDeps.contains(child)) {
+              queue.add(child)
+            }
+          }
           dep.moduleArtifacts.each { resolvedArtifact ->
             def file = resolvedArtifact.file
             if (visited.add(file)) {
@@ -126,7 +138,7 @@ subprojects {
                   jarName        : file.toPath().getFileName().toString(),
                   path           : file,
                   module         : resolvedArtifact.moduleVersion,
-                  checksum       : provider { new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() },
+                  checksum       : provider { buildinfra.sha1Digest().digestAsHex(file).trim() },
                   // We keep track of the files referenced by this dependency (sha, license, notice, etc.)
                   // so that we can determine unused dangling files later on.
                   referencedFiles: []
@@ -186,13 +198,6 @@ subprojects {
     description = "Validate license and notice files of dependencies"
     dependsOn collectJarInfos
 
-    def outputFileName = 'validateJarLicenses'
-    inputs.dir(file(project.rootDir.path + '/lucene/licenses'))
-        .withPropertyName('licenses')
-        .withPathSensitivity(PathSensitivity.RELATIVE)
-    outputs.file(layout.buildDirectory.file(outputFileName))
-        .withPropertyName('validateJarLicensesResult')
-
     doLast {
       def errors = []
       jarInfos.each { dep ->
@@ -238,9 +243,7 @@ subprojects {
           }
         }
       }
-      // Required to take advantage of incremental building and the build cache
-      def f = new File(project.buildDir.path + "/" + outputFileName)
-      f.write(errors.toString(), "UTF-8")
+
       if (errors) {
         def msg = "Certain license/ notice files are missing:\n  - " + errors.join("\n  - ")
         if (failOnError) {

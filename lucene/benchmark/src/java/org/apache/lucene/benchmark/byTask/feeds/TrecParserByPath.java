@@ -32,6 +32,6 @@ public class TrecParserByPath extends TrecDocParser {
       StringBuilder docBuf,
       ParsePathType pathType)
       throws IOException {
-    return pathType2parser.get(pathType).parse(docData, name, trecSrc, docBuf, pathType);
+    return pathType2Parser.get(pathType).parse(docData, name, trecSrc, docBuf, pathType);
   }
 }

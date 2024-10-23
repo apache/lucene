@@ -17,11 +17,10 @@
 # -------------------------------------------------------------------------------------
 # multi val params are iterated by NewRound's, added to reports, start with column name.
 
-# collector.class can be:
-#    Fully Qualified Class Name of a Collector with a empty constructor
-#    topScoreDocOrdered - Creates a TopScoreDocCollector that requires in order docs
-#    topScoreDocUnordered - Like above, but allows out of order
-collector.class=coll:topScoreDocOrdered:topScoreDocUnordered:topScoreDocOrdered:topScoreDocUnordered
+# collector.manager.class can be:
+#    Fully Qualified Class Name of a CollectorManager with a empty constructor
+#    topScoreDoc - Creates a TopScoreDocCollectorManager
+collector.manager.class=coll:topScoreDoc
 
 analyzer=org.apache.lucene.analysis.core.WhitespaceAnalyzer
 directory=FSDirectory

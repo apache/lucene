@@ -1,4 +1,4 @@
-import org.apache.lucene.gradle.datasets.ExtractReuters
+import java.nio.file.Files
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,11 +17,28 @@ import org.apache.lucene.gradle.datasets.ExtractReuters
  * limitations under the License.
  */
 
-// TODO: not sure whether this should live in benchmarks, but for now
-// let it be.
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath deps.zstd
+  }
+}
+
+def unzstd(java.nio.file.Path src, java.nio.file.Path dst) {
+  try (InputStream is = new com.github.luben.zstd.ZstdInputStream(new BufferedInputStream(Files.newInputStream(src)));
+       OutputStream os = new BufferedOutputStream(Files.newOutputStream(dst))) {
+    is.transferTo(os)
+  }
+}
+
+
+// TODO: not sure whether this should live in benchmarks, but for now let it be.
 configure(project(":lucene:benchmark")) {
   apply plugin: "java"
-  apply plugin: "de.undercouch.download"
+  apply plugin: deps.plugins.undercouch.download.get().pluginId
 
   ext {
     dataDir = file("work")
@@ -51,8 +68,8 @@ configure(project(":lucene:benchmark")) {
   task getEnWikiRandomLines(type: Download) {
     ext {
       name = "enwiki.random.lines.txt"
-      src = "https://home.apache.org/~mikemccand/${name}.bz2"
-      intermediate = file("${dataDir}/${name}.bz2")
+      src = "https://home.apache.org/~mikemccand/${name}.zst"
+      intermediate = file("${dataDir}/${name}.zst")
       dst = file("${dataDir}/${name}")
     }
 
@@ -65,7 +82,7 @@ configure(project(":lucene:benchmark")) {
 
     doLast {
       logger.lifecycle("Decompressing ${ext.name}...")
-      ant.bunzip2(src: ext.intermediate, dest: ext.dst)
+      unzstd(ext.intermediate.toPath(), ext.dst.toPath())
     }
   }
 
@@ -145,7 +162,7 @@ configure(project(":lucene:benchmark")) {
 
       logger.lifecycle("Extracting ${ext.name} into ${ext.dst}...")
       ext.dst.deleteDir()
-      ExtractReuters.main(untarPath.toString(), ext.dst.toString())
+      buildinfra.extractReuters(untarPath.toString(), ext.dst.toString())
     }
   }
 

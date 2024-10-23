@@ -299,6 +299,7 @@ public class EarthDebugger {
       angle += 360. / steps;
     }
   }
+
   // craziness for plotting stuff :)
 
   private static double wrapLat(double lat) {

@@ -53,6 +53,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.ThrottledIndexOutput;
@@ -812,8 +813,19 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           false);
     }
 
-    IndexInput delegateInput =
-        in.openInput(name, LuceneTestCase.newIOContext(randomState, context));
+    // record the read advice before randomizing the context
+    ReadAdvice readAdvice = context.readAdvice();
+    context = LuceneTestCase.newIOContext(randomState, context);
+    final boolean confined = context == IOContext.READONCE;
+    if (name.startsWith(IndexFileNames.SEGMENTS) && confined == false) {
+      throw new RuntimeException(
+          "MockDirectoryWrapper: opening segments file ["
+              + name
+              + "] with a non-READONCE context["
+              + context
+              + "]");
+    }
+    IndexInput delegateInput = in.openInput(name, context);
 
     final IndexInput ii;
     int randomInt = randomState.nextInt(500);
@@ -822,15 +834,15 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
         System.out.println(
             "MockDirectoryWrapper: using SlowClosingMockIndexInputWrapper for file " + name);
       }
-      ii = new SlowClosingMockIndexInputWrapper(this, name, delegateInput);
+      ii = new SlowClosingMockIndexInputWrapper(this, name, delegateInput, readAdvice, confined);
     } else if (useSlowOpenClosers && randomInt == 1) {
       if (LuceneTestCase.VERBOSE) {
         System.out.println(
             "MockDirectoryWrapper: using SlowOpeningMockIndexInputWrapper for file " + name);
       }
-      ii = new SlowOpeningMockIndexInputWrapper(this, name, delegateInput);
+      ii = new SlowOpeningMockIndexInputWrapper(this, name, delegateInput, readAdvice, confined);
     } else {
-      ii = new MockIndexInputWrapper(this, name, delegateInput, null);
+      ii = new MockIndexInputWrapper(this, name, delegateInput, null, readAdvice, confined);
     }
     addFileHandle(ii, name, Handle.Input);
     return ii;
@@ -906,7 +918,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           // TestUtil#checkIndex checks segment concurrently using another thread, but making
           // call back to synchronized methods such as MockDirectoryWrapper#fileLength.
           // Hence passing concurrent = false to this method to turn off concurrent checks.
-          TestUtil.checkIndex(this, getCrossCheckTermVectorsOnClose(), true, false, null);
+          TestUtil.checkIndex(this, getLevelForCheckOnClose(), true, false, null);
         }
 
         // TODO: factor this out / share w/ TestIW.assertNoUnreferencedFiles
@@ -970,7 +982,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           DirectoryReader ir1 = DirectoryReader.open(this);
           int numDocs1 = ir1.numDocs();
           ir1.close();
-          new IndexWriter(this, new IndexWriterConfig(null)).close();
+          // Don't commit on close, so that no merges will be scheduled.
+          new IndexWriter(this, new IndexWriterConfig(null).setCommitOnClose(false)).close();
           DirectoryReader ir2 = DirectoryReader.open(this);
           int numDocs2 = ir2.numDocs();
           ir2.close();

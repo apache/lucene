@@ -545,4 +545,20 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
     this.eventListener = eventListener;
     return this;
   }
+
+  /**
+   * Sets the parent document field. If this optional property is set, IndexWriter will add an
+   * internal field to every root document added to the index writer. A document is considered a
+   * parent document if it's the last document in a document block indexed via {@link
+   * IndexWriter#addDocuments(Iterable)} or {@link IndexWriter#updateDocuments(Term, Iterable)} and
+   * its relatives. Additionally, all individual documents added via the single document methods
+   * ({@link IndexWriter#addDocuments(Iterable)} etc.) are also considered parent documents. This
+   * property is optional for all indices that don't use document blocks in combination with index
+   * sorting. In order to maintain the API guarantee that the document order of a block is not
+   * altered by the {@link IndexWriter} a marker for parent documents is required.
+   */
+  public IndexWriterConfig setParentField(String parentField) {
+    this.parentField = parentField;
+    return this;
+  }
 }

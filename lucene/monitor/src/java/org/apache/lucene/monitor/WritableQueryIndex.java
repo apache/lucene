@@ -41,10 +41,10 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -130,15 +130,7 @@ class WritableQueryIndex extends QueryIndex {
     }
   }
 
-  private static class Indexable {
-    final QueryCacheEntry queryCacheEntry;
-    final Document document;
-
-    private Indexable(QueryCacheEntry queryCacheEntry, Document document) {
-      this.queryCacheEntry = queryCacheEntry;
-      this.document = document;
-    }
-  }
+  private record Indexable(QueryCacheEntry queryCacheEntry, Document document) {}
 
   private void populateQueryCache(MonitorQuerySerializer serializer, QueryDecomposer decomposer)
       throws IOException {
@@ -273,25 +265,36 @@ class WritableQueryIndex extends QueryIndex {
     // The purge takes the write lock when creating the register log, and then when swapping out
     // the old query cache.  Within the second write lock guard, the contents of the register log
     // are added to the new query cache, and the register log itself is removed.
+    // The write lock must be taken inside the commit lock in order to prevent attempting to acquire
+    // the write lock while a commit is in progress.  If a request to acquire the write lock was to
+    // be made while a commit was in progress, it would be forced to wait for the commit to give up
+    // the read lock.  This is not a problem in itself, but the searches that want to acquire the
+    // read lock have to wait on the request to acquire the write lock in order to prevent
+    // starvation, which results in searches waiting on purge waiting on commit which is problematic
+    // since commit is slow and search cannot be slow.
 
     final ConcurrentMap<String, QueryCacheEntry> newCache = new ConcurrentHashMap<>();
 
-    purgeLock.writeLock().lock();
-    try {
-      purgeCache = new ConcurrentHashMap<>();
-    } finally {
-      purgeLock.writeLock().unlock();
+    synchronized (commitLock) {
+      purgeLock.writeLock().lock();
+      try {
+        purgeCache = new ConcurrentHashMap<>();
+      } finally {
+        purgeLock.writeLock().unlock();
+      }
     }
 
     populator.populateCacheWithIndex(newCache);
 
-    purgeLock.writeLock().lock();
-    try {
-      newCache.putAll(purgeCache);
-      purgeCache = null;
-      queries = newCache;
-    } finally {
-      purgeLock.writeLock().unlock();
+    synchronized (commitLock) {
+      purgeLock.writeLock().lock();
+      try {
+        newCache.putAll(purgeCache);
+        purgeCache = null;
+        queries = newCache;
+      } finally {
+        purgeLock.writeLock().unlock();
+      }
     }
   }
 
@@ -353,8 +356,8 @@ class WritableQueryIndex extends QueryIndex {
     }
 
     @Override
-    public void setScorer(Scorable scorer) {
-      this.dataValues.scorer = scorer;
+    public void setWeight(Weight weight) {
+      this.dataValues.weight = weight;
     }
 
     @Override

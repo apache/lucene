@@ -20,6 +20,8 @@ package org.apache.lucene.search.suggest.analyzing;
 //   - test w/ syns
 //   - add pruning of low-freq ngrams?
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -295,7 +297,8 @@ public class FreeTextSuggester extends Lookup {
       TermsEnum termsEnum = terms.iterator();
 
       Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
-      FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      FSTCompiler<Long> fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
       IntsRefBuilder scratchInts = new IntsRefBuilder();
       while (true) {
@@ -320,7 +323,7 @@ public class FreeTextSuggester extends Lookup {
         fstCompiler.add(Util.toIntsRef(term, scratchInts), encodeWeight(termsEnum.totalTermFreq()));
       }
 
-      final FST<Long> newFst = fstCompiler.compile();
+      final FST<Long> newFst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       if (newFst == null) {
         throw new IllegalArgumentException("need at least one suggestion");
       }
@@ -383,7 +386,7 @@ public class FreeTextSuggester extends Lookup {
     }
     totTokens = input.readVLong();
 
-    fst = new FST<>(input, input, PositiveIntOutputs.getSingleton());
+    fst = new FST<>(readMetadata(input, PositiveIntOutputs.getSingleton()), input);
 
     return true;
   }
@@ -612,7 +615,7 @@ public class FreeTextSuggester extends Lookup {
           // Must do num+seen.size() for queue depth because we may
           // reject up to seen.size() paths in acceptResult():
           Util.TopNSearcher<Long> searcher =
-              new Util.TopNSearcher<Long>(fst, num, num + seen.size(), weightComparator) {
+              new Util.TopNSearcher<>(fst, num, num + seen.size(), Comparator.naturalOrder()) {
 
                 BytesRefBuilder scratchBytes = new BytesRefBuilder();
 
@@ -663,7 +666,7 @@ public class FreeTextSuggester extends Lookup {
         for (Result<Long> completion : completions) {
           token.setLength(prefixLength);
           // append suffix
-          Util.toBytesRef(completion.input, suffix);
+          Util.toBytesRef(completion.input(), suffix);
           token.append(suffix);
 
           // System.out.println("    completion " + token.utf8ToString());
@@ -690,7 +693,7 @@ public class FreeTextSuggester extends Lookup {
                   (long)
                       (Long.MAX_VALUE
                           * backoff
-                          * ((double) decodeWeight(completion.output))
+                          * ((double) decodeWeight(completion.output()))
                           / contextCount));
           results.add(result);
           assert results.size() == seen.size();
@@ -699,19 +702,15 @@ public class FreeTextSuggester extends Lookup {
         backoff *= ALPHA;
       }
 
-      Collections.sort(
-          results,
-          new Comparator<LookupResult>() {
-            @Override
-            public int compare(LookupResult a, LookupResult b) {
-              if (a.value > b.value) {
-                return -1;
-              } else if (a.value < b.value) {
-                return 1;
-              } else {
-                // Tie break by UTF16 sort order:
-                return ((String) a.key).compareTo((String) b.key);
-              }
+      results.sort(
+          (a, b) -> {
+            if (a.value > b.value) {
+              return -1;
+            } else if (a.value < b.value) {
+              return 1;
+            } else {
+              // Tie break by UTF16 sort order:
+              return ((String) a.key).compareTo((String) b.key);
             }
           });
 
@@ -757,14 +756,6 @@ public class FreeTextSuggester extends Lookup {
 
     return output;
   }
-
-  static final Comparator<Long> weightComparator =
-      new Comparator<Long>() {
-        @Override
-        public int compare(Long left, Long right) {
-          return left.compareTo(right);
-        }
-      };
 
   /** Returns the weight associated with an input string, or null if it does not exist. */
   public Object get(CharSequence key) {

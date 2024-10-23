@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.util.Random;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -113,6 +114,19 @@ public class TestVectorUtil extends LuceneTestCase {
   public void testNormalizeZeroThrows() {
     float[] v = {0, 0, 0};
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
+  }
+
+  public void testExtremeNumerics() {
+    float[] v1 = new float[1536];
+    float[] v2 = new float[1536];
+    for (int i = 0; i < 1536; i++) {
+      v1[i] = 0.888888f;
+      v2[i] = -0.777777f;
+    }
+    for (VectorSimilarityFunction vectorSimilarityFunction : VectorSimilarityFunction.values()) {
+      float v = vectorSimilarityFunction.compare(v1, v2);
+      assertTrue(vectorSimilarityFunction + " expected >=0 got:" + v, v >= 0);
+    }
   }
 
   private static float l2(float[] v) {
@@ -261,5 +275,82 @@ public class TestVectorUtil extends LuceneTestCase {
     u[0] = v[1];
     u[1] = -v[0];
     assertEquals(0, VectorUtil.cosine(u, v), DELTA);
+  }
+
+  interface ToIntBiFunction {
+    int apply(byte[] a, byte[] b);
+  }
+
+  public void testBasicXorBitCount() {
+    testBasicXorBitCountImpl(VectorUtil::xorBitCount);
+    testBasicXorBitCountImpl(VectorUtil::xorBitCountInt);
+    testBasicXorBitCountImpl(VectorUtil::xorBitCountLong);
+    // test sanity
+    testBasicXorBitCountImpl(TestVectorUtil::xorBitCount);
+  }
+
+  void testBasicXorBitCountImpl(ToIntBiFunction xorBitCount) {
+    assertEquals(0, xorBitCount.apply(new byte[] {1}, new byte[] {1}));
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {1, 2, 3}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 2, 3}));
+    assertEquals(2, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 6, 3}));
+    assertEquals(3, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 6, 7}));
+    assertEquals(4, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {2, 6, 7}));
+
+    // 32-bit / int boundary
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3, 4}, new byte[] {1, 2, 3, 4}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3, 4}, new byte[] {0, 2, 3, 4}));
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3, 4, 5}, new byte[] {1, 2, 3, 4, 5}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3, 4, 5}, new byte[] {0, 2, 3, 4, 5}));
+
+    // 64-bit / long boundary
+    assertEquals(
+        0,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8}, new byte[] {1, 2, 3, 4, 5, 6, 7, 8}));
+    assertEquals(
+        1,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8}, new byte[] {0, 2, 3, 4, 5, 6, 7, 8}));
+
+    assertEquals(
+        0,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}));
+    assertEquals(
+        1,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}, new byte[] {0, 2, 3, 4, 5, 6, 7, 8, 9}));
+  }
+
+  public void testXorBitCount() {
+    int iterations = atLeast(100);
+    for (int i = 0; i < iterations; i++) {
+      int size = random().nextInt(1024);
+      byte[] a = new byte[size];
+      byte[] b = new byte[size];
+      random().nextBytes(a);
+      random().nextBytes(b);
+
+      int expected = xorBitCount(a, b);
+      assertEquals(expected, VectorUtil.xorBitCount(a, b));
+      assertEquals(expected, VectorUtil.xorBitCountInt(a, b));
+      assertEquals(expected, VectorUtil.xorBitCountLong(a, b));
+    }
+  }
+
+  private static int xorBitCount(byte[] a, byte[] b) {
+    int res = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte x = a[i];
+      byte y = b[i];
+      for (int j = 0; j < Byte.SIZE; j++) {
+        if (x == y) break;
+        if ((x & 0x01) != (y & 0x01)) res++;
+        x = (byte) ((x & 0xFF) >> 1);
+        y = (byte) ((y & 0xFF) >> 1);
+      }
+    }
+    return res;
   }
 }

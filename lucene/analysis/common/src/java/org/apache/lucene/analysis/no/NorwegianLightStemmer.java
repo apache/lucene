@@ -63,6 +63,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
 class NorwegianLightStemmer {
   /** Constant to remove Bokmål-specific endings */
   static final int BOKMAAL = 1;
+
   /** Constant to remove Nynorsk-specific endings */
   static final int NYNORSK = 2;
 

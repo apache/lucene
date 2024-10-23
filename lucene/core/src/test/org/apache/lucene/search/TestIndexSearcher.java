@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -42,7 +43,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.junit.Test;
 
 public class TestIndexSearcher extends LuceneTestCase {
   Directory dir;
@@ -115,7 +115,6 @@ public class TestIndexSearcher extends LuceneTestCase {
     TestUtil.shutdownExecutorService(service);
   }
 
-  @Test
   public void testSearchAfterPassedMaxDoc() throws Exception {
     // LUCENE-5128: ensure we get a meaningful message if searchAfter exceeds maxDoc
     Directory dir = newDirectory();
@@ -168,7 +167,7 @@ public class TestIndexSearcher extends LuceneTestCase {
                   .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
                   .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
                   .build())) {
-        assertEquals(searcher.count(query), searcher.search(query, 1).totalHits.value);
+        assertEquals(searcher.count(query), searcher.search(query, 1).totalHits.value());
       }
       reader.close();
     }
@@ -221,34 +220,54 @@ public class TestIndexSearcher extends LuceneTestCase {
     assertEquals(dummyPolicy, searcher.getQueryCachingPolicy());
   }
 
-  public void testGetSlices() throws Exception {
-    assertNull(new IndexSearcher(new MultiReader()).getSlices());
+  public void testGetSlicesNoLeavesNoExecutor() throws IOException {
+    IndexSearcher.LeafSlice[] slices = new IndexSearcher(new MultiReader()).getSlices();
+    assertEquals(0, slices.length);
+  }
 
+  public void testGetSlicesNoLeavesWithExecutor() throws IOException {
+    IndexSearcher.LeafSlice[] slices =
+        new IndexSearcher(new MultiReader(), Runnable::run).getSlices();
+    assertEquals(0, slices.length);
+  }
+
+  public void testGetSlices() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    w.addDocument(new Document());
+    for (int i = 0; i < 10; i++) {
+      w.addDocument(new Document());
+      // manually flush, so we get to create multiple segments almost all the times, as well as
+      // multiple slices
+      w.flush();
+    }
     IndexReader r = w.getReader();
     w.close();
 
-    ExecutorService service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestIndexSearcher"));
-    IndexSearcher s = new IndexSearcher(r, service);
-    IndexSearcher.LeafSlice[] slices = s.getSlices();
-    assertNotNull(slices);
-    assertEquals(1, slices.length);
-    assertEquals(1, slices[0].leaves.length);
-    assertTrue(slices[0].leaves[0] == r.leaves().get(0));
-    service.shutdown();
+    {
+      // without executor
+      IndexSearcher.LeafSlice[] slices = new IndexSearcher(r).getSlices();
+      assertEquals(1, slices.length);
+      assertEquals(r.leaves().size(), slices[0].partitions.length);
+    }
+    {
+      // force creation of multiple slices, and provide an executor
+      IndexSearcher searcher =
+          new IndexSearcher(r, Runnable::run) {
+            @Override
+            protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+              return slices(leaves, 1, 1, false);
+            }
+          };
+      IndexSearcher.LeafSlice[] slices = searcher.getSlices();
+      for (IndexSearcher.LeafSlice slice : slices) {
+        assertEquals(1, slice.partitions.length);
+      }
+      assertEquals(r.leaves().size(), slices.length);
+    }
     IOUtils.close(r, dir);
   }
 
-  public void testSlicesAllOffloadedToTheExecutor() throws IOException {
+  public void testSlicesOffloadedToTheExecutor() throws IOException {
     List<LeafReaderContext> leaves = reader.leaves();
     AtomicInteger numExecutions = new AtomicInteger(0);
     IndexSearcher searcher =
@@ -262,12 +281,48 @@ public class TestIndexSearcher extends LuceneTestCase {
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
             ArrayList<LeafSlice> slices = new ArrayList<>();
             for (LeafReaderContext ctx : leaves) {
-              slices.add(new LeafSlice(Arrays.asList(ctx)));
+              slices.add(
+                  new LeafSlice(
+                      Collections.singletonList(
+                          LeafReaderContextPartition.createForEntireSegment(ctx))));
             }
             return slices.toArray(new LeafSlice[0]);
           }
         };
     searcher.search(new MatchAllDocsQuery(), 10);
-    assertEquals(leaves.size(), numExecutions.get());
+    assertEquals(leaves.size() - 1, numExecutions.get());
+  }
+
+  public void testNullExecutorNonNullTaskExecutor() {
+    IndexSearcher indexSearcher = new IndexSearcher(reader);
+    assertNotNull(indexSearcher.getTaskExecutor());
+  }
+
+  public void testSegmentPartitionsSameSlice() {
+    IndexSearcher indexSearcher =
+        new IndexSearcher(reader, Runnable::run) {
+          @Override
+          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+            List<LeafSlice> slices = new ArrayList<>();
+            for (LeafReaderContext ctx : leaves) {
+              slices.add(
+                  new LeafSlice(
+                      new ArrayList<>(
+                          List.of(
+                              LeafReaderContextPartition.createFromAndTo(ctx, 0, 1),
+                              LeafReaderContextPartition.createFromAndTo(
+                                  ctx, 1, ctx.reader().maxDoc())))));
+            }
+            return slices.toArray(new LeafSlice[0]);
+          }
+        };
+
+    assumeTrue(
+        "Needs at least 2 docs in the same segment",
+        indexSearcher.leafContexts.stream().allMatch(ctx -> ctx.reader().maxDoc() > 1));
+    IllegalStateException e = expectThrows(IllegalStateException.class, indexSearcher::getSlices);
+    assertEquals(
+        "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.",
+        e.getMessage());
   }
 }

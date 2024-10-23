@@ -43,6 +43,7 @@ import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 
 public class TestTermQuery extends LuceneTestCase {
@@ -55,11 +56,12 @@ public class TestTermQuery extends LuceneTestCase {
     final CompositeReaderContext context;
     try (MultiReader multiReader = new MultiReader()) {
       context = multiReader.getContext();
+      IndexSearcher searcher = new IndexSearcher(context);
+      QueryUtils.checkEqual(
+          new TermQuery(new Term("foo", "bar")),
+          new TermQuery(
+              new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true)));
     }
-    QueryUtils.checkEqual(
-        new TermQuery(new Term("foo", "bar")),
-        new TermQuery(
-            new Term("foo", "bar"), TermStates.build(context, new Term("foo", "bar"), true)));
   }
 
   public void testCreateWeightDoesNotSeekIfScoresAreNotNeeded() throws IOException {
@@ -100,8 +102,7 @@ public class TestTermQuery extends LuceneTestCase {
     assertEquals(1, totalHits);
     TermQuery queryWithContext =
         new TermQuery(
-            new Term("foo", "bar"),
-            TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
+            new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true));
     totalHits = searcher.search(queryWithContext, DummyTotalHitCountCollector.createManager());
     assertEquals(1, totalHits);
 
@@ -160,10 +161,10 @@ public class TestTermQuery extends LuceneTestCase {
     w.addDocument(new Document());
 
     DirectoryReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
     TermQuery queryWithContext =
         new TermQuery(
-            new Term("foo", "bar"),
-            TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
+            new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true));
     assertNotNull(queryWithContext.getTermStates());
     IOUtils.close(reader, w, dir);
   }
@@ -260,6 +261,11 @@ public class TestTermQuery extends LuceneTestCase {
                 }
 
                 @Override
+                public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+                  throw new AssertionError("no seek");
+                }
+
+                @Override
                 public void seekExact(BytesRef term, TermState state) throws IOException {
                   throw new AssertionError("no seek");
                 }
@@ -288,5 +294,4 @@ public class TestTermQuery extends LuceneTestCase {
       return in.getReaderCacheHelper();
     }
   }
-  ;
 }

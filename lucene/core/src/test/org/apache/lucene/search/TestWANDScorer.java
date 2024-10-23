@@ -121,10 +121,10 @@ public class TestWANDScorer extends LuceneTestCase {
                     Occur.SHOULD)
                 .build());
 
-    Scorer scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    Scorer scorer = ss.get(Long.MAX_VALUE);
 
     assertEquals(0, scorer.iterator().nextDoc());
     assertEquals(2 + 1, scorer.score(), 0);
@@ -143,10 +143,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     scorer.setMinCompetitiveScore(4);
 
     assertEquals(3, scorer.iterator().nextDoc());
@@ -157,10 +156,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     assertEquals(0, scorer.iterator().nextDoc());
     assertEquals(2 + 1, scorer.score(), 0);
@@ -187,10 +185,10 @@ public class TestWANDScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "C")), Occur.FILTER)
             .build();
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     assertEquals(3, scorer.iterator().nextDoc());
     assertEquals(2 + 1, scorer.score(), 0);
@@ -200,10 +198,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     scorer.setMinCompetitiveScore(2);
 
@@ -230,10 +227,10 @@ public class TestWANDScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "C")), Occur.MUST_NOT)
             .build();
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     assertEquals(0, scorer.iterator().nextDoc());
     assertEquals(2 + 1, scorer.score(), 0);
@@ -246,10 +243,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     scorer.setMinCompetitiveScore(3);
 
@@ -303,10 +299,10 @@ public class TestWANDScorer extends LuceneTestCase {
                     .setMinimumNumberShouldMatch(2)
                     .build());
 
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        Scorer scorer = ss.get(Long.MAX_VALUE);
 
         assertEquals(0, scorer.iterator().nextDoc());
         assertEquals(2 + 1, scorer.score(), 0);
@@ -319,10 +315,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-        scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
         scorer.setMinCompetitiveScore(4);
 
         assertEquals(3, scorer.iterator().nextDoc());
@@ -333,10 +328,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-        scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
 
         assertEquals(0, scorer.iterator().nextDoc());
         assertEquals(2 + 1, scorer.score(), 0);
@@ -385,10 +379,10 @@ public class TestWANDScorer extends LuceneTestCase {
                     .setMinimumNumberShouldMatch(2)
                     .build());
 
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        Scorer scorer = ss.get(Long.MAX_VALUE);
 
         assertEquals(0, scorer.iterator().nextDoc());
         scorer.setMinCompetitiveScore(scorer.score());
@@ -500,10 +494,10 @@ public class TestWANDScorer extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "C")), Occur.FILTER)
                 .build();
 
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        Scorer scorer = ss.get(Long.MAX_VALUE);
 
         assertEquals(1, scorer.iterator().nextDoc());
         assertEquals(2 + 4, scorer.score(), 0);
@@ -513,10 +507,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-        scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
 
         scorer.setMinCompetitiveScore(2 + 1 + 4);
 
@@ -637,10 +630,8 @@ public class TestWANDScorer extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "C")), Occur.MUST_NOT)
                 .build();
 
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+        Scorer scorer = weight.scorer(searcher.getIndexReader().leaves().get(0));
 
         assertEquals(0, scorer.iterator().nextDoc());
         assertEquals(2 + 1, scorer.score(), 0);
@@ -650,10 +641,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-        scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
 
         scorer.setMinCompetitiveScore(4);
 
@@ -963,36 +953,25 @@ public class TestWANDScorer extends LuceneTestCase {
     @Override
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
-      return new FilterWeight(query.createWeight(searcher, scoreMode, boost)) {
-        @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          Scorer scorer = super.scorer(context);
-          if (scorer == null) {
-            return null;
-          } else {
-            return new MaxScoreWrapperScorer(scorer, maxRange, maxScore);
-          }
-        }
-
+      var weight = query.createWeight(searcher, scoreMode, boost);
+      return new FilterWeight(weight) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          ScorerSupplier supplier = super.scorerSupplier(context);
+          ScorerSupplier supplier = weight.scorerSupplier(context);
           if (supplier == null) {
             return null;
-          } else {
-            return new ScorerSupplier() {
-
-              @Override
-              public Scorer get(long leadCost) throws IOException {
-                return new MaxScoreWrapperScorer(supplier.get(leadCost), maxRange, maxScore);
-              }
-
-              @Override
-              public long cost() {
-                return supplier.cost();
-              }
-            };
           }
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return new MaxScoreWrapperScorer(supplier.get(leadCost), maxRange, maxScore);
+            }
+
+            @Override
+            public long cost() {
+              return supplier.cost();
+            }
+          };
         }
       };
     }
@@ -1019,7 +998,7 @@ public class TestWANDScorer extends LuceneTestCase {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           BooleanWeight weight = (BooleanWeight) query.createWeight(searcher, scoreMode, boost);
           List<Scorer> optionalScorers =
               weight.weightedClauses.stream()
@@ -1042,13 +1021,15 @@ public class TestWANDScorer extends LuceneTestCase {
                         }
                       })
                   .toList();
-
+          final Scorer scorer;
           if (optionalScorers.size() > 0) {
-            return new WANDScorer(
-                weight, optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
+            scorer =
+                new WANDScorer(optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
           } else {
-            return weight.scorer(context);
+            scorer = weight.scorer(context);
+            if (scorer == null) return null;
           }
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

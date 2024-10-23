@@ -24,12 +24,12 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DataInputDocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
@@ -62,11 +62,11 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
 
   /** {@link FieldInfo} attribute name used to store the format name for each field. */
   public static final String PER_FIELD_FORMAT_KEY =
-      PerFieldDocValuesFormat.class.getSimpleName() + ".format";
+          PerFieldDocValuesFormat.class.getSimpleName() + ".format";
 
   /** {@link FieldInfo} attribute name used to store the segment suffix name for each field. */
   public static final String PER_FIELD_SUFFIX_KEY =
-      PerFieldDocValuesFormat.class.getSimpleName() + ".suffix";
+          PerFieldDocValuesFormat.class.getSimpleName() + ".suffix";
 
   /** Sole constructor. */
   protected PerFieldDocValuesFormat() {
@@ -78,10 +78,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     return new FieldsWriter(state);
   }
 
-  static class ConsumerAndSuffix implements Closeable {
-    DocValuesConsumer consumer;
-    int suffix;
-
+  record ConsumerAndSuffix(DocValuesConsumer consumer, int suffix) implements Closeable {
     @Override
     public void close() throws IOException {
       consumer.close();
@@ -101,31 +98,31 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
 
     @Override
     public void addNumericField(FieldInfo field, DocValuesProducer valuesProducer)
-        throws IOException {
+            throws IOException {
       getInstance(field).addNumericField(field, valuesProducer);
     }
 
     @Override
     public void addBinaryField(FieldInfo field, DocValuesProducer valuesProducer)
-        throws IOException {
+            throws IOException {
       getInstance(field).addBinaryField(field, valuesProducer);
     }
 
     @Override
     public void addSortedField(FieldInfo field, DocValuesProducer valuesProducer)
-        throws IOException {
+            throws IOException {
       getInstance(field).addSortedField(field, valuesProducer);
     }
 
     @Override
     public void addSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer)
-        throws IOException {
+            throws IOException {
       getInstance(field).addSortedNumericField(field, valuesProducer);
     }
 
     @Override
     public void addSortedSetField(FieldInfo field, DocValuesProducer valuesProducer)
-        throws IOException {
+            throws IOException {
       getInstance(field).addSortedSetField(field, valuesProducer);
     }
 
@@ -149,13 +146,8 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
 
       // Delegate the merge to the appropriate consumer
-      PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
-      try {
-        for (Map.Entry<DocValuesConsumer, Collection<String>> e : consumersToField.entrySet()) {
-          e.getKey().merge(pfMergeState.apply(e.getValue()));
-        }
-      } finally {
-        pfMergeState.reset();
+      for (Map.Entry<DocValuesConsumer, Collection<String>> e : consumersToField.entrySet()) {
+        e.getKey().merge(PerFieldMergeState.restrictFields(mergeState, e.getValue()));
       }
     }
 
@@ -172,7 +164,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
      * @throws IOException if there is a low-level IO error
      */
     private DocValuesConsumer getInstance(FieldInfo field, boolean ignoreCurrentFormat)
-        throws IOException {
+            throws IOException {
       DocValuesFormat format = null;
       if (field.getDocValuesGen() != -1) {
         String formatName = null;
@@ -189,7 +181,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
       if (format == null) {
         throw new IllegalStateException(
-            "invalid null DocValuesFormat for field=\"" + field.name + "\"");
+                "invalid null DocValuesFormat for field=\"" + field.name + "\"");
       }
       final String formatName = format.getName();
 
@@ -225,12 +217,12 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
         suffixes.put(formatName, suffix);
 
         final String segmentSuffix =
-            getFullSegmentSuffix(
-                segmentWriteState.segmentSuffix, getSuffix(formatName, Integer.toString(suffix)));
-        consumer = new ConsumerAndSuffix();
-        consumer.consumer =
-            format.fieldsConsumer(new SegmentWriteState(segmentWriteState, segmentSuffix));
-        consumer.suffix = suffix;
+                getFullSegmentSuffix(
+                        segmentWriteState.segmentSuffix, getSuffix(formatName, Integer.toString(suffix)));
+        consumer =
+                new ConsumerAndSuffix(
+                        format.fieldsConsumer(new SegmentWriteState(segmentWriteState, segmentSuffix)),
+                        suffix);
         formats.put(format, consumer);
       } else {
         // we've already seen this format, so just grab its suffix
@@ -263,9 +255,9 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
   }
 
-  private class FieldsReader extends DocValuesProducer {
+  private static class FieldsReader extends DocValuesProducer {
 
-    private final Map<String, DocValuesProducer> fields = new TreeMap<>();
+    private final Map<String, DocValuesProducer> fields = new HashMap<>();
     private final Map<String, DocValuesProducer> formats = new HashMap<>();
 
     // clone for merge
@@ -301,15 +293,15 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
               final String suffix = fi.getAttribute(PER_FIELD_SUFFIX_KEY);
               if (suffix == null) {
                 throw new IllegalStateException(
-                    "missing attribute: " + PER_FIELD_SUFFIX_KEY + " for field: " + fieldName);
+                        "missing attribute: " + PER_FIELD_SUFFIX_KEY + " for field: " + fieldName);
               }
               DocValuesFormat format = DocValuesFormat.forName(formatName);
               String segmentSuffix =
-                  getFullSegmentSuffix(readState.segmentSuffix, getSuffix(formatName, suffix));
+                      getFullSegmentSuffix(readState.segmentSuffix, getSuffix(formatName, suffix));
               if (!formats.containsKey(segmentSuffix)) {
                 formats.put(
-                    segmentSuffix,
-                    format.fieldsProducer(new SegmentReadState(readState, segmentSuffix)));
+                        segmentSuffix,
+                        format.fieldsProducer(new SegmentReadState(readState, segmentSuffix)));
               }
               fields.put(fieldName, formats.get(segmentSuffix));
             }
@@ -357,6 +349,12 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
       DocValuesProducer producer = fields.get(field.name);
       return producer == null ? null : producer.getSortedSet(field);
+    }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      DocValuesProducer producer = fields.get(field.name);
+      return producer == null ? null : producer.getSkipper(field);
     }
 
     @Override

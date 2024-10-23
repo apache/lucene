@@ -60,6 +60,7 @@ public class RegexCompletionQuery extends CompletionQuery {
   public RegexCompletionQuery(Term term, BitsProducer filter) {
     this(term, RegExp.ALL, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, filter);
   }
+
   /**
    * Calls {@link RegexCompletionQuery#RegexCompletionQuery(Term, int, int, BitsProducer)} with no
    * filter

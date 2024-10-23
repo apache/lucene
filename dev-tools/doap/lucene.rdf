@@ -23,23 +23,23 @@
          xmlns:asfext="http://projects.apache.org/ns/asfext#"
          xmlns:foaf="http://xmlns.com/foaf/0.1/">
 <!--
-  This file's canonical URL is: http://lucene.apache.org/core/doap.rdf
+  This file's canonical URL is: https://lucene.apache.org/core/doap.rdf
 
   Note that the canonical URL may redirect to other non-canonical locations.
 -->
-  <Project rdf:about="http://lucene.apache.org/core/">
+  <Project rdf:about="https://lucene.apache.org/core/">
     <created>2001-09-01</created>
     <license rdf:resource="http://www.apache.org/licenses/LICENSE-2.0"/>
     <name>Apache Lucene Core</name>
-    <homepage rdf:resource="http://lucene.apache.org/core/" />
-    <asfext:pmc rdf:resource="http://lucene.apache.org" />
+    <homepage rdf:resource="https://lucene.apache.org/core/" />
+    <asfext:pmc rdf:resource="https://lucene.apache.org" />
 
     <shortdesc>Apache Lucene is a high-performance, full-featured text search engine library</shortdesc>
     <description>Apache Lucene is a high-performance, full-featured text search engine library written entirely in Java. It is a technology suitable for nearly any application that requires full-text search, especially cross-platform.
     </description>
     <bug-database rdf:resource="https://github.com/apache/lucene/issues" />
-    <mailing-list rdf:resource="http://lucene.apache.org/core/discussion.html" />
-    <download-page rdf:resource="http://lucene.apache.org/core/downloads.html" />
+    <mailing-list rdf:resource="https://lucene.apache.org/core/discussion.html" />
+    <download-page rdf:resource="https://lucene.apache.org/core/downloads.html" />
     <programming-language>Java</programming-language>
 
     <!--
@@ -67,6 +67,69 @@
     </maintainer>
 
     <!-- NOTE: please insert releases in numeric order, NOT chronologically. -->
+    <release>
+       <Version>
+         <name>lucene-10.0.0</name>
+         <created>2024-10-14</created>
+         <revision>10.0.0</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-9.12.0</name>
+         <created>2024-09-28</created>
+         <revision>9.12.0</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-9.11.1</name>
+         <created>2024-06-27</created>
+         <revision>9.11.1</revision>
+       </Version>
+    </release> 
+    <release>
+       <Version>
+         <name>lucene-9.11.0</name>
+         <created>2024-06-06</created>
+         <revision>9.11.0</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-9.10.0</name>
+         <created>2024-02-20</created>
+         <revision>9.10.0</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-9.9.2</name>
+         <created>2024-01-29</created>
+         <revision>9.9.2</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-9.9.1</name>
+         <created>2023-12-16</created>
+         <revision>9.9.1</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-9.9.0</name>
+         <created>2023-12-04</created>
+         <revision>9.9.0</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-9.8.0</name>
+         <created>2023-09-28</created>
+         <revision>9.8.0</revision>
+       </Version>
+    </release>
     <release>
        <Version>
          <name>lucene-9.7.0</name>
@@ -135,6 +198,20 @@
          <name>lucene-9.0.0</name>
          <created>2021-12-07</created>
          <revision>9.0.0</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-8.11.4</name>
+         <created>2024-09-24</created>
+         <revision>8.11.4</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
+         <name>lucene-8.11.3</name>
+         <created>2024-02-08</created>
+         <revision>8.11.3</revision>
        </Version>
     </release>
     <release>

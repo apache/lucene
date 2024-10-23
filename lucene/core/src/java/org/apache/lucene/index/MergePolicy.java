@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -83,7 +84,7 @@ public abstract class MergePolicy {
       PAUSED,
       /** Other reason. */
       OTHER
-    };
+    }
 
     private final ReentrantLock pauseLock = new ReentrantLock();
     private final Condition pausing = pauseLock.newCondition();
@@ -103,7 +104,7 @@ public abstract class MergePolicy {
     /** Creates a new merge progress info. */
     public OneMergeProgress() {
       // Place all the pause reasons in there immediately so that we can simply update values.
-      pauseTimesNS = new EnumMap<PauseReason, AtomicLong>(PauseReason.class);
+      pauseTimesNS = new EnumMap<>(PauseReason.class);
       for (PauseReason p : PauseReason.values()) {
         pauseTimesNS.put(p, new AtomicLong());
       }
@@ -136,14 +137,6 @@ public abstract class MergePolicy {
      */
     public void pauseNanos(long pauseNanos, PauseReason reason, BooleanSupplier condition)
         throws InterruptedException {
-      if (Thread.currentThread() != owner) {
-        throw new RuntimeException(
-            "Only the merge owner thread can call pauseNanos(). This thread: "
-                + Thread.currentThread().getName()
-                + ", owner thread: "
-                + owner);
-      }
-
       long start = System.nanoTime();
       AtomicLong timeUpdate = pauseTimesNS.get(reason);
       pauseLock.lock();
@@ -170,8 +163,7 @@ public abstract class MergePolicy {
     /** Returns pause reasons and associated times in nanoseconds. */
     public Map<PauseReason, Long> getPauseTimes() {
       Set<Entry<PauseReason, AtomicLong>> entries = pauseTimesNS.entrySet();
-      return entries.stream()
-          .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue().get()));
+      return entries.stream().collect(Collectors.toMap(Entry::getKey, (e) -> e.getValue().get()));
     }
 
     final void setMergeThread(Thread owner) {
@@ -223,7 +215,7 @@ public abstract class MergePolicy {
      * @param segments List of {@link SegmentCommitInfo}s to be merged.
      */
     public OneMerge(List<SegmentCommitInfo> segments) {
-      if (0 == segments.size()) {
+      if (segments.isEmpty()) {
         throw new RuntimeException("segments must include at least one segment");
       }
       // clone the list, as the in list may be based off original SegmentInfos and may be modified
@@ -255,6 +247,15 @@ public abstract class MergePolicy {
       usesPooledReaders = false;
     }
 
+    /** Constructor for wrapping. */
+    protected OneMerge(OneMerge oneMerge) {
+      this.segments = oneMerge.segments;
+      this.mergeReaders = oneMerge.mergeReaders;
+      this.totalMaxDoc = oneMerge.totalMaxDoc;
+      this.mergeProgress = new OneMergeProgress();
+      this.usesPooledReaders = oneMerge.usesPooledReaders;
+    }
+
     /**
      * Called by {@link IndexWriter} after the merge started and from the thread that will be
      * executing the merge.
@@ -266,7 +267,7 @@ public abstract class MergePolicy {
     /**
      * Called by {@link IndexWriter} after the merge is done and all readers have been closed.
      *
-     * @param success true iff the merge finished successfully ie. was committed
+     * @param success true iff the merge finished successfully i.e. was committed
      * @param segmentDropped true iff the merged segment was dropped since it was fully deleted
      */
     public void mergeFinished(boolean success, boolean segmentDropped) throws IOException {}
@@ -275,7 +276,7 @@ public abstract class MergePolicy {
     final void close(
         boolean success, boolean segmentDropped, IOConsumer<MergeReader> readerConsumer)
         throws IOException {
-      // this method is final to ensure we never miss a super call to cleanup and finish the merge
+      // this method is final to ensure we never miss a super call to clean up and finish the merge
       if (mergeCompleted.complete(success) == false) {
         throw new IllegalStateException("merge has already finished");
       }
@@ -288,9 +289,33 @@ public abstract class MergePolicy {
       }
     }
 
-    /** Wrap the reader in order to add/remove information to the merged segment. */
+    /**
+     * Wrap a reader prior to merging in order to add/remove fields or documents.
+     *
+     * <p><b>NOTE:</b> It is illegal to reorder doc IDs here, use {@link
+     * #reorder(CodecReader,Directory,Executor)} instead.
+     */
     public CodecReader wrapForMerge(CodecReader reader) throws IOException {
       return reader;
+    }
+
+    /**
+     * Extend this method if you wish to renumber doc IDs. This method will be called when index
+     * sorting is disabled on a merged view of the {@link OneMerge}. A {@code null} return value
+     * indicates that doc IDs should not be reordered.
+     *
+     * <p><b>NOTE:</b> Returning a non-null value here disables several optimizations and increases
+     * the merging overhead.
+     *
+     * @param reader The reader to reorder.
+     * @param dir The {@link Directory} of the index, which may be used to create temporary files.
+     * @param executor An executor that can be used to parallelize the reordering logic. May be
+     *     {@code null} if no concurrency is supported.
+     * @lucene.experimental
+     */
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
+        throws IOException {
+      return null;
     }
 
     /**
@@ -355,11 +380,7 @@ public abstract class MergePolicy {
      * not indicate the number of documents after the merge.
      */
     public int totalNumDocs() {
-      int total = 0;
-      for (SegmentCommitInfo info : segments) {
-        total += info.info.maxDoc();
-      }
-      return total;
+      return totalMaxDoc;
     }
 
     /** Return {@link MergeInfo} describing this merge. */
@@ -498,10 +519,7 @@ public abstract class MergePolicy {
 
     CompletableFuture<Void> getMergeCompletedFutures() {
       return CompletableFuture.allOf(
-          merges.stream()
-              .map(m -> m.mergeCompleted)
-              .collect(Collectors.toList())
-              .toArray(CompletableFuture<?>[]::new));
+          merges.stream().map(m -> m.mergeCompleted).toArray(CompletableFuture<?>[]::new));
     }
 
     /** Waits, until interrupted, for all merges to complete. */
@@ -575,12 +593,12 @@ public abstract class MergePolicy {
    * If the size of the merge segment exceeds this ratio of the total index size then it will remain
    * in non-compound format
    */
-  protected double noCFSRatio = DEFAULT_NO_CFS_RATIO;
+  protected double noCFSRatio;
 
   /**
    * If the size of the merged segment exceeds this value then it will not use compound file format.
    */
-  protected long maxCFSSegmentSize = DEFAULT_MAX_CFS_SEGMENT_SIZE;
+  protected long maxCFSSegmentSize;
 
   /** Creates a new merge policy instance. */
   protected MergePolicy() {
@@ -737,7 +755,7 @@ public abstract class MergePolicy {
   }
 
   /**
-   * Return the byte size of the provided {@link SegmentCommitInfo}, pro-rated by percentage of
+   * Return the byte size of the provided {@link SegmentCommitInfo}, prorated by percentage of
    * non-deleted documents is set.
    */
   protected long size(SegmentCommitInfo info, MergeContext mergeContext) throws IOException {

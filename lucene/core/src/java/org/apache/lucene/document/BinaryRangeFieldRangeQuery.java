@@ -29,7 +29,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
@@ -109,9 +109,8 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     return new ConstantScoreWeight(this, boost) {
-
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         BinaryRangeDocValues values = getValues(context.reader(), field);
         if (values == null) {
           return null;
@@ -136,7 +135,8 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
               }
             };
 
-        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

@@ -141,6 +141,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
   final int numDims;
   final int bytesPerDim;
   List<RangeClause> rangeClauses;
+
   /**
    * Expert: create a multidimensional range query with multiple connected ranges
    *
@@ -332,14 +333,13 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
           allDocsMatch = false;
         }
 
-        final Weight weight = this;
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) {
               return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
             }
 
             @Override
@@ -358,7 +358,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
             public Scorer get(long leadCost) throws IOException {
               values.intersect(visitor);
               DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override
@@ -372,15 +372,6 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
             }
           };
         }
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override
@@ -516,6 +507,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
   private interface Relatable {
     /** return true if the provided point is inside the range */
     boolean matches(byte[] packedValue);
+
     /** return the relation between this range and the provided range */
     PointValues.Relation relate(byte[] minPackedValue, byte[] maxPackedValue);
   }
@@ -527,6 +519,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
   private interface Range extends Relatable {
     /** min value of this range */
     byte[] getMinPackedValue();
+
     /** max value of this range */
     byte[] getMaxPackedValue();
   }
@@ -538,12 +531,16 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
 
     /** Left child, it can be null */
     private RangeTree left;
+
     /** Right child, it can be null */
     private RangeTree right;
+
     /** which dimension was this node split on */
     private final int split;
+
     /** Range of this tree node */
     private final Range component;
+
     // Utility variables for computing relationships
     private final ArrayUtil.ByteArrayComparator comparator;
     private final int numIndexDim;

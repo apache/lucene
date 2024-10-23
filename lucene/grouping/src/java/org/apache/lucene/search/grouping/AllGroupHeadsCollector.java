@@ -24,6 +24,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
@@ -260,7 +261,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
       comparators = new FieldComparator[sortFields.length];
       leafComparators = new LeafFieldComparator[sortFields.length];
       for (int i = 0; i < sortFields.length; i++) {
-        comparators[i] = sortFields[i].getComparator(1, false);
+        comparators[i] = sortFields[i].getComparator(1, Pruning.NONE);
         leafComparators[i] = comparators[i].getLeafComparator(context);
         leafComparators[i].setScorer(scorer);
         leafComparators[i].copy(0, doc);

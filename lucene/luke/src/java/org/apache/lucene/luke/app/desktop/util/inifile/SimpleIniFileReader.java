@@ -44,10 +44,10 @@ public class SimpleIniFileReader implements IniFileReader {
                   // set section if this is a valid section string
                   currentSection = line.substring(1, line.length() - 1);
                   sections.putIfAbsent(currentSection, new OptionMap());
-                } else if (!currentSection.equals("")) {
+                } else if (!currentSection.isEmpty()) {
                   // put option if this is a valid option string
                   String[] ary = line.split("=", 2);
-                  if (ary.length == 2 && !ary[0].trim().equals("") && !ary[1].trim().equals("")) {
+                  if (ary.length == 2 && !ary[0].trim().isEmpty() && !ary[1].trim().isEmpty()) {
                     sections.get(currentSection).put(ary[0].trim(), ary[1].trim());
                   }
                 }

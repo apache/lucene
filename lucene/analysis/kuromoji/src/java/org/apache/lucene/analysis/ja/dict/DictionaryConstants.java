@@ -20,14 +20,19 @@ package org.apache.lucene.analysis.ja.dict;
 final class DictionaryConstants {
   /** Codec header of the dictionary file. */
   public static final String DICT_HEADER = "kuromoji_dict";
+
   /** Codec header of the dictionary mapping file. */
   public static final String TARGETMAP_HEADER = "kuromoji_dict_map";
+
   /** Codec header of the POS dictionary file. */
   public static final String POSDICT_HEADER = "kuromoji_dict_pos";
+
   /** Codec header of the connection costs. */
   public static final String CONN_COSTS_HEADER = "kuromoji_cc";
+
   /** Codec header of the character definition file. */
   public static final String CHARDEF_HEADER = "kuromoji_cd";
+
   /** Codec version of the binary dictionary */
   public static final int VERSION = 1;
 }

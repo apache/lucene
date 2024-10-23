@@ -43,26 +43,27 @@ import org.apache.lucene.util.BytesRef;
 public class TestTopDocsMerge extends LuceneTestCase {
 
   private static class ShardSearcher extends IndexSearcher {
-    private final List<LeafReaderContext> ctx;
+    private final LeafReaderContext ctx;
 
     public ShardSearcher(LeafReaderContext ctx, IndexReaderContext parent) {
       super(parent);
-      this.ctx = Collections.singletonList(ctx);
+      this.ctx = ctx;
     }
 
     public void search(Weight weight, Collector collector) throws IOException {
-      search(ctx, weight, collector);
+      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
     }
 
     public TopDocs search(Weight weight, int topN) throws IOException {
-      TopScoreDocCollector collector = TopScoreDocCollector.create(topN, Integer.MAX_VALUE);
-      search(ctx, weight, collector);
+      TopScoreDocCollector collector =
+          new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE, false).newCollector();
+      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
       return collector.topDocs();
     }
 
     @Override
     public String toString() {
-      return "ShardSearcher(" + ctx.get(0) + ")";
+      return "ShardSearcher(" + ctx + ")";
     }
   }
 
@@ -271,11 +272,11 @@ public class TestTopDocsMerge extends LuceneTestCase {
       final TopDocs topHits;
       if (sort == null) {
         if (useFrom) {
-          TopScoreDocCollector c = TopScoreDocCollector.create(numHits, Integer.MAX_VALUE);
-          searcher.search(query, c);
+
           from = TestUtil.nextInt(random(), 0, numHits - 1);
           size = numHits - from;
-          TopDocs tempTopHits = c.topDocs();
+          TopDocs tempTopHits =
+              searcher.search(query, new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE));
           if (from < tempTopHits.scoreDocs.length) {
             // Can't use TopDocs#topDocs(start, howMany), since it has different behaviour when
             // start >= hitCount
@@ -292,26 +293,25 @@ public class TestTopDocsMerge extends LuceneTestCase {
           topHits = searcher.search(query, numHits);
         }
       } else {
-        final TopFieldCollector c = TopFieldCollector.create(sort, numHits, Integer.MAX_VALUE);
-        searcher.search(query, c);
+        TopFieldDocs topFieldDocs =
+            searcher.search(query, new TopFieldCollectorManager(sort, numHits, Integer.MAX_VALUE));
         if (useFrom) {
           from = TestUtil.nextInt(random(), 0, numHits - 1);
           size = numHits - from;
-          TopDocs tempTopHits = c.topDocs();
-          if (from < tempTopHits.scoreDocs.length) {
+          if (from < topFieldDocs.scoreDocs.length) {
             // Can't use TopDocs#topDocs(start, howMany), since it has different behaviour when
             // start >= hitCount
             // than TopDocs#merge currently has
             ScoreDoc[] newScoreDocs =
-                new ScoreDoc[Math.min(size, tempTopHits.scoreDocs.length - from)];
-            System.arraycopy(tempTopHits.scoreDocs, from, newScoreDocs, 0, newScoreDocs.length);
-            tempTopHits.scoreDocs = newScoreDocs;
-            topHits = tempTopHits;
+                new ScoreDoc[Math.min(size, topFieldDocs.scoreDocs.length - from)];
+            System.arraycopy(topFieldDocs.scoreDocs, from, newScoreDocs, 0, newScoreDocs.length);
+            topFieldDocs.scoreDocs = newScoreDocs;
+            topHits = topFieldDocs;
           } else {
-            topHits = new TopDocs(tempTopHits.totalHits, new ScoreDoc[0]);
+            topHits = new TopDocs(topFieldDocs.totalHits, new ScoreDoc[0]);
           }
         } else {
-          topHits = c.topDocs(0, numHits);
+          topHits = topFieldDocs;
         }
       }
 
@@ -321,7 +321,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
         }
         System.out.println(
             "  top search: "
-                + topHits.totalHits.value
+                + topHits.totalHits.value()
                 + " totalHits; hits="
                 + (topHits.scoreDocs == null ? "null" : topHits.scoreDocs.length));
         if (topHits.scoreDocs != null) {
@@ -347,7 +347,9 @@ public class TestTopDocsMerge extends LuceneTestCase {
         if (sort == null) {
           subHits = subSearcher.search(w, numHits);
         } else {
-          final TopFieldCollector c = TopFieldCollector.create(sort, numHits, Integer.MAX_VALUE);
+          final TopFieldCollector c =
+              new TopFieldCollectorManager(sort, numHits, null, Integer.MAX_VALUE, false)
+                  .newCollector();
           subSearcher.search(w, c);
           subHits = c.topDocs(0, numHits);
         }
@@ -362,7 +364,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
               "  shard="
                   + shardIDX
                   + " "
-                  + subHits.totalHits.value
+                  + subHits.totalHits.value()
                   + " totalHits hits="
                   + (subHits.scoreDocs == null ? "null" : subHits.scoreDocs.length));
           if (subHits.scoreDocs != null) {

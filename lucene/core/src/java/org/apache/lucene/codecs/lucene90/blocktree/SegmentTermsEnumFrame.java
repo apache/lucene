@@ -55,11 +55,11 @@ final class SegmentTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  byte[] floorData = new byte[32];
+  int rewindPos;
   final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
 
   // Length of prefix shared by all terms in this block
-  int prefix;
+  int prefixLength;
 
   // Number of entries (term or sub-block) in this block
   int entCount;
@@ -74,6 +74,9 @@ final class SegmentTermsEnumFrame {
 
   // True if all entries are terms
   boolean isLeafBlock;
+
+  // True if all entries have the same length.
+  boolean allEqual;
 
   long lastSubFP;
 
@@ -104,13 +107,9 @@ final class SegmentTermsEnumFrame {
     suffixLengthsReader = new ByteArrayDataInput();
   }
 
-  public void setFloorData(ByteArrayDataInput in, BytesRef source) {
-    final int numBytes = source.length - (in.getPosition() - source.offset);
-    if (numBytes > floorData.length) {
-      floorData = new byte[ArrayUtil.oversize(numBytes, 1)];
-    }
-    System.arraycopy(source.bytes, source.offset + in.getPosition(), floorData, 0, numBytes);
-    floorDataReader.reset(floorData, 0, numBytes);
+  public void setFloorData(SegmentTermsEnum.OutputAccumulator outputAccumulator) {
+    outputAccumulator.setFloorData(floorDataReader);
+    rewindPos = floorDataReader.getPosition();
     numFollowFloorBlocks = floorDataReader.readVInt();
     nextFloorLabel = floorDataReader.readByte() & 0xff;
     // if (DEBUG) {
@@ -132,6 +131,21 @@ final class SegmentTermsEnumFrame {
     fp = fpEnd;
     nextEnt = -1;
     loadBlock();
+  }
+
+  void prefetchBlock() throws IOException {
+    if (nextEnt != -1) {
+      // Already loaded
+      return;
+    }
+
+    // Clone the IndexInput lazily, so that consumers
+    // that just pull a TermsEnum to
+    // seekExact(TermState) don't pay this cost:
+    ste.initIndexInput();
+
+    // TODO: Could we know the number of bytes to prefetch?
+    ste.in.prefetch(fp, 1);
   }
 
   /* Does initial decode of next block of terms; this
@@ -187,7 +201,7 @@ final class SegmentTermsEnumFrame {
     suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
 
     int numSuffixLengthBytes = ste.in.readVInt();
-    final boolean allEqual = (numSuffixLengthBytes & 0x01) != 0;
+    allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
     if (suffixLengthBytes.length < numSuffixLengthBytes) {
       suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
@@ -247,7 +261,7 @@ final class SegmentTermsEnumFrame {
     nextEnt = -1;
     hasTerms = hasTermsOrig;
     if (isFloor) {
-      floorDataReader.rewind();
+      floorDataReader.setPosition(rewindPos);
       numFollowFloorBlocks = floorDataReader.readVInt();
       assert numFollowFloorBlocks > 0;
       nextFloorLabel = floorDataReader.readByte() & 0xff;
@@ -299,16 +313,16 @@ final class SegmentTermsEnumFrame {
   }
 
   public void nextLeaf() {
-    // if (DEBUG) System.out.println("  frame.next ord=" + ord + " nextEnt=" + nextEnt + "
-    // entCount=" + entCount);
+    // if (DEBUG) System.out.println("  frame.next ord=" + ord + " nextEnt=" + nextEnt +
+    // " entCount=" + entCount);
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
     nextEnt++;
-    suffix = suffixLengthsReader.readVInt();
+    suffixLength = suffixLengthsReader.readVInt();
     startBytePos = suffixesReader.getPosition();
-    ste.term.setLength(prefix + suffix);
+    ste.term.setLength(prefixLength + suffixLength);
     ste.term.grow(ste.term.length());
-    suffixesReader.readBytes(ste.term.bytes(), prefix, suffix);
+    suffixesReader.readBytes(ste.term.bytes(), prefixLength, suffixLength);
     ste.termExists = true;
   }
 
@@ -332,11 +346,11 @@ final class SegmentTermsEnumFrame {
           : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
       nextEnt++;
       final int code = suffixLengthsReader.readVInt();
-      suffix = code >>> 1;
+      suffixLength = code >>> 1;
       startBytePos = suffixesReader.getPosition();
-      ste.term.setLength(prefix + suffix);
+      ste.term.setLength(prefixLength + suffixLength);
       ste.term.grow(ste.term.length());
-      suffixesReader.readBytes(ste.term.bytes(), prefix, suffix);
+      suffixesReader.readBytes(ste.term.bytes(), prefixLength, suffixLength);
       if ((code & 1) == 0) {
         // A normal term
         ste.termExists = true;
@@ -361,7 +375,7 @@ final class SegmentTermsEnumFrame {
   // floor blocks we "typically" get
   public void scanToFloorFrame(BytesRef target) {
 
-    if (!isFloor || target.length <= prefix) {
+    if (!isFloor || target.length <= prefixLength) {
       // if (DEBUG) {
       //   System.out.println("    scanToFloorFrame skip: isFloor=" + isFloor + " target.length=" +
       // target.length + " vs prefix=" + prefix);
@@ -369,7 +383,7 @@ final class SegmentTermsEnumFrame {
       return;
     }
 
-    final int targetLabel = target.bytes[target.offset + prefix] & 0xFF;
+    final int targetLabel = target.bytes[target.offset + prefixLength] & 0xFF;
 
     // if (DEBUG) {
     //   System.out.println("    scanToFloorFrame fpOrig=" + fpOrig + " targetLabel=" +
@@ -392,8 +406,8 @@ final class SegmentTermsEnumFrame {
       newFP = fpOrig + (code >>> 1);
       hasTerms = (code & 1) != 0;
       // if (DEBUG) {
-      //   System.out.println("      label=" + toHex(nextFloorLabel) + " fp=" + newFP + "
-      // hasTerms?=" + hasTerms + " numFollowFloor=" + numFollowFloorBlocks);
+      //   System.out.println("      label=" + toHex(nextFloorLabel) + " fp=" + newFP +
+      // " hasTerms?=" + hasTerms + " numFollowFloor=" + numFollowFloorBlocks);
       // }
 
       isLastInFloor = numFollowFloorBlocks == 1;
@@ -483,7 +497,7 @@ final class SegmentTermsEnumFrame {
 
   // Used only by assert
   private boolean prefixMatches(BytesRef target) {
-    for (int bytePos = 0; bytePos < prefix; bytePos++) {
+    for (int bytePos = 0; bytePos < prefixLength; bytePos++) {
       if (target.bytes[target.offset + bytePos] != ste.term.byteAt(bytePos)) {
         return false;
       }
@@ -527,36 +541,30 @@ final class SegmentTermsEnumFrame {
 
   // NOTE: sets startBytePos/suffix as a side effect
   public SeekStatus scanToTerm(BytesRef target, boolean exactOnly) throws IOException {
-    return isLeafBlock ? scanToTermLeaf(target, exactOnly) : scanToTermNonLeaf(target, exactOnly);
+    if (isLeafBlock) {
+      if (allEqual) {
+        return binarySearchTermLeaf(target, exactOnly);
+      } else {
+        return scanToTermLeaf(target, exactOnly);
+      }
+    } else {
+      return scanToTermNonLeaf(target, exactOnly);
+    }
   }
 
   private int startBytePos;
-  private int suffix;
+  private int suffixLength;
   private long subCode;
   CompressionAlgorithm compressionAlg = CompressionAlgorithm.NO_COMPRESSION;
 
-  // for debugging
-  /*
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's eg a
-      // prefix of UTF8 that ends mid-unicode-char, we
-      // fallback to hex:
-      return b.toString();
-    }
-  }
-  */
-
   // Target's prefix matches this block's prefix; we
-  // scan the entries check if the suffix matches.
+  // scan the entries to check if the suffix matches.
   public SeekStatus scanToTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
-    // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix + "
-    // nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
-    // brToString(term));
+    // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix +
+    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
+    // ToStringUtils.bytesRefToString(target) +
+    // " term=" + ToStringUtils.bytesRefToString(term));
 
     assert nextEnt != -1;
 
@@ -572,13 +580,11 @@ final class SegmentTermsEnumFrame {
 
     assert prefixMatches(target);
 
-    // TODO: binary search when all terms have the same length, which is common for ID fields,
-    // which are also the most sensitive to lookup performance?
     // Loop over each entry (term or sub-block) in this block:
     do {
       nextEnt++;
 
-      suffix = suffixLengthsReader.readVInt();
+      suffixLength = suffixLengthsReader.readVInt();
 
       // if (DEBUG) {
       //   BytesRef suffixBytesRef = new BytesRef();
@@ -586,20 +592,20 @@ final class SegmentTermsEnumFrame {
       //   suffixBytesRef.offset = suffixesReader.getPosition();
       //   suffixBytesRef.length = suffix;
       //   System.out.println("      cycle: term " + (nextEnt-1) + " (of " + entCount + ") suffix="
-      // + brToString(suffixBytesRef));
+      // + ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       startBytePos = suffixesReader.getPosition();
-      suffixesReader.skipBytes(suffix);
+      suffixesReader.skipBytes(suffixLength);
 
-      // Loop over bytes in the suffix, comparing to the target
+      // Compare suffix and target.
       final int cmp =
           Arrays.compareUnsigned(
               suffixBytes,
               startBytePos,
-              startBytePos + suffix,
+              startBytePos + suffixLength,
               target.bytes,
-              target.offset + prefix,
+              target.offset + prefixLength,
               target.offset + target.length);
 
       if (cmp < 0) {
@@ -619,7 +625,6 @@ final class SegmentTermsEnumFrame {
         // would have followed the index to this
         // sub-block from the start:
 
-        assert ste.termExists;
         fillTerm();
         // if (DEBUG) System.out.println("        found!");
         return SeekStatus.FOUND;
@@ -646,13 +651,105 @@ final class SegmentTermsEnumFrame {
     return SeekStatus.END;
   }
 
+  // Target's prefix matches this block's prefix;
+  // And all suffixes have the same length in this block,
+  // we binary search the entries to check if the suffix matches.
+  public SeekStatus binarySearchTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
+    // if (DEBUG) System.out.println("    binarySearchTermLeaf: block fp=" + fp + " prefix=" +
+    // prefix + "
+    // nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
+    // brToString(term));
+
+    assert nextEnt != -1;
+
+    ste.termExists = true;
+    subCode = 0;
+
+    if (nextEnt == entCount) {
+      if (exactOnly) {
+        fillTerm();
+      }
+      return SeekStatus.END;
+    }
+
+    assert prefixMatches(target);
+
+    suffixLength = suffixLengthsReader.readVInt();
+    // TODO early terminate when target length unequals suffix + prefix.
+    // But we need to keep the same status with scanToTermLeaf.
+    int start = nextEnt;
+    int end = entCount - 1;
+    // Binary search the entries (terms) in this leaf block:
+    int cmp = 0;
+    while (start <= end) {
+      int mid = (start + end) >>> 1;
+      nextEnt = mid + 1;
+      startBytePos = mid * suffixLength;
+
+      // Compare suffix and target.
+      cmp =
+          Arrays.compareUnsigned(
+              suffixBytes,
+              startBytePos,
+              startBytePos + suffixLength,
+              target.bytes,
+              target.offset + prefixLength,
+              target.offset + target.length);
+      if (cmp < 0) {
+        start = mid + 1;
+      } else if (cmp > 0) {
+        end = mid - 1;
+      } else {
+        // Exact match!
+        suffixesReader.setPosition(startBytePos + suffixLength);
+        fillTerm();
+        // if (DEBUG) System.out.println("        found!");
+        return SeekStatus.FOUND;
+      }
+    }
+
+    // It is possible (and OK) that terms index pointed us
+    // at this block, but, we searched the entire block and
+    // did not find the term to position to.  This happens
+    // when the target is after the last term in the block
+    // (but, before the next term in the index).  EG
+    // target could be foozzz, and terms index pointed us
+    // to the foo* block, but the last term in this block
+    // was fooz (and, eg, first term in the next block will
+    // bee fop).
+    // if (DEBUG) System.out.println("      block end");
+    SeekStatus seekStatus;
+    if (end < entCount - 1) {
+      seekStatus = SeekStatus.NOT_FOUND;
+      // If binary search ended at the less term, and greater term exists.
+      // We need to advance to the greater term.
+      if (cmp < 0) {
+        startBytePos += suffixLength;
+        nextEnt++;
+      }
+      suffixesReader.setPosition(startBytePos + suffixLength);
+      fillTerm();
+    } else {
+      seekStatus = SeekStatus.END;
+      suffixesReader.setPosition(startBytePos + suffixLength);
+      if (exactOnly) {
+        fillTerm();
+      }
+    }
+    // TODO: not consistent that in the
+    // not-exact case we don't next() into the next
+    // frame here
+    return seekStatus;
+  }
+
   // Target's prefix matches this block's prefix; we
-  // scan the entries check if the suffix matches.
+  // scan the entries to check if the suffix matches.
   public SeekStatus scanToTermNonLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
     // if (DEBUG) System.out.println("    scanToTermNonLeaf: block fp=" + fp + " prefix=" + prefix +
-    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
-    // brToString(target));
+    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
+    // ToStringUtils.bytesRefToString(target) +
+    // " term=" + ToStringUtils.bytesRefToString(term));
 
     assert nextEnt != -1;
 
@@ -672,7 +769,7 @@ final class SegmentTermsEnumFrame {
       nextEnt++;
 
       final int code = suffixLengthsReader.readVInt();
-      suffix = code >>> 1;
+      suffixLength = code >>> 1;
 
       // if (DEBUG) {
       //  BytesRef suffixBytesRef = new BytesRef();
@@ -680,12 +777,12 @@ final class SegmentTermsEnumFrame {
       //  suffixBytesRef.offset = suffixesReader.getPosition();
       //  suffixBytesRef.length = suffix;
       //  System.out.println("      cycle: " + ((code&1)==1 ? "sub-block" : "term") + " " +
-      // (nextEnt-1) + " (of " + entCount + ") suffix=" + brToString(suffixBytesRef));
+      // (nextEnt-1) + " (of " + entCount + ") suffix=" +
+      // ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
-      final int termLen = prefix + suffix;
       startBytePos = suffixesReader.getPosition();
-      suffixesReader.skipBytes(suffix);
+      suffixesReader.skipBytes(suffixLength);
       ste.termExists = (code & 1) == 0;
       if (ste.termExists) {
         state.termBlockOrd++;
@@ -695,13 +792,14 @@ final class SegmentTermsEnumFrame {
         lastSubFP = fp - subCode;
       }
 
+      // Compare suffix and target.
       final int cmp =
           Arrays.compareUnsigned(
               suffixBytes,
               startBytePos,
-              startBytePos + suffix,
+              startBytePos + suffixLength,
               target.bytes,
-              target.offset + prefix,
+              target.offset + prefixLength,
               target.offset + target.length);
 
       if (cmp < 0) {
@@ -712,8 +810,8 @@ final class SegmentTermsEnumFrame {
         // return NOT_FOUND:
         fillTerm();
 
-        // if (DEBUG) System.out.println("        maybe done exactOnly=" + exactOnly + "
-        // ste.termExists=" + ste.termExists);
+        // if (DEBUG) System.out.println("        maybe done exactOnly=" + exactOnly +
+        // " ste.termExists=" + ste.termExists);
 
         if (!exactOnly && !ste.termExists) {
           // System.out.println("  now pushFrame");
@@ -722,7 +820,8 @@ final class SegmentTermsEnumFrame {
           // us to position to the next term after
           // the target, so we must recurse into the
           // sub-frame(s):
-          ste.currentFrame = ste.pushFrame(null, ste.currentFrame.lastSubFP, termLen);
+          ste.currentFrame =
+              ste.pushFrame(null, ste.currentFrame.lastSubFP, prefixLength + suffixLength);
           ste.currentFrame.loadBlock();
           while (ste.currentFrame.next()) {
             ste.currentFrame = ste.pushFrame(null, ste.currentFrame.lastSubFP, ste.term.length());
@@ -767,9 +866,9 @@ final class SegmentTermsEnumFrame {
   }
 
   private void fillTerm() {
-    final int termLength = prefix + suffix;
+    final int termLength = prefixLength + suffixLength;
     ste.term.setLength(termLength);
     ste.term.grow(termLength);
-    System.arraycopy(suffixBytes, startBytePos, ste.term.bytes(), prefix, suffix);
+    System.arraycopy(suffixBytes, startBytePos, ste.term.bytes(), prefixLength, suffixLength);
   }
 }

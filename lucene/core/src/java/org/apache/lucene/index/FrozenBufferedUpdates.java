@@ -31,7 +31,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
@@ -71,7 +70,6 @@ final class FrozenBufferedUpdates {
   private final int fieldUpdatesCount;
 
   final int bytesUsed;
-  final int numTermDeletes;
 
   private long delGen = -1; // assigned by BufferedUpdatesStream once pushed
 
@@ -86,12 +84,9 @@ final class FrozenBufferedUpdates {
     this.privateSegment = privateSegment;
     assert privateSegment == null || updates.deleteTerms.isEmpty()
         : "segment private packet should only have del queries";
-    Term[] termsArray = updates.deleteTerms.keySet().toArray(new Term[updates.deleteTerms.size()]);
-    ArrayUtil.timSort(termsArray);
+
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
-    for (Term term : termsArray) {
-      builder.add(term);
-    }
+    updates.deleteTerms.forEachOrdered((term, doc) -> builder.add(term));
     deleteTerms = builder.finish();
 
     deleteQueries = new Query[updates.deleteQueries.size()];
@@ -115,7 +110,6 @@ final class FrozenBufferedUpdates {
             ((deleteTerms.ramBytesUsed() + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
                 + updates.fieldUpdatesBytesUsed.get());
 
-    numTermDeletes = updates.numTermDeletes.get();
     if (infoStream != null && infoStream.isEnabled("BD")) {
       infoStream.message(
           "BD",
@@ -517,11 +511,8 @@ final class FrozenBufferedUpdates {
   @Override
   public String toString() {
     String s = "delGen=" + delGen;
-    if (numTermDeletes != 0) {
-      s += " numDeleteTerms=" + numTermDeletes;
-      if (numTermDeletes != deleteTerms.size()) {
-        s += " (" + deleteTerms.size() + " unique)";
-      }
+    if (deleteTerms.size() != 0) {
+      s += " unique deleteTerms=" + deleteTerms.size();
     }
     if (deleteQueries.length != 0) {
       s += " numDeleteQueries=" + deleteQueries.length;

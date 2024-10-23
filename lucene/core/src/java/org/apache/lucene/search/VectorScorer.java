@@ -17,107 +17,25 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
- * is primarily used by {@link KnnFloatVectorQuery} to run an exact, exhaustive search over the
- * vectors.
+ * is used for exact searching and scoring
+ *
+ * @lucene.experimental
  */
-abstract class VectorScorer {
-  protected final VectorSimilarityFunction similarity;
+public interface VectorScorer {
 
   /**
-   * Create a new vector scorer instance.
+   * Compute the score for the current document ID.
    *
-   * @param context the reader context
-   * @param fi the FieldInfo for the field containing document vectors
-   * @param query the query vector to compute the similarity for
+   * @return the score for the current document ID
+   * @throws IOException if an exception occurs during score computation
    */
-  static FloatVectorScorer create(LeafReaderContext context, FieldInfo fi, float[] query)
-      throws IOException {
-    FloatVectorValues values = context.reader().getFloatVectorValues(fi.name);
-    final VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
-    return new FloatVectorScorer(values, query, similarity);
-  }
+  float score() throws IOException;
 
-  static ByteVectorScorer create(LeafReaderContext context, FieldInfo fi, byte[] query)
-      throws IOException {
-    ByteVectorValues values = context.reader().getByteVectorValues(fi.name);
-    VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
-    return new ByteVectorScorer(values, query, similarity);
-  }
-
-  VectorScorer(VectorSimilarityFunction similarity) {
-    this.similarity = similarity;
-  }
-
-  /** Compute the similarity score for the current document. */
-  abstract float score() throws IOException;
-
-  abstract boolean advanceExact(int doc) throws IOException;
-
-  private static class ByteVectorScorer extends VectorScorer {
-    private final byte[] query;
-    private final ByteVectorValues values;
-
-    protected ByteVectorScorer(
-        ByteVectorValues values, byte[] query, VectorSimilarityFunction similarity) {
-      super(similarity);
-      this.values = values;
-      this.query = query;
-    }
-
-    /**
-     * Advance the instance to the given document ID and return true if there is a value for that
-     * document.
-     */
-    @Override
-    public boolean advanceExact(int doc) throws IOException {
-      int vectorDoc = values.docID();
-      if (vectorDoc < doc) {
-        vectorDoc = values.advance(doc);
-      }
-      return vectorDoc == doc;
-    }
-
-    @Override
-    public float score() throws IOException {
-      return similarity.compare(query, values.vectorValue());
-    }
-  }
-
-  private static class FloatVectorScorer extends VectorScorer {
-    private final float[] query;
-    private final FloatVectorValues values;
-
-    protected FloatVectorScorer(
-        FloatVectorValues values, float[] query, VectorSimilarityFunction similarity) {
-      super(similarity);
-      this.query = query;
-      this.values = values;
-    }
-
-    /**
-     * Advance the instance to the given document ID and return true if there is a value for that
-     * document.
-     */
-    @Override
-    public boolean advanceExact(int doc) throws IOException {
-      int vectorDoc = values.docID();
-      if (vectorDoc < doc) {
-        vectorDoc = values.advance(doc);
-      }
-      return vectorDoc == doc;
-    }
-
-    @Override
-    public float score() throws IOException {
-      return similarity.compare(query, values.vectorValue());
-    }
-  }
+  /**
+   * @return a {@link DocIdSetIterator} over the documents.
+   */
+  DocIdSetIterator iterator();
 }

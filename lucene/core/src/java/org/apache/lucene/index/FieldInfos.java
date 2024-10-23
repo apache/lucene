@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.index.FieldInfo.verifySameDocValuesSkipIndex;
 import static org.apache.lucene.index.FieldInfo.verifySameDocValuesType;
 import static org.apache.lucene.index.FieldInfo.verifySameIndexOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameOmitNorms;
@@ -23,10 +24,8 @@ import static org.apache.lucene.index.FieldInfo.verifySamePointsOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameStoreTermVectors;
 import static org.apache.lucene.index.FieldInfo.verifySameVectorOptions;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -35,7 +34,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -52,22 +52,28 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final boolean hasProx;
   private final boolean hasPayloads;
   private final boolean hasOffsets;
-  private final boolean hasVectors;
+  private final boolean hasTermVectors;
   private final boolean hasNorms;
   private final boolean hasDocValues;
   private final boolean hasPointValues;
   private final boolean hasVectorValues;
   private final String softDeletesField;
 
+  private final String parentField;
+
   // used only by fieldInfo(int)
   private final FieldInfo[] byNumber;
+  private final HashMap<String, FieldInfo> byName;
 
-  private final HashMap<String, FieldInfo> byName = new HashMap<>();
-  private final Collection<FieldInfo> values; // for an unmodifiable iterator
+  /** Iterator in ascending order of field number. */
+  private final Collection<FieldInfo> values;
 
-  /** Constructs a new FieldInfos from an array of FieldInfo objects */
+  /**
+   * Constructs a new FieldInfos from an array of FieldInfo objects. The array can be used directly
+   * as the backing structure.
+   */
   public FieldInfos(FieldInfo[] infos) {
-    boolean hasVectors = false;
+    boolean hasTermVectors = false;
     boolean hasPostings = false;
     boolean hasProx = false;
     boolean hasPayloads = false;
@@ -78,31 +84,23 @@ public class FieldInfos implements Iterable<FieldInfo> {
     boolean hasPointValues = false;
     boolean hasVectorValues = false;
     String softDeletesField = null;
+    String parentField = null;
 
-    int size = 0; // number of elements in byNumberTemp, number of used array slots
-    FieldInfo[] byNumberTemp = new FieldInfo[10]; // initial array capacity of 10
+    byName = CollectionUtil.newHashMap(infos.length);
+    int maxFieldNumber = -1;
+    boolean fieldNumberStrictlyAscending = true;
     for (FieldInfo info : infos) {
-      if (info.number < 0) {
+      int fieldNumber = info.number;
+      if (fieldNumber < 0) {
         throw new IllegalArgumentException(
             "illegal field number: " + info.number + " for field " + info.name);
       }
-      size = info.number >= size ? info.number + 1 : size;
-      if (info.number >= byNumberTemp.length) { // grow array
-        byNumberTemp = ArrayUtil.grow(byNumberTemp, info.number + 1);
+      if (maxFieldNumber < fieldNumber) {
+        maxFieldNumber = fieldNumber;
+      } else {
+        fieldNumberStrictlyAscending = false;
       }
-      FieldInfo previous = byNumberTemp[info.number];
-      if (previous != null) {
-        throw new IllegalArgumentException(
-            "duplicate field numbers: "
-                + previous.name
-                + " and "
-                + info.name
-                + " have: "
-                + info.number);
-      }
-      byNumberTemp[info.number] = info;
-
-      previous = byName.put(info.name, info);
+      FieldInfo previous = byName.put(info.name, info);
       if (previous != null) {
         throw new IllegalArgumentException(
             "duplicate field names: "
@@ -113,7 +111,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 + info.name);
       }
 
-      hasVectors |= info.hasVectors();
+      hasTermVectors |= info.hasTermVectors();
       hasPostings |= info.getIndexOptions() != IndexOptions.NONE;
       hasProx |= info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
       hasFreq |= info.getIndexOptions() != IndexOptions.DOCS;
@@ -132,9 +130,16 @@ public class FieldInfos implements Iterable<FieldInfo> {
         }
         softDeletesField = info.name;
       }
+      if (info.isParentField()) {
+        if (parentField != null && parentField.equals(info.name) == false) {
+          throw new IllegalArgumentException(
+              "multiple parent fields [" + info.name + ", " + parentField + "]");
+        }
+        parentField = info.name;
+      }
     }
 
-    this.hasVectors = hasVectors;
+    this.hasTermVectors = hasTermVectors;
     this.hasPostings = hasPostings;
     this.hasProx = hasProx;
     this.hasPayloads = hasPayloads;
@@ -145,17 +150,42 @@ public class FieldInfos implements Iterable<FieldInfo> {
     this.hasPointValues = hasPointValues;
     this.hasVectorValues = hasVectorValues;
     this.softDeletesField = softDeletesField;
+    this.parentField = parentField;
 
-    List<FieldInfo> valuesTemp = new ArrayList<>();
-    byNumber = new FieldInfo[size];
-    for (int i = 0; i < size; i++) {
-      byNumber[i] = byNumberTemp[i];
-      if (byNumberTemp[i] != null) {
-        valuesTemp.add(byNumberTemp[i]);
+    if (fieldNumberStrictlyAscending && maxFieldNumber == infos.length - 1) {
+      // The input FieldInfo[] contains all fields numbered from 0 to infos.length - 1, and they are
+      // sorted, use it directly. This is an optimization when reading a segment with all fields
+      // since the FieldInfo[] is sorted.
+      byNumber = infos;
+      values = Arrays.asList(byNumber);
+    } else {
+      byNumber = new FieldInfo[maxFieldNumber + 1];
+      for (FieldInfo fieldInfo : infos) {
+        FieldInfo existing = byNumber[fieldInfo.number];
+        if (existing != null) {
+          throw new IllegalArgumentException(
+              "duplicate field numbers: "
+                  + existing.name
+                  + " and "
+                  + fieldInfo.name
+                  + " have: "
+                  + fieldInfo.number);
+        }
+        byNumber[fieldInfo.number] = fieldInfo;
+      }
+      if (maxFieldNumber == infos.length - 1) {
+        // No fields are missing, use byNumber.
+        values = Arrays.asList(byNumber);
+      } else {
+        if (!fieldNumberStrictlyAscending) {
+          // The below code is faster than
+          // Arrays.stream(byNumber).filter(Objects::nonNull).toList(),
+          // mainly when the input FieldInfo[] is small compared to maxFieldNumber.
+          Arrays.sort(infos, (fi1, fi2) -> Integer.compare(fi1.number, fi2.number));
+        }
+        values = Arrays.asList(infos);
       }
     }
-    values =
-        Collections.unmodifiableCollection(Arrays.asList(valuesTemp.toArray(new FieldInfo[0])));
   }
 
   /**
@@ -178,7 +208,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
               .filter(Objects::nonNull)
               .findAny()
               .orElse(null);
-      final Builder builder = new Builder(new FieldNumbers(softDeletesField));
+      final String parentField = getAndValidateParentField(leaves);
+      final Builder builder = new Builder(new FieldNumbers(softDeletesField, parentField));
       for (final LeafReaderContext ctx : leaves) {
         for (FieldInfo fieldInfo : ctx.reader().getFieldInfos()) {
           builder.add(fieldInfo);
@@ -186,6 +217,26 @@ public class FieldInfos implements Iterable<FieldInfo> {
       }
       return builder.finish();
     }
+  }
+
+  private static String getAndValidateParentField(List<LeafReaderContext> leaves) {
+    boolean set = false;
+    String theField = null;
+    for (LeafReaderContext ctx : leaves) {
+      String field = ctx.reader().getFieldInfos().getParentField();
+      if (set && Objects.equals(field, theField) == false) {
+        throw new IllegalStateException(
+            "expected parent doc field to be \""
+                + theField
+                + " \" across all segments but found a segment with different field \""
+                + field
+                + "\"");
+      } else {
+        theField = field;
+        set = true;
+      }
+    }
+    return theField;
   }
 
   /** Returns a set of names of fields that have a terms index. The order is undefined. */
@@ -224,9 +275,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     return hasOffsets;
   }
 
-  /** Returns true if any fields have vectors */
-  public boolean hasVectors() {
-    return hasVectors;
+  /** Returns true if any fields have term vectors */
+  public boolean hasTermVectors() {
+    return hasTermVectors;
   }
 
   /** Returns true if any fields have norms */
@@ -252,6 +303,11 @@ public class FieldInfos implements Iterable<FieldInfo> {
   /** Returns the soft-deletes field name if exists; otherwise returns null */
   public String getSoftDeletesField() {
     return softDeletesField;
+  }
+
+  /** Returns the parent document field name if exists; otherwise returns null */
+  public String getParentField() {
+    return parentField;
   }
 
   /** Returns the number of fields */
@@ -288,54 +344,35 @@ public class FieldInfos implements Iterable<FieldInfo> {
     if (fieldNumber < 0) {
       throw new IllegalArgumentException("Illegal field number: " + fieldNumber);
     }
-    if (fieldNumber >= byNumber.length) {
-      return null;
-    }
-    return byNumber[fieldNumber];
+    return fieldNumber >= byNumber.length ? null : byNumber[fieldNumber];
   }
 
-  static final class FieldDimensions {
-    public final int dimensionCount;
-    public final int indexDimensionCount;
-    public final int dimensionNumBytes;
+  private record FieldDimensions(
+      int dimensionCount, int indexDimensionCount, int dimensionNumBytes) {}
 
-    public FieldDimensions(int dimensionCount, int indexDimensionCount, int dimensionNumBytes) {
-      this.dimensionCount = dimensionCount;
-      this.indexDimensionCount = indexDimensionCount;
-      this.dimensionNumBytes = dimensionNumBytes;
-    }
-  }
+  private record FieldVectorProperties(
+      int numDimensions,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction) {}
 
-  static final class FieldVectorProperties {
-    final int numDimensions;
-    final VectorEncoding vectorEncoding;
-    final VectorSimilarityFunction similarityFunction;
+  private record IndexOptionsProperties(boolean storeTermVectors, boolean omitNorms) {}
 
-    FieldVectorProperties(
-        int numDimensions,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction) {
-      this.numDimensions = numDimensions;
-      this.vectorEncoding = vectorEncoding;
-      this.similarityFunction = similarityFunction;
-    }
-  }
+  // We use this to enforce that a given field never
+  // changes DV type, even across segments / IndexWriter
+  // sessions:
+  private record FieldProperties(
+      int number,
+      IndexOptions indexOptions,
+      IndexOptionsProperties indexOptionsProperties,
+      DocValuesType docValuesType,
+      DocValuesSkipIndexType docValuesSkipIndex,
+      FieldDimensions fieldDimensions,
+      FieldVectorProperties fieldVectorProperties) {}
 
   static final class FieldNumbers {
 
-    private final Map<Integer, String> numberToName;
-    private final Map<String, Integer> nameToNumber;
-    private final Map<String, IndexOptions> indexOptions;
-    // We use this to enforce that a given field never
-    // changes DV type, even across segments / IndexWriter
-    // sessions:
-    private final Map<String, DocValuesType> docValuesType;
-
-    private final Map<String, FieldDimensions> dimensions;
-
-    private final Map<String, FieldVectorProperties> vectorProps;
-    private final Map<String, Boolean> omitNorms;
-    private final Map<String, Boolean> storeTermVectors;
+    private final IntObjectHashMap<String> numberToName;
+    private final Map<String, FieldProperties> fieldProperties;
 
     // TODO: we should similarly catch an attempt to turn
     // norms back on after they were already committed; today
@@ -345,22 +382,29 @@ public class FieldInfos implements Iterable<FieldInfo> {
     // The soft-deletes field from IWC to enforce a single soft-deletes field
     private final String softDeletesFieldName;
 
-    FieldNumbers(String softDeletesFieldName) {
-      this.nameToNumber = new HashMap<>();
-      this.numberToName = new HashMap<>();
-      this.indexOptions = new HashMap<>();
-      this.docValuesType = new HashMap<>();
-      this.dimensions = new HashMap<>();
-      this.vectorProps = new HashMap<>();
-      this.omitNorms = new HashMap<>();
-      this.storeTermVectors = new HashMap<>();
+    // The parent document field from IWC to mark parent document when indexing
+    private final String parentFieldName;
+
+    FieldNumbers(String softDeletesFieldName, String parentFieldName) {
+      this.numberToName = new IntObjectHashMap<>();
+      this.fieldProperties = new HashMap<>();
       this.softDeletesFieldName = softDeletesFieldName;
+      this.parentFieldName = parentFieldName;
+      if (softDeletesFieldName != null
+          && parentFieldName != null
+          && parentFieldName.equals(softDeletesFieldName)) {
+        throw new IllegalArgumentException(
+            "parent document and soft-deletes field can't be the same field \""
+                + parentFieldName
+                + "\"");
+      }
     }
 
     synchronized void verifyFieldInfo(FieldInfo fi) {
       String fieldName = fi.getName();
       verifySoftDeletedFieldName(fieldName, fi.isSoftDeletesField());
-      if (nameToNumber.containsKey(fieldName)) {
+      verifyParentFieldName(fieldName, fi.isParentField());
+      if (fieldProperties.containsKey(fieldName)) {
         verifySameSchema(fi);
       }
     }
@@ -373,15 +417,16 @@ public class FieldInfos implements Iterable<FieldInfo> {
     synchronized int addOrGet(FieldInfo fi) {
       String fieldName = fi.getName();
       verifySoftDeletedFieldName(fieldName, fi.isSoftDeletesField());
-      Integer fieldNumber = nameToNumber.get(fieldName);
+      verifyParentFieldName(fieldName, fi.isParentField());
+      var fieldProperties = this.fieldProperties.get(fieldName);
 
-      if (fieldNumber != null) {
+      if (fieldProperties != null) {
         verifySameSchema(fi);
       } else { // first time we see this field in this index
-        final Integer preferredBoxed = Integer.valueOf(fi.number);
-        if (fi.number != -1 && !numberToName.containsKey(preferredBoxed)) {
+        int fieldNumber;
+        if (fi.number != -1 && numberToName.containsKey(fi.number) == false) {
           // cool - we can use this number globally
-          fieldNumber = preferredBoxed;
+          fieldNumber = fi.number;
         } else {
           // find a new FieldNumber
           while (numberToName.containsKey(++lowestUnassignedFieldNumber)) {
@@ -391,25 +436,26 @@ public class FieldInfos implements Iterable<FieldInfo> {
         }
         assert fieldNumber >= 0;
         numberToName.put(fieldNumber, fieldName);
-        nameToNumber.put(fieldName, fieldNumber);
-        this.indexOptions.put(fieldName, fi.getIndexOptions());
-        if (fi.getIndexOptions() != IndexOptions.NONE) {
-          this.storeTermVectors.put(fieldName, fi.hasVectors());
-          this.omitNorms.put(fieldName, fi.omitsNorms());
-        }
-        docValuesType.put(fieldName, fi.getDocValuesType());
-        dimensions.put(
-            fieldName,
-            new FieldDimensions(
-                fi.getPointDimensionCount(),
-                fi.getPointIndexDimensionCount(),
-                fi.getPointNumBytes()));
-        vectorProps.put(
-            fieldName,
-            new FieldVectorProperties(
-                fi.getVectorDimension(), fi.getVectorEncoding(), fi.getVectorSimilarityFunction()));
+        fieldProperties =
+            new FieldProperties(
+                fieldNumber,
+                fi.getIndexOptions(),
+                fi.getIndexOptions() != IndexOptions.NONE
+                    ? new IndexOptionsProperties(fi.hasTermVectors(), fi.omitsNorms())
+                    : null,
+                fi.getDocValuesType(),
+                fi.docValuesSkipIndexType(),
+                new FieldDimensions(
+                    fi.getPointDimensionCount(),
+                    fi.getPointIndexDimensionCount(),
+                    fi.getPointNumBytes()),
+                new FieldVectorProperties(
+                    fi.getVectorDimension(),
+                    fi.getVectorEncoding(),
+                    fi.getVectorSimilarityFunction()));
+        this.fieldProperties.put(fieldName, fieldProperties);
       }
-      return fieldNumber.intValue();
+      return fieldProperties.number;
     }
 
     private void verifySoftDeletedFieldName(String fieldName, boolean isSoftDeletesField) {
@@ -437,21 +483,52 @@ public class FieldInfos implements Iterable<FieldInfo> {
       }
     }
 
+    private void verifyParentFieldName(String fieldName, boolean isParentField) {
+      if (isParentField) {
+        if (parentFieldName == null) {
+          throw new IllegalArgumentException(
+              "can't add field ["
+                  + fieldName
+                  + "] as parent document field; this IndexWriter has no parent document field configured");
+        } else if (fieldName.equals(parentFieldName) == false) {
+          throw new IllegalArgumentException(
+              "can't add field ["
+                  + fieldName
+                  + "] as parent document field; this IndexWriter is configured with ["
+                  + parentFieldName
+                  + "] as parent document field");
+        }
+      } else if (fieldName.equals(parentFieldName)) { // isParent == false
+        // this would be the case if the current index has a parent field that is
+        // not a parent field in the incoming index (think addIndices)
+        throw new IllegalArgumentException(
+            "can't add ["
+                + fieldName
+                + "] as non parent document field; this IndexWriter is configured with ["
+                + parentFieldName
+                + "] as parent document field");
+      }
+    }
+
     private void verifySameSchema(FieldInfo fi) {
       String fieldName = fi.getName();
-      IndexOptions currentOpts = this.indexOptions.get(fieldName);
+      FieldProperties fieldProperties = this.fieldProperties.get(fieldName);
+      IndexOptions currentOpts = fieldProperties.indexOptions;
       verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions());
       if (currentOpts != IndexOptions.NONE) {
-        boolean curStoreTermVector = this.storeTermVectors.get(fieldName);
-        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasVectors());
-        boolean curOmitNorms = this.omitNorms.get(fieldName);
+        boolean curStoreTermVector = fieldProperties.indexOptionsProperties.storeTermVectors;
+        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasTermVectors());
+        boolean curOmitNorms = fieldProperties.indexOptionsProperties.omitNorms;
         verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms());
       }
 
-      DocValuesType currentDVType = docValuesType.get(fieldName);
+      DocValuesType currentDVType = fieldProperties.docValuesType;
       verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType());
+      DocValuesSkipIndexType currentDocValuesSkipIndex = fieldProperties.docValuesSkipIndex;
+      verifySameDocValuesSkipIndex(
+          fieldName, currentDocValuesSkipIndex, fi.docValuesSkipIndexType());
 
-      FieldDimensions dims = dimensions.get(fieldName);
+      FieldDimensions dims = fieldProperties.fieldDimensions;
       verifySamePointsOptions(
           fieldName,
           dims.dimensionCount,
@@ -461,7 +538,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fi.getPointIndexDimensionCount(),
           fi.getPointNumBytes());
 
-      FieldVectorProperties props = vectorProps.get(fieldName);
+      FieldVectorProperties props = fieldProperties.fieldVectorProperties;
       verifySameVectorOptions(
           fieldName,
           props.numDimensions,
@@ -486,7 +563,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
      */
     synchronized void verifyOrCreateDvOnlyField(
         String fieldName, DocValuesType dvType, boolean fieldMustExist) {
-      if (nameToNumber.containsKey(fieldName) == false) {
+      if (fieldProperties.containsKey(fieldName) == false) {
         if (fieldMustExist) {
           throw new IllegalArgumentException(
               "Can't update ["
@@ -505,6 +582,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   false,
                   IndexOptions.NONE,
                   dvType,
+                  DocValuesSkipIndexType.NONE,
                   -1,
                   new HashMap<>(),
                   0,
@@ -513,12 +591,14 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   VectorEncoding.FLOAT32,
                   VectorSimilarityFunction.EUCLIDEAN,
-                  (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
+                  (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)),
+                  (parentFieldName != null && parentFieldName.equals(fieldName)));
           addOrGet(fi);
         }
       } else {
         // verify that field is doc values only field with the give doc values type
-        DocValuesType fieldDvType = docValuesType.get(fieldName);
+        FieldProperties fieldProperties = this.fieldProperties.get(fieldName);
+        DocValuesType fieldDvType = fieldProperties.docValuesType;
         if (dvType != fieldDvType) {
           throw new IllegalArgumentException(
               "Can't update ["
@@ -529,7 +609,16 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldDvType
                   + "].");
         }
-        FieldDimensions fdimensions = dimensions.get(fieldName);
+        DocValuesSkipIndexType hasDocValuesSkipIndex = fieldProperties.docValuesSkipIndex;
+        if (hasDocValuesSkipIndex != DocValuesSkipIndexType.NONE) {
+          throw new IllegalArgumentException(
+              "Can't update ["
+                  + dvType
+                  + "] doc values; the field ["
+                  + fieldName
+                  + "] must be doc values only field, bit it has doc values skip index");
+        }
+        FieldDimensions fdimensions = fieldProperties.fieldDimensions;
         if (fdimensions != null && fdimensions.dimensionCount != 0) {
           throw new IllegalArgumentException(
               "Can't update ["
@@ -538,7 +627,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldName
                   + "] must be doc values only field, but is also indexed with points.");
         }
-        IndexOptions ioptions = indexOptions.get(fieldName);
+        IndexOptions ioptions = fieldProperties.indexOptions;
         if (ioptions != null && ioptions != IndexOptions.NONE) {
           throw new IllegalArgumentException(
               "Can't update ["
@@ -547,7 +636,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + fieldName
                   + "] must be doc values only field, but is also indexed with postings.");
         }
-        FieldVectorProperties fvp = vectorProps.get(fieldName);
+        FieldVectorProperties fvp = fieldProperties.fieldVectorProperties;
         if (fvp != null && fvp.numDimensions != 0) {
           throw new IllegalArgumentException(
               "Can't update ["
@@ -570,15 +659,15 @@ public class FieldInfos implements Iterable<FieldInfo> {
      *     {@code dvType} returns a new FieldInfo based based on the options in global field numbers
      */
     FieldInfo constructFieldInfo(String fieldName, DocValuesType dvType, int newFieldNumber) {
-      Integer fieldNumber;
+      FieldProperties fieldProperties;
       synchronized (this) {
-        fieldNumber = nameToNumber.get(fieldName);
+        fieldProperties = this.fieldProperties.get(fieldName);
       }
-      if (fieldNumber == null) return null;
-      DocValuesType dvType0 = docValuesType.get(fieldName);
+      if (fieldProperties == null) return null;
+      DocValuesType dvType0 = fieldProperties.docValuesType;
       if (dvType != dvType0) return null;
-
       boolean isSoftDeletesField = fieldName.equals(softDeletesFieldName);
+      boolean isParentField = fieldName.equals(parentFieldName);
       return new FieldInfo(
           fieldName,
           newFieldNumber,
@@ -587,6 +676,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           false,
           IndexOptions.NONE,
           dvType,
+          DocValuesSkipIndexType.NONE,
           -1,
           new HashMap<>(),
           0,
@@ -595,19 +685,17 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           VectorEncoding.FLOAT32,
           VectorSimilarityFunction.EUCLIDEAN,
-          isSoftDeletesField);
+          isSoftDeletesField,
+          isParentField);
     }
 
     synchronized Set<String> getFieldNames() {
-      return Set.copyOf(nameToNumber.keySet());
+      return Set.copyOf(fieldProperties.keySet());
     }
 
     synchronized void clear() {
       numberToName.clear();
-      nameToNumber.clear();
-      indexOptions.clear();
-      docValuesType.clear();
-      dimensions.clear();
+      fieldProperties.clear();
       lowestUnassignedFieldNumber = -1;
     }
   }
@@ -625,6 +713,14 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
     public String getSoftDeletesFieldName() {
       return globalFieldNumbers.softDeletesFieldName;
+    }
+
+    /**
+     * Returns the name of the parent document field or <tt>null</tt> if no parent field is
+     * configured
+     */
+    public String getParentFieldName() {
+      return globalFieldNumbers.parentFieldName;
     }
 
     /**
@@ -696,11 +792,12 @@ public class FieldInfos implements Iterable<FieldInfo> {
           new FieldInfo(
               fi.getName(),
               fieldNumber,
-              fi.hasVectors(),
+              fi.hasTermVectors(),
               fi.omitsNorms(),
               fi.hasPayloads(),
               fi.getIndexOptions(),
               fi.getDocValuesType(),
+              fi.docValuesSkipIndexType(),
               dvGen,
               // original attributes is UnmodifiableMap
               new HashMap<>(fi.attributes()),
@@ -710,7 +807,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getVectorDimension(),
               fi.getVectorEncoding(),
               fi.getVectorSimilarityFunction(),
-              fi.isSoftDeletesField());
+              fi.isSoftDeletesField(),
+              fi.isParentField());
       byName.put(fiNew.getName(), fiNew);
       return fiNew;
     }

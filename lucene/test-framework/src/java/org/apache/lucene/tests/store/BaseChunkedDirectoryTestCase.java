@@ -28,10 +28,12 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Base class for Directories that "chunk" the input into blocks.
@@ -49,10 +51,19 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   /** Creates a new directory with the specified max chunk size */
   protected abstract Directory getDirectory(Path path, int maxChunkSize) throws IOException;
 
+  public void testGroupVIntMultiBlocks() throws IOException {
+    final int maxChunkSize = random().nextInt(64, 512);
+    try (Directory dir = getDirectory(createTempDir(), maxChunkSize)) {
+      doTestGroupVInt(dir, 10, 1, 31, 1024);
+    }
+  }
+
   public void testCloneClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+    final long[] values = new long[] {0, 7, 11, 9};
     io.writeVInt(5);
+    io.writeGroupVInts(values, values.length);
     io.close();
     IndexInput one = dir.openInput("bytes", IOContext.DEFAULT);
     IndexInput two = one.clone();
@@ -64,6 +75,11 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
         () -> {
           two.readVInt();
         });
+    expectThrows(
+        AlreadyClosedException.class,
+        () -> {
+          GroupVIntUtil.readGroupVInts(two, values, values.length);
+        });
     assertEquals(5, three.readVInt());
     one.close();
     three.close();
@@ -73,17 +89,24 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testCloneSliceClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneSliceClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+    final long[] values = new long[] {0, 7, 11, 9};
     io.writeInt(1);
     io.writeInt(2);
+    io.writeGroupVInts(values, values.length); // will write 5 bytes
     io.close();
     IndexInput slicer = dir.openInput("bytes", newIOContext(random()));
-    IndexInput one = slicer.slice("first int", 0, 4);
+    IndexInput one = slicer.slice("first int", 0, 4 + 5);
     IndexInput two = slicer.slice("second int", 4, 4);
     one.close();
     expectThrows(
         AlreadyClosedException.class,
         () -> {
           one.readInt();
+        });
+    expectThrows(
+        AlreadyClosedException.class,
+        () -> {
+          GroupVIntUtil.readGroupVInts(one, values, values.length);
         });
     assertEquals(2, two.readInt());
     // reopen a new slice "another":
@@ -295,6 +318,47 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     }
     reader.close();
     dir.close();
+  }
+
+  public void testBytesCrossBoundary() throws Exception {
+    int num =
+        TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 1000) : TestUtil.nextInt(random(), 50, 100);
+    byte[] bytes = new byte[num];
+    random().nextBytes(bytes);
+    try (Directory dir = getDirectory(createTempDir("testBytesCrossBoundary"), 16)) {
+      try (IndexOutput out = dir.createOutput("bytesCrossBoundary", newIOContext(random()))) {
+        out.writeBytes(bytes, bytes.length);
+      }
+      try (IndexInput input = dir.openInput("bytesCrossBoundary", newIOContext(random()))) {
+        RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+        assertEquals(input.length(), slice.length());
+        assertBytes(slice, bytes, 0);
+
+        // subslices
+        for (int offset = 1; offset < bytes.length; offset++) {
+          RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+          assertEquals(input.length() - offset, subslice.length());
+          assertBytes(subslice, bytes, offset);
+        }
+
+        // with padding
+        for (int i = 1; i < 7; i++) {
+          String name = "bytes-" + i;
+          IndexOutput o = dir.createOutput(name, newIOContext(random()));
+          byte[] junk = new byte[i];
+          random().nextBytes(junk);
+          o.writeBytes(junk, junk.length);
+          input.seek(0);
+          o.copyBytes(input, input.length());
+          o.close();
+          IndexInput padded = dir.openInput(name, newIOContext(random()));
+          RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+          assertEquals(padded.length() - i, whole.length());
+          assertBytes(whole, bytes, 0);
+          padded.close();
+        }
+      }
+    }
   }
 
   public void testLittleEndianLongsCrossBoundary() throws Exception {

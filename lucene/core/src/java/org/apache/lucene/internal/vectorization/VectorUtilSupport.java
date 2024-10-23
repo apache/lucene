@@ -36,6 +36,9 @@ public interface VectorUtilSupport {
   /** Returns the dot product computed over signed bytes. */
   int dotProduct(byte[] a, byte[] b);
 
+  /** Returns the dot product over the computed bytes, assuming the values are int4 encoded. */
+  int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked);
+
   /** Returns the cosine similarity between the two byte vectors. */
   float cosine(byte[] a, byte[] b);
 

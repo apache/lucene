@@ -128,14 +128,15 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
       case SCORER:
         return weight.scorer(reader.getContext());
       case BULK_SCORER:
-        final BulkScorer bulkScorer = weight.optionalBulkScorer(reader.getContext());
+        final ScorerSupplier ss = weight.scorerSupplier(reader.getContext());
+        final BulkScorer bulkScorer = ss.bulkScorer();
         if (bulkScorer == null) {
           if (weight.scorer(reader.getContext()) != null) {
             throw new AssertionError("BooleanScorer should be applicable for this query");
           }
           return null;
         }
-        return new BulkScorerWrapperScorer(weight, bulkScorer, TestUtil.nextInt(random(), 1, 100));
+        return new BulkScorerWrapperScorer(bulkScorer, TestUtil.nextInt(random(), 1, 100));
       default:
         throw new AssertionError();
     }
@@ -351,7 +352,6 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
 
     SlowMinShouldMatchScorer(BooleanWeight weight, LeafReader reader, IndexSearcher searcher)
         throws IOException {
-      super(weight);
       this.dv = reader.getSortedSetDocValues("dv");
       this.maxDoc = reader.maxDoc();
       BooleanQuery bq = (BooleanQuery) weight.getQuery();
@@ -360,12 +360,12 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
       for (BooleanClause clause : bq.clauses()) {
         assert !clause.isProhibited();
         assert !clause.isRequired();
-        Term term = ((TermQuery) clause.getQuery()).getTerm();
+        Term term = ((TermQuery) clause.query()).getTerm();
         long ord = dv.lookupTerm(term.bytes());
         if (ord >= 0) {
           boolean success = ords.add(ord);
           assert success; // no dups
-          TermStates ts = TermStates.build(reader.getContext(), term, true);
+          TermStates ts = TermStates.build(searcher, term, true);
           SimScorer w =
               weight.similarity.scorer(
                   1f,

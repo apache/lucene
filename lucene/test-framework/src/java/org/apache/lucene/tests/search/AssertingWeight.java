@@ -57,25 +57,6 @@ class AssertingWeight extends FilterWeight {
   }
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
-    if (random.nextBoolean()) {
-      final Scorer inScorer = in.scorer(context);
-      assert inScorer == null || inScorer.docID() == -1;
-      return AssertingScorer.wrap(new Random(random.nextLong()), inScorer, scoreMode);
-    } else {
-      final ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      if (random.nextBoolean()) {
-        // Evil: make sure computing the cost has no side effects
-        scorerSupplier.cost();
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
-    }
-  }
-
-  @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
     final ScorerSupplier inScorerSupplier = in.scorerSupplier(context);
     if (inScorerSupplier == null) {
@@ -83,6 +64,7 @@ class AssertingWeight extends FilterWeight {
     }
     return new ScorerSupplier() {
       private boolean getCalled = false;
+      private boolean topLevelScoringClause = false;
 
       @Override
       public Scorer get(long leadCost) throws IOException {
@@ -90,7 +72,30 @@ class AssertingWeight extends FilterWeight {
         getCalled = true;
         assert leadCost >= 0 : leadCost;
         return AssertingScorer.wrap(
-            new Random(random.nextLong()), inScorerSupplier.get(leadCost), scoreMode);
+            new Random(random.nextLong()),
+            inScorerSupplier.get(leadCost),
+            scoreMode,
+            topLevelScoringClause);
+      }
+
+      @Override
+      public BulkScorer bulkScorer() throws IOException {
+        assert getCalled == false;
+
+        BulkScorer inScorer;
+        // We explicitly test both the delegate's bulk scorer, and also the normal scorer.
+        // This ensures that normal scorers are sometimes tested with an asserting wrapper.
+        if (usually(random)) {
+          getCalled = true;
+          inScorer = inScorerSupplier.bulkScorer();
+        } else {
+          // Don't set getCalled = true, since this calls #get under the hood
+          inScorer = super.bulkScorer();
+          assert getCalled;
+        }
+
+        return AssertingBulkScorer.wrap(
+            new Random(random.nextLong()), inScorer, context.reader().maxDoc(), scoreMode);
       }
 
       @Override
@@ -99,24 +104,13 @@ class AssertingWeight extends FilterWeight {
         assert cost >= 0;
         return cost;
       }
+
+      @Override
+      public void setTopLevelScoringClause() throws IOException {
+        assert getCalled == false;
+        topLevelScoringClause = true;
+        inScorerSupplier.setTopLevelScoringClause();
+      }
     };
-  }
-
-  @Override
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    BulkScorer inScorer;
-    // We explicitly test both the delegate's bulk scorer, and also the normal scorer.
-    // This ensures that normal scorers are sometimes tested with an asserting wrapper.
-    if (usually(random)) {
-      inScorer = in.bulkScorer(context);
-    } else {
-      inScorer = super.bulkScorer(context);
-    }
-
-    if (inScorer == null) {
-      return null;
-    }
-    return AssertingBulkScorer.wrap(
-        new Random(random.nextLong()), inScorer, context.reader().maxDoc(), scoreMode);
   }
 }

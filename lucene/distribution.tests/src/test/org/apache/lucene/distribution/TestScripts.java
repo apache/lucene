@@ -80,6 +80,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
 
   /** The value of <code>System.getProperty("os.name")</code>. * */
   public static final String OS_NAME = System.getProperty("os.name");
+
   /** True iff running on Windows. */
   public static final boolean WINDOWS = OS_NAME.startsWith("Windows");
 

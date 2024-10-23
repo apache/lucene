@@ -297,8 +297,10 @@ class ClassicTokenizerImpl {
 
   /** Error code for "Unknown internal scanner error". */
   private static final int ZZ_UNKNOWN_ERROR = 0;
+
   /** Error code for "could not match input". */
   private static final int ZZ_NO_MATCH = 1;
+
   /** Error code for "pushback value was too large". */
   private static final int ZZ_PUSHBACK_2BIG = 2;
 
@@ -745,70 +747,70 @@ class ClassicTokenizerImpl {
               /* Break so we don't hit fall-through warning: */
               break; /* ignore */
             }
-            // fall through
+          // fall through
           case 11:
             break;
           case 2:
             {
               return ALPHANUM;
             }
-            // fall through
+          // fall through
           case 12:
             break;
           case 3:
             {
               return CJ;
             }
-            // fall through
+          // fall through
           case 13:
             break;
           case 4:
             {
               return NUM;
             }
-            // fall through
+          // fall through
           case 14:
             break;
           case 5:
             {
               return HOST;
             }
-            // fall through
+          // fall through
           case 15:
             break;
           case 6:
             {
               return COMPANY;
             }
-            // fall through
+          // fall through
           case 16:
             break;
           case 7:
             {
               return APOSTROPHE;
             }
-            // fall through
+          // fall through
           case 17:
             break;
           case 8:
             {
               return ACRONYM_DEP;
             }
-            // fall through
+          // fall through
           case 18:
             break;
           case 9:
             {
               return ACRONYM;
             }
-            // fall through
+          // fall through
           case 19:
             break;
           case 10:
             {
               return EMAIL;
             }
-            // fall through
+          // fall through
           case 20:
             break;
           default:

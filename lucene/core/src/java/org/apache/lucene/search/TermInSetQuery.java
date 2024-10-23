@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.SortedSet;
@@ -28,12 +27,7 @@ import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.AttributeSource;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.*;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -82,21 +76,12 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     this(field, packTerms(field, terms));
   }
 
-  public TermInSetQuery(String field, BytesRef... terms) {
-    this(field, packTerms(field, Arrays.asList(terms)));
-  }
-
   /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
   public TermInSetQuery(RewriteMethod rewriteMethod, String field, Collection<BytesRef> terms) {
     super(field, rewriteMethod);
     this.field = field;
     this.termData = packTerms(field, terms);
     termDataHashCode = termData.hashCode();
-  }
-
-  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
-  public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
-    this(rewriteMethod, field, Arrays.asList(terms));
   }
 
   private TermInSetQuery(String field, PrefixCodedTerms termData) {
@@ -112,7 +97,23 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     boolean sorted =
         terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
     if (sorted == false) {
-      ArrayUtil.timSort(sortedTerms);
+      new StringSorter(BytesRefComparator.NATURAL) {
+
+        @Override
+        protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+          BytesRef term = sortedTerms[i];
+          result.length = term.length;
+          result.offset = term.offset;
+          result.bytes = term.bytes;
+        }
+
+        @Override
+        protected void swap(int i, int j) {
+          BytesRef b = sortedTerms[i];
+          sortedTerms[i] = sortedTerms[j];
+          sortedTerms[j] = b;
+        }
+      }.sort(0, sortedTerms.length);
     }
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
     BytesRefBuilder previous = null;
@@ -130,8 +131,18 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   }
 
   @Override
-  public long getTermsCount() throws IOException {
+  public long getTermsCount() {
     return termData.size();
+  }
+
+  /**
+   * Get an iterator over the encoded terms for query inspection.
+   *
+   * @lucene.experimental
+   */
+  public BytesRefIterator getBytesRefIterator() {
+    final TermIterator iterator = this.termData.iterator();
+    return () -> iterator.next();
   }
 
   @Override

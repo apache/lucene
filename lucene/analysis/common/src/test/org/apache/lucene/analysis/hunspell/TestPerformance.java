@@ -34,7 +34,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Assume;
@@ -184,7 +183,7 @@ public class TestPerformance extends LuceneTestCase {
         loadWords(code, wordCount, dictionary).stream()
             .distinct()
             .filter(w -> hasQuickSuggestions(speller, base, optimized, w))
-            .collect(Collectors.toList());
+            .toList();
     System.out.println("Checking " + words.size() + " misspelled words");
 
     measure(

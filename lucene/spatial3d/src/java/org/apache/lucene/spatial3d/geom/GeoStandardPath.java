@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * GeoShape representing a path across the surface of the globe, with a specified half-width. Path
@@ -38,6 +39,7 @@ class GeoStandardPath extends GeoBasePath {
 
   /** Sine of cutoff angle */
   protected final double sinAngle;
+
   /** Cosine of cutoff angle */
   protected final double cosAngle;
 
@@ -428,14 +430,7 @@ class GeoStandardPath extends GeoBasePath {
         + "}}";
   }
 
-  private static class DistancePair {
-    public final double pathCenterDistance;
-    public final double distanceAlongPath;
-
-    public DistancePair(final double pathCenterDistance, final double distanceAlongPath) {
-      this.pathCenterDistance = pathCenterDistance;
-      this.distanceAlongPath = distanceAlongPath;
-    }
+  private record DistancePair(double pathCenterDistance, double distanceAlongPath) {
 
     @Override
     public String toString() {
@@ -837,8 +832,10 @@ class GeoStandardPath extends GeoBasePath {
   private static class BaseSegmentEndpoint extends GeoBaseBounds implements SegmentEndpoint {
     /** The previous path element */
     protected final PathComponent previous;
+
     /** The center point of the endpoint */
     protected final GeoPoint point;
+
     /** Null membership */
     protected static final Membership[] NO_MEMBERSHIP = new Membership[0];
 
@@ -996,6 +993,7 @@ class GeoStandardPath extends GeoBasePath {
   private static class CircleSegmentEndpoint extends BaseSegmentEndpoint {
     /** A plane describing the circle */
     protected final SidedPlane circlePlane;
+
     /** No notable points from the circle itself */
     protected static final GeoPoint[] circlePoints = new GeoPoint[0];
 
@@ -1090,6 +1088,7 @@ class GeoStandardPath extends GeoBasePath {
 
     /** Pertinent cutoff plane from adjoining segments */
     protected final Membership[] cutoffPlanes;
+
     /** Notable points for this segment endpoint */
     private final GeoPoint[] notablePoints;
 
@@ -1202,12 +1201,16 @@ class GeoStandardPath extends GeoBasePath {
 
     /** First circle */
     protected final SidedPlane circlePlane1;
+
     /** Second circle */
     protected final SidedPlane circlePlane2;
+
     /** Notable points for first circle */
     protected final GeoPoint[] notablePoints1;
+
     /** Notable points for second circle */
     protected final GeoPoint[] notablePoints2;
+
     /** Both cutoff planes are included here */
     protected final Membership[] cutoffPlanes;
 
@@ -1366,32 +1369,46 @@ class GeoStandardPath extends GeoBasePath {
   private static class PathSegment extends GeoBaseBounds implements PathComponent {
     /** Previous path component */
     public final PathComponent previous;
+
     /** Starting point of the segment */
     public final GeoPoint start;
+
     /** End point of the segment */
     public final GeoPoint end;
+
     /** Place to keep any complete segment distances we've calculated so far */
     public final Map<DistanceStyle, Double> startDistanceCache = new ConcurrentHashMap<>(1);
+
     /** Normalized plane connecting the two points and going through world center */
     public final Plane normalizedConnectingPlane;
+
     /** Cutoff plane parallel to connecting plane representing one side of the path segment */
     public final SidedPlane upperConnectingPlane;
+
     /** Cutoff plane parallel to connecting plane representing the other side of the path segment */
     public final SidedPlane lowerConnectingPlane;
+
     /** Plane going through the center and start point, marking the start edge of the segment */
     public final SidedPlane startCutoffPlane;
+
     /** Plane going through the center and end point, marking the end edge of the segment */
     public final SidedPlane endCutoffPlane;
+
     /** Upper right hand corner of segment */
     public final GeoPoint URHC;
+
     /** Lower right hand corner of segment */
     public final GeoPoint LRHC;
+
     /** Upper left hand corner of segment */
     public final GeoPoint ULHC;
+
     /** Lower left hand corner of segment */
     public final GeoPoint LLHC;
+
     /** Notable points for the upper connecting plane */
     public final GeoPoint[] upperConnectingPlanePoints;
+
     /** Notable points for the lower connecting plane */
     public final GeoPoint[] lowerConnectingPlanePoints;
 
@@ -1934,18 +1951,18 @@ class GeoStandardPath extends GeoBasePath {
 
   private static class TreeBuilder {
     private final List<PathComponent> componentStack;
-    private final List<Integer> depthStack;
+    private final IntArrayList depthStack;
 
     public TreeBuilder(final int max) {
       componentStack = new ArrayList<>(max);
-      depthStack = new ArrayList<>(max);
+      depthStack = new IntArrayList(max);
     }
 
     public void addComponent(final PathComponent component) {
       componentStack.add(component);
       depthStack.add(0);
       while (depthStack.size() >= 2) {
-        if (depthStack.get(depthStack.size() - 1).equals(depthStack.get(depthStack.size() - 2))) {
+        if (depthStack.get(depthStack.size() - 1) == depthStack.get(depthStack.size() - 2)) {
           mergeTop();
         } else {
           break;
@@ -1964,9 +1981,9 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     private void mergeTop() {
-      depthStack.remove(depthStack.size() - 1);
+      depthStack.removeAt(depthStack.size() - 1);
       PathComponent secondComponent = componentStack.remove(componentStack.size() - 1);
-      int newDepth = depthStack.remove(depthStack.size() - 1) + 1;
+      int newDepth = depthStack.removeAt(depthStack.size() - 1) + 1;
       PathComponent firstComponent = componentStack.remove(componentStack.size() - 1);
       depthStack.add(newDepth);
       componentStack.add(new PathNode(firstComponent, secondComponent));

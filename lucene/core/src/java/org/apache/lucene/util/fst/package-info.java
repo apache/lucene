@@ -49,7 +49,7 @@
  *       scratchBytes.copyChars(inputValues[i]);
  *       fstCompiler.add(Util.toIntsRef(scratchBytes.toBytesRef(), scratchInts), outputValues[i]);
  *     }
- *     FST&lt;Long&gt; fst = fstCompiler.compile();
+ *     FST&lt;Long&gt; fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
  * </pre>
  *
  * Retrieval by key:

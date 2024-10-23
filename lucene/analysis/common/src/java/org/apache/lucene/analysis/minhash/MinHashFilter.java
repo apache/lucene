@@ -59,11 +59,11 @@ public class MinHashFilter extends TokenFilter {
 
   private final List<List<FixedSizeTreeSet<LongPair>>> minHashSets;
 
-  private int hashSetSize = DEFAULT_HASH_SET_SIZE;
+  private final int hashSetSize;
 
-  private int bucketCount = DEFAULT_BUCKET_COUNT;
+  private final int bucketCount;
 
-  private int hashCount = DEFAULT_HASH_COUNT;
+  private final int hashCount;
 
   private boolean requiresInitialisation = true;
 

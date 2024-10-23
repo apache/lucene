@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.search.highlight;
+
 /** Low-level class used to record information about a section of a document with a score. */
 public class TextFragment {
   CharSequence markedUpText;
@@ -36,6 +37,7 @@ public class TextFragment {
   public float getScore() {
     return score;
   }
+
   /**
    * @param frag2 Fragment to be merged into this one
    */
@@ -43,6 +45,7 @@ public class TextFragment {
     textEndPos = frag2.textEndPos;
     score = Math.max(score, frag2.score);
   }
+
   /**
    * @return true if this fragment follows the one passed
    */

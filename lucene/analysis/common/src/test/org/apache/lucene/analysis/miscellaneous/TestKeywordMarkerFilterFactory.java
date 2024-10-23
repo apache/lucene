@@ -89,7 +89,6 @@ public class TestKeywordMarkerFilterFactory extends BaseTokenStreamFactoryTestCa
     stream =
         tokenFilterFactory("KeywordMarker", "pattern", "Cats", "ignoreCase", "true").create(stream);
     stream = tokenFilterFactory("PorterStem").create(stream);
-    ;
     assertTokenStreamContents(stream, new String[] {"dog", "cats", "Cats"});
   }
 

@@ -35,8 +35,10 @@ public class TestSimpleExplanationsWithFillerDocs extends TestSimpleExplanations
 
   /** num of empty docs injected between every doc in the index */
   private static final int NUM_FILLER_DOCS = TEST_NIGHTLY ? BooleanScorer.SIZE : 4;
+
   /** num of empty docs injected prior to the first doc in the (main) index */
   private static int PRE_FILLER_DOCS;
+
   /**
    * If non-null then the filler docs are not empty, and need to be filtered out from queries using
    * this as both field name &amp; field value
@@ -101,7 +103,7 @@ public class TestSimpleExplanationsWithFillerDocs extends TestSimpleExplanations
   @Override
   public void qtest(Query q, int[] expDocNrs) throws Exception {
 
-    expDocNrs = ArrayUtil.copyOfSubArray(expDocNrs, 0, expDocNrs.length);
+    expDocNrs = ArrayUtil.copyArray(expDocNrs);
     for (int i = 0; i < expDocNrs.length; i++) {
       expDocNrs[i] = PRE_FILLER_DOCS + ((NUM_FILLER_DOCS + 1) * expDocNrs[i]);
     }

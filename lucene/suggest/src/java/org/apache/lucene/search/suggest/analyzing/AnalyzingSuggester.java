@@ -452,7 +452,7 @@ public class AnalyzingSuggester extends Lookup {
             payload = null;
           }
 
-          buffer = ArrayUtil.grow(buffer, requiredLength);
+          buffer = ArrayUtil.growNoCopy(buffer, requiredLength);
 
           output.reset(buffer);
 
@@ -499,7 +499,7 @@ public class AnalyzingSuggester extends Lookup {
       PairOutputs<Long, BytesRef> outputs =
           new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
       FSTCompiler<Pair<Long, BytesRef>> fstCompiler =
-          new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
       // Build FST:
       BytesRefBuilder previousAnalyzed = null;
@@ -522,7 +522,7 @@ public class AnalyzingSuggester extends Lookup {
         }
         input.reset(bytes.bytes, bytes.offset, bytes.length);
         short analyzedLength = input.readShort();
-        analyzed.grow(analyzedLength + 2);
+        analyzed.growNoCopy(analyzedLength + 2);
         input.readBytes(analyzed.bytes(), 0, analyzedLength);
         analyzed.setLength(analyzedLength);
 
@@ -586,7 +586,7 @@ public class AnalyzingSuggester extends Lookup {
           fstCompiler.add(scratchInts.get(), outputs.newPair(cost, br));
         }
       }
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       count = newCount;
 
       // Util.dotToFile(fst, "/tmp/suggest.dot");
@@ -612,12 +612,9 @@ public class AnalyzingSuggester extends Lookup {
   @Override
   public boolean load(DataInput input) throws IOException {
     count = input.readVLong();
-    this.fst =
-        new FST<>(
-            input,
-            input,
-            new PairOutputs<>(
-                PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton()));
+    PairOutputs<Long, BytesRef> outputs =
+        new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
+    this.fst = new FST<>(FST.readMetadata(input, outputs), input);
     maxAnalyzedPathsForOneInput = input.readVInt();
     hasPayloads = input.readByte() == 1;
     return true;
@@ -720,7 +717,7 @@ public class AnalyzingSuggester extends Lookup {
 
         int count = 0;
         for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-          if (fst.findTargetArc(END_BYTE, path.fstNode, scratchArc, bytesReader) != null) {
+          if (fst.findTargetArc(END_BYTE, path.fstNode(), scratchArc, bytesReader) != null) {
             // This node has END_BYTE arc leaving, meaning it's an
             // "exact" match:
             count++;
@@ -743,11 +740,14 @@ public class AnalyzingSuggester extends Lookup {
         // pruned our exact match from one of these nodes
         // ...:
         for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-          if (fst.findTargetArc(END_BYTE, path.fstNode, scratchArc, bytesReader) != null) {
+          if (fst.findTargetArc(END_BYTE, path.fstNode(), scratchArc, bytesReader) != null) {
             // This node has END_BYTE arc leaving, meaning it's an
             // "exact" match:
             searcher.addStartPaths(
-                scratchArc, fst.outputs.add(path.output, scratchArc.output()), false, path.input);
+                scratchArc,
+                fst.outputs.add(path.output(), scratchArc.output()),
+                false,
+                path.input());
           }
         }
 
@@ -767,9 +767,9 @@ public class AnalyzingSuggester extends Lookup {
         // nodes we have and the
         // maxSurfaceFormsPerAnalyzedForm:
         for (Result<Pair<Long, BytesRef>> completion : completions) {
-          BytesRef output2 = completion.output.output2;
+          BytesRef output2 = completion.output().output2;
           if (sameSurfaceForm(utf8Key, output2)) {
-            results.add(getLookupResult(completion.output.output1, output2, spare));
+            results.add(getLookupResult(completion.output().output1, output2, spare));
             break;
           }
         }
@@ -817,7 +817,7 @@ public class AnalyzingSuggester extends Lookup {
       prefixPaths = getFullPrefixPaths(prefixPaths, lookupAutomaton, fst);
 
       for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-        searcher.addStartPaths(path.fstNode, path.output, true, path.input);
+        searcher.addStartPaths(path.fstNode(), path.output(), true, path.input());
       }
 
       TopResults<Pair<Long, BytesRef>> completions = searcher.search();
@@ -826,7 +826,7 @@ public class AnalyzingSuggester extends Lookup {
       for (Result<Pair<Long, BytesRef>> completion : completions) {
 
         LookupResult result =
-            getLookupResult(completion.output.output1, completion.output.output2, spare);
+            getLookupResult(completion.output().output1, completion.output().output2, spare);
 
         // TODO: for fuzzy case would be nice to return
         // how many edits were required

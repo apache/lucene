@@ -17,8 +17,6 @@
 package org.apache.lucene.codecs.blockterms;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermStats;
 import org.apache.lucene.index.FieldInfo;
@@ -44,16 +42,19 @@ import org.apache.lucene.util.fst.Util;
  * @lucene.experimental
  */
 public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
+  protected IndexOutput metaOut;
   protected IndexOutput out;
 
   /** Extension of terms index file */
   static final String TERMS_INDEX_EXTENSION = "tiv";
 
-  static final String CODEC_NAME = "VariableGapTermsIndex";
-  static final int VERSION_START = 3;
-  static final int VERSION_CURRENT = VERSION_START;
+  /** Extension of terms meta file */
+  static final String TERMS_META_EXTENSION = "tmv";
 
-  private final List<FSTFieldWriter> fields = new ArrayList<>();
+  static final String META_CODEC_NAME = "VariableGapTermsMeta";
+  static final String CODEC_NAME = "VariableGapTermsIndex";
+  static final int VERSION_START = 4;
+  static final int VERSION_CURRENT = VERSION_START;
 
   @SuppressWarnings("unused")
   private final FieldInfos fieldInfos; // unread
@@ -74,6 +75,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
      * indexed
      */
     public abstract boolean isIndexTerm(BytesRef term, TermStats stats);
+
     /** Called when a new field is started. */
     public abstract void newField(FieldInfo fieldInfo);
   }
@@ -125,7 +127,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
 
     @Override
     public boolean isIndexTerm(BytesRef term, TermStats stats) {
-      if (stats.docFreq >= docFreqThresh || count >= interval) {
+      if (stats.docFreq() >= docFreqThresh || count >= interval) {
         count = 1;
         return true;
       } else {
@@ -175,20 +177,32 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
 
   public VariableGapTermsIndexWriter(SegmentWriteState state, IndexTermSelector policy)
       throws IOException {
+    fieldInfos = state.fieldInfos;
+    this.policy = policy;
+
+    final String metaFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, TERMS_META_EXTENSION);
     final String indexFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, TERMS_INDEX_EXTENSION);
-    out = state.directory.createOutput(indexFileName, state.context);
+
     boolean success = false;
     try {
-      fieldInfos = state.fieldInfos;
-      this.policy = policy;
+      metaOut = state.directory.createOutput(metaFileName, state.context);
+      out = state.directory.createOutput(indexFileName, state.context);
+      CodecUtil.writeIndexHeader(
+          metaOut,
+          META_CODEC_NAME,
+          VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           out, CODEC_NAME, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       success = true;
     } finally {
       if (!success) {
-        IOUtils.closeWhileHandlingException(out);
+        IOUtils.closeWhileHandlingException(this);
       }
     }
   }
@@ -197,9 +211,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
   public FieldWriter addField(FieldInfo field, long termsFilePointer) throws IOException {
     //// System.out.println("VGW: field=" + field.name);
     policy.newField(field);
-    FSTFieldWriter writer = new FSTFieldWriter(field, termsFilePointer);
-    fields.add(writer);
-    return writer;
+    return new FSTFieldWriter(field, termsFilePointer);
   }
 
   /**
@@ -229,7 +241,6 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
 
     final FieldInfo fieldInfo;
     FST<Long> fst;
-    final long indexStart;
 
     private final BytesRefBuilder lastTerm = new BytesRefBuilder();
     private boolean first = true;
@@ -237,8 +248,7 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
     public FSTFieldWriter(FieldInfo fieldInfo, long termsFilePointer) throws IOException {
       this.fieldInfo = fieldInfo;
       fstOutputs = PositiveIntOutputs.getSingleton();
-      fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, fstOutputs);
-      indexStart = out.getFilePointer();
+      fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, fstOutputs).build();
       //// System.out.println("VGW: field=" + fieldInfo.name);
 
       // Always put empty string in
@@ -282,46 +292,32 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
 
     @Override
     public void finish(long termsFilePointer) throws IOException {
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       if (fst != null) {
-        fst.save(out, out);
+        metaOut.writeInt(fieldInfo.number);
+        metaOut.writeVLong(out.getFilePointer());
+        fst.save(metaOut, out);
       }
     }
   }
 
   @Override
   public void close() throws IOException {
-    if (out != null) {
-      try {
-        final long dirStart = out.getFilePointer();
-        final int fieldCount = fields.size();
-
-        int nonNullFieldCount = 0;
-        for (int i = 0; i < fieldCount; i++) {
-          FSTFieldWriter field = fields.get(i);
-          if (field.fst != null) {
-            nonNullFieldCount++;
-          }
-        }
-
-        out.writeVInt(nonNullFieldCount);
-        for (int i = 0; i < fieldCount; i++) {
-          FSTFieldWriter field = fields.get(i);
-          if (field.fst != null) {
-            out.writeVInt(field.fieldInfo.number);
-            out.writeVLong(field.indexStart);
-          }
-        }
-        writeTrailer(dirStart);
+    try {
+      if (metaOut != null) {
+        metaOut.writeInt(-1);
+        CodecUtil.writeFooter(metaOut);
+      }
+      if (out != null) {
         CodecUtil.writeFooter(out);
+      }
+    } finally {
+      try {
+        IOUtils.close(out, metaOut);
       } finally {
-        out.close();
         out = null;
+        metaOut = null;
       }
     }
-  }
-
-  private void writeTrailer(long dirStart) throws IOException {
-    out.writeLong(dirStart);
   }
 }

@@ -51,8 +51,10 @@ public abstract class FilterFileSystemProvider extends FileSystemProvider {
 
   /** The underlying {@code FileSystemProvider}. */
   protected final FileSystemProvider delegate;
+
   /** The underlying {@code FileSystem} instance. */
   protected FilterFileSystem fileSystem;
+
   /** The URI scheme for this provider. */
   protected final String scheme;
 

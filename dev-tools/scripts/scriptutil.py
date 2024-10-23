@@ -88,7 +88,7 @@ def run(cmd, cwd=None):
     raise e
   return output.decode('utf-8') 
 
-def update_file(filename, line_re, edit):
+def update_file(filename, line_re, edit, append=None):
   infile = open(filename, 'r')
   buffer = [] 
   
@@ -102,6 +102,8 @@ def update_file(filename, line_re, edit):
           return False
         continue
     buffer.append(line)
+  if append:
+    changed = append(buffer, changed) # in the case did not change in edit but have an append function
   if not changed:
     raise Exception('Could not find %s in %s' % (line_re, filename))
   with open(filename, 'w') as f:

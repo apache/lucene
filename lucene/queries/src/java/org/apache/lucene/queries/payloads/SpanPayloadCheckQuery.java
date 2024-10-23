@@ -38,6 +38,7 @@ import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.util.BytesRef;
 
 /** Only return those matches that have a specific payload at the given position. */
@@ -47,6 +48,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
   protected final SpanQuery match;
   protected final MatchOperation operation;
   protected final PayloadType payloadType;
+
   /** The payload type. This specifies the decoding of the ByteRef for the payload. */
   public enum PayloadType {
     /** INT is for a 4 byte payload that is a packed integer */
@@ -170,7 +172,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
     }
 
     @Override
-    public SpanScorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       if (field == null) {
         return null;
       }
@@ -190,7 +192,8 @@ public class SpanPayloadCheckQuery extends SpanQuery {
         return null;
       }
       final LeafSimScorer docScorer = getSimScorer(context);
-      return new SpanScorer(this, spans, docScorer);
+      final var scorer = new SpanScorer(spans, docScorer);
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

@@ -206,6 +206,11 @@ public class TestDictionary extends LuceneTestCase {
         protected boolean tolerateAffixRuleCountMismatches() {
           return true;
         }
+
+        @Override
+        protected boolean tolerateDuplicateConversionMappings() {
+          return true;
+        }
       };
     }
   }

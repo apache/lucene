@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
@@ -81,7 +83,7 @@ public final class RamUsageTester {
    * referenced objects.
    *
    * <p><b>Resource Usage:</b> This method internally uses a set of every object seen during
-   * traversals so it does allocate memory (it isn't side-effect free). After the method exits, this
+   * traversals so it does allocate memory (it isn't side effect free). After the method exits, this
    * memory should be GCed.
    */
   public static long ramUsed(Object obj, Accumulator accumulator) {
@@ -111,7 +113,7 @@ public final class RamUsageTester {
    */
   private static long measureObjectSize(Object root, Accumulator accumulator) {
     // Objects seen so far.
-    final Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
+    final Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     // Class cache with reference Field and precalculated shallow size.
     final IdentityHashMap<Class<?>, ClassCache> classCache = new IdentityHashMap<>();
     // Stack of objects pending traversal. Recursion caused stack overflows.
@@ -159,7 +161,11 @@ public final class RamUsageTester {
 
     // Ignore JDK objects we can't access or handle properly.
     Predicate<Object> isIgnorable =
-        (clazz) -> (clazz instanceof CharsetEncoder) || (clazz instanceof CharsetDecoder);
+        (clazz) ->
+            (clazz instanceof CharsetEncoder)
+                || (clazz instanceof CharsetDecoder)
+                || (clazz instanceof ReentrantReadWriteLock)
+                || (clazz instanceof AtomicReference<?>);
     if (isIgnorable.test(ob)) {
       return accumulator.accumulateObject(ob, 0, Collections.emptyMap(), stack);
     }
@@ -188,9 +194,7 @@ public final class RamUsageTester {
       } else if (isJavaModule.test(obClazz) && ob instanceof Map) {
         final List<Object> values =
             ((Map<?, ?>) ob)
-                .entrySet().stream()
-                    .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
-                    .collect(Collectors.toList());
+                .entrySet().stream().flatMap(e -> Stream.of(e.getKey(), e.getValue())).toList();
         return accumulator.accumulateArray(
                 ob,
                 alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
@@ -240,7 +244,7 @@ public final class RamUsageTester {
       values = Collections.emptyList();
     } else {
       values =
-          new AbstractList<Object>() {
+          new AbstractList<>() {
 
             @Override
             public Object get(int index) {
@@ -261,10 +265,9 @@ public final class RamUsageTester {
    * their public properties. This is needed for Java 9, which does not allow to look into runtime
    * class fields.
    */
-  @SuppressWarnings("serial")
   private static final Map<Class<?>, ToLongFunction<Object>> SIMPLE_TYPES =
       Collections.unmodifiableMap(
-          new IdentityHashMap<Class<?>, ToLongFunction<Object>>() {
+          new IdentityHashMap<>() {
             {
               init();
             }
@@ -304,15 +307,7 @@ public final class RamUsageTester {
           });
 
   /** Cached information about a given class. */
-  private static final class ClassCache {
-    public final long alignedShallowInstanceSize;
-    public final Field[] referenceFields;
-
-    public ClassCache(long alignedShallowInstanceSize, Field[] referenceFields) {
-      this.alignedShallowInstanceSize = alignedShallowInstanceSize;
-      this.referenceFields = referenceFields;
-    }
-  }
+  private record ClassCache(long alignedShallowInstanceSize, Field[] referenceFields) {}
 
   /** Create a cached information about shallow size and reference fields for a given class. */
   @SuppressForbidden(reason = "We need to access private fields of measured objects.")
@@ -357,7 +352,7 @@ public final class RamUsageTester {
                   cachedInfo =
                       new ClassCache(
                           RamUsageEstimator.alignObjectSize(shallowInstanceSize),
-                          referenceFields.toArray(new Field[referenceFields.size()]));
+                          referenceFields.toArray(new Field[0]));
                   return cachedInfo;
                 });
     return classCache;

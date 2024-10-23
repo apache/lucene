@@ -98,7 +98,7 @@ public class TestElevationComparator extends LuceneTestCase {
 
     TopDocs topDocs =
         searcher.search(
-            newq.build(), TopFieldCollector.createSharedManager(sort, 50, null, Integer.MAX_VALUE));
+            newq.build(), new TopFieldCollectorManager(sort, 50, null, Integer.MAX_VALUE, true));
     int nDocsReturned = topDocs.scoreDocs.length;
 
     assertEquals(4, nDocsReturned);
@@ -162,7 +162,7 @@ class ElevationComparatorSource extends FieldComparatorSource {
 
   @Override
   public FieldComparator<Integer> newComparator(
-      final String fieldname, final int numHits, boolean enableSkipping, boolean reversed) {
+      final String fieldname, final int numHits, Pruning pruning, boolean reversed) {
     return new FieldComparator<Integer>() {
 
       private final int[] values = new int[numHits];
