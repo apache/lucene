@@ -30,6 +30,7 @@ import static org.apache.lucene.util.fst.FST.NON_FINAL_END_NODE;
 import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -869,14 +870,14 @@ public class FSTCompiler<T> {
     }
 
     // compare shared prefix length
-    int pos1 = 0;
-    int pos2 = input.offset;
-    final int pos1Stop = Math.min(lastInput.length(), input.length);
-    while (pos1 < pos1Stop && lastInput.intAt(pos1) == input.ints[pos2]) {
-      pos1++;
-      pos2++;
+    int pos = 0;
+    if (lastInput.length() > 0) {
+      int mismatch =
+          Arrays.mismatch(
+              lastInput.ints(), 0, lastInput.length(), input.ints, input.offset, input.length);
+      pos += mismatch == -1 ? lastInput.length() : mismatch;
     }
-    final int prefixLenPlus1 = pos1 + 1;
+    final int prefixLenPlus1 = pos + 1;
 
     if (frontier.length < input.length + 1) {
       final UnCompiledNode<T>[] next = ArrayUtil.grow(frontier, input.length + 1);
