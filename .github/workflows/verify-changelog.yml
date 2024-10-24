@@ -1,0 +1,14 @@
+name: Verify Changelog
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: dangoslen/changelog-enforcer@v3
+        with:
+          changeLogPath: 'lucene/CHANGES.txt'
