@@ -62,7 +62,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
    * @param topK the number of nodes to be returned
    * @param numSeed the size of the queue maintained while searching, and controls the number of
    *     random entry points to sample
-   * @param vectors vector values
+   * @param vectors vectors to search whose ordinals are in the graph
    * @param graphValues the graph values. May represent the entire graph, or a level in a
    *     hierarchical graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
@@ -74,7 +74,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       float[] query,
       int topK,
       int numSeed,
-      FloatVectorValues vectors,
+      FloatVectorValues.Floats vectors,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graphValues,
       Bits acceptOrds,
@@ -101,7 +101,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           break;
         }
         // explore the topK starting points of some random numSeed probes
-        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
+        float score = similarityFunction.compare(query, vectors.get(entryPoint));
         candidates.add(entryPoint, score);
         if (acceptOrds == null || acceptOrds.get(entryPoint)) {
           results.add(entryPoint, score);
@@ -137,7 +137,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           break;
         }
 
-        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        float friendSimilarity = similarityFunction.compare(query, vectors.get(friendOrd));
         if (results.size() < numSeed || bound.check(friendSimilarity) == false) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {

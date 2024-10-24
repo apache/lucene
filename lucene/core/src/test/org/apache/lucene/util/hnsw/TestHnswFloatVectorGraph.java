@@ -71,12 +71,13 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   @Override
   MockVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
-    float[][] vectors = new float[reader.maxDoc()][];
+    FloatVectorValues.Floats vectors = vectorValues.vectors();
+    float[][] vectorsArray = new float[reader.maxDoc()][];
     for (int i = 0; i < vectorValues.size(); i++) {
-      vectors[vectorValues.ordToDoc(i)] =
-          ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());
+      vectorsArray[vectorValues.ordToDoc(i)] =
+          ArrayUtil.copyOfSubArray(vectors.get(i), 0, vectorValues.dimension());
     }
-    return MockVectorValues.fromValues(vectors);
+    return MockVectorValues.fromValues(vectorsArray);
   }
 
   @Override
@@ -120,10 +121,10 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   public void testSearchWithSkewedAcceptOrds() throws IOException {
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    FloatVectorValues vectors = circularVectorValues(nDoc);
-    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    FloatVectorValues vectorValues = circularVectorValues(nDoc);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors.size());
+    OnHeapHnswGraph hnsw = builder.build(vectorValues.size());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
@@ -132,7 +133,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     }
     KnnCollector nn =
         HnswGraphSearcher.search(
-            buildScorer(vectors, getTargetVector()), 10, hnsw, acceptOrds, Integer.MAX_VALUE);
+            buildScorer(vectorValues, getTargetVector()), 10, hnsw, acceptOrds, Integer.MAX_VALUE);
 
     TopDocs nodes = nn.topDocs();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);

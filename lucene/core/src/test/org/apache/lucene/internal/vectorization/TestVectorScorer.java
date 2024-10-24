@@ -253,12 +253,11 @@ public class TestVectorScorer extends LuceneTestCase {
           var scoreSupplier = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
           var expectedScore1 = scoreSupplier.scorer(0).score(1);
           var expectedScore2 = scoreSupplier.scorer(2).score(3);
-
           var scorer = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
           var tasks =
               List.<Callable<Optional<Throwable>>>of(
-                  new AssertingScoreCallable(scorer.copy().scorer(0), 1, expectedScore1),
-                  new AssertingScoreCallable(scorer.copy().scorer(2), 3, expectedScore2));
+                  new AssertingScoreCallable(scorer.scorer(0), 1, expectedScore1),
+                  new AssertingScoreCallable(scorer.scorer(2), 3, expectedScore2));
           var executor = Executors.newFixedThreadPool(2, new NamedThreadFactory("copiesThreads"));
           var results = executor.invokeAll(tasks);
           executor.shutdown();
@@ -280,7 +279,12 @@ public class TestVectorScorer extends LuceneTestCase {
     public Optional<Throwable> call() throws Exception {
       try {
         for (int i = 0; i < 100; i++) {
-          assertEquals(scorer.score(ord), expectedScore, DELTA);
+          float score = scorer.score(ord);
+          assertEquals(
+              "ord=" + ord + " i=" + i + " expected=" + expectedScore + " actual=" + score,
+              expectedScore,
+              score,
+              DELTA);
         }
       } catch (Throwable t) {
         return Optional.of(t);

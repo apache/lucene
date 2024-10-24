@@ -117,13 +117,19 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     SortingFloatVectorValues(
         BufferedFloatVectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
         throws IOException {
-      this.delegate = delegate.copy();
+      this.delegate = delegate;
       iteratorSupplier = SortingCodecReader.iteratorSupplier(delegate, sortMap);
     }
 
     @Override
-    public float[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(ord);
+    public Floats vectors() {
+      Floats delegateFloats = delegate.vectors();
+      return new Floats() {
+        @Override
+        public float[] get(int ord) throws IOException {
+          return delegateFloats.get(ord);
+        }
+      };
     }
 
     @Override
@@ -134,11 +140,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public int size() {
       return delegate.size();
-    }
-
-    @Override
-    public SortingFloatVectorValues copy() {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -160,8 +161,15 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public byte[] vectorValue(int ord) throws IOException {
-      return delegate.vectorValue(ord);
+    public Bytes vectors() throws IOException {
+      return new Bytes() {
+        Bytes vectors = delegate.vectors();
+
+        @Override
+        public byte[] get(int ord) throws IOException {
+          return vectors.get(ord);
+        }
+      };
     }
 
     @Override
@@ -172,11 +180,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public int size() {
       return delegate.size();
-    }
-
-    @Override
-    public SortingByteVectorValues copy() {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -268,15 +271,13 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<float[]> vectors;
     final int dimension;
-    private final DocIdSet docsWithField;
-    private final DocIndexIterator iterator;
+    final DocIdSet docsWithField;
 
     BufferedFloatVectorValues(List<float[]> vectors, int dimension, DocIdSet docsWithField)
         throws IOException {
       this.vectors = vectors;
       this.dimension = dimension;
       this.docsWithField = docsWithField;
-      this.iterator = fromDISI(docsWithField.iterator());
     }
 
     @Override
@@ -295,18 +296,18 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) {
-      return vectors.get(targetOrd);
+    public Floats vectors() {
+      return new Floats() {
+        @Override
+        public float[] get(int ord) throws IOException {
+          return vectors.get(ord);
+        }
+      };
     }
 
     @Override
-    public DocIndexIterator iterator() {
-      return iterator;
-    }
-
-    @Override
-    public BufferedFloatVectorValues copy() throws IOException {
-      return new BufferedFloatVectorValues(vectors, dimension, docsWithField);
+    public DocIndexIterator iterator() throws IOException {
+      return fromDISI(docsWithField.iterator());
     }
   }
 
@@ -314,15 +315,13 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     // These are always the vectors of a VectorValuesWriter, which are copied when added to it
     final List<byte[]> vectors;
     final int dimension;
-    private final DocIdSet docsWithField;
-    private final DocIndexIterator iterator;
+    final DocIdSet docsWithField;
 
     BufferedByteVectorValues(List<byte[]> vectors, int dimension, DocIdSet docsWithField)
         throws IOException {
       this.vectors = vectors;
       this.dimension = dimension;
       this.docsWithField = docsWithField;
-      iterator = fromDISI(docsWithField.iterator());
     }
 
     @Override
@@ -336,18 +335,18 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public byte[] vectorValue(int targetOrd) {
-      return vectors.get(targetOrd);
+    public Bytes vectors() {
+      return new Bytes() {
+        @Override
+        public byte[] get(int targetOrd) {
+          return vectors.get(targetOrd);
+        }
+      };
     }
 
     @Override
-    public DocIndexIterator iterator() {
-      return iterator;
-    }
-
-    @Override
-    public BufferedByteVectorValues copy() throws IOException {
-      return new BufferedByteVectorValues(vectors, dimension, docsWithField);
+    public DocIndexIterator iterator() throws IOException {
+      return fromDISI(docsWithField.iterator());
     }
   }
 }

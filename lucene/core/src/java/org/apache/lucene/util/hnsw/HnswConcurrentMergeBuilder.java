@@ -60,7 +60,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     for (int i = 0; i < numWorker; i++) {
       workers[i] =
           new ConcurrentMergeWorker(
-              scorerSupplier.copy(),
+              scorerSupplier,
               M,
               beamWidth,
               HnswGraphBuilder.randSeed,
