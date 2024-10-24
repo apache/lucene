@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -68,8 +67,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
     }
     this.tieBreakerMultiplier = tieBreakerMultiplier;
     this.disjuncts.addAll(disjuncts);
-    this.orderedQueries = new ArrayList<>(disjuncts);
-    orderedQueries.sort(Comparator.comparing(Query::toString)); // ensure one sort
+    this.orderedQueries = new ArrayList<>(disjuncts); // order from the caller
   }
 
   /**

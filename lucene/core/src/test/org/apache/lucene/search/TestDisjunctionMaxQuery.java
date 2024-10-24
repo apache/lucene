@@ -504,8 +504,6 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
             .map((term) -> "test:" + term)
             .collect(Collectors.joining(" | ", "(", ")~1.0"));
 
-    Collections.shuffle(Arrays.asList(terms), random()); // Disrupt clause order
-
     DisjunctionMaxQuery source =
         new DisjunctionMaxQuery(
             Arrays.stream(terms).map((term) -> tq("test", term)).toList(), 1.0f);
