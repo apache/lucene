@@ -93,7 +93,10 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
         supportsConcurrency
             ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
             : HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits));
-    this.minScoreAcc = supportsConcurrency ? new MaxScoreAccumulator() : null;
+    this.minScoreAcc =
+        supportsConcurrency && totalHitsThreshold != Integer.MAX_VALUE
+            ? new MaxScoreAccumulator()
+            : null;
     this.collectors = new ArrayList<>();
   }
 
