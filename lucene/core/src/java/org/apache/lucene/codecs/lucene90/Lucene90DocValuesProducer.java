@@ -784,6 +784,58 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
   }
 
+  private static class RandomAccessInputSlicer implements RandomAccessInput {
+
+    private final RandomAccessInput in;
+    private long length;
+    private long offset;
+
+    RandomAccessInputSlicer(RandomAccessInput in) {
+      this.in = in;
+    }
+
+    RandomAccessInput reset(long offset, long length) {
+      this.length = length;
+      this.offset = offset;
+      return this;
+    }
+
+    @Override
+    public long length() {
+      return length;
+    }
+
+    @Override
+    public byte readByte(long pos) throws IOException {
+      assert pos + 1 <= length;
+      return in.readByte(offset + pos);
+    }
+
+    @Override
+    public void readBytes(long pos, byte[] b, int offset, int len) throws IOException {
+      assert pos + len <= length;
+      in.readBytes(this.offset + pos, b, offset, len);
+    }
+
+    @Override
+    public short readShort(long pos) throws IOException {
+      assert pos + Short.BYTES <= length;
+      return in.readShort(offset + pos);
+    }
+
+    @Override
+    public int readInt(long pos) throws IOException {
+      assert pos + Integer.BYTES <= length;
+      return in.readInt(offset + pos);
+    }
+
+    @Override
+    public long readLong(long pos) throws IOException {
+      assert pos + Long.BYTES <= length;
+      return in.readLong(offset + pos);
+    }
+  }
+
   @Override
   public BinaryDocValues getBinary(FieldInfo field) throws IOException {
     BinaryEntry entry = binaries.get(field.name);
@@ -792,7 +844,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.emptyBinary();
     }
 
-    final RandomAccessInput bytesSlice = data.randomAccessSlice(entry.dataOffset, entry.dataLength);
+    final RandomAccessInputSlicer bytesSlice =
+        new RandomAccessInputSlicer(data.randomAccessSlice(entry.dataOffset, entry.dataLength));
     // Prefetch the first page of data. Following pages are expected to get prefetched through
     // read-ahead.
     if (bytesSlice.length() > 0) {
@@ -805,12 +858,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         // fixed length
         final int length = entry.maxLength;
         return new DenseBinaryDocValues(maxDoc) {
-          final BytesRef bytes = new BytesRef(new byte[length], 0, length);
+          BytesRef bytes;
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.readBytes((long) doc * length, bytes.bytes, 0, length);
+            if (bytes == null) {
+              bytes = new BytesRef(new byte[length], 0, length);
+            }
+            final RandomAccessInput input = randomAccessInputValue();
+            input.readBytes(0L, bytes.bytes, 0, bytes.length);
             return bytes;
+          }
+
+          @Override
+          public RandomAccessInput randomAccessInputValue() {
+            return bytesSlice.reset((long) doc * length, length);
           }
         };
       } else {
@@ -825,14 +887,23 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         final LongValues addresses =
             DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData, merging);
         return new DenseBinaryDocValues(maxDoc) {
-          final BytesRef bytes = new BytesRef(new byte[entry.maxLength], 0, entry.maxLength);
+          BytesRef bytes = null;
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            long startOffset = addresses.get(doc);
-            bytes.length = (int) (addresses.get(doc + 1L) - startOffset);
-            bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
+            if (bytes == null) {
+              bytes = new BytesRef(new byte[entry.maxLength], 0, entry.maxLength);
+            }
+            final RandomAccessInput input = randomAccessInputValue();
+            bytes.length = (int) input.length();
+            input.readBytes(0L, bytes.bytes, 0, bytes.length);
             return bytes;
+          }
+
+          @Override
+          public RandomAccessInput randomAccessInputValue() {
+            final long startOffset = addresses.get(doc);
+            return bytesSlice.reset(startOffset, addresses.get(doc + 1L) - startOffset);
           }
         };
       }
@@ -850,12 +921,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         // fixed length
         final int length = entry.maxLength;
         return new SparseBinaryDocValues(disi) {
-          final BytesRef bytes = new BytesRef(new byte[length], 0, length);
+          BytesRef bytes = null;
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.readBytes((long) disi.index() * length, bytes.bytes, 0, length);
+            if (bytes == null) {
+              bytes = new BytesRef(new byte[length], 0, length);
+            }
+            final RandomAccessInput input = randomAccessInputValue();
+            input.readBytes(0L, bytes.bytes, 0, bytes.length);
             return bytes;
+          }
+
+          @Override
+          public RandomAccessInput randomAccessInputValue() {
+            return bytesSlice.reset((long) disi.index() * length, length);
           }
         };
       } else {
@@ -870,15 +950,24 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         final LongValues addresses =
             DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData);
         return new SparseBinaryDocValues(disi) {
-          final BytesRef bytes = new BytesRef(new byte[entry.maxLength], 0, entry.maxLength);
+          BytesRef bytes = null;
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            final int index = disi.index();
-            long startOffset = addresses.get(index);
-            bytes.length = (int) (addresses.get(index + 1L) - startOffset);
-            bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
+            if (bytes == null) {
+              bytes = new BytesRef(new byte[entry.maxLength], 0, entry.maxLength);
+            }
+            final RandomAccessInput input = randomAccessInputValue();
+            bytes.length = (int) input.length();
+            input.readBytes(0L, bytes.bytes, 0, bytes.length);
             return bytes;
+          }
+
+          @Override
+          public RandomAccessInput randomAccessInputValue() {
+            final int index = disi.index();
+            final long startOffset = addresses.get(index);
+            return bytesSlice.reset(startOffset, addresses.get(index + 1L) - startOffset);
           }
         };
       }

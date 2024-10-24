@@ -29,6 +29,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -86,7 +87,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
           }
 
           if (binaryDocValues.advanceExact(docid)) {
-            keySet.add(BytesRef.deepCopyOf(binaryDocValues.binaryValue()));
+            keySet.add(copyToBytesRef(binaryDocValues.randomAccessInputValue()));
           } else {
             throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }
@@ -116,7 +117,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
 
         for (int docid = 0; docid < context.reader().maxDoc(); docid++) {
           if (binaryDocValues.advanceExact(docid)) {
-            keySet.add(BytesRef.deepCopyOf(binaryDocValues.binaryValue()));
+            keySet.add(copyToBytesRef(binaryDocValues.randomAccessInputValue()));
           } else {
             throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }
@@ -125,5 +126,11 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
       }
     }
     return selectors;
+  }
+
+  private static BytesRef copyToBytesRef(RandomAccessInput input) throws IOException {
+    final byte[] bytes = new byte[(int) input.length()];
+    input.readBytes(0L, bytes, 0, bytes.length);
+    return new BytesRef(bytes, 0, bytes.length);
   }
 }

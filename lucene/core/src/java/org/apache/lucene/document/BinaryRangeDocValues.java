@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 
 import java.io.IOException;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 
 /** A binary representation of a range that wraps a BinaryDocValues field */
@@ -90,6 +91,11 @@ public class BinaryRangeDocValues extends BinaryDocValues {
     return in.binaryValue();
   }
 
+  @Override
+  public RandomAccessInput randomAccessInputValue() throws IOException {
+    return in.randomAccessInputValue();
+  }
+
   /**
    * Gets the packed value that represents this range
    *
@@ -100,12 +106,10 @@ public class BinaryRangeDocValues extends BinaryDocValues {
   }
 
   private void decodeRanges() throws IOException {
-    BytesRef bytesRef = in.binaryValue();
-
+    final RandomAccessInput input = in.randomAccessInputValue();
     // We reuse the existing allocated memory for packed values since all docvalues in this iterator
     // should be exactly same in indexed structure, hence the byte representations in length should
     // be identical
-    System.arraycopy(
-        bytesRef.bytes, bytesRef.offset, packedValue, 0, 2 * numDims * numBytesPerDimension);
+    input.readBytes(0L, packedValue, 0, 2 * numDims * numBytesPerDimension);
   }
 }
