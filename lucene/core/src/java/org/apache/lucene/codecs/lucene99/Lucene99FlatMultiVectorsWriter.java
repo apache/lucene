@@ -78,7 +78,6 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
   public Lucene99FlatMultiVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer)
       throws IOException {
     super(scorer);
-    System.out.println("VIGYA - initializing Flat MV Writer");
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -191,6 +190,29 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
       }
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+
+    assert vectorDataLength == fieldData.vectorDataLength() :
+      "Mismatch in vector data size written to storage. " +
+        "Computed = " + fieldData.vectorDataLength() + ", written = " + vectorDataLength;
+    if (fieldData.fieldInfo.hasMultiVectorValues()) {
+      System.out.println("VIGYA - multi-vector data offsets:");
+      for (int i = 0; i < fieldData.vectors.size(); i++) {
+        switch (fieldData.fieldInfo.getVectorEncoding()) {
+          case BYTE -> {
+            assert fieldData.dataOffsets[i+1] - fieldData.dataOffsets[i] ==
+              (long) ((ByteMultiVectorValue) fieldData.vectors.get(i)).vectorCount() * fieldData.fieldInfo.getVectorDimension() * fieldData.fieldInfo.getVectorEncoding().byteSize
+              : "fielddata multi-vector write mismatch for ordinal = " + i;
+          }
+          case FLOAT32 -> {
+            assert fieldData.dataOffsets[i+1] - fieldData.dataOffsets[i] ==
+              (long) ((FloatMultiVectorValue) fieldData.vectors.get(i)).vectorCount() * fieldData.fieldInfo.getVectorDimension() * fieldData.fieldInfo.getVectorEncoding().byteSize
+              : "fielddata multi-vector write mismatch for ordinal = " + i;
+          }
+        }
+        System.out.println("\t ordinal = " + i + ", offset = " + fieldData.dataOffsets[i]);
+      }
+      System.out.println("\t length or end offset = " + fieldData.dataOffsets[fieldData.vectors.size()]);
+    }
 
     writeMeta(
         fieldData.fieldInfo,
@@ -322,6 +344,7 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
   /* Write Multi-Vector Sorting Fields */
   private long writeSortedFloat32MultiVectors(FieldWriter<?> fieldData, int[] ordMap)
       throws IOException {
+    System.out.println("VIGYAVIGYA - writing sorted float32 multivectors");
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     int newOrd = 0;
     ByteBuffer buffer = null;
@@ -382,6 +405,7 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    System.out.println("VIGYAVIGYA - merging oneField !!");
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -752,6 +776,23 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
       if (indexingDelegate != null) {
         indexingDelegate.addValue(docID, copy);
       }
+    }
+
+    private long vectorDataLength() {
+      long totalDataLength = 0;
+      if (fieldInfo.hasMultiVectorValues()) {
+        for (T v : vectors) {
+          switch (fieldInfo.getVectorEncoding()) {
+            case BYTE -> totalDataLength += (long) ((ByteMultiVectorValue) v).vectorCount() *
+                    fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
+            case FLOAT32 -> totalDataLength += (long) ((FloatMultiVectorValue) v).vectorCount() *
+                    fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
+          }
+        }
+      } else {
+        totalDataLength = (long) vectors.size() * fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
+      }
+      return totalDataLength;
     }
 
     @Override

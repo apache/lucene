@@ -94,14 +94,19 @@ public abstract class OffHeapFloatMultiVectorValues extends FloatVectorValues
   }
 
   protected float[] vectorValue(int targetOrd, LongValues dataOffsets) throws IOException {
+    System.out.printf("\tfetching vectorValue for targetOrd = %d\n", targetOrd);
     if (lastOrd == targetOrd) {
+      System.out.printf("\tit's same as the lastOrd. returning\n");
       return value;
     }
     long offset = dataOffsets.get(targetOrd);
 
     // Todo: switch to using ByteBuffer
     int length = (int) (dataOffsets.get(targetOrd + 1) - offset) / Float.BYTES;
+    assert length % dimension == 0 : "dimension mismatch in retrieved packed vector length";
     value = new float[length];
+    System.out.printf("\t read: ordinal: %d, start: %d, end: %d, length: %d, vectors: %d\n",
+      targetOrd, offset, dataOffsets.get(targetOrd + 1), length, (length / dimension));
     slice.seek(offset);
     slice.readFloats(value, 0, length);
 
@@ -140,6 +145,7 @@ public abstract class OffHeapFloatMultiVectorValues extends FloatVectorValues
       return new EmptyOffHeapMultiVectorValues(
           dimension, flatMultiVectorScorer, multiVectorSimilarityFunction);
     }
+    System.out.printf("loading vector data slice. offset = %d, length = %d\n", multiVectorDataOffset, multiVectorDataLength);
     IndexInput vectorDataSlice =
         vectorData.slice("multi-vector-data", multiVectorDataOffset, multiVectorDataLength);
     if (configuration.docsWithFieldOffset == -1) {
