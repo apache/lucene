@@ -83,7 +83,7 @@ public class DFRSimilarity extends SimilarityBase {
   protected final Normalization normalization;
 
   /**
-   * Creates DFRSimilarity from the three components.
+   * Creates DFRSimilarity from the three components and using default discountOverlaps value.
    *
    * <p>Note that <code>null</code> values are not allowed: if you want no normalization, instead
    * pass {@link NoNormalization}.
@@ -98,7 +98,7 @@ public class DFRSimilarity extends SimilarityBase {
   }
 
   /**
-   * Creates DFRSimilarity from the three components.
+   * Creates DFRSimilarity from the three components and with the specified discountOverlaps value.
    *
    * <p>Note that <code>null</code> values are not allowed: if you want no normalization, instead
    * pass {@link NoNormalization}.
