@@ -68,7 +68,13 @@ public class DocIdEncodingBenchmark {
     parseInput();
   }
 
-  @Param({"Bit21With3StepsEncoder", "Bit21With2StepsEncoder", "Bit24Encoder", "Bit21HybridEncoder"})
+  @Param({
+    "Bit21With3StepsEncoder",
+    "Bit21With2StepsEncoder",
+    "Bit24Encoder",
+    "Bit21With2StepsOnlyRWLongEncoder",
+    "Bit21With3StepsEncoderOnlyRWLong"
+  })
   String encoderName;
 
   @Param({"encode", "decode"})
@@ -323,6 +329,37 @@ public class DocIdEncodingBenchmark {
       }
     }
 
+    class Bit21With2StepsOnlyRWLongEncoder implements DocIdEncoder {
+      @Override
+      public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
+        int i = 0;
+        for (; i < count - 2; i += 3) {
+          long packedLong =
+              ((docIds[i] & BPV_21_MASK) << 42)
+                  | ((docIds[i + 1] & BPV_21_MASK) << 21)
+                  | (docIds[i + 2] & BPV_21_MASK);
+          out.writeLong(packedLong);
+        }
+        for (; i < count; i++) {
+          out.writeLong(docIds[i]);
+        }
+      }
+
+      @Override
+      public void decode(IndexInput in, int start, int count, int[] docIDs) throws IOException {
+        int i = 0;
+        for (; i < count - 2; i += 3) {
+          long packedLong = in.readLong();
+          docIDs[i] = (int) (packedLong >>> 42);
+          docIDs[i + 1] = (int) ((packedLong >>> 21) & BPV_21_MASK);
+          docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
+        }
+        for (; i < count; i++) {
+          docIDs[i] = (int) in.readLong();
+        }
+      }
+    }
+
     /**
      * Variation of @{@link Bit21With2StepsEncoder} but uses 3 loops to decode the array of DocIds.
      * Comparatively better in decoding than @{@link Bit21With2StepsEncoder} on aarch64 with JDK 22
@@ -391,6 +428,69 @@ public class DocIdEncodingBenchmark {
       }
     }
 
+    class Bit21With3StepsEncoderOnlyRWLong implements DocIdEncoder {
+
+      @Override
+      public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
+        int i = 0;
+        for (; i < count - 8; i += 9) {
+          long l1 =
+              ((docIds[i] & BPV_21_MASK) << 42)
+                  | ((docIds[i + 1] & BPV_21_MASK) << 21)
+                  | (docIds[i + 2] & BPV_21_MASK);
+          long l2 =
+              ((docIds[i + 3] & BPV_21_MASK) << 42)
+                  | ((docIds[i + 4] & BPV_21_MASK) << 21)
+                  | (docIds[i + 5] & BPV_21_MASK);
+          long l3 =
+              ((docIds[i + 6] & BPV_21_MASK) << 42)
+                  | ((docIds[i + 7] & BPV_21_MASK) << 21)
+                  | (docIds[i + 8] & BPV_21_MASK);
+          out.writeLong(l1);
+          out.writeLong(l2);
+          out.writeLong(l3);
+        }
+        for (; i < count - 2; i += 3) {
+          long packedLong =
+              ((docIds[i] & BPV_21_MASK) << 42)
+                  | ((docIds[i + 1] & BPV_21_MASK) << 21)
+                  | (docIds[i + 2] & BPV_21_MASK);
+          out.writeLong(packedLong);
+        }
+        for (; i < count; i++) {
+          out.writeLong(docIds[i]);
+        }
+      }
+
+      @Override
+      public void decode(IndexInput in, int start, int count, int[] docIDs) throws IOException {
+        int i = 0;
+        for (; i < count - 8; i += 9) {
+          long l1 = in.readLong();
+          long l2 = in.readLong();
+          long l3 = in.readLong();
+          docIDs[i] = (int) (l1 >>> 42);
+          docIDs[i + 1] = (int) ((l1 >>> 21) & BPV_21_MASK);
+          docIDs[i + 2] = (int) (l1 & BPV_21_MASK);
+          docIDs[i + 3] = (int) (l2 >>> 42);
+          docIDs[i + 4] = (int) ((l2 >>> 21) & BPV_21_MASK);
+          docIDs[i + 5] = (int) (l2 & BPV_21_MASK);
+          docIDs[i + 6] = (int) (l3 >>> 42);
+          docIDs[i + 7] = (int) ((l3 >>> 21) & BPV_21_MASK);
+          docIDs[i + 8] = (int) (l3 & BPV_21_MASK);
+        }
+        for (; i < count - 2; i += 3) {
+          long packedLong = in.readLong();
+          docIDs[i] = (int) (packedLong >>> 42);
+          docIDs[i + 1] = (int) ((packedLong >>> 21) & BPV_21_MASK);
+          docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
+        }
+        for (; i < count; i++) {
+          docIDs[i] = (int) in.readLong();
+        }
+      }
+    }
+
     class Bit21HybridEncoder implements DocIdEncoder {
 
       private final DocIdEncoder encoder;
@@ -443,11 +543,20 @@ public class DocIdEncodingBenchmark {
 
     Map<Class<? extends DocIdEncodingBenchmark.DocIdEncoder>, Integer> ENCODER_TO_BPV_MAPPING =
         Map.of(
-            DocIdEncodingBenchmark.DocIdEncoder.Bit21With2StepsEncoder.class, 21,
-            DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoder.class, 21,
-            DocIdEncodingBenchmark.DocIdEncoder.Bit21HybridEncoder.class, 21,
-            DocIdEncodingBenchmark.DocIdEncoder.Bit24Encoder.class, 24,
-            DocIdEncodingBenchmark.DocIdEncoder.Bit32Encoder.class, 32);
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21With2StepsEncoder.class,
+            21,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoder.class,
+            21,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21With2StepsOnlyRWLongEncoder.class,
+            21,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoderOnlyRWLong.class,
+            21,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21HybridEncoder.class,
+            21,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit24Encoder.class,
+            24,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit32Encoder.class,
+            32);
 
     /**
      * We want to load all the docId sequences completely in memory to avoid including the time
@@ -484,7 +593,16 @@ public class DocIdEncodingBenchmark {
 
   static class FixedBPVRandomDocIdProvider implements DocIdEncodingBenchmark.DocIdProvider {
 
-    private final Random random = new Random();
+    private static final Random RANDOM = new Random();
+
+    private static final Map<Class<? extends DocIdEncoder>, Double> ENCODER_POWERS_OF_2;
+
+    static {
+      ENCODER_POWERS_OF_2 = new HashMap<>(ENCODER_TO_BPV_MAPPING.size());
+      ENCODER_TO_BPV_MAPPING.forEach(
+          (encoderClazz, bitsUsed) ->
+              ENCODER_POWERS_OF_2.put(encoderClazz, Math.pow(2, bitsUsed) - 1));
+    }
 
     @SuppressWarnings("unchecked")
     @Override
@@ -499,10 +617,10 @@ public class DocIdEncodingBenchmark {
 
       for (int i = 1; i <= capacity; i++) {
         docIdSequences.add(
-            random
-                .ints(0, (int) Math.pow(2, ENCODER_TO_BPV_MAPPING.get(encoderClass)) - 1)
+            RANDOM
+                .ints(0, ENCODER_POWERS_OF_2.get(encoderClass).intValue())
                 .distinct()
-                .limit(random.nextInt(low, high))
+                .limit(RANDOM.nextInt(low, high))
                 .toArray());
       }
       return docIdSequences;
