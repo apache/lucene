@@ -88,6 +88,22 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     }
 
     /**
+     * Add a collection of BooleanClauses to this {@link Builder}. Note that the order in which
+     * clauses are added does not have any impact on matching documents or query performance.
+     *
+     * @throws IndexSearcher.TooManyClauses if the new number of clauses exceeds the maximum clause
+     *     number
+     */
+    public Builder add(Collection<BooleanClause> collection) {
+      // see #addClause(BooleanClause)
+      if ((clauses.size() + collection.size()) > IndexSearcher.maxClauseCount) {
+        throw new IndexSearcher.TooManyClauses();
+      }
+      clauses.addAll(collection);
+      return this;
+    }
+
+    /**
      * Add a new clause to this {@link Builder}. Note that the order in which clauses are added does
      * not have any impact on matching documents or query performance.
      *
@@ -136,7 +152,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   }
 
   /** Return the collection of queries for the given {@link Occur}. */
-  Collection<Query> getClauses(Occur occur) {
+  public Collection<Query> getClauses(Occur occur) {
     return clauseSets.get(occur);
   }
 
