@@ -73,7 +73,7 @@ public class DocIdEncodingBenchmark {
     "Bit21With2StepsEncoder",
     "Bit24Encoder",
     "Bit21With2StepsOnlyRWLongEncoder",
-    "Bit21With3StepsEncoderOnlyRWLong"
+    "Bit21With3StepsEncoderOnlyRWLongEncoder"
   })
   String encoderName;
 
@@ -428,7 +428,7 @@ public class DocIdEncodingBenchmark {
       }
     }
 
-    class Bit21With3StepsEncoderOnlyRWLong implements DocIdEncoder {
+    class Bit21With3StepsEncoderOnlyRWLongEncoder implements DocIdEncoder {
 
       @Override
       public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
@@ -549,7 +549,7 @@ public class DocIdEncodingBenchmark {
             21,
             DocIdEncodingBenchmark.DocIdEncoder.Bit21With2StepsOnlyRWLongEncoder.class,
             21,
-            DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoderOnlyRWLong.class,
+            DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoderOnlyRWLongEncoder.class,
             21,
             DocIdEncodingBenchmark.DocIdEncoder.Bit21HybridEncoder.class,
             21,
