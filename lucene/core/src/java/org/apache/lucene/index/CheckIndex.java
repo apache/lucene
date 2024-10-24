@@ -4284,21 +4284,8 @@ public final class CheckIndex implements Closeable {
         int level = Integer.parseInt(args[i]);
         Level.checkIfLevelInBounds(level);
         opts.level = level;
-      } else if ("-fast".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println(
-            "-fast is deprecated, use '-level 1' for explicitly verifying file checksums only. This is also now the default "
-                + "behaviour!");
-      } else if ("-slow".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println("-slow is deprecated, use '-level 3' instead for slow checks");
-        opts.level = Level.MIN_LEVEL_FOR_SLOW_CHECKS;
       } else if ("-exorcise".equals(arg)) {
         opts.doExorcise = true;
-      } else if ("-crossCheckTermVectors".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println("-crossCheckTermVectors is deprecated, use '-level 3' instead");
-        opts.level = Level.MAX_VALUE;
       } else if (arg.equals("-verbose")) {
         opts.verbose = true;
       } else if (arg.equals("-segment")) {
