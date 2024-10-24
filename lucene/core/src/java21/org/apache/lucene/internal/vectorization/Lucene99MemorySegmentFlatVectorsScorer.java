@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer.quantizeQuery;
+import static org.apache.lucene.internal.vectorization.Lucene99MemorySegmentScalarQuantizedVectorScorer.ScalarQuantizedRandomVectorScorerSupplier;
+import static org.apache.lucene.internal.vectorization.Lucene99MemorySegmentScalarQuantizedVectorScorer.fromVectorSimilarity;
+
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -26,6 +30,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
 
@@ -41,9 +46,14 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues) throws IOException {
-    // a quantized values here is a wrapping or delegation issue
-    assert !(vectorValues instanceof QuantizedByteVectorValues);
-    // currently only supports binary vectors
+
+    // Handle quantized vectors
+    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+      return new ScalarQuantizedRandomVectorScorerSupplier(
+          quantizedByteVectorValues, similarityType);
+    }
+
+    // Handle binary vectors
     if (vectorValues instanceof ByteVectorValues bvv
         && bvv instanceof HasIndexSlice byteVectorValues
         && byteVectorValues.getSlice() != null) {
@@ -59,10 +69,24 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, float[] target)
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    // currently only supports binary vectors, so always delegate
-    return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
+    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+      ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
+      final float constMultiplier = scalarQuantizer.getConstantMultiplier();
+      final byte[] targetBytes = new byte[target.length];
+      final float offsetCorrection =
+          quantizeQuery(target, targetBytes, similarityFunction, scalarQuantizer);
+
+      return fromVectorSimilarity(
+          targetBytes,
+          offsetCorrection,
+          similarityFunction,
+          constMultiplier,
+          quantizedByteVectorValues);
+    }
+    // It is possible to get to this branch during initial indexing and flush
+    return delegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
   @Override
@@ -94,6 +118,6 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   @Override
   public String toString() {
-    return "Lucene99MemorySegmentFlatVectorsScorer()";
+    return "Lucene99MemorySegmentFlatVectorsScorer(nonQuantizedDelegate=DefaultFlatVectorScorer())";
   }
 }

@@ -17,6 +17,9 @@
 
 package org.apache.lucene.util;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
@@ -49,10 +52,41 @@ public final class VectorUtil {
 
   private static final float EPSILON = 1e-4f;
 
-  private static final VectorUtilSupport IMPL =
+  public static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
 
+  // TODO: Harden this implementation and may be find a new home for this
+  private static MethodHandle nativeDotProduct() {
+    try {
+      final var PanamaVectorUtilSupport =
+          "org.apache.lucene.internal.vectorization.PanamaVectorUtilSupport";
+      if (!IMPL.getClass().getName().equals(PanamaVectorUtilSupport)) {
+        return null;
+      }
+      MethodHandles.Lookup lookup = MethodHandles.lookup();
+      final var MemorySegment = "java.lang.foreign.MemorySegment";
+      final var methodType =
+          MethodType.methodType(
+              int.class, lookup.findClass(MemorySegment), lookup.findClass(MemorySegment));
+      return lookup.findStatic(IMPL.getClass(), "nativeDotProduct", methodType);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  // For use in JMH benchmark
+  public static final MethodHandle NATIVE_DOT_PRODUCT = nativeDotProduct();
+
   private VectorUtil() {}
+
+  /*
+    Used in o.a.l.benchmark.jmh.VectorUtilBenchmark to create test vectors
+    in off-heap MemorySegments IF VectorUtilSupport instance supports
+    Panama APIs.
+  */
+  public static Class<?> getVectorUtilSupportClass() {
+    return IMPL.getClass();
+  }
 
   /**
    * Returns the vector dot product of the two vectors.
@@ -278,7 +312,9 @@ public final class VectorUtil {
   public static float dotProductScore(byte[] a, byte[] b) {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
-    return 0.5f + dotProduct(a, b) / denom;
+
+    int raw = dotProduct(a, b);
+    return 0.5f + raw / denom;
   }
 
   /**

@@ -146,6 +146,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
     slice.seek(((long) targetOrd * byteSize) + numBytes);
     slice.readFloats(scoreCorrectionConstant, 0, 1);
+    lastOrd = targetOrd;
     return scoreCorrectionConstant[0];
   }
 
