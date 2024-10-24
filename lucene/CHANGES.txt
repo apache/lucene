@@ -63,6 +63,9 @@ Optimizations
 * GITHUB#13941: Optimized computation of top-hits on disjunctive queries with
   many clauses. (Adrien Grand)
 
+* GITHUB#13943: Removed shared `HitsThresholdChecker`, which reduces overhead
+  but may delay a bit when dynamic pruning kicks in. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended

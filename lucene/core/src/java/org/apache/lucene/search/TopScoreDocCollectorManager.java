@@ -29,7 +29,7 @@ public class TopScoreDocCollectorManager
     implements CollectorManager<TopScoreDocCollector, TopDocs> {
   private final int numHits;
   private final ScoreDoc after;
-  private final HitsThresholdChecker hitsThresholdChecker;
+  private final int totalHitsThreshold;
   private final MaxScoreAccumulator minScoreAcc;
   private final boolean supportsConcurrency;
   private boolean collectorCreated;
@@ -71,10 +71,7 @@ public class TopScoreDocCollectorManager
     this.numHits = numHits;
     this.after = after;
     this.supportsConcurrency = supportsConcurrency;
-    this.hitsThresholdChecker =
-        supportsConcurrency
-            ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
-            : HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits));
+    this.totalHitsThreshold = Math.max(totalHitsThreshold, numHits);
     this.minScoreAcc = supportsConcurrency ? new MaxScoreAccumulator() : null;
   }
 
@@ -138,10 +135,10 @@ public class TopScoreDocCollectorManager
 
     if (after == null) {
       return new TopScoreDocCollector.SimpleTopScoreDocCollector(
-          numHits, hitsThresholdChecker, minScoreAcc);
+          numHits, totalHitsThreshold, minScoreAcc);
     } else {
       return new TopScoreDocCollector.PagingTopScoreDocCollector(
-          numHits, after, hitsThresholdChecker, minScoreAcc);
+          numHits, after, totalHitsThreshold, minScoreAcc);
     }
   }
 
