@@ -52,6 +52,7 @@ Bug Fixes
 * GITHUB#13884: Remove broken .toArray from Long/CharObjectHashMap entirely. (Pan Guixin)
 * GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
 * GITHUB#13927: Fix StoredFieldsConsumer finish. (linfn)
+* GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
 
 Build
 ---------------------
