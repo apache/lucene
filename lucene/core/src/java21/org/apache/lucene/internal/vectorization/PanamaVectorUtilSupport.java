@@ -769,17 +769,16 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int findFirstGreater(long[] buffer, int length, long target, int from) {
-    if (from + LONG_SPECIES.length() < buffer.length
-        && buffer[from + LONG_SPECIES.length()] >= target) {
+    if (from + LONG_SPECIES.length() <= length) {
       LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
-      VectorMask<Long> mask = vector.compare(VectorOperators.GE, target);
-      return from + mask.firstTrue();
+      VectorMask<Long> mask = vector.compare(VectorOperators.LT, target);
+      int trueCount = mask.trueCount();
+      if (trueCount != LONG_SPECIES.length()) {
+        return from + trueCount;
+      }
+      from += LONG_SPECIES.length();
     }
 
-    return defaultFindFirstGreater(buffer, length, target, from);
-  }
-
-  private static int defaultFindFirstGreater(long[] buffer, int length, long target, int from) {
     for (int i = from; i < length; ++i) {
       if (buffer[i] >= target) {
         return i;

@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.util;
 
-import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -357,25 +355,15 @@ public class TestVectorUtil extends LuceneTestCase {
   }
 
   public void testFindFirstGreater() {
-    long[] values = new long[129];
+    int padding = TestUtil.nextInt(random(), 0, 5);
+    long[] values = new long[128 + padding];
     long v = 0;
     for (int i = 0; i < 128; ++i) {
       v += TestUtil.nextInt(random(), 1, 1000);
       values[i] = v;
     }
-    values[128] = DocIdSetIterator.NO_MORE_DOCS;
 
     // Now duel with slowFindFirstGreater
-    duelFindFirstGreater(values);
-
-    // Make some changes to values so that it's not ascending on the full range. This happens on
-    // tail blocks of postings.
-    Arrays.fill(values, TestUtil.nextInt(random(), 1, 127), 128, 0);
-    // And duel again
-    duelFindFirstGreater(values);
-  }
-
-  private static void duelFindFirstGreater(long[] values) {
     for (int iter = 0; iter < 1_000; ++iter) {
       int from = TestUtil.nextInt(random(), 0, 127);
       long target =

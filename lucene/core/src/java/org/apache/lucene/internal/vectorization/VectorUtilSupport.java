@@ -46,9 +46,9 @@ public interface VectorUtilSupport {
   int squareDistance(byte[] a, byte[] b);
 
   /**
-   * Find the first array index of {@code buffer} that is on or after {@code from} and before {@code
-   * length} whose value is greater than or equal to {@code target}. {@code buffer} is guaranteed to
-   * store a value at index {@code length} whose value is greater than or equal to {@code target}.
+   * Given an array {@code buffer} that is sorted between indexes {@code from} inclusive and {@code
+   * length} exclusive, find the first array index whose value is greater than or equal to {@code
+   * target}. If there is no such array index, {@code length} is returned.
    */
   int findFirstGreater(long[] buffer, int length, long target, int from);
 }
