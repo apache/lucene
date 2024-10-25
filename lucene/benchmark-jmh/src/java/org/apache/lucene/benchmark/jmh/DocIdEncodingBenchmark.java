@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import org.apache.lucene.store.Directory;
@@ -72,6 +71,7 @@ public class DocIdEncodingBenchmark {
     "Bit21With3StepsEncoder",
     "Bit21With2StepsEncoder",
     "Bit24Encoder",
+    "Bit21HybridEncoder",
     "Bit21With2StepsOnlyRWLongEncoder",
     "Bit21With3StepsEncoderOnlyRWLongEncoder"
   })
@@ -165,10 +165,6 @@ public class DocIdEncodingBenchmark {
       private static final Map<String, DocIdEncoder> ENCODER_NAME_TO_INSTANCE_MAPPING =
           new HashMap<>();
 
-      /** Add all the encoders that have custom constructors. */
-      private static final Set<Class<? extends DocIdEncoder>> EXCLUDED_ENCODERS =
-          Set.of(Bit21HybridEncoder.class);
-
       static {
         initialiseEncoders();
       }
@@ -182,7 +178,7 @@ public class DocIdEncodingBenchmark {
         for (Class<?> clazz : allImplementations) {
           boolean isADocIdEncoder =
               Arrays.asList(clazz.getInterfaces()).contains(DocIdEncoder.class);
-          if (isADocIdEncoder && !EXCLUDED_ENCODERS.contains(clazz)) {
+          if (isADocIdEncoder) {
             try {
               ENCODER_NAME_TO_INSTANCE_MAPPING.put(
                   parsedClazzName(clazz), (DocIdEncoder) clazz.getConstructor().newInstance());
@@ -193,24 +189,6 @@ public class DocIdEncodingBenchmark {
               throw new RuntimeException(e);
             }
           }
-        }
-
-        // Adding the encoders with custom constructors
-        // @Bit21HybridEncoder
-        if (Constants.OS_ARCH.equals("aarch64")) {
-          ENCODER_NAME_TO_INSTANCE_MAPPING.put(
-              parsedClazzName(Bit21HybridEncoder.class),
-              new Bit21HybridEncoder(
-                  SingletonFactory.fromClazz(Bit21With2StepsEncoder.class),
-                  SingletonFactory.fromClazz(Bit21With3StepsEncoder.class)));
-        } else if (Constants.OS_ARCH.equals("amd64")) {
-          ENCODER_NAME_TO_INSTANCE_MAPPING.put(
-              parsedClazzName(Bit21HybridEncoder.class),
-              new Bit21HybridEncoder(
-                  SingletonFactory.fromClazz(Bit21With3StepsEncoder.class),
-                  SingletonFactory.fromClazz(Bit21With3StepsEncoder.class)));
-        } else {
-          throw new UnsupportedOperationException("Unsupported architecture: " + Constants.OS_ARCH);
         }
       }
 
@@ -496,18 +474,12 @@ public class DocIdEncodingBenchmark {
       private final DocIdEncoder encoder;
       private final DocIdEncoder decoder;
 
-      private final Set<Class<? extends DocIdEncoder>> VALID_BPV_21_ENCODER_CLASSES =
-          Set.of(Bit21With2StepsEncoder.class, Bit21With3StepsEncoder.class);
-
-      public Bit21HybridEncoder(DocIdEncoder encoder, DocIdEncoder decoder) {
-        if (!VALID_BPV_21_ENCODER_CLASSES.contains(encoder.getClass())) {
-          throw new IllegalArgumentException("Illegal encoder " + encoder.getClass());
+      public Bit21HybridEncoder() {
+        if (Constants.OS_ARCH.equals("aarch64")) {
+          this.encoder = this.decoder = new Bit21With2StepsEncoder();
+        } else {
+          this.encoder = this.decoder = new Bit21With3StepsEncoderOnlyRWLongEncoder();
         }
-        if (!VALID_BPV_21_ENCODER_CLASSES.contains(decoder.getClass())) {
-          throw new IllegalArgumentException("Illegal decoder " + decoder.getClass());
-        }
-        this.encoder = encoder;
-        this.decoder = decoder;
       }
 
       @Override
