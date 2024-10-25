@@ -34,10 +34,10 @@ public class DefaultFlatMultiVectorScorer extends DefaultFlatVectorScorer {
 
   public static final DefaultFlatMultiVectorScorer INSTANCE = new DefaultFlatMultiVectorScorer();
 
-  @Override
-  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues) throws IOException {
-    throw new IllegalStateException("getRandomVectorScorerSupplier called on a Multi-Vector scorer. Expected call to getRandomMultiVectorScorerSupplier instead");
-  }
+//  @Override
+//  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues) throws IOException {
+//    throw new IllegalStateException("getRandomVectorScorerSupplier called on a Multi-Vector scorer. Expected call to getRandomMultiVectorScorerSupplier instead");
+//  }
 
   @Override
   public RandomVectorScorerSupplier getRandomMultiVectorScorerSupplier(

@@ -156,9 +156,11 @@ public final class Lucene99FlatMultiVectorsWriter extends FlatVectorsWriter {
       meta.writeInt(-1);
       CodecUtil.writeFooter(meta);
     }
+    System.out.println("called finish on FlatMVWriter. pre-footer vectorData pointer = " + vectorData.getFilePointer());
     if (vectorData != null) {
       CodecUtil.writeFooter(vectorData);
     }
+    System.out.println("called finish on FlatMVWriter. post-footer vectorData pointer = " + vectorData.getFilePointer());
   }
 
   @Override
