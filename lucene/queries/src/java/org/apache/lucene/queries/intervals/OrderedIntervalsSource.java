@@ -127,9 +127,9 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
       final var subIterators = this.subIterators;
       int currentIndex = i;
       while (true) {
+        int prevEnd = subIterators.get(currentIndex - 1).end();
         while (true) {
-          var prev = subIterators.get(currentIndex - 1);
-          if (prev.end() >= lastStart) {
+          if (prevEnd >= lastStart) {
             i = currentIndex;
             return start;
           }
@@ -137,19 +137,21 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
             break;
           }
           final IntervalIterator current = subIterators.get(currentIndex);
-          if (minimizing && (current.start() > prev.end())) {
+          if (minimizing && (current.start() > prevEnd)) {
             break;
           }
+          int currentStart;
           do {
             if (current.end() >= lastStart
-                || current.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+                || (currentStart = current.nextInterval()) == IntervalIterator.NO_MORE_INTERVALS) {
               i = currentIndex;
               return start;
             }
-          } while (current.start() <= prev.end());
+          } while (currentStart <= prevEnd);
           currentIndex++;
+          prevEnd = current.end();
         }
-        var first = subIterators.getFirst();
+        var first = subIterators.get(0);
         final int start = first.start();
         this.start = start;
         if (start == NO_MORE_INTERVALS) {
@@ -161,8 +163,10 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
         final int end = last.end();
         this.end = end;
         int slop = end - start + 1;
-        for (IntervalIterator subIterator : subIterators) {
-          slop -= subIterator.width();
+        // use indexed loop since this is always a random access capable list to avoid allocations
+        // in a hot nested loop
+        for (int j = 0, n = subIterators.size(); j < n; j++) {
+          slop -= subIterators.get(j).width();
         }
         this.slop = slop;
         onMatch.onMatch();
