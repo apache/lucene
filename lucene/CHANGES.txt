@@ -10,6 +10,8 @@ API Changes
 
 * GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
 
+* GITHUB#13950: Make BooleanQuery#getClauses public and add #add(Collection<BooleanClause>) to BQ builder. (Shubham Chaudhary)
+
 
 New Features
 ---------------------
