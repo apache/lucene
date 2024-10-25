@@ -32,25 +32,28 @@ public final class RandomAccessInputDataInput extends DataInput {
 
   public RandomAccessInputDataInput() {}
 
-  // NOTE: sets pos to 0, which is not right if you had
-  // called reset w/ non-zero offset!!
+  /** Sets the current position for this {@link DataInput} to 0. */
   public void rewind() {
     pos = 0;
   }
 
+  /** Sets the current position for this {@link DataInput}. */
   public long getPosition() {
     return pos;
   }
 
+  /** Sets the current position for this {@link DataInput}. */
   public void setPosition(long pos) {
     this.pos = pos;
   }
 
+  /** Resets the input to a new {@link RandomAccessInput} at position 0. */
   public void reset(RandomAccessInput input) {
     this.input = input;
-    pos = 0;
+    pos = 0L;
   }
 
+  /** The total number of bytes on this {@link DataInput}. */
   public long length() {
     return input.length();
   }
@@ -87,7 +90,6 @@ public final class RandomAccessInputDataInput extends DataInput {
     }
   }
 
-  // NOTE: AIOOBE not EOF if you read too much
   @Override
   public byte readByte() throws IOException {
     return input.readByte(pos++);

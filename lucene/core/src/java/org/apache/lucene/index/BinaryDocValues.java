@@ -37,8 +37,9 @@ public abstract class BinaryDocValues extends DocValuesIterator {
 
   /**
    * Returns the binary value as a {@link RandomAccessInput} for the current document ID. The bytes
-   * start at position 0 up to {@link RandomAccessInput#length()}. It is illegal to call this method
-   * after {@link #advanceExact(int)} returned {@code false}.
+   * start at position 0 up to {@link RandomAccessInput#length()}. THe returned instance might be
+   * reused across calls so it needs to be fully consumed before moving to the next doc. It is
+   * illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
    *
    * @return the binary value as a {@link RandomAccessInput}
    */
