@@ -19,12 +19,12 @@ package org.apache.lucene.queries.function.valuesource;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.queries.function.docvalues.FloatDocValues;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
@@ -76,8 +76,7 @@ public class NormValueSource extends ValueSource {
             1f,
             new CollectionStatistics(field, 1, 1, 1, 1),
             new TermStatistics(new BytesRef("bogus"), 1, 1));
-    final LeafSimScorer leafSimScorer =
-        new LeafSimScorer(simScorer, readerContext.reader(), field, true);
+    final NumericDocValues norms = readerContext.reader().getNormValues(field);
 
     return new FloatDocValues(this) {
       int lastDocID = -1;
@@ -88,7 +87,11 @@ public class NormValueSource extends ValueSource {
           throw new AssertionError("docs out of order: lastDocID=" + lastDocID + " docID=" + docID);
         }
         lastDocID = docID;
-        return leafSimScorer.score(docID, 1f);
+        long norm = 1L;
+        if (norms != null && norms.advanceExact(docID)) {
+          norm = norms.longValue();
+        }
+        return simScorer.score(1f, norm);
       }
     };
   }

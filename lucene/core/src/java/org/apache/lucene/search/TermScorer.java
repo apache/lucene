@@ -18,8 +18,10 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /**
  * Expert: A <code>Scorer</code> for documents matching a <code>Term</code>.
@@ -29,17 +31,19 @@ import org.apache.lucene.index.SlowImpactsEnum;
 public final class TermScorer extends Scorer {
   private final PostingsEnum postingsEnum;
   private final DocIdSetIterator iterator;
-  private final LeafSimScorer docScorer;
+  private final SimScorer scorer;
+  private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
-  public TermScorer(PostingsEnum postingsEnum, LeafSimScorer docScorer) {
+  public TermScorer(PostingsEnum postingsEnum, SimScorer scorer, NumericDocValues norms) {
     iterator = this.postingsEnum = postingsEnum;
     ImpactsEnum impactsEnum = new SlowImpactsEnum(postingsEnum);
-    maxScoreCache = new MaxScoreCache(impactsEnum, docScorer.getSimScorer());
+    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
     impactsDisi = null;
-    this.docScorer = docScorer;
+    this.scorer = scorer;
+    this.norms = norms;
   }
 
   /**
@@ -47,12 +51,12 @@ public final class TermScorer extends Scorer {
    * documents.
    */
   public TermScorer(
-      Weight weight,
       ImpactsEnum impactsEnum,
-      LeafSimScorer docScorer,
+      SimScorer scorer,
+      NumericDocValues norms,
       boolean topLevelScoringClause) {
     postingsEnum = impactsEnum;
-    maxScoreCache = new MaxScoreCache(impactsEnum, docScorer.getSimScorer());
+    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
     if (topLevelScoringClause) {
       impactsDisi = new ImpactsDISI(impactsEnum, maxScoreCache);
       iterator = impactsDisi;
@@ -60,7 +64,8 @@ public final class TermScorer extends Scorer {
       impactsDisi = null;
       iterator = impactsEnum;
     }
-    this.docScorer = docScorer;
+    this.scorer = scorer;
+    this.norms = norms;
   }
 
   @Override
@@ -80,13 +85,23 @@ public final class TermScorer extends Scorer {
 
   @Override
   public float score() throws IOException {
-    assert docID() != DocIdSetIterator.NO_MORE_DOCS;
-    return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
+    var postingsEnum = this.postingsEnum;
+    var norms = this.norms;
+
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(postingsEnum.docID())) {
+      norm = norms.longValue();
+    }
+    return scorer.score(postingsEnum.freq(), norm);
   }
 
   @Override
   public float smoothingScore(int docId) throws IOException {
-    return docScorer.score(docId, 0);
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docId)) {
+      norm = norms.longValue();
+    }
+    return scorer.score(0, norm);
   }
 
   @Override
