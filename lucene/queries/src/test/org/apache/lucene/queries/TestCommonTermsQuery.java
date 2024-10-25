@@ -194,7 +194,12 @@ public class TestCommonTermsQuery extends LuceneTestCase {
   public void testMinShouldMatch() throws IOException {
     Directory dir = newDirectory();
     MockAnalyzer analyzer = new MockAnalyzer(random());
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir, analyzer);
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            LuceneTestCase.newIndexWriterConfig(analyzer)
+                .setMergePolicy(LuceneTestCase.newMergePolicy(random(), false)));
     String[] docs =
         new String[] {
           "this is the end of the world right",
