@@ -65,7 +65,11 @@ Optimizations
 * GITHUB#13941: Optimized computation of top-hits on disjunctive queries with
   many clauses. (Adrien Grand)
 
+* GITHUB#13954: Disabled exchanging scores across slices for exhaustive
+  top-hits evaluation. (Adrien Grand)
+
 * GITHUB#13899: Check ahead if we can get the count. (Lu Xugang)
+
 
 Bug Fixes
 ---------------------
