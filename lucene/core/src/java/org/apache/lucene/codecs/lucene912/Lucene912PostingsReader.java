@@ -46,6 +46,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
+import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -65,6 +66,8 @@ import org.apache.lucene.util.IOUtils;
 public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
+  private static final VectorUtilSupport VECTOR_SUPPORT =
+      VECTORIZATION_PROVIDER.getVectorUtilSupport();
   // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
   // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
   // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
@@ -213,15 +216,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     for (int i = 1; i < count; ++i) {
       buffer[i] += buffer[i - 1];
     }
-  }
-
-  static int findFirstGreater(long[] buffer, int target, int from) {
-    for (int i = from; i < BLOCK_SIZE; ++i) {
-      if (buffer[i] >= target) {
-        return i;
-      }
-    }
-    return BLOCK_SIZE;
   }
 
   @Override
@@ -604,7 +598,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = VECTOR_SUPPORT.findFirstGreater(docBuffer, BLOCK_SIZE, target, docBufferUpto);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -951,7 +945,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = VECTOR_SUPPORT.findFirstGreater(docBuffer, BLOCK_SIZE, target, docBufferUpto);
       posPendingCount += sumOverRange(freqBuffer, docBufferUpto, next + 1);
       this.freq = (int) freqBuffer[next];
       this.docBufferUpto = next + 1;
@@ -1435,7 +1429,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = VECTOR_SUPPORT.findFirstGreater(docBuffer, BLOCK_SIZE, target, docBufferUpto);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -1666,7 +1660,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = VECTOR_SUPPORT.findFirstGreater(docBuffer, BLOCK_SIZE, target, docBufferUpto);
       posPendingCount += sumOverRange(freqBuffer, docBufferUpto, next + 1);
       freq = (int) freqBuffer[next];
       docBufferUpto = next + 1;

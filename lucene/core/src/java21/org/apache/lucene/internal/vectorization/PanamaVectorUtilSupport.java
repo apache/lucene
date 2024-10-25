@@ -29,8 +29,11 @@ import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.Vector;
+import jdk.incubator.vector.VectorMask;
+import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
@@ -56,6 +59,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
+  private static final VectorSpecies<Long> LONG_SPECIES;
 
   static final int VECTOR_BITSIZE;
 
@@ -71,6 +75,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       BYTE_SPECIES = null;
       SHORT_SPECIES = null;
     }
+    LONG_SPECIES = PanamaVectorConstants.PRERERRED_LONG_SPECIES;
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
@@ -760,5 +765,26 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     // reduce
     return acc1.add(acc2).reduceLanes(ADD);
+  }
+
+  @Override
+  public int findFirstGreater(long[] buffer, int length, long target, int from) {
+    if (from + LONG_SPECIES.length() < buffer.length
+        && buffer[from + LONG_SPECIES.length()] >= target) {
+      LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
+      VectorMask<Long> mask = vector.compare(VectorOperators.GE, target);
+      return from + mask.firstTrue();
+    }
+
+    return defaultFindFirstGreater(buffer, length, target, from);
+  }
+
+  private static int defaultFindFirstGreater(long[] buffer, int length, long target, int from) {
+    for (int i = from; i < length; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return length;
   }
 }
