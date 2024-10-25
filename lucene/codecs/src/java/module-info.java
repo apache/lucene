@@ -41,4 +41,6 @@ module org.apache.lucene.codecs {
       org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat;
   provides org.apache.lucene.codecs.Codec with
       org.apache.lucene.codecs.simpletext.SimpleTextCodec;
+  provides org.apache.lucene.codecs.DocValuesFormat with
+      org.apache.lucene.codecs.memory.DirectDocValuesFormat;
 }
