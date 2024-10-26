@@ -9,6 +9,9 @@ API Changes
 ---------------------
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
+* GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
+  compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
+
 New Features
 ---------------------
 (No changes)
