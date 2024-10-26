@@ -246,11 +246,13 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   }
 
   protected void updateMinCompetitiveScore(Scorable scorer) throws IOException {
-    if (totalHits > totalHitsThreshold
-        && pqTop != null
-        && pqTop.score != Float.NEGATIVE_INFINITY) { // -Infinity is the score of sentinels
+    if (totalHits > totalHitsThreshold) {
       // since we tie-break on doc id and collect in doc id order, we can require
       // the next float
+      // pqTop is never null since TopScoreDocCollector fills the priority queue with sentinel
+      // values
+      // if the top element is a sentinel value, its score will be -Infty and the below logic is
+      // still valid
       float localMinScore = Math.nextUp(pqTop.score);
       if (localMinScore > minCompetitiveScore) {
         scorer.setMinCompetitiveScore(localMinScore);

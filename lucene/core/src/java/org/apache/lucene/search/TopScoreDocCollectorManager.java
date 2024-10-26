@@ -72,7 +72,7 @@ public class TopScoreDocCollectorManager
     this.after = after;
     this.supportsConcurrency = supportsConcurrency;
     this.totalHitsThreshold = Math.max(totalHitsThreshold, numHits);
-    this.minScoreAcc = supportsConcurrency ? new MaxScoreAccumulator() : null;
+    this.minScoreAcc = supportsConcurrency && totalHitsThreshold != Integer.MAX_VALUE ? new MaxScoreAccumulator() : null;
   }
 
   /**

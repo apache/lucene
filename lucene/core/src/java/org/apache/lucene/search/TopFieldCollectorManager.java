@@ -90,7 +90,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     this.after = after;
     this.supportsConcurrency = supportsConcurrency;
     this.totalHitsThreshold = totalHitsThreshold;
-    this.minScoreAcc = supportsConcurrency ? new MaxScoreAccumulator() : null;
+    this.minScoreAcc = supportsConcurrency && totalHitsThreshold != Integer.MAX_VALUE ? new MaxScoreAccumulator() : null;
     this.collectors = new ArrayList<>();
   }
 
