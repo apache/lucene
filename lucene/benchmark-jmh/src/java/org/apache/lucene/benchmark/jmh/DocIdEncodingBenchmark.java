@@ -509,6 +509,34 @@ public class DocIdEncodingBenchmark {
         }
       }
     }
+
+    class Bit32OnlyRWLongEncoder implements DocIdEncoder {
+
+      @Override
+      public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
+        int i;
+        for (i = 0; i < count - 1; i += 2) {
+          long packedLong = ((long) docIds[i] << 32) & docIds[i + 1];
+          out.writeLong(packedLong);
+        }
+        for (; i < count; i++) {
+          out.writeLong(docIds[i]);
+        }
+      }
+
+      @Override
+      public void decode(IndexInput in, int start, int count, int[] docIds) throws IOException {
+        int i;
+        for (i = 0; i < count - 1; i += 2) {
+          long packedLong = in.readLong();
+          docIds[i] = (int) (packedLong >>> 32);
+          docIds[i + 1] = (int) (packedLong & 0xFFFFFFFFL);
+        }
+        for (; i < count; i++) {
+          docIds[i] = (int) in.readLong();
+        }
+      }
+    }
   }
 
   interface DocIdProvider {
@@ -528,6 +556,8 @@ public class DocIdEncodingBenchmark {
             DocIdEncodingBenchmark.DocIdEncoder.Bit24Encoder.class,
             24,
             DocIdEncodingBenchmark.DocIdEncoder.Bit32Encoder.class,
+            32,
+            DocIdEncoder.Bit32OnlyRWLongEncoder.class,
             32);
 
     /**
