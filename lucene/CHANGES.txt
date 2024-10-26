@@ -12,6 +12,8 @@ API Changes
 
 * GITHUB#13950: Make BooleanQuery#getClauses public and add #add(Collection<BooleanClause>) to BQ builder. (Shubham Chaudhary)
 
+* GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
+  compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
 
 New Features
 ---------------------
