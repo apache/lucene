@@ -516,7 +516,7 @@ public class DocIdEncodingBenchmark {
       public void encode(IndexOutput out, int start, int count, int[] docIds) throws IOException {
         int i;
         for (i = 0; i < count - 1; i += 2) {
-          long packedLong = ((long) docIds[i] << 32) & docIds[i + 1];
+          long packedLong = (((long) docIds[i]) << 32) | docIds[i + 1];
           out.writeLong(packedLong);
         }
         for (; i < count; i++) {
