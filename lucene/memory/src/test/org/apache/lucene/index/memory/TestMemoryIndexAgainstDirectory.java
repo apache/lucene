@@ -69,6 +69,7 @@ import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
  * Verifies that Lucene MemoryIndex and RAM-resident Directory have the same behaviour, returning
@@ -514,7 +515,9 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     BinaryDocValues controlBinaryDocValues = controlLeafReader.getBinaryDocValues("binary");
     assertEquals(0, binaryDocValues.nextDoc());
     assertEquals(0, controlBinaryDocValues.nextDoc());
-    assertEquals(controlBinaryDocValues.binaryValue(), binaryDocValues.binaryValue());
+    assertEquals(
+        RandomAccessInputRef.toBytesRef(controlBinaryDocValues.randomAccessInputValue()),
+        RandomAccessInputRef.toBytesRef(binaryDocValues.randomAccessInputValue()));
 
     SortedDocValues sortedDocValues = leafReader.getSortedDocValues("sorted");
     SortedDocValues controlSortedDocValues = controlLeafReader.getSortedDocValues("sorted");

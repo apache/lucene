@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
  * DataInput backed by a {@link RandomAccessInput}. <b>WARNING:</b> This class omits all low-level
@@ -27,15 +28,12 @@ import java.io.IOException;
 public final class RandomAccessInputDataInput extends DataInput {
 
   private RandomAccessInput input;
+  private long offset;
+  private long length;
 
   private long pos;
 
   public RandomAccessInputDataInput() {}
-
-  /** Sets the current position for this {@link DataInput} to 0. */
-  public void rewind() {
-    pos = 0;
-  }
 
   /** Sets the current position for this {@link DataInput}. */
   public long getPosition() {
@@ -48,14 +46,16 @@ public final class RandomAccessInputDataInput extends DataInput {
   }
 
   /** Resets the input to a new {@link RandomAccessInput} at position 0. */
-  public void reset(RandomAccessInput input) {
-    this.input = input;
-    pos = 0L;
+  public void reset(RandomAccessInputRef input) {
+    this.input = input.bytes;
+    this.offset = input.offset;
+    this.length = input.length;
+    pos = 0;
   }
 
   /** The total number of bytes on this {@link DataInput}. */
   public long length() {
-    return input.length();
+    return length;
   }
 
   @Override
@@ -66,7 +66,7 @@ public final class RandomAccessInputDataInput extends DataInput {
   @Override
   public short readShort() throws IOException {
     try {
-      return input.readShort(pos);
+      return input.readShort(offset + pos);
     } finally {
       pos += Short.BYTES;
     }
@@ -75,7 +75,7 @@ public final class RandomAccessInputDataInput extends DataInput {
   @Override
   public int readInt() throws IOException {
     try {
-      return input.readInt(pos);
+      return input.readInt(offset + pos);
     } finally {
       pos += Integer.BYTES;
     }
@@ -84,7 +84,7 @@ public final class RandomAccessInputDataInput extends DataInput {
   @Override
   public long readLong() throws IOException {
     try {
-      return input.readLong(pos);
+      return input.readLong(offset + pos);
     } finally {
       pos += Long.BYTES;
     }
@@ -92,15 +92,12 @@ public final class RandomAccessInputDataInput extends DataInput {
 
   @Override
   public byte readByte() throws IOException {
-    return input.readByte(pos++);
+    return input.readByte(offset + pos++);
   }
 
   @Override
   public void readBytes(byte[] b, int offset, int len) throws IOException {
-    try {
-      input.readBytes(pos, b, offset, len);
-    } finally {
-      pos += len;
-    }
+    input.readBytes(this.offset + pos, b, offset, len);
+    pos += len;
   }
 }

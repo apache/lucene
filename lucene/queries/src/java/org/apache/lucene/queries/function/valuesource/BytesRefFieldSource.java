@@ -25,8 +25,8 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.docvalues.DocTermsIndexDocValues;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueStr;
 
@@ -65,9 +65,9 @@ public class BytesRefFieldSource extends FieldCacheSource {
 
         @Override
         public boolean bytesVal(int doc, BytesRefBuilder target) throws IOException {
-          BytesRef value;
+          RandomAccessInputRef value;
           if (exists(doc)) {
-            value = arr.binaryValue();
+            value = arr.randomAccessInputValue();
           } else {
             value = null;
           }
@@ -75,7 +75,6 @@ public class BytesRefFieldSource extends FieldCacheSource {
           if (value == null || value.length == 0) {
             return false;
           } else {
-            // TODO: can we copy directly from the RandomAccessInput?
             target.copyBytes(value);
             return true;
           }

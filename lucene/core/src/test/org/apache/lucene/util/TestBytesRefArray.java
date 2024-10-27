@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.store.ByteArrayRandomAccessInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -43,8 +44,17 @@ public class TestBytesRefArray extends LuceneTestCase {
       for (int i = 0; i < entries; i++) {
         String randomRealisticUnicodeString = TestUtil.randomRealisticUnicodeString(random);
         spare.copyChars(randomRealisticUnicodeString);
-        assertEquals(i + initSize, list.append(spare.get()));
+        if (random().nextBoolean()) {
+          BytesRef bytesRef = spare.get();
+          RandomAccessInputRef inputRef =
+              new RandomAccessInputRef(
+                  new ByteArrayRandomAccessInput(bytesRef.bytes), bytesRef.offset, bytesRef.length);
+          assertEquals(i + initSize, list.append(inputRef));
+        } else {
+          assertEquals(i + initSize, list.append(spare.get()));
+        }
         stringList.add(randomRealisticUnicodeString);
+        ;
       }
       for (int i = 0; i < entries; i++) {
         assertNotNull(list.get(spare, i));

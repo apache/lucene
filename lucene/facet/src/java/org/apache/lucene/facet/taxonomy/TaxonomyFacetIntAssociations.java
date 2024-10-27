@@ -25,8 +25,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
  * Aggregates int values previously indexed with {@link IntAssociationFacetField}, assuming the
@@ -73,14 +72,13 @@ public class TaxonomyFacetIntAssociations extends IntTaxonomyFacets {
           ConjunctionUtils.intersectIterators(List.of(hits.bits().iterator(), dv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        final BytesRef bytesRef = dv.binaryValue();
-        byte[] bytes = bytesRef.bytes;
-        int end = bytesRef.offset + bytesRef.length;
-        int offset = bytesRef.offset;
+        final RandomAccessInputRef input = dv.randomAccessInputValue();
+        long offset = input.offset;
+        long end = offset + input.length;
         while (offset < end) {
-          int ord = (int) BitUtil.VH_BE_INT.get(bytes, offset);
+          int ord = Integer.reverseBytes(input.bytes.readInt(offset));
           offset += 4;
-          int value = (int) BitUtil.VH_BE_INT.get(bytes, offset);
+          int value = Integer.reverseBytes(input.bytes.readInt(offset));
           offset += 4;
           // TODO: Can we optimize the null check in setValue? See LUCENE-10373.
           int currentValue = getValue(ord);

@@ -42,12 +42,12 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.LongValues;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -358,12 +358,7 @@ public abstract class DocValuesConsumer implements Closeable {
               }
 
               @Override
-              public BytesRef binaryValue() throws IOException {
-                return current.values.binaryValue();
-              }
-
-              @Override
-              public RandomAccessInput randomAccessInputValue() throws IOException {
+              public RandomAccessInputRef randomAccessInputValue() throws IOException {
                 return current.values.randomAccessInputValue();
               }
             };

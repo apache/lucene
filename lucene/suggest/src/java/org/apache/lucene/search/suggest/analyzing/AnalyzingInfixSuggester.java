@@ -72,8 +72,8 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 // TODO:
 //   - a PostingsFormat that stores super-high-freq terms as
@@ -783,8 +783,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       BinaryDocValues textDV =
           MultiDocValues.getBinaryValues(searcher.getIndexReader(), TEXT_FIELD_NAME);
       textDV.advance(fd.doc);
-      BytesRef term = textDV.binaryValue();
-      String text = term.utf8ToString();
+      String text = textDV.randomAccessInputValue().utf8ToString();
       long score = (Long) fd.fields[0];
 
       // This will just be null if app didn't pass payloads to build():
@@ -795,10 +794,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       BytesRef payload;
       if (payloadsDV != null) {
         if (payloadsDV.advance(fd.doc) == fd.doc) {
-          final RandomAccessInput input = payloadsDV.randomAccessInputValue();
-          final byte[] bytes = new byte[(int) input.length()];
-          input.readBytes(0L, bytes, 0, bytes.length);
-          payload = new BytesRef(bytes, 0, bytes.length);
+          payload = RandomAccessInputRef.toBytesRef(payloadsDV.randomAccessInputValue());
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
         }

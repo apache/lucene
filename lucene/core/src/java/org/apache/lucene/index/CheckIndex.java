@@ -3486,16 +3486,18 @@ public final class CheckIndex implements Closeable {
               + " should start at docID=-1, but got "
               + bdv.docID());
     }
+    BytesRefBuilder value = new BytesRefBuilder();
+    BytesRefBuilder value2 = new BytesRefBuilder();
     // TODO: we could add stats to DVs, e.g. total doc count w/ a value for this field
     for (int doc = bdv.nextDoc(); doc != NO_MORE_DOCS; doc = bdv.nextDoc()) {
-      BytesRef value = bdv.binaryValue();
-      value.isValid();
+      bdv.randomAccessInputValue().isValid();
+      value.copyBytes(bdv.randomAccessInputValue());
 
       if (bdv2.advanceExact(doc) == false) {
         throw new CheckIndexException("advanceExact did not find matching doc ID: " + doc);
       }
-      BytesRef value2 = bdv2.binaryValue();
-      if (value.equals(value2) == false) {
+      value2.copyBytes(bdv2.randomAccessInputValue());
+      if (value.toBytesRef().equals(value2.toBytesRef()) == false) {
         throw new CheckIndexException(
             "nextDoc and advanceExact report different values: " + value + " != " + value2);
       }

@@ -83,7 +83,9 @@ package org.apache.lucene.util;
  * copyright holder.
  */
 
+import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.store.RandomAccessInput;
 
 /**
  * Class to encode java's UTF16 char[] into UTF8 byte[] without always allocating a new byte[] as
@@ -627,8 +629,20 @@ public final class UnicodeUtil {
   }
 
   /**
-   * Interprets the given byte array as UTF-8 and converts to UTF-16. It is the responsibility of
-   * the caller to make sure that the destination array is large enough.
+   * Interprets the given {@link RandomAccessInput} slice as UTF-8 and converts to UTF-16. It is the
+   * responsibility of the caller to make sure that the destination array is large enough.
+   *
+   * <p>NOTE: Full characters are read, even if this reads past the length passed (and can result in
+   * an IOException if invalid UTF-8 is passed). Explicit checks for valid UTF-8 are not performed.
+   */
+  // TODO: broken if chars.offset != 0
+  public static int UTF8toUTF16(RandomAccessInput input, long offset, int length, char[] out)
+      throws IOException {
+    return UTF8toUTF16(o -> input.readByte(offset + o), length, out);
+  }
+
+  /**
+   * Interprets the given byte array as UTF-8 and converts to UTF-16.
    *
    * <p>NOTE: Full characters are read, even if this reads past the length passed (and can result in
    * an ArrayOutOfBoundsException if invalid UTF-8 is passed). Explicit checks for valid UTF-8 are
@@ -636,26 +650,37 @@ public final class UnicodeUtil {
    */
   // TODO: broken if chars.offset != 0
   public static int UTF8toUTF16(byte[] utf8, int offset, int length, char[] out) {
-    int out_offset = 0;
+    try {
+      return UTF8toUTF16(o -> utf8[offset + o], length, out);
+    } catch (IOException e) {
+      throw new AssertionError(e); // should not happen
+    }
+  }
+
+  private static int UTF8toUTF16(ByteAtOffset utf8, int length, char[] out) throws IOException {
+    int out_offset = 0, offset = 0;
     final int limit = offset + length;
     while (offset < limit) {
-      int b = utf8[offset++] & 0xff;
+      int b = utf8.get(offset++) & 0xff;
       if (b < 0xc0) {
         assert b < 0x80;
         out[out_offset++] = (char) b;
       } else if (b < 0xe0) {
-        out[out_offset++] = (char) (((b & 0x1f) << 6) + (utf8[offset++] & 0x3f));
+        out[out_offset++] = (char) (((b & 0x1f) << 6) + (utf8.get(offset++) & 0x3f));
       } else if (b < 0xf0) {
         out[out_offset++] =
-            (char) (((b & 0xf) << 12) + ((utf8[offset] & 0x3f) << 6) + (utf8[offset + 1] & 0x3f));
+            (char)
+                (((b & 0xf) << 12)
+                    + ((utf8.get(offset) & 0x3f) << 6)
+                    + (utf8.get(offset + 1) & 0x3f));
         offset += 2;
       } else {
         assert b < 0xf8 : "b = 0x" + Integer.toHexString(b);
         int ch =
             ((b & 0x7) << 18)
-                + ((utf8[offset] & 0x3f) << 12)
-                + ((utf8[offset + 1] & 0x3f) << 6)
-                + (utf8[offset + 2] & 0x3f);
+                + ((utf8.get(offset) & 0x3f) << 12)
+                + ((utf8.get(offset + 1) & 0x3f) << 6)
+                + (utf8.get(offset + 2) & 0x3f);
         offset += 3;
         if (ch < UNI_MAX_BMP) {
           out[out_offset++] = (char) ch;
@@ -667,6 +692,11 @@ public final class UnicodeUtil {
       }
     }
     return out_offset;
+  }
+
+  @FunctionalInterface
+  private interface ByteAtOffset {
+    byte get(int offset) throws IOException;
   }
 
   /**

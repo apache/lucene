@@ -37,10 +37,12 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.ByteArrayRandomAccessInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 class SimpleTextDocValuesWriter extends DocValuesConsumer {
   static final BytesRef END = new BytesRef("END");
@@ -191,7 +193,10 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     int docCount = 0;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       ++docCount;
-      maxLength = Math.max(maxLength, values.binaryValue().toString().length());
+      maxLength =
+          Math.max(
+              maxLength,
+              RandomAccessInputRef.toBytesRef(values.randomAccessInputValue()).toString().length());
     }
 
     SimpleTextUtil.write(data, DOCCOUNT);
@@ -222,7 +227,10 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
         values.nextDoc();
         assert values.docID() >= i;
       }
-      String stringVal = values.docID() == i ? values.binaryValue().toString() : null;
+      String stringVal =
+          values.docID() == i
+              ? RandomAccessInputRef.toBytesRef(values.randomAccessInputValue()).toString()
+              : null;
       // write length
       final int length = stringVal == null ? 0 : stringVal.length();
       SimpleTextUtil.write(data, LENGTH);
@@ -385,6 +393,9 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
             SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
             return new BinaryDocValues() {
 
+              final ByteArrayRandomAccessInput bytes = new ByteArrayRandomAccessInput();
+              final RandomAccessInputRef inputRef = new RandomAccessInputRef(bytes);
+
               @Override
               public int nextDoc() throws IOException {
                 int doc = values.nextDoc();
@@ -436,8 +447,11 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
               }
 
               @Override
-              public BytesRef binaryValue() throws IOException {
-                return binaryValue;
+              public RandomAccessInputRef randomAccessInputValue() throws IOException {
+                bytes.reset(binaryValue.bytes);
+                inputRef.offset = binaryValue.offset;
+                inputRef.length = binaryValue.length;
+                return inputRef;
               }
             };
           }

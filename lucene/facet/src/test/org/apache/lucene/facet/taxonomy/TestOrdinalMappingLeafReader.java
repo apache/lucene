@@ -117,8 +117,8 @@ public class TestOrdinalMappingLeafReader extends FacetTestCase {
       assertEquals(i, bdv.nextDoc());
       assertEquals(i, cbdv.nextDoc());
       assertEquals(
-          Integer.parseInt(cbdv.binaryValue().utf8ToString()),
-          Integer.parseInt(bdv.binaryValue().utf8ToString()) * 2);
+          Integer.parseInt(cbdv.randomAccessInputValue().utf8ToString()),
+          Integer.parseInt(bdv.randomAccessInputValue().utf8ToString()) * 2);
     }
     IOUtils.close(indexReader, taxoReader);
   }

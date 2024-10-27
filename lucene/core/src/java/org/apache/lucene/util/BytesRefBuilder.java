@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
+
 /**
  * A builder for {@link BytesRef} instances.
  *
@@ -93,6 +95,14 @@ public class BytesRefBuilder {
   /** Reset this builder to the empty state. */
   public void clear() {
     setLength(0);
+  }
+
+  /** Replace the content of this builder with the provided bytes. */
+  public void copyBytes(RandomAccessInputRef in) throws IOException {
+    assert ref.offset == 0;
+    ref.length = in.length;
+    growNoCopy(in.length);
+    in.bytes.readBytes(in.offset, ref.bytes, 0, in.length);
   }
 
   /**

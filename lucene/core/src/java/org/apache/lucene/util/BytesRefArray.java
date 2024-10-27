@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
@@ -68,6 +69,24 @@ public final class BytesRefArray implements SortableBytesRefArray {
       bytesUsed.addAndGet((offsets.length - oldLen) * (long) Integer.BYTES);
     }
     pool.append(bytes);
+    offsets[lastElement++] = currentOffset;
+    currentOffset += bytes.length;
+    return lastElement - 1;
+  }
+
+  /**
+   * Appends a copy of the given {@link BytesRef} to this {@link BytesRefArray}.
+   *
+   * @param bytes the bytes to append
+   * @return the index of the appended bytes
+   */
+  public int append(RandomAccessInputRef bytes) throws IOException {
+    if (lastElement >= offsets.length) {
+      int oldLen = offsets.length;
+      offsets = ArrayUtil.grow(offsets, offsets.length + 1);
+      bytesUsed.addAndGet((offsets.length - oldLen) * (long) Integer.BYTES);
+    }
+    pool.append(bytes.bytes, bytes.offset, bytes.length);
     offsets[lastElement++] = currentOffset;
     currentOffset += bytes.length;
     return lastElement - 1;

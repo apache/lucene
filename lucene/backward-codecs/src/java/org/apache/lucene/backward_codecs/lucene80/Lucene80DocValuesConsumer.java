@@ -53,11 +53,13 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInputDataInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.MathUtil;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.compress.LZ4;
 import org.apache.lucene.util.compress.LZ4.FastCompressionHashTable;
@@ -435,11 +437,11 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
       }
     }
 
-    void addDoc(int doc, BytesRef v) throws IOException {
-      docLengths[numDocsInCurrentBlock] = v.length;
-      block = ArrayUtil.grow(block, uncompressedBlockLength + v.length);
-      System.arraycopy(v.bytes, v.offset, block, uncompressedBlockLength, v.length);
-      uncompressedBlockLength += v.length;
+    void addDoc(RandomAccessInputRef input) throws IOException {
+      docLengths[numDocsInCurrentBlock] = input.length;
+      block = ArrayUtil.grow(block, uncompressedBlockLength + input.length);
+      input.bytes.readBytes(input.offset, block, uncompressedBlockLength, input.length);
+      uncompressedBlockLength += input.length;
       numDocsInCurrentBlock++;
       if (numDocsInCurrentBlock == Lucene80DocValuesFormat.BINARY_DOCS_PER_COMPRESSED_BLOCK) {
         flushData();
@@ -572,11 +574,12 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     int numDocsWithField = 0;
     int minLength = Integer.MAX_VALUE;
     int maxLength = 0;
+    final RandomAccessInputDataInput dataInput = new RandomAccessInputDataInput();
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       numDocsWithField++;
-      BytesRef v = values.binaryValue();
-      int length = v.length;
-      data.writeBytes(v.bytes, v.offset, v.length);
+      final int length = values.randomAccessInputValue().length;
+      dataInput.reset(values.randomAccessInputValue());
+      data.copyBytes(dataInput, length);
       minLength = Math.min(length, minLength);
       maxLength = Math.max(length, maxLength);
     }
@@ -621,7 +624,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
       for (int doc = values.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = values.nextDoc()) {
-        addr += values.binaryValue().length;
+        addr += values.randomAccessInputValue().length;
         writer.add(addr);
       }
       writer.finish();
@@ -642,9 +645,9 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = values.nextDoc()) {
         numDocsWithField++;
-        BytesRef v = values.binaryValue();
-        blockWriter.addDoc(doc, v);
-        int length = v.length;
+        RandomAccessInputRef inputRef = values.randomAccessInputValue();
+        blockWriter.addDoc(inputRef);
+        int length = inputRef.length;
         minLength = Math.min(length, minLength);
         maxLength = Math.max(length, maxLength);
       }

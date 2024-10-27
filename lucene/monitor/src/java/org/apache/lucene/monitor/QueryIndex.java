@@ -40,6 +40,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 abstract class QueryIndex implements Closeable {
   static final class FIELDS {
@@ -64,10 +65,10 @@ abstract class QueryIndex implements Closeable {
       throw new IllegalStateException(
           "Cannot get queries from an index with no MonitorQuerySerializer");
     }
-    BytesRef[] bytesHolder = new BytesRef[1];
+    RandomAccessInputRef[] bytesHolder = new RandomAccessInputRef[1];
     search(
         new TermQuery(new Term(FIELDS.query_id, queryId)),
-        (id, query, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
+        (id, query, dataValues) -> bytesHolder[0] = dataValues.mq.randomAccessInputValue());
     return bytesHolder[0] != null ? serializer.deserialize(bytesHolder[0]) : null;
   }
 

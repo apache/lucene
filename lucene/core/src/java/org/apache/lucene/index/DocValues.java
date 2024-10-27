@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /** This class contains utility methods and constants for DocValues */
 public final class DocValues {
@@ -58,7 +59,7 @@ public final class DocValues {
       }
 
       @Override
-      public BytesRef binaryValue() {
+      public RandomAccessInputRef randomAccessInputValue() {
         assert false;
         return null;
       }

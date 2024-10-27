@@ -54,6 +54,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.VirtualMethod;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -854,10 +855,10 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public BytesRef binaryValue() throws IOException {
+    public RandomAccessInputRef randomAccessInputValue() throws IOException {
       assertThread("Binary doc values", creationThread);
       assert exists;
-      return in.binaryValue();
+      return in.randomAccessInputValue();
     }
 
     @Override

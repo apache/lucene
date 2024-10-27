@@ -27,6 +27,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
  * Serializes and deserializes MonitorQuery objects into byte streams
@@ -36,7 +38,7 @@ import org.apache.lucene.util.BytesRef;
 public interface MonitorQuerySerializer {
 
   /** Builds a MonitorQuery from a byte representation */
-  MonitorQuery deserialize(BytesRef binaryValue);
+  MonitorQuery deserialize(RandomAccessInputRef input) throws IOException;
 
   /** Converts a MonitorQuery into a byte representation */
   BytesRef serialize(MonitorQuery query);
@@ -48,8 +50,12 @@ public interface MonitorQuerySerializer {
    */
   static MonitorQuerySerializer fromParser(Function<String, Query> parser) {
     return new MonitorQuerySerializer() {
+      final BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
+
       @Override
-      public MonitorQuery deserialize(BytesRef binaryValue) {
+      public MonitorQuery deserialize(RandomAccessInputRef input) throws IOException {
+        bytesRefBuilder.copyBytes(input);
+        BytesRef binaryValue = bytesRefBuilder.get();
         ByteArrayInputStream is =
             new ByteArrayInputStream(binaryValue.bytes, binaryValue.offset, binaryValue.length);
         try (InputStreamDataInput data = new InputStreamDataInput(is)) {

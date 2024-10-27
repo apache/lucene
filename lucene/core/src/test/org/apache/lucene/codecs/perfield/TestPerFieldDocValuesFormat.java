@@ -56,6 +56,7 @@ import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
 import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /** Basic tests of PerFieldDocValuesFormat */
 public class TestPerFieldDocValuesFormat extends BaseDocValuesFormatTestCase {
@@ -133,7 +134,7 @@ public class TestPerFieldDocValuesFormat extends BaseDocValuesFormatTestCase {
 
       BinaryDocValues dv2 = ireader.leaves().get(0).reader().getBinaryDocValues("dv2");
       assertEquals(hitDocID, dv2.advance(hitDocID));
-      final BytesRef term = dv2.binaryValue();
+      final BytesRef term = RandomAccessInputRef.toBytesRef(dv2.randomAccessInputValue());
       assertEquals(new BytesRef("hello world"), term);
     }
 

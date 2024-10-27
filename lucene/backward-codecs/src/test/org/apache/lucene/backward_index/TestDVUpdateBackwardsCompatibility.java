@@ -42,6 +42,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.Version;
 
 public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTestBase {
@@ -171,7 +172,9 @@ public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTe
                   assertTrue(binaryDocValues.advanceExact(doc));
                   assertTrue(numericDocValues.advanceExact(doc));
                   assertEquals(1, numericDocValues.longValue());
-                  assertEquals(toBytes(1), binaryDocValues.binaryValue());
+                  assertEquals(
+                      toBytes(1),
+                      RandomAccessInputRef.toBytesRef(binaryDocValues.randomAccessInputValue()));
                 }
               }
             }
@@ -209,12 +212,12 @@ public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTe
   }
 
   static long getValue(BinaryDocValues bdv) throws IOException {
-    BytesRef term = bdv.binaryValue();
-    int idx = term.offset;
-    byte b = term.bytes[idx++];
+    RandomAccessInputRef term = bdv.randomAccessInputValue();
+    long idx = term.offset;
+    byte b = term.bytes.readByte(idx++);
     long value = b & 0x7FL;
     for (int shift = 7; (b & 0x80L) != 0; shift += 7) {
-      b = term.bytes[idx++];
+      b = term.bytes.readByte(idx++);
       value |= (b & 0x7FL) << shift;
     }
     return value;

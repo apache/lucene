@@ -50,17 +50,18 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 public class TestBinaryDocValuesUpdates extends LuceneTestCase {
 
   static long getValue(BinaryDocValues bdv) throws IOException {
-    BytesRef term = bdv.binaryValue();
-    int idx = term.offset;
+    RandomAccessInputRef term = bdv.randomAccessInputValue();
+    long idx = term.offset;
     assert term.length > 0;
-    byte b = term.bytes[idx++];
+    byte b = term.bytes.readByte(idx++);
     long value = b & 0x7FL;
     for (int shift = 7; (b & 0x80L) != 0; shift += 7) {
-      b = term.bytes[idx++];
+      b = term.bytes.readByte(idx++);
       value |= (b & 0x7FL) << shift;
     }
     return value;
@@ -775,7 +776,8 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
             }
             assertFalse(sortDoc.deleted);
 
-            assertEquals(sortDoc.value, values.binaryValue());
+            assertEquals(
+                sortDoc.value, RandomAccessInputRef.toBytesRef(values.randomAccessInputValue()));
 
             long sortValue = sortValues.longValue();
             assertEquals(sortDoc.sortValue, sortValue);

@@ -18,18 +18,21 @@ package org.apache.lucene.store;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 public class TestRandomAccessInputDataInput extends LuceneTestCase {
 
   public void testBasic() throws Exception {
-    RandomAccessInput accessInput = new BytesRef(new byte[] {1, 65}, 0, 2);
+    BytesRef bytesRef = new BytesRef(new byte[] {1, 65}, 0, 2);
     RandomAccessInputDataInput in = new RandomAccessInputDataInput();
-    in.reset(accessInput);
+    in.reset(
+        new RandomAccessInputRef(
+            new ByteArrayRandomAccessInput(bytesRef.bytes), 0, bytesRef.length));
     assertEquals("A", in.readString());
-    assertEquals(accessInput.length(), in.getPosition());
+    assertEquals(bytesRef.length, (int) in.getPosition());
   }
 
   public void testDatatypes() throws Exception {
@@ -53,7 +56,7 @@ public class TestRandomAccessInputDataInput extends LuceneTestCase {
 
     // read the primitives using ByteArrayDataInput:
     final RandomAccessInputDataInput in = new RandomAccessInputDataInput();
-    in.reset(new BytesRef(bytes, 0, size));
+    in.reset(new RandomAccessInputRef(new ByteArrayRandomAccessInput(bytes), 0, size));
     assertEquals(43, in.readByte());
     assertEquals(12345, in.readShort());
     assertEquals(1234567890, in.readInt());
@@ -63,9 +66,10 @@ public class TestRandomAccessInputDataInput extends LuceneTestCase {
     // copy all
     int offset = random().nextInt(10);
     byte[] copy = new byte[offset + size];
-    in.rewind();
+    in.setPosition(0L);
     in.readBytes(copy, offset, size);
     assertArrayEquals(
-        Arrays.copyOfRange(bytes, 0, size), Arrays.copyOfRange(copy, offset, offset + size));
+        ArrayUtil.copyOfSubArray(bytes, 0, size),
+        ArrayUtil.copyOfSubArray(copy, offset, offset + size));
   }
 }

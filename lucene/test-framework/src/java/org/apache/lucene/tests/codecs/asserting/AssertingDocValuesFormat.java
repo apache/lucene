@@ -101,8 +101,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         assert docID >= 0 && docID < maxDoc;
         assert docID > lastDocID;
         lastDocID = docID;
-        BytesRef value = values.binaryValue();
-        assert value.isValid();
+        assert values.randomAccessInputValue().isValid();
       }
 
       in.addBinaryField(field, valuesProducer);

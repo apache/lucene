@@ -30,6 +30,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -100,9 +101,11 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
 
       long[] dimValues = null; // dimension values buffer
       int expectedNumDims = -1;
+      BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         boolean shouldCountDoc = false;
-        BytesRef bytesRef = binaryDocValues.binaryValue();
+        bytesRefBuilder.copyBytes(binaryDocValues.randomAccessInputValue());
+        BytesRef bytesRef = bytesRefBuilder.toBytesRef();
         byte[] packedValue = bytesRef.bytes;
         int numDims = IntPoint.decodeDimension(packedValue, 0);
         if (expectedNumDims == -1) {

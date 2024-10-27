@@ -19,8 +19,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /** Delegates all methods to a wrapped {@link BinaryDocValues}. */
 public abstract class FilterBinaryDocValues extends BinaryDocValues {
@@ -60,12 +59,7 @@ public abstract class FilterBinaryDocValues extends BinaryDocValues {
   }
 
   @Override
-  public BytesRef binaryValue() throws IOException {
-    return in.binaryValue();
-  }
-
-  @Override
-  public RandomAccessInput randomAccessInputValue() throws IOException {
+  public RandomAccessInputRef randomAccessInputValue() throws IOException {
     return in.randomAccessInputValue();
   }
 }

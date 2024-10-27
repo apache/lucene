@@ -170,7 +170,7 @@ class ReadonlyQueryIndex extends QueryIndex {
       dataValues.advanceTo(doc);
       BytesRef cache_id = dataValues.cacheId.lookupOrd(dataValues.cacheId.ordValue());
       BytesRef query_id = dataValues.queryId.lookupOrd(dataValues.queryId.ordValue());
-      MonitorQuery mq = serializer.deserialize(dataValues.mq.binaryValue());
+      MonitorQuery mq = serializer.deserialize(dataValues.mq.randomAccessInputValue());
       QueryCacheEntry query =
           QueryCacheEntry.decompose(mq, decomposer).stream()
               .filter(queryCacheEntry -> queryCacheEntry.cacheId.equals(cache_id.utf8ToString()))

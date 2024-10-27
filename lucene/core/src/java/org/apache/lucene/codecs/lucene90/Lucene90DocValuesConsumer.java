@@ -600,8 +600,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     final RandomAccessInputDataInput dataInput = new RandomAccessInputDataInput();
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       numDocsWithField++;
+      final int length = values.randomAccessInputValue().length;
       dataInput.reset(values.randomAccessInputValue());
-      int length = (int) dataInput.length();
       data.copyBytes(dataInput, length);
       minLength = Math.min(length, minLength);
       maxLength = Math.max(length, maxLength);
@@ -647,7 +647,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       for (int doc = values.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = values.nextDoc()) {
-        addr += values.randomAccessInputValue().length();
+        addr += values.randomAccessInputValue().length;
         writer.add(addr);
       }
       writer.finish();
