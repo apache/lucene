@@ -75,7 +75,7 @@ public final class BytesRefArray implements SortableBytesRefArray {
   }
 
   /**
-   * Appends a copy of the given {@link BytesRef} to this {@link BytesRefArray}.
+   * Appends a copy of the given {@link RandomAccessInputRef} to this {@link BytesRefArray}.
    *
    * @param bytes the bytes to append
    * @return the index of the appended bytes
