@@ -142,13 +142,13 @@ public class AdvanceBenchmark {
   @Benchmark
   public void vectorUtilSearch() {
     for (int i = 0; i < startIndexes.length; ++i) {
-      VectorUtil.findFirstGreater(values, 128, targets[i], startIndexes[i]);
+      VectorUtil.findNextGEQ(values, 128, targets[i], startIndexes[i]);
     }
   }
 
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   private static int vectorUtilSearch(long[] values, long target, int startIndex) {
-    return VectorUtil.findFirstGreater(values, 128, target, startIndex);
+    return VectorUtil.findNextGEQ(values, 128, target, startIndex);
   }
 
   private static void assertEquals(int expected, int actual) {

@@ -50,5 +50,5 @@ public interface VectorUtilSupport {
    * length} exclusive, find the first array index whose value is greater than or equal to {@code
    * target}. If there is no such array index, {@code length} is returned.
    */
-  int findFirstGreater(long[] buffer, int length, long target, int from);
+  int findNextGEQ(long[] buffer, int length, long target, int from);
 }

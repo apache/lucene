@@ -372,7 +372,7 @@ public class TestVectorUtil extends LuceneTestCase {
               - 5;
       assertEquals(
           slowFindFirstGreater(values, 128, target, from),
-          VectorUtil.findFirstGreater(values, 128, target, from));
+          VectorUtil.findNextGEQ(values, 128, target, from));
     }
   }
 

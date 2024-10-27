@@ -313,7 +313,7 @@ public final class VectorUtil {
    * length} exclusive, find the first array index whose value is greater than or equal to {@code
    * target}. If there is no such array index, {@code length} is returned.
    */
-  public static int findFirstGreater(long[] buffer, int length, long target, int from) {
-    return IMPL.findFirstGreater(buffer, length, target, from);
+  public static int findNextGEQ(long[] buffer, int length, long target, int from) {
+    return IMPL.findNextGEQ(buffer, length, target, from);
   }
 }
