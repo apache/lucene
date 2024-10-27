@@ -767,19 +767,25 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return acc1.add(acc2).reduceLanes(ADD);
   }
 
+  // The doc ID we're looking for is often in the next 8 doc IDs. Compute the first multiple of the
+  // number of lanes per vector that is greater than or equal to 8.
+  private static final int NEXT_GEQ_LANES =
+      Math.ceilDiv(8, LONG_SPECIES.length()) * LONG_SPECIES.length();
+
   @Override
   public int findNextGEQ(long[] buffer, int length, long target, int from) {
-    if (LONG_SPECIES.length() >= 4 && from + LONG_SPECIES.length() <= length) {
-      // This optimization only works well when the target is likely found in the next
-      // `LONG_SPECIES.length()` doc IDs. This is true for `LONG_SPECIES.length()` >= 4, but not for
-      // lower values, so we disable the optimization if we don't have enough long lanes.
-      LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
-      VectorMask<Long> mask = vector.compare(VectorOperators.LT, target);
-      int trueCount = mask.trueCount();
-      if (trueCount != LONG_SPECIES.length()) {
+    if (from + NEXT_GEQ_LANES <= length) {
+      int trueCount = 0;
+      LongVector targetVector = LongVector.broadcast(LONG_SPECIES, target);
+      for (int i = 0; i < NEXT_GEQ_LANES; i += LONG_SPECIES.length()) {
+        LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from + i);
+        VectorMask<Long> mask = vector.compare(VectorOperators.LT, targetVector);
+        trueCount += mask.trueCount();
+      }
+      if (trueCount != NEXT_GEQ_LANES) {
         return from + trueCount;
       }
-      from += LONG_SPECIES.length();
+      from += NEXT_GEQ_LANES;
     }
 
     for (int i = from; i < length; ++i) {
