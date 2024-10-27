@@ -769,7 +769,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int findFirstGreater(long[] buffer, int length, long target, int from) {
-    if (from + LONG_SPECIES.length() <= length) {
+    if (LONG_SPECIES.length() >= 4 && from + LONG_SPECIES.length() <= length) {
+      // This optimization only works well when the target is likely found in the next
+      // `LONG_SPECIES.length()` doc IDs. This is true for `LONG_SPECIES.length()` >= 4, but not for
+      // lower values, so we disable the optimization if we don't have enough long lanes.
       LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
       VectorMask<Long> mask = vector.compare(VectorOperators.LT, target);
       int trueCount = mask.trueCount();
