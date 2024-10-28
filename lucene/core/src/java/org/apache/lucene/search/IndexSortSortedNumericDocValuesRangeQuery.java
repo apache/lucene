@@ -21,8 +21,6 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Objects;
 import java.util.function.LongPredicate;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReader;
@@ -304,8 +302,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
   }
 
-  private static int nextDocSkipper(int startDoc, NumericDocValues docValues, LongPredicate predicate)
-      throws IOException {
+  private static int nextDocSkipper(
+      int startDoc, NumericDocValues docValues, LongPredicate predicate) throws IOException {
     int doc = docValues.docID();
     if (startDoc > doc) {
       doc = docValues.advance(startDoc);
