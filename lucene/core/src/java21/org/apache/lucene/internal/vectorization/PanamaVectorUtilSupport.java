@@ -767,36 +767,25 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return acc1.add(acc2).reduceLanes(ADD);
   }
 
-  private static final int TWO_LONG_VECTORS_LENGTH = LONG_SPECIES.length() * 2;
-
   @Override
   public int findNextGEQ(long[] buffer, int length, long target, int from) {
-    if (length >= TWO_LONG_VECTORS_LENGTH) {
-      LongVector targetVector = LongVector.broadcast(LONG_SPECIES, target);
-      do {
-        from = Math.min(from, length - TWO_LONG_VECTORS_LENGTH);
-        // Thanks to instruction pipelining, comparing the next two vectors is not much more
-        // expensive than checking a single vector.
-        LongVector vector1 = LongVector.fromArray(LONG_SPECIES, buffer, from);
-        LongVector vector2 =
-            LongVector.fromArray(LONG_SPECIES, buffer, from + LONG_SPECIES.length());
-        VectorMask<Long> mask1 = vector1.compare(VectorOperators.LT, targetVector);
-        VectorMask<Long> mask2 = vector2.compare(VectorOperators.LT, targetVector);
-        int trueCount = mask1.trueCount() + mask2.trueCount();
-        if (trueCount != TWO_LONG_VECTORS_LENGTH) {
-          return from + trueCount;
-        }
-        from += TWO_LONG_VECTORS_LENGTH;
-      } while (from < length);
-
-      return length;
-    } else {
-      for (int i = from; i < length; ++i) {
-        if (buffer[i] >= target) {
-          return i;
-        }
+    if (LONG_SPECIES.length() >= 4 && length >= LONG_SPECIES.length()) {
+      // Experiments suggest that we need at least 4 lanes so that the overhead of the below
+      // approach pays off.
+      from = Math.min(from, length - LONG_SPECIES.length());
+      LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
+      VectorMask<Long> mask = vector.compare(VectorOperators.LT, target);
+      int trueCount = mask.trueCount();
+      if (trueCount != LONG_SPECIES.length()) {
+        return from + trueCount;
       }
-      return length;
+      from += LONG_SPECIES.length();
     }
+    for (int i = from; i < length; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return length;
   }
 }
