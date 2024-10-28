@@ -767,19 +767,22 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return acc1.add(acc2).reduceLanes(ADD);
   }
 
+  // Experiments suggest that we need at least 4 lanes so that the overhead of going with the vector
+  // approach and counting trues on vector masks pays off.
+  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = LONG_SPECIES.length() >= 4;
+
   @Override
   public int findNextGEQ(long[] buffer, int length, long target, int from) {
-    if (LONG_SPECIES.length() >= 4 && length >= LONG_SPECIES.length()) {
-      // Experiments suggest that we need at least 4 lanes so that the overhead of the below
-      // approach pays off.
-      from = Math.min(from, length - LONG_SPECIES.length());
-      LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
-      VectorMask<Long> mask = vector.compare(VectorOperators.LT, target);
-      int trueCount = mask.trueCount();
-      if (trueCount != LONG_SPECIES.length()) {
-        return from + trueCount;
+    if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
+      for (;
+          from + LONG_SPECIES.length() < length;
+          from += LONG_SPECIES.length() + 1) {
+        if (buffer[from + LONG_SPECIES.length()] >= target) {
+          LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
+          VectorMask<Long> mask = vector.compare(VectorOperators.LT, target);
+          return from + mask.trueCount();
+        }
       }
-      from += LONG_SPECIES.length();
     }
     for (int i = from; i < length; ++i) {
       if (buffer[i] >= target) {
