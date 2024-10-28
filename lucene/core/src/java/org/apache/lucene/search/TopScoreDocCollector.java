@@ -45,8 +45,8 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   static class SimpleTopScoreDocCollector extends TopScoreDocCollector {
 
     SimpleTopScoreDocCollector(
-        int numHits, HitsThresholdChecker hitsThresholdChecker, MaxScoreAccumulator minScoreAcc) {
-      super(numHits, hitsThresholdChecker, minScoreAcc);
+        int numHits, int totalHitsThreshold, MaxScoreAccumulator minScoreAcc) {
+      super(numHits, totalHitsThreshold, minScoreAcc);
     }
 
     @Override
@@ -71,7 +71,6 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           float score = scorer.score();
 
           int hitCountSoFar = ++totalHits;
-          hitsThresholdChecker.incrementHitCount();
 
           if (minScoreAcc != null && (hitCountSoFar & minScoreAcc.modInterval) == 0) {
             updateGlobalMinCompetitiveScore(scorer);
@@ -80,7 +79,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           if (score <= pqTop.score) {
             // Note: for queries that match lots of hits, this is the common case: most hits are not
             // competitive.
-            if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
+            if (hitCountSoFar == totalHitsThreshold + 1) {
               // we just reached totalHitsThreshold, we can start setting the min
               // competitive score now
               updateMinCompetitiveScore(scorer);
@@ -108,11 +107,8 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     private final ScoreDoc after;
 
     PagingTopScoreDocCollector(
-        int numHits,
-        ScoreDoc after,
-        HitsThresholdChecker hitsThresholdChecker,
-        MaxScoreAccumulator minScoreAcc) {
-      super(numHits, hitsThresholdChecker, minScoreAcc);
+        int numHits, ScoreDoc after, int totalHitsThreshold, MaxScoreAccumulator minScoreAcc) {
+      super(numHits, totalHitsThreshold, minScoreAcc);
       this.after = after;
     }
 
@@ -158,7 +154,6 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           float score = scorer.score();
 
           int hitCountSoFar = ++totalHits;
-          hitsThresholdChecker.incrementHitCount();
 
           if (minScoreAcc != null && (hitCountSoFar & minScoreAcc.modInterval) == 0) {
             updateGlobalMinCompetitiveScore(scorer);
@@ -178,8 +173,8 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           if (score <= pqTop.score) {
             // Note: for queries that match lots of hits, this is the common case: most hits are not
             // competitive.
-            if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
-              // we just reached totalHitsThreshold, we can start setting the min
+            if (hitCountSoFar == totalHitsThreshold + 1) {
+              // we just exceeded totalHitsThreshold, we can start setting the min
               // competitive score now
               updateMinCompetitiveScore(scorer);
             }
@@ -204,20 +199,18 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
   int docBase;
   ScoreDoc pqTop;
-  final HitsThresholdChecker hitsThresholdChecker;
+  final int totalHitsThreshold;
   final MaxScoreAccumulator minScoreAcc;
   float minCompetitiveScore;
 
   // prevents instantiation
-  TopScoreDocCollector(
-      int numHits, HitsThresholdChecker hitsThresholdChecker, MaxScoreAccumulator minScoreAcc) {
+  TopScoreDocCollector(int numHits, int totalHitsThreshold, MaxScoreAccumulator minScoreAcc) {
     super(new HitQueue(numHits, true));
-    assert hitsThresholdChecker != null;
 
     // HitQueue implements getSentinelObject to return a ScoreDoc, so we know
     // that at this point top() is already initialized.
     pqTop = pq.top();
-    this.hitsThresholdChecker = hitsThresholdChecker;
+    this.totalHitsThreshold = totalHitsThreshold;
     this.minScoreAcc = minScoreAcc;
   }
 
@@ -232,7 +225,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
   @Override
   public ScoreMode scoreMode() {
-    return hitsThresholdChecker.scoreMode();
+    return totalHitsThreshold == Integer.MAX_VALUE ? ScoreMode.COMPLETE : ScoreMode.TOP_SCORES;
   }
 
   protected void updateGlobalMinCompetitiveScore(Scorable scorer) throws IOException {
@@ -245,7 +238,6 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       float score = MaxScoreAccumulator.toScore(maxMinScore);
       score = docBase >= MaxScoreAccumulator.docId(maxMinScore) ? Math.nextUp(score) : score;
       if (score > minCompetitiveScore) {
-        assert hitsThresholdChecker.isThresholdReached();
         scorer.setMinCompetitiveScore(score);
         minCompetitiveScore = score;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
@@ -254,7 +246,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   }
 
   protected void updateMinCompetitiveScore(Scorable scorer) throws IOException {
-    if (hitsThresholdChecker.isThresholdReached()) {
+    if (totalHits > totalHitsThreshold) {
       // since we tie-break on doc id and collect in doc id order, we can require
       // the next float
       // pqTop is never null since TopScoreDocCollector fills the priority queue with sentinel
