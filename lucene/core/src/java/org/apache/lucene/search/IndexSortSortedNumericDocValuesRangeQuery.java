@@ -304,14 +304,14 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
   }
 
-  private static int nextDocSkipper(int startDoc, DocIdSetIterator docValues, LongPredicate predicate)
+  private static int nextDocSkipper(int startDoc, NumericDocValues docValues, LongPredicate predicate)
       throws IOException {
     int doc = docValues.docID();
     if (startDoc > doc) {
       doc = docValues.advance(startDoc);
     }
     for (; doc < DocIdSetIterator.NO_MORE_DOCS; doc = docValues.nextDoc()) {
-      if (predicate.test(docValues.cost())) {
+      if (predicate.test(docValues.longValue())) {
         break;
       }
     }
