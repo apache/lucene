@@ -354,7 +354,7 @@ public class TestVectorUtil extends LuceneTestCase {
     return res;
   }
 
-  public void testFindFirstGreater() {
+  public void testFindNextGEQ() {
     int padding = TestUtil.nextInt(random(), 0, 5);
     long[] values = new long[128 + padding];
     long v = 0;
@@ -371,12 +371,12 @@ public class TestVectorUtil extends LuceneTestCase {
               + random().nextInt(10)
               - 5;
       assertEquals(
-          slowFindFirstGreater(values, 128, target, from),
+          slowFindNextGEQ(values, 128, target, from),
           VectorUtil.findNextGEQ(values, 128, target, from));
     }
   }
 
-  private static int slowFindFirstGreater(long[] buffer, int length, long target, int from) {
+  private static int slowFindNextGEQ(long[] buffer, int length, long target, int from) {
     for (int i = from; i < length; ++i) {
       if (buffer[i] >= target) {
         return i;
