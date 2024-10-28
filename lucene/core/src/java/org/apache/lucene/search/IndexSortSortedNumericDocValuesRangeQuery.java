@@ -467,12 +467,14 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
     if (skipper != null) {
       if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
-        return null;
-      }
-      if (skipper.docCount() == context.reader().maxDoc()
-          && skipper.minValue() >= lowerValue
-          && skipper.maxValue() <= upperValue) {
-        return IteratorAndCount.all(skipper.docCount());
+        // Instead of returning null, act as there's no skipper.
+        skipper = null;
+      } else {
+        if (skipper.docCount() == context.reader().maxDoc()
+            && skipper.minValue() >= lowerValue
+            && skipper.maxValue() <= upperValue) {
+          return IteratorAndCount.all(skipper.docCount());
+        }
       }
     }
 
