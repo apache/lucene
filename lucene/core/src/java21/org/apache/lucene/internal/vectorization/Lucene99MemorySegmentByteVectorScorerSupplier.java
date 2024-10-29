@@ -35,6 +35,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
   final int maxOrd;
   final MemorySegmentAccessInput input;
   final KnnVectorValues values; // to support ordToDoc/getAcceptOrds
+  final VectorSimilarityFunction fallbackScorer;
 
   /**
    * Return an optional whose value, if present, is the scorer supplier. Otherwise, an empty
@@ -57,11 +58,14 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
   }
 
   Lucene99MemorySegmentByteVectorScorerSupplier(
-      MemorySegmentAccessInput input, KnnVectorValues values) {
+      MemorySegmentAccessInput input,
+      KnnVectorValues values,
+      VectorSimilarityFunction fallbackScorer) {
     this.input = input;
     this.values = values;
     this.vectorByteSize = values.getVectorByteLength();
     this.maxOrd = values.size();
+    this.fallbackScorer = fallbackScorer;
   }
 
   static void checkInvariants(int maxOrd, int vectorByteLength, IndexInput input) {
@@ -76,120 +80,99 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
   }
 
-  final MemorySegment getSegment(MemorySegmentAccessInput input, byte[] scratch, int ord)
+  final float fallbackScore(
+      MemorySegmentAccessInput input, long firstByteOffset, long secondByteOffset)
       throws IOException {
-    long byteOffset = (long) ord * vectorByteSize;
-    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
-    if (seg == null) {
-      input.readBytes(byteOffset, scratch, 0, vectorByteSize);
-      seg = MemorySegment.ofArray(scratch);
+    byte[] a = new byte[vectorByteSize];
+    input.readBytes(firstByteOffset, a, 0, vectorByteSize);
+    byte[] b = new byte[vectorByteSize];
+    input.readBytes(secondByteOffset, b, 0, vectorByteSize);
+    return fallbackScorer.compare(a, b);
+  }
+
+  final float scoreFromOrds(MemorySegmentAccessInput input, int firstOrd, int secondOrd)
+      throws IOException {
+    checkOrdinal(firstOrd);
+    checkOrdinal(secondOrd);
+    long firstByteOffset = (long) firstOrd * vectorByteSize;
+    long secondByteOffset = (long) secondOrd * vectorByteSize;
+    MemorySegment firstSeg = input.segmentSliceOrNull(firstByteOffset, vectorByteSize);
+    MemorySegment secondSeg = input.segmentSliceOrNull(secondByteOffset, vectorByteSize);
+
+    if (firstSeg == null || secondSeg == null) {
+      return fallbackScore(input, firstByteOffset, secondByteOffset);
+    } else {
+      return scoreFromSegments(firstSeg, secondSeg);
     }
-    return seg;
+  }
+
+  abstract float scoreFromSegments(MemorySegment a, MemorySegment b);
+
+  @Override
+  public RandomVectorScorer scorer(int ord) {
+    checkOrdinal(ord);
+    MemorySegmentAccessInput slice = input.clone();
+    return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+      @Override
+      public float score(int node) throws IOException {
+        return scoreFromOrds(slice, ord, node);
+      }
+    };
   }
 
   static final class CosineSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
     CosineSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
-      super(input, values);
+      super(input, values, VectorSimilarityFunction.COSINE);
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      MemorySegmentAccessInput slice = input.clone();
-      byte[] scratch1 = new byte[vectorByteSize];
-      byte[] scratch2 = new byte[vectorByteSize];
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
-        @Override
-        public float score(int node) throws IOException {
-          checkOrdinal(node);
-          float raw =
-              PanamaVectorUtilSupport.cosine(
-                  getSegment(slice, scratch1, ord), getSegment(slice, scratch2, node));
-          return (1 + raw) / 2;
-        }
-      };
+    float scoreFromSegments(MemorySegment a, MemorySegment b) {
+      float raw = PanamaVectorUtilSupport.cosine(a, b);
+      return (1 + raw) / 2;
     }
   }
 
   static final class DotProductSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
     DotProductSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
-      super(input, values);
+      super(input, values, VectorSimilarityFunction.DOT_PRODUCT);
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      MemorySegmentAccessInput slice = input.clone();
-      byte[] scratch1 = new byte[vectorByteSize];
-      byte[] scratch2 = new byte[vectorByteSize];
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
-        @Override
-        public float score(int node) throws IOException {
-          checkOrdinal(node);
-          // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-          float raw =
-              PanamaVectorUtilSupport.dotProduct(
-                  getSegment(slice, scratch1, ord), getSegment(slice, scratch2, node));
-          return 0.5f + raw / (float) (values.dimension() * (1 << 15));
-        }
-      };
+    float scoreFromSegments(MemorySegment a, MemorySegment b) {
+      // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+      float raw = PanamaVectorUtilSupport.dotProduct(a, b);
+      return 0.5f + raw / (float) (values.dimension() * (1 << 15));
     }
   }
 
   static final class EuclideanSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
     EuclideanSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
-      super(input, values);
+      super(input, values, VectorSimilarityFunction.EUCLIDEAN);
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      MemorySegmentAccessInput slice = input.clone();
-      byte[] scratch1 = new byte[vectorByteSize];
-      byte[] scratch2 = new byte[vectorByteSize];
-
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
-        @Override
-        public float score(int node) throws IOException {
-          checkOrdinal(node);
-          float raw =
-              PanamaVectorUtilSupport.squareDistance(
-                  getSegment(slice, scratch1, ord), getSegment(slice, scratch2, node));
-          return 1 / (1f + raw);
-        }
-      };
+    float scoreFromSegments(MemorySegment a, MemorySegment b) {
+      float raw = PanamaVectorUtilSupport.squareDistance(a, b);
+      return 1 / (1f + raw);
     }
   }
 
   static final class MaxInnerProductSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
     MaxInnerProductSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
-      super(input, values);
+      super(input, values, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      MemorySegmentAccessInput slice = input.clone();
-      byte[] scratch1 = new byte[vectorByteSize];
-      byte[] scratch2 = new byte[vectorByteSize];
-
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
-        @Override
-        public float score(int node) throws IOException {
-          checkOrdinal(node);
-          float raw =
-              PanamaVectorUtilSupport.dotProduct(
-                  getSegment(slice, scratch1, ord), getSegment(slice, scratch2, node));
-          if (raw < 0) {
-            return 1 / (1 + -1 * raw);
-          }
-          return raw + 1;
-        }
-      };
+    float scoreFromSegments(MemorySegment a, MemorySegment b) {
+      float raw = PanamaVectorUtilSupport.dotProduct(a, b);
+      if (raw < 0) {
+        return 1 / (1 + -1 * raw);
+      }
+      return raw + 1;
     }
   }
 }

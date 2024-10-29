@@ -45,7 +45,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
     assert !(vectorValues instanceof QuantizedByteVectorValues);
     // currently only supports binary vectors
     if (vectorValues instanceof ByteVectorValues bvv
-        && bvv instanceof HasIndexSlice byteVectorValues
+        && bvv.vectors() instanceof HasIndexSlice byteVectorValues
         && byteVectorValues.getSlice() != null) {
       var scorer =
           Lucene99MemorySegmentByteVectorScorerSupplier.create(
@@ -73,7 +73,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
     // a quantized values here is a wrapping or delegation issue
     assert !(vectorValues instanceof QuantizedByteVectorValues);
     if (vectorValues instanceof ByteVectorValues bvv
-        && bvv instanceof HasIndexSlice byteVectorValues
+        && bvv.vectors() instanceof HasIndexSlice byteVectorValues
         && byteVectorValues.getSlice() != null) {
       var scorer =
           Lucene99MemorySegmentByteVectorScorer.create(
