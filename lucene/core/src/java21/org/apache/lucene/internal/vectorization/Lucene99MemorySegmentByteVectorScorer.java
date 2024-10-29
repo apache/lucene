@@ -36,9 +36,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
   final int vectorByteSize;
   final MemorySegmentAccessInput input;
   final MemorySegment query;
-  byte[] scratch;
-  MemorySegment offHeapScratch;
-  MemorySegment offHeapQuery;
+  MemorySegment scratch;
 
   /**
    * Return an optional whose value, if present, is the scorer. Otherwise, an empty optional is
@@ -54,10 +52,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     checkInvariants(values.size(), values.getVectorByteLength(), input);
     return switch (type) {
       case COSINE -> Optional.of(new CosineScorer(msInput, values, queryVector));
-      case DOT_PRODUCT ->
-          Constants.NATIVE_DOT_PRODUCT_ENABLED == false
-              ? Optional.of(new DotProductScorer(msInput, values, queryVector))
-              : Optional.of(new NativeDotProductScorer(msInput, values, queryVector));
+      case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector));
       case EUCLIDEAN -> Optional.of(new EuclideanScorer(msInput, values, queryVector));
       case MAXIMUM_INNER_PRODUCT ->
           Optional.of(new MaxInnerProductScorer(msInput, values, queryVector));
@@ -65,37 +60,46 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
   }
 
   Lucene99MemorySegmentByteVectorScorer(
-      MemorySegmentAccessInput input, KnnVectorValues values, byte[] queryVector) {
+      MemorySegmentAccessInput input, KnnVectorValues values, MemorySegment query) {
     super(values);
     this.input = input;
     this.vectorByteSize = values.getVectorByteLength();
-    this.query = MemorySegment.ofArray(queryVector);
+    this.query = query;
   }
 
-  final MemorySegment getNativeSegment(int ord) throws IOException {
-    long byteOffset = (long) ord * vectorByteSize;
-    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
-    if (seg == null) {
-      if (offHeapScratch == null) {
-        offHeapScratch =
-            Arena.ofAuto().allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment());
-      }
-      input.readBytes(byteOffset, offHeapScratch, 0, vectorByteSize);
-      seg = offHeapScratch;
-    }
-    return seg;
-  }
-
-  final MemorySegment getSegment(int ord) throws IOException {
+  /**
+   * Retrieve vector for 'ord' in an off-Heap MemorySegment if requested. When offHeap is true, a
+   * slice of the underlying off-heap MemorySegment with vector data is returned in the common case.
+   *
+   * <p>In the rare case that data for requested vector is split across multiple off-Heap
+   * MemmorySegments, an off-heap scratch space is allocated, vector data is copied and returned to
+   * the caller.
+   *
+   * <p>When off-heap is false, the vector data is copied to an on-heap byte[] which is wrapped in a
+   * MemorySegment and returned to the caller.
+   *
+   * <p>An offHeap MemorySegment is needed for vector distance computations implemented in native
+   * code invoked using Java FFM APIs. The native code can only work with off-Heap memory which is
+   * not under the control of Java garbage-collector.
+   *
+   * @param ord
+   * @param offHeap
+   * @return
+   * @throws IOException
+   */
+  final MemorySegment getSegment(int ord, boolean offHeap) throws IOException {
     checkOrdinal(ord);
     long byteOffset = (long) ord * vectorByteSize;
     MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
       if (scratch == null) {
-        scratch = new byte[vectorByteSize];
+        scratch =
+            (offHeap)
+                ? Arena.ofAuto().allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment())
+                : MemorySegment.ofArray(new byte[vectorByteSize]);
       }
       input.readBytes(byteOffset, scratch, 0, vectorByteSize);
-      seg = MemorySegment.ofArray(scratch);
+      seg = scratch;
     }
     return seg;
   }
@@ -112,76 +116,70 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     }
   }
 
-  static final class CosineScorer extends Lucene99MemorySegmentByteVectorScorer {
-    CosineScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-      super(input, values, query);
+  private static MemorySegment querySegment(byte[] query, boolean offHeap) {
+    MemorySegment querySegment;
+    if (offHeap) {
+      querySegment = Arena.ofAuto().allocate(query.length, ValueLayout.JAVA_BYTE.byteAlignment());
+      MemorySegment.copy(query, 0, querySegment, ValueLayout.JAVA_BYTE, 0, query.length);
+    } else {
+      querySegment = MemorySegment.ofArray(query);
     }
-
-    @Override
-    public float score(int node) throws IOException {
-      checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.cosine(query, getSegment(node));
-      return (1 + raw) / 2;
-    }
+    return querySegment;
   }
 
-  static final class NativeDotProductScorer extends Lucene99MemorySegmentByteVectorScorer {
-
-    NativeDotProductScorer(
-        MemorySegmentAccessInput input, KnnVectorValues values, byte[] queryVector) {
-      super(input, values, queryVector);
-      if (offHeapQuery == null) {
-        offHeapQuery =
-            Arena.ofAuto().allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment());
-      }
-      offHeapQuery.copyFrom(query);
+  static final class CosineScorer extends Lucene99MemorySegmentByteVectorScorer {
+    CosineScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
+      super(input, values, querySegment(query, false));
     }
 
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-      int raw = PanamaVectorUtilSupport.nativeDotProduct(offHeapQuery, getNativeSegment(node));
-      return 0.5f + raw / (float) (query.byteSize() * (1 << 15));
+      float raw = PanamaVectorUtilSupport.cosine(query, getSegment(node, false));
+      return (1 + raw) / 2;
     }
   }
 
   static final class DotProductScorer extends Lucene99MemorySegmentByteVectorScorer {
     DotProductScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-      super(input, values, query);
+      super(input, values, querySegment(query, Constants.NATIVE_DOT_PRODUCT_ENABLED));
     }
 
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
       // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-      float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
+      float raw =
+          PanamaVectorUtilSupport.dotProduct(
+              query, getSegment(node, Constants.NATIVE_DOT_PRODUCT_ENABLED));
       return 0.5f + raw / (float) (query.byteSize() * (1 << 15));
     }
   }
 
   static final class EuclideanScorer extends Lucene99MemorySegmentByteVectorScorer {
     EuclideanScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-      super(input, values, query);
+      super(input, values, querySegment(query, false));
     }
 
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.squareDistance(query, getSegment(node));
+      float raw = PanamaVectorUtilSupport.squareDistance(query, getSegment(node, false));
       return 1 / (1f + raw);
     }
   }
 
   static final class MaxInnerProductScorer extends Lucene99MemorySegmentByteVectorScorer {
     MaxInnerProductScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-      super(input, values, query);
+      super(input, values, querySegment(query, Constants.NATIVE_DOT_PRODUCT_ENABLED));
     }
 
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
+      float raw =
+          PanamaVectorUtilSupport.dotProduct(
+              query, getSegment(node, Constants.NATIVE_DOT_PRODUCT_ENABLED));
       if (raw < 0) {
         return 1 / (1 + -1 * raw);
       }

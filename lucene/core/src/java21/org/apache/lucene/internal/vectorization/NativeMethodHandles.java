@@ -64,6 +64,9 @@ public final class NativeMethodHandles {
   /* chosen C implementation */
   static final MethodHandle DOT_PRODUCT_IMPL;
 
+  /* Simple C implementation that GCC compiler will auto-vectorize with flags "-O3 -march=native -funroll-loops" */
+  static final MethodHandle SIMPLE_DOT_PRODUCT_IMPL;
+
   static {
     if (sveVdot8sMH != null) {
       DOT_PRODUCT_IMPL = sveVdot8sMH;
@@ -74,5 +77,6 @@ public final class NativeMethodHandles {
     } else {
       throw new RuntimeException("c code was not linked!");
     }
+    SIMPLE_DOT_PRODUCT_IMPL = dot8sMH;
   }
 }

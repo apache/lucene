@@ -188,6 +188,7 @@ public abstract class VectorizationProvider {
   // add all possible callers here as FQCN:
   private static final Set<String> VALID_CALLERS =
       Set.of(
+          "org.apache.lucene.benchmark.jmh.VectorUtilBenchmark",
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene101.Lucene101PostingsReader",

@@ -174,7 +174,7 @@ int32_t dot8s(int8_t vec1[], int8_t vec2[], int32_t limit) {
     return result;
 }
 
-
+/*
 int main(int argc, const char* args[]) {
     int DIMENSIONS = 1024;
     for (int s = 1; s < DIMENSIONS; s++) {
@@ -206,4 +206,4 @@ int main(int argc, const char* args[]) {
     printf("\n Scalar Dot Product: %d\n", dot8s(a,b, 30));
     printf("\n SVE Dot Product: %d\n", vdot8s_neon(a,b, 30));
 }
-
+*/

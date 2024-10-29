@@ -38,12 +38,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
   final int maxOrd;
   final MemorySegmentAccessInput input;
   final KnnVectorValues values; // to support ordToDoc/getAcceptOrds
-  byte[] scratch1, scratch2;
-  MemorySegment[] offHeapScratch;
-  private static Arena offHeap;
-
-  private static final int FIRST_OFFHEAP_SCRATCH = 0;
-  private static final int SECOND_OFFHEAP_SCRATCH = 1;
+  MemorySegment scratch1, scratch2;
 
   /**
    * Return an optional whose value, if present, is the scorer supplier. Otherwise, an empty
@@ -59,10 +54,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     checkInvariants(values.size(), values.getVectorByteLength(), input);
     return switch (type) {
       case COSINE -> Optional.of(new CosineSupplier(msInput, values));
-      case DOT_PRODUCT ->
-          Constants.NATIVE_DOT_PRODUCT_ENABLED == false
-              ? Optional.of(new DotProductSupplier(msInput, values))
-              : Optional.of(new NativeDotProductSupplier(msInput, values));
+      case DOT_PRODUCT -> Optional.of(new DotProductSupplier(msInput, values));
       case EUCLIDEAN -> Optional.of(new EuclideanSupplier(msInput, values));
       case MAXIMUM_INNER_PRODUCT -> Optional.of(new MaxInnerProductSupplier(msInput, values));
     };
@@ -88,43 +80,34 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
   }
 
-  final MemorySegment getNativeSegment(int ord, int sid) throws IOException {
-    long byteOffset = (long) ord * vectorByteSize;
-    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
-    if (seg == null) {
-      if (offHeapScratch[sid]
-          == null) { // Should be rare, this means current vector was split across memory segments
-        offHeapScratch[sid] =
-            offHeap.allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment());
-      }
-      input.readBytes(byteOffset, offHeapScratch[sid], 0, vectorByteSize);
-      seg = offHeapScratch[sid];
-    }
-    return seg;
-  }
-
-  final MemorySegment getFirstSegment(int ord) throws IOException {
+  final MemorySegment getFirstSegment(int ord, boolean offHeap) throws IOException {
     long byteOffset = (long) ord * vectorByteSize;
     MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
       if (scratch1 == null) {
-        scratch1 = new byte[vectorByteSize];
+        scratch1 =
+            (offHeap)
+                ? Arena.ofAuto().allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment())
+                : MemorySegment.ofArray(new byte[vectorByteSize]);
       }
       input.readBytes(byteOffset, scratch1, 0, vectorByteSize);
-      seg = MemorySegment.ofArray(scratch1);
+      seg = scratch1;
     }
     return seg;
   }
 
-  final MemorySegment getSecondSegment(int ord) throws IOException {
+  final MemorySegment getSecondSegment(int ord, boolean offHeap) throws IOException {
     long byteOffset = (long) ord * vectorByteSize;
     MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
     if (seg == null) {
       if (scratch2 == null) {
-        scratch2 = new byte[vectorByteSize];
+        scratch2 =
+            (offHeap)
+                ? Arena.ofAuto().allocate(vectorByteSize, ValueLayout.JAVA_BYTE.byteAlignment())
+                : MemorySegment.ofArray(new byte[vectorByteSize]);
       }
       input.readBytes(byteOffset, scratch2, 0, vectorByteSize);
-      seg = MemorySegment.ofArray(scratch2);
+      seg = scratch2;
     }
     return seg;
   }
@@ -142,7 +125,10 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
-          float raw = PanamaVectorUtilSupport.cosine(getFirstSegment(ord), getSecondSegment(node));
+          boolean offHeap = false; // Native implementation disabled for Cosine distance
+          float raw =
+              PanamaVectorUtilSupport.cosine(
+                  getFirstSegment(ord, offHeap), getSecondSegment(node, offHeap));
           return (1 + raw) / 2;
         }
       };
@@ -151,38 +137,6 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     @Override
     public CosineSupplier copy() throws IOException {
       return new CosineSupplier(input.clone(), values);
-    }
-  }
-
-  static final class NativeDotProductSupplier
-      extends Lucene99MemorySegmentByteVectorScorerSupplier {
-
-    NativeDotProductSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
-      super(input, values);
-      offHeap = Arena.ofAuto();
-      offHeapScratch = new MemorySegment[2];
-    }
-
-    @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
-        @Override
-        public float score(int node) throws IOException {
-          checkOrdinal(node);
-          // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-          int raw =
-              PanamaVectorUtilSupport.nativeDotProduct(
-                  getNativeSegment(ord, FIRST_OFFHEAP_SCRATCH),
-                  getNativeSegment(node, SECOND_OFFHEAP_SCRATCH));
-          return 0.5f + raw / (float) (values.dimension() * (1 << 15));
-        }
-      };
-    }
-
-    @Override
-    public NativeDotProductSupplier copy() throws IOException {
-      return new NativeDotProductSupplier(input.clone(), values);
     }
   }
 
@@ -200,8 +154,10 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         public float score(int node) throws IOException {
           checkOrdinal(node);
           // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+          boolean offHeap = Constants.NATIVE_DOT_PRODUCT_ENABLED;
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.dotProduct(
+                  getFirstSegment(ord, offHeap), getSecondSegment(node, offHeap));
           return 0.5f + raw / (float) (values.dimension() * (1 << 15));
         }
       };
@@ -226,8 +182,10 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
+          boolean offHeap = false; // Native implementation disabled for Euclidean distance
           float raw =
-              PanamaVectorUtilSupport.squareDistance(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.squareDistance(
+                  getFirstSegment(ord, offHeap), getSecondSegment(node, offHeap));
           return 1 / (1f + raw);
         }
       };
@@ -252,8 +210,10 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
+          boolean offHeap = Constants.NATIVE_DOT_PRODUCT_ENABLED;
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.dotProduct(
+                  getFirstSegment(ord, offHeap), getSecondSegment(node, offHeap));
           if (raw < 0) {
             return 1 / (1 + -1 * raw);
           }

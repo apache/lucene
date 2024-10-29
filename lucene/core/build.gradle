@@ -25,11 +25,9 @@ dependencies {
 }
 
 test {
-  build {
-    dependsOn ':lucene:native:build'
-  }
+  dependsOn ':lucene:misc:dotProductSharedLibrary'
   systemProperty(
           "java.library.path",
-          project(":lucene:native").layout.buildDirectory.get().asFile.absolutePath + "/libs/dotProduct/shared"
+          project(":lucene:misc").layout.buildDirectory.get().asFile.absolutePath + "/libs/dotProduct/shared"
   )
 }

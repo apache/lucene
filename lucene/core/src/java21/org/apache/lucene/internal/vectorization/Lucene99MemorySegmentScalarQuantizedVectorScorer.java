@@ -16,23 +16,6 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -51,6 +34,21 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 /**
  * Optimized scalar quantized implementation of {@link FlatVectorsScorer} for quantized vectors
  * stored in the Lucene99 format.
+ *
+ * <p>Most of the code in this file is copied from
+ * o.a.l.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer. Ideally the two files should be merged
+ * once java Foreign Function and Memory APIs become a first class citizen in Lucene. This would
+ * imply that JDK-22 would be the minimum version required to run Lucene.
+ *
+ * <p>The DotProduct scorer has been changed to retrieve vector data as a slice of
+ * MemorySegmentAccessInput without copying it onto the heap (in the common case). This is needed
+ * because native code (dot-product) cannot work with memory which is under the management of Java
+ * GC. The flip side of this change is that query byte[] need to be copied to an off-heap scratch
+ * space which is then passed to the native code. Similarly, the nested class
+ * ScalarQuantizedRandomVectorScorerSupplier has been modified to use the updated DotProduct scorer
+ * when native dot product is enabled (gated behind the flag Constants.NATIVE_DOT_PRODUCT_ENABLED
+ * Overall the expectation with this change is that fewer bytes will need to be copied between
+ * on-heap and off-heap memory in the query path so this should be a net win.
  *
  * @lucene.experimental
  */
@@ -145,8 +143,8 @@ public class Lucene99MemorySegmentScalarQuantizedVectorScorer {
       this.scoreAdjustmentFunction = scoreAdjustmentFunction;
       this.targetBytes = targetBytes;
       IndexInput input = FilterIndexInput.unwrapOnlyTest(values.getSlice());
-      if (input instanceof MemorySegmentAccessInput) {
-        this.msInput = (MemorySegmentAccessInput) input;
+      if (input instanceof MemorySegmentAccessInput msAccessInput) {
+        this.msInput = msAccessInput;
       } else {
         this.msInput = null;
       }
@@ -164,8 +162,8 @@ public class Lucene99MemorySegmentScalarQuantizedVectorScorer {
       this.offsetCorrection = offsetCorrection;
       this.scoreAdjustmentFunction = scoreAdjustmentFunction;
       IndexInput input = FilterIndexInput.unwrapOnlyTest(values.getSlice());
-      if (input instanceof MemorySegmentAccessInput) {
-        this.msInput = (MemorySegmentAccessInput) input;
+      if (input instanceof MemorySegmentAccessInput msAccessInput) {
+        this.msInput = msAccessInput;
       } else {
         this.msInput = null;
       }
@@ -182,14 +180,19 @@ public class Lucene99MemorySegmentScalarQuantizedVectorScorer {
 
     private MemorySegment vectorValue(int vectorOrdinal) throws IOException {
       if (Constants.NATIVE_DOT_PRODUCT_ENABLED == false || msInput == null) {
+        // Copies vector to on-heap memory and wrap it in a MemorySegment
         return MemorySegment.ofArray(values.vectorValue(vectorOrdinal));
       }
 
       int vectorByteSize = values.getVectorByteLength();
       int scoreCorrectionBytes = Float.BYTES;
       long byteOffset = (long) vectorOrdinal * (vectorByteSize + scoreCorrectionBytes);
+      // No vector copying in the common case
       MemorySegment seg = msInput.segmentSliceOrNull(byteOffset, vectorByteSize);
       if (seg == null) {
+        // Allocate off-heap space in the following rare case.
+        // Vector was split across multiple MMap segments AND scratch space was not previously
+        // allocated.
         if (scratch == null) {
           scratch =
               Arena.ofAuto()
@@ -309,8 +312,8 @@ public class Lucene99MemorySegmentScalarQuantizedVectorScorer {
       this.values2 = values.copy();
       this.vectorSimilarityFunction = vectorSimilarityFunction;
       IndexInput input = FilterIndexInput.unwrapOnlyTest(values.getSlice());
-      if (input instanceof MemorySegmentAccessInput) {
-        this.msInput = (MemorySegmentAccessInput) input;
+      if (input instanceof MemorySegmentAccessInput msAccessInput) {
+        this.msInput = msAccessInput;
       } else {
         this.msInput = null;
       }
@@ -324,11 +327,11 @@ public class Lucene99MemorySegmentScalarQuantizedVectorScorer {
 
     /**
      * Reads vector bytes for the supplied ordinal and returns them as a MemorySegment. if
-     * NATIVE_DOT_PRODUCT is not enabled, then vector bytes will be copied from the underlying
+     * NATIVE_DOT_PRODUCT is disabled, then vector bytes will be copied from the underlying
      * memory-mapped files to heap allocated byte[] and wrapped into MemorySegment. In case
      * NATIVE_DOT_PRODUCT is enabled, a slice of the MemorySegment over vector bytes is returned. NO
      * memory-copy happens when vector bytes are fully contained within a single MemorySegment
-     * (common case) that memory-maps a portion of the underlying file.
+     * (common case) that represents a memory-mapped region.
      *
      * @param vectorOrdinal
      * @return
@@ -336,18 +339,23 @@ public class Lucene99MemorySegmentScalarQuantizedVectorScorer {
      */
     private MemorySegment vectorValue(int vectorOrdinal) throws IOException {
       if (Constants.NATIVE_DOT_PRODUCT_ENABLED == false || msInput == null) {
+        // copy vector data to on-heap byte[], wrap it in MemorySegment and return
         return MemorySegment.ofArray(values1.vectorValue(vectorOrdinal));
       }
       int vectorByteSize = values1.getVectorByteLength();
       int scoreCorrectionBytes = Float.BYTES;
       long byteOffset = (long) vectorOrdinal * (vectorByteSize + scoreCorrectionBytes);
+      // No copying of vector data on-heap in the common case
       MemorySegment seg = msInput.segmentSliceOrNull(byteOffset, vectorByteSize);
+      // Uncommon case of vector data split across multiple memory segments
       if (seg == null) {
         if (scratch == null) {
+          // Allocate off-heap space the very first time we encounter uncommon scenario
           scratch =
               Arena.ofAuto()
                   .allocate(values.getVectorByteLength(), ValueLayout.JAVA_BYTE.byteAlignment());
         }
+        // Copy vector data to off-heap scratch space.
         msInput.readBytes(byteOffset, scratch, 0, vectorByteSize);
         seg = scratch;
       }

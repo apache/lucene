@@ -17,7 +17,6 @@
 
 package org.apache.lucene.util;
 
-import java.util.stream.IntStream;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
@@ -50,7 +49,7 @@ public final class VectorUtil {
 
   private static final float EPSILON = 1e-4f;
 
-  private static final VectorUtilSupport IMPL =
+  public static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
 
   private VectorUtil() {}

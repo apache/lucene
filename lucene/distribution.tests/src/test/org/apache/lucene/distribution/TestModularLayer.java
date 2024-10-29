@@ -356,9 +356,14 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               if (isInternal && export.source().equals("org.apache.lucene.internal.hppc")) {
                 return true;
               }
-              if (isInternal) {
+              if (export.source().equals("org.apache.lucene.internal.tests")) {
                 Assertions.assertThat(export.targets())
                     .containsExactlyInAnyOrder("org.apache.lucene.test_framework");
+              }
+              // Allow export to JMH benchmarks
+              if (export.source().equals("org.apache.lucene.internal.vectorization")) {
+                Assertions.assertThat(export.targets())
+                    .containsExactlyInAnyOrder("org.apache.lucene.benchmark.jmh");
               }
               return isInternal;
             });
