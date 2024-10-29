@@ -1648,10 +1648,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     public int nextDoc() throws IOException {
       if (docBufferUpto == BLOCK_SIZE) {
         advanceShallow(doc + 1);
-        if (needsRefilling) {
-          refillDocs();
-          needsRefilling = false;
-        }
+        assert needsRefilling;
+        refillDocs();
+        needsRefilling = false;
       }
 
       doc = (int) docBuffer[docBufferUpto];
