@@ -121,6 +121,10 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     }
 
     HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
+    if (initializerGraph.size() == 0) {
+      return HnswGraphBuilder.create(
+          scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, maxOrd);
+    }
 
     BitSet initializedNodes = new FixedBitSet(maxOrd);
     int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorValues, initializedNodes);
