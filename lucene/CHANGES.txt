@@ -51,6 +51,9 @@ Optimizations
 
 * GITHUB#13961: Replace Map<String,Object> with IntObjectHashMap for DV producer. (Pan Guixin)
 
+* GITHUB#13963: Speed up nextDoc() implementations in Lucene912PostingsReader.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
