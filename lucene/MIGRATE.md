@@ -19,6 +19,13 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### DataInput#readVLong() may now read negative vlongs
+
+LUCENE-10376 started allowing `DataInput#readVLong()` to read negative vlongs.
+In particular, this feature is used by the `DataInput#readZLong()` method. A
+practical implication is that `DataInput#readVLong()` may now read up to 10
+bytes, while it would never read more than 9 bytes in Lucene 9.x.
+
 ### Changes to DataInput.readGroupVInt and readGroupVInts methods 
 
 As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInput.readGroupVInts 

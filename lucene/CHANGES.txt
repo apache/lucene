@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
 New Features
 ---------------------
@@ -36,6 +36,10 @@ API Changes
 
 * GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
 
+* GITHUB#13950: Make BooleanQuery#getClauses public and add #add(Collection<BooleanClause>) to BQ builder. (Shubham Chaudhary)
+
+* GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
+  compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
 
 * GITHUB#13831: Complete refactoring of random-access vector API, eliminating copy() method. Now random-access vectors
   are accessed by calling Byte/FloatVectorValues.vectors().get(int).
@@ -56,12 +60,32 @@ Optimizations
 * GITHUB#13800: MaxScoreBulkScorer now recomputes scorer partitions when the
   minimum competitive allows for a more favorable partitioning. (Adrien Grand)
 
+* GITHUB#13930: Use growNoCopy when copying bytes in BytesRefBuilder. (Ignacio Vera)
+
+* GITHUB#13931: Refactored `BooleanScorer` to evaluate matches of sub clauses
+  using the `Scorer` abstraction rather than the `BulkScorer` abstraction. This
+  speeds up exhaustive evaluation of disjunctions of term queries.
+  (Adrien Grand)
+
+* GITHUB#13941: Optimized computation of top-hits on disjunctive queries with
+  many clauses. (Adrien Grand)
+
+* GITHUB#13954: Disabled exchanging scores across slices for exhaustive
+  top-hits evaluation. (Adrien Grand)
+
+* GITHUB#13899: Check ahead if we can get the count. (Lu Xugang)
+
+* GITHUB#13943: Removed shared `HitsThresholdChecker`, which reduces overhead
+  but may delay a bit when dynamic pruning kicks in. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
   when they were not sorted by startOffset. (Seunghan Jung)
 * GITHUB#13884: Remove broken .toArray from Long/CharObjectHashMap entirely. (Pan Guixin)
 * GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
+* GITHUB#13927: Fix StoredFieldsConsumer finish. (linfn)
+* GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
 
 Build
 ---------------------
