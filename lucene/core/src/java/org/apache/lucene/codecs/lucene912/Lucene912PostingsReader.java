@@ -580,7 +580,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc == level0LastDocID) { // advance skip data on level 0
+      if (docBufferUpto == BLOCK_SIZE) { // advance skip data on level 0
         moveToNextLevel0Block();
       }
 
@@ -875,7 +875,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc == level0LastDocID) { // advance level 0 skip data
+      if (docBufferUpto == BLOCK_SIZE) { // advance level 0 skip data
         moveToNextLevel0Block();
       }
 
@@ -1417,11 +1417,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc == level0LastDocID) {
-        moveToNextLevel0Block();
-      } else if (needsRefilling) {
-        refillDocs();
-        needsRefilling = false;
+      if (docBufferUpto == BLOCK_SIZE) {
+        if (needsRefilling) {
+          refillDocs();
+          needsRefilling = false;
+        } else {
+          moveToNextLevel0Block();
+        }
       }
 
       return this.doc = (int) docBuffer[docBufferUpto++];
@@ -1644,10 +1646,12 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      advanceShallow(doc + 1);
-      if (needsRefilling) {
-        refillDocs();
-        needsRefilling = false;
+      if (docBufferUpto == BLOCK_SIZE) {
+        advanceShallow(doc + 1);
+        if (needsRefilling) {
+          refillDocs();
+          needsRefilling = false;
+        }
       }
 
       doc = (int) docBuffer[docBufferUpto];
