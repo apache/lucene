@@ -31,6 +31,7 @@ import org.apache.lucene.util.BytesRef;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
@@ -120,7 +121,10 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         }
         SortedSetMultiRangeQuery multiRange = rangeQuery("field", ranges.toArray(new InetAddress[0]));
         int cnt;
-        assertEquals(cnt=searcher.count(bq.build()), searcher.count(multiRange));
+        BooleanQuery orRanges = bq.build();
+        System.out.println(Arrays.toString(searcher.search(orRanges,1000).scoreDocs));
+        System.out.println(Arrays.toString(searcher.search(multiRange,1000).scoreDocs));
+        assertEquals(cnt=searcher.count(orRanges), searcher.count(multiRange));
         System.out.println(cnt);
         reader.close();
         writer.close();

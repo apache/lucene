@@ -13,7 +13,7 @@ public class SortedSetMultiRangeQuery extends Query {
     private final int bytesPerDim;
     List<MultiRangeQuery.RangeClause> rangeClauses;
 
-    public SortedSetMultiRangeQuery(String name, List<MultiRangeQuery.RangeClause> clauses, int bytes) {
+    SortedSetMultiRangeQuery(String name, List<MultiRangeQuery.RangeClause> clauses, int bytes) {
         this.field = name;
         this.rangeClauses = clauses;
         this.bytesPerDim = bytes;
@@ -88,8 +88,7 @@ public class SortedSetMultiRangeQuery extends Query {
                         final List<MultiRangeQuery.RangeClause> originRangeClause;
                         final ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
                         if (rangeClauses.size()>1) {
-                            originRangeClause = new ArrayList<>(rangeClauses);
-                            originRangeClause.sort(
+                            rangeClauses.sort(
                                     new Comparator<MultiRangeQuery.RangeClause>() {
                                         @Override
                                         public int compare(MultiRangeQuery.RangeClause o1, MultiRangeQuery.RangeClause o2) {
@@ -101,8 +100,6 @@ public class SortedSetMultiRangeQuery extends Query {
                                             }
                                         }
                                     });
-                        } else {
-                            originRangeClause = rangeClauses;
                         }
 
 //                        final long minOrd;
