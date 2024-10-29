@@ -75,7 +75,7 @@ Optimizations
 * GITHUB#13943: Removed shared `HitsThresholdChecker`, which reduces overhead
   but may delay a bit when dynamic pruning kicks in. (Adrien Grand)
 
-* GITHUB#13963: Speedup nextDoc() implementations in Lucene912PostingsReader.
+* GITHUB#13963: Speed up nextDoc() implementations in Lucene912PostingsReader.
   (Adrien Grand)
 
 Bug Fixes
