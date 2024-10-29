@@ -774,9 +774,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   @Override
   public int findNextGEQ(long[] buffer, int length, long target, int from) {
     if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
-      for (;
-          from + LONG_SPECIES.length() < length;
-          from += LONG_SPECIES.length() + 1) {
+      for (; from + LONG_SPECIES.length() < length; from += LONG_SPECIES.length() + 1) {
         if (buffer[from + LONG_SPECIES.length()] >= target) {
           LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
           VectorMask<Long> mask = vector.compare(VectorOperators.LT, target);
