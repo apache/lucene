@@ -38,6 +38,8 @@ API Changes
 
 * GITHUB#13950: Make BooleanQuery#getClauses public and add #add(Collection<BooleanClause>) to BQ builder. (Shubham Chaudhary)
 
+* GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
+  compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
 
 New Features
 ---------------------
@@ -70,6 +72,16 @@ Optimizations
 
 * GITHUB#13899: Check ahead if we can get the count. (Lu Xugang)
 
+* GITHUB#13943: Removed shared `HitsThresholdChecker`, which reduces overhead
+  but may delay a bit when dynamic pruning kicks in. (Adrien Grand)
+
+* GITHUB#13961: Replace Map<String,Object> with IntObjectHashMap for DV producer. (Pan Guixin)
+
+* GITHUB#13963: Speed up nextDoc() implementations in Lucene912PostingsReader.
+  (Adrien Grand)
+
+* GITHUB#13958: Speed up advancing within a block. (Adrien Grand)
+
 * GITHUB#13763: Replace Map<String,Object> with IntObjectHashMap for KnnVectorsReader (Pan Guixin)
 
 Bug Fixes
@@ -79,6 +91,7 @@ Bug Fixes
 * GITHUB#13884: Remove broken .toArray from Long/CharObjectHashMap entirely. (Pan Guixin)
 * GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
 * GITHUB#13927: Fix StoredFieldsConsumer finish. (linfn)
+* GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
 
 Build
 ---------------------
