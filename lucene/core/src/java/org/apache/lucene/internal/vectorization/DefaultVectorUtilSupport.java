@@ -197,4 +197,14 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
     return squareSum;
   }
+
+  @Override
+  public int findNextGEQ(long[] buffer, int length, long target, int from) {
+    for (int i = from; i < length; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return length;
+  }
 }

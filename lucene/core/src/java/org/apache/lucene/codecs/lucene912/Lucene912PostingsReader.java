@@ -46,6 +46,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
+import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -65,6 +66,8 @@ import org.apache.lucene.util.IOUtils;
 public final class Lucene912PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
+  private static final VectorUtilSupport VECTOR_SUPPORT =
+      VECTORIZATION_PROVIDER.getVectorUtilSupport();
   // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
   // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
   // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
@@ -215,15 +218,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
   }
 
-  static int findFirstGreater(long[] buffer, int target, int from) {
-    for (int i = from; i < BLOCK_SIZE; ++i) {
-      if (buffer[i] >= target) {
-        return i;
-      }
-    }
-    return BLOCK_SIZE;
-  }
-
   @Override
   public BlockTermState newTermState() {
     return new IntBlockTermState();
@@ -357,6 +351,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     protected int docCountUpto; // number of docs in or before the current block
     protected long prevDocID; // last doc ID of the previous block
 
+    protected int docBufferSize;
     protected int docBufferUpto;
 
     protected IndexInput docIn;
@@ -402,6 +397,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         level1DocEndFP = termState.docStartFP;
       }
       level1DocCountUpto = 0;
+      docBufferSize = BLOCK_SIZE;
       docBufferUpto = BLOCK_SIZE;
       return this;
     }
@@ -487,7 +483,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       docCountUpto += BLOCK_SIZE;
       prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
-      assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+      assert docBuffer[docBufferSize] == NO_MORE_DOCS;
     }
 
     private void refillRemainder() throws IOException {
@@ -508,6 +504,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         docCountUpto += left;
       }
       docBufferUpto = 0;
+      docBufferSize = left;
       freqFP = -1;
     }
 
@@ -604,7 +601,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = VECTOR_SUPPORT.findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -782,16 +779,18 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         freqBuffer[0] = totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
         docCountUpto++;
+        docBufferSize = 1;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
         prefixSum(docBuffer, left, prevDocID);
         docBuffer[left] = NO_MORE_DOCS;
         docCountUpto += left;
+        docBufferSize = left;
       }
       prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
-      assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+      assert docBuffer[docBufferSize] == NO_MORE_DOCS;
     }
 
     private void skipLevel1To(int target) throws IOException {
@@ -951,7 +950,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = VECTOR_SUPPORT.findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
       posPendingCount += sumOverRange(freqBuffer, docBufferUpto, next + 1);
       this.freq = (int) freqBuffer[next];
       this.docBufferUpto = next + 1;
@@ -1155,6 +1154,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     protected int docCountUpto; // number of docs in or before the current block
     protected int doc = -1; // doc we last read
     protected long prevDocID = -1; // last doc ID of the previous block
+    protected int docBufferSize = BLOCK_SIZE;
     protected int docBufferUpto = BLOCK_SIZE;
 
     // true if we shallow-advanced to a new block that we have not decoded yet
@@ -1306,10 +1306,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         docBuffer[left] = NO_MORE_DOCS;
         freqFP = -1;
         docCountUpto += left;
+        docBufferSize = left;
       }
       prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
-      assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+      assert docBuffer[docBufferSize] == NO_MORE_DOCS;
     }
 
     private void skipLevel1To(int target) throws IOException {
@@ -1437,7 +1438,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = VECTOR_SUPPORT.findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -1535,10 +1536,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         prefixSum(docBuffer, left, prevDocID);
         docBuffer[left] = NO_MORE_DOCS;
         docCountUpto += left;
+        docBufferSize = left;
       }
       prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
-      assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+      assert docBuffer[docBufferSize] == NO_MORE_DOCS;
     }
 
     private void skipLevel1To(int target) throws IOException {
@@ -1669,7 +1671,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = findFirstGreater(docBuffer, target, docBufferUpto);
+      int next = VECTOR_SUPPORT.findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
       posPendingCount += sumOverRange(freqBuffer, docBufferUpto, next + 1);
       freq = (int) freqBuffer[next];
       docBufferUpto = next + 1;
