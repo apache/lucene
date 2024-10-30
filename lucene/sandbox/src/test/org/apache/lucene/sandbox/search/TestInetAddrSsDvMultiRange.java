@@ -32,7 +32,9 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
     /** Add a single address and search for it */
@@ -79,16 +81,24 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         Directory dir = newDirectory();
         RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
+        int docs=0;
+        List<byte[]> pivotIps = new ArrayList<>();
         // add a doc with an address
-        for (int doc=0; doc<atLeast(10);doc++ ) {
+        for (int doc=0; doc<atLeast(100);doc++ ) {
             Document document = new Document();
             for (int fld=0; fld<atLeast(1); fld++) {
-                SortedSetDocValuesField field = getIpField("field",
-                        new byte[]{(byte)random().nextInt(256),(byte)random().nextInt(256),
-                        (byte)random().nextInt(256),(byte)random().nextInt(256)});
+                byte[] ip = getRandomIpBytes();
+                SortedSetDocValuesField field = getIpField("field", ip);
                 document.add(field);
+                // add nearby points
+                for (int delta : Arrays.asList(0,1,2,-1,-2)) {
+                    byte[] inc = ip.clone();
+                    inc[3] = (byte) (delta + inc[3]);
+                    pivotIps.add(inc);
+                }
             }
             writer.addDocument(document);
+            docs++;
         }
 
         // search and verify we found our doc
@@ -96,23 +106,26 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         IndexSearcher searcher = newSearcher(reader);
         List<InetAddress> ranges = new ArrayList<>();
         BooleanQuery.Builder bq = new BooleanQuery.Builder();
+
+        Supplier<byte[]> pivotIpsStream = new Supplier<>(){
+            Iterator<byte[]> iter  = pivotIps.iterator();
+            @Override
+            public byte[] get() {
+                if (!iter.hasNext()) {
+                    iter  = pivotIps.iterator();
+                }
+                return iter.next();
+            }
+        };
         for (int q=0; q<atLeast(10); q++) {
-            byte[] alfa = {(byte) random().nextInt(256),
-                    (byte) random().nextInt(256),
-                    (byte) random().nextInt(256),
-                    (byte) random().nextInt(256)};
-            byte[] beta = {(byte) random().nextInt(256),
-                    (byte)random().nextInt(256),
-                    (byte)random().nextInt(256),
-                    (byte)random().nextInt(256)};
+            byte[] alfa = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
+            byte[] beta = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
             if ((alfa[0]*Math.pow(256,3)+alfa[1]*Math.pow(256,2)+alfa[2]*256+alfa[3]) > (beta[0]*Math.pow(256,3)+beta[1]*Math.pow(256,2)+beta[2]*256+beta[3])) {
                 byte[] swap = beta;
                 beta = alfa;
                 alfa = swap;
             }
-            //String lower = String.format("%d.%d.%d.%d", alfa[0], alfa[1], alfa[2], alfa[3]);
             ranges.add(InetAddress.getByAddress(alfa));
-            //String upper = String.format("%d.%d.%d.%d", beta[0], beta[1], beta[2], beta[3]);
             ranges.add(InetAddress.getByAddress(beta));
 
             bq.add(SortedSetDocValuesField.newSlowRangeQuery("field",
@@ -125,10 +138,17 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         System.out.println(Arrays.toString(searcher.search(orRanges,1000).scoreDocs));
         System.out.println(Arrays.toString(searcher.search(multiRange,1000).scoreDocs));
         assertEquals(cnt=searcher.count(orRanges), searcher.count(multiRange));
-        System.out.println(cnt);
+        System.out.printf("found %d of %d\n",cnt, docs);
         reader.close();
         writer.close();
         dir.close();
+    }
+
+    private static byte[] getRandomIpBytes() {
+        return new byte[]{(byte) random().nextInt(256),
+                (byte) random().nextInt(256),
+                (byte) random().nextInt(256),
+                (byte) random().nextInt(256)};
     }
 
     private static SortedSetDocValuesField getIpField(String field, byte[] ip) throws UnknownHostException {
