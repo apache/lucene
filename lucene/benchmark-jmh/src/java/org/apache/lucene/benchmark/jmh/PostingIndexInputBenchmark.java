@@ -21,9 +21,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.codecs.lucene912.ForDeltaUtil;
-import org.apache.lucene.codecs.lucene912.ForUtil;
-import org.apache.lucene.codecs.lucene912.PostingIndexInput;
+import org.apache.lucene.codecs.lucene101.ForDeltaUtil;
+import org.apache.lucene.codecs.lucene101.ForUtil;
+import org.apache.lucene.codecs.lucene101.PostingIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -61,7 +61,7 @@ public class PostingIndexInputBenchmark {
   private PostingIndexInput postingIn;
   private final ForUtil forUtil = new ForUtil();
   private final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
-  private final long[] values = new long[128];
+  private final int[] values = new int[ForUtil.BLOCK_SIZE];
 
   @Param({"2", "3", "4", "5", "6", "7", "8", "9", "10"})
   public int bpv;

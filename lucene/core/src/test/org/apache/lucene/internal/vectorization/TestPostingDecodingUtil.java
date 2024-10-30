@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import org.apache.lucene.codecs.lucene912.ForUtil;
+import org.apache.lucene.codecs.lucene101.ForUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -26,6 +26,60 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestPostingDecodingUtil extends LuceneTestCase {
+
+  public void testDuelSplitInts() throws Exception {
+    final int iterations = atLeast(100);
+
+    try (Directory dir = new MMapDirectory(createTempDir())) {
+      try (IndexOutput out = dir.createOutput("tests.bin", IOContext.DEFAULT)) {
+        out.writeInt(random().nextInt());
+        for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+          out.writeLong(random().nextInt());
+        }
+      }
+      VectorizationProvider vectorizationProvider = VectorizationProvider.lookup(true);
+      try (IndexInput in = dir.openInput("tests.bin", IOContext.DEFAULT)) {
+        int[] expectedB = new int[ForUtil.BLOCK_SIZE];
+        int[] expectedC = new int[ForUtil.BLOCK_SIZE];
+        int[] actualB = new int[ForUtil.BLOCK_SIZE];
+        int[] actualC = new int[ForUtil.BLOCK_SIZE];
+        for (int iter = 0; iter < iterations; ++iter) {
+          // Initialize arrays with random content.
+          for (int i = 0; i < expectedB.length; ++i) {
+            expectedB[i] = random().nextInt();
+            actualB[i] = expectedB[i];
+            expectedC[i] = random().nextInt();
+            actualC[i] = expectedC[i];
+          }
+          int bShift = TestUtil.nextInt(random(), 1, 31);
+          int dec = TestUtil.nextInt(random(), 1, bShift);
+          int numIters = (bShift + dec - 1) / dec;
+          int count = TestUtil.nextInt(random(), 1, 64 / numIters);
+          int bMask = random().nextInt();
+          int cIndex = random().nextInt(64);
+          int cMask = random().nextInt();
+          long startFP = random().nextInt(4);
+
+          // Work on a slice that has just the right number of bytes to make the test fail with an
+          // index-out-of-bounds in case the implementation reads more than the allowed number of
+          // padding bytes.
+          IndexInput slice = in.slice("test", 0, startFP + count * Long.BYTES);
+
+          PostingDecodingUtil defaultUtil = new PostingDecodingUtil(slice);
+          PostingDecodingUtil optimizedUtil = vectorizationProvider.newPostingDecodingUtil(slice);
+
+          slice.seek(startFP);
+          defaultUtil.splitInts(count, expectedB, bShift, dec, bMask, expectedC, cIndex, cMask);
+          long expectedEndFP = slice.getFilePointer();
+          slice.seek(startFP);
+          optimizedUtil.splitInts(count, actualB, bShift, dec, bMask, actualC, cIndex, cMask);
+          assertEquals(expectedEndFP, slice.getFilePointer());
+          assertArrayEquals(expectedB, actualB);
+          assertArrayEquals(expectedC, actualC);
+        }
+      }
+    }
+  }
 
   public void testDuelSplitLongs() throws Exception {
     final int iterations = atLeast(100);

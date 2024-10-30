@@ -20,10 +20,10 @@ import static org.apache.lucene.backward_index.TestBasicBackwardsCompatibility.a
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
-import org.apache.lucene.backward_codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene101.Lucene101Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
@@ -69,7 +69,7 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
   }
 
   protected Codec getCodec() {
-    return new Lucene99Codec() {
+    return new Lucene101Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene99HnswScalarQuantizedVectorsFormat(

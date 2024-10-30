@@ -40,39 +40,31 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.packed.PackedInts;
 
-import static org.apache.lucene.codecs.lucene912.ForUtil.*;
+import static org.apache.lucene.codecs.lucene101.ForUtil.*;
 
 /**
  * Inspired from https://fulmicoton.com/posts/bitpacking/
- * Encodes multiple integers in a long to get SIMD-like speedups.
- * If bitsPerValue &lt;= 4 then we pack 8 ints per long
- * else if bitsPerValue &lt;= 11 we pack 4 ints per long
- * else we pack 2 ints per long
+ * Encodes multiple integers in a Java int to get SIMD-like speedups.
+ * If bitsPerValue &lt;= 4 then we pack 4 ints per Java int
+ * else if bitsPerValue &lt;= 11 we pack 2 ints per Java int
+ * else we use scalar operations.
  */
 public final class ForDeltaUtil {
 
+  private static final int HALF_BLOCK_SIZE = BLOCK_SIZE / 2;
   private static final int ONE_BLOCK_SIZE_FOURTH = BLOCK_SIZE / 4;
   private static final int TWO_BLOCK_SIZE_FOURTHS = BLOCK_SIZE / 2;
   private static final int THREE_BLOCK_SIZE_FOURTHS = 3 * BLOCK_SIZE / 4;
 
-  private static final int ONE_BLOCK_SIZE_EIGHT = BLOCK_SIZE / 8;
-  private static final int TWO_BLOCK_SIZE_EIGHTS = BLOCK_SIZE / 4;
-  private static final int THREE_BLOCK_SIZE_EIGHTS = 3 * BLOCK_SIZE / 8;
-  private static final int FOUR_BLOCK_SIZE_EIGHTS = BLOCK_SIZE / 2;
-  private static final int FIVE_BLOCK_SIZE_EIGHTS = 5 * BLOCK_SIZE / 8;
-  private static final int SIX_BLOCK_SIZE_EIGHTS = 3 * BLOCK_SIZE / 4;
-  private static final int SEVEN_BLOCK_SIZE_EIGHTS = 7 * BLOCK_SIZE / 8;
-
   // IDENTITY_PLUS_ONE[i] == i+1
-  private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil.BLOCK_SIZE];
+  private static final int[] IDENTITY_PLUS_ONE = new int[ForUtil.BLOCK_SIZE];
 
   static {
     for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
@@ -80,7 +72,7 @@ public final class ForDeltaUtil {
     }
   }
 
-  private static void prefixSumOfOnes(long[] arr, long base) {
+  private static void prefixSumOfOnes(int[] arr, int base) {
     System.arraycopy(IDENTITY_PLUS_ONE, 0, arr, 0, ForUtil.BLOCK_SIZE);
     // This loop gets auto-vectorized
     for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
@@ -88,43 +80,16 @@ public final class ForDeltaUtil {
     }
   }
 
-  private static void prefixSum8(long[] arr, long base) {
+  private static void prefixSum8(int[] arr, int base) {
     // When the number of bits per value is 4 or less, we can sum up all values in a block without
-    // risking overflowing a 8-bits integer. This allows computing the prefix sum by summing up 8
+    // risking overflowing an 8-bits integer. This allows computing the prefix sum by summing up 4
     // values at once.
     innerPrefixSum8(arr);
     expand8(arr);
-    final long l0 = base;
-    final long l1 = l0 + arr[ONE_BLOCK_SIZE_EIGHT - 1];
-    final long l2 = l1 + arr[TWO_BLOCK_SIZE_EIGHTS - 1];
-    final long l3 = l2 + arr[THREE_BLOCK_SIZE_EIGHTS - 1];
-    final long l4 = l3 + arr[FOUR_BLOCK_SIZE_EIGHTS - 1];
-    final long l5 = l4 + arr[FIVE_BLOCK_SIZE_EIGHTS - 1];
-    final long l6 = l5 + arr[SIX_BLOCK_SIZE_EIGHTS - 1];
-    final long l7 = l6 + arr[SEVEN_BLOCK_SIZE_EIGHTS - 1];
-
-    for (int i = 0; i < ONE_BLOCK_SIZE_EIGHT; ++i) {
-      arr[i] += l0;
-      arr[ONE_BLOCK_SIZE_EIGHT + i] += l1;
-      arr[TWO_BLOCK_SIZE_EIGHTS + i] += l2;
-      arr[THREE_BLOCK_SIZE_EIGHTS + i] += l3;
-      arr[FOUR_BLOCK_SIZE_EIGHTS + i] += l4;
-      arr[FIVE_BLOCK_SIZE_EIGHTS + i] += l5;
-      arr[SIX_BLOCK_SIZE_EIGHTS + i] += l6;
-      arr[SEVEN_BLOCK_SIZE_EIGHTS + i] += l7;
-    }
-  }
-
-  private static void prefixSum16(long[] arr, long base) {
-    // When the number of bits per value is 11 or less, we can sum up all values in a block without
-    // risking overflowing a 16-bits integer. This allows computing the prefix sum by summing up 4
-    // values at once.
-    innerPrefixSum16(arr);
-    expand16(arr);
-    final long l0 = base;
-    final long l1 = l0 + arr[ONE_BLOCK_SIZE_FOURTH - 1];
-    final long l2 = l1 + arr[TWO_BLOCK_SIZE_FOURTHS - 1];
-    final long l3 = l2 + arr[THREE_BLOCK_SIZE_FOURTHS - 1];
+    final int l0 = base;
+    final int l1 = l0 + arr[ONE_BLOCK_SIZE_FOURTH - 1];
+    final int l2 = l1 + arr[TWO_BLOCK_SIZE_FOURTHS - 1];
+    final int l3 = l2 + arr[THREE_BLOCK_SIZE_FOURTHS - 1];
 
     for (int i = 0; i < ONE_BLOCK_SIZE_FOURTH; ++i) {
       arr[i] += l0;
@@ -134,37 +99,29 @@ public final class ForDeltaUtil {
     }
   }
 
-  private static void prefixSum32(long[] arr, long base) {
-    arr[0] += base << 32;
-    innerPrefixSum32(arr);
-    expand32(arr);
-    final long l = arr[BLOCK_SIZE/2-1];
-    for (int i = BLOCK_SIZE/2; i < BLOCK_SIZE; ++i) {
-      arr[i] += l;
+  private static void prefixSum16(int[] arr, int base) {
+    // When the number of bits per value is 11 or less, we can sum up all values in a block without
+    // risking overflowing an 16-bits integer. This allows computing the prefix sum by summing up 2
+    // values at once.
+    innerPrefixSum16(arr);
+    expand16(arr);
+    final int l0 = base;
+    final int l1 = base + arr[HALF_BLOCK_SIZE - 1];
+    for (int i = 0; i < HALF_BLOCK_SIZE; ++i) {
+      arr[i] += l0;
+      arr[HALF_BLOCK_SIZE + i] += l1;
+    }
+  }
+
+  private static void prefixSum32(int[] arr, int base) {
+    arr[0] += base;
+    for (int i = 1; i < BLOCK_SIZE; ++i) {
+      arr[i] += arr[i-1];
     }
   }
 
   // For some reason unrolling seems to help
-  private static void innerPrefixSum8(long[] arr) {
-    arr[1] += arr[0];
-    arr[2] += arr[1];
-    arr[3] += arr[2];
-    arr[4] += arr[3];
-    arr[5] += arr[4];
-    arr[6] += arr[5];
-    arr[7] += arr[6];
-    arr[8] += arr[7];
-    arr[9] += arr[8];
-    arr[10] += arr[9];
-    arr[11] += arr[10];
-    arr[12] += arr[11];
-    arr[13] += arr[12];
-    arr[14] += arr[13];
-    arr[15] += arr[14];
-  }
-
-  // For some reason unrolling seems to help
-  private static void innerPrefixSum16(long[] arr) {
+  private static void innerPrefixSum8(int[] arr) {
     arr[1] += arr[0];
     arr[2] += arr[1];
     arr[3] += arr[2];
@@ -199,7 +156,7 @@ public final class ForDeltaUtil {
   }
 
   // For some reason unrolling seems to help
-  private static void innerPrefixSum32(long[] arr) {
+  private static void innerPrefixSum16(int[] arr) {
     arr[1] += arr[0];
     arr[2] += arr[1];
     arr[3] += arr[2];
@@ -265,18 +222,18 @@ public final class ForDeltaUtil {
     arr[63] += arr[62];
   }
 
-  private final long[] tmp = new long[BLOCK_SIZE / 2];
+  private final int[] tmp = new int[BLOCK_SIZE];
 
   /**
    * Encode deltas of a strictly monotonically increasing sequence of integers. The provided {@code
-   * longs} are expected to be deltas between consecutive values.
+   * ints} are expected to be deltas between consecutive values.
    */
-  void encodeDeltas(long[] longs, DataOutput out) throws IOException {
-    if (longs[0] == 1 && PForUtil.allEqual(longs)) { // happens with very dense postings
+  void encodeDeltas(int[] ints, DataOutput out) throws IOException {
+    if (ints[0] == 1 && PForUtil.allEqual(ints)) { // happens with very dense postings
       out.writeByte((byte) 0);
     } else {
-      long or = 0;
-      for (long l : longs) {
+      int or = 0;
+      for (int l : ints) {
         or |= l;
       }
       assert or != 0;
@@ -284,38 +241,37 @@ public final class ForDeltaUtil {
       out.writeByte((byte) bitsPerValue);
 
       final int primitiveSize;
-      if (bitsPerValue <= 4) {
+      if (bitsPerValue <= 3) {
         primitiveSize = 8;
-        collapse8(longs);
-      } else if (bitsPerValue <= 11) {
+        collapse8(ints);
+      } else if (bitsPerValue <= 10) {
         primitiveSize = 16;
-        collapse16(longs);
+        collapse16(ints);
       } else {
         primitiveSize = 32;
-        collapse32(longs);
       }
-      encode(longs, bitsPerValue, primitiveSize, out, tmp);
+      encode(ints, bitsPerValue, primitiveSize, out, tmp);
     }
   }
 
-  /** Decode deltas, compute the prefix sum and add {@code base} to all decoded longs. */
-  void decodeAndPrefixSum(PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
+  /** Decode deltas, compute the prefix sum and add {@code base} to all decoded ints. */
+  void decodeAndPrefixSum(PostingDecodingUtil pdu, int base, int[] ints) throws IOException {
     final int bitsPerValue = Byte.toUnsignedInt(pdu.in.readByte());
     if (bitsPerValue == 0) {
-      prefixSumOfOnes(longs, base);
+      prefixSumOfOnes(ints, base);
     } else {
-      decodeAndPrefixSum(bitsPerValue, pdu, base, longs);
+      decodeAndPrefixSum(bitsPerValue, pdu, base, ints);
     }
   }
 
 """
 
 def primitive_size_for_bpv(bpv):
-  if bpv <= 4:
-    # If we have 4 bits per value or less then we can compute the prefix sum of 16 longs that store 8 4-bit values each without overflowing.
+  if bpv <= 3:
+    # If we have 4 bits per value or less then we can compute the prefix sum of 32 ints that store 4 8-bit values each without overflowing.
     return 8
-  elif bpv <= 11:
-    # If we have 11 bits per value or less then we can compute the prefix sum of 32 longs that store 4 16-bit values each without overflowing.
+  elif bpv <= 10:
+    # If we have 10 bits per value or less then we can compute the prefix sum of 64 ints that store 2 16-bit values each without overflowing.
     return 16
   else:
     # No risk of overflow with 32 bits per value
@@ -329,54 +285,54 @@ def next_primitive(bpv):
   else:
     return 32
 
-def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, f):
+def writeRemainder(bpv, next_primitive, remaining_bits_per_int, o, num_values, f):
   iteration = 1
-  num_longs = bpv * num_values / remaining_bits_per_long
-  while num_longs % 2 == 0 and num_values % 2 == 0:
-    num_longs /= 2
+  num_ints = bpv * num_values / remaining_bits_per_int
+  while num_ints % 2 == 0 and num_values % 2 == 0:
+    num_ints /= 2
     num_values /= 2
     iteration *= 2
-  f.write('    for (int iter = 0, tmpIdx = 0, longsIdx = %d; iter < %d; ++iter, tmpIdx += %d, longsIdx += %d) {\n' %(o, iteration, num_longs, num_values))
+  f.write('    for (int iter = 0, tmpIdx = 0, intsIdx = %d; iter < %d; ++iter, tmpIdx += %d, intsIdx += %d) {\n' %(o, iteration, num_ints, num_values))
   i = 0
   remaining_bits = 0
   tmp_idx = 0
   for i in range(int(num_values)):
     b = bpv
     if remaining_bits == 0:
-      b -= remaining_bits_per_long
-      f.write('      long l%d = tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
+      b -= remaining_bits_per_int
+      f.write('      int l%d = tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
     else:
       b -= remaining_bits
-      f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
+      f.write('      int l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
     tmp_idx += 1
-    while b >= remaining_bits_per_long:
-      b -= remaining_bits_per_long
+    while b >= remaining_bits_per_int:
+      b -= remaining_bits_per_int
       f.write('      l%d |= tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
       tmp_idx += 1
     if b > 0:
-      f.write('      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_long-b, next_primitive, b))
-      remaining_bits = remaining_bits_per_long-b
-    f.write('      longs[longsIdx + %d] = l%d;\n' %(i, i))
+      f.write('      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_int-b, next_primitive, b))
+      remaining_bits = remaining_bits_per_int-b
+    f.write('      ints[intsIdx + %d] = l%d;\n' %(i, i))
   f.write('    }\n')
   
 def writeDecode(bpv, f):
   next_primitive = primitive_size_for_bpv(bpv)
   if next_primitive % bpv == 0:
-    f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, long[] longs) throws IOException {\n' %(bpv, next_primitive))
+    f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, int[] ints) throws IOException {\n' %(bpv, next_primitive))
   else:
-    f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %(bpv, next_primitive))
+    f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {\n' %(bpv, next_primitive))
   if bpv == next_primitive:
-    f.write('    pdu.in.readLongs(longs, 0, %d);\n' %(bpv*2))
+    f.write('    pdu.in.readInts(ints, 0, %d);\n' %(bpv*4))
   else:
-    num_values_per_long = 64 / next_primitive
+    num_values_per_int = 32 / next_primitive
     remaining_bits = next_primitive % bpv
     num_iters = (next_primitive - 1) // bpv
-    o = 2 * bpv * num_iters
+    o = 4 * bpv * num_iters
     if remaining_bits == 0:
-      f.write('    pdu.splitLongs(%d, longs, %d, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, o, next_primitive, next_primitive - num_iters * bpv))
+      f.write('    pdu.splitInts(%d, ints, %d, %d, MASK%d_%d, ints, %d, MASK%d_%d);\n' %(bpv*4, next_primitive - bpv, bpv, next_primitive, bpv, o, next_primitive, next_primitive - num_iters * bpv))
     else:
-      f.write('    pdu.splitLongs(%d, longs, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, next_primitive, next_primitive - num_iters * bpv))
-      writeRemainder(bpv, next_primitive, remaining_bits, o, 128/num_values_per_long - o, f)
+      f.write('    pdu.splitInts(%d, ints, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*4, next_primitive - bpv, bpv, next_primitive, bpv, next_primitive, next_primitive - num_iters * bpv))
+      writeRemainder(bpv, next_primitive, remaining_bits, o, 128/num_values_per_int - o, f)
   f.write('  }\n')
 
 if __name__ == '__main__':
@@ -384,9 +340,9 @@ if __name__ == '__main__':
   f.write(HEADER)
   f.write("""
   /**
-   * Delta-decode 128 integers into {@code longs}.
+   * Delta-decode 128 integers into {@code ints}.
    */
-  void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, long base, long[] longs) throws IOException {
+  void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, int base, int[] ints) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -394,19 +350,19 @@ if __name__ == '__main__':
     f.write('    case %d:\n' %bpv)
     if next_primitive(bpv) == primitive_size:
       if primitive_size % bpv == 0:
-        f.write('        decode%d(pdu, longs);\n' %bpv)
+        f.write('        decode%d(pdu, ints);\n' %bpv)
       else:
-        f.write('        decode%d(pdu, tmp, longs);\n' %bpv)
+        f.write('        decode%d(pdu, tmp, ints);\n' %bpv)
     else:
       if primitive_size % bpv == 0:
-        f.write('        decode%dTo%d(pdu, longs);\n' %(bpv, primitive_size))
+        f.write('        decode%dTo%d(pdu, ints);\n' %(bpv, primitive_size))
       else:
-        f.write('        decode%dTo%d(pdu, tmp, longs);\n' %(bpv, primitive_size))
-    f.write('      prefixSum%d(longs, base);\n' %primitive_size)
+        f.write('        decode%dTo%d(pdu, tmp, ints);\n' %(bpv, primitive_size))
+    f.write('      prefixSum%d(ints, base);\n' %primitive_size)
     f.write('      break;\n')
   f.write('    default:\n')
-  f.write('      decodeSlow(bitsPerValue, pdu, tmp, longs);\n')
-  f.write('      prefixSum32(longs, base);\n')
+  f.write('      decodeSlow(bitsPerValue, pdu, tmp, ints);\n')
+  f.write('      prefixSum32(ints, base);\n')
   f.write('      break;\n')
   f.write('    }\n')
   f.write('  }\n')

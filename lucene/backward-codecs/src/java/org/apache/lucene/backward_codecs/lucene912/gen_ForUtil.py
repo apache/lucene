@@ -40,10 +40,9 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.backward_codecs.lucene912;
 
 import java.io.IOException;
-import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 
@@ -54,7 +53,7 @@ import org.apache.lucene.store.IndexInput;
  * else if bitsPerValue &lt;= 16 we pack 4 ints per long
  * else we pack 2 ints per long
  */
-public final class ForUtil {
+final class ForUtil {
 
   public static final int BLOCK_SIZE = 128;
   static final int BLOCK_SIZE_LOG2 = 7;
@@ -222,11 +221,11 @@ public final class ForUtil {
     return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
-  static void decodeSlow(int bitsPerValue, PostingDecodingUtil pdu, long[] tmp, long[] longs)
+  static void decodeSlow(int bitsPerValue, IndexInput in, long[] tmp, long[] longs)
       throws IOException {
     final int numLongs = bitsPerValue << 1;
     final long mask = MASKS32[bitsPerValue];
-    pdu.splitLongs(numLongs, longs, 32 - bitsPerValue, 32, mask, tmp, 0, -1L);
+    splitLongs(in, numLongs, longs, 32 - bitsPerValue, 32, mask, tmp, 0, -1L);
     final int remainingBitsPerLong = 32 - bitsPerValue;
     final long mask32RemainingBitsPerLong = MASKS32[remainingBitsPerLong];
     int tmpIdx = 0;
@@ -245,6 +244,20 @@ public final class ForUtil {
         remainingBits = remainingBitsPerLong;
       }
       longs[longsIdx] = l;
+    }
+  }
+
+  static void splitLongs(
+      IndexInput in, int count, long[] b, int bShift, int dec, long bMask, long[] c, int cIndex, long cMask)
+      throws IOException {
+    // takes advantage of the C2 compiler's loop unrolling and auto-vectorization.
+    in.readLongs(c, cIndex, count);
+    int maxIter = (bShift - 1) / dec;
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j <= maxIter; ++j) {
+        b[count * j + i] = (c[cIndex + i] >>> (bShift - j * dec)) & bMask;
+      }
+      c[cIndex + i] &= cMask;
     }
   }
 
@@ -288,19 +301,19 @@ def writeDecode(bpv, f):
   elif bpv <= 16:
     next_primitive = 16
   if bpv == next_primitive:
-    f.write('  static void decode%d(PostingDecodingUtil pdu, long[] longs) throws IOException {\n' %bpv)
-    f.write('    pdu.in.readLongs(longs, 0, %d);\n' %(bpv*2))
+    f.write('  static void decode%d(IndexInput in, long[] longs) throws IOException {\n' %bpv)
+    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
   else:
     num_values_per_long = 64 / next_primitive
     remaining_bits = next_primitive % bpv
     num_iters = (next_primitive - 1) // bpv
     o = 2 * bpv * num_iters
     if remaining_bits == 0:
-      f.write('  static void decode%d(PostingDecodingUtil pdu, long[] longs) throws IOException {\n' %bpv)
-      f.write('    pdu.splitLongs(%d, longs, %d, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, o, next_primitive, next_primitive - num_iters * bpv))
+      f.write('  static void decode%d(IndexInput in, long[] longs) throws IOException {\n' %bpv)
+      f.write('    splitLongs(in, %d, longs, %d, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, o, next_primitive, next_primitive - num_iters * bpv))
     else:
-      f.write('  static void decode%d(PostingDecodingUtil pdu, long[] tmp, long[] longs) throws IOException {\n' %bpv)
-      f.write('    pdu.splitLongs(%d, longs, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, next_primitive, next_primitive - num_iters * bpv))
+      f.write('  static void decode%d(IndexInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
+      f.write('    splitLongs(in, %d, longs, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, next_primitive, next_primitive - num_iters * bpv))
       writeRemainder(bpv, next_primitive, remaining_bits, o, 128/num_values_per_long - o, f)
   f.write('  }\n')
 
@@ -326,7 +339,7 @@ if __name__ == '__main__':
 
   f.write("""
   /** Decode 128 integers into {@code longs}. */
-  void decode(int bitsPerValue, PostingDecodingUtil pdu, long[] longs) throws IOException {
+  void decode(int bitsPerValue, IndexInput in, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -337,13 +350,13 @@ if __name__ == '__main__':
       next_primitive = 16
     f.write('      case %d:\n' %bpv)
     if next_primitive % bpv == 0:
-      f.write('        decode%d(pdu, longs);\n' %bpv)
+      f.write('        decode%d(in, longs);\n' %bpv)
     else:
-      f.write('        decode%d(pdu, tmp, longs);\n' %bpv)
+      f.write('        decode%d(in, tmp, longs);\n' %bpv)
     f.write('        expand%d(longs);\n' %next_primitive)
     f.write('        break;\n')
   f.write('      default:\n')
-  f.write('        decodeSlow(bitsPerValue, pdu, tmp, longs);\n')
+  f.write('        decodeSlow(bitsPerValue, in, tmp, longs);\n')
   f.write('        expand32(longs);\n')
   f.write('        break;\n')
   f.write('    }\n')

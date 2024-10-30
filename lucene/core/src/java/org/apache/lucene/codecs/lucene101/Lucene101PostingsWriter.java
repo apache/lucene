@@ -14,16 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.BLOCK_SIZE;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.DOC_CODEC;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.LEVEL1_MASK;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.META_CODEC;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.TERMS_CODEC;
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.VERSION_CURRENT;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.LEVEL1_MASK;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.META_CODEC;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.POS_CODEC;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -32,7 +32,7 @@ import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.PushPostingsWriterBase;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Impact;
@@ -48,8 +48,8 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
-/** Writer for {@link Lucene912PostingsFormat}. */
-public class Lucene912PostingsWriter extends PushPostingsWriterBase {
+/** Writer for {@link Lucene101PostingsFormat}. */
+public class Lucene101PostingsWriter extends PushPostingsWriterBase {
 
   static final IntBlockTermState EMPTY_STATE = new IntBlockTermState();
 
@@ -65,14 +65,14 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private long posStartFP;
   private long payStartFP;
 
-  final long[] docDeltaBuffer;
-  final long[] freqBuffer;
+  final int[] docDeltaBuffer;
+  final int[] freqBuffer;
   private int docBufferUpto;
 
-  final long[] posDeltaBuffer;
-  final long[] payloadLengthBuffer;
-  final long[] offsetStartDeltaBuffer;
-  final long[] offsetLengthBuffer;
+  final int[] posDeltaBuffer;
+  final int[] payloadLengthBuffer;
+  final int[] offsetStartDeltaBuffer;
+  final int[] offsetLengthBuffer;
   private int posBufferUpto;
 
   private byte[] payloadBytes;
@@ -125,13 +125,13 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
   private final ByteBuffersDataOutput level1Output = ByteBuffersDataOutput.newResettableInstance();
 
   /** Sole constructor. */
-  public Lucene912PostingsWriter(SegmentWriteState state) throws IOException {
+  public Lucene101PostingsWriter(SegmentWriteState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.META_EXTENSION);
     String docFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.DOC_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.DOC_EXTENSION);
     metaOut = state.directory.createOutput(metaFileName, state.context);
     IndexOutput posOut = null;
     IndexOutput payOut = null;
@@ -145,25 +145,25 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       forDeltaUtil = new ForDeltaUtil();
       pforUtil = new PForUtil();
       if (state.fieldInfos.hasProx()) {
-        posDeltaBuffer = new long[BLOCK_SIZE];
+        posDeltaBuffer = new int[BLOCK_SIZE];
         String posFileName =
             IndexFileNames.segmentFileName(
-                state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.POS_EXTENSION);
+                state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.POS_EXTENSION);
         posOut = state.directory.createOutput(posFileName, state.context);
         CodecUtil.writeIndexHeader(
             posOut, POS_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
 
         if (state.fieldInfos.hasPayloads()) {
           payloadBytes = new byte[128];
-          payloadLengthBuffer = new long[BLOCK_SIZE];
+          payloadLengthBuffer = new int[BLOCK_SIZE];
         } else {
           payloadBytes = null;
           payloadLengthBuffer = null;
         }
 
         if (state.fieldInfos.hasOffsets()) {
-          offsetStartDeltaBuffer = new long[BLOCK_SIZE];
-          offsetLengthBuffer = new long[BLOCK_SIZE];
+          offsetStartDeltaBuffer = new int[BLOCK_SIZE];
+          offsetLengthBuffer = new int[BLOCK_SIZE];
         } else {
           offsetStartDeltaBuffer = null;
           offsetLengthBuffer = null;
@@ -174,7 +174,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
               IndexFileNames.segmentFileName(
                   state.segmentInfo.name,
                   state.segmentSuffix,
-                  Lucene912PostingsFormat.PAY_EXTENSION);
+                  Lucene101PostingsFormat.PAY_EXTENSION);
           payOut = state.directory.createOutput(payFileName, state.context);
           CodecUtil.writeIndexHeader(
               payOut, PAY_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
@@ -195,8 +195,8 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
       }
     }
 
-    docDeltaBuffer = new long[BLOCK_SIZE];
-    freqBuffer = new long[BLOCK_SIZE];
+    docDeltaBuffer = new int[BLOCK_SIZE];
+    freqBuffer = new int[BLOCK_SIZE];
   }
 
   @Override
@@ -516,7 +516,7 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
     final int singletonDocID;
     if (state.docFreq == 1) {
       // pulse the singleton docid into the term dictionary, freq is implicitly totalTermFreq
-      singletonDocID = (int) docDeltaBuffer[0] - 1;
+      singletonDocID = docDeltaBuffer[0] - 1;
     } else {
       singletonDocID = -1;
       flushDocBlock(true);
@@ -546,9 +546,9 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
         int lastOffsetLength = -1; // force first offset length to be written
         int payloadBytesReadUpto = 0;
         for (int i = 0; i < posBufferUpto; i++) {
-          final int posDelta = (int) posDeltaBuffer[i];
+          final int posDelta = posDeltaBuffer[i];
           if (writePayloads) {
-            final int payloadLength = (int) payloadLengthBuffer[i];
+            final int payloadLength = payloadLengthBuffer[i];
             if (payloadLength != lastPayloadLength) {
               lastPayloadLength = payloadLength;
               posOut.writeVInt((posDelta << 1) | 1);
@@ -566,8 +566,8 @@ public class Lucene912PostingsWriter extends PushPostingsWriterBase {
           }
 
           if (writeOffsets) {
-            int delta = (int) offsetStartDeltaBuffer[i];
-            int length = (int) offsetLengthBuffer[i];
+            int delta = offsetStartDeltaBuffer[i];
+            int length = offsetLengthBuffer[i];
             if (length == lastOffsetLength) {
               posOut.writeVInt(delta << 1);
             } else {
