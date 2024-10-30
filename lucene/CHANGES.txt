@@ -54,6 +54,8 @@ Optimizations
 * GITHUB#13963: Speed up nextDoc() implementations in Lucene912PostingsReader.
   (Adrien Grand)
 
+* GITHUB#13958: Speed up advancing within a block. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
