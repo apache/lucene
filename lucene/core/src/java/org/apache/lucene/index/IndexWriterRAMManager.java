@@ -17,79 +17,73 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * For managing multiple instances of {@link IndexWriter} sharing the same buffer (configured by
  * {@link IndexWriterConfig#setRAMBufferSizeMB})
  */
 public class IndexWriterRAMManager {
-
-  private final IndexWriterConfig config;
-  private final Map<Integer, IndexWriter> idToWriter = new ConcurrentHashMap<>();
+  private final LinkedIdToWriter idToWriter = new LinkedIdToWriter();
   private final AtomicInteger idGenerator = new AtomicInteger();
+  private double ramBufferSizeMB;
+  private final AtomicLong totalRamTracker;
 
   /**
    * Default constructor
    *
-   * @param config the index writer config containing the max RAM buffer size
+   * @param ramBufferSizeMB the RAM buffer size to use between all registered {@link IndexWriter}
+   *     instances
    */
-  public IndexWriterRAMManager(IndexWriterConfig config) {
-    this.config = config;
+  IndexWriterRAMManager(double ramBufferSizeMB) {
+    if (ramBufferSizeMB != IndexWriterConfig.DISABLE_AUTO_FLUSH && ramBufferSizeMB <= 0.0) {
+      throw new IllegalArgumentException("ramBufferSize should be > 0.0 MB when enabled");
+    }
+    this.ramBufferSizeMB = ramBufferSizeMB;
+    this.totalRamTracker = new AtomicLong(0);
+  }
+
+  /** Set the buffer size for this manager */
+  public void setRamBufferSizeMB(double ramBufferSizeMB) {
+    this.ramBufferSizeMB = ramBufferSizeMB;
+  }
+
+  /** Get the buffer size assigned to this manager */
+  public double getRamBufferSizeMB() {
+    return ramBufferSizeMB;
+  }
+
+  /**
+   * Calls {@link IndexWriter#flushNextBuffer()} in a round-robin fashion starting from the first
+   * writer added that has not been removed yet. Subsequent calls will flush the next writer in line
+   * and eventually loop back to the beginning.
+   */
+  public void flushRoundRobin() throws IOException {
+    idToWriter.flushRoundRobin();
   }
 
   private int registerWriter(IndexWriter writer) {
     int id = idGenerator.incrementAndGet();
-    idToWriter.put(id, writer);
+    idToWriter.addWriter(writer, id);
     return id;
   }
 
   private void removeWriter(int id) {
-    if (idToWriter.containsKey(id) == false) {
-      throw new IllegalArgumentException(
-          "Writer " + id + " has not been registered or has been removed already");
-    }
-    idToWriter.remove(id);
+    idToWriter.removeWriter(id);
   }
 
-  private void flushIfNecessary(int id) throws IOException {
-    if (idToWriter.containsKey(id) == false) {
-      throw new IllegalArgumentException(
-          "Writer " + id + " has not been registered or has been removed already");
-    }
-    long totalRam = 0L;
-    for (IndexWriter writer : idToWriter.values()) {
-      totalRam += writer.ramBytesUsed();
-    }
-    if (totalRam >= config.getRAMBufferSizeMB() * 1024 * 1024) {
-      IndexWriter writerToFlush = chooseWriterToFlush(idToWriter.values(), idToWriter.get(id));
-      writerToFlush.flushNextBuffer();
-    }
+  private void flushIfNecessary(
+      FlushPolicy flushPolicy, PerWriterIndexWriterRAMManager perWriterRAMManager)
+      throws IOException {
+    flushPolicy.flushWriter(this, perWriterRAMManager);
   }
 
-  /**
-   * Chooses which writer should be flushed. Default implementation chooses the writer with most RAM
-   * usage
-   *
-   * @param writers list of writers registered with this {@link IndexWriterRAMManager}
-   * @param callingWriter the writer calling {@link IndexWriterRAMManager#flushIfNecessary}
-   * @return the IndexWriter to flush
-   */
-  protected static IndexWriter chooseWriterToFlush(
-      Collection<IndexWriter> writers, IndexWriter callingWriter) {
-    IndexWriter highestBufferWriter = null;
-    long highestRam = 0L;
-    for (IndexWriter writer : writers) {
-      long writerRamBytes = writer.ramBytesUsed();
-      if (writerRamBytes > highestRam) {
-        highestRam = writerRamBytes;
-        highestBufferWriter = writer;
-      }
-    }
-    return highestBufferWriter;
+  private long updateAndGetCurrentBytesUsed(int id) {
+    return totalRamTracker.addAndGet(idToWriter.updateRAMAndGetDifference(id));
   }
 
   /**
@@ -109,8 +103,99 @@ public class IndexWriterRAMManager {
       manager.removeWriter(id);
     }
 
-    void flushIfNecessary() throws IOException {
-      manager.flushIfNecessary(id);
+    void flushIfNecessary(FlushPolicy flushPolicy) throws IOException {
+      manager.flushIfNecessary(flushPolicy, this);
+    }
+
+    long getTotalBufferBytesUsed() {
+      return manager.updateAndGetCurrentBytesUsed(id);
+    }
+  }
+
+  private static class LinkedIdToWriter {
+    private final Map<Integer, IndexWriterNode> idToWriterNode = new HashMap<>();
+    private IndexWriterNode first;
+    private IndexWriterNode last;
+
+    private final ReentrantLock lock = new ReentrantLock();
+
+    // for round-robin flushing
+    private int lastIdFlushed = -1;
+
+    void addWriter(IndexWriter writer, int id) {
+      IndexWriterNode node = new IndexWriterNode(writer, id);
+      lock.lock();
+      if (idToWriterNode.isEmpty()) {
+        first = node;
+        last = node;
+      }
+      node.next = first;
+      last.next = node;
+      node.prev = last;
+      last = node;
+      idToWriterNode.put(id, node);
+      lock.unlock();
+    }
+
+    void removeWriter(int id) {
+      lock.lock();
+      if (idToWriterNode.containsKey(id) == false) {
+        throw new IllegalArgumentException(
+            "Writer " + id + " has not been registered or has been removed already");
+      }
+      IndexWriterNode nodeToRemove = idToWriterNode.remove(id);
+      if (idToWriterNode.isEmpty()) {
+        first = null;
+        last = null;
+        return;
+      }
+      nodeToRemove.prev.next = nodeToRemove.next;
+      nodeToRemove.next.prev = nodeToRemove.prev;
+      if (nodeToRemove == first) {
+        first = nodeToRemove.next;
+      }
+      if (nodeToRemove == last) {
+        last = nodeToRemove.prev;
+      }
+      lock.unlock();
+    }
+
+    void flushRoundRobin() throws IOException {
+      lock.lock();
+      if (idToWriterNode.isEmpty()) {
+        throw new IllegalCallerException("No registered writers");
+      }
+      int idToFlush;
+      if (lastIdFlushed == -1) {
+        idToFlush = first.id;
+      } else {
+        idToFlush = idToWriterNode.get(lastIdFlushed).next.id;
+      }
+      idToWriterNode.get(idToFlush).writer.flushNextBuffer();
+      lastIdFlushed = idToFlush;
+      lock.unlock();
+    }
+
+    long updateRAMAndGetDifference(int id) {
+      lock.lock();
+      long oldRAMBytesUsed = idToWriterNode.get(id).ram;
+      long newRAMBytesUsed = idToWriterNode.get(id).writer.ramBytesUsed();
+      lock.unlock();
+      return newRAMBytesUsed - oldRAMBytesUsed;
+    }
+
+    private static class IndexWriterNode {
+      IndexWriter writer;
+      int id;
+      long ram;
+      IndexWriterNode next;
+      IndexWriterNode prev;
+
+      IndexWriterNode(IndexWriter writer, int id) {
+        this.writer = writer;
+        this.id = id;
+        this.ram = writer.ramBytesUsed();
+      }
     }
   }
 }

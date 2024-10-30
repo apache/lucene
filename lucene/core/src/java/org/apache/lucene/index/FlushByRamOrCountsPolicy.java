@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import java.io.IOException;
+
 /**
  * Default {@link FlushPolicy} implementation that flushes new segments based on RAM used and
  * document count depending on the IndexWriter's {@link IndexWriterConfig}. It also applies pending
@@ -49,6 +51,17 @@ class FlushByRamOrCountsPolicy extends FlushPolicy {
       } else if (activeRam + deletesRam >= limit && perThread != null) {
         flushActiveBytes(control, perThread);
       }
+    }
+  }
+
+  @Override
+  public void flushWriter(
+      IndexWriterRAMManager ramManager,
+      IndexWriterRAMManager.PerWriterIndexWriterRAMManager perWriterRamManager)
+      throws IOException {
+    long totalBytes = perWriterRamManager.getTotalBufferBytesUsed();
+    if (totalBytes > ramManager.getRamBufferSizeMB() * 1024 * 1024) {
+      ramManager.flushRoundRobin();
     }
   }
 

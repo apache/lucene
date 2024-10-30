@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import java.io.IOException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.InfoStream;
 
@@ -56,6 +57,17 @@ abstract class FlushPolicy {
    */
   public abstract void onChange(
       DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread);
+
+  /**
+   * Chooses which writer should be flushed. Default implementation chooses the writer with most RAM
+   * usage
+   *
+   * @param ramManager the {@link IndexWriterRAMManager} being used to actually flush the writers
+   */
+  public abstract void flushWriter(
+      IndexWriterRAMManager ramManager,
+      IndexWriterRAMManager.PerWriterIndexWriterRAMManager perWriterRamManager)
+      throws IOException;
 
   /** Called by DocumentsWriter to initialize the FlushPolicy */
   protected synchronized void init(LiveIndexWriterConfig indexWriterConfig) {
