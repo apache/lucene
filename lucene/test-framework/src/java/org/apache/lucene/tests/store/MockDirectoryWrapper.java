@@ -40,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
@@ -929,7 +930,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           // now look for unreferenced files: discount ones that we tried to delete but could not
           Set<String> allFiles = new HashSet<>(Arrays.asList(listAll()));
           String[] startFiles = allFiles.toArray(new String[0]);
-          IndexWriterConfig iwc = new IndexWriterConfig(null);
+          IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
           iwc.setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE);
 
           // We must do this before opening writer otherwise writer will be angry if there are
@@ -983,7 +984,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           int numDocs1 = ir1.numDocs();
           ir1.close();
           // Don't commit on close, so that no merges will be scheduled.
-          new IndexWriter(this, new IndexWriterConfig(null).setCommitOnClose(false)).close();
+          new IndexWriter(this, new IndexWriterConfig((Analyzer) null).setCommitOnClose(false))
+              .close();
           DirectoryReader ir2 = DirectoryReader.open(this);
           int numDocs2 = ir2.numDocs();
           ir2.close();

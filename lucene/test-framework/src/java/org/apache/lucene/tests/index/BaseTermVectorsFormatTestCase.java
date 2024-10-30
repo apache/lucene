@@ -1484,7 +1484,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
 
   public void testPostingsEnumPayloads() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
     IndexWriter iw = new IndexWriter(dir, iwc);
     Document doc = new Document();
     Token token1 = new Token("bar", 0, 3);
@@ -1686,7 +1686,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
 
   public void testPostingsEnumAll() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
     IndexWriter iw = new IndexWriter(dir, iwc);
     Document doc = new Document();
     Token token1 = new Token("bar", 0, 3);

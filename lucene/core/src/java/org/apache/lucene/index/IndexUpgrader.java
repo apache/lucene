@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.CommandLineUtil;
@@ -135,7 +136,7 @@ public final class IndexUpgrader {
    * {@code matchVersion}. The tool refuses to upgrade indexes with multiple commit points.
    */
   public IndexUpgrader(Directory dir) {
-    this(dir, new IndexWriterConfig(null), false);
+    this(dir, new IndexWriterConfig((Analyzer) null), false);
   }
 
   /**
@@ -145,7 +146,7 @@ public final class IndexUpgrader {
    * be sent to this stream.
    */
   public IndexUpgrader(Directory dir, InfoStream infoStream, boolean deletePriorCommits) {
-    this(dir, new IndexWriterConfig(null), deletePriorCommits);
+    this(dir, new IndexWriterConfig((Analyzer) null), deletePriorCommits);
     if (null != infoStream) {
       this.iwc.setInfoStream(infoStream);
     }

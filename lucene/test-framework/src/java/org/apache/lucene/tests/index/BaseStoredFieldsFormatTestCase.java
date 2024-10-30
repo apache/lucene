@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
@@ -832,7 +833,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     Directory[] dirs = new Directory[10];
     for (int i = 0; i < dirs.length; i++) {
       Directory dir = newDirectory();
-      IndexWriterConfig iwc = new IndexWriterConfig(null);
+      IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
       IndexWriter iw = new IndexWriter(dir, iwc);
       Document doc = new Document();
       for (int j = 0; j < 10; j++) {
@@ -849,7 +850,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
         reader = new MismatchedDirectoryReader(reader, random());
       }
       dirs[i] = newDirectory();
-      IndexWriter adder = new IndexWriter(dirs[i], new IndexWriterConfig(null));
+      IndexWriter adder = new IndexWriter(dirs[i], new IndexWriterConfig((Analyzer) null));
       TestUtil.addIndexesSlowly(adder, reader);
       adder.commit();
       adder.close();
@@ -858,7 +859,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     }
 
     Directory everything = newDirectory();
-    IndexWriter iw = new IndexWriter(everything, new IndexWriterConfig(null));
+    IndexWriter iw = new IndexWriter(everything, new IndexWriterConfig((Analyzer) null));
     iw.addIndexes(dirs);
     iw.forceMerge(1);
 

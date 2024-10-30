@@ -941,14 +941,11 @@ public class IndexWriter
    * @param d the index directory. The index is either created or appended according <code>
    *     conf.getOpenMode()</code>.
    * @param conf the configuration settings according to which IndexWriter should be initialized.
-   * @param indexWriterRAMManager The RAM manager used for multi-tenant RAM management
    * @throws IOException if the directory cannot be read/written to, or if it does not exist and
    *     <code>conf.getOpenMode()</code> is <code>OpenMode.APPEND</code> or if there is any other
    *     low-level IO error
    */
-  public IndexWriter(
-      Directory d, IndexWriterConfig conf, IndexWriterRAMManager indexWriterRAMManager)
-      throws IOException {
+  public IndexWriter(Directory d, IndexWriterConfig conf) throws IOException {
     enableTestPoints = isEnableTestPoints();
     conf.setIndexWriter(this); // prevent reuse by other instances
     config = conf;
@@ -1216,27 +1213,9 @@ public class IndexWriter
         writeLock = null;
       }
     }
-
-    if (indexWriterRAMManager != null) {
-      this.indexWriterRAMManager =
-          new IndexWriterRAMManager.PerWriterIndexWriterRAMManager(this, indexWriterRAMManager);
-    } else {
-      this.indexWriterRAMManager = null;
-    }
-  }
-
-  /**
-   * Constructor for IndexWriter's that don't require multi-tenant RAM management
-   *
-   * @param d the index directory. The index is either created or appended according <code>
-   *     conf.getOpenMode()</code>.
-   * @param conf the configuration settings according to which IndexWriter should be initialized.
-   * @throws IOException if the directory cannot be read/written to, or if it does not exist and
-   *     <code>conf.getOpenMode()</code> is <code>OpenMode.APPEND</code> or if there is any other
-   *     low-level IO error
-   */
-  public IndexWriter(Directory d, IndexWriterConfig conf) throws IOException {
-    this(d, conf, null);
+    this.indexWriterRAMManager =
+        new IndexWriterRAMManager.PerWriterIndexWriterRAMManager(
+            this, config.getIndexWriterRAMManager());
   }
 
   /** Confirms that the incoming index sort (if any) matches the existing index sort (if any). */
@@ -1366,10 +1345,6 @@ public class IndexWriter
       }
       rollbackInternal(); // if we got that far lets rollback and close
     }
-
-    if (indexWriterRAMManager != null) {
-      indexWriterRAMManager.removeWriter();
-    }
   }
 
   /**
@@ -1395,6 +1370,7 @@ public class IndexWriter
    */
   @Override
   public void close() throws IOException {
+    indexWriterRAMManager.removeWriter();
     if (config.getCommitOnClose()) {
       shutdown();
     } else {
@@ -6042,9 +6018,7 @@ public class IndexWriter
       seqNo = -seqNo;
       processEvents(true);
     }
-    if (indexWriterRAMManager != null) {
-      indexWriterRAMManager.flushIfNecessary();
-    }
+    indexWriterRAMManager.flushIfNecessary(config.flushPolicy);
     return seqNo;
   }
 

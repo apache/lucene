@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.codecs.Codec;
@@ -46,9 +47,9 @@ import org.apache.lucene.tests.util.TestUtil;
 public class Test2BPostingsBytes extends LuceneTestCase {
 
   public void test() throws Exception {
-    IndexWriterConfig defaultConfig = new IndexWriterConfig(null);
+    IndexWriterConfig defaultConfig = new IndexWriterConfig((Analyzer) null);
     Codec defaultCodec = defaultConfig.getCodec();
-    if ((new IndexWriterConfig(null)).getCodec() instanceof CompressingCodec) {
+    if ((new IndexWriterConfig((Analyzer) null)).getCodec() instanceof CompressingCodec) {
       Pattern regex = Pattern.compile("maxDocsPerChunk=(\\d+), blockSize=(\\d+)");
       Matcher matcher = regex.matcher(defaultCodec.toString());
       assertTrue(
@@ -116,7 +117,7 @@ public class Test2BPostingsBytes extends LuceneTestCase {
     if (dir2 instanceof MockDirectoryWrapper) {
       ((MockDirectoryWrapper) dir2).setThrottling(MockDirectoryWrapper.Throttling.NEVER);
     }
-    IndexWriter w2 = new IndexWriter(dir2, new IndexWriterConfig(null));
+    IndexWriter w2 = new IndexWriter(dir2, new IndexWriterConfig((Analyzer) null));
     TestUtil.addIndexesSlowly(w2, subReaders);
     w2.forceMerge(1);
     w2.close();
@@ -129,7 +130,7 @@ public class Test2BPostingsBytes extends LuceneTestCase {
     if (dir3 instanceof MockDirectoryWrapper) {
       ((MockDirectoryWrapper) dir3).setThrottling(MockDirectoryWrapper.Throttling.NEVER);
     }
-    IndexWriter w3 = new IndexWriter(dir3, new IndexWriterConfig(null));
+    IndexWriter w3 = new IndexWriter(dir3, new IndexWriterConfig((Analyzer) null));
     TestUtil.addIndexesSlowly(w3, subReaders);
     w3.forceMerge(1);
     w3.close();

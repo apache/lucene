@@ -17,6 +17,7 @@
 package org.apache.lucene.misc;
 
 import java.nio.file.Paths;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
@@ -48,7 +49,7 @@ public class IndexMergeTool {
   static class Options {
     String mergedIndexPath;
     String[] indexPaths;
-    IndexWriterConfig config = new IndexWriterConfig(null).setOpenMode(OpenMode.CREATE);
+    IndexWriterConfig config = new IndexWriterConfig((Analyzer) null).setOpenMode(OpenMode.CREATE);
     int maxSegments = 0;
 
     static Options parse(String[] args) throws ReflectiveOperationException {
