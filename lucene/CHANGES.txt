@@ -72,6 +72,13 @@ Optimizations
 
 * GITHUB#13899: Check ahead if we can get the count. (Lu Xugang)
 
+* GITHUB#13943: Removed shared `HitsThresholdChecker`, which reduces overhead
+  but may delay a bit when dynamic pruning kicks in. (Adrien Grand)
+
+* GITHUB#13961: Replace Map<String,Object> with IntObjectHashMap for DV producer. (Pan Guixin)
+
+* GITHUB#13963: Speed up nextDoc() implementations in Lucene912PostingsReader.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
