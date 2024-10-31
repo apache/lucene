@@ -50,7 +50,6 @@ import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -1084,13 +1083,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
       KnnVectorsFormat format1 = randomVectorFormat(VectorEncoding.FLOAT32);
       KnnVectorsFormat format2 = randomVectorFormat(VectorEncoding.FLOAT32);
-      iwc.setCodec(
-          new AssertingCodec() {
-            @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return format1;
-            }
-          });
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format1));
 
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
         Document doc = new Document();
@@ -1104,13 +1097,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
 
       iwc = newIndexWriterConfig(mockAnalyzer);
-      iwc.setCodec(
-          new AssertingCodec() {
-            @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return format2;
-            }
-          });
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format2));
 
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
         Document doc = new Document();

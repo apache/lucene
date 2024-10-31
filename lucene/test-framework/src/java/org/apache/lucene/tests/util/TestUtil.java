@@ -1311,6 +1311,25 @@ public final class TestUtil {
   }
 
   /**
+   * Return a Codec that can read any of the default codecs and formats, but always writes in the
+   * specified format.
+   */
+  public static Codec alwaysKnnVectorsFormat(final KnnVectorsFormat format) {
+    // TODO: we really need for knn vectors impls etc to announce themselves
+    // (and maybe their params, too) to infostream on flush and merge.
+    // otherwise in a real debugging situation we won't know whats going on!
+    if (LuceneTestCase.VERBOSE) {
+      System.out.println("TestUtil: forcing knn vectors format to:" + format);
+    }
+    return new AssertingCodec() {
+      @Override
+      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+        return format;
+      }
+    };
+  }
+
+  /**
    * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
    * different from {@link Codec#getDefault()} because that is randomized.
    */
