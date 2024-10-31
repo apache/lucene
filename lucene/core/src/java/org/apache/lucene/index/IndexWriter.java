@@ -2451,6 +2451,7 @@ public class IndexWriter
     // Ensure that only one thread actually gets to do the
     // closing, and make sure no commit is also in progress:
     if (shouldClose(true)) {
+      indexWriterRAMManager.removeWriter();
       rollbackInternal();
     }
   }
