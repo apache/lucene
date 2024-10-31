@@ -307,4 +307,14 @@ public final class VectorUtil {
     }
     return v;
   }
+
+  /**
+   * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code
+   * length} exclusive, find the first array index whose value is greater than or equal to {@code
+   * target}. This index is guaranteed to be at least {@code from}. If there is no such array index,
+   * {@code length} is returned.
+   */
+  public static int findNextGEQ(long[] buffer, int length, long target, int from) {
+    return IMPL.findNextGEQ(buffer, length, target, from);
+  }
 }

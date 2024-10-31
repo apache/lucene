@@ -21,8 +21,6 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSi
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -38,6 +36,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -56,13 +55,15 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
+  private final FieldInfos fieldInfos;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
     super(scorer);
     int versionMeta = readMetadata(state);
+    this.fieldInfos = state.fieldInfos;
     boolean success = false;
     try {
       vectorData =
@@ -155,15 +156,13 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
       FieldEntry fieldEntry = FieldEntry.create(meta, info);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
   @Override
   public long ramBytesUsed() {
-    return Lucene99FlatVectorsReader.SHALLOW_SIZE
-        + RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
+    return Lucene99FlatVectorsReader.SHALLOW_SIZE + fields.ramBytesUsed();
   }
 
   @Override
@@ -171,21 +170,27 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     CodecUtil.checksumEntireFile(vectorData);
   }
 
-  @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+    if (fieldEntry.vectorEncoding != expectedEncoding) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
               + fieldEntry.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32);
+              + expectedEncoding);
     }
+    return fieldEntry;
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -199,19 +204,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
-      throw new IllegalArgumentException("field=\"" + field + "\" not found");
-    }
-    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + field
-              + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
-              + " expected: "
-              + VectorEncoding.BYTE);
-    }
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     return OffHeapByteVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -225,10 +218,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return null;
-    }
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapFloatVectorValues.load(
@@ -245,10 +235,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      return null;
-    }
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapByteVectorValues.load(

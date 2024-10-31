@@ -48,28 +48,23 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
   @Override
   protected HnswBuilder createBuilder(KnnVectorValues mergedVectorValues, int maxOrd)
       throws IOException {
+    OnHeapHnswGraph graph;
+    BitSet initializedNodes = null;
+
     if (initReader == null) {
-      return new HnswConcurrentMergeBuilder(
-          taskExecutor,
-          numWorker,
-          scorerSupplier,
-          M,
-          beamWidth,
-          new OnHeapHnswGraph(M, maxOrd),
-          null);
+      graph = new OnHeapHnswGraph(M, maxOrd);
+    } else {
+      HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
+      if (initializerGraph.size() == 0) {
+        graph = new OnHeapHnswGraph(M, maxOrd);
+      } else {
+        initializedNodes = new FixedBitSet(maxOrd);
+        int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorValues, initializedNodes);
+        graph =
+            InitializedHnswGraphBuilder.initGraph(M, initializerGraph, oldToNewOrdinalMap, maxOrd);
+      }
     }
-
-    HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
-    BitSet initializedNodes = new FixedBitSet(maxOrd);
-    int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorValues, initializedNodes);
-
     return new HnswConcurrentMergeBuilder(
-        taskExecutor,
-        numWorker,
-        scorerSupplier,
-        M,
-        beamWidth,
-        InitializedHnswGraphBuilder.initGraph(M, initializerGraph, oldToNewOrdinalMap, maxOrd),
-        initializedNodes);
+        taskExecutor, numWorker, scorerSupplier, M, beamWidth, graph, initializedNodes);
   }
 }

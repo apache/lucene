@@ -32,7 +32,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   private final Sort sort;
   private final int numHits;
   private final FieldDoc after;
-  private final HitsThresholdChecker hitsThresholdChecker;
+  private final int totalHitsThreshold;
   private final MaxScoreAccumulator minScoreAcc;
   private final List<TopFieldCollector> collectors;
   private final boolean supportsConcurrency;
@@ -89,11 +89,11 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     this.numHits = numHits;
     this.after = after;
     this.supportsConcurrency = supportsConcurrency;
-    this.hitsThresholdChecker =
-        supportsConcurrency
-            ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
-            : HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits));
-    this.minScoreAcc = supportsConcurrency ? new MaxScoreAccumulator() : null;
+    this.totalHitsThreshold = totalHitsThreshold;
+    this.minScoreAcc =
+        supportsConcurrency && totalHitsThreshold != Integer.MAX_VALUE
+            ? new MaxScoreAccumulator()
+            : null;
     this.collectors = new ArrayList<>();
   }
 
@@ -159,7 +159,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
       }
       collector =
           new TopFieldCollector.SimpleFieldCollector(
-              sort, queue, numHits, hitsThresholdChecker, minScoreAcc);
+              sort, queue, numHits, totalHitsThreshold, minScoreAcc);
     } else {
       if (after.fields == null) {
         throw new IllegalArgumentException(
@@ -175,7 +175,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
       }
       collector =
           new TopFieldCollector.PagingFieldCollector(
-              sort, queue, after, numHits, hitsThresholdChecker, minScoreAcc);
+              sort, queue, after, numHits, totalHitsThreshold, minScoreAcc);
     }
 
     collectors.add(collector);

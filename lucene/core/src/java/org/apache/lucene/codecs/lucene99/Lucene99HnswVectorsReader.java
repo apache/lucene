@@ -21,9 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -37,6 +35,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -70,7 +69,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private final FlatVectorsReader flatVectorsReader;
   private final FieldInfos fieldInfos;
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorIndex;
 
   public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
@@ -162,7 +161,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       }
       FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
@@ -225,8 +224,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public long ramBytesUsed() {
     return Lucene99HnswVectorsReader.SHALLOW_SIZE
-        + RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class))
+        + fields.ramBytesUsed()
         + flatVectorsReader.ramBytesUsed();
   }
 
@@ -246,25 +244,43 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return flatVectorsReader.getByteVectorValues(field);
   }
 
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    if (fieldEntry.vectorEncoding != expectedEncoding) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + expectedEncoding);
+    }
+    return fieldEntry;
+  }
+
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     search(
-        fields.get(field),
+        fieldEntry,
         knnCollector,
         acceptDocs,
-        VectorEncoding.FLOAT32,
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     search(
-        fields.get(field),
+        fieldEntry,
         knnCollector,
         acceptDocs,
-        VectorEncoding.BYTE,
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
@@ -272,13 +288,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       FieldEntry fieldEntry,
       KnnCollector knnCollector,
       Bits acceptDocs,
-      VectorEncoding vectorEncoding,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
 
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != vectorEncoding) {
+    if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
@@ -304,12 +317,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.vectorIndexLength > 0) {
+    if (entry.vectorIndexLength > 0) {
       return getGraph(entry);
     } else {
       return HnswGraph.EMPTY;
