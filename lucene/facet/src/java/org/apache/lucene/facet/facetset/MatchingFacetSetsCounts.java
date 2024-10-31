@@ -29,12 +29,9 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.PriorityQueue;
-import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
  * Returns the counts for each given {@link FacetSet}
@@ -104,10 +101,13 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
 
       long[] dimValues = null; // dimension values buffer
       int expectedNumDims = -1;
+      BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         boolean shouldCountDoc = false;
-        RandomAccessInputRef randomAccessInputRef = binaryDocValues.randomAccessInputValue();
-        int numDims = FacetSetDecoder.sortableBytesToInt(randomAccessInputRef.bytes, randomAccessInputRef.offset);
+        bytesRefBuilder.copyBytes(binaryDocValues.randomAccessInputValue());
+        BytesRef bytesRef = bytesRefBuilder.toBytesRef();
+        byte[] packedValue = bytesRef.bytes;
+        int numDims = IntPoint.decodeDimension(packedValue, 0);
         if (expectedNumDims == -1) {
           expectedNumDims = numDims;
           dimValues = new long[numDims];
@@ -124,8 +124,8 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
                   + ")";
         }
 
-        for (int start = Integer.BYTES; start < randomAccessInputRef.length; ) {
-          start += facetSetDecoder.decode(randomAccessInputRef.bytes, randomAccessInputRef.offset + start, dimValues);
+        for (int start = Integer.BYTES; start < bytesRef.length; ) {
+          start += facetSetDecoder.decode(bytesRef, start, dimValues);
           for (int j = 0; j < facetSetMatchers.length; j++) { // for each facet set matcher
             if (facetSetMatchers[j].matches(dimValues)) {
               counts[j]++;
