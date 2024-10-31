@@ -82,6 +82,8 @@ Optimizations
 
 * GITHUB#13958: Speed up advancing within a block. (Adrien Grand)
 
+* GITHUB#13763: Replace Map<String,Object> with IntObjectHashMap for KnnVectorsReader (Pan Guixin)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
