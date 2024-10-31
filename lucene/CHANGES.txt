@@ -10,6 +10,16 @@ Bug Fixes
 
 * GITHUB#13947: Fix ord-to-doc mapping when searching Lucene 9.0.0 hnsw indices (Michael Sokolov, Ben Trent)
 
+* GITHUB#13867: Fix backwards compatibility bug that caused 9.12.0 to
+  incorrectly throw IllegalStateException when trying to open an
+  IndexReader on an index created with quantized (int4, int7, int8)
+  KNN vectors using Lucene99HnswScalarQuantizedVectorsFormat.  This
+  was an accidental backwards compatibility break: such indices should
+  be readable and writable by any future 9.x and 10.x Lucene releases.
+  But note that int8 compression was buggy and can no longer be
+  written but can be read from an existing index.  (Ionut
+  Anghelcovici, Michael McCandless)
+
 ======================== Lucene 9.12.0 =======================
 
 Security Fixes
