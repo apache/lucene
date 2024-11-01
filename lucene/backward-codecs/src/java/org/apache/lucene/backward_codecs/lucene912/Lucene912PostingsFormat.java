@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.backward_codecs.lucene912;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
@@ -23,7 +23,6 @@ import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
-import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
 import org.apache.lucene.index.IndexOptions;
@@ -318,7 +317,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * @lucene.experimental
  */
-public final class Lucene912PostingsFormat extends PostingsFormat {
+public class Lucene912PostingsFormat extends PostingsFormat {
 
   /** Filename extension for some small metadata about how postings are encoded. */
   public static final String META_EXTENSION = "psm";
@@ -341,7 +340,7 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
   /** Size of blocks. */
   public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
 
-  public static final int BLOCK_MASK = BLOCK_SIZE - 1;
+  static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
   /** We insert skip data on every block and every SKIP_FACTOR=32 blocks. */
   public static final int LEVEL1_FACTOR = 32;
@@ -349,7 +348,7 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
   /** Total number of docs covered by level 1 skip data: 32 * 128 = 4,096 */
   public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
 
-  public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
+  static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
   static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
   static final String META_CODEC = "Lucene912PostingsWriterMeta";
@@ -360,45 +359,15 @@ public final class Lucene912PostingsFormat extends PostingsFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
-  private final int minTermBlockSize;
-  private final int maxTermBlockSize;
-
   /** Creates {@code Lucene912PostingsFormat} with default settings. */
   public Lucene912PostingsFormat() {
-    this(
-        Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
-        Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
-  }
-
-  /**
-   * Creates {@code Lucene912PostingsFormat} with custom values for {@code minBlockSize} and {@code
-   * maxBlockSize} passed to block terms dictionary.
-   *
-   * @see
-   *     Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)
-   */
-  public Lucene912PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
     super("Lucene912");
-    Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
-    this.minTermBlockSize = minTermBlockSize;
-    this.maxTermBlockSize = maxTermBlockSize;
   }
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene912PostingsWriter(state);
-    boolean success = false;
-    try {
-      FieldsConsumer ret =
-          new Lucene90BlockTreeTermsWriter(
-              state, postingsWriter, minTermBlockSize, maxTermBlockSize);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
-    }
+    throw new UnsupportedOperationException(
+        "This postings format may not be used for writing, use the current postings format");
   }
 
   @Override

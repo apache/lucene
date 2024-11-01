@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
@@ -41,14 +41,14 @@ public class TestPForUtil extends LuceneTestCase {
 
     IndexInput in = d.openInput("test.bin", IOContext.READONCE);
     PostingDecodingUtil pdu =
-        Lucene912PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
+        Lucene101PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
     final PForUtil pforUtil = new PForUtil();
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {
         PForUtil.skip(in);
         continue;
       }
-      final long[] restored = new long[ForUtil.BLOCK_SIZE];
+      final int[] restored = new int[ForUtil.BLOCK_SIZE];
       pforUtil.decode(pdu, restored);
       int[] ints = new int[ForUtil.BLOCK_SIZE];
       for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
@@ -93,7 +93,7 @@ public class TestPForUtil extends LuceneTestCase {
     final PForUtil pforUtil = new PForUtil();
 
     for (int i = 0; i < iterations; ++i) {
-      long[] source = new long[ForUtil.BLOCK_SIZE];
+      int[] source = new int[ForUtil.BLOCK_SIZE];
       for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
         source[j] = values[i * ForUtil.BLOCK_SIZE + j];
       }

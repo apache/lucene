@@ -29,7 +29,6 @@ import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
-import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorMask;
@@ -59,7 +58,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
-  private static final VectorSpecies<Long> LONG_SPECIES;
 
   static final int VECTOR_BITSIZE;
 
@@ -75,7 +73,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       BYTE_SPECIES = null;
       SHORT_SPECIES = null;
     }
-    LONG_SPECIES = PanamaVectorConstants.PRERERRED_LONG_SPECIES;
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
@@ -767,17 +764,17 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return acc1.add(acc2).reduceLanes(ADD);
   }
 
-  // Experiments suggest that we need at least 4 lanes so that the overhead of going with the vector
+  // Experiments suggest that we need at least 8 lanes so that the overhead of going with the vector
   // approach and counting trues on vector masks pays off.
-  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = LONG_SPECIES.length() >= 4;
+  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
 
   @Override
-  public int findNextGEQ(long[] buffer, int length, long target, int from) {
+  public int findNextGEQ(int[] buffer, int length, int target, int from) {
     if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
-      for (; from + LONG_SPECIES.length() < length; from += LONG_SPECIES.length() + 1) {
-        if (buffer[from + LONG_SPECIES.length()] >= target) {
-          LongVector vector = LongVector.fromArray(LONG_SPECIES, buffer, from);
-          VectorMask<Long> mask = vector.compare(VectorOperators.LT, target);
+      for (; from + INT_SPECIES.length() < length; from += INT_SPECIES.length() + 1) {
+        if (buffer[from + INT_SPECIES.length()] >= target) {
+          IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
+          VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
           return from + mask.trueCount();
         }
       }

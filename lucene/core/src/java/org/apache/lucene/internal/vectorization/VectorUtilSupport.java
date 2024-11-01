@@ -51,5 +51,5 @@ public interface VectorUtilSupport {
    * target}. This index is guaranteed to be at least {@code from}. If there is no such array index,
    * {@code length} is returned.
    */
-  int findNextGEQ(long[] buffer, int length, long target, int from);
+  int findNextGEQ(int[] buffer, int length, int target, int from);
 }

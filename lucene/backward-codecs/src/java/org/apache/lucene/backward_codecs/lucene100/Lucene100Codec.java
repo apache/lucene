@@ -14,9 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene100;
+package org.apache.lucene.backward_codecs.lucene100;
 
 import java.util.Objects;
+import org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsFormat;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -37,7 +38,6 @@ import org.apache.lucene.codecs.lucene90.Lucene90NormsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90TermVectorsFormat;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat;
 import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99SegmentInfoFormat;
@@ -50,7 +50,7 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *
- * @see org.apache.lucene.codecs.lucene100 package documentation for file format details.
+ * @see org.apache.lucene.backward_codecs.lucene100 package documentation for file format details.
  * @lucene.experimental
  */
 public class Lucene100Codec extends Codec {
