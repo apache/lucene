@@ -52,6 +52,7 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
@@ -91,6 +92,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -897,6 +899,74 @@ public final class CheckIndex implements Closeable {
               + lastCommit.counter
               + " is not greater than max segment name "
               + result.maxSegmentName);
+    }
+
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      for (LeafReaderContext context : reader.leaves()) {
+        LeafReader leafReader = context.reader();
+        KnnVectorsReader vectorsReader =
+            ((PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) leafReader).getVectorReader())
+                .getFieldReader("knn");
+        HnswGraph knnValues = ((Lucene99HnswVectorsReader) vectorsReader).getGraph("knn");
+        msg(
+            infoStream,
+            String.format(
+                Locale.ROOT, "Leaf %d has %d layers\n", context.ord, knnValues.numLevels()));
+        msg(
+            infoStream,
+            String.format(
+                Locale.ROOT, "Leaf %d has %d documents\n", context.ord, leafReader.maxDoc()));
+        final int numLevels = knnValues.numLevels();
+        for (int level = numLevels - 1; level >= 0; level--) {
+          int count = 0;
+          int min = Integer.MAX_VALUE, max = 0, total = 0;
+          long sumDelta = 0;
+          HnswGraph.NodesIterator nodesIterator = knnValues.getNodesOnLevel(level);
+          while (nodesIterator.hasNext()) {
+            int node = nodesIterator.nextInt();
+            int n = 0;
+            knnValues.seek(level, node);
+            int nbr, lastNeighbor = -1, firstNeighbor = -1;
+            while ((nbr = knnValues.nextNeighbor()) != NO_MORE_DOCS) {
+              if (firstNeighbor == -1) {
+                firstNeighbor = nbr;
+              }
+              // we see repeated neighbor nodes?!
+              assert nbr >= lastNeighbor
+                  : "neighbors out of order for node "
+                      + node
+                      + ": "
+                      + nbr
+                      + "<"
+                      + lastNeighbor
+                      + " 1st="
+                      + firstNeighbor;
+              assert nbr != lastNeighbor
+                      : "there are repeated neighbors of node " + node + " with value " + nbr;
+              lastNeighbor = nbr;
+              ++n;
+            }
+            max = Math.max(max, n);
+            min = Math.min(min, n);
+            if (n > 0) {
+              ++count;
+              total += n;
+              sumDelta += lastNeighbor - firstNeighbor;
+            }
+          }
+          msg(
+              infoStream,
+              String.format(
+                  Locale.ROOT,
+                  "Graphh level=%d size=%d, Fanout min=%d, mean=%.2f, max=%d, meandelta=%.2f\n",
+                  level,
+                  count,
+                  min,
+                  total / (float) count,
+                  max,
+                  sumDelta / (float) total));
+        }
+      }
     }
 
     if (result.clean) {
