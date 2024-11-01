@@ -419,7 +419,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
-  public void readGroupVInt(long[] dst, int offset) throws IOException {
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
     try {
       final int len =
           GroupVIntUtil.readGroupVInt(

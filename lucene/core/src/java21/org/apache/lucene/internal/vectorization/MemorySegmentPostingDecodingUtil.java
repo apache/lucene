@@ -19,15 +19,15 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteOrder;
-import jdk.incubator.vector.LongVector;
+import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.store.IndexInput;
 
 final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
 
-  private static final VectorSpecies<Long> LONG_SPECIES =
-      PanamaVectorConstants.PRERERRED_LONG_SPECIES;
+  private static final VectorSpecies<Integer> INT_SPECIES =
+      PanamaVectorConstants.PRERERRED_INT_SPECIES;
 
   private final MemorySegment memorySegment;
 
@@ -37,7 +37,7 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
   }
 
   private static void shift(
-      LongVector vector, int bShift, int dec, int maxIter, long bMask, long[] b, int count, int i) {
+      IntVector vector, int bShift, int dec, int maxIter, int bMask, int[] b, int count, int i) {
     for (int j = 0; j <= maxIter; ++j) {
       vector
           .lanewise(VectorOperators.LSHR, bShift - j * dec)
@@ -47,36 +47,35 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
   }
 
   @Override
-  public void splitLongs(
-      int count, long[] b, int bShift, int dec, long bMask, long[] c, int cIndex, long cMask)
+  public void splitInts(
+      int count, int[] b, int bShift, int dec, int bMask, int[] c, int cIndex, int cMask)
       throws IOException {
-    if (count < LONG_SPECIES.length()) {
+    if (count < INT_SPECIES.length()) {
       // Not enough data to vectorize without going out-of-bounds. In practice, this branch is never
       // used if the bit width is 256, and is used for 2 and 3 bits per value if the bit width is
       // 512.
-      super.splitLongs(count, b, bShift, dec, bMask, c, cIndex, cMask);
+      super.splitInts(count, b, bShift, dec, bMask, c, cIndex, cMask);
       return;
     }
 
     int maxIter = (bShift - 1) / dec;
     long offset = in.getFilePointer();
-    long endOffset = offset + count * Long.BYTES;
-    int loopBound = LONG_SPECIES.loopBound(count - 1);
+    long endOffset = offset + count * Integer.BYTES;
+    int loopBound = INT_SPECIES.loopBound(count - 1);
     for (int i = 0;
         i < loopBound;
-        i += LONG_SPECIES.length(), offset += LONG_SPECIES.length() * Long.BYTES) {
-      LongVector vector =
-          LongVector.fromMemorySegment(
-              LONG_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN);
+        i += INT_SPECIES.length(), offset += INT_SPECIES.length() * Integer.BYTES) {
+      IntVector vector =
+          IntVector.fromMemorySegment(INT_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN);
       shift(vector, bShift, dec, maxIter, bMask, b, count, i);
       vector.lanewise(VectorOperators.AND, cMask).intoArray(c, cIndex + i);
     }
 
     // Handle the tail by reading a vector that is aligned with `count` on the right side.
-    int i = count - LONG_SPECIES.length();
-    offset = endOffset - LONG_SPECIES.length() * Long.BYTES;
-    LongVector vector =
-        LongVector.fromMemorySegment(LONG_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN);
+    int i = count - INT_SPECIES.length();
+    offset = endOffset - INT_SPECIES.length() * Integer.BYTES;
+    IntVector vector =
+        IntVector.fromMemorySegment(INT_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN);
     shift(vector, bShift, dec, maxIter, bMask, b, count, i);
     vector.lanewise(VectorOperators.AND, cMask).intoArray(c, cIndex + i);
 

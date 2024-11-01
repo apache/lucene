@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
@@ -52,7 +52,7 @@ public class TestForDeltaUtil extends LuceneTestCase {
       final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
 
       for (int i = 0; i < iterations; ++i) {
-        long[] source = new long[ForUtil.BLOCK_SIZE];
+        int[] source = new int[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           source[j] = values[i * ForUtil.BLOCK_SIZE + j];
         }
@@ -66,13 +66,13 @@ public class TestForDeltaUtil extends LuceneTestCase {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
       PostingDecodingUtil pdu =
-          Lucene912PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
+          Lucene101PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
       ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
       for (int i = 0; i < iterations; ++i) {
-        long base = 0;
-        final long[] restored = new long[ForUtil.BLOCK_SIZE];
+        int base = 0;
+        final int[] restored = new int[ForUtil.BLOCK_SIZE];
         forDeltaUtil.decodeAndPrefixSum(pdu, base, restored);
-        final long[] expected = new long[ForUtil.BLOCK_SIZE];
+        final int[] expected = new int[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           expected[j] = values[i * ForUtil.BLOCK_SIZE + j];
           if (j > 0) {

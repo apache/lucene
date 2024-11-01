@@ -15,5 +15,5 @@
  * limitations under the License.
  */
 
-/** Lucene 9.12 file format. */
-package org.apache.lucene.codecs.lucene912;
+/** Lucene 10.0 file format. */
+package org.apache.lucene.backward_codecs.lucene100;

@@ -17,7 +17,7 @@
 
 package org.apache.lucene.codecs.lucene90.tests;
 
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.IntBlockTermState;
 
 /** Test utility class to create mock {@link IntBlockTermState}. */
 public class MockTermStateFactory {

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import java.io.IOException;
 import org.apache.lucene.store.Directory;
@@ -28,8 +28,8 @@ public class TestPostingsUtil extends LuceneTestCase {
   // checks for bug described in https://github.com/apache/lucene/issues/13373
   public void testIntegerOverflow() throws IOException {
     final int size = random().nextInt(1, ForUtil.BLOCK_SIZE);
-    final long[] docDeltaBuffer = new long[size];
-    final long[] freqBuffer = new long[size];
+    final int[] docDeltaBuffer = new int[size];
+    final int[] freqBuffer = new int[size];
 
     final int delta = 1 << 30;
     docDeltaBuffer[0] = delta;
@@ -38,8 +38,8 @@ public class TestPostingsUtil extends LuceneTestCase {
         // In old implementation, this would cause integer overflow exception.
         PostingsUtil.writeVIntBlock(out, docDeltaBuffer, freqBuffer, size, true);
       }
-      long[] restoredDocs = new long[size];
-      long[] restoredFreqs = new long[size];
+      int[] restoredDocs = new int[size];
+      int[] restoredFreqs = new int[size];
       try (IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
         PostingsUtil.readVIntBlock(in, restoredDocs, restoredFreqs, size, true, true);
       }
