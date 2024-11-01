@@ -82,6 +82,8 @@ Optimizations
 
 * GITHUB#13958: Speed up advancing within a block. (Adrien Grand)
 
+* GITHUB#13763: Replace Map<String,Object> with IntObjectHashMap for KnnVectorsReader (Pan Guixin)
+
 * GITHUB#13968: Switch postings from storing doc IDs in a long[] to an int[].
   Lucene 8.4 had moved to a long[] to help speed up block decoding by using
   longs that would pack two integers. We are now moving back to integers to be

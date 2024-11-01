@@ -21,8 +21,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -34,6 +32,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -53,13 +52,15 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  */
 public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
   private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
+  private final FieldInfos fieldInfos;
 
   Lucene92HnswVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
+    this.fieldInfos = state.fieldInfos;
     boolean success = false;
     try {
       vectorData =
@@ -152,7 +153,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       }
       FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
@@ -212,13 +213,18 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     CodecUtil.checksumEntireFile(vectorIndex);
   }
 
-  @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
+  private FieldEntry getFieldEntry(String field) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+    return fieldEntry;
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return OffHeapFloatVectorValues.load(getFieldEntry(field), vectorData);
   }
 
   @Override
@@ -229,8 +235,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
+    final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.size() == 0) {
       return;
     }
