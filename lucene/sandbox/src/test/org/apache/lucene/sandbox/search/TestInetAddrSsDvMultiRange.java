@@ -23,9 +23,11 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 import java.net.InetAddress;
@@ -52,8 +54,10 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         IndexReader reader = writer.getReader();
         IndexSearcher searcher = newSearcher(reader);
 
-        SortedSetMultiRangeQuery q = rangeQuery("field", InetAddress.getByAddress(new byte[]{1,2,3,3}),
-                InetAddress.getByAddress(new byte[]{1,2,3,5}));
+        Query q = rangeQuery("field", InetAddress.getByAddress(new byte[]{1,2,3,3}),
+                InetAddress.getByAddress(new byte[]{1,2,3,5}),
+                InetAddress.getByAddress(new byte[]{127,2,3,3}), // bogus range to avoid optimization
+                InetAddress.getByAddress(new byte[]{127,2,3,5}));
         assertEquals(1, searcher.count(q));
 //        assertEquals(1, searcher.count(InetAddressPoint.newPrefixQuery("field", address, 24)));
 //        assertEquals(
@@ -104,7 +108,7 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         // search and verify we found our doc
         IndexReader reader = writer.getReader();
         IndexSearcher searcher = newSearcher(reader);
-        List<InetAddress> ranges = new ArrayList<>();
+        //List<InetAddress> ranges = new ArrayList<>();
         BooleanQuery.Builder bq = new BooleanQuery.Builder();
 
         Supplier<byte[]> pivotIpsStream = new Supplier<>(){
@@ -117,28 +121,38 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
                 return iter.next();
             }
         };
-        for (int q=0; q<atLeast(10); q++) {
-            byte[] alfa = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
-            byte[] beta = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
-            if ((alfa[0]*Math.pow(256,3)+alfa[1]*Math.pow(256,2)+alfa[2]*256+alfa[3]) > (beta[0]*Math.pow(256,3)+beta[1]*Math.pow(256,2)+beta[2]*256+beta[3])) {
-                byte[] swap = beta;
-                beta = alfa;
-                alfa = swap;
-            }
-            ranges.add(InetAddress.getByAddress(alfa));
-            ranges.add(InetAddress.getByAddress(beta));
+        for (int pass=0;pass<2; pass++) {
+            ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(4);
+            SortedSetMultiRangeQuery.Builder qbuilder = new SortedSetMultiRangeQuery.Builder("field", InetAddressPoint.BYTES);
+            for (int q = 0; q < atLeast(10); q++) {
+                byte[] alfa = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
+                byte[] beta = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
+                if (comparator.compare(alfa, 0, beta, 0) > 0) {
+                    byte[] swap = beta;
+                    beta = alfa;
+                    alfa = swap;
+                }
+                //ranges.add(InetAddress.getByAddress(alfa));
+                //ranges.add(InetAddress.getByAddress(beta));
+                qbuilder.add(new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(alfa))),
+                        new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(beta))));
 
-            bq.add(SortedSetDocValuesField.newSlowRangeQuery("field",
-                    new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(alfa))),
-                    new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(beta))), true,true), BooleanClause.Occur.SHOULD);
+                bq.add(SortedSetDocValuesField.newSlowRangeQuery("field",
+                        new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(alfa))),
+                        new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(beta))), true, true), BooleanClause.Occur.SHOULD);
+            }
+            //InetAddress[] addr = ranges.toArray(new InetAddress[0]);
+            Query multiRange = qbuilder.build();
+            int cnt;
+            BooleanQuery orRanges = bq.build();
+            if (pass==0) {
+                continue;
+            }
+            System.out.println(Arrays.toString(searcher.search(orRanges, 1000).scoreDocs));
+            System.out.println(Arrays.toString(searcher.search(multiRange, 1000).scoreDocs));
+            assertEquals(cnt = searcher.count(orRanges), searcher.count(multiRange));
+            System.out.printf("found %d of %d\n", cnt, docs);
         }
-        SortedSetMultiRangeQuery multiRange = rangeQuery("field", ranges.toArray(new InetAddress[0]));
-        int cnt;
-        BooleanQuery orRanges = bq.build();
-        System.out.println(Arrays.toString(searcher.search(orRanges,1000).scoreDocs));
-        System.out.println(Arrays.toString(searcher.search(multiRange,1000).scoreDocs));
-        assertEquals(cnt=searcher.count(orRanges), searcher.count(multiRange));
-        System.out.printf("found %d of %d\n",cnt, docs);
         reader.close();
         writer.close();
         dir.close();
@@ -155,13 +169,27 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         return new SortedSetDocValuesField(field, new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(ip))));
     }
 
-    private static SortedSetMultiRangeQuery rangeQuery(String field, InetAddress ... addr) throws UnknownHostException {
+    private static Query rangeQuery(String field, InetAddress ... addr) throws UnknownHostException {
         SortedSetMultiRangeQuery.Builder qbuilder = new SortedSetMultiRangeQuery.Builder(field, InetAddressPoint.BYTES);
         for (int i=0; i<addr.length; i+=2) {
             qbuilder.add(new BytesRef(InetAddressPoint.encode(addr[i])),
                     new BytesRef(InetAddressPoint.encode(addr[i+1])));
         }
-        SortedSetMultiRangeQuery q = qbuilder.build();
+        Query q = qbuilder.build();
         return q;
+    }
+
+    public static byte[] concatenateByteArrays(byte[] array1, byte[] array2) {
+        // Step 1: Create a new byte array with the combined length of both input arrays
+        byte[] result = new byte[array1.length + array2.length];
+
+        // Step 2: Copy the first array into the result array
+        System.arraycopy(array1, 0, result, 0, array1.length);
+
+        // Step 3: Copy the second array into the result array, starting from the end of the first array
+        System.arraycopy(array2, 0, result, array1.length, array2.length);
+
+        // Step 4: Return the concatenated byte array
+        return result;
     }
 }
