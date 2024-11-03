@@ -40,7 +40,12 @@ public class SortedSetMultiRangeQuery extends Query {
             if (this.comparator.compare(low,0,up, 0) > 0) {
                 throw new IllegalArgumentException("lowerValue must be <= upperValue");
             } else {
-                clauses.add(new MultiRangeQuery.RangeClause(low, up));
+                clauses.add(new MultiRangeQuery.RangeClause(low, up) /*{
+                    @Override
+                    public String toString() {
+                        return new  BytesRef(lowerValue).toString() +".."+new  BytesRef(upperValue).toString();
+                    }
+                }*/);
             }
             return this;
         }
@@ -120,7 +125,7 @@ public class SortedSetMultiRangeQuery extends Query {
                         TermsEnum termsEnum = values.termsEnum();
                         LongBitSet matchingOrdsShifted=null;
                         long minOrd=0, maxOrd=values.getValueCount()-1;
-                        long lastMinOrd = values.getValueCount(); // it's last range goes to maxOrd, by default - no match
+                        long matchesAbove = values.getValueCount(); // it's last range goes to maxOrd, by default - no match
                         long maxSeenOrd=values.getValueCount();
                         TermsEnum.SeekStatus seekStatus = TermsEnum.SeekStatus.NOT_FOUND;
                         for (int r = 0; r<rangeClauses.size() && seekStatus!= TermsEnum.SeekStatus.END; r++) {
@@ -166,7 +171,7 @@ public class SortedSetMultiRangeQuery extends Query {
 
                             if (seekStatus==TermsEnum.SeekStatus.END) {
                                 //maxSeenOrd = maxOrd; // not really necessary
-                                lastMinOrd = startingOrd;
+                                matchesAbove = startingOrd;
                                 break; // no need to create bitset
                             }
                             maxSeenOrd = seekStatus == TermsEnum.SeekStatus.FOUND ? termsEnum.ord() : termsEnum.ord()-1; // floor
@@ -174,7 +179,7 @@ public class SortedSetMultiRangeQuery extends Query {
                             if (matchingOrdsShifted==null) {
                                 matchingOrdsShifted = new LongBitSet(maxOrd+1-minOrd);
                             }
-                            matchingOrdsShifted.set(startingOrd-minOrd, maxSeenOrd-minOrd+1); // up is exclisive
+                            matchingOrdsShifted.set(startingOrd-minOrd, maxSeenOrd-minOrd+1); // up is exclusive
                         }
                         ///ranges are over, there might be no set!!
 
@@ -251,17 +256,16 @@ public class SortedSetMultiRangeQuery extends Query {
 //                                        }
 //                                    };
 //                        } else {
-                        long finalLastMinOrd = lastMinOrd;
+                        long finalMatchesAbove = matchesAbove;
                         LongBitSet finalMatchingOrdsShifted = matchingOrdsShifted;
                         long finalMinOrd = minOrd;
                         iterator =
                                     new TwoPhaseIterator(values) {
                                         @Override
                                         public boolean matches() throws IOException {
-                                            // TODO collect all ords, check if cached
                                             for (int i = 0; i < values.docValueCount(); i++) {
                                                 long ord = values.nextOrd();
-                                                if (ord >=finalMinOrd && (ord>= finalLastMinOrd || finalMatchingOrdsShifted.get(ord- finalMinOrd))) {
+                                                if (ord >=finalMinOrd && (ord>= finalMatchesAbove || finalMatchingOrdsShifted.get(ord- finalMinOrd))) {
                                                     return true;
                                                 }
 //                                                BytesRef termVal = values.lookupOrd(ord);

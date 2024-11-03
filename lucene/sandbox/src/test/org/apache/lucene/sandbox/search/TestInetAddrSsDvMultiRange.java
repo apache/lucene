@@ -20,10 +20,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.InetAddressPoint;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -32,11 +29,10 @@ import org.apache.lucene.util.BytesRef;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
     /** Add a single address and search for it */
@@ -90,10 +86,12 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         // add a doc with an address
         for (int doc=0; doc<atLeast(100);doc++ ) {
             Document document = new Document();
+            //System.out.print("doc #"+doc+" ");
             for (int fld=0; fld<atLeast(1); fld++) {
                 byte[] ip = getRandomIpBytes();
                 SortedSetDocValuesField field = getIpField("field", ip);
                 document.add(field);
+              //  System.out.print(field+", ");
                 // add nearby points
                 for (int delta : Arrays.asList(0,1,2,-1,-2)) {
                     byte[] inc = ip.clone();
@@ -101,6 +99,7 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
                     pivotIps.add(inc);
                 }
             }
+            //System.out.println();
             writer.addDocument(document);
             docs++;
         }
@@ -109,7 +108,6 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
         IndexReader reader = writer.getReader();
         IndexSearcher searcher = newSearcher(reader);
         //List<InetAddress> ranges = new ArrayList<>();
-        BooleanQuery.Builder bq = new BooleanQuery.Builder();
 
         Supplier<byte[]> pivotIpsStream = new Supplier<>(){
             Iterator<byte[]> iter  = pivotIps.iterator();
@@ -121,7 +119,8 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
                 return iter.next();
             }
         };
-        for (int pass=0;pass<2; pass++) {
+        for (int pass=0;pass<atLeast(10); pass++) {
+            BooleanQuery.Builder bq = new BooleanQuery.Builder();
             ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(4);
             SortedSetMultiRangeQuery.Builder qbuilder = new SortedSetMultiRangeQuery.Builder("field", InetAddressPoint.BYTES);
             for (int q = 0; q < atLeast(10); q++) {
@@ -143,14 +142,36 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
             }
             //InetAddress[] addr = ranges.toArray(new InetAddress[0]);
             Query multiRange = qbuilder.build();
-            int cnt;
+            long cnt;
             BooleanQuery orRanges = bq.build();
             if (pass==0) {
                 continue;
             }
-            System.out.println(Arrays.toString(searcher.search(orRanges, 1000).scoreDocs));
-            System.out.println(Arrays.toString(searcher.search(multiRange, 1000).scoreDocs));
-            assertEquals(cnt = searcher.count(orRanges), searcher.count(multiRange));
+            TopDocs boolRes;
+            //System.out.println(Arrays.toString((
+                    boolRes = searcher.search(orRanges, 1000);//).scoreDocs));
+
+//            for (int docn : Arrays.asList(1,14,75)) {
+//                System.out.println(searcher.explain(orRanges, docn));
+//                System.out.println();
+//            }
+
+            Set<Integer> boolDocs = Stream.of(boolRes.scoreDocs).map((sd) -> sd.doc).collect(Collectors.toSet());
+            TopDocs mulRes;
+            //System.out.println(Arrays.toString((
+            mulRes = searcher.search(multiRange, 1000);//).scoreDocs));
+            Set<Integer> mulDocs = Stream.of(mulRes.scoreDocs).map((sd) -> sd.doc).collect(Collectors.toSet());
+            Set<Integer> falsePos = new HashSet<>(mulDocs);
+            falsePos.removeAll(boolDocs);
+            if (!falsePos.isEmpty()) {
+                System.out.println("false pos:" + falsePos);
+            }
+            Set<Integer> falseNeg = new HashSet<>(boolDocs);
+            falseNeg.removeAll(mulDocs);
+            if (!falseNeg.isEmpty()) {
+                System.out.println("false neg:" + falseNeg);
+            }
+            assertEquals(cnt = boolRes.totalHits.value(), mulRes.totalHits.value());
             System.out.printf("found %d of %d\n", cnt, docs);
         }
         reader.close();
