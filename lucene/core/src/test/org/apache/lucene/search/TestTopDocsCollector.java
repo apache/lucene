@@ -160,8 +160,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       int numResults, int thresHold, Query q, IndexReader indexReader) throws IOException {
     IndexSearcher searcher = newSearcher(indexReader, true, true, false);
     TopScoreDocCollectorManager collectorManager =
-        new TopScoreDocCollectorManager(
-            numResults, null, thresHold, searcher.getSlices().length > 1);
+        new TopScoreDocCollectorManager(numResults, null, thresHold);
     return searcher.search(q, collectorManager);
   }
 
@@ -169,8 +168,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       int numResults, int threshold, Query q, IndexReader indexReader) throws IOException {
     IndexSearcher searcher = newSearcher(indexReader, true, true, true);
     TopScoreDocCollectorManager collectorManager =
-        new TopScoreDocCollectorManager(
-            numResults, null, threshold, searcher.getSlices().length > 1);
+        new TopScoreDocCollectorManager(numResults, null, threshold);
     return searcher.search(q, collectorManager);
   }
 

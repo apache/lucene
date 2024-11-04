@@ -707,10 +707,9 @@ public class CheckHits {
       throws IOException {
     boolean supportsConcurrency = searcher.getSlices().length > 1;
     TopScoreDocCollectorManager complete =
-        new TopScoreDocCollectorManager(
-            numHits, null, Integer.MAX_VALUE, supportsConcurrency); // COMPLETE
+        new TopScoreDocCollectorManager(numHits, null, Integer.MAX_VALUE); // COMPLETE
     TopScoreDocCollectorManager topScores =
-        new TopScoreDocCollectorManager(numHits, null, 1, supportsConcurrency); // TOP_SCORES
+        new TopScoreDocCollectorManager(numHits, null, 1); // TOP_SCORES
     TopDocs completeTopDocs = searcher.search(query, complete);
     TopDocs topScoresTopDocs = searcher.search(query, topScores);
     checkEqual(query, completeTopDocs.scoreDocs, topScoresTopDocs.scoreDocs);

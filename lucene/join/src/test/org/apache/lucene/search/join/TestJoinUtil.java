@@ -468,7 +468,7 @@ public class TestJoinUtil extends LuceneTestCase {
 
       final BitSet actualResult = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
       final TopScoreDocCollector topScoreDocCollector =
-          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector();
+          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE).newCollector();
       indexSearcher.search(
           joinQuery, MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector));
       assertBitSet(expectedResult, actualResult, indexSearcher);
@@ -1546,7 +1546,7 @@ public class TestJoinUtil extends LuceneTestCase {
         // be also testing TopDocsCollector...
         final BitSet actualResult = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
         final TopScoreDocCollector topScoreDocCollector =
-            new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector();
+            new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE).newCollector();
         indexSearcher.search(
             joinQuery,
             MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector));
