@@ -14,13 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.backward_codecs.lucene912;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.LongHeap;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -104,14 +104,13 @@ final class PForUtil {
   }
 
   /** Decode 128 integers into {@code ints}. */
-  void decode(PostingDecodingUtil pdu, long[] longs) throws IOException {
-    var in = pdu.in;
+  void decode(IndexInput in, long[] longs) throws IOException {
     final int token = Byte.toUnsignedInt(in.readByte());
     final int bitsPerValue = token & 0x1f;
     if (bitsPerValue == 0) {
       Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, in.readVLong());
     } else {
-      forUtil.decode(bitsPerValue, pdu, longs);
+      forUtil.decode(bitsPerValue, in, longs);
     }
     final int numExceptions = token >>> 5;
     for (int i = 0; i < numExceptions; ++i) {

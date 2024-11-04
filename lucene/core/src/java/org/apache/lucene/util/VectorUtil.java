@@ -314,7 +314,7 @@ public final class VectorUtil {
    * target}. This index is guaranteed to be at least {@code from}. If there is no such array index,
    * {@code length} is returned.
    */
-  public static int findNextGEQ(long[] buffer, int length, long target, int from) {
+  public static int findNextGEQ(int[] buffer, int length, int target, int from) {
     return IMPL.findNextGEQ(buffer, length, target, from);
   }
 }

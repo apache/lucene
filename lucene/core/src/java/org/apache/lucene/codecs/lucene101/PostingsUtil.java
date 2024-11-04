@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene912;
+package org.apache.lucene.codecs.lucene101;
 
 import java.io.IOException;
 import org.apache.lucene.store.DataOutput;
@@ -30,8 +30,8 @@ final class PostingsUtil {
    */
   static void readVIntBlock(
       IndexInput docIn,
-      long[] docBuffer,
-      long[] freqBuffer,
+      int[] docBuffer,
+      int[] freqBuffer,
       int num,
       boolean indexHasFreq,
       boolean decodeFreq)
@@ -40,21 +40,21 @@ final class PostingsUtil {
     if (indexHasFreq && decodeFreq) {
       for (int i = 0; i < num; ++i) {
         freqBuffer[i] = docBuffer[i] & 0x01;
-        docBuffer[i] >>= 1;
+        docBuffer[i] >>>= 1;
         if (freqBuffer[i] == 0) {
           freqBuffer[i] = docIn.readVInt();
         }
       }
     } else if (indexHasFreq) {
       for (int i = 0; i < num; ++i) {
-        docBuffer[i] >>= 1;
+        docBuffer[i] >>>= 1;
       }
     }
   }
 
   /** Write freq buffer with variable-length encoding and doc buffer with group-varint encoding. */
   static void writeVIntBlock(
-      DataOutput docOut, long[] docBuffer, long[] freqBuffer, int num, boolean writeFreqs)
+      DataOutput docOut, int[] docBuffer, int[] freqBuffer, int num, boolean writeFreqs)
       throws IOException {
     if (writeFreqs) {
       for (int i = 0; i < num; i++) {
@@ -64,7 +64,7 @@ final class PostingsUtil {
     docOut.writeGroupVInts(docBuffer, num);
     if (writeFreqs) {
       for (int i = 0; i < num; i++) {
-        final int freq = (int) freqBuffer[i];
+        final int freq = freqBuffer[i];
         if (freq != 1) {
           docOut.writeVInt(freq);
         }

@@ -50,9 +50,9 @@ import org.openjdk.jmh.annotations.Warmup;
     })
 public class AdvanceBenchmark {
 
-  private final long[] values = new long[129];
+  private final int[] values = new int[129];
   private final int[] startIndexes = new int[1_000];
-  private final long[] targets = new long[startIndexes.length];
+  private final int[] targets = new int[startIndexes.length];
 
   @Setup(Level.Trial)
   public void setup() throws Exception {
@@ -75,7 +75,7 @@ public class AdvanceBenchmark {
   }
 
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-  private static int binarySearch(long[] values, long target, int startIndex) {
+  private static int binarySearch(int[] values, int target, int startIndex) {
     // Standard binary search
     int i = Arrays.binarySearch(values, startIndex, values.length, target);
     if (i < 0) {
@@ -92,7 +92,7 @@ public class AdvanceBenchmark {
   }
 
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-  private static int inlinedBranchlessBinarySearch(long[] values, long target) {
+  private static int inlinedBranchlessBinarySearch(int[] values, int target) {
     // This compiles to cmov instructions.
     int start = 0;
 
@@ -129,7 +129,7 @@ public class AdvanceBenchmark {
   }
 
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-  private static int linearSearch(long[] values, long target, int startIndex) {
+  private static int linearSearch(int[] values, long target, int startIndex) {
     // Naive linear search.
     for (int i = startIndex; i < values.length; ++i) {
       if (values[i] >= target) {
@@ -147,7 +147,7 @@ public class AdvanceBenchmark {
   }
 
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
-  private static int vectorUtilSearch(long[] values, long target, int startIndex) {
+  private static int vectorUtilSearch(int[] values, int target, int startIndex) {
     return VectorUtil.findNextGEQ(values, 128, target, startIndex);
   }
 
@@ -159,7 +159,7 @@ public class AdvanceBenchmark {
 
   public static void main(String[] args) {
     // For testing purposes
-    long[] values = new long[129];
+    int[] values = new int[129];
     for (int i = 0; i < 128; ++i) {
       values[i] = i;
     }
