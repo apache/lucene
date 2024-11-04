@@ -545,6 +545,43 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     w.close();
     dir.close();
   }
+  
+  // LUCENE-13975
+  public void testMultiReaderReader() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    DirectoryReader nrtReader = w.getReader();
+
+    Directory dir2 = newDirectory();
+    RandomIndexWriter w2 = new RandomIndexWriter(random(), dir2);
+    DirectoryReader nrtReader2 = w2.getReader();
+
+    MultiReader reader = new MultiReader(nrtReader, nrtReader2);
+
+    SearcherManager mgr = new SearcherManager(reader, null);
+    for(int i=0;i<10;i++) {
+      Document d = new Document();
+      d.add(new TextField("contents", English.intToEnglish(i), Field.Store.NO));
+      w.addDocument(new Document());
+
+      Document d2 = new Document();
+      d2.add(new TextField("contents", English.intToEnglish(i+10), Field.Store.NO));
+      w2.addDocument(new Document());
+    }
+
+    mgr.maybeRefresh();
+    IndexSearcher s = mgr.acquire();
+    try {
+      assertTrue(s.getIndexReader() instanceof MultiReader);
+      assertEquals(s.count(new MatchAllDocsQuery()), 20);
+    } finally {
+      mgr.release(s);
+    }
+
+    mgr.close();
+    w.close();
+    dir.close();
+  }
 
   public void testPreviousReaderIsPassed() throws IOException {
     final Directory dir = newDirectory();

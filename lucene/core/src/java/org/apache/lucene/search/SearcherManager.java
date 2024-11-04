@@ -114,16 +114,15 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
   }
 
   /**
-   * Creates and returns a new SearcherManager from an existing {@link DirectoryReader}. Note that
+   * Creates and returns a new SearcherManager from an existing {@link IndexReader}.  Note that
    * this steals the incoming reference.
    *
-   * @param reader the DirectoryReader.
+   * @param reader the IndexReader.
    * @param searcherFactory An optional {@link SearcherFactory}. Pass <code>null</code> if you don't
    *     require the searcher to be warmed before going live or other custom behavior.
    * @throws IOException if there is a low-level I/O error
    */
-  public SearcherManager(DirectoryReader reader, SearcherFactory searcherFactory)
-      throws IOException {
+  public SearcherManager(IndexReader reader, SearcherFactory searcherFactory) throws IOException {
     if (searcherFactory == null) {
       searcherFactory = new SearcherFactory();
     }
