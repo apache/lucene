@@ -172,7 +172,6 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Scorer scorer;
         Terms terms = context.reader().terms(toField);
         if (terms == null) {
           return null;
@@ -181,13 +180,21 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
         // what is the runtime...seems ok?
         final long cost = context.reader().maxDoc() * terms.size();
 
-        TermsEnum segmentTermsEnum = terms.iterator();
-        if (multipleValuesPerDocument) {
-          scorer = new MVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
-        } else {
-          scorer = new SVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
-        }
-        return new DefaultScorerSupplier(scorer);
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            TermsEnum segmentTermsEnum = terms.iterator();
+            if (multipleValuesPerDocument) {
+              return new MVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
+            }
+            return new SVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
+          }
+
+          @Override
+          public long cost() {
+            return cost;
+          }
+        };
       }
 
       @Override
