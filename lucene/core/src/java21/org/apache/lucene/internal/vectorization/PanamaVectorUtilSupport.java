@@ -769,9 +769,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
 
   @Override
-  public int findNextGEQ(int[] buffer, int length, int target, int from) {
+  public int findNextGEQ(int[] buffer, int target, int from, int to) {
     if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
-      for (; from + INT_SPECIES.length() < length; from += INT_SPECIES.length() + 1) {
+      for (; from + INT_SPECIES.length() < to; from += INT_SPECIES.length() + 1) {
         if (buffer[from + INT_SPECIES.length()] >= target) {
           IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
           VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
@@ -779,11 +779,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         }
       }
     }
-    for (int i = from; i < length; ++i) {
+    for (int i = from; i < to; ++i) {
       if (buffer[i] >= target) {
         return i;
       }
     }
-    return length;
+    return to;
   }
 }

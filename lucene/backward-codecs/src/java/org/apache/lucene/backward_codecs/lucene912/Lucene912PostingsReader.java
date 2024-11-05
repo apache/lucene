@@ -593,7 +593,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         }
       }
 
-      int next = findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
+      int next = findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -937,7 +937,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
 
-      int next = findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
+      int next = findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
       posPendingCount += sumOverRange(freqBuffer, docBufferUpto, next + 1);
       this.freq = (int) freqBuffer[next];
       this.docBufferUpto = next + 1;
@@ -1423,7 +1423,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
+      int next = findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -1654,7 +1654,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
+      int next = findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
       posPendingCount += sumOverRange(freqBuffer, docBufferUpto, next + 1);
       freq = (int) freqBuffer[next];
       docBufferUpto = next + 1;
@@ -1755,13 +1755,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
   }
 
-  private static int findNextGEQ(long[] buffer, int length, long target, int from) {
-    for (int i = from; i < length; ++i) {
+  private static int findNextGEQ(long[] buffer, long target, int from, int to) {
+    for (int i = from; i < to; ++i) {
       if (buffer[i] >= target) {
         return i;
       }
     }
-    return length;
+    return to;
   }
 
   private static void prefetchPostings(IndexInput docIn, IntBlockTermState state)

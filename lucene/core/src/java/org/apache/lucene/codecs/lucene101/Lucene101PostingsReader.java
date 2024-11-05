@@ -46,7 +46,6 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
-import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -57,6 +56,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Concrete class that reads docId(maybe frq,pos,offset,payloads) list with postings format.
@@ -66,8 +66,6 @@ import org.apache.lucene.util.IOUtils;
 public final class Lucene101PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
-  private static final VectorUtilSupport VECTOR_SUPPORT =
-      VECTORIZATION_PROVIDER.getVectorUtilSupport();
   // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
   // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
   // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
@@ -601,7 +599,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         }
       }
 
-      int next = VECTOR_SUPPORT.findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
+      int next = VectorUtil.findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
       this.doc = docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -950,7 +948,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         refillDocs();
       }
 
-      int next = VECTOR_SUPPORT.findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
+      int next = VectorUtil.findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
       posPendingCount += sumOverRange(freqBuffer, docBufferUpto, next + 1);
       this.freq = freqBuffer[next];
       this.docBufferUpto = next + 1;
@@ -1437,7 +1435,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = VECTOR_SUPPORT.findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
+      int next = VectorUtil.findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
       this.doc = docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
@@ -1670,7 +1668,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = VECTOR_SUPPORT.findNextGEQ(docBuffer, docBufferSize, target, docBufferUpto);
+      int next = VectorUtil.findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
       posPendingCount += sumOverRange(freqBuffer, docBufferUpto, next + 1);
       freq = freqBuffer[next];
       docBufferUpto = next + 1;

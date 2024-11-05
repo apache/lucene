@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util;
 
+import java.util.stream.IntStream;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
@@ -309,12 +310,13 @@ public final class VectorUtil {
   }
 
   /**
-   * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code
-   * length} exclusive, find the first array index whose value is greater than or equal to {@code
-   * target}. This index is guaranteed to be at least {@code from}. If there is no such array index,
-   * {@code length} is returned.
+   * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
+   * exclusive, find the first array index whose value is greater than or equal to {@code target}.
+   * This index is guaranteed to be at least {@code from}. If there is no such array index, {@code
+   * to} is returned.
    */
-  public static int findNextGEQ(int[] buffer, int length, int target, int from) {
-    return IMPL.findNextGEQ(buffer, length, target, from);
+  public static int findNextGEQ(int[] buffer, int target, int from, int to) {
+    assert IntStream.range(0, to - 1).noneMatch(i -> buffer[i] > buffer[i + 1]);
+    return IMPL.findNextGEQ(buffer, target, from, to);
   }
 }
