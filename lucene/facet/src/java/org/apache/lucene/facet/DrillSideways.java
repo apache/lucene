@@ -197,7 +197,6 @@ public class DrillSideways {
         limit = 1; // the collector does not alow numHits = 0
       }
       final int fTopN = Math.min(topN, limit);
-      final boolean supportsConcurrency = searcher.getSlices().length > 1;
       final TopFieldCollectorManager collectorManager =
           new TopFieldCollectorManager(sort, fTopN, after, Integer.MAX_VALUE);
       final ConcurrentDrillSidewaysResult<TopFieldDocs> r = search(query, collectorManager);
@@ -230,7 +229,6 @@ public class DrillSideways {
       limit = 1; // the collector does not alow numHits = 0
     }
     final int fTopN = Math.min(topN, limit);
-    final boolean supportsConcurrency = searcher.getSlices().length > 1;
     final TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(fTopN, after, Integer.MAX_VALUE);
     final ConcurrentDrillSidewaysResult<TopDocs> r = search(query, collectorManager);

@@ -705,7 +705,6 @@ public class CheckHits {
 
   private static void doCheckTopScores(Query query, IndexSearcher searcher, int numHits)
       throws IOException {
-    boolean supportsConcurrency = searcher.getSlices().length > 1;
     TopScoreDocCollectorManager complete =
         new TopScoreDocCollectorManager(numHits, null, Integer.MAX_VALUE); // COMPLETE
     TopScoreDocCollectorManager topScores =
