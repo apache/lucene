@@ -20,7 +20,11 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.InetAddressPoint;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -29,7 +33,12 @@ import org.apache.lucene.util.BytesRef;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -150,11 +159,6 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
             TopDocs boolRes;
             //System.out.println(Arrays.toString((
                     boolRes = searcher.search(orRanges, 1000);//).scoreDocs));
-
-//            for (int docn : Arrays.asList(1,14,75)) {
-//                System.out.println(searcher.explain(orRanges, docn));
-//                System.out.println();
-//            }
 
             Set<Integer> boolDocs = Stream.of(boolRes.scoreDocs).map((sd) -> sd.doc).collect(Collectors.toSet());
             TopDocs mulRes;

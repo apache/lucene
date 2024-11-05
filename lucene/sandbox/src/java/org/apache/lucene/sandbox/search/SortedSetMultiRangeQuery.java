@@ -1,24 +1,45 @@
 package org.apache.lucene.sandbox.search;
 
 import org.apache.lucene.document.SortedSetDocValuesField;
-import org.apache.lucene.index.*;
-import org.apache.lucene.search.*;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocValuesRangeIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
 
 public class SortedSetMultiRangeQuery extends Query {
     private final String field;
     private final int bytesPerDim;
+    private final ArrayUtil.ByteArrayComparator comparator;
     List<MultiRangeQuery.RangeClause> rangeClauses;
 
-    SortedSetMultiRangeQuery(String name, List<MultiRangeQuery.RangeClause> clauses, int bytes) {
+    SortedSetMultiRangeQuery(String name, List<MultiRangeQuery.RangeClause> clauses, int bytes, ArrayUtil.ByteArrayComparator comparator) {
         this.field = name;
         this.rangeClauses = clauses;
         this.bytesPerDim = bytes;
+        this.comparator = comparator;
     }
 
     public static class Builder {
@@ -56,19 +77,30 @@ public class SortedSetMultiRangeQuery extends Query {
             if (clauses.size()==1) {
                 return SortedSetDocValuesField.newSlowRangeQuery(name, new BytesRef(clauses.get(0).lowerValue), new BytesRef(clauses.get(0).upperValue), true,true);
             }
-            clauses.sort(
-                    new Comparator<MultiRangeQuery.RangeClause>() {
-                        @Override
-                        public int compare(MultiRangeQuery.RangeClause o1, MultiRangeQuery.RangeClause o2) {
-                            int result = comparator.compare(o1.lowerValue, 0, o2.lowerValue, 0);
-                            //if (result == 0) {
-                            //    return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
-                            //} else {
-                            return result;
-                            //}
-                        }
-                    });
-            return new SortedSetMultiRangeQuery(name, clauses, this.bytes);
+            return new SortedSetMultiRangeQuery(name, clauses, this.bytes, comparator);
+        }
+    }
+
+    @Override
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+        ArrayList<MultiRangeQuery.RangeClause> sortedClauses = new ArrayList<>(this.rangeClauses);
+        sortedClauses.sort(
+                new Comparator<MultiRangeQuery.RangeClause>() {
+                    @Override
+                    public int compare(MultiRangeQuery.RangeClause o1, MultiRangeQuery.RangeClause o2) {
+                        int result = comparator.compare(o1.lowerValue, 0, o2.lowerValue, 0);
+                        //if (result == 0) {
+                        //    return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
+                        //} else {
+                        return result;
+                        //}
+                    }
+                });
+        if (!this.rangeClauses.equals(sortedClauses)) {
+            return new SortedSetMultiRangeQuery(this.field, sortedClauses, this.bytesPerDim, this.comparator);
+        }
+        else {
+            return this;
         }
     }
 
@@ -80,28 +112,6 @@ public class SortedSetMultiRangeQuery extends Query {
                 '}';
     }
 
-    //    /**
-//     * Merges the overlapping ranges and returns unconnected ranges by calling {@link
-//     * #mergeOverlappingRanges}
-//     */
-//    @Override
-//    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-//        if (numDims != 1) {
-//            return this;
-//        }
-//        List<MultiRangeQuery.RangeClause> mergedRanges = mergeOverlappingRanges(rangeClauses, bytesPerDim);
-//        if (mergedRanges != rangeClauses) {
-//            try {
-//                MultiRangeQuery clone = (MultiRangeQuery) super.clone();
-//                clone.rangeClauses = mergedRanges;
-//                return clone;
-//            } catch (CloneNotSupportedException e) {
-//                throw new AssertionError(e);
-//            }
-//        } else {
-//            return this;
-//        }
-//    }
     // what TODO with reverse ranges ???
     @Override
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
@@ -114,7 +124,6 @@ public class SortedSetMultiRangeQuery extends Query {
                 }
                 DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
                 SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
-                ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
                 // implement ScorerSupplier, since we do some expensive stuff to make a scorer
                 return new ScorerSupplier() {
                     @Override
@@ -152,7 +161,7 @@ public class SortedSetMultiRangeQuery extends Query {
                                     startingOrd = termsEnum.ord();
                                 }
                             }
-                            byte[] upper = range.upperValue;
+                            byte[] upper = range.upperValue; // TODO only if lower<=upper
                             // looking for overlap
                             for (int overlap = r+1; overlap<rangeClauses.size(); overlap++, r++) {
                                 MultiRangeQuery.RangeClause mayOverlap = rangeClauses.get(overlap);
@@ -170,7 +179,7 @@ public class SortedSetMultiRangeQuery extends Query {
                             seekStatus = termsEnum.seekCeil(new BytesRef(upper));
 
                             if (seekStatus==TermsEnum.SeekStatus.END) {
-                                //maxSeenOrd = maxOrd; // not really necessary
+                                maxSeenOrd = maxOrd; // perhaps it's worth to set for skipper
                                 matchesAbove = startingOrd;
                                 break; // no need to create bitset
                             }
@@ -265,26 +274,9 @@ public class SortedSetMultiRangeQuery extends Query {
                                         public boolean matches() throws IOException {
                                             for (int i = 0; i < values.docValueCount(); i++) {
                                                 long ord = values.nextOrd();
-                                                if (ord >=finalMinOrd && (ord>= finalMatchesAbove || finalMatchingOrdsShifted.get(ord- finalMinOrd))) {
+                                                if (ord >=finalMinOrd && ((finalMatchesAbove<values.getValueCount()&&ord>= finalMatchesAbove) || finalMatchingOrdsShifted.get(ord- finalMinOrd))) {
                                                     return true;
                                                 }
-//                                                BytesRef termVal = values.lookupOrd(ord);
-//                                                byte[] term = BytesRef.deepCopyOf(termVal).bytes;
-//                                                int pos = Collections.binarySearch(rangeClauses, new MultiRangeQuery.RangeClause(term, term), new Comparator<MultiRangeQuery.RangeClause>(){
-//                                                    @Override
-//                                                    public int compare(MultiRangeQuery.RangeClause rangeClause, MultiRangeQuery.RangeClause t1) {
-//                                                        return comparator.compare(rangeClause.lowerValue,0, t1.lowerValue,0);
-//                                                    }
-//                                                });
-//                                                // contained in the list; otherwise, (-(insertion point) - 1). T
-//                                                if (pos<0) {
-//                                                    pos = -pos-2; //prev to next
-//                                                }
-//                                                for(int r=0; r<=pos; r++) {
-//                                                    if (comparator.compare(term, 0,rangeClauses.get(r).upperValue,0)<=0) {
-//                                                        return true;
-//                                                    }
-//                                                }
                                             }
                                             return false; // all ords were < minOrd
                                         }
@@ -332,11 +324,12 @@ public class SortedSetMultiRangeQuery extends Query {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SortedSetMultiRangeQuery that = (SortedSetMultiRangeQuery) o;
-        return Objects.equals(field, that.field) && Objects.equals(rangeClauses, that.rangeClauses);
+        return Objects.equals(field, that.field) && Objects.equals(bytesPerDim, that.bytesPerDim)
+                && Objects.equals(rangeClauses, that.rangeClauses);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(field, rangeClauses);
+        return Objects.hash(field, bytesPerDim, rangeClauses);
     }
 }
