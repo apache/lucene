@@ -47,4 +47,12 @@ public interface VectorUtilSupport {
 
   /** This does a bit-wise dot-product between two particularly formatted byte arrays. */
   long ipByteBinByte(byte[] q, byte[] d);
+
+  /**
+   * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
+   * exclusive, find the first array index whose value is greater than or equal to {@code target}.
+   * This index is guaranteed to be at least {@code from}. If there is no such array index, {@code
+   * to} is returned.
+   */
+  int findNextGEQ(int[] buffer, int target, int from, int to);
 }

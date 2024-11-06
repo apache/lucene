@@ -26,8 +26,6 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VEC
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -36,6 +34,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
@@ -63,7 +62,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   private final SegmentReadState readState;
   private final IndexInput dataIn;
   private final BytesRefBuilder scratch = new BytesRefBuilder();
-  private final Map<String, FieldEntry> fieldEntries = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fieldEntries = new IntObjectHashMap<>();
 
   SimpleTextKnnVectorsReader(SegmentReadState readState) throws IOException {
     this.readState = readState;
@@ -91,9 +90,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         for (int i = 0; i < size; i++) {
           docIds[i] = readInt(in, EMPTY);
         }
-        assert fieldEntries.containsKey(fieldName) == false;
+        assert fieldEntries.containsKey(fieldNumber) == false;
         fieldEntries.put(
-            fieldName,
+            fieldNumber,
             new FieldEntry(
                 dimension,
                 vectorDataOffset,
@@ -126,7 +125,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       throw new IllegalStateException(
           "KNN vectors readers should not be called on fields that don't enable KNN vectors");
     }
-    FieldEntry fieldEntry = fieldEntries.get(field);
+    FieldEntry fieldEntry = fieldEntries.get(info.number);
     if (fieldEntry == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
       // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
@@ -159,7 +158,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       throw new IllegalStateException(
           "KNN vectors readers should not be called on fields that don't enable KNN vectors");
     }
-    FieldEntry fieldEntry = fieldEntries.get(field);
+    FieldEntry fieldEntry = fieldEntries.get(info.number);
     if (fieldEntry == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
       // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs

@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
@@ -35,7 +36,6 @@ import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
 import org.apache.lucene.search.PhraseQuery;
@@ -429,9 +429,8 @@ public class TermAutomatonQuery extends Query implements Accountable {
       }
 
       if (any) {
-        scorer =
-            new TermAutomatonScorer(
-                this, enums, anyTermID, new LeafSimScorer(stats, context.reader(), field, true));
+        NumericDocValues norms = context.reader().getNormValues(field);
+        scorer = new TermAutomatonScorer(this, enums, anyTermID, stats, norms);
       } else {
         return null;
       }
@@ -456,15 +455,20 @@ public class TermAutomatonQuery extends Query implements Accountable {
       }
 
       float score = scorer.score();
-      LeafSimScorer leafSimScorer = ((TermAutomatonScorer) scorer).getLeafSimScorer();
       EnumAndScorer[] originalSubsOnDoc = ((TermAutomatonScorer) scorer).getOriginalSubsOnDoc();
+
+      NumericDocValues norms = context.reader().getNormValues(field);
+      long norm = 1L;
+      if (norms != null && norms.advanceExact(doc)) {
+        norm = norms.longValue();
+      }
 
       List<Explanation> termExplanations = new ArrayList<>();
       for (EnumAndScorer enumAndScorer : originalSubsOnDoc) {
         if (enumAndScorer != null) {
           PostingsEnum postingsEnum = enumAndScorer.posEnum;
           if (postingsEnum.docID() == doc) {
-            float termScore = leafSimScorer.score(doc, postingsEnum.freq());
+            float termScore = stats.score(postingsEnum.freq(), norm);
             termExplanations.add(
                 Explanation.match(
                     postingsEnum.freq(),
@@ -482,7 +486,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
       Explanation freqExplanation =
           Explanation.match(score, "TermAutomatonQuery, sum of:", termExplanations);
-      return leafSimScorer.explain(doc, freqExplanation);
+      return stats.explain(freqExplanation, norm);
     }
   }
 

@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import org.apache.lucene.codecs.lucene912.ForUtil;
+import org.apache.lucene.codecs.lucene101.ForUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -27,7 +27,7 @@ import org.apache.lucene.tests.util.TestUtil;
 
 public class TestPostingDecodingUtil extends LuceneTestCase {
 
-  public void testDuelSplitLongs() throws Exception {
+  public void testDuelSplitInts() throws Exception {
     final int iterations = atLeast(100);
 
     try (Directory dir = new MMapDirectory(createTempDir())) {
@@ -39,25 +39,25 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
       }
       VectorizationProvider vectorizationProvider = VectorizationProvider.lookup(true);
       try (IndexInput in = dir.openInput("tests.bin", IOContext.DEFAULT)) {
-        long[] expectedB = new long[ForUtil.BLOCK_SIZE];
-        long[] expectedC = new long[ForUtil.BLOCK_SIZE];
-        long[] actualB = new long[ForUtil.BLOCK_SIZE];
-        long[] actualC = new long[ForUtil.BLOCK_SIZE];
+        int[] expectedB = new int[ForUtil.BLOCK_SIZE];
+        int[] expectedC = new int[ForUtil.BLOCK_SIZE];
+        int[] actualB = new int[ForUtil.BLOCK_SIZE];
+        int[] actualC = new int[ForUtil.BLOCK_SIZE];
         for (int iter = 0; iter < iterations; ++iter) {
           // Initialize arrays with random content.
           for (int i = 0; i < expectedB.length; ++i) {
-            expectedB[i] = random().nextLong();
+            expectedB[i] = random().nextInt();
             actualB[i] = expectedB[i];
-            expectedC[i] = random().nextLong();
+            expectedC[i] = random().nextInt();
             actualC[i] = expectedC[i];
           }
           int bShift = TestUtil.nextInt(random(), 1, 31);
           int dec = TestUtil.nextInt(random(), 1, bShift);
           int numIters = (bShift + dec - 1) / dec;
           int count = TestUtil.nextInt(random(), 1, 64 / numIters);
-          long bMask = random().nextLong();
+          int bMask = random().nextInt();
           int cIndex = random().nextInt(64);
-          long cMask = random().nextLong();
+          int cMask = random().nextInt();
           long startFP = random().nextInt(4);
 
           // Work on a slice that has just the right number of bytes to make the test fail with an
@@ -69,10 +69,10 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           PostingDecodingUtil optimizedUtil = vectorizationProvider.newPostingDecodingUtil(slice);
 
           slice.seek(startFP);
-          defaultUtil.splitLongs(count, expectedB, bShift, dec, bMask, expectedC, cIndex, cMask);
+          defaultUtil.splitInts(count, expectedB, bShift, dec, bMask, expectedC, cIndex, cMask);
           long expectedEndFP = slice.getFilePointer();
           slice.seek(startFP);
-          optimizedUtil.splitLongs(count, actualB, bShift, dec, bMask, actualC, cIndex, cMask);
+          optimizedUtil.splitInts(count, actualB, bShift, dec, bMask, actualC, cIndex, cMask);
           assertEquals(expectedEndFP, slice.getFilePointer());
           assertArrayEquals(expectedB, actualB);
           assertArrayEquals(expectedC, actualC);

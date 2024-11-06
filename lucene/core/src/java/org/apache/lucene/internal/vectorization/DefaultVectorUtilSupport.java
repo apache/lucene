@@ -214,9 +214,9 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       long subRet = 0;
       for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
         subRet +=
-            Integer.bitCount(
-                (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
-                    & (int) BitUtil.VH_NATIVE_INT.get(d, r));
+          Integer.bitCount(
+            (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
+              & (int) BitUtil.VH_NATIVE_INT.get(d, r));
       }
       for (; r < d.length; r++) {
         subRet += Integer.bitCount((q[i * size + r] & d[r]) & 0xFF);
@@ -224,5 +224,15 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       ret += subRet << i;
     }
     return ret;
+  }
+
+  @Override
+  public int findNextGEQ(int[] buffer, int target, int from, int to) {
+    for (int i = from; i < to; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return to;
   }
 }
