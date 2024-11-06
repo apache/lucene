@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -176,7 +177,7 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase  {
                 System.out.println("false neg:" + falseNeg);
             }
             assertEquals(cnt = boolRes.totalHits.value(), mulRes.totalHits.value());
-            System.out.printf("found %d of %d\n", cnt, docs);
+            System.out.printf(Locale.ROOT,"found %d of %d\n", cnt, docs);
         }
         reader.close();
         writer.close();
