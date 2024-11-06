@@ -26,7 +26,6 @@ import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -51,7 +50,7 @@ public class TestLucene101BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
 
   @Override
   protected Codec getCodec() {
-    return new Lucene100Codec() {
+    return new Lucene101Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene101BinaryQuantizedVectorsFormat();
