@@ -292,7 +292,7 @@ public final class GroupVIntUtil {
 
     // tail vints
     for (; readPos < limit; readPos++) {
-      out.writeVInt(toInt(values[readPos]));
+      out.writeVInt(values[readPos]);
     }
   }
 }
