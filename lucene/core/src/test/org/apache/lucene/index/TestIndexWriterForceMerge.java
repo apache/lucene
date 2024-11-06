@@ -40,7 +40,6 @@ import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -244,10 +243,7 @@ public class TestIndexWriterForceMerge extends LuceneTestCase {
       }
       if (info.info.getUseCompoundFile()) {
         try (Directory cfs =
-            info.info
-                .getCodec()
-                .compoundFormat()
-                .getCompoundReader(dir, info.info, IOContext.DEFAULT)) {
+            info.info.getCodec().compoundFormat().getCompoundReader(dir, info.info)) {
           for (String file : cfs.listAll()) {
             sb.append(
                 String.format(

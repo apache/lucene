@@ -353,4 +353,35 @@ public class TestVectorUtil extends LuceneTestCase {
     }
     return res;
   }
+
+  public void testFindNextGEQ() {
+    int padding = TestUtil.nextInt(random(), 0, 5);
+    int[] values = new int[128 + padding];
+    int v = 0;
+    for (int i = 0; i < 128; ++i) {
+      v += TestUtil.nextInt(random(), 1, 1000);
+      values[i] = v;
+    }
+
+    // Now duel with slowFindFirstGreater
+    for (int iter = 0; iter < 1_000; ++iter) {
+      int from = TestUtil.nextInt(random(), 0, 127);
+      int target =
+          TestUtil.nextInt(random(), values[from], Math.max(values[from], values[127]))
+              + random().nextInt(10)
+              - 5;
+      assertEquals(
+          slowFindNextGEQ(values, 128, target, from),
+          VectorUtil.findNextGEQ(values, target, from, 128));
+    }
+  }
+
+  private static int slowFindNextGEQ(int[] buffer, int length, int target, int from) {
+    for (int i = from; i < length; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return length;
+  }
 }

@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -487,6 +488,27 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     Query q1 = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 1.0f);
     Query q2 = new DisjunctionMaxQuery(Arrays.asList(sub2, sub1), 1.0f);
     assertEquals(q1, q2);
+  }
+
+  /* Inspired from TestIntervals.testIntervalDisjunctionToStringStability */
+  public void testToStringOrderMatters() {
+    final int clauseNbr =
+        random().nextInt(22) + 4; // ensure a reasonably large minimum number of clauses
+    final String[] terms = new String[clauseNbr];
+    for (int i = 0; i < clauseNbr; i++) {
+      terms[i] = Character.toString((char) ('a' + i));
+    }
+
+    final String expected =
+        Arrays.stream(terms)
+            .map((term) -> "test:" + term)
+            .collect(Collectors.joining(" | ", "(", ")~1.0"));
+
+    DisjunctionMaxQuery source =
+        new DisjunctionMaxQuery(
+            Arrays.stream(terms).map((term) -> tq("test", term)).toList(), 1.0f);
+
+    assertEquals(expected, source.toString(""));
   }
 
   public void testRandomTopDocs() throws Exception {

@@ -31,6 +31,8 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.Vector;
+import jdk.incubator.vector.VectorMask;
+import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
@@ -760,5 +762,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     // reduce
     return acc1.add(acc2).reduceLanes(ADD);
+  }
+
+  // Experiments suggest that we need at least 8 lanes so that the overhead of going with the vector
+  // approach and counting trues on vector masks pays off.
+  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
+
+  @Override
+  public int findNextGEQ(int[] buffer, int target, int from, int to) {
+    if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
+      for (; from + INT_SPECIES.length() < to; from += INT_SPECIES.length() + 1) {
+        if (buffer[from + INT_SPECIES.length()] >= target) {
+          IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
+          VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
+          return from + mask.trueCount();
+        }
+      }
+    }
+    for (int i = from; i < to; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return to;
   }
 }

@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
@@ -44,6 +45,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
 
   /* The subqueries */
   private final Multiset<Query> disjuncts = new Multiset<>();
+  private final List<Query> orderedQueries; // used for toString()
 
   /* Multiple of the non-max disjunct scores added into our final score.  Non-zero values support tie-breaking. */
   private final float tieBreakerMultiplier;
@@ -65,6 +67,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
     }
     this.tieBreakerMultiplier = tieBreakerMultiplier;
     this.disjuncts.addAll(disjuncts);
+    this.orderedQueries = new ArrayList<>(disjuncts); // order from the caller
   }
 
   /**
@@ -295,24 +298,19 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    */
   @Override
   public String toString(String field) {
-    StringBuilder buffer = new StringBuilder();
-    buffer.append("(");
-    Iterator<Query> it = disjuncts.iterator();
-    for (int i = 0; it.hasNext(); i++) {
-      Query subquery = it.next();
-      if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
-        buffer.append("(");
-        buffer.append(subquery.toString(field));
-        buffer.append(")");
-      } else buffer.append(subquery.toString(field));
-      if (i != disjuncts.size() - 1) buffer.append(" | ");
-    }
-    buffer.append(")");
-    if (tieBreakerMultiplier != 0.0f) {
-      buffer.append("~");
-      buffer.append(tieBreakerMultiplier);
-    }
-    return buffer.toString();
+    return this.orderedQueries.stream()
+        .map(
+            subquery -> {
+              if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
+                return "(" + subquery.toString(field) + ")";
+              }
+              return subquery.toString(field);
+            })
+        .collect(
+            Collectors.joining(
+                " | ",
+                "(",
+                ")" + ((tieBreakerMultiplier != 0.0f) ? "~" + tieBreakerMultiplier : "")));
   }
 
   /**

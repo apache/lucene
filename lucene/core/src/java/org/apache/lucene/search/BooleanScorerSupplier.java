@@ -289,9 +289,9 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return new MaxScoreBulkScorer(maxDoc, optionalScorers);
     }
 
-    List<BulkScorer> optional = new ArrayList<BulkScorer>();
+    List<Scorer> optional = new ArrayList<Scorer>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
-      optional.add(ss.bulkScorer());
+      optional.add(ss.get(Long.MAX_VALUE));
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());

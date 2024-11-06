@@ -739,8 +739,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       searcherMgrReadLock.unlock();
     }
     try {
-      TopFieldCollectorManager c =
-          new TopFieldCollectorManager(SORT, num, null, 1, searcher.getSlices().length > 1);
+      TopFieldCollectorManager c = new TopFieldCollectorManager(SORT, num, null, 1);
       // System.out.println("got searcher=" + searcher);
       TopFieldDocs hits = searcher.search(finalQuery, c);
 

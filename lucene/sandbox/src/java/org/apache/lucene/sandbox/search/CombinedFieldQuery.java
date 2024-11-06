@@ -45,7 +45,6 @@ import org.apache.lucene.search.DisjunctionDISIApproximation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -402,14 +401,12 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
       MultiNormsLeafSimScorer scoringSimScorer =
           new MultiNormsLeafSimScorer(simWeight, context.reader(), fieldAndWeights.values(), true);
-      LeafSimScorer nonScoringSimScorer =
-          new LeafSimScorer(simWeight, context.reader(), "pseudo_field", false);
       // we use termscorers + disjunction as an impl detail
       DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
       for (int i = 0; i < iterators.size(); i++) {
         float weight = fields.get(i).weight;
         queue.add(
-            new WeightedDisiWrapper(new TermScorer(iterators.get(i), nonScoringSimScorer), weight));
+            new WeightedDisiWrapper(new TermScorer(iterators.get(i), simWeight, null), weight));
       }
       // Even though it is called approximation, it is accurate since none of
       // the sub iterators are two-phase iterators.

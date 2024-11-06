@@ -76,8 +76,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
       throws IOException {
     IndexSearcher searcher = newSearcher(indexReader);
     TopFieldCollectorManager manager =
-        new TopFieldCollectorManager(
-            sort, numResults, null, thresHold, searcher.getSlices().length > 1);
+        new TopFieldCollectorManager(sort, numResults, null, thresHold);
     return searcher.search(q, manager);
   }
 
@@ -87,8 +86,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(indexReader, true, true, true);
 
     TopFieldCollectorManager collectorManager =
-        new TopFieldCollectorManager(
-            sort, numResults, null, threshold, searcher.getSlices().length > 1);
+        new TopFieldCollectorManager(sort, numResults, null, threshold);
 
     TopDocs topDoc = searcher.search(q, collectorManager);
 
@@ -122,7 +120,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     for (int i = 0; i < sort.length; i++) {
       Query q = new MatchAllDocsQuery();
       TopFieldCollectorManager tdc =
-          new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE, false);
+          new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE);
       TopDocs td = is.search(q, tdc);
       ScoreDoc[] sd = td.scoreDocs;
       for (int j = 0; j < sd.length; j++) {
@@ -384,7 +382,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
       TopDocsCollector<Entry> tdc =
-          new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE, false).newCollector();
+          new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE).newCollector();
       TopDocs td = tdc.topDocs();
       assertEquals(0, td.totalHits.value());
     }
@@ -587,26 +585,24 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     scorer.score = 2;
     leafCollector.collect(1);
-    assertEquals(2f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
-    assertEquals(2f, scorer.minCompetitiveScore, 0f);
-    assertNull(scorer2.minCompetitiveScore);
+    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(scorer.minCompetitiveScore);
 
     scorer2.score = 9;
     leafCollector2.collect(1);
-    assertEquals(6f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
-    assertEquals(2f, scorer.minCompetitiveScore, 0f);
-    assertEquals(6f, scorer2.minCompetitiveScore, 0f);
+    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(scorer2.minCompetitiveScore);
 
     scorer2.score = 7;
     leafCollector2.collect(2);
     assertEquals(7f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
-    assertEquals(2f, scorer.minCompetitiveScore, 0f);
+    assertNull(scorer.minCompetitiveScore);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
     scorer2.score = 1;
     leafCollector2.collect(3);
     assertEquals(7f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
-    assertEquals(2f, scorer.minCompetitiveScore, 0f);
+    assertNull(scorer.minCompetitiveScore);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 10;
@@ -718,18 +714,17 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
       try (IndexReader reader = DirectoryReader.open(w)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        TopFieldCollectorManager collectorManager =
-            new TopFieldCollectorManager(sort, 2, null, 10, true);
+        TopFieldCollectorManager collectorManager = new TopFieldCollectorManager(sort, 2, null, 10);
         TopDocs topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
         assertEquals(10, topDocs.totalHits.value());
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
 
-        collectorManager = new TopFieldCollectorManager(sort, 2, null, 2, true);
+        collectorManager = new TopFieldCollectorManager(sort, 2, null, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
         assertTrue(10 >= topDocs.totalHits.value());
         assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
-        collectorManager = new TopFieldCollectorManager(sort, 10, null, 2, true);
+        collectorManager = new TopFieldCollectorManager(sort, 10, null, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
         assertEquals(10, topDocs.totalHits.value());
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
