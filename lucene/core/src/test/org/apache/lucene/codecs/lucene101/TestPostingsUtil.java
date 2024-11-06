@@ -27,7 +27,15 @@ public class TestPostingsUtil extends LuceneTestCase {
 
   // checks for bug described in https://github.com/apache/lucene/issues/13373
   public void testIntegerOverflow() throws IOException {
-    final int size = random().nextInt(1, ForUtil.BLOCK_SIZE);
+    // Size that writes the first value as a regular vint
+    int randomSize1 = random().nextInt(1, 3);
+    // Size that writes the first value as a group vint
+    int randomSize2 = random().nextInt(4, ForUtil.BLOCK_SIZE);
+    doTestIntegerOverflow(randomSize1);
+    doTestIntegerOverflow(randomSize2);
+  }
+
+  private void doTestIntegerOverflow(int size) throws IOException {
     final int[] docDeltaBuffer = new int[size];
     final int[] freqBuffer = new int[size];
 
