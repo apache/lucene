@@ -848,7 +848,12 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon56() throws Exception {
     String geoJson = GeoTestUtil.readShape("github-12352-2.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    checkMultiPolygon(polygons, 3e-11);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation =
+          Tessellator.tessellate(polygon, random().nextBoolean());
+      assertEquals(area(polygon), area(tessellation), 0.0);
+      // don't check edges as it takes several minutes
+    }
   }
 
   public void testComplexPolygon57() throws Exception {
@@ -859,13 +864,13 @@ public class TestTessellator extends LuceneTestCase {
 
   @Nightly
   public void testComplexPolygon58() throws Exception {
-    String wkt = GeoTestUtil.readShape("github-13841-2.geojson.gz");
+    String wkt = GeoTestUtil.readShape("github-13841-2.wkt.gz");
     checkMultiPolygon(wkt);
   }
 
   @Nightly
   public void testComplexPolygon59() throws Exception {
-    String wkt = GeoTestUtil.readShape("github-13841-3.geojson.gz");
+    String wkt = GeoTestUtil.readShape("github-13841-3.wkt.gz");
     Polygon[] polygons = (Polygon[]) SimpleWKTShapeParser.parse(wkt);
     checkMultiPolygon(polygons, 1e-11);
   }

@@ -357,8 +357,9 @@ public final class Tessellator {
       double holeMinY,
       double holeMaxY) {
 
-    // Attempt to find a common point between the HoleNode and OuterNode.
-    if (fetchSharedVertex(holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY)) {
+    // Attempt to merge the hole using a common point between if it exists.
+    if (maybeMergeHoleWithSharedVertices(
+        holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY)) {
       return;
     }
     // Attempt to find a logical bridge between the HoleNode and OuterNode.
@@ -377,14 +378,18 @@ public final class Tessellator {
     }
   }
 
-  /** Choose a common vertex between the polygon and the hole if it exists, otherwise return null */
-  private static boolean fetchSharedVertex(
+  /**
+   * Choose a common vertex between the polygon and the hole if it exists and return true, otherwise
+   * return false
+   */
+  private static boolean maybeMergeHoleWithSharedVertices(
       final Node holeNode,
       Node outerNode,
       double holeMinX,
       double holeMaxX,
       double holeMinY,
       double holeMaxY) {
+    // Attempt to find a common point between the HoleNode and OuterNode.
     Node sharedVertex = null;
     Node sharedVertexConnection = null;
     Node next = outerNode;
