@@ -272,7 +272,7 @@ public final class Tessellator {
     return eliminateHoles(holeList, holeListPolygons, outerNode);
   }
 
-  /** Links every hole into the outer loop, producing a single-ring polygon without holes. * */
+  /** Links every hole into the outer loop, producing a single-ring polygon without holes. */
   private static Node eliminateHoles(final Polygon polygon, Node outerNode) {
     // Define a list to hole a reference to each filtered hole list.
     final List<Node> holeList = new ArrayList<>();
@@ -462,16 +462,16 @@ public final class Tessellator {
     }
   }
 
-   private static double angle(Node a, Node b, Node c) {
-     final double ax = a.getX() - b.getX();
-     final double ay = a.getY() - b.getY();
-     final double cx = c.getX() - b.getX();
-     final double cy = c.getY() - b.getY();
-     final double dotProduct = ax * cx + ay * cy;
-     final double aLength = Math.sqrt(ax * ax + ay * ay);
-     final double bLength = Math.sqrt(cx * cx + cy * cy);
-     return Math.acos(dotProduct / (aLength * bLength));
-   }
+  private static double angle(Node a, Node b, Node c) {
+    final double ax = a.getX() - b.getX();
+    final double ay = a.getY() - b.getY();
+    final double cx = c.getX() - b.getX();
+    final double cy = c.getY() - b.getY();
+    final double dotProduct = ax * cx + ay * cy;
+    final double aLength = Math.sqrt(ax * ax + ay * ay);
+    final double bLength = Math.sqrt(cx * cx + cy * cy);
+    return Math.acos(dotProduct / (aLength * bLength));
+  }
 
   /**
    * David Eberly's algorithm for finding a bridge between a hole and outer polygon

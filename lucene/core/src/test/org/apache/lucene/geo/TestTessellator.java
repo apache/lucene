@@ -20,10 +20,7 @@ import static org.apache.lucene.tests.geo.GeoTestUtil.nextBoxNotCrossingDateline
 import static org.hamcrest.Matchers.greaterThan;
 
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BooleanSupplier;
-
 import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
@@ -874,17 +871,18 @@ public class TestTessellator extends LuceneTestCase {
   }
 
   public void testComplexPolygon60() throws Exception {
-    String wkt = "POLYGON((0 0, 5 1, 10 0, 11 5, 10 10,5 11, 0 10, 1 5, 0 0)," +
-            "(1 5, 1 7, 2 7, 1 5), (1 5, 4 8, 5 8, 1 5)," +
-            "(1 5, 3 6, 7 7, 1 5), (1 5, 2 3, 1 3, 1 5)," +
-            "(1 5, 3 4, 4 4, 1 5), (1 5, 5 6, 6 6, 1 5)," +
-            "(11 5, 10 3, 10 4, 11 5), (11 5,8 3, 8 4, 11 5)," +
-            "(11 5,5 4, 5 5, 11 5), (11 5, 4.5 3, 4 3, 11 5)," +
-            "(11 5, 8 6, 9 7, 11 5), (11 5, 10 8, 10 7, 11 5)," +
-            "(5 11, 2 10, 3 10, 5 11), (5 11, 3 9, 4 9, 5 11)," +
-            "(5 11, 5.5  8, 6 7, 5 11), (5 11, 8 8, 9 8, 5 11)," +
-            "(5 1, 2 0.5, 3 1, 5 1), (5 1, 8 0.5, 7 2, 5 1)," +
-            "(5 1, 3 2, 3 3, 5 1), (5 1, 5 2, 6 2, 5 1))";
+    String wkt =
+        "POLYGON((0 0, 5 1, 10 0, 11 5, 10 10,5 11, 0 10, 1 5, 0 0),"
+            + "(1 5, 1 7, 2 7, 1 5), (1 5, 4 8, 5 8, 1 5),"
+            + "(1 5, 3 6, 7 7, 1 5), (1 5, 2 3, 1 3, 1 5),"
+            + "(1 5, 3 4, 4 4, 1 5), (1 5, 5 6, 6 6, 1 5),"
+            + "(11 5, 10 3, 10 4, 11 5), (11 5,8 3, 8 4, 11 5),"
+            + "(11 5,5 4, 5 5, 11 5), (11 5, 4.5 3, 4 3, 11 5),"
+            + "(11 5, 8 6, 9 7, 11 5), (11 5, 10 8, 10 7, 11 5),"
+            + "(5 11, 2 10, 3 10, 5 11), (5 11, 3 9, 4 9, 5 11),"
+            + "(5 11, 5.5  8, 6 7, 5 11), (5 11, 8 8, 9 8, 5 11),"
+            + "(5 1, 2 0.5, 3 1, 5 1), (5 1, 8 0.5, 7 2, 5 1),"
+            + "(5 1, 3 2, 3 3, 5 1), (5 1, 5 2, 6 2, 5 1))";
     checkPolygon(wkt);
   }
 
@@ -928,7 +926,7 @@ public class TestTessellator extends LuceneTestCase {
 
   private void checkPolygon(Polygon polygon, double delta) {
     List<Tessellator.Triangle> tessellation =
-            Tessellator.tessellate(polygon, random().nextBoolean());
+        Tessellator.tessellate(polygon, random().nextBoolean());
     assertEquals(area(polygon), area(tessellation), delta);
     for (Tessellator.Triangle t : tessellation) {
       checkTriangleEdgesFromPolygon(polygon, t);
