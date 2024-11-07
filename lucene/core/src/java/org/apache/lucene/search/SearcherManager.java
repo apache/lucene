@@ -114,8 +114,8 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
   }
 
   /**
-   * Creates and returns a new SearcherManager from an existing {@link IndexReader}.  Note that
-   * this steals the incoming reference.
+   * Creates and returns a new SearcherManager from an existing {@link IndexReader}. Note that this
+   * steals the incoming reference.
    *
    * @param reader the IndexReader.
    * @param searcherFactory An optional {@link SearcherFactory}. Pass <code>null</code> if you don't

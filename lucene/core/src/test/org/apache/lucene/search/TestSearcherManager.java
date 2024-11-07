@@ -561,13 +561,13 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     MultiReader reader = new MultiReader(nrtReader, nrtReader2);
 
     SearcherManager mgr = new SearcherManager(reader, null);
-    for(int i=0;i<10;i++) {
+    for (int i = 0; i < 10; i++) {
       Document d = new Document();
       d.add(new TextField("contents", Integer.toString(i), Field.Store.NO));
       w.addDocument(new Document());
 
       Document d2 = new Document();
-      d2.add(new TextField("contents", Integer.toString(i+10), Field.Store.NO));
+      d2.add(new TextField("contents", Integer.toString(i + 10), Field.Store.NO));
       w2.addDocument(new Document());
     }
 
