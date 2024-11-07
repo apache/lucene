@@ -100,12 +100,12 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      ByteVectorValues.Bytes vectors1 = vectorValues.vectors();
-      ByteVectorValues.Bytes vectors2 = vectorValues.vectors();
+      byte[] query = vectorValues.vectors().get(ord);
+      ByteVectorValues.Bytes vectors = vectorValues.vectors();
       return new RandomVectorScorer.AbstractRandomVectorScorer(vectorValues) {
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(vectors1.get(ord), vectors2.get(node));
+          return similarityFunction.compare(query, vectors.get(node));
         }
       };
     }
@@ -130,12 +130,12 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
-      FloatVectorValues.Floats vectors1 = vectorValues.vectors();
-      FloatVectorValues.Floats vectors2 = vectorValues.vectors();
+      float[] query = vectorValues.vectors().get(ord);
+      FloatVectorValues.Floats vectors = vectorValues.vectors();
       return new RandomVectorScorer.AbstractRandomVectorScorer(vectorValues) {
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(vectors1.get(ord), vectors2.get(node));
+          return similarityFunction.compare(query, vectors.get(node));
         }
       };
     }
