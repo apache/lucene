@@ -16,14 +16,14 @@
  */
 package org.apache.lucene.codecs.lucene95;
 
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 
 /**
- * Implementors can return the IndexInput from which their values are read. For use by vector
+ * Implementors can return the RandomAccessInput from which their values are read. For use by vector
  * quantizers.
  */
 public interface HasIndexSlice {
 
-  /** Returns an IndexInput from which to read this instance's values. */
-  IndexInput getSlice();
+  /** Returns a RandomAccessInput from which to read this instance's values. */
+  RandomAccessInput getSlice();
 }

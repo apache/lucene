@@ -22,7 +22,7 @@ import java.util.Random;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
 
 /** A reader of vector values that samples a subset of the vectors. */
@@ -53,7 +53,7 @@ public class SampleReader extends FloatVectorValues implements HasIndexSlice {
   }
 
   @Override
-  public IndexInput getSlice() {
+  public RandomAccessInput getSlice() {
     return ((HasIndexSlice) origin).getSlice();
   }
 

@@ -23,7 +23,7 @@ import org.apache.lucene.util.BitUtil; // javadocs
  * Random Access Index API. Unlike {@link IndexInput}, this has no concept of file position, all
  * reads are absolute. However, like IndexInput, it is only intended for use by a single thread.
  */
-public interface RandomAccessInput {
+public interface RandomAccessInput extends Cloneable {
 
   /** The number of bytes in the file. */
   long length();
@@ -46,6 +46,14 @@ public interface RandomAccessInput {
       bytes[offset + i] = readByte(pos + i);
     }
   }
+
+  /**
+   * Reads a specified number of floats starting at a given position into an array at the specified
+   * offset.
+   *
+   * @see DataInput#readFloats
+   */
+  void readFloats(long pos, float[] floats, int offset, int length) throws IOException;
 
   /**
    * Reads a short (LE byte order) at the given position in the file
@@ -77,4 +85,6 @@ public interface RandomAccessInput {
    * @see IndexInput#prefetch
    */
   default void prefetch(long offset, long length) throws IOException {}
+
+  Object clone();
 }

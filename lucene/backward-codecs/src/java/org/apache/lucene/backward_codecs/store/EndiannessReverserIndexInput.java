@@ -63,8 +63,7 @@ final class EndiannessReverserIndexInput extends FilterIndexInput {
   public void readFloats(float[] dst, int offset, int length) throws IOException {
     in.readFloats(dst, offset, length);
     for (int i = 0; i < length; ++i) {
-      dst[offset + i] =
-          Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(dst[offset + i])));
+      dst[offset + i] = revertFloat(dst[offset + i]);
     }
   }
 
@@ -107,6 +106,14 @@ final class EndiannessReverserIndexInput extends FilterIndexInput {
     }
 
     @Override
+    public void readFloats(long pos, float[] floats, int offset, int length) throws IOException {
+      in.readFloats(pos, floats, offset, length);
+      for (int i = 0; i < length; ++i) {
+        floats[offset + i] = revertFloat(floats[offset + i]);
+      }
+    }
+
+    @Override
     public short readShort(long pos) throws IOException {
       return Short.reverseBytes(in.readShort(pos));
     }
@@ -120,5 +127,19 @@ final class EndiannessReverserIndexInput extends FilterIndexInput {
     public long readLong(long pos) throws IOException {
       return Long.reverseBytes(in.readLong(pos));
     }
+
+    @Override
+    public Object clone() {
+      try {
+        return super.clone();
+      } catch (CloneNotSupportedException e) {
+        throw new Error(
+            "This cannot happen: Failing to clone EndiannessReverserRandomAccessInput", e);
+      }
+    }
+  }
+
+  private static float revertFloat(float value) {
+    return Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(value)));
   }
 }

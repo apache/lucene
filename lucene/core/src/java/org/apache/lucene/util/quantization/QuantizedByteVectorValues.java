@@ -20,7 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.VectorScorer;
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 
 /**
  * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
@@ -52,7 +52,7 @@ public abstract class QuantizedByteVectorValues extends ByteVectorValues impleme
   }
 
   @Override
-  public IndexInput getSlice() {
+  public RandomAccessInput getSlice() {
     return null;
   }
 }

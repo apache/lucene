@@ -262,6 +262,12 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
+  public void readFloats(long pos, float[] floats, int offset, int length) throws IOException {
+    seek(pos);
+    readFloats(floats, offset, length);
+  }
+
+  @Override
   public short readShort(long pos) {
     long absPos = offset + pos;
     int blockOffset = blockOffset(absPos);

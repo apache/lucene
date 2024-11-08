@@ -26,6 +26,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
@@ -46,7 +47,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   protected final FlatVectorsScorer vectorsScorer;
   protected final boolean compress;
 
-  protected final IndexInput slice;
+  protected final RandomAccessInput slice;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
@@ -93,7 +94,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       boolean compress,
-      IndexInput slice) {
+      RandomAccessInput slice) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
@@ -131,9 +132,9 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     if (lastOrd == targetOrd) {
       return binaryValue;
     }
-    slice.seek((long) targetOrd * byteSize);
-    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), numBytes);
-    slice.readFloats(scoreCorrectionConstant, 0, 1);
+    long pos = (long) targetOrd * byteSize;
+    slice.readBytes(pos, byteBuffer.array(), byteBuffer.arrayOffset(), numBytes);
+    slice.readFloats(pos + numBytes, scoreCorrectionConstant, 0, 1);
     decompressBytes(binaryValue, numBytes);
     lastOrd = targetOrd;
     return binaryValue;
@@ -144,13 +145,12 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     if (lastOrd == targetOrd) {
       return scoreCorrectionConstant[0];
     }
-    slice.seek(((long) targetOrd * byteSize) + numBytes);
-    slice.readFloats(scoreCorrectionConstant, 0, 1);
+    slice.readFloats(((long) targetOrd * byteSize) + numBytes, scoreCorrectionConstant, 0, 1);
     return scoreCorrectionConstant[0];
   }
 
   @Override
-  public IndexInput getSlice() {
+  public RandomAccessInput getSlice() {
     return slice;
   }
 
@@ -174,9 +174,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     if (configuration.isEmpty()) {
       return new EmptyOffHeapVectorValues(dimension, similarityFunction, vectorsScorer);
     }
-    IndexInput bytesSlice =
-        vectorData.slice(
-            "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
+    RandomAccessInput bytesSlice =
+        vectorData.randomAccessSlice(quantizedVectorDataOffset, quantizedVectorDataLength);
     if (configuration.isDense()) {
       return new DenseOffHeapVectorValues(
           dimension,
@@ -213,7 +212,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         boolean compress,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
-        IndexInput slice) {
+        RandomAccessInput slice) {
       super(dimension, size, scalarQuantizer, similarityFunction, vectorsScorer, compress, slice);
     }
 
@@ -226,7 +225,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
           compress,
           similarityFunction,
           vectorsScorer,
-          slice.clone());
+          (RandomAccessInput) slice.clone());
     }
 
     @Override
@@ -275,7 +274,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         IndexInput dataIn,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
-        IndexInput slice)
+        RandomAccessInput slice)
         throws IOException {
       super(dimension, size, scalarQuantizer, similarityFunction, vectorsScorer, compress, slice);
       this.configuration = configuration;
@@ -300,7 +299,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
           dataIn,
           similarityFunction,
           vectorsScorer,
-          slice.clone());
+          (RandomAccessInput) slice.clone());
     }
 
     @Override

@@ -213,8 +213,8 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     public float score(int vectorOrdinal) throws IOException {
       // get compressed vector, in Lucene99, vector values are stored and have a single value for
       // offset correction
-      values.getSlice().seek((long) vectorOrdinal * (values.getVectorByteLength() + Float.BYTES));
-      values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
+      long pos = (long) vectorOrdinal * (values.getVectorByteLength() + Float.BYTES);
+      values.getSlice().readBytes(pos, compressedVector, 0, compressedVector.length);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
       int dotProduct = VectorUtil.int4DotProductPacked(targetBytes, compressedVector);
       // For the current implementation of scalar quantization, all dotproducts should be >= 0;
