@@ -233,74 +233,75 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (frozen) {
       throw new IllegalStateException("Graph builder is already frozen");
     }
-    RandomVectorScorer scorer = scorerSupplier.scorer(node);
-    final int nodeLevel = getRandomGraphLevel(ml, random);
-    // first add nodes to all levels
-    for (int level = nodeLevel; level >= 0; level--) {
-      hnsw.addNode(level, node);
-    }
-    // then promote itself as entry node if entry node is not set
-    if (hnsw.trySetNewEntryNode(node, nodeLevel)) {
-      return;
-    }
-    // if the entry node is already set, then we have to do all connections first before we can
-    // promote ourselves as entry node
-
-    int lowestUnsetLevel = 0;
-    int curMaxLevel;
-    do {
-      curMaxLevel = hnsw.numLevels() - 1;
-      // NOTE: the entry node and max level may not be paired, but because we get the level first
-      // we ensure that the entry node we get later will always exist on the curMaxLevel
-      int[] eps = new int[] {hnsw.entryNode()};
-
-      // we first do the search from top to bottom
-      // for levels > nodeLevel search with topk = 1
-      GraphBuilderKnnCollector candidates = entryCandidates;
-      for (int level = curMaxLevel; level > nodeLevel; level--) {
-        candidates.clear();
-        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-        eps[0] = candidates.popNode();
+    try (RandomVectorScorer scorer = scorerSupplier.scorer(node)) {
+      final int nodeLevel = getRandomGraphLevel(ml, random);
+      // first add nodes to all levels
+      for (int level = nodeLevel; level >= 0; level--) {
+        hnsw.addNode(level, node);
       }
-
-      // for levels <= nodeLevel search with topk = beamWidth, and add connections
-      candidates = beamCandidates;
-      NeighborArray[] scratchPerLevel =
-          new NeighborArray[Math.min(nodeLevel, curMaxLevel) - lowestUnsetLevel + 1];
-      for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
-        int level = i + lowestUnsetLevel;
-        candidates.clear();
-        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-        eps = candidates.popUntilNearestKNodes();
-        scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
-        popToScratch(candidates, scratchPerLevel[i]);
-      }
-
-      // then do connections from bottom up
-      for (int i = 0; i < scratchPerLevel.length; i++) {
-        addDiverseNeighbors(i + lowestUnsetLevel, node, scratchPerLevel[i]);
-      }
-      lowestUnsetLevel += scratchPerLevel.length;
-      assert lowestUnsetLevel == Math.min(nodeLevel, curMaxLevel) + 1;
-      if (lowestUnsetLevel > nodeLevel) {
+      // then promote itself as entry node if entry node is not set
+      if (hnsw.trySetNewEntryNode(node, nodeLevel)) {
         return;
       }
-      assert lowestUnsetLevel == curMaxLevel + 1 && nodeLevel > curMaxLevel;
-      if (hnsw.tryPromoteNewEntryNode(node, nodeLevel, curMaxLevel)) {
-        return;
-      }
-      if (hnsw.numLevels() == curMaxLevel + 1) {
-        // This should never happen if all the calculations are correct
-        throw new IllegalStateException(
-            "We're not able to promote node "
-                + node
-                + " at level "
-                + nodeLevel
-                + " as entry node. But the max graph level "
-                + curMaxLevel
-                + " has not changed while we are inserting the node.");
-      }
-    } while (true);
+      // if the entry node is already set, then we have to do all connections first before we can
+      // promote ourselves as entry node
+
+      int lowestUnsetLevel = 0;
+      int curMaxLevel;
+      do {
+        curMaxLevel = hnsw.numLevels() - 1;
+        // NOTE: the entry node and max level may not be paired, but because we get the level first
+        // we ensure that the entry node we get later will always exist on the curMaxLevel
+        int[] eps = new int[] {hnsw.entryNode()};
+
+        // we first do the search from top to bottom
+        // for levels > nodeLevel search with topk = 1
+        GraphBuilderKnnCollector candidates = entryCandidates;
+        for (int level = curMaxLevel; level > nodeLevel; level--) {
+          candidates.clear();
+          graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
+          eps[0] = candidates.popNode();
+        }
+
+        // for levels <= nodeLevel search with topk = beamWidth, and add connections
+        candidates = beamCandidates;
+        NeighborArray[] scratchPerLevel =
+            new NeighborArray[Math.min(nodeLevel, curMaxLevel) - lowestUnsetLevel + 1];
+        for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
+          int level = i + lowestUnsetLevel;
+          candidates.clear();
+          graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
+          eps = candidates.popUntilNearestKNodes();
+          scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
+          popToScratch(candidates, scratchPerLevel[i]);
+        }
+
+        // then do connections from bottom up
+        for (int i = 0; i < scratchPerLevel.length; i++) {
+          addDiverseNeighbors(i + lowestUnsetLevel, node, scratchPerLevel[i]);
+        }
+        lowestUnsetLevel += scratchPerLevel.length;
+        assert lowestUnsetLevel == Math.min(nodeLevel, curMaxLevel) + 1;
+        if (lowestUnsetLevel > nodeLevel) {
+          return;
+        }
+        assert lowestUnsetLevel == curMaxLevel + 1 && nodeLevel > curMaxLevel;
+        if (hnsw.tryPromoteNewEntryNode(node, nodeLevel, curMaxLevel)) {
+          return;
+        }
+        if (hnsw.numLevels() == curMaxLevel + 1) {
+          // This should never happen if all the calculations are correct
+          throw new IllegalStateException(
+              "We're not able to promote node "
+                  + node
+                  + " at level "
+                  + nodeLevel
+                  + " as entry node. But the max graph level "
+                  + curMaxLevel
+                  + " has not changed while we are inserting the node.");
+        }
+      } while (true);
+    }
   }
 
   private long printGraphBuildStatus(int node, long start, long t) {
@@ -393,11 +394,12 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private boolean diversityCheck(int candidate, float score, NeighborArray neighbors)
       throws IOException {
-    RandomVectorScorer scorer = scorerSupplier.scorer(candidate);
-    for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
-      if (neighborSimilarity >= score) {
-        return false;
+    try (RandomVectorScorer scorer = scorerSupplier.scorer(candidate)) {
+      for (int i = 0; i < neighbors.size(); i++) {
+        float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
+        if (neighborSimilarity >= score) {
+          return false;
+        }
       }
     }
     return true;

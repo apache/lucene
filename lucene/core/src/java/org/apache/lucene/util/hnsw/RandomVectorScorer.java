@@ -22,7 +22,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.util.Bits;
 
 /** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
-public interface RandomVectorScorer {
+public interface RandomVectorScorer extends AutoCloseable {
   /**
    * Returns the score between the query and the provided node.
    *
@@ -56,9 +56,13 @@ public interface RandomVectorScorer {
     return acceptDocs;
   }
 
+  @Override
+  default void close() {}
+
   /** Creates a default scorer for random access vectors. */
   abstract class AbstractRandomVectorScorer implements RandomVectorScorer {
     private final KnnVectorValues values;
+    private final Bag<RandomVectorScorer> scorerPool;
 
     /**
      * Creates a new scorer for the given vector values.
@@ -66,7 +70,12 @@ public interface RandomVectorScorer {
      * @param values the vector values
      */
     public AbstractRandomVectorScorer(KnnVectorValues values) {
+      this(values, null);
+    }
+
+    public AbstractRandomVectorScorer(KnnVectorValues values, Bag<RandomVectorScorer> scorerPool) {
       this.values = values;
+      this.scorerPool = scorerPool;
     }
 
     @Override
@@ -82,6 +91,13 @@ public interface RandomVectorScorer {
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return values.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public void close() {
+      if (scorerPool != null) {
+        scorerPool.offer(this);
+      }
     }
   }
 }

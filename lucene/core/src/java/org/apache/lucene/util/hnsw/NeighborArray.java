@@ -237,8 +237,10 @@ public class NeighborArray {
    */
   private int findWorstNonDiverse(int nodeOrd, RandomVectorScorerSupplier scorerSupplier)
       throws IOException {
-    RandomVectorScorer scorer = scorerSupplier.scorer(nodeOrd);
-    int[] uncheckedIndexes = sort(scorer);
+    int[] uncheckedIndexes;
+    try (RandomVectorScorer scorer = scorerSupplier.scorer(nodeOrd)) {
+      uncheckedIndexes = sort(scorer);
+    }
     assert uncheckedIndexes != null : "We will always have something unchecked";
     int uncheckedCursor = uncheckedIndexes.length - 1;
     for (int i = size - 1; i > 0; i--) {
@@ -263,25 +265,26 @@ public class NeighborArray {
       RandomVectorScorerSupplier scorerSupplier)
       throws IOException {
     float minAcceptedSimilarity = scores[candidateIndex];
-    RandomVectorScorer scorer = scorerSupplier.scorer(nodes[candidateIndex]);
-    if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
-      // the candidate itself is unchecked
-      for (int i = candidateIndex - 1; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(nodes[i]);
-        // candidate node is too similar to node i given its score relative to the base node
-        if (neighborSimilarity >= minAcceptedSimilarity) {
-          return true;
+    try (RandomVectorScorer scorer = scorerSupplier.scorer(nodes[candidateIndex])) {
+      if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
+        // the candidate itself is unchecked
+        for (int i = candidateIndex - 1; i >= 0; i--) {
+          float neighborSimilarity = scorer.score(nodes[i]);
+          // candidate node is too similar to node i given its score relative to the base node
+          if (neighborSimilarity >= minAcceptedSimilarity) {
+            return true;
+          }
         }
-      }
-    } else {
-      // else we just need to make sure candidate does not violate diversity with the (newly
-      // inserted) unchecked nodes
-      assert candidateIndex > uncheckedIndexes[uncheckedCursor];
-      for (int i = uncheckedCursor; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(nodes[uncheckedIndexes[i]]);
-        // candidate node is too similar to node i given its score relative to the base node
-        if (neighborSimilarity >= minAcceptedSimilarity) {
-          return true;
+      } else {
+        // else we just need to make sure candidate does not violate diversity with the (newly
+        // inserted) unchecked nodes
+        assert candidateIndex > uncheckedIndexes[uncheckedCursor];
+        for (int i = uncheckedCursor; i >= 0; i--) {
+          float neighborSimilarity = scorer.score(nodes[uncheckedIndexes[i]]);
+          // candidate node is too similar to node i given its score relative to the base node
+          if (neighborSimilarity >= minAcceptedSimilarity) {
+            return true;
+          }
         }
       }
     }

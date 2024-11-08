@@ -1216,11 +1216,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   static final class NormalizedFloatVectorValues extends FloatVectorValues {
     private final FloatVectorValues vectorValues;
-    private final Floats floats;
 
     public NormalizedFloatVectorValues(FloatVectorValues vectorValues) throws IOException {
       this.vectorValues = vectorValues;
-      floats = vectorValues.vectors();
     }
 
     @Override
@@ -1239,14 +1237,21 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public Floats vectors() {
+    public Floats vectors() throws IOException {
       float[] normalizedVector = new float[vectorValues.dimension()];
       return new Floats() {
+        Floats delegate = vectorValues.vectors();
+
         @Override
         public float[] get(int ord) throws IOException {
-          System.arraycopy(floats.get(ord), 0, normalizedVector, 0, normalizedVector.length);
+          System.arraycopy(delegate.get(ord), 0, normalizedVector, 0, normalizedVector.length);
           VectorUtil.l2normalize(normalizedVector);
           return normalizedVector;
+        }
+
+        @Override
+        public void close() throws IOException {
+          delegate.close();
         }
       };
     }

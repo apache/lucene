@@ -428,6 +428,11 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
         public float[] get(int ord) throws IOException {
           return rawVectors.get(ord);
         }
+
+        @Override
+        public void close() throws IOException {
+          rawVectors.close();
+        }
       };
     }
 

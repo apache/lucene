@@ -33,7 +33,7 @@ public abstract class FloatVectorValues extends KnnVectorValues {
   protected FloatVectorValues() {}
 
   /** A random access (lookup by ord) provider of the vector values */
-  public abstract static class Floats {
+  public abstract static class Floats implements AutoCloseable {
     /**
      * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
      * otherwise IndexOutOfBoundsException is thrown. The returned array may be shared across calls.
@@ -41,6 +41,11 @@ public abstract class FloatVectorValues extends KnnVectorValues {
      * @return the vector value
      */
     public abstract float[] get(int ord) throws IOException;
+
+    @Override
+    public void close() throws IOException {
+      // by default do nothing. Some implementations do more interesting resource management.
+    }
 
     /** A Floats containing no vectors. Throws UnsupportedOperationException if get() is called. */
     public static final Floats EMPTY =
@@ -118,6 +123,9 @@ public abstract class FloatVectorValues extends KnnVectorValues {
           public float[] get(int ord) throws IOException {
             return vectors.get(ord);
           }
+
+          @Override
+          public void close() {}
         };
       }
 

@@ -28,12 +28,13 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.Bag;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 public abstract class OffHeapFloatVectorValues extends FloatVectorValues implements HasIndexSlice {
-
+  private final Bag<Floats> pool = new Bag<>();
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
@@ -73,6 +74,10 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
 
   @Override
   public Floats vectors() {
+    Floats floats = pool.poll();
+    if (floats != null) {
+      return floats;
+    }
     IndexInput sliceCopy = slice.clone();
     float[] value = new float[dimension];
     return new Floats() {
@@ -87,6 +92,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         sliceCopy.readFloats(value, 0, value.length);
         lastOrd = targetOrd;
         return value;
+      }
+
+      @Override
+      public void close() throws IOException {
+        pool.offer(this);
       }
     };
   }

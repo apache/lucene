@@ -22,6 +22,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.hnsw.Bag;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
@@ -122,26 +123,24 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   private static final class FloatScoringSupplier implements RandomVectorScorerSupplier {
     private final FloatVectorValues vectorValues;
     private final VectorSimilarityFunction similarityFunction;
-    private final FloatVectorValues.Floats queryVectors;
-    private final FloatVectorValues.Floats targetVectors;
+    private final Bag<RandomVectorScorer> pool = new Bag<>();
 
     private FloatScoringSupplier(
         FloatVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
         throws IOException {
       this.vectorValues = vectorValues;
       this.similarityFunction = similarityFunction;
-      this.queryVectors = vectorValues.vectors();
-      this.targetVectors = vectorValues.vectors();
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      return new RandomVectorScorer.AbstractRandomVectorScorer(vectorValues) {
-        @Override
-        public float score(int node) throws IOException {
-          return similarityFunction.compare(queryVectors.get(ord), targetVectors.get(node));
-        }
-      };
+    public RandomVectorScorer scorer(int ord) throws IOException {
+      FloatVectorScorer scorer = (FloatVectorScorer) pool.poll();
+      if (scorer != null) {
+        scorer.setQuery(ord);
+      } else {
+        scorer = new FloatVectorScorer(vectorValues, ord, similarityFunction, pool);
+      }
+      return scorer;
     }
 
     @Override
@@ -152,22 +151,40 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
   /** A {@link RandomVectorScorer} for float vectors. */
   private static class FloatVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
-    private final float[] query;
+    private final FloatVectorValues.Floats vectors, queryVectors;
     private final VectorSimilarityFunction similarityFunction;
-    private final FloatVectorValues.Floats targetVectors;
+    private float[] query;
+
+    FloatVectorScorer(
+        FloatVectorValues vectorValues,
+        int ord,
+        VectorSimilarityFunction similarityFunction,
+        Bag<RandomVectorScorer> pool)
+        throws IOException {
+      super(vectorValues, pool);
+      this.similarityFunction = similarityFunction;
+      vectors = vectorValues.vectors();
+      queryVectors = vectorValues.vectors();
+      query = queryVectors.get(ord);
+    }
 
     public FloatVectorScorer(
         FloatVectorValues vectorValues, float[] query, VectorSimilarityFunction similarityFunction)
         throws IOException {
       super(vectorValues);
-      this.query = query;
       this.similarityFunction = similarityFunction;
-      this.targetVectors = vectorValues.vectors();
+      vectors = vectorValues.vectors();
+      queryVectors = null;
+      this.query = query;
+    }
+
+    private void setQuery(int ord) throws IOException {
+      query = queryVectors.get(ord);
     }
 
     @Override
     public float score(int node) throws IOException {
-      return similarityFunction.compare(query, targetVectors.get(node));
+      return similarityFunction.compare(query, vectors.get(node));
     }
   }
 
