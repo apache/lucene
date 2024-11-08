@@ -450,7 +450,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
-                        vectorDataInput,
+                        vectorDataInput.toRandomAccessInput(),
                         byteSize,
                         defaultFlatVectorScorer,
                         fieldInfo.getVectorSimilarityFunction()));
@@ -462,7 +462,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
-                        vectorDataInput,
+                        vectorDataInput.toRandomAccessInput(),
                         byteSize,
                         defaultFlatVectorScorer,
                         fieldInfo.getVectorSimilarityFunction()));

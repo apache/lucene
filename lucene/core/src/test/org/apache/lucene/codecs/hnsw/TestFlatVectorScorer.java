@@ -178,18 +178,13 @@ public class TestFlatVectorScorer extends LuceneTestCase {
   ByteVectorValues byteVectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
       throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("byteValues", 0, in.length()), dims, flatVectorsScorer, sim);
+        dims, size, in.toRandomAccessInput(), dims, flatVectorsScorer, sim);
   }
 
   FloatVectorValues floatVectorValues(
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-        dims,
-        size,
-        in.slice("floatValues", 0, in.length()),
-        dims * Float.BYTES,
-        flatVectorsScorer,
-        sim);
+        dims, size, in.toRandomAccessInput(), dims * Float.BYTES, flatVectorsScorer, sim);
   }
 
   /** Concatenates float arrays as byte[]. */

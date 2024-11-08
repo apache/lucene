@@ -98,7 +98,7 @@ public class VectorScorerBenchmark {
   static KnnVectorValues vectorValues(
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("test", 0, in.length()), dims, new ThrowingFlatVectorScorer(), sim);
+        dims, size, in.toRandomAccessInput(), dims, new ThrowingFlatVectorScorer(), sim);
   }
 
   static final class ThrowingFlatVectorScorer implements FlatVectorsScorer {

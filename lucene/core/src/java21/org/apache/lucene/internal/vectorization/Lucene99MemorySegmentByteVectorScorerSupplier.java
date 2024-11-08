@@ -25,6 +25,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
@@ -42,8 +43,11 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
    * optional is returned.
    */
   static Optional<RandomVectorScorerSupplier> create(
-      VectorSimilarityFunction type, IndexInput input, KnnVectorValues values) {
+      VectorSimilarityFunction type, RandomAccessInput slice, KnnVectorValues values) {
     assert values instanceof ByteVectorValues;
+    if (!(slice instanceof IndexInput input)) {
+      return Optional.empty();
+    }
     input = FilterIndexInput.unwrapOnlyTest(input);
     if (!(input instanceof MemorySegmentAccessInput msInput)) {
       return Optional.empty();
