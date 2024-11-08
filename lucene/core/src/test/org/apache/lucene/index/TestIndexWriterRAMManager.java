@@ -321,6 +321,13 @@ public class TestIndexWriterRAMManager extends LuceneTestCase {
         while (removedWriters.contains(maxValidWriter)) {
           maxValidWriter--;
         }
+        while (removedWriters.contains(lastFlush)) {
+          if (lastFlush == 1) {
+            lastFlush = maxValidWriter;
+          } else {
+            lastFlush--;
+          }
+        }
       } else if (event.event.equals(TestEventRecordingIndexWriterRAMManager.TestEvent.ADD)) {
         if (event.id > maxValidWriter) {
           maxValidWriter = event.id;
@@ -382,7 +389,13 @@ public class TestIndexWriterRAMManager extends LuceneTestCase {
       FLUSH;
     }
 
-    record TestEventAndId(TestEvent event, int id) {}
+    record TestEventAndId(TestEvent event, int id) {
+
+      @Override
+      public String toString() {
+        return event + " " + id;
+      }
+    }
 
     ConcurrentLinkedQueue<TestEventAndId> events = new ConcurrentLinkedQueue<>();
 
