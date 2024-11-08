@@ -2769,6 +2769,17 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  private static HnswGraph getHnswGraph(CodecReader reader) throws IOException {
+    KnnVectorsReader vectorsReader = reader.getVectorReader();
+    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader) {
+      vectorsReader = ((PerFieldKnnVectorsFormat.FieldsReader) vectorsReader).getFieldReader("knn");
+      if (vectorsReader instanceof HnswGraphProvider) {
+        return ((HnswGraphProvider) vectorsReader).getGraph("knn");
+      }
+    }
+    return null;
+  }
+
   /** Test the HNSW graph. */
   public static Status.HnswGraphStatus testHnswGraph(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
@@ -2776,53 +2787,52 @@ public final class CheckIndex implements Closeable {
       infoStream.print("    test: hnsw graph..........");
     }
     long startNS = System.nanoTime();
-    KnnVectorsReader vectorsReader =
-        ((PerFieldKnnVectorsFormat.FieldsReader) reader.getVectorReader()).getFieldReader("knn");
-    HnswGraph hnswGraph = ((HnswGraphProvider) vectorsReader).getGraph("knn");
     Status.HnswGraphStatus status = new Status.HnswGraphStatus();
 
     try {
-      final int numLevels = hnswGraph.numLevels();
-      // Perform tests on each level of the HNSW graph
-      for (int level = numLevels - 1; level >= 0; level--) {
-        HnswGraph.NodesIterator nodesIterator = hnswGraph.getNodesOnLevel(level);
-        while (nodesIterator.hasNext()) {
-          int node = nodesIterator.nextInt();
-          hnswGraph.seek(level, node);
-          int nbr, lastNeighbor = -1, firstNeighbor = -1;
-          while ((nbr = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
-            if (firstNeighbor == -1) {
-              firstNeighbor = nbr;
+      HnswGraph hnswGraph = getHnswGraph(reader);
+      if (hnswGraph != null) {
+        final int numLevels = hnswGraph.numLevels();
+        // Perform tests on each level of the HNSW graph
+        for (int level = numLevels - 1; level >= 0; level--) {
+          HnswGraph.NodesIterator nodesIterator = hnswGraph.getNodesOnLevel(level);
+          while (nodesIterator.hasNext()) {
+            int node = nodesIterator.nextInt();
+            hnswGraph.seek(level, node);
+            int nbr, lastNeighbor = -1, firstNeighbor = -1;
+            while ((nbr = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+              if (firstNeighbor == -1) {
+                firstNeighbor = nbr;
+              }
+              if (nbr < lastNeighbor) {
+                throw new CheckIndexException(
+                        "Neighbors out of order for node "
+                                + node
+                                + ": "
+                                + nbr
+                                + "<"
+                                + lastNeighbor
+                                + " 1st="
+                                + firstNeighbor);
+              } else if (nbr == lastNeighbor) {
+                throw new CheckIndexException(
+                        "There are repeated neighbors of node " + node + " with value " + nbr);
+              }
+              lastNeighbor = nbr;
             }
-            if (nbr < lastNeighbor) {
-              throw new CheckIndexException(
-                  "Neighbors out of order for node "
-                      + node
-                      + ": "
-                      + nbr
-                      + "<"
-                      + lastNeighbor
-                      + " 1st="
-                      + firstNeighbor);
-            } else if (nbr == lastNeighbor) {
-              throw new CheckIndexException(
-                  "There are repeated neighbors of node " + node + " with value " + nbr);
-            }
-            lastNeighbor = nbr;
+            status.hnswGraphSize++;
           }
-          status.hnswGraphSize++;
+          status.hsnwGraphNumLevels++;
         }
-        status.hsnwGraphNumLevels++;
+        msg(
+                infoStream,
+                String.format(
+                        Locale.ROOT,
+                        "OK [%d levels, %d nodes (over all levels)] [took %.3f sec]",
+                        status.hsnwGraphNumLevels,
+                        status.hnswGraphSize,
+                        nsToSec(System.nanoTime() - startNS)));
       }
-      msg(
-          infoStream,
-          String.format(
-              Locale.ROOT,
-              "OK [%d levels, %d nodes (over all levels)] [took %.3f sec]",
-              status.hsnwGraphNumLevels,
-              status.hnswGraphSize,
-              nsToSec(System.nanoTime() - startNS)));
-
     } catch (Throwable e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
