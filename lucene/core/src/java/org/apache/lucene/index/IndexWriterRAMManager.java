@@ -57,19 +57,21 @@ public class IndexWriterRAMManager {
   /**
    * Calls {@link IndexWriter#flushNextBuffer()} in a round-robin fashion starting from the first
    * writer added that has not been removed yet. Subsequent calls will flush the next writer in line
-   * and eventually loop back to the beginning.
+   * and eventually loop back to the beginning. Returns the flushed writer id for testing
    */
-  public void flushRoundRobin() throws IOException {
-    idToWriter.flushRoundRobin();
+  public int flushRoundRobin() throws IOException {
+    return idToWriter.flushRoundRobin();
   }
 
-  private int registerWriter(IndexWriter writer) {
+  /** Registers a writer and returns the associated ID, protected for testing */
+  protected int registerWriter(IndexWriter writer) {
     int id = idGenerator.incrementAndGet();
     idToWriter.addWriter(writer, id);
     return id;
   }
 
-  private void removeWriter(int id) {
+  /** Removes a writer given the writer's ide, protected for testing */
+  protected void removeWriter(int id) {
     idToWriter.removeWriter(id);
   }
 
@@ -133,6 +135,7 @@ public class IndexWriterRAMManager {
         last.next = node;
         node.prev = last;
         last = node;
+        first.prev = node;
         idToWriterNode.put(id, node);
       }
     }
@@ -163,10 +166,11 @@ public class IndexWriterRAMManager {
       }
     }
 
-    void flushRoundRobin() throws IOException {
+    // Returns the writer id that we attempted to flush (for testing purposes)
+    int flushRoundRobin() throws IOException {
       synchronized (lock) {
         if (idToWriterNode.isEmpty()) {
-          return;
+          return -1;
         }
         int idToFlush;
         if (lastIdFlushed == -1) {
@@ -176,6 +180,7 @@ public class IndexWriterRAMManager {
         }
         idToWriterNode.get(idToFlush).writer.flushNextBuffer();
         lastIdFlushed = idToFlush;
+        return idToFlush;
       }
     }
 
