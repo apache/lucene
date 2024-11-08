@@ -52,7 +52,7 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
@@ -2778,7 +2778,7 @@ public final class CheckIndex implements Closeable {
     long startNS = System.nanoTime();
     KnnVectorsReader vectorsReader =
         ((PerFieldKnnVectorsFormat.FieldsReader) reader.getVectorReader()).getFieldReader("knn");
-    HnswGraph hnswGraph = ((Lucene99HnswVectorsReader) vectorsReader).getGraph("knn");
+    HnswGraph hnswGraph = ((HnswGraphProvider) vectorsReader).getGraph("knn");
     Status.HnswGraphStatus status = new Status.HnswGraphStatus();
 
     try {
