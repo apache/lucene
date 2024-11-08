@@ -2806,17 +2806,17 @@ public final class CheckIndex implements Closeable {
               }
               if (nbr < lastNeighbor) {
                 throw new CheckIndexException(
-                        "Neighbors out of order for node "
-                                + node
-                                + ": "
-                                + nbr
-                                + "<"
-                                + lastNeighbor
-                                + " 1st="
-                                + firstNeighbor);
+                    "Neighbors out of order for node "
+                        + node
+                        + ": "
+                        + nbr
+                        + "<"
+                        + lastNeighbor
+                        + " 1st="
+                        + firstNeighbor);
               } else if (nbr == lastNeighbor) {
                 throw new CheckIndexException(
-                        "There are repeated neighbors of node " + node + " with value " + nbr);
+                    "There are repeated neighbors of node " + node + " with value " + nbr);
               }
               lastNeighbor = nbr;
             }
@@ -2825,13 +2825,13 @@ public final class CheckIndex implements Closeable {
           status.hsnwGraphNumLevels++;
         }
         msg(
-                infoStream,
-                String.format(
-                        Locale.ROOT,
-                        "OK [%d levels, %d nodes (over all levels)] [took %.3f sec]",
-                        status.hsnwGraphNumLevels,
-                        status.hnswGraphSize,
-                        nsToSec(System.nanoTime() - startNS)));
+            infoStream,
+            String.format(
+                Locale.ROOT,
+                "OK [%d levels, %d nodes (over all levels)] [took %.3f sec]",
+                status.hsnwGraphNumLevels,
+                status.hnswGraphSize,
+                nsToSec(System.nanoTime() - startNS)));
       }
     } catch (Throwable e) {
       if (failFast) {
