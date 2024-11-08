@@ -2783,8 +2783,6 @@ public final class CheckIndex implements Closeable {
 
     try {
       final int numLevels = hnswGraph.numLevels();
-      status.hnswGraphSize = hnswGraph.size();
-      status.hsnwGraphNumLevels = numLevels;
       // Perform tests on each level of the HNSW graph
       for (int level = numLevels - 1; level >= 0; level--) {
         HnswGraph.NodesIterator nodesIterator = hnswGraph.getNodesOnLevel(level);
@@ -2812,15 +2810,17 @@ public final class CheckIndex implements Closeable {
             }
             lastNeighbor = nbr;
           }
+          status.hnswGraphSize++;
         }
+        status.hsnwGraphNumLevels++;
       }
       msg(
           infoStream,
           String.format(
               Locale.ROOT,
-              "OK [%d nodes, %d levels] [took %.3f sec]",
-              status.hnswGraphSize,
+              "OK [%d levels, %d nodes (over all levels)] [took %.3f sec]",
               status.hsnwGraphNumLevels,
+              status.hnswGraphSize,
               nsToSec(System.nanoTime() - startNS)));
 
     } catch (Throwable e) {
