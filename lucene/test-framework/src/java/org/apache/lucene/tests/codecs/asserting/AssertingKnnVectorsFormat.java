@@ -166,6 +166,18 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public KnnVectorsReader getMergeInstance() {
+      KnnVectorsReader mergeVectorsReader = delegate.getMergeInstance();
+      assert mergeVectorsReader != null;
+      return mergeVectorsReader;
+    }
+
+    @Override
+    public void finishMerge() throws IOException {
+      delegate.finishMerge();
+    }
+
+    @Override
     public void close() throws IOException {
       delegate.close();
       delegate.close();

@@ -226,4 +226,12 @@ public abstract class IndexInput extends DataInput implements Closeable {
    * @param length the number of bytes to prefetch
    */
   public void prefetch(long offset, long length) throws IOException {}
+
+  /**
+   * Optional method: Give a hint to this input about the change in read access pattern. IndexInput
+   * implementations may take advantage of this hint to optimize reads from storage.
+   *
+   * <p>The default implementation is a no-op.
+   */
+  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {}
 }

@@ -88,4 +88,15 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
    */
   public abstract RandomVectorScorer getRandomVectorScorer(String field, byte[] target)
       throws IOException;
+
+  /**
+   * Returns an instance optimized for merging. This instance may only be consumed in the thread
+   * that called {@link #getMergeInstance()}.
+   *
+   * <p>The default implementation returns {@code this}
+   */
+  @Override
+  public FlatVectorsReader getMergeInstance() {
+    return this;
+  }
 }
