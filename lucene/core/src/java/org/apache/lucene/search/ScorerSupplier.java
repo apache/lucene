@@ -53,6 +53,10 @@ public abstract class ScorerSupplier {
    */
   public abstract long cost();
 
+  public TotalHits isEstimatedPointCountGreaterThanOrEqualTo(long upperBound) {
+    return new TotalHits(cost(), TotalHits.Relation.EQUAL_TO);
+  }
+
   /**
    * Inform this {@link ScorerSupplier} that its returned scorers produce scores that get passed to
    * the collector, as opposed to partial scores that then need to get combined (e.g. summed up).

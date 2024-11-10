@@ -385,9 +385,17 @@ public abstract class PointValues {
    * IntersectVisitor}. This should run many times faster than {@link #intersect(IntersectVisitor)}.
    */
   public final long estimatePointCount(IntersectVisitor visitor) {
+    return estimatePointCount(visitor, Long.MAX_VALUE);
+  }
+
+  /**
+   * Estimate the number of points within the given {@link IntersectVisitor} and a maximum of
+   * {upperBound}
+   */
+  public final long estimatePointCount(IntersectVisitor visitor, long upperBound) {
     try {
       final PointTree pointTree = getPointTree();
-      final long count = estimatePointCount(visitor, pointTree, Long.MAX_VALUE);
+      final long count = estimatePointCount(visitor, pointTree, upperBound);
       assert pointTree.moveToParent() == false;
       return count;
     } catch (IOException ioe) {
@@ -449,7 +457,15 @@ public abstract class PointValues {
    * @see DocIdSetIterator#cost
    */
   public final long estimateDocCount(IntersectVisitor visitor) {
-    long estimatedPointCount = estimatePointCount(visitor);
+    return estimateDocCount(visitor, Long.MAX_VALUE);
+  }
+
+  /**
+   * Estimate the number of documents that would be matched by {@link #intersect} with the given
+   * {upperBound}
+   */
+  public final long estimateDocCount(IntersectVisitor visitor, long upperBound) {
+    long estimatedPointCount = estimatePointCount(visitor, upperBound);
     int docCount = getDocCount();
     double size = size();
     if (estimatedPointCount >= size) {

@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.TotalHits.Relation.EQUAL_TO;
+import static org.apache.lucene.search.TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+
+import java.util.Collection;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.PriorityQueue;
@@ -45,5 +49,34 @@ class ScorerUtil {
         };
     costs.forEach(pq::insertWithOverflow);
     return StreamSupport.stream(pq.spliterator(), false).mapToLong(Number::longValue).sum();
+  }
+
+  static TotalHits costWithMinShouldMatch(
+      Collection<ScorerSupplier> collection, int numScorers, int minShouldMatch, long upperBound) {
+    int queueSize = Math.min(numScorers - minShouldMatch + 1, collection.size());
+    final PriorityQueue<Long> pq =
+        new PriorityQueue<Long>(queueSize) {
+          @Override
+          protected boolean lessThan(Long a, Long b) {
+            return a > b;
+          }
+        };
+    // Keep track of the last eliminated value that was added to the priority queue.
+    long leastTopNScoreBound = upperBound;
+    for (ScorerSupplier supplier : collection) {
+      TotalHits totalHits = supplier.isEstimatedPointCountGreaterThanOrEqualTo(leastTopNScoreBound);
+      if (totalHits.relation() == EQUAL_TO) {
+        Long oldCost = pq.insertWithOverflow(totalHits.value());
+        if (oldCost != null && leastTopNScoreBound > oldCost) {
+          leastTopNScoreBound = oldCost;
+        }
+      }
+    }
+    long cost = StreamSupport.stream(pq.spliterator(), false).mapToLong(Number::longValue).sum();
+    if (pq.size() < queueSize || cost > upperBound) {
+      return new TotalHits(Math.max(cost, upperBound), GREATER_THAN_OR_EQUAL_TO);
+    } else {
+      return new TotalHits(cost, EQUAL_TO);
+    }
   }
 }

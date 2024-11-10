@@ -17,6 +17,9 @@
 
 package org.apache.lucene.sandbox.search;
 
+import static org.apache.lucene.search.TotalHits.Relation.EQUAL_TO;
+import static org.apache.lucene.search.TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +39,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocIdSetBuilder;
@@ -352,7 +356,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
 
             final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
             final PointValues.IntersectVisitor visitor = getIntersectVisitor(result, range);
-            long cost = -1;
+            TotalHits estimatedCount = null;
 
             @Override
             public Scorer get(long leadCost) throws IOException {
@@ -363,12 +367,30 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
 
             @Override
             public long cost() {
-              if (cost == -1) {
-                // Computing the cost may be expensive, so only do it if necessary
-                cost = values.estimateDocCount(visitor) * rangeClauses.size();
-                assert cost >= 0;
+              if (estimatedCount == null || estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO) {
+                estimatedCount =
+                    new TotalHits(
+                        values.estimateDocCount(visitor, Long.MAX_VALUE) * rangeClauses.size(),
+                        EQUAL_TO);
+                assert estimatedCount.value() >= 0;
               }
-              return cost;
+              return estimatedCount.value();
+            }
+
+            @Override
+            public TotalHits isEstimatedPointCountGreaterThanOrEqualTo(long upperBound) {
+              if (estimatedCount == null
+                  || (estimatedCount.value() < upperBound
+                      && estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO)) {
+                long cost = values.estimateDocCount(visitor, upperBound);
+                if (cost < upperBound) {
+                  estimatedCount = new TotalHits(cost, EQUAL_TO);
+                } else if (estimatedCount == null || cost > estimatedCount.value()) {
+                  estimatedCount = new TotalHits(cost, GREATER_THAN_OR_EQUAL_TO);
+                }
+                assert estimatedCount.value() >= 0;
+              }
+              return estimatedCount;
             }
           };
         }
