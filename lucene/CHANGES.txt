@@ -71,6 +71,8 @@ Bug Fixes
 * GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
 * GITHUB#13927: Fix StoredFieldsConsumer finish. (linfn)
 * GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
+* GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
+  in valid polygons. (Ignacio Vera)
 
 Build
 ---------------------
