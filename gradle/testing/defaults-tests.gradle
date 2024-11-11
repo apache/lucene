@@ -128,12 +128,10 @@ allprojects {
       jvmArgs '--add-modules', 'jdk.management'
 
       // Enable the vector incubator module on supported Java versions:
-      def v = JavaVersion.VERSION_1_1
-      def prop = providers.systemProperty("org.apache.lucene.vectorization.upperJavaFeatureVersion")
-      if (prop.isPresent())
-        v = prop.map(Integer::parseInt).map(JavaVersion::getVersionForMajor).get()
+      def prop = propertyOrDefault("org.apache.lucene.vectorization.upperJavaFeatureVersion", "1") as String
+      def v = JavaVersion.toVersion(Integer.parseInt(prop)).majorVersion
       if (rootProject.vectorIncubatorJavaVersions.contains(rootProject.runtimeJavaVersion) ||
-          rootProject.runtimeJavaVersion <= v) {
+          rootProject.runtimeJavaVersion.majorVersion <= v) {
         systemProperty 'org.apache.lucene.vectorization.upperJavaFeatureVersion', v
         jvmArgs '--add-modules', 'jdk.incubator.vector'
       }
