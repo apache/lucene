@@ -20,6 +20,10 @@ Bug Fixes
   written but can be read from an existing index.  (Ionut
   Anghelcovici, Michael McCandless)
 
+* GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
+  in valid polygons. (Ignacio Vera)
+
+
 ======================== Lucene 9.12.0 =======================
 
 Security Fixes
@@ -95,7 +99,7 @@ Improvements
 
 * GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
   IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
-  
+
 * GITHUB#13633: Add ability to read/write knn vector values to a MemoryIndex. (Ben Trent)
 
 * GITHUB#12627: patch HNSW graphs to improve reachability of all nodes from entry points
