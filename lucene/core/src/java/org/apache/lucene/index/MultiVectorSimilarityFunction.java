@@ -21,16 +21,17 @@ import java.util.List;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
- * Multi-vector similarity function; used in search to return top K most similar multi-vectors to a
- * target multi-vector. This method is used during indexing and searching of the multi-vectors in
- * order to determine the nearest neighbors.
+ * Computes similarity between two multi-vectors.
+ * <p>
+ * A multi-vector is a collection of multiple vectors that represent a single document or query.
+ * MultiVectorSimilarityFunction is used to determine nearest neighbors during
+ * indexing and search on multi-vectors.
  */
-// no commit
-public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
+public class MultiVectorSimilarityFunction {
 
   /** Aggregation function to combine similarity across multiple vector values */
   public enum Aggregation {
-    /** Placeholder aggregation that is not intended to be used. */
+    /** Selecting this aggregation indicates that the field does not have multi-vector values */
     NONE {
       @Override
       public float aggregate(
@@ -52,7 +53,7 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
     },
 
     /**
-     * SumMaxSimilarity between two multi-vectors. Aggregates using the sum of maximum similarity
+     * SumMaxSimilarity between two multi-vectors. Computes the sum of maximum similarity
      * found for each vector in the first multi-vector against all vectors in the second
      * multi-vector.
      */
@@ -64,17 +65,16 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
           VectorSimilarityFunction vectorSimilarityFunction,
           int dimension) {
         if (outer.length % dimension != 0 || inner.length % dimension != 0) {
-          throw new IllegalArgumentException("Multi vectors do not match provided dimensions");
+          throw new IllegalArgumentException("Multi vectors do not match provided dimension value");
         }
+
         // TODO: can we avoid making vector copies?
         List<float[]> outerList = new ArrayList<>();
         List<float[]> innerList = new ArrayList<>();
         for (int i = 0; i < outer.length; i += dimension) {
-//          System.out.println("copy subArray - " + i + ":" + i+dimension);
           outerList.add(ArrayUtil.copyOfSubArray(outer, i, i + dimension));
         }
         for (int i = 0; i < inner.length; i += dimension) {
-//          System.out.println("copy subArray - " + i + ":" + i+dimension);
           innerList.add(ArrayUtil.copyOfSubArray(inner, i, i + dimension));
         }
 
@@ -96,18 +96,16 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
           VectorSimilarityFunction vectorSimilarityFunction,
           int dimension) {
         if (outer.length % dimension != 0 || inner.length % dimension != 0) {
-          throw new IllegalArgumentException("Multi vectors do not match provided dimensions");
+          throw new IllegalArgumentException("Multi vectors do not match provided dimension value");
         }
+
+        // TODO: can we avoid making vector copies?
         List<byte[]> outerList = new ArrayList<>();
         List<byte[]> innerList = new ArrayList<>();
-//        System.out.println("...handling outer list");
         for (int i = 0; i < outer.length; i += dimension) {
-//          System.out.println("copy subArray - " + i + ":" + dimension);
           outerList.add(ArrayUtil.copyOfSubArray(outer, i, i + dimension));
         }
-//        System.out.println("...handling inner list");
         for (int i = 0; i < inner.length; i += dimension) {
-//          System.out.println("copy subArray - " + i + ":" + dimension);
           innerList.add(ArrayUtil.copyOfSubArray(inner, i, i + dimension));
         }
 
@@ -124,12 +122,15 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
     };
 
     /**
-     * Computes and aggregates similarity over multiple vector values
+     * Computes and aggregates similarity over multiple vector values.
+     *
+     * Assumes that all vector values in both provided multi-vectors have the same dimensions. Slices
+     * inner and outer float[] multi-vectors into dimension sized vector values for comparison.
      *
      * @param outer first multi-vector
      * @param inner second multi-vector
      * @param vectorSimilarityFunction distance function for vector proximity
-     * @param dimension dimension for each vector value in the multi-vector
+     * @param dimension dimension for each vector in the provided multi-vectors
      * @return similarity between the two multi-vectors
      */
     public abstract float aggregate(
@@ -139,12 +140,15 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
         int dimension);
 
     /**
-     * Computes and aggregates similarity over multiple vector values
+     * Computes and aggregates similarity over multiple vector values.
+     *
+     * Assumes that all vector values in both provided multi-vectors have the same dimensions. Slices
+     * inner and outer byte[] multi-vectors into dimension sized vector values for comparison.
      *
      * @param outer first multi-vector
      * @param inner second multi-vector
      * @param vectorSimilarityFunction distance function for vector proximity
-     * @param dimension dimension for each vector value in the multi-vector
+     * @param dimension dimension for each vector in the provided multi-vectors
      * @return similarity between the two multi-vectors
      */
     public abstract float aggregate(
@@ -172,17 +176,14 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
     this.aggregation = aggregation;
   }
 
-  @Override
   public float compare(float[] t1, float[] t2, int dimension) {
     return aggregation.aggregate(t1, t2, similarityFunction, dimension);
   }
 
-  @Override
   public float compare(byte[] t1, byte[] t2, int dimension) {
     return aggregation.aggregate(t1, t2, similarityFunction, dimension);
   }
 
-  @Override
   public boolean equals(Object obj) {
     if (obj instanceof MultiVectorSimilarityFunction == false) {
       return false;
@@ -191,14 +192,12 @@ public class MultiVectorSimilarityFunction implements MultiVectorSimilarity {
     return this.similarityFunction == o.similarityFunction && this.aggregation == o.aggregation;
   }
 
-  @Override
   public int hashCode() {
     int result = Integer.hashCode(similarityFunction.ordinal());
     result = 31 * result + Integer.hashCode(aggregation.ordinal());
     return result;
   }
 
-  @Override
   public String toString() {
     return "MultiVectorSimilarityFunction(similarity="
         + similarityFunction
