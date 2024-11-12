@@ -163,6 +163,7 @@ public class MultiVectorSimilarityFunction {
     return aggregation.aggregate(t1, t2, similarityFunction, dimension);
   }
 
+  @Override
   public boolean equals(Object obj) {
     if (obj instanceof MultiVectorSimilarityFunction == false) {
       return false;
@@ -171,12 +172,14 @@ public class MultiVectorSimilarityFunction {
     return this.similarityFunction == o.similarityFunction && this.aggregation == o.aggregation;
   }
 
+  @Override
   public int hashCode() {
     int result = Integer.hashCode(similarityFunction.ordinal());
     result = 31 * result + Integer.hashCode(aggregation.ordinal());
     return result;
   }
 
+  @Override
   public String toString() {
     return "MultiVectorSimilarityFunction(similarity="
         + similarityFunction
