@@ -29,7 +29,14 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -75,8 +82,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
       // test with filter
       Query filter = new TermQuery(new Term("id", "text"));
       query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, filter);
-      assertEquals(
-          "KnnFloatVectorQuery:field[0.0,...][10],filter:[id:text]", query.toString("ignored"));
+      assertEquals("KnnFloatVectorQuery:field[0.0,...][10][id:text]", query.toString("ignored"));
     }
   }
 

@@ -117,7 +117,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
     buffer.append(this.field + "[" + target[0] + ",...]");
     buffer.append("[" + k + "]");
     if (this.filter != null) {
-      buffer.append(",filter:[" + this.filter + "]");
+      buffer.append("[" + this.filter + "]");
     }
     return buffer.toString();
   }
