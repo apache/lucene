@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -252,7 +253,7 @@ public final class CheckIndex implements Closeable {
       public VectorValuesStatus vectorValuesStatus;
 
       /** Status of HNSW graph */
-      public HnswGraphStatus hnswGraphStatus;
+      public HnswGraphsStatus hnswGraphsStatus;
 
       /** Status of soft deletes */
       public SoftDeletesStatus softDeletesStatus;
@@ -411,7 +412,7 @@ public final class CheckIndex implements Closeable {
       public Throwable error;
     }
 
-    /** Status from testing HNSW graph */
+    /** Status from testing a single HNSW graph */
     public static final class HnswGraphStatus {
 
       HnswGraphStatus() {}
@@ -423,6 +424,20 @@ public final class CheckIndex implements Closeable {
       public int numLevels;
 
       /** Exception thrown during vector values test (null on success) */
+      public Throwable error;
+    }
+
+    /** Status from testing all HNSW graphs */
+    public static final class HnswGraphsStatus {
+
+      HnswGraphsStatus() {
+        this.hnswGraphsStatusByField = new HashMap<>();
+      }
+
+      /** Status of the HNSW graph keyed with field name */
+      public Map<String, HnswGraphStatus> hnswGraphsStatusByField;
+
+      /** Exception thrown during term index test (null on success) */
       public Throwable error;
     }
 
@@ -1106,7 +1121,7 @@ public final class CheckIndex implements Closeable {
         segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
 
         // Test HNSW graph
-        segInfoStat.hnswGraphStatus = testHnswGraphs(reader, infoStream, failFast);
+        segInfoStat.hnswGraphsStatus = testHnswGraphs(reader, infoStream, failFast);
 
         // Test Index Sort
         if (indexSort != null) {
@@ -2770,13 +2785,13 @@ public final class CheckIndex implements Closeable {
   }
 
   /** Test the HNSW graph. */
-  public static Status.HnswGraphStatus testHnswGraphs(
+  public static Status.HnswGraphsStatus testHnswGraphs(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
-      infoStream.print("    test: hnsw graph..........");
+      infoStream.print("    test: hnsw graphs.........");
     }
     long startNS = System.nanoTime();
-    Status.HnswGraphStatus status = new Status.HnswGraphStatus();
+    Status.HnswGraphsStatus status = new Status.HnswGraphsStatus();
     KnnVectorsReader vectorsReader = reader.getVectorReader();
     FieldInfos fieldInfos = reader.getFieldInfos();
 
@@ -2785,24 +2800,35 @@ public final class CheckIndex implements Closeable {
         for (FieldInfo fieldInfo : fieldInfos) {
           if (fieldInfo.hasVectorValues()) {
             if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader) {
-              vectorsReader =
+              KnnVectorsReader fieldReader =
                   ((PerFieldKnnVectorsFormat.FieldsReader) vectorsReader)
                       .getFieldReader(fieldInfo.name);
-              if (vectorsReader instanceof HnswGraphProvider) {
-                HnswGraph hnswGraph = ((HnswGraphProvider) vectorsReader).getGraph(fieldInfo.name);
-                testHnswGraph(hnswGraph, status);
+              if (fieldReader instanceof HnswGraphProvider) {
+                HnswGraph hnswGraph = ((HnswGraphProvider) fieldReader).getGraph(fieldInfo.name);
+                testHnswGraph(hnswGraph, fieldInfo.name, status);
               }
             }
           }
         }
       }
+      StringJoiner hnswGraphResultJoiner = new StringJoiner(", ");
+      for (Map.Entry<String, Status.HnswGraphStatus> hnswGraphStatus :
+          status.hnswGraphsStatusByField.entrySet()) {
+        hnswGraphResultJoiner.add(
+            String.format(
+                Locale.ROOT,
+                "(field name: %s, levels: %d, total nodes: %d)",
+                hnswGraphStatus.getKey(),
+                hnswGraphStatus.getValue().numLevels,
+                hnswGraphStatus.getValue().totalNumNodes));
+      }
       msg(
           infoStream,
           String.format(
               Locale.ROOT,
-              "OK [%d levels, %d nodes (over all levels)] [took %.3f sec]",
-              status.numLevels,
-              status.totalNumNodes,
+              "OK [%d fields: %s] [took %.3f sec]",
+              status.hnswGraphsStatusByField.size(),
+              hnswGraphResultJoiner,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
       if (failFast) {
@@ -2818,9 +2844,11 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  private static void testHnswGraph(HnswGraph hnswGraph, Status.HnswGraphStatus status)
-      throws IOException {
+  private static void testHnswGraph(
+      HnswGraph hnswGraph, String fieldName, Status.HnswGraphsStatus status)
+      throws IOException, CheckIndexException {
     if (hnswGraph != null) {
+      status.hnswGraphsStatusByField.put(fieldName, new Status.HnswGraphStatus());
       final int numLevels = hnswGraph.numLevels();
       // Perform tests on each level of the HNSW graph
       for (int level = numLevels - 1; level >= 0; level--) {
@@ -2849,9 +2877,9 @@ public final class CheckIndex implements Closeable {
             }
             lastNeighbor = nbr;
           }
-          status.totalNumNodes++;
+          status.hnswGraphsStatusByField.get(fieldName).totalNumNodes++;
         }
-        status.numLevels++;
+        status.hnswGraphsStatusByField.get(fieldName).numLevels++;
       }
     }
   }
