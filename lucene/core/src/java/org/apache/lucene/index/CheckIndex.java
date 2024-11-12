@@ -416,11 +416,11 @@ public final class CheckIndex implements Closeable {
 
       HnswGraphStatus() {}
 
-      /** Number of nodes in the graph */
-      public int hnswGraphSize;
+      /** Number of nodes in the HNSW graph, summed over all levels */
+      public int totalNumNodes;
 
-      /** Number of levels of the graph */
-      public int hsnwGraphNumLevels;
+      /** Number of levels in the HNSW graph */
+      public int numLevels;
 
       /** Exception thrown during vector values test (null on success) */
       public Throwable error;
@@ -1106,7 +1106,7 @@ public final class CheckIndex implements Closeable {
         segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
 
         // Test HNSW graph
-        segInfoStat.hnswGraphStatus = testHnswGraph(reader, infoStream, failFast);
+        segInfoStat.hnswGraphStatus = testHnswGraphs(reader, infoStream, failFast);
 
         // Test Index Sort
         if (indexSort != null) {
@@ -2769,70 +2769,41 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  private static HnswGraph getHnswGraph(CodecReader reader) throws IOException {
-    KnnVectorsReader vectorsReader = reader.getVectorReader();
-    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader) {
-      vectorsReader = ((PerFieldKnnVectorsFormat.FieldsReader) vectorsReader).getFieldReader("knn");
-      if (vectorsReader instanceof HnswGraphProvider) {
-        return ((HnswGraphProvider) vectorsReader).getGraph("knn");
-      }
-    }
-    return null;
-  }
-
   /** Test the HNSW graph. */
-  public static Status.HnswGraphStatus testHnswGraph(
+  public static Status.HnswGraphStatus testHnswGraphs(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
       infoStream.print("    test: hnsw graph..........");
     }
     long startNS = System.nanoTime();
     Status.HnswGraphStatus status = new Status.HnswGraphStatus();
+    KnnVectorsReader vectorsReader = reader.getVectorReader();
+    FieldInfos fieldInfos = reader.getFieldInfos();
 
     try {
-      HnswGraph hnswGraph = getHnswGraph(reader);
-      if (hnswGraph != null) {
-        final int numLevels = hnswGraph.numLevels();
-        // Perform tests on each level of the HNSW graph
-        for (int level = numLevels - 1; level >= 0; level--) {
-          HnswGraph.NodesIterator nodesIterator = hnswGraph.getNodesOnLevel(level);
-          while (nodesIterator.hasNext()) {
-            int node = nodesIterator.nextInt();
-            hnswGraph.seek(level, node);
-            int nbr, lastNeighbor = -1, firstNeighbor = -1;
-            while ((nbr = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
-              if (firstNeighbor == -1) {
-                firstNeighbor = nbr;
+      if (fieldInfos.hasVectorValues()) {
+        for (FieldInfo fieldInfo : fieldInfos) {
+          if (fieldInfo.hasVectorValues()) {
+            if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader) {
+              vectorsReader =
+                  ((PerFieldKnnVectorsFormat.FieldsReader) vectorsReader)
+                      .getFieldReader(fieldInfo.name);
+              if (vectorsReader instanceof HnswGraphProvider) {
+                HnswGraph hnswGraph = ((HnswGraphProvider) vectorsReader).getGraph(fieldInfo.name);
+                testHnswGraph(hnswGraph, status);
               }
-              if (nbr < lastNeighbor) {
-                throw new CheckIndexException(
-                    "Neighbors out of order for node "
-                        + node
-                        + ": "
-                        + nbr
-                        + "<"
-                        + lastNeighbor
-                        + " 1st="
-                        + firstNeighbor);
-              } else if (nbr == lastNeighbor) {
-                throw new CheckIndexException(
-                    "There are repeated neighbors of node " + node + " with value " + nbr);
-              }
-              lastNeighbor = nbr;
             }
-            status.hnswGraphSize++;
           }
-          status.hsnwGraphNumLevels++;
         }
-        msg(
-            infoStream,
-            String.format(
-                Locale.ROOT,
-                "OK [%d levels, %d nodes (over all levels)] [took %.3f sec]",
-                status.hsnwGraphNumLevels,
-                status.hnswGraphSize,
-                nsToSec(System.nanoTime() - startNS)));
       }
+      msg(
+          infoStream,
+          String.format(
+              Locale.ROOT,
+              "OK [%d levels, %d nodes (over all levels)] [took %.3f sec]",
+              status.numLevels,
+              status.totalNumNodes,
+              nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
@@ -2845,6 +2816,44 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  private static void testHnswGraph(HnswGraph hnswGraph, Status.HnswGraphStatus status)
+      throws IOException {
+    if (hnswGraph != null) {
+      final int numLevels = hnswGraph.numLevels();
+      // Perform tests on each level of the HNSW graph
+      for (int level = numLevels - 1; level >= 0; level--) {
+        HnswGraph.NodesIterator nodesIterator = hnswGraph.getNodesOnLevel(level);
+        while (nodesIterator.hasNext()) {
+          int node = nodesIterator.nextInt();
+          hnswGraph.seek(level, node);
+          int nbr, lastNeighbor = -1, firstNeighbor = -1;
+          while ((nbr = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+            if (firstNeighbor == -1) {
+              firstNeighbor = nbr;
+            }
+            if (nbr < lastNeighbor) {
+              throw new CheckIndexException(
+                  "Neighbors out of order for node "
+                      + node
+                      + ": "
+                      + nbr
+                      + "<"
+                      + lastNeighbor
+                      + " 1st="
+                      + firstNeighbor);
+            } else if (nbr == lastNeighbor) {
+              throw new CheckIndexException(
+                  "There are repeated neighbors of node " + node + " with value " + nbr);
+            }
+            lastNeighbor = nbr;
+          }
+          status.totalNumNodes++;
+        }
+        status.numLevels++;
+      }
+    }
   }
 
   private static boolean vectorsReaderSupportsSearch(CodecReader codecReader, String fieldName) {
