@@ -86,12 +86,15 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
   public void testToString() {
     // test without filter
     Query query = getParentJoinKnnQuery("field", new float[] {0, 1}, null, 10, null);
-    assertEquals("DiversifyingChildrenByteKnnVectorQuery:field[0,...][10]", query.toString("ignored"));
+    assertEquals(
+        "DiversifyingChildrenByteKnnVectorQuery:field[0,...][10]", query.toString("ignored"));
 
     // test with filter
     Query filter = new TermQuery(new Term("id", "text"));
     query = getParentJoinKnnQuery("field", new float[] {0, 1}, filter, 10, null);
-    assertEquals("DiversifyingChildrenByteKnnVectorQuery:field[0,...][10][id:text]", query.toString("ignored"));
+    assertEquals(
+        "DiversifyingChildrenByteKnnVectorQuery:field[0,...][10][id:text]",
+        query.toString("ignored"));
   }
 
   private static byte[] fromFloat(float[] queryVector) {
