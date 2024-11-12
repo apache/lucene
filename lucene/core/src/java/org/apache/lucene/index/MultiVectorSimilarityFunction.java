@@ -22,10 +22,10 @@ import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Computes similarity between two multi-vectors.
- * <p>
- * A multi-vector is a collection of multiple vectors that represent a single document or query.
- * MultiVectorSimilarityFunction is used to determine nearest neighbors during
- * indexing and search on multi-vectors.
+ *
+ * <p>A multi-vector is a collection of multiple vectors that represent a single document or query.
+ * MultiVectorSimilarityFunction is used to determine nearest neighbors during indexing and search
+ * on multi-vectors.
  */
 public class MultiVectorSimilarityFunction {
 
@@ -33,9 +33,8 @@ public class MultiVectorSimilarityFunction {
   public enum Aggregation {
 
     /**
-     * Sum_Max Similarity between two multi-vectors. Computes the sum of maximum similarity
-     * found for each vector in the first multi-vector against all vectors in the second
-     * multi-vector.
+     * Sum_Max Similarity between two multi-vectors. Computes the sum of maximum similarity found
+     * for each vector in the first multi-vector against all vectors in the second multi-vector.
      */
     SUM_MAX {
       @Override
@@ -103,8 +102,8 @@ public class MultiVectorSimilarityFunction {
 
     /**
      * Computes and aggregates similarity over multiple vector values.
-     * <p>
-     * Assumes all vector values in both provided multi-vectors have the same dimension. Slices
+     *
+     * <p>Assumes all vector values in both provided multi-vectors have the same dimension. Slices
      * inner and outer float[] multi-vectors into dimension sized vector values for comparison.
      *
      * @param outer first multi-vector
@@ -121,8 +120,8 @@ public class MultiVectorSimilarityFunction {
 
     /**
      * Computes and aggregates similarity over multiple vector values.
-     * <p>
-     * Assumes all vector values in both provided multi-vectors have the same dimension. Slices
+     *
+     * <p>Assumes all vector values in both provided multi-vectors have the same dimension. Slices
      * inner and outer byte[] multi-vectors into dimension sized vector values for comparison.
      *
      * @param outer first multi-vector
