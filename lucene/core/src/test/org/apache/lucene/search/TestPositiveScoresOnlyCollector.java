@@ -114,8 +114,9 @@ public class TestPositiveScoresOnlyCollector extends LuceneTestCase {
     Collector c = new PositiveScoresOnlyCollector(tdc);
     LeafCollector ac = c.getLeafCollector(ir.leaves().get(0));
     ac.setScorer(s);
-    while (s.iterator().nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-      ac.collect(0);
+    int docId;
+    while ((docId = s.iterator().nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      ac.collect(docId);
     }
     TopDocs td = tdc.topDocs();
     ScoreDoc[] sd = td.scoreDocs;

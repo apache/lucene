@@ -359,7 +359,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
       leafCollector.collect(1);
 
       scorer.score = 4;
-      leafCollector.collect(1);
+      leafCollector.collect(2);
 
       TopDocs topDocs = collector.topDocs();
       assertEquals(totalHitsThreshold < 4, scorer.minCompetitiveScore != null);
