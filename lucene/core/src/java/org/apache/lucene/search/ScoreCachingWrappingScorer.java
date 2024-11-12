@@ -84,7 +84,7 @@ public final class ScoreCachingWrappingScorer extends Scorable {
   public float score() throws IOException {
     if (lastDoc != curDoc) {
       curScore = in.score();
-      curDoc = lastDoc;
+      lastDoc = curDoc;
     }
 
     return curScore;
