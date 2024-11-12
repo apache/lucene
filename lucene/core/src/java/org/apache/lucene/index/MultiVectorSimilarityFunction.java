@@ -31,29 +31,9 @@ public class MultiVectorSimilarityFunction {
 
   /** Aggregation function to combine similarity across multiple vector values */
   public enum Aggregation {
-    /** Selecting this aggregation indicates that the field does not have multi-vector values */
-    NONE {
-      @Override
-      public float aggregate(
-          float[] outer,
-          float[] inner,
-          VectorSimilarityFunction vectorSimilarityFunction,
-          int dimension) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public float aggregate(
-          byte[] outer,
-          byte[] inner,
-          VectorSimilarityFunction vectorSimilarityFunction,
-          int dimension) {
-        throw new UnsupportedOperationException();
-      }
-    },
 
     /**
-     * SumMaxSimilarity between two multi-vectors. Computes the sum of maximum similarity
+     * Sum_Max Similarity between two multi-vectors. Computes the sum of maximum similarity
      * found for each vector in the first multi-vector against all vectors in the second
      * multi-vector.
      */
@@ -123,8 +103,8 @@ public class MultiVectorSimilarityFunction {
 
     /**
      * Computes and aggregates similarity over multiple vector values.
-     *
-     * Assumes that all vector values in both provided multi-vectors have the same dimensions. Slices
+     * <p>
+     * Assumes all vector values in both provided multi-vectors have the same dimension. Slices
      * inner and outer float[] multi-vectors into dimension sized vector values for comparison.
      *
      * @param outer first multi-vector
@@ -141,8 +121,8 @@ public class MultiVectorSimilarityFunction {
 
     /**
      * Computes and aggregates similarity over multiple vector values.
-     *
-     * Assumes that all vector values in both provided multi-vectors have the same dimensions. Slices
+     * <p>
+     * Assumes all vector values in both provided multi-vectors have the same dimension. Slices
      * inner and outer byte[] multi-vectors into dimension sized vector values for comparison.
      *
      * @param outer first multi-vector
