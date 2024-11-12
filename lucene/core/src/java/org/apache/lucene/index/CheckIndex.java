@@ -422,9 +422,6 @@ public final class CheckIndex implements Closeable {
 
       /** Number of levels in the HNSW graph */
       public int numLevels;
-
-      /** Exception thrown during vector values test (null on success) */
-      public Throwable error;
     }
 
     /** Status from testing all HNSW graphs */
@@ -2826,9 +2823,9 @@ public final class CheckIndex implements Closeable {
           infoStream,
           String.format(
               Locale.ROOT,
-              "OK [%d fields: %s] [took %.3f sec]",
+              "OK [%d fields%s] [took %.3f sec]",
               status.hnswGraphsStatusByField.size(),
-              hnswGraphResultJoiner,
+              hnswGraphResultJoiner.toString().isEmpty() ? "" : ": " + hnswGraphResultJoiner,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
       if (failFast) {
