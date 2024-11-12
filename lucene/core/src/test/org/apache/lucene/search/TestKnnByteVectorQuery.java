@@ -82,8 +82,8 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
       // test with filter
       Query filter = new TermQuery(new Term("id", "text"));
-      query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, filter);
-      assertEquals("KnnFloatVectorQuery:field[0.0,...][10][id:text]", query.toString("ignored"));
+      query = getKnnVectorQuery("field", new float[] {0, 1}, 10, filter);
+      assertEquals("KnnByteVectorQuery:field[0,...][10][id:text]", query.toString("ignored"));
     }
   }
 
