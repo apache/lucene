@@ -132,8 +132,10 @@ allprojects {
       def v = JavaVersion.toVersion(Integer.parseInt(prop)).majorVersion
       if (rootProject.vectorIncubatorJavaVersions.contains(rootProject.runtimeJavaVersion) ||
           rootProject.runtimeJavaVersion.majorVersion <= v) {
-        systemProperty 'org.apache.lucene.vectorization.upperJavaFeatureVersion', v
         jvmArgs '--add-modules', 'jdk.incubator.vector'
+        if (rootProject.runtimeJavaVersion.majorVersion <= v) {
+          systemProperty 'org.apache.lucene.vectorization.upperJavaFeatureVersion', v
+        }
       }
       
       jvmArgs '--enable-native-access=' + (project.path in [
