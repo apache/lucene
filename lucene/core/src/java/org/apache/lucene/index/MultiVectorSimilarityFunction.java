@@ -155,10 +155,22 @@ public class MultiVectorSimilarityFunction {
     this.aggregation = aggregation;
   }
 
+  /**
+   * Compute similarity between two float multi-vectors.
+   *
+   * <p>Expects all component vector values as a single packed float[] for each multi-vector. Uses
+   * configured aggregation function and vector similarity.
+   */
   public float compare(float[] t1, float[] t2, int dimension) {
     return aggregation.aggregate(t1, t2, similarityFunction, dimension);
   }
 
+  /**
+   * Compute similarity between two byte multi-vectors.
+   *
+   * <p>Expects all component vector values as a single packed float[] for each multi-vector. Uses
+   * configured aggregation function and vector similarity.
+   */
   public float compare(byte[] t1, byte[] t2, int dimension) {
     return aggregation.aggregate(t1, t2, similarityFunction, dimension);
   }
