@@ -157,4 +157,40 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     ir.close();
     directory.close();
   }
+
+  private static class CountingScorable extends FilterScorable {
+    int count = 0;
+
+    public CountingScorable(Scorable in) {
+      super(in);
+    }
+
+    @Override
+    public float score() throws IOException {
+      count++;
+      return in.score();
+    }
+  }
+
+  public void testRepeatedCollectReusesScore() throws Exception {
+    Scorer s = new SimpleScorer();
+    CountingScorable countingScorable = new CountingScorable(s);
+    ScoreCachingCollector scc = new ScoreCachingCollector(scores.length * 2);
+    LeafCollector lc = scc.getLeafCollector(null);
+    lc.setScorer(countingScorable);
+
+    // We need to iterate on the scorer so that its doc() advances.
+    int doc;
+    while ((doc = s.iterator().nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      lc.collect(doc);
+      lc.collect(doc);
+    }
+
+    for (int i = 0; i < scores.length; i++) {
+      assertEquals(scores[i], scc.mscores[i * 2], 0f);
+      assertEquals(scores[i], scc.mscores[i * 2 + 1], 0f);
+    }
+
+    assertEquals(scores.length, countingScorable.count);
+  }
 }
