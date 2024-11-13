@@ -2872,6 +2872,7 @@ public final class CheckIndex implements Closeable {
               throw new CheckIndexException(
                   "There are repeated neighbors of node " + node + " with value " + nbr);
             }
+            // TODO: add checks: nodes are within range and neighbors are on the same level
             lastNeighbor = nbr;
           }
           status.hnswGraphsStatusByField.get(fieldName).totalNumNodes++;
