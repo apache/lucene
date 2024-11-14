@@ -116,7 +116,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return results;
   }
 
-  private TopDocs getLeafResults(
+  protected TopDocs getLeafResults(
       LeafReaderContext ctx,
       Weight filterWeight,
       TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager)

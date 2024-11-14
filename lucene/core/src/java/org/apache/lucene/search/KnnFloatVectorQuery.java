@@ -47,7 +47,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final float[] target;
+  final float[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
