@@ -268,6 +268,11 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       return new MatchNoDocsQuery("empty BooleanQuery");
     }
 
+    // Queries with no positive clauses have no matches
+    if (clauses.size() == clauseSets.get(Occur.MUST_NOT).size()) {
+      return new MatchNoDocsQuery("pure negative BooleanQuery");
+    }
+
     // optimize 1-clause queries
     if (clauses.size() == 1) {
       BooleanClause c = clauses.get(0);
@@ -283,8 +288,6 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
             // no scoring clauses, so return a score of 0
             return new BoostQuery(new ConstantScoreQuery(query), 0);
           case MUST_NOT:
-            // no positive clauses
-            return new MatchNoDocsQuery("pure negative BooleanQuery");
           default:
             throw new AssertionError();
         }
@@ -565,8 +568,13 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       boolean actuallyRewritten = false;
       for (BooleanClause outerClause : clauses) {
         if (outerClause.isRequired() && outerClause.query() instanceof BooleanQuery innerQuery) {
+          // Inlining prohibited clauses is not legal if the query is a pure negation, since pure
+          // negations have no matches. It works because the inner BooleanQuery would have first
+          // rewritten to a MatchNoDocsQuery if it only had prohibited clauses.
+          assert innerQuery.getClauses(Occur.MUST_NOT).size() != innerQuery.clauses().size();
           if (innerQuery.getMinimumNumberShouldMatch() == 0
               && innerQuery.getClauses(Occur.SHOULD).isEmpty()) {
+
             actuallyRewritten = true;
             for (BooleanClause innerClause : innerQuery) {
               Occur innerOccur = innerClause.occur();
