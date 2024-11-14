@@ -159,7 +159,7 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
   }
 
   private static class CountingScorable extends FilterScorable {
-    int count = 0;
+    int count;
 
     public CountingScorable(Scorable in) {
       super(in);
@@ -175,6 +175,7 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
   public void testRepeatedCollectReusesScore() throws Exception {
     Scorer s = new SimpleScorer();
     CountingScorable countingScorable = new CountingScorable(s);
+    // We're going to collect every document twice, so we need to allocate a 2x larger array.
     ScoreCachingCollector scc = new ScoreCachingCollector(scores.length * 2);
     LeafCollector lc = scc.getLeafCollector(null);
     lc.setScorer(countingScorable);
@@ -186,11 +187,14 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
       lc.collect(doc);
     }
 
+    // Verify that each score was collected twice.
     for (int i = 0; i < scores.length; i++) {
       assertEquals(scores[i], scc.mscores[i * 2], 0f);
       assertEquals(scores[i], scc.mscores[i * 2 + 1], 0f);
     }
 
+    // But we only call score() on the underlying scorer once per document, because scores are
+    // cached.
     assertEquals(scores.length, countingScorable.count);
   }
 }
