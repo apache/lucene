@@ -238,9 +238,9 @@ public class TestIndexWriter extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(writer);
     IndexSearcher searcher = newSearcher(reader);
     assertEquals(
-        0, searcher.search(LongPoint.newRangeQuery("content", 10, 19), 100).totalHits.value);
+        0, searcher.search(LongPoint.newRangeQuery("content", 10, 19), 100).totalHits.value());
     assertEquals(
-        20, searcher.search(LongPoint.newRangeQuery("content", 0, 30), 100).totalHits.value);
+        20, searcher.search(LongPoint.newRangeQuery("content", 0, 30), 100).totalHits.value());
 
     reader.close();
     writer.close();
@@ -279,7 +279,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
     DirectoryReader reader = DirectoryReader.open(writer);
     IndexSearcher searcher = newSearcher(reader);
-    assertEquals(0, searcher.search(new MatchAllDocsQuery(), 10).totalHits.value);
+    assertEquals(0, searcher.search(new MatchAllDocsQuery(), 10).totalHits.value());
 
     reader.close();
     writer.close();
