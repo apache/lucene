@@ -563,28 +563,28 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
       builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
       boolean actuallyRewritten = false;
-      for (BooleanClause clause : clauses) {
-        if (clause.isRequired() && clause.query() instanceof BooleanQuery innerQuery) {
+      for (BooleanClause outerClause : clauses) {
+        if (outerClause.isRequired() && outerClause.query() instanceof BooleanQuery innerQuery) {
           if (innerQuery.getMinimumNumberShouldMatch() == 0
               && innerQuery.getClauses(Occur.SHOULD).isEmpty()) {
             actuallyRewritten = true;
             for (BooleanClause innerClause : innerQuery) {
-              Occur occur = innerClause.occur();
-              if (occur == Occur.FILTER
-                  || occur == Occur.MUST_NOT
-                  || clause.occur() == Occur.MUST) {
+              Occur innerOccur = innerClause.occur();
+              if (innerOccur == Occur.FILTER
+                  || innerOccur == Occur.MUST_NOT
+                  || outerClause.occur() == Occur.MUST) {
                 builder.add(innerClause);
               } else {
-                assert clause.occur() == Occur.FILTER && occur == Occur.MUST;
+                assert outerClause.occur() == Occur.FILTER && innerOccur == Occur.MUST;
                 // In this case we need to change the occur of the inner query from MUST to FILTER.
                 builder.add(innerClause.query(), Occur.FILTER);
               }
             }
           } else {
-            builder.add(clause);
+            builder.add(outerClause);
           }
         } else {
-          builder.add(clause);
+          builder.add(outerClause);
         }
       }
       if (actuallyRewritten) {
