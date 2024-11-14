@@ -232,8 +232,10 @@ public class TestIndexWriter extends LuceneTestCase {
       writer.addDocument(doc);
     }
     writer.flush();
-    writer.deleteDocuments(
-        LongPoint.newRangeQuery("content", 10, 19), LongPoint.newRangeQuery("content", 12, 15));
+    // Match all docs in 2nd segment.
+    writer.deleteDocuments(LongPoint.newRangeQuery("content", 10, 19));
+    // This query can not be applied on 2nd segment, since it is fully deleted by prior query.
+    writer.deleteDocuments(LongPoint.newRangeQuery("content", 12, 15));
 
     DirectoryReader reader = DirectoryReader.open(writer);
     IndexSearcher searcher = newSearcher(reader);
@@ -259,20 +261,25 @@ public class TestIndexWriter extends LuceneTestCase {
     doc = new Document();
     doc.add(new TextField("f", "foo bar tea", Field.Store.NO));
     writer.addDocument(doc);
+    writer.flush();
 
     doc = new Document();
     doc.add(new TextField("f", "foo bar", Field.Store.NO));
     writer.addDocument(doc);
+    writer.flush();
 
     doc = new Document();
     doc.add(new TextField("f", "foo tea", Field.Store.NO));
     writer.addDocument(doc);
-
     writer.flush();
 
     Term[] delTerms = new Term[3];
+    // This query only can be applied on 3rd segment, since segment 1, 2 are fully deleted by prior
+    // query.
     delTerms[0] = new Term("f", "foo");
+    // This query can be applied on every segment, since it is executed firstly.
     delTerms[1] = new Term("f", "bar");
+    // This query can not be applied, since all segments are fully deleted by prior query.
     delTerms[2] = new Term("f", "tea");
 
     writer.deleteDocuments(delTerms);
