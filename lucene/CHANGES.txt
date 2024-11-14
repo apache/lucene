@@ -21,7 +21,11 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with
+  newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
+  system property to increase the set of Java versions that Panama Vectorization will
+  provide optimized implementations for. (Chris Hegarty)
 
 Optimizations
 ---------------------
