@@ -539,12 +539,46 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
       boolean actuallyRewritten = false;
       for (BooleanClause clause : clauses) {
-        if (clause.occur() == Occur.SHOULD && clause.query() instanceof BooleanQuery) {
-          BooleanQuery innerQuery = (BooleanQuery) clause.query();
+        if (clause.occur() == Occur.SHOULD && clause.query() instanceof BooleanQuery innerQuery) {
           if (innerQuery.isPureDisjunction()) {
             actuallyRewritten = true;
             for (BooleanClause innerClause : innerQuery.clauses()) {
               builder.add(innerClause);
+            }
+          } else {
+            builder.add(clause);
+          }
+        } else {
+          builder.add(clause);
+        }
+      }
+      if (actuallyRewritten) {
+        return builder.build();
+      }
+    }
+
+    // Inline required / prohibited clauses. This helps run filtered conjunctive queries more
+    // efficiently by providing all clauses to the block-max AND scorer.
+    {
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
+      boolean actuallyRewritten = false;
+      for (BooleanClause clause : clauses) {
+        if (clause.isRequired() && clause.query() instanceof BooleanQuery innerQuery) {
+          if (innerQuery.getMinimumNumberShouldMatch() == 0
+              && innerQuery.getClauses(Occur.SHOULD).isEmpty()) {
+            actuallyRewritten = true;
+            for (BooleanClause innerClause : innerQuery) {
+              Occur occur = innerClause.occur();
+              if (occur == Occur.FILTER
+                  || occur == Occur.MUST_NOT
+                  || clause.occur() == Occur.MUST) {
+                builder.add(innerClause);
+              } else {
+                assert clause.occur() == Occur.FILTER && occur == Occur.MUST;
+                // In this case we need to change the occur of the inner query from MUST to FILTER.
+                builder.add(innerClause.query(), Occur.FILTER);
+              }
             }
           } else {
             builder.add(clause);
