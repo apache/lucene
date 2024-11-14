@@ -25,7 +25,9 @@ import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.AssociationAggregationFunction;
 import org.apache.lucene.facet.taxonomy.FloatAssociationFacetField;
 import org.apache.lucene.facet.taxonomy.IntAssociationFacetField;
@@ -96,12 +98,13 @@ public class AssociationsFacetsExample {
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
 
-    FacetsCollector fc = new FacetsCollector();
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollectorManager.FacetsResult facetsResult =
+        FacetsCollectorManager.search(
+            searcher, new MatchAllDocsQuery(), 10, new FacetsCollectorManager());
+    FacetsCollector fc = facetsResult.facetsCollector();
 
     Facets tags =
         new TaxonomyFacetIntAssociations(
@@ -132,8 +135,8 @@ public class AssociationsFacetsExample {
 
     // Now user drills down on Publish Date/2010:
     q.add("tags", "solr");
-    FacetsCollector fc = new FacetsCollector();
-    FacetsCollector.search(searcher, q, 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    FacetsCollector fc = FacetsCollectorManager.search(searcher, q, 10, fcm).facetsCollector();
 
     // Retrieve results
     Facets facets =
@@ -165,5 +168,12 @@ public class AssociationsFacetsExample {
     List<FacetResult> results = new AssociationsFacetsExample().runSumAssociations();
     System.out.println("tags: " + results.get(0));
     System.out.println("genre: " + results.get(1));
+    System.out.println("-------------------------");
+    System.out.println("Counts per label are also available:");
+    for (FacetResult facetResult : results) {
+      for (LabelAndValue lv : facetResult.labelValues) {
+        System.out.println("\t" + lv.label + ": " + lv.count);
+      }
+    }
   }
 }

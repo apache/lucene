@@ -26,6 +26,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRef;
@@ -147,12 +149,8 @@ public final class Util {
   }
 
   /** Compares first by the provided comparator, and then tie breaks by path.input. */
-  private static class TieBreakByInputComparator<T> implements Comparator<FSTPath<T>> {
-    private final Comparator<T> comparator;
-
-    TieBreakByInputComparator(Comparator<T> comparator) {
-      this.comparator = comparator;
-    }
+  private record TieBreakByInputComparator<T>(Comparator<T> comparator)
+      implements Comparator<FSTPath<T>> {
 
     @Override
     public int compare(FSTPath<T> a, FSTPath<T> b) {
@@ -428,15 +426,7 @@ public final class Util {
   /**
    * Holds a single input (IntsRef) + output, returned by {@link #shortestPaths shortestPaths()}.
    */
-  public static final class Result<T> {
-    public final IntsRef input;
-    public final T output;
-
-    public Result(IntsRef input, T output) {
-      this.input = input;
-      this.output = output;
-    }
-  }
+  public record Result<T>(IntsRef input, T output) {}
 
   /** Holds the results for a top N search using {@link TopNSearcher} */
   public static final class TopResults<T> implements Iterable<Result<T>> {
@@ -524,7 +514,7 @@ public final class Util {
     // System.out.println("toDot: startArc: " + startArc);
 
     // A list of states on the same level (for ranking).
-    final List<Integer> sameLevelStates = new ArrayList<>();
+    final IntArrayList sameLevelStates = new IntArrayList();
 
     // A bitset of already seen states (target offset).
     final BitSet seen = new BitSet();
@@ -692,8 +682,8 @@ public final class Util {
       // Emit state ranking information.
       if (sameRank && sameLevelStates.size() > 1) {
         out.write("  {rank=same; ");
-        for (int state : sameLevelStates) {
-          out.write(state + "; ");
+        for (IntCursor state : sameLevelStates) {
+          out.write(state.value + "; ");
         }
         out.write(" }\n");
       }
@@ -785,10 +775,11 @@ public final class Util {
 
   /** Just takes unsigned byte values from the BytesRef and converts into an IntsRef. */
   public static IntsRef toIntsRef(BytesRef input, IntsRefBuilder scratch) {
-    scratch.clear();
+    scratch.growNoCopy(input.length);
     for (int i = 0; i < input.length; i++) {
-      scratch.append(input.bytes[i + input.offset] & 0xFF);
+      scratch.setIntAt(i, input.bytes[i + input.offset] & 0xFF);
     }
+    scratch.setLength(input.length);
     return scratch.get();
   }
 

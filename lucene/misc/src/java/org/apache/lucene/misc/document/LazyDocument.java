@@ -31,8 +31,8 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * Defers actually loading a field's value until you ask for it. You must not use the returned Field

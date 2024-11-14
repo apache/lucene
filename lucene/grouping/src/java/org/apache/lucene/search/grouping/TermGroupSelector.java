@@ -22,10 +22,10 @@ import java.util.Collection;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
-import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /** A GroupSelector implementation that groups via SortedDocValues */
 public class TermGroupSelector extends GroupSelector<BytesRef> {

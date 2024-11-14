@@ -19,7 +19,7 @@ package org.apache.lucene.spatial3d.geom;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 
 /**
  * Lookup tables for classes that can be serialized using a code.

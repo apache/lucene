@@ -102,7 +102,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.addTransition(s2, s3, "sun");
     q.finish();
 
-    assertEquals(1, s.search(q, 1).totalHits.value);
+    assertEquals(1, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();
@@ -135,7 +135,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.addTransition(s2, s3, "moon");
     q.finish();
 
-    assertEquals(2, s.search(q, 1).totalHits.value);
+    assertEquals(2, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();
@@ -172,7 +172,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.addTransition(s2, s3, "sun");
     q.finish();
 
-    assertEquals(2, s.search(q, 1).totalHits.value);
+    assertEquals(2, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();
@@ -228,7 +228,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     // System.out.println("DOT:\n" + q.toDot());
 
-    assertEquals(4, s.search(q, 1).totalHits.value);
+    assertEquals(4, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();
@@ -273,7 +273,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
-    assertEquals(4, s.search(q, 1).totalHits.value);
+    assertEquals(4, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();
@@ -306,7 +306,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.addTransition(s2, s3, "moon");
     q.finish();
 
-    assertEquals(2, s.search(q, 1).totalHits.value);
+    assertEquals(2, s.search(q, 1).totalHits.value());
     w.close();
     r.close();
     dir.close();
@@ -367,7 +367,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
-    assertEquals(3, s.search(q, 1).totalHits.value);
+    assertEquals(3, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();
@@ -552,7 +552,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
       Set<String> hits2Docs = toDocIDs(s, hits2);
 
       try {
-        assertEquals(hits2.totalHits.value, hits1.totalHits.value);
+        assertEquals(hits2.totalHits.value(), hits1.totalHits.value());
         assertEquals(hits2Docs, hits1Docs);
       } catch (AssertionError ae) {
         System.out.println("FAILED:");
@@ -609,10 +609,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
           }
           final var scorer =
               new ConstantScoreScorer(
-                  this,
-                  score(),
-                  scoreMode,
-                  new BitSetIterator(bits, bits.approximateCardinality()));
+                  score(), scoreMode, new BitSetIterator(bits, bits.approximateCardinality()));
           return new DefaultScorerSupplier(scorer);
         }
 
@@ -671,7 +668,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.setAccept(s1, true);
     q.finish();
 
-    assertEquals(1, s.search(q, 1).totalHits.value);
+    assertEquals(1, s.search(q, 1).totalHits.value());
     w.close();
     r.close();
     dir.close();
@@ -706,7 +703,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.setAccept(s4, true);
     q.finish();
 
-    assertEquals(1, s.search(q, 1).totalHits.value);
+    assertEquals(1, s.search(q, 1).totalHits.value());
     w.close();
     r.close();
     dir.close();
@@ -726,7 +723,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
-    assertEquals(0, s.search(q, 1).totalHits.value);
+    assertEquals(0, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();
@@ -747,7 +744,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     TermAutomatonQuery q = new TokenStreamToTermAutomatonQuery().toQuery("field", ts);
     // System.out.println("DOT: " + q.toDot());
-    assertEquals(0, s.search(q, 1).totalHits.value);
+    assertEquals(0, s.search(q, 1).totalHits.value());
 
     IOUtils.close(w, r, dir);
   }
@@ -863,7 +860,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     assertTrue(rewrittenQuery instanceof TermAutomatonQuery);
 
     TopDocs topDocs = searcher.search(rewrittenQuery, 10);
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
 
     Explanation explanation = searcher.explain(rewrittenQuery, 0);
     assertFalse("Explanation should indicate no match", explanation.isMatch());
@@ -906,7 +903,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
         "Rewritten query should be an instance of TermAutomatonQuery",
         rewrittenQuery instanceof TermAutomatonQuery);
     TopDocs topDocs = searcher.search(q, 10);
-    assertEquals(2, topDocs.totalHits.value);
+    assertEquals(2, topDocs.totalHits.value());
 
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
       Explanation explanation = searcher.explain(q, scoreDoc.doc);
@@ -1041,7 +1038,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.addTransition(s2, s3, "moon");
     q.finish();
 
-    assertEquals(1, s.search(q, 1).totalHits.value);
+    assertEquals(1, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();
@@ -1071,7 +1068,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     q.addTransition(s2, s3, "moon");
     q.finish();
 
-    assertEquals(0, s.search(q, 1).totalHits.value);
+    assertEquals(0, s.search(q, 1).totalHits.value());
 
     w.close();
     r.close();

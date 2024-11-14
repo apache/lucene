@@ -32,7 +32,7 @@ import org.apache.lucene.search.Weight;
  * A Query wrapping a {@link ValueSource} that matches docs in which the values in the value source
  * match a configured range. The score is the float value. This can be a slow query if run by itself
  * since it must visit all docs; ideally it's combined with other queries. It's mostly a wrapper
- * around {@link FunctionValues#getRangeScorer(Weight, LeafReaderContext, String, String, boolean,
+ * around {@link FunctionValues#getRangeScorer(LeafReaderContext, String, String, boolean,
  * boolean)}.
  *
  * <p>A similar class is {@code org.apache.lucene.search.DocValuesRangeQuery} in the sandbox module.
@@ -169,8 +169,7 @@ public class FunctionRangeQuery extends Query {
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       FunctionValues functionValues = valueSource.getValues(vsContext, context);
       final var scorer =
-          functionValues.getRangeScorer(
-              this, context, lowerVal, upperVal, includeLower, includeUpper);
+          functionValues.getRangeScorer(context, lowerVal, upperVal, includeLower, includeUpper);
       return new DefaultScorerSupplier(scorer);
     }
 

@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
@@ -76,10 +77,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     return new FieldsWriter(state);
   }
 
-  static class ConsumerAndSuffix implements Closeable {
-    DocValuesConsumer consumer;
-    int suffix;
-
+  record ConsumerAndSuffix(DocValuesConsumer consumer, int suffix) implements Closeable {
     @Override
     public void close() throws IOException {
       consumer.close();
@@ -220,10 +218,10 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
         final String segmentSuffix =
             getFullSegmentSuffix(
                 segmentWriteState.segmentSuffix, getSuffix(formatName, Integer.toString(suffix)));
-        consumer = new ConsumerAndSuffix();
-        consumer.consumer =
-            format.fieldsConsumer(new SegmentWriteState(segmentWriteState, segmentSuffix));
-        consumer.suffix = suffix;
+        consumer =
+            new ConsumerAndSuffix(
+                format.fieldsConsumer(new SegmentWriteState(segmentWriteState, segmentSuffix)),
+                suffix);
         formats.put(format, consumer);
       } else {
         // we've already seen this format, so just grab its suffix
@@ -256,7 +254,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
   }
 
-  private class FieldsReader extends DocValuesProducer {
+  private static class FieldsReader extends DocValuesProducer {
 
     private final Map<String, DocValuesProducer> fields = new HashMap<>();
     private final Map<String, DocValuesProducer> formats = new HashMap<>();
@@ -344,6 +342,12 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
       DocValuesProducer producer = fields.get(field.name);
       return producer == null ? null : producer.getSortedSet(field);
+    }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      DocValuesProducer producer = fields.get(field.name);
+      return producer == null ? null : producer.getSkipper(field);
     }
 
     @Override

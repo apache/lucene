@@ -30,7 +30,7 @@ import org.apache.lucene.util.PriorityQueue;
  */
 final class BooleanScorer extends BulkScorer {
 
-  static final int SHIFT = 11;
+  static final int SHIFT = 12;
   static final int SIZE = 1 << SHIFT;
   static final int MASK = SIZE - 1;
   static final int SET_SIZE = 1 << (SHIFT - 6);
@@ -194,11 +194,7 @@ final class BooleanScorer extends BulkScorer {
 
   private final DocIdStreamView docIdStreamView = new DocIdStreamView();
 
-  BooleanScorer(
-      BooleanWeight weight,
-      Collection<BulkScorer> scorers,
-      int minShouldMatch,
-      boolean needsScores) {
+  BooleanScorer(Collection<BulkScorer> scorers, int minShouldMatch, boolean needsScores) {
     if (minShouldMatch < 1 || minShouldMatch > scorers.size()) {
       throw new IllegalArgumentException(
           "minShouldMatch should be within 1..num_scorers. Got " + minShouldMatch);

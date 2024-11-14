@@ -189,7 +189,7 @@ public final class LongRange extends Range {
                   return 100; // TODO: use cost of range.accept()
                 }
               };
-          final var scorer = new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
           return new DefaultScorerSupplier(scorer);
         }
 
@@ -296,7 +296,7 @@ public final class LongRange extends Range {
                   return 100; // TODO: use cost of range.accept()
                 }
               };
-          final var scorer = new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
           return new DefaultScorerSupplier(scorer);
         }
 

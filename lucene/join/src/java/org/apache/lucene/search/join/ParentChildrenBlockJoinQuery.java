@@ -177,7 +177,7 @@ public class ParentChildrenBlockJoinQuery extends Query {
               }
             };
         final var scorer =
-            new Scorer(this) {
+            new Scorer() {
               @Override
               public int docID() {
                 return it.docID();

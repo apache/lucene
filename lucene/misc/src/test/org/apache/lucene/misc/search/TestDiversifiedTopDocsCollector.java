@@ -534,7 +534,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
           final var innerScorer = scorerSupplier.get(Long.MAX_VALUE);
           NumericDocValues scoreFactors = DocValues.getNumeric(context.reader(), scoreField);
           final var scorer =
-              new Scorer(this) {
+              new Scorer() {
 
                 @Override
                 public float score() throws IOException {

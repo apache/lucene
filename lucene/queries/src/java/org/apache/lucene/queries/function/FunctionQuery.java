@@ -108,7 +108,6 @@ public class FunctionQuery extends Query {
     final FunctionValues vals;
 
     public AllScorer(LeafReaderContext context, FunctionWeight w, float boost) throws IOException {
-      super(w);
       this.weight = w;
       this.boost = boost;
       this.reader = context.reader();

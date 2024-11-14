@@ -21,7 +21,6 @@ description = 'Index-time and Query-time joins for normalized content'
 
 dependencies {
   moduleApi project(':lucene:core')
-  moduleImplementation 'com.carrotsearch:hppc'
 
   moduleTestImplementation project(':lucene:test-framework')
 }

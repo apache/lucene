@@ -17,13 +17,13 @@
 
 package org.apache.lucene.search.join;
 
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /**
  * This collects the nearest children vectors. Diversifying the results over the provided parent
@@ -278,15 +278,8 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
   }
 
   /** Keeps track of child node, parent node, and the stored score. */
-  private static class ParentChildScore implements Comparable<ParentChildScore> {
-    private final int parent, child;
-    private final float score;
-
-    ParentChildScore(int child, int parent, float score) {
-      this.child = child;
-      this.parent = parent;
-      this.score = score;
-    }
+  private record ParentChildScore(int child, int parent, float score)
+      implements Comparable<ParentChildScore> {
 
     @Override
     public int compareTo(ParentChildScore o) {

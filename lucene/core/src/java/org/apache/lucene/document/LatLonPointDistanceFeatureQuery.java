@@ -215,14 +215,12 @@ final class LatLonPointDistanceFeatureQuery extends Query {
         final SortedNumericDocValues multiDocValues =
             DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues docValues = selectValues(multiDocValues);
-
-        final Weight weight = this;
         return new ScorerSupplier() {
 
           @Override
           public Scorer get(long leadCost) throws IOException {
             return new DistanceScorer(
-                weight, context.reader().maxDoc(), leadCost, boost, pointValues, docValues);
+                context.reader().maxDoc(), leadCost, boost, pointValues, docValues);
           }
 
           @Override
@@ -258,13 +256,11 @@ final class LatLonPointDistanceFeatureQuery extends Query {
     private double maxDistance = GeoUtils.EARTH_MEAN_RADIUS_METERS * Math.PI;
 
     protected DistanceScorer(
-        Weight weight,
         int maxDoc,
         long leadCost,
         float boost,
         PointValues pointValues,
         NumericDocValues docValues) {
-      super(weight);
       this.maxDoc = maxDoc;
       this.leadCost = leadCost;
       this.boost = boost;

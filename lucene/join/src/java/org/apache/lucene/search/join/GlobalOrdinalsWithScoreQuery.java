@@ -222,16 +222,13 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
       } else if (globalOrds != null) {
         scorer =
             new OrdinalMapScorer(
-                this,
                 collector,
                 boost,
                 values,
                 approximationScorer.iterator(),
                 globalOrds.getGlobalOrds(context.ord));
       } else {
-        scorer =
-            new SegmentOrdinalScorer(
-                this, collector, values, boost, approximationScorer.iterator());
+        scorer = new SegmentOrdinalScorer(collector, values, boost, approximationScorer.iterator());
       }
       return new DefaultScorerSupplier(scorer);
     }
@@ -251,13 +248,12 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
     final GlobalOrdinalsWithScoreCollector collector;
 
     public OrdinalMapScorer(
-        Weight weight,
         GlobalOrdinalsWithScoreCollector collector,
         float boost,
         SortedDocValues values,
         DocIdSetIterator approximation,
         LongValues segmentOrdToGlobalOrdLookup) {
-      super(weight, values, approximation, boost);
+      super(values, approximation, boost);
       this.segmentOrdToGlobalOrdLookup = segmentOrdToGlobalOrdLookup;
       this.collector = collector;
     }
@@ -292,12 +288,11 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
     final GlobalOrdinalsWithScoreCollector collector;
 
     public SegmentOrdinalScorer(
-        Weight weight,
         GlobalOrdinalsWithScoreCollector collector,
         SortedDocValues values,
         float boost,
         DocIdSetIterator approximation) {
-      super(weight, values, approximation, boost);
+      super(values, approximation, boost);
       this.collector = collector;
     }
 

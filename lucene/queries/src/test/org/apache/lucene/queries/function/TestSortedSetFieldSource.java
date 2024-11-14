@@ -28,8 +28,6 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.queries.function.valuesource.SortedSetFieldSource;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.store.Directory;
@@ -77,14 +75,7 @@ public class TestSortedSetFieldSource extends LuceneTestCase {
     // test scorer
     vs = new SortedSetFieldSource("value");
     values = vs.getValues(Collections.emptyMap(), ar.getContext());
-    ValueSourceScorer vss =
-        values.getRangeScorer(
-            new MatchAllDocsQuery().createWeight(searcher, ScoreMode.TOP_SCORES, 1),
-            ar.getContext(),
-            "a",
-            "z",
-            true,
-            true);
+    ValueSourceScorer vss = values.getRangeScorer(ar.getContext(), "a", "z", true, true);
 
     DocIdSetIterator iterator = vss.iterator();
     assertEquals("baz", values.strVal(iterator.nextDoc()));

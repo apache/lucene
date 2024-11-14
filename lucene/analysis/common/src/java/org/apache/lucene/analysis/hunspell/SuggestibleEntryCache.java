@@ -17,10 +17,10 @@
 package org.apache.lucene.analysis.hunspell;
 
 import java.util.function.Consumer;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * A cache allowing for CPU-cache-friendlier iteration over {@link WordStorage} entries that can be

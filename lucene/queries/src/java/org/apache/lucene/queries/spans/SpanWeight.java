@@ -143,7 +143,7 @@ public abstract class SpanWeight extends Weight {
       return null;
     }
     final LeafSimScorer docScorer = getSimScorer(context);
-    final var scorer = new SpanScorer(this, spans, docScorer);
+    final var scorer = new SpanScorer(spans, docScorer);
     return new ScorerSupplier() {
       @Override
       public SpanScorer get(long leadCost) throws IOException {

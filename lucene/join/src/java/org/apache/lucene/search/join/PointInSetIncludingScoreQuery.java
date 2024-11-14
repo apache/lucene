@@ -18,9 +18,7 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.function.BiFunction;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
@@ -34,6 +32,8 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
+import org.apache.lucene.internal.hppc.FloatArrayList;
+import org.apache.lucene.internal.hppc.FloatCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -78,7 +78,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
   final String field;
   final int bytesPerDim;
 
-  final List<Float> aggregatedJoinScores;
+  final FloatArrayList aggregatedJoinScores;
 
   private final long ramBytesUsed; // cache
 
@@ -104,7 +104,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
     }
     this.bytesPerDim = bytesPerDim;
 
-    aggregatedJoinScores = new ArrayList<>();
+    aggregatedJoinScores = new FloatArrayList();
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
     BytesRefBuilder previous = null;
     BytesRef current;
@@ -204,7 +204,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         float[] scores = new float[reader.maxDoc()];
         values.intersect(new MergePointVisitor(sortedPackedPoints, result, scores));
         final var scorer =
-            new Scorer(this) {
+            new Scorer() {
 
               DocIdSetIterator disi = new BitSetIterator(result, 10L);
 
@@ -243,8 +243,8 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
     private final FixedBitSet result;
     private final float[] scores;
 
-    private TermIterator iterator;
-    private Iterator<Float> scoreIterator;
+    private final TermIterator iterator;
+    private final Iterator<FloatCursor> scoreIterator;
     private BytesRef nextQueryPoint;
     float nextScore;
     private final BytesRef scratch = new BytesRef();
@@ -259,7 +259,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
       this.scoreIterator = aggregatedJoinScores.iterator();
       nextQueryPoint = iterator.next();
       if (scoreIterator.hasNext()) {
-        nextScore = scoreIterator.next();
+        nextScore = scoreIterator.next().value;
       }
     }
 
@@ -276,8 +276,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         if (cmp == 0) {
           // Query point equals index point, so collect and return
           if (multipleValuesPerDocument) {
-            if (result.get(docID) == false) {
-              result.set(docID);
+            if (result.getAndSet(docID) == false) {
               scores[docID] = nextScore;
             }
           } else {
@@ -289,7 +288,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
           // Query point is before index point, so we move to next query point
           nextQueryPoint = iterator.next();
           if (scoreIterator.hasNext()) {
-            nextScore = scoreIterator.next();
+            nextScore = scoreIterator.next().value;
           }
         } else {
           // Query point is after index point, so we don't collect and we return:
@@ -307,7 +306,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
           // query point is before the start of this cell
           nextQueryPoint = iterator.next();
           if (scoreIterator.hasNext()) {
-            nextScore = scoreIterator.next();
+            nextScore = scoreIterator.next().value;
           }
           continue;
         }

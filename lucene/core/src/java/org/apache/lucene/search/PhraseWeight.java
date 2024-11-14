@@ -65,7 +65,7 @@ public abstract class PhraseWeight extends Weight {
     if (matcher == null) return null;
     LeafSimScorer simScorer =
         new LeafSimScorer(stats, context.reader(), field, scoreMode.needsScores());
-    final var scorer = new PhraseScorer(this, matcher, scoreMode, simScorer);
+    final var scorer = new PhraseScorer(matcher, scoreMode, simScorer);
     return new DefaultScorerSupplier(scorer);
   }
 

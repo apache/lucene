@@ -30,6 +30,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Explanation;
@@ -49,12 +50,12 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 // TODO
 //    - compare perf to PhraseQuery exact and sloppy
@@ -416,7 +417,8 @@ public class TermAutomatonQuery extends Query implements Accountable {
             : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
                 + ReaderUtil.getTopLevelContext(context);
         BytesRef term = idToTerm.get(ent.key);
-        TermState state = termStates.get(context);
+        IOSupplier<TermState> supplier = termStates.get(context);
+        TermState state = supplier == null ? null : supplier.get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(field).iterator();
           termsEnum.seekExact(term, state);

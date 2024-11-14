@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.MaxScoreAccumulator.DocAndScore;
 
 /**
  * A {@link Collector} implementation that collects the top-scoring hits, returning them as a {@link
@@ -191,62 +190,6 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     }
   }
 
-  /**
-   * Creates a new {@link TopScoreDocCollector} given the number of hits to collect and the number
-   * of hits to count accurately.
-   *
-   * <p><b>NOTE</b>: If the total hit count of the top docs is less than or exactly {@code
-   * totalHitsThreshold} then this value is accurate. On the other hand, if the {@link
-   * TopDocs#totalHits} value is greater than {@code totalHitsThreshold} then its value is a lower
-   * bound of the hit count. A value of {@link Integer#MAX_VALUE} will make the hit count accurate
-   * but will also likely make query processing slower.
-   *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>, and fill the array with sentinel objects.
-   *
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static TopScoreDocCollector create(int numHits, int totalHitsThreshold) {
-    return new TopScoreDocCollectorManager(numHits, null, totalHitsThreshold, false).newCollector();
-  }
-
-  /**
-   * Creates a new {@link TopScoreDocCollector} given the number of hits to collect, the bottom of
-   * the previous page, and the number of hits to count accurately.
-   *
-   * <p><b>NOTE</b>: If the total hit count of the top docs is less than or exactly {@code
-   * totalHitsThreshold} then this value is accurate. On the other hand, if the {@link
-   * TopDocs#totalHits} value is greater than {@code totalHitsThreshold} then its value is a lower
-   * bound of the hit count. A value of {@link Integer#MAX_VALUE} will make the hit count accurate
-   * but will also likely make query processing slower.
-   *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>, and fill the array with sentinel objects.
-   *
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static TopScoreDocCollector create(int numHits, ScoreDoc after, int totalHitsThreshold) {
-    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, false)
-        .newCollector();
-  }
-
-  /**
-   * Create a CollectorManager which uses a shared hit counter to maintain number of hits and a
-   * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments
-   *
-   * @deprecated This method is deprecated in favor of the constructor of {@link
-   *     TopScoreDocCollectorManager} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public static CollectorManager<TopScoreDocCollector, TopDocs> createSharedManager(
-      int numHits, ScoreDoc after, int totalHitsThreshold) {
-    return new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, true);
-  }
-
   int docBase;
   ScoreDoc pqTop;
   final HitsThresholdChecker hitsThresholdChecker;
@@ -282,13 +225,13 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
   protected void updateGlobalMinCompetitiveScore(Scorable scorer) throws IOException {
     assert minScoreAcc != null;
-    DocAndScore maxMinScore = minScoreAcc.get();
-    if (maxMinScore != null) {
+    long maxMinScore = minScoreAcc.getRaw();
+    if (maxMinScore != Long.MIN_VALUE) {
       // since we tie-break on doc id and collect in doc id order we can require
       // the next float if the global minimum score is set on a document id that is
       // smaller than the ids in the current leaf
-      float score =
-          docBase >= maxMinScore.docBase ? Math.nextUp(maxMinScore.score) : maxMinScore.score;
+      float score = MaxScoreAccumulator.toScore(maxMinScore);
+      score = docBase >= MaxScoreAccumulator.docId(maxMinScore) ? Math.nextUp(score) : score;
       if (score > minCompetitiveScore) {
         assert hitsThresholdChecker.isThresholdReached();
         scorer.setMinCompetitiveScore(score);
@@ -310,10 +253,9 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         minCompetitiveScore = localMinScore;
         if (minScoreAcc != null) {
-          // we don't use the next float but we register the document
-          // id so that other leaves can require it if they are after
-          // the current maximum
-          minScoreAcc.accumulate(docBase, pqTop.score);
+          // we don't use the next float but we register the document id so that other leaves or
+          // leaf partitions can require it if they are after the current maximum
+          minScoreAcc.accumulate(pqTop.doc, pqTop.score);
         }
       }
     }

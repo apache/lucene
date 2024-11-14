@@ -25,9 +25,11 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /** Converts an Automaton into a TokenStream. */
 public class AutomatonToTokenStream {
@@ -44,7 +46,7 @@ public class AutomatonToTokenStream {
    * @return TokenStream representation of automaton.
    */
   public static TokenStream toTokenStream(Automaton automaton) {
-    List<List<Integer>> positionNodes = new ArrayList<>();
+    List<IntArrayList> positionNodes = new ArrayList<>();
 
     Transition[][] transitions = automaton.getSortedTransitions();
 
@@ -72,7 +74,7 @@ public class AutomatonToTokenStream {
         }
       }
       if (positionNodes.size() == currState.pos) {
-        List<Integer> posIncs = new ArrayList<>();
+        IntArrayList posIncs = new IntArrayList();
         posIncs.add(currState.id);
         positionNodes.add(posIncs);
       } else {
@@ -88,10 +90,10 @@ public class AutomatonToTokenStream {
     }
 
     List<List<EdgeToken>> edgesByLayer = new ArrayList<>();
-    for (List<Integer> layer : positionNodes) {
+    for (IntArrayList layer : positionNodes) {
       List<EdgeToken> edges = new ArrayList<>();
-      for (int state : layer) {
-        for (Transition t : transitions[state]) {
+      for (IntCursor state : layer) {
+        for (Transition t : transitions[state.value]) {
           // each edge in the token stream can only be on value, though a transition takes a range.
           for (int val = t.min; val <= t.max; val++) {
             int destLayer = idToPos.get(t.dest);
@@ -168,24 +170,8 @@ public class AutomatonToTokenStream {
   }
 
   /** Edge between position nodes. These edges will be output as tokens in the TokenStream */
-  private static class EdgeToken {
-    public final int destination;
-    public final int value;
-
-    public EdgeToken(int destination, int value) {
-      this.destination = destination;
-      this.value = value;
-    }
-  }
+  private record EdgeToken(int destination, int value) {}
 
   /** Node that contains original node id and position in TokenStream */
-  private static class RemapNode {
-    public final int id;
-    public final int pos;
-
-    public RemapNode(int id, int pos) {
-      this.id = id;
-      this.pos = pos;
-    }
-  }
+  private record RemapNode(int id, int pos) {}
 }

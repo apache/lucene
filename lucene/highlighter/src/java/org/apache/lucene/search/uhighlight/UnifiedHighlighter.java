@@ -21,6 +21,7 @@ import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,6 +87,7 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  *   <li>{@link #getBreakIterator(String)}: Customize how the text is divided into passages.
  *   <li>{@link #getScorer(String)}: Customize how passages are ranked.
  *   <li>{@link #getFormatter(String)}: Customize how snippets are formatted.
+ *   <li>{@link #getPassageSortComparator(String)}: Customize how snippets are formatted.
  * </ul>
  *
  * <p>This is thread-safe, notwithstanding the setters.
@@ -113,6 +115,8 @@ public class UnifiedHighlighter {
   private static final PassageScorer DEFAULT_PASSAGE_SCORER = new PassageScorer();
   private static final PassageFormatter DEFAULT_PASSAGE_FORMATTER = new DefaultPassageFormatter();
   private static final int DEFAULT_MAX_HIGHLIGHT_PASSAGES = -1;
+  private static final Comparator<Passage> DEFAULT_PASSAGE_SORT_COMPARATOR =
+      Comparator.comparingInt(Passage::getStartOffset);
 
   protected final IndexSearcher searcher; // if null, can only use highlightWithoutSearcher
 
@@ -150,6 +154,8 @@ public class UnifiedHighlighter {
   private int maxNoHighlightPassages = DEFAULT_MAX_HIGHLIGHT_PASSAGES;
 
   private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
+
+  private Comparator<Passage> passageSortComparator = DEFAULT_PASSAGE_SORT_COMPARATOR;
 
   /**
    * Constructs the highlighter with the given index searcher and analyzer.
@@ -276,6 +282,7 @@ public class UnifiedHighlighter {
     private PassageFormatter formatter = DEFAULT_PASSAGE_FORMATTER;
     private int maxNoHighlightPassages = DEFAULT_MAX_HIGHLIGHT_PASSAGES;
     private int cacheFieldValCharsThreshold = DEFAULT_CACHE_CHARS_THRESHOLD;
+    private Comparator<Passage> passageSortComparator = DEFAULT_PASSAGE_SORT_COMPARATOR;
 
     /**
      * Constructor for UH builder which accepts {@link IndexSearcher} and {@link Analyzer} objects.
@@ -402,6 +409,11 @@ public class UnifiedHighlighter {
       return this;
     }
 
+    public Builder withPassageSortComparator(Comparator<Passage> value) {
+      this.passageSortComparator = value;
+      return this;
+    }
+
     public UnifiedHighlighter build() {
       return new UnifiedHighlighter(this);
     }
@@ -463,6 +475,7 @@ public class UnifiedHighlighter {
     this.formatter = builder.formatter;
     this.maxNoHighlightPassages = builder.maxNoHighlightPassages;
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
+    this.passageSortComparator = builder.passageSortComparator;
   }
 
   /** Extracts matching terms */
@@ -614,6 +627,11 @@ public class UnifiedHighlighter {
     return formatter;
   }
 
+  /** Returns the {@link Comparator} to use for finally sorting passages. */
+  protected Comparator<Passage> getPassageSortComparator(String field) {
+    return passageSortComparator;
+  }
+
   /**
    * Returns the number of leading passages (as delineated by the {@link BreakIterator}) when no
    * highlights could be found. If it's less than 0 (the default) then this defaults to the {@code
@@ -666,7 +684,7 @@ public class UnifiedHighlighter {
    *   <li>If there's a field info it has {@link
    *       IndexOptions#DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS} then {@link OffsetSource#POSTINGS}
    *       is returned.
-   *   <li>If there's a field info and {@link FieldInfo#hasVectors()} then {@link
+   *   <li>If there's a field info and {@link FieldInfo#hasTermVectors()} then {@link
    *       OffsetSource#TERM_VECTORS} is returned (note we can't check here if the TV has offsets;
    *       if there isn't then an exception will get thrown down the line).
    *   <li>Fall-back: {@link OffsetSource#ANALYSIS} is returned.
@@ -680,11 +698,11 @@ public class UnifiedHighlighter {
     FieldInfo fieldInfo = getFieldInfo(field);
     if (fieldInfo != null) {
       if (fieldInfo.getIndexOptions() == IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) {
-        return fieldInfo.hasVectors()
+        return fieldInfo.hasTermVectors()
             ? OffsetSource.POSTINGS_WITH_TERM_VECTORS
             : OffsetSource.POSTINGS;
       }
-      if (fieldInfo.hasVectors()) { // unfortunately we can't also check if the TV has offsets
+      if (fieldInfo.hasTermVectors()) { // unfortunately we can't also check if the TV has offsets
         return OffsetSource.TERM_VECTORS;
       }
     }
@@ -1119,7 +1137,8 @@ public class UnifiedHighlighter {
         getScorer(field),
         maxPassages,
         getMaxNoHighlightPassages(field),
-        getFormatter(field));
+        getFormatter(field),
+        getPassageSortComparator(field));
   }
 
   protected FieldHighlighter newFieldHighlighter(
@@ -1129,7 +1148,8 @@ public class UnifiedHighlighter {
       PassageScorer passageScorer,
       int maxPassages,
       int maxNoHighlightPassages,
-      PassageFormatter passageFormatter) {
+      PassageFormatter passageFormatter,
+      Comparator<Passage> passageSortComparator) {
     return new FieldHighlighter(
         field,
         fieldOffsetStrategy,
@@ -1137,7 +1157,8 @@ public class UnifiedHighlighter {
         passageScorer,
         maxPassages,
         maxNoHighlightPassages,
-        passageFormatter);
+        passageFormatter,
+        passageSortComparator);
   }
 
   protected UHComponents getHighlightComponents(String field, Query query, Set<Term> allTerms) {
@@ -1231,19 +1252,17 @@ public class UnifiedHighlighter {
   }
 
   protected OffsetSource getOptimizedOffsetSource(UHComponents components) {
-    OffsetSource offsetSource = getOffsetSource(components.getField());
+    OffsetSource offsetSource = getOffsetSource(components.field());
 
     // null automata means unknown, so assume a possibility
     boolean mtqOrRewrite =
-        components.getAutomata() == null
-            || components.getAutomata().length > 0
-            || components.getPhraseHelper().willRewrite()
+        components.automata() == null
+            || components.automata().length > 0
+            || components.phraseHelper().willRewrite()
             || components.hasUnrecognizedQueryPart();
 
     // null terms means unknown, so assume something to highlight
-    if (mtqOrRewrite == false
-        && components.getTerms() != null
-        && components.getTerms().length == 0) {
+    if (mtqOrRewrite == false && components.terms() != null && components.terms().length == 0) {
       return OffsetSource.NONE_NEEDED; // nothing to highlight
     }
 
@@ -1274,9 +1293,9 @@ public class UnifiedHighlighter {
       OffsetSource offsetSource, UHComponents components) {
     switch (offsetSource) {
       case ANALYSIS:
-        if (!components.getPhraseHelper().hasPositionSensitivity()
-            && !components.getHighlightFlags().contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
-            && !components.getHighlightFlags().contains(HighlightFlag.WEIGHT_MATCHES)) {
+        if (!components.phraseHelper().hasPositionSensitivity()
+            && !components.highlightFlags().contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
+            && !components.highlightFlags().contains(HighlightFlag.WEIGHT_MATCHES)) {
           // skip using a memory index since it's pure term filtering
           return new TokenStreamOffsetStrategy(components, getIndexAnalyzer());
         } else {

@@ -333,14 +333,13 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
           allDocsMatch = false;
         }
 
-        final Weight weight = this;
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) {
               return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
             }
 
             @Override
@@ -359,7 +358,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
             public Scorer get(long leadCost) throws IOException {
               values.intersect(visitor);
               DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override

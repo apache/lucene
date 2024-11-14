@@ -118,7 +118,7 @@ public class ToChildBlockJoinQuery extends Query {
         return null;
       }
 
-      final var scorer = new ToChildBlockJoinScorer(this, parentScorer, parents, doScores);
+      final var scorer = new ToChildBlockJoinScorer(parentScorer, parents, doScores);
       return new DefaultScorerSupplier(scorer);
     }
 
@@ -148,9 +148,7 @@ public class ToChildBlockJoinQuery extends Query {
     private int childDoc = -1;
     private int parentDoc = 0;
 
-    public ToChildBlockJoinScorer(
-        Weight weight, Scorer parentScorer, BitSet parentBits, boolean doScores) {
-      super(weight);
+    public ToChildBlockJoinScorer(Scorer parentScorer, BitSet parentBits, boolean doScores) {
       this.doScores = doScores;
       this.parentBits = parentBits;
       this.parentScorer = parentScorer;

@@ -205,10 +205,9 @@ public class TestConstantScoreScorer extends LuceneTestCase {
       Scorer scorer = weight.scorer(context);
 
       if (scorer.twoPhaseIterator() == null) {
-        return new ConstantScoreScorer(scorer.getWeight(), score, scoreMode, scorer.iterator());
+        return new ConstantScoreScorer(score, scoreMode, scorer.iterator());
       } else {
-        return new ConstantScoreScorer(
-            scorer.getWeight(), score, scoreMode, scorer.twoPhaseIterator());
+        return new ConstantScoreScorer(score, scoreMode, scorer.twoPhaseIterator());
       }
     }
 
@@ -242,8 +241,8 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
     TopScoreDocCollectorManager c = new TopScoreDocCollectorManager(10, 10);
     TopDocs topDocs = is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), c);
-    assertEquals(11, topDocs.totalHits.value);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+    assertEquals(11, topDocs.totalHits.value());
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
     c = new TopScoreDocCollectorManager(10, 10);
     Query query =
@@ -252,8 +251,8 @@ public class TestConstantScoreScorer extends LuceneTestCase {
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "bar"))), Occur.FILTER)
             .build();
     topDocs = is.search(query, c);
-    assertEquals(11, topDocs.totalHits.value);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+    assertEquals(11, topDocs.totalHits.value());
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
     iw.close();
     ir.close();

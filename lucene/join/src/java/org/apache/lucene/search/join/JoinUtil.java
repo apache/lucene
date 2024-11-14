@@ -16,12 +16,6 @@
  */
 package org.apache.lucene.search.join;
 
-import com.carrotsearch.hppc.LongArrayList;
-import com.carrotsearch.hppc.LongFloatHashMap;
-import com.carrotsearch.hppc.LongHashSet;
-import com.carrotsearch.hppc.LongIntHashMap;
-import com.carrotsearch.hppc.cursors.LongCursor;
-import com.carrotsearch.hppc.procedures.LongFloatProcedure;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -39,6 +33,11 @@ import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.internal.hppc.LongArrayList;
+import org.apache.lucene.internal.hppc.LongCursor;
+import org.apache.lucene.internal.hppc.LongFloatHashMap;
+import org.apache.lucene.internal.hppc.LongHashSet;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
@@ -292,7 +291,8 @@ public final class JoinUtil {
     }
     fromSearcher.search(fromQuery, collector);
 
-    LongArrayList joinValuesList = new LongArrayList(joinValues);
+    LongArrayList joinValuesList = new LongArrayList(joinValues.size());
+    joinValuesList.addAll(joinValues);
     Arrays.sort(joinValuesList.buffer, 0, joinValuesList.size());
     Iterator<LongCursor> iterator = joinValuesList.iterator();
 
@@ -470,7 +470,7 @@ public final class JoinUtil {
    * <p>This join has certain restrictions and requirements: 1) A document can only refer to one
    * other document. (but can be referred by one or more documents) 2) Documents on each side of the
    * join must be distinguishable. Typically this can be done by adding an extra field that
-   * identifies the "from" and "to" side and then the fromQuery and toQuery must take the this into
+   * identifies the "from" and "to" side and then the fromQuery and toQuery must take this into
    * account. 3) There must be a single sorted doc values join field used by both the "from" and
    * "to" documents. This join field should store the join values as UTF-8 strings. 4) An ordinal
    * map must be provided that is created on top of the join field.
@@ -587,5 +587,11 @@ public final class JoinUtil {
   private interface LongFloatFunction {
 
     float apply(long value);
+  }
+
+  /** Similar to {@link java.util.function.BiConsumer} for primitive arguments. */
+  private interface LongFloatProcedure {
+
+    void apply(long key, float value);
   }
 }

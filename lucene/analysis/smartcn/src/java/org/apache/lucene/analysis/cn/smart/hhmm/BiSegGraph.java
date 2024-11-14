@@ -19,8 +19,9 @@ package org.apache.lucene.analysis.cn.smart.hhmm;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.cn.smart.Utility;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
-import org.apache.lucene.util.hppc.ObjectCursor;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 
 /**
  * Graph representing possible token pairs (bigrams) at each start offset in the sentence.
@@ -197,19 +198,18 @@ class BiSegGraph {
     int preNode, lastNode;
     lastNode = path.size() - 1;
     current = lastNode;
-    List<Integer> rpath = new ArrayList<>();
+    IntArrayList rpath = new IntArrayList();
     List<SegToken> resultPath = new ArrayList<>();
 
     rpath.add(current);
     while (current != 0) {
       PathNode currentPathNode = path.get(current);
       preNode = currentPathNode.preNode;
-      rpath.add(Integer.valueOf(preNode));
+      rpath.add(preNode);
       current = preNode;
     }
     for (int j = rpath.size() - 1; j >= 0; j--) {
-      Integer idInteger = rpath.get(j);
-      int id = idInteger.intValue();
+      int id = rpath.get(j);
       SegToken t = segTokenList.get(id);
       resultPath.add(t);
     }

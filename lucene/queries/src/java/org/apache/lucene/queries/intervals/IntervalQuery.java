@@ -192,7 +192,7 @@ public final class IntervalQuery extends Query {
         return null;
       }
       final var scorer =
-          new IntervalScorer(this, intervals, intervalsSource.minExtent(), boost, scoreFunction);
+          new IntervalScorer(intervals, intervalsSource.minExtent(), boost, scoreFunction);
       return new DefaultScorerSupplier(scorer);
     }
 

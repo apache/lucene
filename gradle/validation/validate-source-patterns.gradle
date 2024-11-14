@@ -33,7 +33,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "org.apache.rat:apache-rat:${scriptDepVersions['apache-rat']}"
+    classpath deps.rat
   }
 }
 

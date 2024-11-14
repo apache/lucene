@@ -99,7 +99,7 @@ public abstract class AbstractPrefixTreeQuery extends Query {
         if (disi == null) {
           return null;
         }
-        final var scorer = new ConstantScoreScorer(this, score(), scoreMode, disi);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, disi);
         return new DefaultScorerSupplier(scorer);
       }
 

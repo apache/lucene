@@ -183,11 +183,9 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
 
         TermsEnum segmentTermsEnum = terms.iterator();
         if (multipleValuesPerDocument) {
-          scorer =
-              new MVInOrderScorer(this, segmentTermsEnum, context.reader().maxDoc(), cost, boost);
+          scorer = new MVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
         } else {
-          scorer =
-              new SVInOrderScorer(this, segmentTermsEnum, context.reader().maxDoc(), cost, boost);
+          scorer = new SVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
         }
         return new DefaultScorerSupplier(scorer);
       }
@@ -206,9 +204,7 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
     final long cost;
     final float boost;
 
-    SVInOrderScorer(Weight weight, TermsEnum termsEnum, int maxDoc, long cost, float boost)
-        throws IOException {
-      super(weight);
+    SVInOrderScorer(TermsEnum termsEnum, int maxDoc, long cost, float boost) throws IOException {
       FixedBitSet matchingDocs = new FixedBitSet(maxDoc);
       this.scores = new float[maxDoc];
       fillDocsAndScores(matchingDocs, termsEnum);
@@ -263,9 +259,8 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
   // related documents.
   class MVInOrderScorer extends SVInOrderScorer {
 
-    MVInOrderScorer(Weight weight, TermsEnum termsEnum, int maxDoc, long cost, float boost)
-        throws IOException {
-      super(weight, termsEnum, maxDoc, cost, boost);
+    MVInOrderScorer(TermsEnum termsEnum, int maxDoc, long cost, float boost) throws IOException {
+      super(termsEnum, maxDoc, cost, boost);
     }
 
     @Override
@@ -286,9 +281,8 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
               matchingDocs.set(doc);
             }*/
             // But this behaves the same as MVInnerScorer and only then the tests will pass:
-            if (!matchingDocs.get(doc)) {
+            if (!matchingDocs.getAndSet(doc)) {
               scores[doc] = score;
-              matchingDocs.set(doc);
             }
           }
         }

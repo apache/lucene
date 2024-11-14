@@ -23,6 +23,7 @@ import java.util.Set;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.spatial.SpatialStrategy;
 import org.apache.lucene.spatial.composite.CompositeSpatialStrategy;
 import org.apache.lucene.spatial.prefix.RecursivePrefixTreeStrategy;
@@ -30,7 +31,6 @@ import org.apache.lucene.spatial.prefix.tree.PackedQuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTreeFactory;
 import org.apache.lucene.spatial.serialized.SerializedDVStrategy;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
 import org.locationtech.spatial4j.shape.Point;
@@ -99,7 +99,7 @@ public class SpatialDocMaker extends DocMaker {
         return makeRPTStrategy(SPATIAL_FIELD, config, configMap, ctx);
       case "composite":
         return makeCompositeStrategy(config, configMap, ctx);
-        // TODO add more as-needed
+      // TODO add more as-needed
       default:
         throw new IllegalStateException("Unknown spatial.strategy: " + strategyName);
     }

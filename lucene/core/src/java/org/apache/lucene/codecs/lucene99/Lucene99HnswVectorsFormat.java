@@ -24,15 +24,13 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
-import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 
 /**
  * Lucene 9.9 vector format, which encodes numeric vector values into an associated graph connecting
@@ -53,9 +51,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *               <li><b>array[vint]</b> the delta encoded neighbor ordinals
  *             </ul>
  *       </ul>
- *   <li>After all levels are encoded memory offsets for each node's neighbor nodes encoded by
- *       {@link org.apache.lucene.util.packed.DirectMonotonicWriter} are appended to the end of the
- *       file.
+ *   <li>After all levels are encoded, memory offsets for each node's neighbor nodes are appended to
+ *       the end of the file. The offsets are encoded by {@link
+ *       org.apache.lucene.util.packed.DirectMonotonicWriter}.
  * </ul>
  *
  * <h2>.vem (vector metadata) file</h2>
@@ -69,11 +67,6 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[vlong]</b> length of this field's index data, in bytes
  *   <li><b>[vint]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
- *       0, sparse – some documents missing values.
- *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
- *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
- *       that only in sparse case
  *   <li><b>[vint]</b> the maximum number of connections (neighbours) that each node can have
  *   <li><b>[vint]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level
@@ -105,19 +98,19 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   public static final int MAXIMUM_MAX_CONN = 512;
 
   /** Default number of maximum connections per node */
-  public static final int DEFAULT_MAX_CONN = 16;
+  public static final int DEFAULT_MAX_CONN = HnswGraphBuilder.DEFAULT_MAX_CONN;
 
   /**
-   * The maximum size of the queue to maintain while searching during graph construction This
-   * maximum value preserves the ratio of the DEFAULT_BEAM_WIDTH/DEFAULT_MAX_CONN i.e. `6.25 * 16 =
-   * 3200`
+   * The maximum size of the queue to maintain while searching during graph construction. This
+   * maximum value preserves the ratio of the `DEFAULT_BEAM_WIDTH`/`DEFAULT_MAX_CONN` (i.e. `6.25 *
+   * 16 = 3200`).
    */
   public static final int MAXIMUM_BEAM_WIDTH = 3200;
 
   /**
    * Default number of the size of the queue maintained while searching during a graph construction.
    */
-  public static final int DEFAULT_BEAM_WIDTH = 100;
+  public static final int DEFAULT_BEAM_WIDTH = HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
 
   /** Default to use single thread merge */
   public static final int DEFAULT_NUM_MERGE_WORKER = 1;
@@ -137,7 +130,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int beamWidth;
 
-  /** The format for storing, reading, merging vectors on disk */
+  /** The format for storing, reading, and merging vectors on disk. */
   private static final FlatVectorsFormat flatVectorsFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 

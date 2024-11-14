@@ -1,5 +1,3 @@
-import org.apache.lucene.gradle.datasets.ExtractReuters
-
 import java.nio.file.Files
 
 /*
@@ -25,7 +23,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "com.github.luben:zstd-jni:1.5.5-11"
+    classpath deps.zstd
   }
 }
 
@@ -40,7 +38,7 @@ def unzstd(java.nio.file.Path src, java.nio.file.Path dst) {
 // TODO: not sure whether this should live in benchmarks, but for now let it be.
 configure(project(":lucene:benchmark")) {
   apply plugin: "java"
-  apply plugin: "de.undercouch.download"
+  apply plugin: deps.plugins.undercouch.download.get().pluginId
 
   ext {
     dataDir = file("work")
@@ -164,7 +162,7 @@ configure(project(":lucene:benchmark")) {
 
       logger.lifecycle("Extracting ${ext.name} into ${ext.dst}...")
       ext.dst.deleteDir()
-      ExtractReuters.main(untarPath.toString(), ext.dst.toString())
+      buildinfra.extractReuters(untarPath.toString(), ext.dst.toString())
     }
   }
 

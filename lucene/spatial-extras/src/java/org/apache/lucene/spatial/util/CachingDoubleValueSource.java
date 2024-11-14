@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.spatial.util;
 
-import com.carrotsearch.hppc.IntDoubleHashMap;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.internal.hppc.IntDoubleHashMap;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;

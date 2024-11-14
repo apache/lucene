@@ -526,7 +526,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
             bitSet.set(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     return new CacheAndCount(new BitDocIdSet(bitSet, count[0]), count[0]);
   }
 
@@ -544,7 +546,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
             builder.add(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     RoaringDocIdSet cache = builder.build();
     return new CacheAndCount(cache, cache.cardinality());
   }
@@ -711,15 +715,6 @@ public class LRUQueryCache implements QueryCache, Accountable {
       return worstCaseRamUsage * 5 < totalRamAvailable;
     }
 
-    private CacheAndCount cache(LeafReaderContext context) throws IOException {
-      final BulkScorer scorer = in.bulkScorer(context);
-      if (scorer == null) {
-        return CacheAndCount.EMPTY;
-      } else {
-        return cacheImpl(scorer, context.reader().maxDoc());
-      }
-    }
-
     /** Check whether this segment is eligible for caching, regardless of the query. */
     private boolean shouldCache(LeafReaderContext context) throws IOException {
       return cacheEntryHasReasonableWorstCaseSize(
@@ -779,9 +774,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
                 return supplier.get(leadCost);
               }
 
-              Scorer scorer = supplier.get(Long.MAX_VALUE);
-              CacheAndCount cached =
-                  cacheImpl(new DefaultBulkScorer(scorer), context.reader().maxDoc());
+              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), context.reader().maxDoc());
               putIfAbsent(in.getQuery(), cached, cacheHelper);
               DocIdSetIterator disi = cached.iterator();
               if (disi == null) {
@@ -790,8 +783,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
                 disi = DocIdSetIterator.empty();
               }
 
-              return new ConstantScoreScorer(
-                  CachingWrapperWeight.this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi);
+              return new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, disi);
             }
 
             @Override
@@ -816,8 +808,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       return new ScorerSupplier() {
         @Override
         public Scorer get(long LeadCost) throws IOException {
-          return new ConstantScoreScorer(
-              CachingWrapperWeight.this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi);
+          return new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, disi);
         }
 
         @Override
@@ -829,15 +820,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
     @Override
     public int count(LeafReaderContext context) throws IOException {
-      // If the wrapped weight can count quickly then use that
-      int innerCount = in.count(context);
-      if (innerCount != -1) {
-        return innerCount;
-      }
-
       // Our cache won't have an accurate count if there are deletions
       if (context.reader().hasDeletions()) {
-        return -1;
+        return in.count(context);
       }
 
       // Otherwise check if the count is in the cache
@@ -847,24 +832,24 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
       if (in.isCacheable(context) == false) {
         // this segment is not suitable for caching
-        return -1;
+        return in.count(context);
       }
 
       // Short-circuit: Check whether this segment is eligible for caching
       // before we take a lock because of #get
       if (shouldCache(context) == false) {
-        return -1;
+        return in.count(context);
       }
 
       final IndexReader.CacheHelper cacheHelper = context.reader().getCoreCacheHelper();
       if (cacheHelper == null) {
         // this reader has no cacheHelper
-        return -1;
+        return in.count(context);
       }
 
       // If the lock is already busy, prefer using the uncached version than waiting
       if (readLock.tryLock() == false) {
-        return -1;
+        return in.count(context);
       }
 
       CacheAndCount cached;
@@ -873,73 +858,17 @@ public class LRUQueryCache implements QueryCache, Accountable {
       } finally {
         readLock.unlock();
       }
-      if (cached == null) {
-        // Not cached
-        return -1;
+      if (cached != null) {
+        // cached
+        return cached.count();
       }
-      return cached.count();
+      // Not cached, check if the wrapped weight can count quickly then use that
+      return in.count(context);
     }
 
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return in.isCacheable(ctx);
-    }
-
-    @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      if (used.compareAndSet(false, true)) {
-        policy.onUse(getQuery());
-      }
-
-      if (in.isCacheable(context) == false) {
-        // this segment is not suitable for caching
-        return in.bulkScorer(context);
-      }
-
-      // Short-circuit: Check whether this segment is eligible for caching
-      // before we take a lock because of #get
-      if (shouldCache(context) == false) {
-        return in.bulkScorer(context);
-      }
-
-      final IndexReader.CacheHelper cacheHelper = context.reader().getCoreCacheHelper();
-      if (cacheHelper == null) {
-        // this reader has no cacheHelper
-        return in.bulkScorer(context);
-      }
-
-      // If the lock is already busy, prefer using the uncached version than waiting
-      if (readLock.tryLock() == false) {
-        return in.bulkScorer(context);
-      }
-
-      CacheAndCount cached;
-      try {
-        cached = get(in.getQuery(), cacheHelper);
-      } finally {
-        readLock.unlock();
-      }
-
-      if (cached == null) {
-        if (policy.shouldCache(in.getQuery())) {
-          cached = cache(context);
-          putIfAbsent(in.getQuery(), cached, cacheHelper);
-        } else {
-          return in.bulkScorer(context);
-        }
-      }
-
-      assert cached != null;
-      if (cached == CacheAndCount.EMPTY) {
-        return null;
-      }
-      final DocIdSetIterator disi = cached.iterator();
-      if (disi == null) {
-        return null;
-      }
-
-      return new DefaultBulkScorer(
-          new ConstantScoreScorer(this, 0f, ScoreMode.COMPLETE_NO_SCORES, disi));
     }
   }
 

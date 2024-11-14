@@ -106,7 +106,7 @@ public class CompositeVerifyQuery extends Query {
 
         final TwoPhaseIterator predFuncValues =
             predicateValueSource.iterator(context, indexQueryScorer.iterator());
-        final var scorer = new ConstantScoreScorer(this, score(), scoreMode, predFuncValues);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, predFuncValues);
         return new DefaultScorerSupplier(scorer);
       }
 

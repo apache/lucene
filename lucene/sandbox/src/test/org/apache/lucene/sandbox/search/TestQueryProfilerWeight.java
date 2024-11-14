@@ -47,13 +47,12 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
 
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) {
-      Weight weight = this;
       return new ScorerSupplier() {
         private long cost = 0;
 
         @Override
         public Scorer get(long leadCost) {
-          return new Scorer(weight) {
+          return new Scorer() {
             @Override
             public DocIdSetIterator iterator() {
               return null;

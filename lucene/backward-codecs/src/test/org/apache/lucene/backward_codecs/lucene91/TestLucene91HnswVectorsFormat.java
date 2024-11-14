@@ -72,4 +72,19 @@ public class TestLucene91HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   public void testByteVectorScorerIteration() {
     // unimplemented
   }
+
+  @Override
+  public void testEmptyByteVectorData() {
+    // unimplemented
+  }
+
+  @Override
+  public void testMergingWithDifferentByteKnnFields() {
+    // unimplemented
+  }
+
+  @Override
+  public void testMismatchedFields() throws Exception {
+    // requires byte support
+  }
 }

@@ -287,7 +287,7 @@ public class PointVectorStrategy extends SpatialStrategy {
                   return 100; // distance calculation can be heavy!
                 }
               };
-          final var scorer = new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
           return new DefaultScorerSupplier(scorer);
         }
 

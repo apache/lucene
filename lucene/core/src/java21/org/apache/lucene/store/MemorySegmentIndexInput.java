@@ -28,6 +28,7 @@ import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.GroupVIntUtil;
+import org.apache.lucene.util.IOConsumer;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -52,6 +53,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   final long length;
   final long chunkSizeMask;
   final int chunkSizePower;
+  final boolean confined;
   final Arena arena;
   final MemorySegment[] segments;
 
@@ -66,12 +68,15 @@ abstract class MemorySegmentIndexInput extends IndexInput
       Arena arena,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower) {
+      int chunkSizePower,
+      boolean confined) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
     if (segments.length == 1) {
-      return new SingleSegmentImpl(resourceDescription, arena, segments[0], length, chunkSizePower);
+      return new SingleSegmentImpl(
+          resourceDescription, arena, segments[0], length, chunkSizePower, confined);
     } else {
-      return new MultiSegmentImpl(resourceDescription, arena, segments, 0, length, chunkSizePower);
+      return new MultiSegmentImpl(
+          resourceDescription, arena, segments, 0, length, chunkSizePower, confined);
     }
   }
 
@@ -80,12 +85,14 @@ abstract class MemorySegmentIndexInput extends IndexInput
       Arena arena,
       MemorySegment[] segments,
       long length,
-      int chunkSizePower) {
+      int chunkSizePower,
+      boolean confined) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
     this.length = length;
     this.chunkSizePower = chunkSizePower;
+    this.confined = confined;
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
   }
@@ -93,6 +100,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
   void ensureOpen() {
     if (curSegment == null) {
       throw alreadyClosed(null);
+    }
+  }
+
+  void ensureAccessible() {
+    if (confined && curSegment.isAccessibleBy(Thread.currentThread()) == false) {
+      throw new IllegalStateException("confined");
     }
   }
 
@@ -334,13 +347,35 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
 
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+    advise(
+        offset,
+        length,
+        segment -> {
+          if (segment.isLoaded() == false) {
+            // We have a cache miss on at least one page, let's reset the counter.
+            consecutivePrefetchHitCount = 0;
+            nativeAccess.madviseWillNeed(segment);
+          }
+        });
+  }
+
+  void advise(long offset, long length, IOConsumer<MemorySegment> advice) throws IOException {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+
+    ensureOpen();
+
+    Objects.checkFromIndexSize(offset, length, length());
+
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
 
     try {
       final MemorySegment segment = segments[(int) (offset >> chunkSizePower)];
       offset &= chunkSizeMask;
-      // Compute the intersection of the current segment and the region that should be prefetched.
+      // Compute the intersection of the current segment and the region that should be advised.
       if (offset + length > segment.byteSize()) {
-        // Only prefetch bytes that are stored in the current segment. There may be bytes on the
+        // Only advise bytes that are stored in the current segment. There may be bytes on the
         // next segment but this case is rare enough that we don't try to optimize it and keep
         // things simple instead.
         length = segment.byteSize() - offset;
@@ -351,16 +386,17 @@ abstract class MemorySegmentIndexInput extends IndexInput
       offset -= offsetInPage;
       length += offsetInPage;
       if (offset < 0) {
-        // The start of the page is outside of this segment, ignore.
-        return;
+        // The start of the page is before the start of this segment, ignore the first page.
+        offset += nativeAccess.getPageSize();
+        length -= nativeAccess.getPageSize();
+        if (length <= 0) {
+          // This segment has no data beyond the first page.
+          return;
+        }
       }
 
-      final MemorySegment prefetchSlice = segment.asSlice(offset, length);
-      if (prefetchSlice.isLoaded() == false) {
-        // We have a cache miss on at least one page, let's reset the counter.
-        consecutivePrefetchHitCount = 0;
-        nativeAccess.madviseWillNeed(prefetchSlice);
-      }
+      final MemorySegment advisedSlice = segment.asSlice(offset, length);
+      advice.accept(advisedSlice);
     } catch (
         @SuppressWarnings("unused")
         IndexOutOfBoundsException e) {
@@ -383,7 +419,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
-  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+  public void readGroupVInt(long[] dst, int offset) throws IOException {
     try {
       final int len =
           GroupVIntUtil.readGroupVInt(
@@ -494,7 +530,29 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
   @Override
   public final MemorySegmentIndexInput clone() {
-    final MemorySegmentIndexInput clone = buildSlice((String) null, 0L, this.length);
+    ensureOpen();
+    ensureAccessible();
+    final MemorySegmentIndexInput clone;
+    if (segments.length == 1) {
+      clone =
+          new SingleSegmentImpl(
+              toString(),
+              null, // clones don't have an Arena, as they can't close)
+              segments[0],
+              length,
+              chunkSizePower,
+              confined);
+    } else {
+      clone =
+          new MultiSegmentImpl(
+              toString(),
+              null, // clones don't have an Arena, as they can't close)
+              segments,
+              ((MultiSegmentImpl) this).offset,
+              length,
+              chunkSizePower,
+              confined);
+    }
     try {
       clone.seek(getFilePointer());
     } catch (IOException ioe) {
@@ -527,31 +585,62 @@ abstract class MemorySegmentIndexInput extends IndexInput
     return buildSlice(sliceDescription, offset, length);
   }
 
+  @Override
+  public final MemorySegmentIndexInput slice(
+      String sliceDescription, long offset, long length, ReadAdvice advice) throws IOException {
+    MemorySegmentIndexInput slice = slice(sliceDescription, offset, length);
+    if (NATIVE_ACCESS.isPresent() && advice != ReadAdvice.NORMAL) {
+      // No need to madvise with a normal advice, since it's the OS' default.
+      final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+      if (length >= nativeAccess.getPageSize()) {
+        // Only set the read advice if the inner file is large enough. Otherwise the cons are likely
+        // outweighing the pros as we're:
+        //  - potentially overriding the advice of other files that share the same pages,
+        //  - paying the cost of a madvise system call for little value.
+        // We could align inner files with the page size to avoid the first issue, but again the
+        // pros don't clearly overweigh the cons.
+        slice.advise(
+            0,
+            slice.length,
+            segment -> {
+              nativeAccess.madvise(segment, advice);
+            });
+      }
+    }
+    return slice;
+  }
+
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
   MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
     ensureOpen();
+    ensureAccessible();
+    final MemorySegment[] slices;
+    final boolean isClone = offset == 0 && length == this.length;
+    if (isClone) {
+      slices = segments;
+    } else {
+      final long sliceEnd = offset + length;
+      final int startIndex = (int) (offset >>> chunkSizePower);
+      final int endIndex = (int) (sliceEnd >>> chunkSizePower);
+      // we always allocate one more slice, the last one may be a 0 byte one after truncating with
+      // asSlice():
+      slices = ArrayUtil.copyOfSubArray(segments, startIndex, endIndex + 1);
 
-    final long sliceEnd = offset + length;
-    final int startIndex = (int) (offset >>> chunkSizePower);
-    final int endIndex = (int) (sliceEnd >>> chunkSizePower);
+      // set the last segment's limit for the sliced view.
+      slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
 
-    // we always allocate one more slice, the last one may be a 0 byte one after truncating with
-    // asSlice():
-    final MemorySegment slices[] = ArrayUtil.copyOfSubArray(segments, startIndex, endIndex + 1);
-
-    // set the last segment's limit for the sliced view.
-    slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
-
-    offset = offset & chunkSizeMask;
+      offset = offset & chunkSizeMask;
+    }
 
     final String newResourceDescription = getFullSliceDescription(sliceDescription);
     if (slices.length == 1) {
       return new SingleSegmentImpl(
           newResourceDescription,
           null, // clones don't have an Arena, as they can't close)
-          slices[0].asSlice(offset, length),
+          isClone ? slices[0] : slices[0].asSlice(offset, length),
           length,
-          chunkSizePower);
+          chunkSizePower,
+          confined);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -559,7 +648,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
           slices,
           offset,
           length,
-          chunkSizePower);
+          chunkSizePower,
+          confined);
     }
   }
 
@@ -603,8 +693,15 @@ abstract class MemorySegmentIndexInput extends IndexInput
         Arena arena,
         MemorySegment segment,
         long length,
-        int chunkSizePower) {
-      super(resourceDescription, arena, new MemorySegment[] {segment}, length, chunkSizePower);
+        int chunkSizePower,
+        boolean confined) {
+      super(
+          resourceDescription,
+          arena,
+          new MemorySegment[] {segment},
+          length,
+          chunkSizePower,
+          confined);
       this.curSegmentIndex = 0;
     }
 
@@ -680,7 +777,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
 
     @Override
-    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+    public MemorySegment segmentSliceOrNull(long pos, long len) throws IOException {
       try {
         Objects.checkIndex(pos + len, this.length + 1);
         return curSegment.asSlice(pos, len);
@@ -700,8 +797,9 @@ abstract class MemorySegmentIndexInput extends IndexInput
         MemorySegment[] segments,
         long offset,
         long length,
-        int chunkSizePower) {
-      super(resourceDescription, arena, segments, length, chunkSizePower);
+        int chunkSizePower,
+        boolean confined) {
+      super(resourceDescription, arena, segments, length, chunkSizePower, confined);
       this.offset = offset;
       try {
         seek(0L);
@@ -753,7 +851,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
       return super.readLong(pos + offset);
     }
 
-    public MemorySegment segmentSliceOrNull(long pos, int len) throws IOException {
+    @Override
+    public MemorySegment segmentSliceOrNull(long pos, long len) throws IOException {
       if (pos + len > length) {
         throw handlePositionalIOOBE(null, "segmentSliceOrNull", pos);
       }

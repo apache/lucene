@@ -122,7 +122,7 @@ public final class BlockScoreQueryWrapper extends Query {
         final float[] scores = ArrayUtil.copyOfSubArray(tmpScores, 0, i);
 
         final var scorer =
-            new Scorer(inWeight) {
+            new Scorer() {
 
               int i = 0;
 

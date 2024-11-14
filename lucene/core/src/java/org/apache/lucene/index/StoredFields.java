@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -31,6 +32,18 @@ import org.apache.lucene.util.Bits;
 public abstract class StoredFields {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected StoredFields() {}
+
+  /**
+   * Optional method: Give a hint to this {@link StoredFields} instance that the given document will
+   * be read in the near future. This typically delegates to {@link IndexInput#prefetch} and is
+   * useful to parallelize I/O across multiple documents.
+   *
+   * <p>NOTE: This API is expected to be called on a small enough set of doc IDs that they could all
+   * fit in the page cache. If you plan on retrieving a very large number of documents, it may be a
+   * good idea to perform calls to {@link #prefetch} and {@link #document} in batches instead of
+   * prefetching all documents up-front.
+   */
+  public void prefetch(int docID) throws IOException {}
 
   /**
    * Returns the stored fields of the <code>n</code><sup>th</sup> <code>Document</code> in this

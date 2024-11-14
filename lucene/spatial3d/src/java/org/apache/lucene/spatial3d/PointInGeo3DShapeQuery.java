@@ -106,8 +106,7 @@ final class PointInGeo3DShapeQuery extends Query implements Accountable {
 
         values.intersect(new PointInShapeIntersectVisitor(result, shape, shapeBounds));
 
-        final var scorer =
-            new ConstantScoreScorer(this, score(), scoreMode, result.build().iterator());
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, result.build().iterator());
         return new DefaultScorerSupplier(scorer);
       }
 

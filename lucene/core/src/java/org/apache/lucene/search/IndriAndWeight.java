@@ -59,19 +59,9 @@ public class IndriAndWeight extends Weight {
     }
     Scorer scorer = subScorers.get(0);
     if (subScorers.size() > 1) {
-      scorer = new IndriAndScorer(this, subScorers, scoreMode, boost);
+      scorer = new IndriAndScorer(subScorers, scoreMode, boost);
     }
     return scorer;
-  }
-
-  @Override
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    Scorer scorer = getScorer(context);
-    if (scorer != null) {
-      BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
-      return bulkScorer;
-    }
-    return null;
   }
 
   @Override

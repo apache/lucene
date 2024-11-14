@@ -31,6 +31,8 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
@@ -38,8 +40,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.Outputs;
-import org.apache.lucene.util.hppc.IntCursor;
-import org.apache.lucene.util.hppc.IntObjectHashMap;
 
 /**
  * A block-based terms index and dictionary that assigns terms to variable length blocks according
@@ -200,6 +200,11 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
             final int docCount = metaIn.readVInt();
             BytesRef minTerm = readBytesRef(metaIn);
             BytesRef maxTerm = readBytesRef(metaIn);
+            if (numTerms == 1) {
+              assert maxTerm.equals(minTerm);
+              // save heap for edge case of a single term only so min == max
+              maxTerm = minTerm;
+            }
             if (docCount < 0
                 || docCount > state.segmentInfo.maxDoc()) { // #docs with field must be <= #docs
               throw new CorruptIndexException(
@@ -270,9 +275,8 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       throw new CorruptIndexException("invalid bytes length: " + numBytes, in);
     }
 
-    BytesRef bytes = new BytesRef();
+    BytesRef bytes = new BytesRef(numBytes);
     bytes.length = numBytes;
-    bytes.bytes = new byte[numBytes];
     in.readBytes(bytes.bytes, 0, numBytes);
 
     return bytes;
@@ -281,8 +285,8 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   private static List<String> sortFieldNames(
       IntObjectHashMap<FieldReader> fieldMap, FieldInfos fieldInfos) {
     List<String> fieldNames = new ArrayList<>(fieldMap.size());
-    for (IntCursor fieldNumberCursor : fieldMap.keys()) {
-      fieldNames.add(fieldInfos.fieldInfo(fieldNumberCursor.value).name);
+    for (IntCursor fieldNumber : fieldMap.keys()) {
+      fieldNames.add(fieldInfos.fieldInfo(fieldNumber.value).name);
     }
     fieldNames.sort(null);
     return Collections.unmodifiableList(fieldNames);

@@ -136,9 +136,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
     final long quantizedVectorBytes;
     if (fieldEntry.bits <= 4 && fieldEntry.compress) {
+      // two dimensions -> one byte
       quantizedVectorBytes = ((dimension + 1) >> 1) + Float.BYTES;
     } else {
-      // int8 quantized and calculated stored offset.
+      // one dimension -> one byte
       quantizedVectorBytes = dimension + Float.BYTES;
     }
     long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, fieldEntry.size);
@@ -165,8 +166,17 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return null;
+    if (fieldEntry == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT32);
     }
     final FloatVectorValues rawVectorValues = rawVectorsReader.getFloatVectorValues(field);
     OffHeapQuantizedByteVectorValues quantizedByteVectorValues =
@@ -346,9 +356,16 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       if (size > 0) {
         if (versionMeta < Lucene99ScalarQuantizedVectorsFormat.VERSION_ADD_BITS) {
           int floatBits = input.readInt(); // confidenceInterval, unused
-          if (floatBits == -1) {
+          if (floatBits == -1) { // indicates a null confidence interval
             throw new CorruptIndexException(
                 "Missing confidence interval for scalar quantizer", input);
+          }
+          float confidenceInterval = Float.intBitsToFloat(floatBits);
+          // indicates a dynamic interval, which shouldn't be provided in this version
+          if (confidenceInterval
+              == Lucene99ScalarQuantizedVectorsFormat.DYNAMIC_CONFIDENCE_INTERVAL) {
+            throw new CorruptIndexException(
+                "Invalid confidence interval for scalar quantizer: " + confidenceInterval, input);
           }
           bits = (byte) 7;
           compress = false;
@@ -385,10 +402,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   private static final class QuantizedVectorValues extends FloatVectorValues {
     private final FloatVectorValues rawVectorValues;
-    private final OffHeapQuantizedByteVectorValues quantizedVectorValues;
+    private final QuantizedByteVectorValues quantizedVectorValues;
 
     QuantizedVectorValues(
-        FloatVectorValues rawVectorValues, OffHeapQuantizedByteVectorValues quantizedVectorValues) {
+        FloatVectorValues rawVectorValues, QuantizedByteVectorValues quantizedVectorValues) {
       this.rawVectorValues = rawVectorValues;
       this.quantizedVectorValues = quantizedVectorValues;
     }
@@ -404,34 +421,28 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      return rawVectorValues.vectorValue();
+    public float[] vectorValue(int ord) throws IOException {
+      return rawVectorValues.vectorValue(ord);
     }
 
     @Override
-    public int docID() {
-      return rawVectorValues.docID();
+    public int ordToDoc(int ord) {
+      return rawVectorValues.ordToDoc(ord);
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      int rawDocId = rawVectorValues.nextDoc();
-      int quantizedDocId = quantizedVectorValues.nextDoc();
-      assert rawDocId == quantizedDocId;
-      return quantizedDocId;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      int rawDocId = rawVectorValues.advance(target);
-      int quantizedDocId = quantizedVectorValues.advance(target);
-      assert rawDocId == quantizedDocId;
-      return quantizedDocId;
+    public QuantizedVectorValues copy() throws IOException {
+      return new QuantizedVectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
     }
 
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       return quantizedVectorValues.scorer(query);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return rawVectorValues.iterator();
     }
   }
 }

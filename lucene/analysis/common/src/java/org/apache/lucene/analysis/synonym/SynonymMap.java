@@ -19,15 +19,15 @@ package org.apache.lucene.analysis.synonym;
 import java.io.IOException;
 import java.io.Reader;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -91,7 +91,7 @@ public class SynonymMap {
     private static class MapEntry {
       boolean includeOrig;
       // we could sort for better sharing ultimately, but it could confuse people
-      ArrayList<Integer> ords = new ArrayList<>();
+      IntArrayList ords = new IntArrayList();
     }
 
     /**
@@ -228,10 +228,10 @@ public class SynonymMap {
       BytesRefBuilder scratch = new BytesRefBuilder();
       ByteArrayDataOutput scratchOutput = new ByteArrayDataOutput();
 
-      final Set<Integer> dedupSet;
+      final IntHashSet dedupSet;
 
       if (dedup) {
-        dedupSet = new HashSet<>();
+        dedupSet = new IntHashSet();
       } else {
         dedupSet = null;
       }
@@ -260,8 +260,7 @@ public class SynonymMap {
         int count = 0;
         for (int i = 0; i < numEntries; i++) {
           if (dedupSet != null) {
-            // box once
-            final Integer ent = output.ords.get(i);
+            int ent = output.ords.get(i);
             if (dedupSet.contains(ent)) {
               continue;
             }
