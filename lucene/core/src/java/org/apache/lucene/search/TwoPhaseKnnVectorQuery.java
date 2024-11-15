@@ -22,6 +22,7 @@ import java.util.Objects;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.util.ArrayUtil;
 
 public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
 
@@ -75,7 +76,9 @@ public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
     Arrays.sort(results.scoreDocs, (a, b) -> Float.compare(b.score, a.score));
 
     // Select the top-k ScoreDocs after re-ranking
-    ScoreDoc[] topKDocs = Arrays.copyOfRange(results.scoreDocs, 0, originalK);
+    ScoreDoc[] topKDocs = ArrayUtil.copyOfSubArray(results.scoreDocs, 0, originalK);
+
+    assert topKDocs.length == originalK;
 
     return new TopDocs(results.totalHits, topKDocs);
   }
