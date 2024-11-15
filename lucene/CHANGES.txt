@@ -28,6 +28,11 @@ Bug Fixes
   system property to increase the set of Java versions that Panama Vectorization will
   provide optimized implementations for. (Chris Hegarty)
 
+API Changes
+---------------------
+
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
 ======================== Lucene 9.12.0 =======================
 
 Security Fixes
