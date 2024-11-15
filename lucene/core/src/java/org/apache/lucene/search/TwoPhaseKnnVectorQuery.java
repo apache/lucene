@@ -22,7 +22,9 @@ import java.util.Objects;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
 
 public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
 
@@ -45,12 +47,14 @@ public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
   }
 
   @Override
-  protected TopDocs getLeafResults(
+  protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Weight filterWeight,
-      TimeLimitingKnnCollectorManager knnCollectorManager)
+      Bits acceptDocs,
+      int visitedLimit,
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
-    TopDocs results = super.getLeafResults(context, filterWeight, knnCollectorManager);
+    TopDocs results =
+        super.approximateSearch(context, acceptDocs, visitedLimit, knnCollectorManager);
     if (results.scoreDocs.length <= originalK) {
       // short-circuit: no re-ranking needed. we got what we need
       return results;

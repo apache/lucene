@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.search;
 
 import java.util.HashMap;
@@ -18,11 +34,12 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TestTwoPhaseKnnVectorQuery {
+public class TestTwoPhaseKnnVectorQuery extends LuceneTestCase {
 
   private static final String FIELD = "vector";
   public static final VectorSimilarityFunction VECTOR_SIMILARITY_FUNCTION =
@@ -33,7 +50,9 @@ public class TestTwoPhaseKnnVectorQuery {
   private static final int VECTOR_DIMENSION = 128;
 
   @Before
+  @Override
   public void setUp() throws Exception {
+    super.setUp();
     directory = new ByteBuffersDirectory();
 
     // Set up the IndexWriterConfig to use quantized vector storage
@@ -45,9 +64,10 @@ public class TestTwoPhaseKnnVectorQuery {
   public void testTwoPhaseKnnVectorQuery() throws Exception {
     Map<Integer, float[]> vectors = new HashMap<>();
 
+    Random random = random();
+
     // Step 1: Index random vectors in quantized format
     try (IndexWriter writer = new IndexWriter(directory, config)) {
-      Random random = new Random();
       for (int i = 0; i < NUM_VECTORS; i++) {
         float[] vector = randomFloatVector(VECTOR_DIMENSION, random);
         Document doc = new Document();
@@ -61,7 +81,7 @@ public class TestTwoPhaseKnnVectorQuery {
     // Step 2: Run TwoPhaseKnnVectorQuery with a random target vector
     try (IndexReader reader = DirectoryReader.open(directory)) {
       IndexSearcher searcher = new IndexSearcher(reader);
-      float[] targetVector = randomFloatVector(VECTOR_DIMENSION, new Random());
+      float[] targetVector = randomFloatVector(VECTOR_DIMENSION, random);
       int k = 10;
       double oversample = 1.0;
 
