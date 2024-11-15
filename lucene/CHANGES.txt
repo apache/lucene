@@ -85,7 +85,7 @@ Build
 
 Other
 ---------------------
-(No changes)
+* GITHUB#13982: Remove duplicate test code. (Lu Xugang)
 
 ======================== Lucene 10.0.1 =======================
 
