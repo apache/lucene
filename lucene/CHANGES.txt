@@ -52,9 +52,6 @@ API Changes
   the entire segment should be scored. Subclasses that override the method should instead override its replacement.
   (Luca Cavanna)
 
-* GITHUB#13757: For similarities, provide default computeNorm implementation and remove remaining discountOverlaps setters.
-  (Christine Poerschke, Adrien Grand, Robert Muir)
-
 New Features
 ---------------------
 
