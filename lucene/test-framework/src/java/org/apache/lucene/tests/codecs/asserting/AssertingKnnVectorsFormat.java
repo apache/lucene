@@ -105,6 +105,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
   static class AssertingKnnVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
     final KnnVectorsReader delegate;
     final FieldInfos fis;
+    int mergeInstanceCount;
 
     AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
       assert delegate != null;
@@ -167,20 +168,42 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public KnnVectorsReader getMergeInstance() {
-      KnnVectorsReader mergeVectorsReader = delegate.getMergeInstance();
+      var mergeVectorsReader = delegate.getMergeInstance();
       assert mergeVectorsReader != null;
-      return mergeVectorsReader;
+      mergeInstanceCount++;
+
+      final var parent = this;
+      return new AssertingKnnVectorsReader(mergeVectorsReader, AssertingKnnVectorsReader.this.fis) {
+        @Override
+        public KnnVectorsReader getMergeInstance() {
+          assert false; // merging from a merge instance it not allowed
+          return null;
+        }
+
+        @Override
+        public void finishMerge() throws IOException {
+          delegate.finishMerge();
+          parent.mergeInstanceCount--; // decrement the parents merge count
+        }
+
+        @Override
+        public void close() {
+          assert false; // closing the merge instance it not allowed
+        }
+      };
     }
 
     @Override
     public void finishMerge() throws IOException {
       delegate.finishMerge();
+      mergeInstanceCount--;
     }
 
     @Override
     public void close() throws IOException {
       delegate.close();
       delegate.close();
+      assert mergeInstanceCount == 0;
     }
 
     @Override
