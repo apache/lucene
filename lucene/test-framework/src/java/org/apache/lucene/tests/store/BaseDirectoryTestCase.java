@@ -1605,7 +1605,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   }
 
   public void testIsLoaded() throws IOException {
-    doTestPrefetch(0);
+    testIsLoaded(0);
   }
 
   public void testIsLoadedOnSlice() throws IOException {
