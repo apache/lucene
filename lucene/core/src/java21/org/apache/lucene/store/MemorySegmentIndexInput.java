@@ -406,6 +406,14 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
   }
 
+  public Optional<Boolean> isLoaded() {
+    boolean loaded = true;
+    for (MemorySegment seg : segments) {
+      loaded = loaded && seg.isLoaded();
+    }
+    return Optional.of(loaded);
+  }
+
   @Override
   public byte readByte(long pos) throws IOException {
     try {

@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Optional;
 import org.apache.lucene.codecs.CompoundFormat;
 
 /**
@@ -226,4 +227,17 @@ public abstract class IndexInput extends DataInput implements Closeable {
    * @param length the number of bytes to prefetch
    */
   public void prefetch(long offset, long length) throws IOException {}
+
+  /**
+   * Returns a hint whether all the contents of this input are resident in physical memory. It's a
+   * hint because the operating system may have paged out some of the data by the time this method
+   * returns. If the optional is true, then it's likely that the contents of this input are resident
+   * in physical memory. A value of false does not imply that the contents are not resident in
+   * physical memory. An empty optional is returned if it is not possible to determine.
+   *
+   * <p>The default implementation returns an empty optional.
+   */
+  public Optional<Boolean> isLoaded() {
+    return Optional.empty();
+  }
 }
