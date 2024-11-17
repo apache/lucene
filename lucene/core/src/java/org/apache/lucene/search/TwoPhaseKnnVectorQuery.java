@@ -27,7 +27,11 @@ import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 
-/** A subclass of KnnFloatVectorQuery which does oversampling and full-precision reranking. */
+/**
+ * A subclass of KnnFloatVectorQuery which does oversampling and full-precision reranking.
+ *
+ * @lucene.experimental
+ */
 public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
 
   private final int originalK;
