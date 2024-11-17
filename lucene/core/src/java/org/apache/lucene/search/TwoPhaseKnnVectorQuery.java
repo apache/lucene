@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -26,11 +27,24 @@ import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 
+/** A subclass of KnnFloatVectorQuery which does oversampling and full-precision reranking. */
 public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
 
   private final int originalK;
   private final double oversample;
 
+  /**
+   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
+   * given field. <code>target</code> vector. It also over-samples by oversample parameter and does
+   * full precision reranking if oversample > 0
+   *
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find
+   * @param oversample the oversampling factor, a value of 0 means no oversampling
+   * @param filter a filter applied before the vector search
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   */
   public TwoPhaseKnnVectorQuery(
       String field, float[] target, int k, double oversample, Query filter) {
     super(field, target, k + (int) Math.round(k * oversample), filter);
