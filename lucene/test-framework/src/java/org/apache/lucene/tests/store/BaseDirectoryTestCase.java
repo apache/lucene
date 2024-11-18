@@ -1633,7 +1633,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           in = orig.slice("slice", startOffset, totalLength - startOffset);
         }
         var loaded = in.isLoaded();
-        if (FilterDirectory.unwrap(dir) instanceof MMapDirectory) {
+        if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
+            // direct IO wraps MMap but does not support isLoaded
+            && !(dir.getClass().getName().contains("DirectIO"))) {
           assertTrue(loaded.isPresent());
           assertTrue(loaded.get());
         } else {
