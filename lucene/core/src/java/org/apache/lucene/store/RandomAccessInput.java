@@ -18,7 +18,6 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.util.Optional;
-
 import org.apache.lucene.util.BitUtil; // javadocs
 
 /**

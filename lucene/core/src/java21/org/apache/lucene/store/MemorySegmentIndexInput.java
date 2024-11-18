@@ -407,11 +407,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   public Optional<Boolean> isLoaded() {
-    boolean loaded = true;
     for (MemorySegment seg : segments) {
-      loaded = loaded && seg.isLoaded();
+      if (seg.isLoaded() == false) {
+        return Optional.of(Boolean.FALSE);
+      }
     }
-    return Optional.of(loaded);
+    return Optional.of(Boolean.TRUE);
   }
 
   @Override
