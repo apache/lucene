@@ -50,6 +50,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -1632,7 +1633,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           in = orig.slice("slice", startOffset, totalLength - startOffset);
         }
         var loaded = in.isLoaded();
-        if (dir instanceof MMapDirectory) {
+        if (FilterDirectory.unwrap(dir) instanceof MMapDirectory) {
           assertTrue(loaded.isPresent());
           assertTrue(loaded.get());
         } else {
