@@ -20,6 +20,8 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.BitSet;
@@ -52,7 +54,8 @@ public class HnswGraphSearcher {
   }
 
   /**
-   * Searches HNSW graph for the nearest neighbors of a query vector.
+   * Searches the HNSW graph for the nearest neighbors of a query vector, starting from the provided
+   * entry points.
    *
    * @param scorer the scorer to compare the query with the nodes
    * @param knnCollector a collector of top knn results to be returned
@@ -64,10 +67,26 @@ public class HnswGraphSearcher {
   public static void search(
       RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
+    ArrayList<Integer> entryPointOrdInts = null;
+    DocIdSetIterator entryPoints = knnCollector.getSeedEntryPoints();
+    if (entryPoints != null) {
+      entryPointOrdInts = new ArrayList<Integer>();
+      int entryPointOrdInt;
+      while ((entryPointOrdInt = entryPoints.nextDoc()) != NO_MORE_DOCS) {
+        entryPointOrdInts.add(entryPointOrdInt);
+      }
+    }
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
-    search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+    if (entryPointOrdInts == null || entryPointOrdInts.isEmpty()) {
+      search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+    } else {
+      int[] entryPointOrdIntsArr = entryPointOrdInts.stream().mapToInt(Integer::intValue).toArray();
+      // We use provided entry point ordinals to search the complete graph (level 0)
+      graphSearcher.searchLevel(
+          knnCollector, scorer, 0 /* level */, entryPointOrdIntsArr, graph, acceptOrds);
+    }
   }
 
   /**
