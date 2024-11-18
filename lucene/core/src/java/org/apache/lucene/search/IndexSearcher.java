@@ -27,7 +27,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -115,13 +114,7 @@ public class IndexSearcher {
   protected final IndexReaderContext readerContext;
   protected final List<LeafReaderContext> leafContexts;
 
-  /**
-   * Used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
-   * one thread. We are caching it instead of creating it eagerly to avoid calling a protected
-   * method from constructor, which is a bad practice. Always non-null, regardless of whether an
-   * executor is provided or not.
-   */
-  private final Supplier<LeafSlice[]> leafSlicesSupplier;
+  private volatile LeafSlice[] leafSlices;
 
   // Used internally for load balancing threads executing for the query
   private final TaskExecutor taskExecutor;
@@ -230,20 +223,18 @@ public class IndexSearcher {
         executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
-    Function<List<LeafReaderContext>, LeafSlice[]> slicesProvider =
-        executor == null
-            ? leaves ->
-                leaves.isEmpty()
-                    ? new LeafSlice[0]
-                    : new LeafSlice[] {
-                      new LeafSlice(
-                          new ArrayList<>(
-                              leaves.stream()
-                                  .map(LeafReaderContextPartition::createForEntireSegment)
-                                  .toList()))
-                    }
-            : this::slices;
-    leafSlicesSupplier = new CachingLeafSlicesSupplier(slicesProvider, leafContexts);
+    if (executor == null) {
+      leafSlices =
+          leafContexts.isEmpty()
+              ? new LeafSlice[0]
+              : new LeafSlice[] {
+                new LeafSlice(
+                    new ArrayList<>(
+                        leafContexts.stream()
+                            .map(LeafReaderContextPartition::createForEntireSegment)
+                            .toList()))
+              };
+    }
   }
 
   /**
@@ -540,7 +531,43 @@ public class IndexSearcher {
    * @lucene.experimental
    */
   public final LeafSlice[] getSlices() {
-    return leafSlicesSupplier.get();
+    LeafSlice[] res = leafSlices;
+    if (res == null) {
+      res = computeAndCacheSlices();
+    }
+    return res;
+  }
+
+  private synchronized LeafSlice[] computeAndCacheSlices() {
+    LeafSlice[] res = leafSlices;
+    if (res == null) {
+      res = slices(leafContexts);
+      /*
+       * Enforce that there aren't multiple leaf partitions within the same leaf slice pointing to the
+       * same leaf context. It is a requirement that {@link Collector#getLeafCollector(LeafReaderContext)}
+       * gets called once per leaf context. Also, it does not make sense to partition a segment to then search
+       * those partitions as part of the same slice, because the goal of partitioning is parallel searching
+       * which happens at the slice level.
+       */
+      for (LeafSlice leafSlice : res) {
+        if (leafSlice.partitions.length <= 1) {
+          continue;
+        }
+        enforceDistinctLeaves(leafSlice);
+      }
+      leafSlices = res;
+    }
+    return res;
+  }
+
+  private static void enforceDistinctLeaves(LeafSlice leafSlice) {
+    Set<LeafReaderContext> distinctLeaves = new HashSet<>();
+    for (LeafReaderContextPartition leafPartition : leafSlice.partitions) {
+      if (distinctLeaves.add(leafPartition.ctx) == false) {
+        throw new IllegalStateException(
+            "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.");
+      }
+    }
   }
 
   /**
@@ -564,10 +591,8 @@ public class IndexSearcher {
     }
 
     final int cappedNumHits = Math.min(numHits, limit);
-    final boolean supportsConcurrency = getSlices().length > 1;
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        new TopScoreDocCollectorManager(
-            cappedNumHits, after, TOTAL_HITS_THRESHOLD, supportsConcurrency);
+        new TopScoreDocCollectorManager(cappedNumHits, after, TOTAL_HITS_THRESHOLD);
 
     return search(query, manager);
   }
@@ -699,12 +724,9 @@ public class IndexSearcher {
     }
     final int cappedNumHits = Math.min(numHits, limit);
     final Sort rewrittenSort = sort.rewrite(this);
-    final LeafSlice[] leafSlices = getSlices();
 
-    final boolean supportsConcurrency = leafSlices.length > 1;
     final CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-        new TopFieldCollectorManager(
-            rewrittenSort, cappedNumHits, after, TOTAL_HITS_THRESHOLD, supportsConcurrency);
+        new TopFieldCollectorManager(rewrittenSort, cappedNumHits, after, TOTAL_HITS_THRESHOLD);
 
     TopFieldDocs topDocs = search(query, manager);
     if (doDocScores) {
@@ -1167,62 +1189,6 @@ public class IndexSearcher {
       super(
           "Query contains too many nested clauses; maxClauseCount is set to "
               + IndexSearcher.getMaxClauseCount());
-    }
-  }
-
-  /**
-   * Supplier for {@link LeafSlice} slices which computes and caches the value on first invocation
-   * and returns cached value on subsequent invocation. If the passed in provider for slice
-   * computation throws exception then same will be passed to the caller of this supplier on each
-   * invocation. If the provider returns null then {@link NullPointerException} will be thrown to
-   * the caller.
-   *
-   * <p>NOTE: To provide thread safe caching mechanism this class is implementing the (subtle) <a
-   * href="https://shipilev.net/blog/2014/safe-public-construction/">double-checked locking
-   * idiom</a>
-   */
-  private static class CachingLeafSlicesSupplier implements Supplier<LeafSlice[]> {
-    private volatile LeafSlice[] leafSlices;
-
-    private final Function<List<LeafReaderContext>, LeafSlice[]> sliceProvider;
-
-    private final List<LeafReaderContext> leaves;
-
-    private CachingLeafSlicesSupplier(
-        Function<List<LeafReaderContext>, LeafSlice[]> provider, List<LeafReaderContext> leaves) {
-      this.sliceProvider = Objects.requireNonNull(provider, "leaf slice provider cannot be null");
-      this.leaves = Objects.requireNonNull(leaves, "list of LeafReaderContext cannot be null");
-    }
-
-    @Override
-    public LeafSlice[] get() {
-      if (leafSlices == null) {
-        synchronized (this) {
-          if (leafSlices == null) {
-            leafSlices =
-                Objects.requireNonNull(
-                    sliceProvider.apply(leaves), "slices computed by the provider is null");
-            /*
-             * Enforce that there aren't multiple leaf partitions within the same leaf slice pointing to the
-             * same leaf context. It is a requirement that {@link Collector#getLeafCollector(LeafReaderContext)}
-             * gets called once per leaf context. Also, it does not make sense to partition a segment to then search
-             * those partitions as part of the same slice, because the goal of partitioning is parallel searching
-             * which happens at the slice level.
-             */
-            for (LeafSlice leafSlice : leafSlices) {
-              Set<LeafReaderContext> distinctLeaves = new HashSet<>();
-              for (LeafReaderContextPartition leafPartition : leafSlice.partitions) {
-                distinctLeaves.add(leafPartition.ctx);
-              }
-              if (leafSlice.partitions.length != distinctLeaves.size()) {
-                throw new IllegalStateException(
-                    "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.");
-              }
-            }
-          }
-        }
-      }
-      return leafSlices;
     }
   }
 }
