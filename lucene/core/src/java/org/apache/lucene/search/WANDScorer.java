@@ -407,6 +407,11 @@ final class WANDScorer extends Scorer {
     // cost is less than or equal to the lead cost.
     if (newUpTo == DocIdSetIterator.NO_MORE_DOCS && tailSize > 0 && tail[0].cost <= leadCost) {
       newUpTo = tail[0].scorer.advanceShallow(target);
+      // upTo must be on or after the least `head` doc
+      DisiWrapper headTop = head.top();
+      if (headTop != null) {
+        newUpTo = Math.max(newUpTo, headTop.doc);
+      }
     }
     upTo = newUpTo;
 
@@ -454,8 +459,7 @@ final class WANDScorer extends Scorer {
       }
     }
 
-    assert (head.size() == 0 && upTo == DocIdSetIterator.NO_MORE_DOCS)
-        || (head.size() > 0 && head.top().doc <= upTo);
+    assert head.size() == 0 || head.top().doc <= upTo;
     assert upTo >= target;
   }
 
