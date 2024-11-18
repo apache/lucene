@@ -29,10 +29,8 @@ public class TopScoreDocCollectorManager
     implements CollectorManager<TopScoreDocCollector, TopDocs> {
   private final int numHits;
   private final ScoreDoc after;
-  private final HitsThresholdChecker hitsThresholdChecker;
+  private final int totalHitsThreshold;
   private final MaxScoreAccumulator minScoreAcc;
-  private final boolean supportsConcurrency;
-  private boolean collectorCreated;
 
   /**
    * Creates a new {@link TopScoreDocCollectorManager} given the number of hits to collect and the
@@ -54,28 +52,13 @@ public class TopScoreDocCollectorManager
    *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
-   * @param supportsConcurrency to use thread-safe and slower internal states for count tracking.
+   * @deprecated Use {@link #TopScoreDocCollectorManager(int, ScoreDoc, int)}, the
+   *     supportsConcurrency parameter is now a no-op.
    */
+  @Deprecated
   public TopScoreDocCollectorManager(
       int numHits, ScoreDoc after, int totalHitsThreshold, boolean supportsConcurrency) {
-    if (totalHitsThreshold < 0) {
-      throw new IllegalArgumentException(
-          "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
-    }
-
-    if (numHits <= 0) {
-      throw new IllegalArgumentException(
-          "numHits must be > 0; please use TotalHitCountCollectorManager if you just need the total hit count");
-    }
-
-    this.numHits = numHits;
-    this.after = after;
-    this.supportsConcurrency = supportsConcurrency;
-    this.hitsThresholdChecker =
-        supportsConcurrency
-            ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
-            : HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits));
-    this.minScoreAcc = supportsConcurrency ? new MaxScoreAccumulator() : null;
+    this(numHits, after, totalHitsThreshold);
   }
 
   /**
@@ -100,7 +83,20 @@ public class TopScoreDocCollectorManager
    *     count accurate, but this will also make query processing slower.
    */
   public TopScoreDocCollectorManager(int numHits, ScoreDoc after, int totalHitsThreshold) {
-    this(numHits, after, totalHitsThreshold, true);
+    if (totalHitsThreshold < 0) {
+      throw new IllegalArgumentException(
+          "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
+    }
+
+    if (numHits <= 0) {
+      throw new IllegalArgumentException(
+          "numHits must be > 0; please use TotalHitCountCollectorManager if you just need the total hit count");
+    }
+
+    this.numHits = numHits;
+    this.after = after;
+    this.totalHitsThreshold = Math.max(totalHitsThreshold, numHits);
+    this.minScoreAcc = totalHitsThreshold != Integer.MAX_VALUE ? new MaxScoreAccumulator() : null;
   }
 
   /**
@@ -129,19 +125,12 @@ public class TopScoreDocCollectorManager
 
   @Override
   public TopScoreDocCollector newCollector() {
-    if (collectorCreated && supportsConcurrency == false) {
-      throw new IllegalStateException(
-          "This TopScoreDocCollectorManager was created without concurrency (supportsConcurrency=false), but multiple collectors are being created");
-    } else {
-      collectorCreated = true;
-    }
-
     if (after == null) {
       return new TopScoreDocCollector.SimpleTopScoreDocCollector(
-          numHits, hitsThresholdChecker, minScoreAcc);
+          numHits, totalHitsThreshold, minScoreAcc);
     } else {
       return new TopScoreDocCollector.PagingTopScoreDocCollector(
-          numHits, after, hitsThresholdChecker, minScoreAcc);
+          numHits, after, totalHitsThreshold, minScoreAcc);
     }
   }
 

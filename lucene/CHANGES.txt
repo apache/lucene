@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
 New Features
 ---------------------
@@ -36,6 +36,10 @@ API Changes
 
 * GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
 
+* GITHUB#13950: Make BooleanQuery#getClauses public and add #add(Collection<BooleanClause>) to BQ builder. (Shubham Chaudhary)
+
+* GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
+  compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
 
 New Features
 ---------------------
@@ -43,7 +47,11 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with
+  newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
+  system property to increase the set of Java versions that Panama Vectorization will
+  provide optimized implementations for. (Chris Hegarty)
 
 Optimizations
 ---------------------
@@ -53,12 +61,48 @@ Optimizations
 * GITHUB#13800: MaxScoreBulkScorer now recomputes scorer partitions when the
   minimum competitive allows for a more favorable partitioning. (Adrien Grand)
 
+* GITHUB#13930: Use growNoCopy when copying bytes in BytesRefBuilder. (Ignacio Vera)
+
+* GITHUB#13931: Refactored `BooleanScorer` to evaluate matches of sub clauses
+  using the `Scorer` abstraction rather than the `BulkScorer` abstraction. This
+  speeds up exhaustive evaluation of disjunctions of term queries.
+  (Adrien Grand)
+
+* GITHUB#13941: Optimized computation of top-hits on disjunctive queries with
+  many clauses. (Adrien Grand)
+
+* GITHUB#13954: Disabled exchanging scores across slices for exhaustive
+  top-hits evaluation. (Adrien Grand)
+
+* GITHUB#13899: Check ahead if we can get the count. (Lu Xugang)
+
+* GITHUB#13943: Removed shared `HitsThresholdChecker`, which reduces overhead
+  but may delay a bit when dynamic pruning kicks in. (Adrien Grand)
+
+* GITHUB#13961: Replace Map<String,Object> with IntObjectHashMap for DV producer. (Pan Guixin)
+
+* GITHUB#13963: Speed up nextDoc() implementations in Lucene912PostingsReader.
+  (Adrien Grand)
+
+* GITHUB#13958: Speed up advancing within a block. (Adrien Grand)
+
+* GITHUB#13763: Replace Map<String,Object> with IntObjectHashMap for KnnVectorsReader (Pan Guixin)
+
+* GITHUB#13968: Switch postings from storing doc IDs in a long[] to an int[].
+  Lucene 8.4 had moved to a long[] to help speed up block decoding by using
+  longs that would pack two integers. We are now moving back to integers to be
+  able to take advantage of 2x more lanes with the vector API. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
   when they were not sorted by startOffset. (Seunghan Jung)
 * GITHUB#13884: Remove broken .toArray from Long/CharObjectHashMap entirely. (Pan Guixin)
 * GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
+* GITHUB#13927: Fix StoredFieldsConsumer finish. (linfn)
+* GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
+* GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
+  in valid polygons. (Ignacio Vera)
 
 Build
 ---------------------
@@ -67,7 +111,7 @@ Build
 
 Other
 ---------------------
-(No changes)
+* GITHUB#13982: Remove duplicate test code. (Lu Xugang)
 
 ======================== Lucene 10.0.1 =======================
 
@@ -294,6 +338,8 @@ Bug Fixes
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
+
+* GITHUB#13498: Avoid performance regression by constructing lazily the PointTree in NumericComparator, (Ignacio Vera)
 
 Changes in Runtime Behavior
 ---------------------

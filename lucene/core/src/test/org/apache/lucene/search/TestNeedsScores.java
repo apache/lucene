@@ -81,8 +81,7 @@ public class TestNeedsScores extends LuceneTestCase {
     assertEquals(5, searcher.count(constantScore));
 
     TopDocs hits =
-        searcher.search(
-            constantScore, new TopScoreDocCollectorManager(5, null, Integer.MAX_VALUE, true));
+        searcher.search(constantScore, new TopScoreDocCollectorManager(5, null, Integer.MAX_VALUE));
     assertEquals(5, hits.totalHits.value());
 
     // Queries that support dynamic pruning like top-score or top-doc queries that do not compute

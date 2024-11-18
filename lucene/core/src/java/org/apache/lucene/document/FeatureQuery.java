@@ -27,7 +27,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -120,7 +119,6 @@ final class FeatureQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Weight thisWeight = this;
         Terms terms = Terms.getTerms(context.reader(), fieldName);
         TermsEnum termsEnum = terms.iterator();
         if (termsEnum.seekExact(new BytesRef(featureName)) == false) {
@@ -135,10 +133,8 @@ final class FeatureQuery extends Query {
           @Override
           public Scorer get(long leadCost) throws IOException {
             final SimScorer scorer = function.scorer(boost);
-            final LeafSimScorer simScorer =
-                new LeafSimScorer(scorer, context.reader(), fieldName, false);
             final ImpactsEnum impacts = termsEnum.impacts(PostingsEnum.FREQS);
-            return new TermScorer(thisWeight, impacts, simScorer, topLevelScoringClause);
+            return new TermScorer(impacts, scorer, null, topLevelScoringClause);
           }
 
           @Override

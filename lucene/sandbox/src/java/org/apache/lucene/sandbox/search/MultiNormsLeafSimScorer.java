@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.sandbox.search;
 
-import static org.apache.lucene.sandbox.search.CombinedFieldQuery.FieldAndWeight;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,13 +25,13 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.sandbox.search.CombinedFieldQuery.FieldAndWeight;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.SmallFloat;
 
 /**
- * Copy of {@link LeafSimScorer} that sums document's norms from multiple fields.
+ * Scorer that sums document's norms from multiple fields.
  *
  * <p>For all fields, norms must be encoded using {@link SmallFloat#intToByte4}. This scorer also
  * requires that either all fields or no fields have norms enabled. Having only some fields with

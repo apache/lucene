@@ -28,7 +28,6 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -43,6 +42,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
@@ -70,12 +70,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
 
   @Override
   protected Codec getCodec() {
-    return new Lucene100Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return format;
-      }
-    };
+    return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
   public void testSearch() throws Exception {
