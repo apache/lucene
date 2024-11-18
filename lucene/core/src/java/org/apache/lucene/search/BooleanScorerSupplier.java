@@ -473,7 +473,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       // However, as WANDScorer uses more complex algorithm and data structure, we would like to
       // still use DisjunctionSumScorer to handle exhaustive pure disjunctions, which may be faster
       if ((scoreMode == ScoreMode.TOP_SCORES && topLevelScoringClause) || minShouldMatch > 1) {
-        return new WANDScorer(optionalScorers, minShouldMatch, scoreMode);
+        return new WANDScorer(optionalScorers, minShouldMatch, scoreMode, leadCost);
       } else {
         return new DisjunctionSumScorer(optionalScorers, scoreMode);
       }
