@@ -51,7 +51,7 @@ public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
    */
   public TwoPhaseKnnVectorQuery(
       String field, float[] target, int k, double oversample, Query filter) {
-    super(field, target, k + (int) Math.round(k * oversample), filter);
+    super(field, target, k + (int) Math.ceil(k * oversample), filter);
     if (oversample < 0) {
       throw new IllegalArgumentException("oversample must be non-negative, got " + oversample);
     }
