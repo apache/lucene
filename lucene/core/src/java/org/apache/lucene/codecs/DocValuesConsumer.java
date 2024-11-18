@@ -613,7 +613,7 @@ public abstract class DocValuesConsumer implements Closeable {
       if (docValuesProducer != null) {
         FieldInfo readerFieldInfo = mergeState.fieldInfos[i].fieldInfo(fieldInfo.name);
         if (readerFieldInfo != null && readerFieldInfo.getDocValuesType() == DocValuesType.SORTED) {
-          values = docValuesProducer.getSorted(fieldInfo);
+          values = docValuesProducer.getSorted(readerFieldInfo);
         }
       }
       if (values == null) {

@@ -59,12 +59,14 @@ import org.apache.lucene.queries.spans.SpanNotQuery;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.FuzzyQuery;
+import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MultiPhraseQuery;
 import org.apache.lucene.search.MultiTermQuery;
@@ -249,6 +251,27 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
     String fragment = highlighter.getBestFragment(stream, storedField);
     assertEquals("<B>JFK</B> has been shot", fragment);
 
+    stream = getAnyTokenStream(FIELD_NAME, 3);
+    storedField = searcher.storedFields().document(3).get(FIELD_NAME);
+    fragment = highlighter.getBestFragment(stream, storedField);
+    assertEquals("John <B>Kennedy</B> has been shot", fragment);
+  }
+
+  public void testHighlightingIndexOrDocValuesQuery() throws Exception {
+    searcher = newSearcher(reader);
+    BooleanQuery.Builder booleanQueryBuilder = new BooleanQuery.Builder();
+    booleanQueryBuilder.add(new TermQuery(new Term(FIELD_NAME, "jfk")), BooleanClause.Occur.SHOULD);
+    booleanQueryBuilder.add(
+        new TermQuery(new Term(FIELD_NAME, "kennedy")), BooleanClause.Occur.SHOULD);
+    Query indexQuery = booleanQueryBuilder.build();
+    Query dvQuery = TermRangeQuery.newStringRange(FIELD_NAME, "a", "z", true, true);
+    Query query = new IndexOrDocValuesQuery(indexQuery, dvQuery);
+    QueryScorer scorer = new QueryScorer(query, FIELD_NAME);
+    Highlighter highlighter = new Highlighter(scorer);
+    TokenStream stream = getAnyTokenStream(FIELD_NAME, 2);
+    String storedField = searcher.storedFields().document(2).get(FIELD_NAME);
+    String fragment = highlighter.getBestFragment(stream, storedField);
+    assertEquals("<B>JFK</B> has been shot", fragment);
     stream = getAnyTokenStream(FIELD_NAME, 3);
     storedField = searcher.storedFields().document(3).get(FIELD_NAME);
     fragment = highlighter.getBestFragment(stream, storedField);
