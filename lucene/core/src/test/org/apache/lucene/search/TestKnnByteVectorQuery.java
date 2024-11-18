@@ -23,6 +23,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
@@ -78,6 +79,11 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       assertEquals("KnnByteVectorQuery:field[0,...][10]", query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
+
+      // test with filter
+      Query filter = new TermQuery(new Term("id", "text"));
+      query = getKnnVectorQuery("field", new float[] {0, 1}, 10, filter);
+      assertEquals("KnnByteVectorQuery:field[0,...][10][id:text]", query.toString("ignored"));
     }
   }
 
