@@ -67,6 +67,9 @@ Optimizations
   longs that would pack two integers. We are now moving back to integers to be
   able to take advantage of 2x more lanes with the vector API. (Adrien Grand)
 
+* GITHUB#13994: Speed up top-k retrieval of filtered conjunctions.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
