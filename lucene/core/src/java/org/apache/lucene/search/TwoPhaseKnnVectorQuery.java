@@ -36,6 +36,7 @@ public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
 
   private final int originalK;
   private final double oversample;
+  private final float[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -55,6 +56,7 @@ public class TwoPhaseKnnVectorQuery extends KnnFloatVectorQuery {
     if (oversample < 0) {
       throw new IllegalArgumentException("oversample must be non-negative, got " + oversample);
     }
+    this.target = target;
     this.originalK = k;
     this.oversample = oversample;
   }
