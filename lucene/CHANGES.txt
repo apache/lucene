@@ -93,6 +93,12 @@ Optimizations
   longs that would pack two integers. We are now moving back to integers to be
   able to take advantage of 2x more lanes with the vector API. (Adrien Grand)
 
+* GITHUB#13994: Speed up top-k retrieval of filtered conjunctions.
+  (Adrien Grand)
+
+* GITHUB#14000: Speed up top-k retrieval of filtered disjunctions.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
@@ -103,6 +109,8 @@ Bug Fixes
 * GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
 * GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
   in valid polygons. (Ignacio Vera)
+* GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
+  and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
 
 Build
 ---------------------
@@ -111,7 +119,7 @@ Build
 
 Other
 ---------------------
-(No changes)
+* GITHUB#13982: Remove duplicate test code. (Lu Xugang)
 
 ======================== Lucene 10.0.1 =======================
 
