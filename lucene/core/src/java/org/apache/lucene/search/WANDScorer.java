@@ -394,7 +394,7 @@ final class WANDScorer extends Scorer {
     // We don't take entries in 'tail' into account on purpose: 'tail' is supposed to contain the
     // least score contributors, and taking them into account might not move the boundary fast
     // enough, so we'll waste CPU re-computing the next boundary all the time.
-    // Likewise, we ignore closes whose cost is greater than the lead cost to avoid recomputing
+    // Likewise, we ignore clauses whose cost is greater than the lead cost to avoid recomputing
     // per-window max scores over and over again. In the event when this makes us compute upTo as
     // NO_MORE_DOCS, this scorer will effectively implement WAND rather than block-max WAND.
     for (DisiWrapper w : head) {
