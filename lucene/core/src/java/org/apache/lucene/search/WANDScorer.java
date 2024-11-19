@@ -149,8 +149,9 @@ final class WANDScorer extends Scorer {
   int freq;
 
   final ScoreMode scoreMode;
+  final long leadCost;
 
-  WANDScorer(Collection<Scorer> scorers, int minShouldMatch, ScoreMode scoreMode)
+  WANDScorer(Collection<Scorer> scorers, int minShouldMatch, ScoreMode scoreMode, long leadCost)
       throws IOException {
 
     if (minShouldMatch >= scorers.size()) {
@@ -202,6 +203,7 @@ final class WANDScorer extends Scorer {
             scorers.stream().map(Scorer::iterator).mapToLong(DocIdSetIterator::cost),
             scorers.size(),
             minShouldMatch);
+    this.leadCost = leadCost;
   }
 
   // returns a boolean so that it can be called from assert
@@ -395,26 +397,32 @@ final class WANDScorer extends Scorer {
   }
 
   private void updateMaxScores(int target) throws IOException {
-    if (head.size() == 0) {
-      // If the head is empty we use the greatest score contributor as a lead
-      // like for conjunctions.
-      upTo = tail[0].scorer.advanceShallow(target);
-    } else {
-      // If we still have entries in 'head', we treat them all as leads and
-      // take the minimum of their next block boundaries as a next boundary.
-      // We don't take entries in 'tail' into account on purpose: 'tail' is
-      // supposed to contain the least score contributors, and taking them
-      // into account might not move the boundary fast enough, so we'll waste
-      // CPU re-computing the next boundary all the time.
-      int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
-      for (DisiWrapper w : head) {
-        if (w.doc <= newUpTo) {
-          newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
-          w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
-        }
+    int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
+    // If we have entries in 'head', we treat them all as leads and take the minimum of their next
+    // block boundaries as a next boundary.
+    // We don't take entries in 'tail' into account on purpose: 'tail' is supposed to contain the
+    // least score contributors, and taking them into account might not move the boundary fast
+    // enough, so we'll waste CPU re-computing the next boundary all the time.
+    // Likewise, we ignore clauses whose cost is greater than the lead cost to avoid recomputing
+    // per-window max scores over and over again. In the event when this makes us compute upTo as
+    // NO_MORE_DOCS, this scorer will effectively implement WAND rather than block-max WAND.
+    for (DisiWrapper w : head) {
+      if (w.doc <= newUpTo && w.cost <= leadCost) {
+        newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
+        w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
       }
-      upTo = newUpTo;
     }
+    // Only look at the tail if none of the `head` clauses had a block we could reuse and if its
+    // cost is less than or equal to the lead cost.
+    if (newUpTo == DocIdSetIterator.NO_MORE_DOCS && tailSize > 0 && tail[0].cost <= leadCost) {
+      newUpTo = tail[0].scorer.advanceShallow(target);
+      // upTo must be on or after the least `head` doc
+      DisiWrapper headTop = head.top();
+      if (headTop != null) {
+        newUpTo = Math.max(newUpTo, headTop.doc);
+      }
+    }
+    upTo = newUpTo;
 
     tailMaxScore = 0;
     for (int i = 0; i < tailSize; ++i) {
@@ -460,8 +468,7 @@ final class WANDScorer extends Scorer {
       }
     }
 
-    assert (head.size() == 0 && upTo == DocIdSetIterator.NO_MORE_DOCS)
-        || (head.size() > 0 && head.top().doc <= upTo);
+    assert head.size() == 0 || head.top().doc <= upTo;
     assert upTo >= target;
   }
 
