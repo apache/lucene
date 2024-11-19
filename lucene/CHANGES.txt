@@ -19,7 +19,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#13985: Introduces IndexInput#updateReadAdvice to change the ReadAdvice while merging vectors. (Tejas Shah)
 
 Bug Fixes
 ---------------------
