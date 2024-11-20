@@ -70,9 +70,6 @@ Optimizations
 * GITHUB#13994: Speed up top-k retrieval of filtered conjunctions.
   (Adrien Grand)
 
-* GITHUB#13996, GITHUB#14000: Speed up top-k retrieval of filtered disjunctions.
-  (Adrien Grand)
-
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
